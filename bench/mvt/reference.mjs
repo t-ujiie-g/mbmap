@@ -1,8 +1,6 @@
-// Shared by golden.mjs and the decode bench (Node and Worker).
+// @mapbox/vector-tile references for the mvt golden test and decode bench.
 
-export const WASM_GC_BUILD = "_build/wasm-gc/release/build/bench/mvt/entry/entry.wasm";
-
-// @mapbox/vector-tile output in the shape of entry/golden.mbt's tile_to_json.
+// @mapbox/vector-tile output in the shape of bench/entry/golden.mbt's tile_to_json.
 export function referenceJson(tile) {
   const out = {};
   for (const [name, layer] of Object.entries(tile.layers)) {
@@ -37,27 +35,4 @@ export function referenceTotals(tile) {
     }
   }
   return { points, properties, coordSum };
-}
-
-const WASM_PAGE = 65536;
-
-// Instantiates the wasm-gc build; decode() copies the tile into linear memory
-// from the second page on and runs decode_mem.
-export async function loadWasmGc(fetchBytes) {
-  const { instance } = await WebAssembly.instantiate(await fetchBytes(WASM_GC_BUILD), {});
-  const e = instance.exports;
-  const base = WASM_PAGE;
-  return {
-    exports: e,
-    copyIn(buf) {
-      const need = base + buf.length - e.memory.buffer.byteLength;
-      if (need > 0) e.grow_memory(Math.ceil(need / WASM_PAGE));
-      new Uint8Array(e.memory.buffer, base, buf.length).set(buf);
-      return base;
-    },
-    decode(buf) {
-      const points = e.decode_mem(this.copyIn(buf), buf.length);
-      return { points, properties: e.last_properties(), coordSum: e.last_coord_sum() };
-    },
-  };
 }

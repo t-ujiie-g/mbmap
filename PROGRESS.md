@@ -1,5 +1,86 @@
 # PROGRESS
 
+## Phase 2：`tess`（earcut の移植、線の展開）（2026-10-31）
+
+状態：**完了**（完了条件「面積一致テスト、JS 版 earcut との速度比較」を満たした）。
+
+### できたこと
+
+- **`Earcut`**：earcut 3.2.4（ISC）の移植（`refine` は除く）。
+  - 処理順も JS と同じにしたので、出力の三角形が JS 版と完全に一致する。
+  - ノードはオブジェクトにせず、使い回せるプール配列（`FixedArray`）の添字で表す。そのため、2回目以降の呼び出しでは確保が起きない。
+  - 面積の相対誤差を返す `deviation` も移植した。
+- **`FillTessellator`**：MapLibre の塗りの処理と同じ手順で、ポリゴン地物を三角形分割する。
+  - リングは `classifyRings`（BSD-3 の移植）と同じ規則で外周と穴に分ける。穴は面積の大きい順に最大500リングまで残し、面積0のリングは捨てる。
+  - 分けたポリゴンごとに earcut をかけ、使い回せる `FillBuffers` に追記する。
+- **`LineTessellator`**：線を三角形に展開する。
+  - 頂点は x, y、ex, ey（×63 の量子化値）、side（±1 / 0）。
+  - join は miter（`miter_limit` を超えたら bevel。上限は Int8 に収まる2）、bevel、round（`round_limit` 未満なら miter）。
+  - cap は butt、square、round。
+  - 閉じた線は、始点でも join を作り、cap は付けない。
+  - ほぼ直線の箇所では、前後の線分で頂点を共有する。
+  - 丸い cap・join の扇形は、回転を順に掛けて作る（頂点ごとの三角関数なし）。
+- **テスト**：`tess` に17件（全体で47件、全4ターゲットで通過）。
+  - earcut：JS 3.2.4 と同じ出力になること。JSDoc の例は古い版の出力なので、JS で実行して確かめた値を使った。
+  - 面積：穴あきポリゴンと、80頂点を超えて Z オーダーのハッシュを使う場合の面積が一致すること。
+  - リングの分類と、穴を500リングで打ち切る処理。
+  - 線：三角形の面積が、直線・90°の miter・bevel・square cap で厳密に一致すること。round の cap・join は円の面積の95〜100%に入ること。
+  - インデックスの範囲、Int8 の範囲、重複点・1点だけの線。
+- **黄金テスト**：`bench/tess/golden.mjs`（`npm --prefix bench run tess:golden`）。
+  - 全35タイル・**142,853のポリゴン地物で、MapLibre の処理（classifyRings + earcut 3.2.4）と頂点・インデックスが完全に一致した**。
+  - 同じ三角形分割の **142,925ポリゴンすべてで、earcut の `deviation`（面積の相対誤差）が 0** だった。
+  - わざと入れた差分は、どの地物かまで特定して検出できる。
+- **ベンチ**：`bench/tess/`（`tess:node` / `tess:browser`）。mbmap の処理と MapLibre `WorkerTile.parse` を、同じ Worker・同じタイル・同じスタイルで測る。
+  - `bench/lib` に、計測（`rows.mjs`）、Worker での実行（`worker-bench.mjs`）、esbuild 設定（`bundle.mjs`）、fixture の読み込みをまとめた。
+  - mvt ベンチもこれを使うように書き換え、MoonBit 側の公開面は `bench/entry` 1つにした。
+- NOTICE と移植したファイルの先頭に、earcut（ISC）と classifyRings（BSD-3）のライセンス全文・出典を記載した。
+
+### ベンチ結果：デコード＋テッセレーション（35タイル、各タイル15反復の中央値、ms）
+
+mbmap の処理は、`bench/maplibre/style.json` が描く内容と同じです。面レイヤー（waterarea / structurea / building のポリゴン）を三角形分割し、線レイヤー（建物の輪郭・contour・river・road の casing と本体・railway・boundary）を、スタイルの filter / join / cap どおりに展開します。
+
+| | Chromium 156 | Firefox 157 | WebKit 27.2 | Node 22 |
+|---|---|---|---|---|
+| MapLibre `WorkerTile.parse`（中央タイル / タイル中央値） | 6.41 / 16.15 | 10.34 / 28.92 | 6.06 / 15.80 | 9.41 / 23.35 |
+| **mbmap wasm-gc デコード＋面＋線** | **2.27 / 5.23** | **3.40 / 7.98** | **2.52 / 5.72** | **2.44 / 5.90** |
+| MapLibre 比（中央タイル / タイル中央値） | 35% / 32% | 33% / 28% | 42% / 36% | 26% / 25% |
+| （内訳）デコードのみ／＋面／＋線 | 1.38 / 2.59 / 4.00 | 1.76 / 3.52 / 5.90 | 1.86 / 3.08 / 4.44 | 1.57 / 2.88 / 4.59 |
+
+- **目標の「1タイルのデコード＋テッセレーションが MapLibre の1/2以下」を、すべての環境で下回った**。中央タイルは 2.27〜3.40ms で、目標の 4.6ms 以下も満たしている。
+- **ただし、この比較は mbmap に有利**です。MapLibre はこのほかに、スタイル式の評価、地物ごとの paint 属性の書き込み、FeatureIndex、GPU 用の詰め込み済みバッファ作成をしています。mbmap の出力はまだ `Array[Int]` です。正式な比較は、Worker が GPU 用のバッファまで出すようになる Phase 3〜4 で行う。
+
+**earcut 単体**（「デコード＋classifyRings＋earcut」から「デコードのみ」を引いたもの。タイル中央値、ms）
+
+| | Chromium | Firefox | WebKit |
+|---|---|---|---|
+| JS（earcut 3.2.4 + classifyRings） | 1.00 | 2.52 | 1.24 |
+| mbmap wasm-gc | 1.21 | 1.76 | 1.22 |
+
+- Firefox では30%速く、WebKit では同等、**Chromium では21%遅い**。
+- Node はこの回の JS「デコードのみ」の値がばらついた（2.61ms。前の回は 1.08ms）ので、比較から外した。
+
+### 性能について分かったこと
+
+- **ホットループでは `FixedArray` のほうが `Array` より速い**。`Array` へのアクセスは、長さの読み込みと範囲チェックが1回余分に入る。earcut のノードプールを `FixedArray` にしたら、Chromium で 1.63 → 1.24ms（24%短縮）になった。
+- **頂点ごとの三角関数をやめて回転を順に掛けるようにしたら、線の展開が速くなった**。Chromium で 4.01 → 2.44ms（39%短縮）。
+- earcut 3.2.4 の `src/earcut.js` の JSDoc にある出力例（`[1,0,3, 3,2,1]`）は古く、実際の出力（`[1,0,3, 1,3,2]`）と違う。テストは JS で実行して確かめた値にした。
+
+### 既知の問題・注意点
+
+- **Chromium では earcut が JS より21%遅い**。node プールへのアクセスがまだ多いので、次に削るならここ。
+- 500リングを超えるポリゴンで残す穴の集合は MapLibre と同じだが、MapLibre は quickselect を使うので並び順が違い、三角形の順序も変わりうる。fixture にはそのような地物がないので、黄金テストには影響しない。
+- 線の bevel・round join では、内側で前後の quad が重なる。不透明な線では問題ないが、半透明の線では重なった部分が濃くなる（MapLibre も一部で同様）。Phase 3 の描画で目立つようなら、ステンシルなどで対処する。
+- 線の頂点は、MapLibre（丸い cap をシェーダで描く）より多い。GPU へ送るデータ量の比較は Phase 3 で行う。
+- タイルごとの出力サイズ（頂点数・インデックス数）の上限は、まだ設けていない（AGENTS.md §8.2）。Phase 3 で Worker の出力バッファを作るときに入れる。
+- 点・円のテッセレーション（VISION §3 の `tess`）は、circle レイヤーを扱う Phase 7 で入れる。
+
+### 次にやること（Phase 3）
+
+- `worker`：Worker のエントリ、メッセージプロトコル、GPU 用の詰め込み済みバッファ（Int16 の頂点、16/32bit のインデックス）を transfer で渡す
+- `render_webgl2`：WebGL2 の FFI、fill / line / background のシェーダと描画パス
+- `map`：カメラ、パン・ズーム、タイルの選択とキャッシュ、フレームループ
+- example：fill / line / background が表示され、パン・ズームできる。初回描画とフレーム時間を MapLibre と同じ条件で計測する
+
 ## Phase 1：`core` / `pbf` / `mvt`（2026-10-31）
 
 状態：**完了**（完了条件「実タイルを JS 実装と同一結果でデコード。デコード速度を計測」を満たした）。
@@ -56,7 +137,7 @@
 
 - **WebKit では JS より14%遅い**（タイル中央値 2.58ms 対 2.26ms）。JSC の JS 実行が特に速いことと、コピー（0.34ms）が相対的に重いことが効いている。Phase 2 でテッセレーションまで含めて測ってから、手を打つか判断する。
 - `moon run` のスクリプトモード（`.mbtx`）が、core の `gzip` パッケージの別名衝突（`async/gzip` と `compress/gzip`）で動かない（moon 0.1.20261028）。自動化は Node スクリプトのままにしている。
-- `FixedArray::unsafe_reinterpret_as_bytes` は `#internal(unsafe)` の API で、ベンチの入力受け渡し（`bench/mvt/entry`）でだけ使っている。Phase 3 で `worker/` に移すときに、この使い方でよいか見直す。
+- `FixedArray::unsafe_reinterpret_as_bytes` は `#internal(unsafe)` の API で、ベンチの入力受け渡し（`bench/entry`）でだけ使っている。Phase 3 で `worker/` に移すときに、この使い方でよいか見直す。
 - 悪意のあるタイルでは座標の累積が Int32 で桁あふれして折り返す。安全性の問題は起きないが、Int16 に量子化するとき（`tess`）にクランプする必要がある。
 
 ### 次にやること（Phase 2）

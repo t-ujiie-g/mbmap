@@ -7,6 +7,10 @@ extern "wasm" fn load_i32(addr : Int32) -> Int32 =
   #|(func (param i32) (result i32) (i32.load align=1 (local.get 0)))
 
 ///|
+extern "wasm" fn memory_grow(pages : Int32) -> Int32 =
+  #|(func (param i32) (result i32) (memory.grow (local.get 0)))
+
+///|
 /// Copies `[addr, addr + len)` of linear memory into a new `Bytes`, four
 /// bytes per load. The caller guarantees the range is inside linear memory.
 fn bytes_from_mem(addr : Int32, len : Int32) -> Bytes {
@@ -26,10 +30,6 @@ fn bytes_from_mem(addr : Int32, len : Int32) -> Bytes {
   // Nothing else holds `arr`, so the reinterpretation cannot be observed mutating.
   arr.unsafe_reinterpret_as_bytes()
 }
-
-///|
-extern "wasm" fn memory_grow(pages : Int32) -> Int32 =
-  #|(func (param i32) (result i32) (memory.grow (local.get 0)))
 
 ///|
 /// Grows linear memory by `pages` 64KiB pages; returns the previous size.
@@ -58,4 +58,18 @@ pub fn copy_mem(addr : Int32, len : Int32) -> Int32 {
 #export_name("decode_mem_parts")
 pub fn decode_mem_parts(addr : Int32, len : Int32, mode : Int32) -> Int32 {
   decode_parts(bytes_from_mem(addr, len)[:], mode)
+}
+
+///|
+/// `tessellate_tile` on the tile at `addr`, after copying it into wasm.
+#export_name("tess_mem")
+pub fn tess_mem(addr : Int32, len : Int32, mode : Int32) -> Int32 {
+  tessellate_tile(bytes_from_mem(addr, len)[:], mode)
+}
+
+///|
+/// Hash over all features' fills (see `fill_hash`) of the tile at `addr`.
+#export_name("fill_hash_mem")
+pub fn fill_hash_mem(addr : Int32, len : Int32) -> Int32 {
+  fill_hash(bytes_from_mem(addr, len)[:], [])
 }

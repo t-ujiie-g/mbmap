@@ -3,33 +3,14 @@
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {PbfReader} from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
-import {derefLayers} from '@maplibre/maplibre-gl-style-spec';
-import {WorkerTile} from 'maplibre-src/source/worker_tile.ts';
-import {StyleLayerIndex} from 'maplibre-src/style/style_layer_index.ts';
-import {OverscaledTileID} from 'maplibre-src/tile/tile_id.ts';
-import {SubdivisionGranularitySetting} from 'maplibre-src/render/subdivision_granularity_settings.ts';
-import type {IActor} from 'maplibre-src/util/actor.ts';
+import {createParser} from './parse-core.ts';
 
 const root = process.argv[2];
 const manifest = JSON.parse(readFileSync(`${root}/bench/fixtures/gsi-bvmap.manifest.json`, 'utf8'));
 const style = JSON.parse(readFileSync(`${root}/bench/maplibre/style.json`, 'utf8'));
-const layerIndex = new StyleLayerIndex(derefLayers(style.layers));
-const actor = {sendAsync: () => Promise.resolve({})} as unknown as IActor;
+const parseTile = createParser(style);
 
-const tiles = Object.keys(manifest.tiles).map((key) => {
-    const [z, x, y] = key.split('/').map(Number);
-    return {key, tileID: new OverscaledTileID(z, 0, z, x, y), buffer: readFileSync(`${root}/bench/fixtures/gsi-bvmap/${key}.pbf`)};
-});
-
-function parse(tile: typeof tiles[number], granularity: SubdivisionGranularitySetting) {
-    const workerTile = new WorkerTile({
-        type: 'benchmark', tileID: tile.tileID, zoom: tile.tileID.overscaledZ, tileSize: 512,
-        showCollisionBoxes: false, source: 'gsi', uid: '0', maxZoom: 22, pixelRatio: 1,
-        request: {url: ''}, returnDependencies: false, promoteId: undefined,
-        subdivisionGranularity: granularity,
-    } as any);
-    return workerTile.parse(new VectorTile(new PbfReader(tile.buffer)), layerIndex, [], actor, granularity);
-}
+const tiles = Object.keys(manifest.tiles).map((key) => ({key, buffer: readFileSync(`${root}/bench/fixtures/gsi-bvmap/${key}.pbf`)}));
 
 function decodeOnly(tile: typeof tiles[number]) {
     // Full geometry decode of every feature, no styling or tessellation.
@@ -50,15 +31,13 @@ function median(xs: number[]) { const s = [...xs].sort((a, b) => a - b); return 
 
 const WARMUP = 5, ITER = 15;
 const rows = [];
-const granularity = SubdivisionGranularitySetting.noSubdivision;
 for (const tile of tiles) {
-    for (let i = 0; i < WARMUP; i++) { await parse(tile, granularity); decodeOnly(tile); }
+    for (let i = 0; i < WARMUP; i++) { await parseTile(tile.key, tile.buffer); decodeOnly(tile); }
     const parseMs = [], decodeMs = [];
     let vertices = 0, buckets = 0;
     for (let i = 0; i < ITER; i++) {
         let t0 = performance.now();
-        const result = await parse(tile, granularity);
-        buckets = result.buckets.length;
+        buckets = await parseTile(tile.key, tile.buffer);
         parseMs.push(performance.now() - t0);
         t0 = performance.now();
         vertices = decodeOnly(tile);

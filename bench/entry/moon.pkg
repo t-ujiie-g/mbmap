@@ -1,7 +1,9 @@
-// Export surface for the mvt golden test and decode bench; names come from `#export_name`.
+// Export surface for the mvt and tess benches and golden tests; names come from `#export_name`.
 
 import {
   "t-ujiie-g/mbmap/mvt",
+  "t-ujiie-g/mbmap/tess",
+  "moonbitlang/core/double",
 }
 
 supported_targets = "+js+wasm+wasm-gc"
