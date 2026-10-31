@@ -34,7 +34,7 @@
 - **直した点（低）**：`ByteReader` の範囲チェック `at + n > length` は、n が 2^31 に近いと Int32 で桁あふれして通ってしまう。その後のスライスで panic し、Worker が止まる。メモリ安全性の問題ではないが、`n > length - at` に直し、テストを足した。pbf の読み手と線形メモリの確認は、もともと桁あふれしない書き方だった。
 - **ドキュメント**：CSP を使うページでは `'wasm-unsafe-eval'` が要ることを、npm/README.md に書いた。
 - `innerHTML`、`eval`、`new Function`、認証情報付きの fetch は使っていない。開発用サーバーは 127.0.0.1 にだけ bind する。
-- リポジトリの Dependabot alerts は無効になっている（GitHub の設定）。有効にするかどうかは、リポジトリの所有者が決める。
+- リポジトリの Dependabot alerts を有効にした（2026-10-31、ユーザーの依頼）。有効にした直後のアラートは 0 件だった。修正 PR の自動作成（Dependabot security updates）は無効のまま。
 
 ### ベンチ結果（`npm --prefix bench run worker:browser`、`bench/results/worker-*.json`、ms）
 
