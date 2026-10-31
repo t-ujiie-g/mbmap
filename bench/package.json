@@ -1,0 +1,23 @@
+{
+  "name": "mbmap-bench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:moon": "cd .. && moon build bench/backend/entry --release --target wasm && moon build bench/backend/entry --release --target wasm-gc && moon build bench/backend/entry --release --target js && npm --prefix bench run opt",
+    "backend:node": "npm run build:moon && node backend/node.mjs",
+    "backend:browser": "npm run build:moon && node backend/browser.mjs",
+    "fixtures": "node maplibre/fetch-tiles.mjs",
+    "maplibre": "node maplibre/run.mjs --runs=5 && node maplibre/run.mjs --runs=5 --uncapped && node maplibre/run.mjs --runs=5 --throttle=4 && node maplibre/run.mjs --runs=5 --throttle=4 --uncapped",
+    "opt": "mkdir -p dist && wasm-opt -O3 --enable-bulk-memory --enable-bulk-memory-opt --enable-sign-ext --enable-nontrapping-float-to-int --enable-mutable-globals --enable-multivalue --enable-reference-types --enable-simd ../_build/wasm/release/build/bench/backend/entry/entry.wasm -o dist/entry.wasm-opt.wasm && wasm-opt -O3 --enable-bulk-memory --enable-bulk-memory-opt --enable-sign-ext --enable-nontrapping-float-to-int --enable-mutable-globals --enable-multivalue --enable-reference-types --enable-simd --enable-gc ../_build/wasm-gc/release/build/bench/backend/entry/entry.wasm -o dist/entry.wasm-gc-opt.wasm",
+    "maplibre:parse": "node maplibre/parse-tile.mjs"
+  },
+  "devDependencies": {
+    "@mapbox/vector-tile": "3.0.0",
+    "binaryen": "132.0.0",
+    "earcut": "3.2.4",
+    "esbuild": "0.28.2",
+    "maplibre-gl": "6.16.0",
+    "pbf": "5.1.2",
+    "playwright": "1.64.1"
+  }
+}

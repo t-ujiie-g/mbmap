@@ -1,0 +1,57 @@
+// Per-backend export surface for the Phase 0 backend comparison.
+// Built with `moon build bench/backend/entry --release --target <t>`.
+
+import {
+  "t-ujiie-g/mbmap/bench/backend/kernel",
+}
+
+options(
+  targets: {
+    "linear_memory.mbt": [ "wasm", "wasm-gc" ],
+    "js_typed_array.mbt": [ "js" ],
+  },
+  link: {
+    "wasm": {
+      "exports": [
+        "alloc_bytes",
+        "alloc_floats",
+        "decode",
+        "get_f32",
+        "set_u8",
+        "decode_mem",
+        "grow_memory",
+        "alloc_churn",
+        "bytes_from_mem",
+        "floats_to_mem",
+      ],
+      "export-memory-name": "memory",
+    },
+    "wasm-gc": {
+      "exports": [
+        "alloc_bytes",
+        "alloc_floats",
+        "decode",
+        "get_f32",
+        "set_u8",
+        "decode_mem",
+        "grow_memory",
+        "alloc_churn",
+        "bytes_from_mem",
+        "floats_to_mem",
+      ],
+      "export-memory-name": "memory",
+    },
+    "js": {
+      "exports": [
+        "alloc_bytes",
+        "alloc_floats",
+        "decode",
+        "get_f32",
+        "set_u8",
+        "decode_f32",
+        "alloc_churn",
+      ],
+      "format": "esm",
+    },
+  },
+)
