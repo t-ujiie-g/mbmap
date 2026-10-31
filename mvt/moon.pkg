@@ -1,1 +1,8 @@
+import {
+  "t-ujiie-g/mbmap/pbf",
+  "moonbitlang/core/debug",
+}
 
+import {
+  "t-ujiie-g/mbmap/pbf",
+} for "test"

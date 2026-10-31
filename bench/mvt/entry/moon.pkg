@@ -1,0 +1,22 @@
+// Export surface for the mvt golden test and decode bench; names come from `#export_name`.
+
+import {
+  "t-ujiie-g/mbmap/mvt",
+}
+
+supported_targets = "+js+wasm+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  targets: {
+    "golden.mbt": [ "js" ],
+    "js_input.mbt": [ "js" ],
+    "linear_memory.mbt": [ "wasm", "wasm-gc" ],
+  },
+  link: {
+    "wasm": { "export-memory-name": "memory" },
+    "wasm-gc": { "export-memory-name": "memory" },
+    "js": { "format": "esm" },
+  },
+)

@@ -1,11 +1,78 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/core"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
+pub const MAX_LATITUDE : Double = 85.051128779806604
+
+pub const MAX_TILE_ZOOM : Int32 = 28
+
+pub fn lat_from_mercator_y(Double) -> Double
+
+pub fn lng_from_mercator_x(Double) -> Double
+
+pub fn mercator_x_from_lng(Double) -> Double
+
+pub fn mercator_y_from_lat(Double) -> Double
+
+pub fn tile_containing(MercatorCoord, Int32) -> TileId?
 
 // Errors
 
 // Types and methods
+pub(all) struct BBox {
+  min_x : Double
+  min_y : Double
+  max_x : Double
+  max_y : Double
+} derive(Eq, @debug.Debug)
+pub fn BBox::add_point(Self, Double, Double) -> Self
+pub fn BBox::contains(Self, Double, Double) -> Bool
+pub fn BBox::empty() -> Self
+pub fn BBox::equal(Self, Self) -> Bool
+pub fn BBox::intersects(Self, Self) -> Bool
+pub fn BBox::is_empty(Self) -> Bool
+pub fn BBox::not_equal(Self, Self) -> Bool
+pub fn BBox::to_repr(Self) -> @debug.Repr
+pub fn BBox::union(Self, Self) -> Self
+
+pub(all) struct LngLat {
+  lng : Double
+  lat : Double
+} derive(Eq, @debug.Debug)
+pub fn LngLat::equal(Self, Self) -> Bool
+pub fn LngLat::not_equal(Self, Self) -> Bool
+pub fn LngLat::to_mercator(Self) -> MercatorCoord
+pub fn LngLat::to_repr(Self) -> @debug.Repr
+
+pub(all) struct MercatorCoord {
+  x : Double
+  y : Double
+} derive(Eq, @debug.Debug)
+pub fn MercatorCoord::equal(Self, Self) -> Bool
+pub fn MercatorCoord::not_equal(Self, Self) -> Bool
+pub fn MercatorCoord::to_lnglat(Self) -> LngLat
+pub fn MercatorCoord::to_repr(Self) -> @debug.Repr
+
+pub struct TileId {
+  z : Int32
+  x : Int32
+  y : Int32
+} derive(Eq, Hash, @debug.Debug)
+pub fn TileId::children(Self) -> FixedArray[Self]?
+pub fn TileId::equal(Self, Self) -> Bool
+pub fn TileId::hash(Self) -> Int32
+pub fn TileId::hash_combine(Self, Hasher) -> Unit
+pub fn TileId::key(Self) -> Int64
+pub fn TileId::lnglat_bounds(Self) -> BBox
+pub fn TileId::mercator_bounds(Self) -> BBox
+pub fn TileId::new(Int32, Int32, Int32) -> Self?
+pub fn TileId::not_equal(Self, Self) -> Bool
+pub fn TileId::parent(Self) -> Self?
+pub fn TileId::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

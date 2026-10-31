@@ -3,14 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:moon": "cd .. && moon build bench/backend/entry --release --target wasm && moon build bench/backend/entry --release --target wasm-gc && moon build bench/backend/entry --release --target js && npm --prefix bench run opt",
+    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/mvt/entry --release --target $t || exit 1; done && npm --prefix bench run opt",
+    "opt": "node backend/opt.mjs",
+    "test": "node --test lib/*.test.mjs",
+    "fixtures": "node maplibre/fetch-tiles.mjs",
     "backend:node": "npm run build:moon && node backend/node.mjs",
     "backend:browser": "npm run build:moon && node backend/browser.mjs",
-    "fixtures": "node maplibre/fetch-tiles.mjs",
-    "maplibre": "node maplibre/run.mjs --runs=5 && node maplibre/run.mjs --runs=5 --uncapped && node maplibre/run.mjs --runs=5 --throttle=4 && node maplibre/run.mjs --runs=5 --throttle=4 --uncapped",
-    "opt": "node backend/opt.mjs",
     "maplibre:parse": "node maplibre/parse-tile.mjs",
-    "test": "node --test lib/*.test.mjs"
+    "maplibre": "node maplibre/run.mjs --runs=5 && node maplibre/run.mjs --runs=5 --uncapped && node maplibre/run.mjs --runs=5 --throttle=4 && node maplibre/run.mjs --runs=5 --throttle=4 --uncapped",
+    "mvt:golden": "npm run build:moon && node mvt/golden.mjs",
+    "mvt:node": "npm run build:moon && node mvt/node.mjs",
+    "mvt:browser": "npm run build:moon && node mvt/browser.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
