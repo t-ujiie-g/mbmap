@@ -29,6 +29,15 @@ moon fmt && moon info
 
 `npm/`、`element/`、`adapters/`、`examples/` は MoonBit パッケージではない（TS / HTML 側）。
 
+## npm パッケージ
+
+`npm/` が npm パッケージ `mbmap`（TS ファサード、`.d.ts`、ESM）。使い方は [npm/README.md](npm/README.md)。
+
+```sh
+cd npm && npm ci && npm run build && npm run size   # dist/ を作り、gzip サイズを予算と比べる
+npm --prefix bench run npm:pack                     # npm pack した成果物で examples/npm を動かして確かめる
+```
+
 ## ライセンス
 
 Apache-2.0。[LICENSE](LICENSE) と [NOTICE](NOTICE) を参照。

@@ -1,3 +1,44 @@
-# npm/
+# mbmap
 
-TS ファサード、`.d.ts`、ESM ビルドとパッケージング（Phase 5）。現時点では空。
+MoonBit で書いた、Web 向けの軽量なベクトルタイル地図描画エンジン（開発中）。API の名前と形は MapLibre GL JS に寄せている。
+
+```js
+import { Map } from "mbmap";
+
+const map = new Map({
+  container: "map",                 // 要素か id。要素には大きさを与えておく
+  style: "https://example.com/style.json", // URL（認証情報なしで取得）かスタイルのオブジェクト
+  center: [139.7671, 35.6812],
+  zoom: 14,
+});
+map.on("load", () => console.log(map.getCenter(), map.getZoom()));
+```
+
+## 配布物
+
+| ファイル | 内容 |
+|---|---|
+| `dist/index.js` | メインスレッドの ESM（`Map`） |
+| `dist/index.d.ts` | 型定義 |
+| `dist/worker.js` | タイル Worker（モジュール Worker） |
+| `dist/mbmap.wasm` | Worker が読む wasm-gc |
+
+`worker.js` と `mbmap.wasm` は、既定で `new URL("./worker.js", import.meta.url)` のように `index.js` の隣から読む。ESM をそのまま配信する場合（import map など）は、そのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う（まだ検証していない）。動かないときは、2つのファイルを自分で配信し、`workerUrl` と `wasmUrl` で場所を渡す。モジュール Worker はページと同じオリジンでなければならない。
+
+## API
+
+- `new Map(options)`：`container`、`style`、`center`、`zoom`、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`attributionControl`（既定 true。ソースの `attribution` を文字列として表示する）。
+  - スタイルがオブジェクトで、描けない内容を含むときは、例外を投げる。URL の場合は `error` イベントになる。
+- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
+- `getCenter()`、`getZoom()`、`jumpTo({ center, zoom })`、`setCenter`、`setZoom`。値が変わらないときは `move` を出さない。
+- `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
+
+## 対応するスタイル
+
+background / fill / line レイヤーと、1つの vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
+
+WebGL2 とモジュール Worker、wasm-gc が必要（Chrome / Edge 119 以降、Firefox 120 以降、Safari 18.2 以降）。
+
+## ライセンス
+
+Apache-2.0。`LICENSE` と `NOTICE` を参照。

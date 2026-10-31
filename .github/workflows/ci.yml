@@ -1,0 +1,72 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Pinned toolchain (moonc v0.10.18+6c83a7f62, moon 0.1.20261028). The archive
+  # hash matches cli.moonbitlang.com's .sha256; core has none published, so
+  # its hash was recorded when the version was pinned (AGENTS.md §8.1).
+  MOONBIT_VERSION: "0.10.18%2B6c83a7f62"
+  MOONBIT_SHA256: 0e4cde1ace98e8ef00552a937738b59c6901c4b8a004ebad71ea0e63688f63f1
+  MOONBIT_CORE_SHA256: 30a8ae1c1e1e8fde478ea742cbc928c8f4ae1f5c00090afe3f10c97be9e5da64
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            npm/package-lock.json
+            bench/package-lock.json
+
+      - name: Install MoonBit (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          base=https://cli.moonbitlang.com
+          curl -fsSL -o "$RUNNER_TEMP/moonbit.tar.gz" "$base/binaries/$MOONBIT_VERSION/moonbit-linux-x86_64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/core.tar.gz" "$base/cores/core-$MOONBIT_VERSION.tar.gz"
+          echo "$MOONBIT_SHA256  $RUNNER_TEMP/moonbit.tar.gz" | sha256sum -c -
+          echo "$MOONBIT_CORE_SHA256  $RUNNER_TEMP/core.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.moon/lib"
+          tar xf "$RUNNER_TEMP/moonbit.tar.gz" -C "$HOME/.moon"
+          find "$HOME/.moon/bin" -type f -exec chmod +x {} +
+          tar xf "$RUNNER_TEMP/core.tar.gz" -C "$HOME/.moon/lib"
+          export PATH="$HOME/.moon/bin:$PATH"
+          moon -C "$HOME/.moon/lib/core" bundle --warn-list -a --all
+          moon -C "$HOME/.moon/lib/core" bundle --warn-list -a --target wasm-gc --quiet
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          moon version --all
+
+      - name: moon check
+        run: moon check --target all --deny-warn
+      - name: moon test
+        run: moon test --target all
+      - name: moon fmt
+        run: moon fmt --check
+      - name: Public interfaces (.mbti) are up to date
+        run: moon info && git diff --exit-code -- '*.mbti'
+
+      - name: Build the npm package
+        working-directory: npm
+        run: npm ci && npm run build
+      - name: Bundle sizes
+        working-directory: npm
+        run: npm run size
+
+      - name: Bench tooling
+        working-directory: bench
+        run: npm ci && npm test
+      - name: Packed package runs the example
+        working-directory: bench
+        run: npx playwright install --with-deps chromium && npm run npm:pack

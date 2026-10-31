@@ -121,6 +121,9 @@ fn parse_source(id : String, json : Json) -> VectorSource? raise StyleError {
     guard u is String(url) else {
       raise Invalid(path="\{path}.tiles", "not a string")
     }
+    if !fetchable(url) {
+      raise Unsupported(path="\{path}.tiles", "only http(s) tile URLs")
+    }
     tiles.push(url)
   }
   Some({
@@ -129,6 +132,24 @@ fn parse_source(id : String, json : Json) -> VectorSource? raise StyleError {
     min_zoom: number_or(s, "minzoom", path, 0.0).to_int(),
     max_zoom: number_or(s, "maxzoom", path, 22.0).to_int(),
   })
+}
+
+///|
+/// Whether a tile URL template is relative or http(s): other schemes
+/// (`javascript:`, `data:`, `file:`, ...) are refused (AGENTS.md §8.3).
+fn fetchable(url : String) -> Bool {
+  for i, c in url {
+    match c {
+      'a'..<='z' | 'A'..<='Z' => ()
+      '0'..<='9' | '+' | '-' | '.' if i > 0 => ()
+      ':' if i > 0 => {
+        let scheme = url[:i].to_lower()
+        return scheme == "http" || scheme == "https"
+      }
+      _ => return true
+    }
+  }
+  true
 }
 
 ///|

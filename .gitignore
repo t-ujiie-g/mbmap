@@ -8,3 +8,6 @@ node_modules/
 bench/results/*.raw.json
 bench/dist/
 bench/fixtures/gsi-bvmap/
+npm/dist/
+npm/LICENSE
+npm/NOTICE

@@ -1,5 +1,52 @@
 # PROGRESS
 
+## Phase 5：npm パッケージ（2026-10-31）
+
+状態：**完了**（完了条件「`npm pack` した成果物で example が動く」を満たした。`npm --prefix bench run npm:pack` で確かめ、CI でも同じものを実行する）。
+
+### できたこと
+
+- **`npm/`（パッケージ `mbmap`）**：
+  - `src/index.ts`：MapLibre に名前と形を寄せた TS ファサード。`new Map({ container, style, center, zoom, ... })`、`on` / `off` / `once`（`load`、`idle`、`move`、`error`）、`getCenter`、`getZoom`、`jumpTo`、`setCenter`、`setZoom`、`loaded`、`getCanvas`、`getContainer`、`remove`。
+  - スタイルは、オブジェクトか URL で渡す。URL は認証情報なしで取得し、タイルの URL はスタイルの URL を基準に解決する。オブジェクトに描けない内容があれば例外を投げ、URL の場合は `error` イベントにする。
+  - 帰属表示：ソースの `attribution` を、`textContent` で右下に出す（HTML としては解釈しない）。
+  - Worker と wasm は、既定で `new URL("./worker.js", import.meta.url)` で読む。`workerUrl` と `wasmUrl` で差し替えられる。
+  - `scripts/build.mjs`：`dist/` に `index.js`（ESM、minify 済み）、`index.d.ts`（tsc で生成）、`worker.js`、`mbmap.wasm` を作る。
+  - `scripts/size.mjs`：gzip のサイズを VISION §2 の予算と比べ、超えたら失敗する。
+  - `package.json` は `"private": true` にした。npm への公開は、まだ決めていない。
+- **CI**（`.github/workflows/ci.yml`）：push と PR ごとに、次を実行する。
+  - `moon check --deny-warn`、`moon test`（4ターゲット）、`moon fmt --check`、`.mbti` が最新であることの確認。
+  - パッケージのビルド、サイズ予算の確認（結果は Job Summary に出る）、bench ツールのテスト、`npm pack` した成果物での example の確認。
+  - MoonBit のツールチェーンは、版を固定して sha256 を確かめてから入れる。公式のインストールスクリプトはハッシュを確かめないうえ、パイプで実行する形なので使わない（AGENTS.md §8.1）。Actions もコミットの SHA で固定した。
+- **`examples/npm`**：`import { Map } from "mbmap"` を import map で解決する例。`bench/npm/pack-test.mjs` は、tarball をここに展開してから Chromium で開き、次を確かめる。
+  - `load` が来ること、`jumpTo` で `move` が1回だけ出ること（同じ値では出ない）。
+  - 帰属表示が出ること。
+  - スタイル URL の 404 が `error` イベントになること、描けないスタイルが例外になること、`remove` 後に要素が残らないこと。
+- **セキュリティ**：タイル URL のテンプレートは、相対 URL か http(s) だけを受け付ける（`style` で検査。`javascript:`、`data:`、`file:`、`blob:` は `Unsupported`）。
+
+### ベンチ結果：配布物のサイズ（`bench/results/npm-size.json`、gzip -9、1KB = 1000 バイト）
+
+| | サイズ | 予算 |
+|---|---|---|
+| メイン（`dist/index.js`、ファサード込み） | **22.4KB** | 50KB |
+| Worker（`worker.js` と `mbmap.wasm`） | **78.1KB** | 80KB |
+
+- ファサードで、メインは 1.8KB 増えた（`bundle/main` だけを minify すると 20.6KB）。
+- 依存パッケージ（devDependencies のみ）：`esbuild` 0.28.2（bench と同じ版）と `typescript` 7.0.2（Microsoft が公開。2026-07 リリースで、インストールスクリプトはない）。どちらも版を固定し、`npm audit` は 0 件。実行時の依存はない。
+
+### 既知の問題・次にやること
+
+- **Worker の予算の残りは 1.9KB しかない**。式や機能を足す前に、wasm の中で何が大きいかを調べる。
+- バンドラ（Vite、webpack など）で `new URL(..., import.meta.url)` がそのまま動くかは、まだ確かめていない。動かない場合は `workerUrl` / `wasmUrl` で指定する（README に記載）。
+- CI の Chromium は SwiftShader で動くので、CI では描画の見た目や速度は確かめない（性能の数値は手元の M2 で測る）。
+- `setStyle`、`addSource`、`flyTo` / `easeTo`、コントロール類は、まだない。
+- Phase 4 からの残り：作成から `idle` までが MapLibre より約14ms 遅い。グループ数の上限（64）。半透明の線の join。
+
+### 次にやること（Phase 6）
+
+- Web Component `<mb-map>`（属性で初期化、`mb-move` / `mb-load` の CustomEvent、Shadow DOM 内の canvas）
+- 完了条件：素の HTML と、主要な JS フレームワーク1つ（例：React）の example で動くこと
+
 ## Phase 4：`style` サブセット（2026-10-31）
 
 状態：**完了**（完了条件「国土地理院の簡易スタイル程度が描ける」を満たした。`bench/maplibre/style.json` を変更せずにそのまま描き、z14.5 と z16.5 のスクリーンショットが MapLibre とほぼ一致した）。

@@ -24,6 +24,8 @@ moon test <pkg-dir> -u           # update snapshots (single target only; -u fail
 moon fmt && moon info            # before committing; regenerates pkg.generated.mbti
 ```
 
+npm package (from `npm/`): `npm ci && npm run build` writes `dist/` (index.js + .d.ts, worker.js, mbmap.wasm); `npm run size` checks the gzip budgets of VISION §2.
+
 Benchmarks (from `bench/`, Node + Playwright):
 
 ```sh
@@ -43,6 +45,7 @@ npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/Web
 npm run worker:browser    # worker process_tile per fixture, cold and warm, in three browsers
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style)
 npm run example           # serve the repo; open http://127.0.0.1:8080/examples/basic/
+npm run npm:pack          # build + npm pack npm/, install into examples/npm, check it in Chromium (CI runs this)
 ```
 
 Bench entry points that import TypeScript or MapLibre sources run through `node lib/run-bundled.mjs <entry>`; the MoonBit side of every mvt/tess bench is the single export package `bench/entry`.
@@ -83,7 +86,8 @@ Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← w
 - Data-driven paint: the worker splits a layer's features into groups by the values its paint reads (`feature_inputs`, at most `MAX_GROUPS` per layer and tile) and gives each group its own entry carrying those values as JSON; the main thread evaluates paint per group at the current zoom and draws it with uniforms. The main thread evaluates through one context type (`JsProps`), so `Expr::eval` is compiled into the bundle once.
 - Camera math and tile covering live in `core` (`Transform`), pure and tested on all targets; `map` only wires DOM events, workers and the frame loop (renders on demand, falls back to a loaded ancestor clipped by scissor or loaded children).
 - `render_webgl2` and `map` are js-target only (`supported_targets = "js"`). On the js backend `FixedArray[Byte]`/`Bytes` are `Uint8Array`, but `FixedArray[Float]` is a plain JS `Array`, so GPU buffers need `extern "js"` typed-array wrappers.
-- `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side).
+- `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side). `npm/src/index.ts` is a MapLibre-shaped TS facade (`Map`, `on`/`once`, `jumpTo`, …) over the `bundle/main` exports; esbuild aliases `mbmap-engine` to that build and `npm/src/engine.d.ts` types it, so keep both in sync with `bundle/main/main.mbt`. The facade resolves tile URLs against the style URL and loads `worker.js`/`mbmap.wasm` next to itself via `new URL(..., import.meta.url)`.
+- CI (`.github/workflows/ci.yml`) installs a pinned MoonBit toolchain verified by sha256; bumping `moon` means updating `MOONBIT_VERSION` and both hashes there.
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 
 - `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and its `error()` is checked once at a boundary. Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
@@ -187,7 +191,7 @@ Then run the §8 security check on the touched area. Push only when everything i
 Run this when the user says **「セキュリティチェック」 / "security check"**, as part of every refactor (§7.9), and before adding or upgrading any dependency or cutting a release. Report findings as a list (severity, location, fix) before changing code.
 
 ### 8.1 Dependencies and supply chain
-- `npm audit` in every directory with a `package.json` (currently `bench/`, later `npm/`). Also check GitHub Dependabot / security advisories for the repo: `gh api repos/{owner}/{repo}/dependabot/alerts`.
+- `npm audit` in every directory with a `package.json` (`bench/`, `npm/`). Also check GitHub Dependabot / security advisories for the repo: `gh api repos/{owner}/{repo}/dependabot/alerts`.
 - Recent advisories move faster than `npm audit` sometimes reflects. For each direct dependency, check its GitHub Security Advisories and release notes for the pinned version, especially MapLibre, Playwright, esbuild, binaryen and anything in the shipped bundle.
 - Pin exact versions (`--save-exact`) and commit the lockfile. CI uses `npm ci`, never `npm install`.
 - Before adding a package, check its maintainer, download history, install scripts (`preinstall`/`postinstall`), and whether it is a typosquat. Prefer no new dependency when a few lines will do (bundle budget, VISION §2).
