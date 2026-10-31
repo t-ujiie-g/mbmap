@@ -1,0 +1,46 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/tiler"
+
+import {
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct TileData {
+  types : Array[Int32]
+  rows : Array[Int32]
+  ring_ends : Array[Int32]
+  point_ends : Array[Int32]
+  xy : Array[Int32]
+}
+
+pub struct Tiler {
+  // private fields
+}
+pub fn Tiler::new(@geom.Table, options? : TilerOptions, trig? : Trig) -> Self
+pub fn Tiler::tile(Self, Int32, Int32, Int32) -> TileData?
+
+pub(all) struct TilerOptions {
+  max_zoom : Int32
+  index_max_zoom : Int32
+  index_max_points : Int32
+  tolerance : Double
+  extent : Int32
+  buffer : Int32
+  wrap : Bool
+}
+pub fn TilerOptions::default() -> Self
+
+pub(all) struct Trig {
+  sin : (Double) -> Double
+  ln : (Double) -> Double
+}
+pub fn Trig::moonbit() -> Self
+
+// Type aliases
+
+// Traits

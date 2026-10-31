@@ -267,11 +267,41 @@ fn road_layer(ks : Array[Int32?]) -> @pbf.Writer {
 }
 
 ///|
-fn props_of(b : BytesView, k : Int32) -> String {
+/// Entry `k`'s group properties (`PROPS_*` form) as `key=value` pairs.
+fn props_of(b : BytesView, k : Int32) -> Array[String] raise {
   let entry = (w : Int32) => {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
-  @utf8.decode_lossy(b[entry(7):entry(7) + entry(8)])
+  let mut at = entry(7)
+  let str = () => {
+    let n = u32_at(b, at)
+    let s = @utf8.decode_lossy(b[at + 4:at + 4 + n])
+    at += 4 + n
+    s
+  }
+  let out = []
+  let count = u32_at(b, entry(7))
+  at = entry(7) + 4
+  for _ in 0..<count {
+    let key = str()
+    let t = b[at].to_int()
+    at += 1
+    let value = if t == @worker.PROPS_NUMBER {
+      let mut bits = 0UL
+      for i in 0..<8 {
+        bits = bits | (b[at + i].to_uint64() << (i * 8))
+      }
+      at += 8
+      bits.reinterpret_as_double().to_string()
+    } else if t == @worker.PROPS_STRING {
+      "\"\{str()}\""
+    } else {
+      ["null", "false", "true"][t]
+    }
+    out.push("\{key}=\{value}")
+  }
+  assert_eq(at, entry(7) + entry(8))
+  out
 }
 
 ///|
@@ -295,7 +325,9 @@ test "data-driven paint splits a layer into groups carrying their inputs" {
   let b = p.out.to_bytes()[:]
   assert_eq(p.out.layer_count(), 4)
   assert_eq([props_of(b, 0), props_of(b, 1), props_of(b, 2)], [
-    "{\"k\":0}", "{\"k\":1}", "{}",
+    ["k=0"],
+    ["k=1"],
+    [],
   ])
   // Group 0 holds two of the four lines: 2 x 4 vertices.
   let entry = (k : Int32, w : Int32) => {

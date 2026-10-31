@@ -23,8 +23,27 @@ pub const LINE_VERTEX_BYTES : Int32 = 8
 /// Ints per layer entry in the header: style layer index, kind, vertex byte
 /// offset, vertex byte length, index byte offset, index count, bytes per
 /// index (2 when the layer has at most 65536 vertices, else 4), byte offset
-/// and length of the entry's group properties (UTF-8 JSON; length 0 if none).
+/// and length of the entry's group properties (length 0 if none).
 pub const LAYER_ENTRY_WORDS : Int32 = 9
+
+///|
+/// Group properties are little-endian: a u32 entry count, then per entry a
+/// key (u32 byte length and UTF-8) and a value: one of these type bytes,
+/// followed by an f64 for `PROPS_NUMBER` or a u32 length and UTF-8 for
+/// `PROPS_STRING`. worker/js/worker.mjs decodes it.
+pub const PROPS_NULL : Int32 = 0
+
+///|
+pub const PROPS_FALSE : Int32 = 1
+
+///|
+pub const PROPS_TRUE : Int32 = 2
+
+///|
+pub const PROPS_NUMBER : Int32 = 3
+
+///|
+pub const PROPS_STRING : Int32 = 4
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -271,18 +290,19 @@ pub fn PackedTile::add_alias(
 }
 
 ///|
-/// Attaches `json`, the properties shared by the last entry's features, to it.
-fn PackedTile::set_props(self : PackedTile, json : Bytes) -> Unit {
-  if self.layers == 0 || !self.reserve(json.length() + 3) {
+/// Attaches `props` (`PROPS_*` form), the properties shared by the last
+/// entry's features, to it.
+fn PackedTile::set_props(self : PackedTile, props : Bytes) -> Unit {
+  if self.layers == 0 || !self.reserve(props.length() + 3) {
     // Without room the entry keeps length 0; reserve() has flagged overflow.
     return
   }
   let at = self.len
-  for i, b in json {
+  for i, b in props {
     self.store.set_u8(at + i, b.to_int())
   }
   let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
   self.put_u32(e + 28, at)
-  self.put_u32(e + 32, json.length())
-  self.len = (at + json.length() + 3) / 4 * 4
+  self.put_u32(e + 32, props.length())
+  self.len = (at + props.length() + 3) / 4 * 4
 }

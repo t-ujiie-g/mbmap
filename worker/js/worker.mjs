@@ -6,7 +6,8 @@
 // Messages out: {type: "ready"} | {type: "error", message}
 //               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes, shared, props}]}
 //               where `shared` is the index of an earlier layer whose buffers it reuses, or -1,
-//               and `props` the properties a data-driven layer's group shares, or null
+//               and `props` the properties a data-driven layer's group shares (a
+//               prototype-less object, decoded from PROPS_* in worker/packed.mbt), or null
 //               {type: "tile-error", id, message}
 // Vertex and index buffers are transferred, never copied (VISION §4-3).
 
@@ -28,6 +29,24 @@ function withInput(bytes, run) {
   return new Uint8Array(wasm.memory.buffer, out, n);
 }
 
+// Decodes group properties (see PROPS_* in worker/packed.mbt). The object has
+// no prototype, so a `__proto__` key from a tile is an ordinary property.
+function decodeProps(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let at = 0;
+  const u32 = () => { const v = view.getUint32(at, true); at += 4; return v; };
+  const str = () => { const n = u32(); const s = decoder.decode(bytes.subarray(at, at + n)); at += n; return s; };
+  const props = Object.create(null);
+  for (let n = u32(); n > 0; n--) {
+    const key = str();
+    const type = bytes[at++];
+    if (type === 3) { props[key] = view.getFloat64(at, true); at += 8; }
+    else if (type === 4) props[key] = str();
+    else props[key] = type === 0 ? null : type === 2;
+  }
+  return props;
+}
+
 function unpack(packed) {
   const view = new DataView(packed.buffer, packed.byteOffset, packed.byteLength);
   const count = view.getUint32(0, true);
@@ -36,7 +55,7 @@ function unpack(packed) {
   const byOffset = new Map();
   for (let k = 0; k < count; k++) {
     const e = (i) => view.getUint32(4 + (k * LAYER_ENTRY_WORDS + i) * 4, true);
-    const props = e(8) > 0 ? JSON.parse(decoder.decode(packed.subarray(e(7), e(7) + e(8)))) : null;
+    const props = e(8) > 0 ? decodeProps(packed.subarray(e(7), e(7) + e(8))) : null;
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
       const { vertices, indices } = layers[shared];

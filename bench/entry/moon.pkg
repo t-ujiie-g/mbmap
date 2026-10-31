@@ -1,8 +1,10 @@
 // Export surface for the mvt and tess benches and golden tests; names come from `#export_name`.
 
 import {
+  "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/mvt",
   "t-ujiie-g/mbmap/tess",
+  "t-ujiie-g/mbmap/tiler",
   "moonbitlang/core/double",
 }
 
@@ -15,6 +17,7 @@ options(
     "golden.mbt": [ "js" ],
     "js_input.mbt": [ "js" ],
     "linear_memory.mbt": [ "wasm", "wasm-gc" ],
+    "host_math.mbt": [ "wasm", "wasm-gc" ],
   },
   link: {
     "wasm": { "export-memory-name": "memory" },

@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/formats"
+
+import {
+  "moonbitlang/core/debug",
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const MAX_GEOJSON_DEPTH : Int32 = 64
+
+pub fn read_geojson(BytesView) -> @geom.Table raise GeoJSONError
+
+// Errors
+pub(all) suberror GeoJSONError {
+  Malformed(pos~ : Int32, String)
+} derive(@debug.Debug)
+pub fn GeoJSONError::message(Self) -> String
+pub fn GeoJSONError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+
+// Type aliases
+
+// Traits

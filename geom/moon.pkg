@@ -1,0 +1,7 @@
+// Columnar feature tables: geometry as nested offsets over interleaved
+// coordinates (GeoArrow's layout) and properties as one column per key.
+// Pure MoonBit, tested on every backend.
+
+import {
+  "moonbitlang/core/debug",
+}

@@ -1,0 +1,15 @@
+// Readers that turn interchange formats into `@geom.Table`s. Pure MoonBit,
+// tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/encoding/utf8",
+} for "test"

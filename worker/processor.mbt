@@ -86,7 +86,7 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   a.kind == b.kind &&
   a.source == b.source &&
   a.source_layer == b.source_layer &&
-  a.filter == b.filter &&
+  a.filter_id == b.filter_id &&
   (
     a.kind is Fill ||
     a.kind is Circle ||
@@ -189,30 +189,58 @@ fn Groups::of(self : Groups, feature : FeatureRef) -> Int32 {
 }
 
 ///|
-fn json_of(v : @style.Value) -> Json {
-  match v {
-    Num(n) => Json::number(n)
-    Str(s) => Json::string(s)
-    Bool(b) => Json::boolean(b)
-    _ => Json::null()
+fn push_u32(out : Array[Byte], v : Int32) -> Unit {
+  for i in 0..<4 {
+    out.push((v >> (i * 8)).to_byte())
   }
 }
 
 ///|
-/// Group `g`'s shared inputs as a JSON object: properties by name (absent
-/// ones omitted, so `has` stays correct) and the geometry type as `@core.GEOMETRY_TYPE_KEY`.
-fn Groups::props_json(self : Groups, g : Int32) -> Bytes {
-  let obj : Map[String, Json] = Map([])
+fn push_string(out : Array[Byte], s : String) -> Unit {
+  let bytes = @utf8.encode(s)
+  push_u32(out, bytes.length())
+  for b in bytes {
+    out.push(b)
+  }
+}
+
+///|
+/// Group `g`'s shared inputs in `PROPS_*` form: properties by name (absent
+/// ones omitted, so `has` stays correct) and the geometry type under
+/// `@core.GEOMETRY_TYPE_KEY`.
+fn Groups::props(self : Groups, g : Int32) -> Bytes {
+  let out : Array[Byte] = []
   let v = self.values[g]
+  let entries : Array[(String, @style.Value)] = []
   for i, k in self.keys {
     if v[i] is Some(x) {
-      obj[k] = json_of(x)
+      entries.push((k, x))
     }
   }
-  if self.geometry && v[self.keys.length()] is Some(Str(t)) {
-    obj[@core.GEOMETRY_TYPE_KEY] = Json::string(t)
+  if self.geometry && v[self.keys.length()] is Some(t) {
+    entries.push((@core.GEOMETRY_TYPE_KEY, t))
   }
-  @utf8.encode(Json::object(obj).stringify())
+  push_u32(out, entries.length())
+  for e in entries {
+    push_string(out, e.0)
+    match e.1 {
+      Bool(false) => out.push(PROPS_FALSE.to_byte())
+      Bool(true) => out.push(PROPS_TRUE.to_byte())
+      Num(n) => {
+        out.push(PROPS_NUMBER.to_byte())
+        let bits = n.reinterpret_as_uint64()
+        for i in 0..<8 {
+          out.push((bits >> (i * 8)).to_byte())
+        }
+      }
+      Str(s) => {
+        out.push(PROPS_STRING.to_byte())
+        push_string(out, s)
+      }
+      _ => out.push(PROPS_NULL.to_byte())
+    }
+  }
+  Bytes::from_array(out)
 }
 
 ///|
@@ -362,7 +390,7 @@ fn TileProcessor::fill_layer(
         return false
       }
       if groups.active {
-        self.out.set_props(groups.props_json(g))
+        self.out.set_props(groups.props(g))
       }
     }
   }
@@ -414,7 +442,7 @@ fn TileProcessor::line_layer(
         return false
       }
       if groups.active {
-        self.out.set_props(groups.props_json(g))
+        self.out.set_props(groups.props(g))
       }
     }
   }
@@ -455,7 +483,7 @@ fn TileProcessor::circle_layer(
         return false
       }
       if groups.active {
-        self.out.set_props(groups.props_json(g))
+        self.out.set_props(groups.props(g))
       }
     }
   }

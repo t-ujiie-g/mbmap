@@ -30,6 +30,8 @@ pub(all) enum Cap {
 
 ///|
 /// One drawable layer. `filter` (None: every feature) selects features;
+/// `filter_id` is shared by the layers whose filters are written identically
+/// (-1 without a filter), so they can be compared without walking `Expr`s;
 /// `color` and `opacity` are the layer type's paint values (`fill-*`,
 /// `line-*`, `circle-*` or `background-*`); `width` is `line-width`;
 /// `radius` and the `stroke_*` values are the `circle-*` ones. Sizes are in
@@ -42,6 +44,7 @@ pub struct StyleLayer {
   min_zoom : Double
   max_zoom : Double
   filter : Expr?
+  filter_id : Int32
   color : Expr
   opacity : Expr
   width : Expr
@@ -107,8 +110,20 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
   guard root.get("layers") is Some(Array(list)) else {
     raise Invalid(path="layers", "missing")
   }
+  let filters : Array[Json] = []
   for i, l in list {
-    if parse_layer("layers[\{i}]", l) is Some(layer) {
+    let filter_id = match l {
+      Object(o) if o.get("filter") is Some(f) =>
+        match filters.search(f) {
+          Some(id) => id
+          None => {
+            filters.push(f)
+            filters.length() - 1
+          }
+        }
+      _ => -1
+    }
+    if parse_layer("layers[\{i}]", l, filter_id) is Some(layer) {
       layers.push(layer)
     }
   }
@@ -203,7 +218,11 @@ fn object_at(
 }
 
 ///|
-fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
+fn parse_layer(
+  path : String,
+  json : Json,
+  filter_id : Int32,
+) -> StyleLayer? raise StyleError {
   guard json is Object(l) else { raise Invalid(path~, "not an object") }
   let kind = match string_or(l, "type", path, "") {
     "background" => Background
@@ -249,6 +268,7 @@ fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
       None => None
       Some(f) => Some(compile(f, expected=BoolType, path="\{path}.filter"))
     },
+    filter_id,
     color: paint_expr(
       paint,
       "\{prefix}-color",

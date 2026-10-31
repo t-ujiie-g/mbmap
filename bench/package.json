@@ -22,10 +22,14 @@
     "worker:browser": "npm run build:moon && node worker/browser.mjs",
     "npm:pack": "node npm/pack-test.mjs",
     "examples": "node npm/prepare.mjs && npm run example",
-    "split": "node split/run.mjs --runs=15"
+    "split": "node split/run.mjs --runs=15",
+    "geojson:golden": "npm run build:moon && node --max-old-space-size=8192 geojson/golden.mjs",
+    "geojson:node": "npm run build:moon && node --max-old-space-size=8192 geojson/node.mjs",
+    "geojson:browser": "npm run build:moon && node geojson/browser.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
+    "@maplibre/geojson-vt": "6.3.0",
     "binaryen": "132.0.0",
     "earcut": "3.2.4",
     "esbuild": "0.28.2",

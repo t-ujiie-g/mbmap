@@ -10,6 +10,18 @@ pub fn decode_mem_parts(Int32, Int32, Int32) -> Int32
 
 pub fn fill_hash_mem(Int32, Int32) -> Int32
 
+pub fn geojson_read_mem(Int32, Int32) -> Int32
+
+pub fn geojson_tile(Int32, Int32, Int32) -> FixedArray[Int32]
+
+pub fn geojson_tile_hash(Int32, Int32, Int32) -> Int32
+
+pub fn geojson_tile_mem(Int32, Int32, Int32, Int32) -> Int32
+
+pub fn geojson_tile_size(Int32, Int32, Int32) -> Int32
+
+pub fn geojson_tiler_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32) -> Int32
+
 pub fn grow_memory(Int32) -> Int32
 
 pub fn last_coord_sum_value() -> Double

@@ -73,3 +73,58 @@ pub fn tess_mem(addr : Int32, len : Int32, mode : Int32) -> Int32 {
 pub fn fill_hash_mem(addr : Int32, len : Int32) -> Int32 {
   fill_hash(bytes_from_mem(addr, len)[:], [])
 }
+
+///|
+/// `build_tiler` on GeoJSON at `[addr, addr + len)`; `wrap` is 0 or 1.
+#export_name("geojson_tiler_mem")
+pub fn geojson_tiler_mem(
+  addr : Int32,
+  len : Int32,
+  max_zoom : Int32,
+  index_max_zoom : Int32,
+  index_max_points : Int32,
+  tolerance : Double,
+  extent : Int32,
+  buffer : Int32,
+  wrap : Int32,
+) -> Int32 {
+  build_tiler(
+    bytes_from_mem(addr, len)[:],
+    max_zoom,
+    index_max_zoom,
+    index_max_points,
+    tolerance,
+    extent,
+    buffer,
+    wrap != 0,
+    host_trig(),
+  )
+}
+
+///|
+/// `read_only` on GeoJSON at `[addr, addr + len)`.
+#export_name("geojson_read_mem")
+pub fn geojson_read_mem(addr : Int32, len : Int32) -> Int32 {
+  read_only(bytes_from_mem(addr, len)[:])
+}
+
+///|
+extern "wasm" fn store_i32(addr : Int32, v : Int32) =
+  #|(func (param i32) (param i32) (i32.store align=1 (local.get 0) (local.get 1)))
+
+///|
+/// Writes `geojson_tile(z, x, y)` as i32s at `addr` (growing memory as
+/// needed) and returns its length.
+#export_name("geojson_tile_mem")
+pub fn geojson_tile_mem(z : Int32, x : Int32, y : Int32, addr : Int32) -> Int32 {
+  let flat = geojson_tile(z, x, y)
+  let need = addr + flat.length() * 4
+  let have = memory_grow(0) * 65536
+  if need > have {
+    memory_grow((need - have + 65535) / 65536) |> ignore
+  }
+  for i, v in flat {
+    store_i32(addr + i * 4, v)
+  }
+  flat.length()
+}
