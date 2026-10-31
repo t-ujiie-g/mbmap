@@ -30,6 +30,7 @@ moon fmt && moon info
 | `analysis/` | 空間索引（flatbush の移植）、計測と点の内外判定（Turf.js と同じ値）、集計 | 全 |
 | `geojson_worker/` | GeoJSON ソースの Worker（読み込みとタイル分割） | wasm-gc |
 | `analysis_worker/` | 解析の Worker（データセットをハンドルで保持） | wasm-gc |
+| `wasmio/` | wasm-gc の Worker が JS とやりとりする線形メモリの入出力 | wasm-gc |
 | `render_webgl2/` | WebGL2 FFI、シェーダ、描画パス | js |
 | `map/` | カメラ、入力、タイル選択、フレームループ（公開 MoonBit API） | js |
 

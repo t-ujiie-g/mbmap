@@ -30,10 +30,10 @@ pub fn load(
   buffer : Double,
   tolerance : Double,
 ) -> Int32 {
-  let table = @formats.read_geojson(input_bytes()[:], slow_number=(s, e) => {
-    host_number(PAGE + s, e - s)
+  let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number=(s, e) => {
+    host_number(@wasmio.PAGE + s, e - s)
   }) catch {
-    e => return -write_output(@utf8.encode(e.message()))
+    e => return @wasmio.fail_with(e.message())
   }
   let options : @tiler.TilerOptions = {
     ..@tiler.TilerOptions::default(),
@@ -49,14 +49,14 @@ pub fn load(
 ///|
 /// Cuts tile (z, x, y) of source `source` and writes it, encoded, at
 /// `output_addr`. Returns its length, 0 if the source has no features
-/// there, or -1 if the source is not loaded or memory ran out.
+/// there, -1 if the source is not loaded or -2 if memory ran out.
 #export_name("tile")
 pub fn tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
   guard sources.get(source) is Some((table, tiler)) else { return -1 }
-  input_len.val = 0
+  @wasmio.clear_input()
   match tiler.tile(z, x, y) {
     None => 0
     Some(d) if d.types.is_empty() => 0
-    Some(d) => write_output(@tiler.encode_tile(d, table))
+    Some(d) => @wasmio.write_bytes(@tiler.encode_tile(d, table)[:])
   }
 }

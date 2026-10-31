@@ -1,0 +1,9 @@
+// Linear memory as the I/O region of the wasm-gc entry packages: page 0 is left
+// to MoonBit, input starts at `PAGE` and output follows it. `#export_name`s of
+// an imported package are not exported, so each entry wraps these.
+
+import {
+  "moonbitlang/core/encoding/utf8",
+}
+
+supported_targets = "+wasm-gc"

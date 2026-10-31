@@ -3,29 +3,8 @@
 /// an inverted box that no search finds.
 pub fn Index::of_table(t : @geom.Table) -> Index {
   let index = Index::new(t.length())
-  let c = t.coords
   for f in 0..<t.length() {
-    let (a, b) = point_range(t, f)
-    let mut x0 = @double.infinity
-    let mut y0 = @double.infinity
-    let mut x1 = @double.neg_infinity
-    let mut y1 = @double.neg_infinity
-    for i in a..<b {
-      let x = c[i * 2]
-      let y = c[i * 2 + 1]
-      if x0 > x {
-        x0 = x
-      }
-      if y0 > y {
-        y0 = y
-      }
-      if x1 < x {
-        x1 = x
-      }
-      if y1 < y {
-        y1 = y
-      }
-    }
+    let (x0, y0, x1, y1) = bbox(t, f)
     index.add(x0, y0, x1, y1) |> ignore
   }
   index.finish() |> ignore
@@ -61,10 +40,9 @@ fn in_any(
 }
 
 ///|
-/// Point and MultiPoint features of `points` with a point in some polygon of
-/// `polygons` (or on its boundary), in feature order (Turf's
-/// `pointsWithinPolygon`, keeping whole features). `index` is
-/// `Index::of_table(polygons)`.
+/// Point and MultiPoint features of `points` with a point in or on some polygon
+/// of `polygons` (Turf's `pointsWithinPolygon`, keeping whole features), in
+/// order; `index` is `Index::of_table(polygons)`.
 pub fn points_within(
   points : @geom.Table,
   polygons : @geom.Table,
@@ -88,10 +66,9 @@ pub fn points_within(
 }
 
 ///|
-/// Per polygon feature of `polygons`, the Point features of `points` inside
-/// it (Turf's `collect`): three numbers each, the count of points, the count
-/// of those whose `column` is a number and the sum of those numbers, added in
-/// feature order. `index` is `Index::of_table(points)`.
+/// Turf's `collect` reduced to three numbers per polygon: the Point features of
+/// `points` inside, how many have a numeric `column` and their sum (added in
+/// feature order); `index` is `Index::of_table(points)`.
 pub fn collect(
   polygons : @geom.Table,
   points : @geom.Table,

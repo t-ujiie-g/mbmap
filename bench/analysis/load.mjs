@@ -1,13 +1,14 @@
 // The shipped analysis wasm (analysis_worker) driven directly, without its
 // worker glue, for the golden test and the bench.
-import { numberAt } from "../lib/entry.mjs";
+import { hostNumber } from "../../wasmio/js/host.mjs";
 
 export const ANALYSIS_WASM = "_build/wasm-gc/release/build/analysis_worker/analysis_worker.wasm";
+// Mirrors MEASURE_* in analysis_worker/datasets.mbt.
 export const MEASURE = { area: 0, length: 1, centroid: 2, bbox: 3 };
 
 export async function loadAnalysis(fetchBytes) {
   let e = null;
-  const host = { number: (addr, len) => numberAt(() => e.memory.buffer, addr, len) };
+  const host = { number: hostNumber(() => e.memory) };
   const { instance } = await WebAssembly.instantiate(await fetchBytes(ANALYSIS_WASM), {
     Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 },
     host,

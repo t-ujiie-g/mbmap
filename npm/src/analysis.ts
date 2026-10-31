@@ -53,6 +53,7 @@ function call<T>(op: string, args: object, transfer: Transferable[] = []): Promi
   });
 }
 
+// Mirrors MEASURE_* in analysis_worker/datasets.mbt.
 const MEASURE = { area: 0, length: 1, centroid: 2, bbox: 3 } as const;
 
 /** GeoJSON read into the analysis worker, with its spatial index built on first use. */
@@ -73,10 +74,9 @@ export class Dataset {
     return call<T>(op, { dataset: this.#id, ...args });
   }
 
-  /** @internal */
-  idFor(other: string): number {
-    if (this.#disposed) throw new Error(`mbmap: analysis: the ${other} dataset was disposed`);
-    return this.#id;
+  static #idOf(d: Dataset, role: string): number {
+    if (d.#disposed) throw new Error(`mbmap: analysis: the ${role} dataset was disposed`);
+    return d.#id;
   }
 
   /** Each feature's area in square meters (0 for points and lines). */
@@ -111,12 +111,12 @@ export class Dataset {
 
   /** This dataset's point features with a point inside some polygon of `polygons` (boundaries count). */
   pointsWithin(polygons: Dataset): Promise<Int32Array> {
-    return call("within", { points: this.idFor("points"), polygons: polygons.idFor("polygons") });
+    return call("within", { points: Dataset.#idOf(this, "points"), polygons: Dataset.#idOf(polygons, "polygons") });
   }
 
   /** Per polygon of this dataset, the points of `points` inside it and their `property` values. */
   async collect(points: Dataset, property: string): Promise<Collected> {
-    const v = await call<Float64Array>("collect", { polygons: this.idFor("polygons"), points: points.idFor("points"), property });
+    const v = await call<Float64Array>("collect", { polygons: Dataset.#idOf(this, "polygons"), points: Dataset.#idOf(points, "points"), property });
     const n = v.length / 3;
     const out = { count: new Float64Array(n), numbers: new Float64Array(n), sum: new Float64Array(n), mean: new Float64Array(n) };
     for (let i = 0; i < n; i++) {

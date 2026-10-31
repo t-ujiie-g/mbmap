@@ -1,7 +1,6 @@
-// Analysis speed: Turf.js + flatbush on parsed GeoJSON against the shipped
-// analysis wasm on a loaded dataset (export calls, no worker messaging).
-// "bbox + index" computes the boxes, builds the index and runs 1000 searches
-// (mbmap builds its index lazily on the first search).
+// Analysis speed: Turf.js + flatbush on parsed GeoJSON against the shipped wasm
+// on a loaded dataset (export calls, no worker messages). "bbox + index" includes
+// computing the boxes; mbmap builds its index on the first search.
 import { loadAnalysis, MEASURE } from "./load.mjs";
 import * as ref from "./reference.mjs";
 

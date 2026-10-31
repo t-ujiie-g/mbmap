@@ -1,20 +1,14 @@
 // Glue around the wasm-gc build of `analysis_worker`; messages are in
 // docs/FORMATS.md ("Analysis worker messages").
 
+import { hostNumber } from "../../wasmio/js/host.mjs";
+
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let wasm = null;
 let ready = null;
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
-
-// A JSON number's ASCII text at `addr`, as the reader's slow path wants it.
-// The view is renewed only when memory grew (a detached view has length 0).
-let bytes = new Uint8Array(0);
-function numberAt(buffer, addr, len) {
-  if (addr + len > bytes.length) bytes = new Uint8Array(buffer());
-  return Number(String.fromCharCode.apply(null, bytes.subarray(addr, addr + len)));
-}
 
 function input(bytes) {
   const addr = wasm.prepare_input(bytes.length);
@@ -48,7 +42,7 @@ function check(ok) {
 async function load({ url, bytes }) {
   let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
   if (!data) {
-    check(typeof url === "string");
+    check(typeof url === "string" && /^https?:/.test(url));
     const res = await fetch(url, { credentials: "omit" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     data = new Uint8Array(await res.arrayBuffer());
@@ -102,7 +96,7 @@ async function run(msg) {
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
-    const host = { number: (addr, len) => numberAt(() => wasm.memory.buffer, addr, len) };
+    const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 }, host })
       .then(({ instance }) => { wasm = instance.exports; });
   } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op)) {

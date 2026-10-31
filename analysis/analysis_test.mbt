@@ -213,6 +213,12 @@ test "points_within, collect and grid_count" {
     k=[1.0, 2.0, 4.0, 8.0],
   )
   let pindex = @analysis.Index::of_table(polys)
+  let hits = []
+  pindex.search(0.5, 0.5, 0.5, 0.5, hits)
+  assert_eq(hits, [0])
+  hits.clear()
+  pindex.search(1.5, 1.5, 2.0, 2.0, hits)
+  assert_eq(hits, [])
   assert_eq(@analysis.points_within(pts, polys, pindex), [0, 2, 4])
   let sums = @analysis.collect(polys, pts, @analysis.Index::of_table(pts), "k")
   assert_eq(sums, [3.0, 2.0, 5.0])

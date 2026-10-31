@@ -45,16 +45,15 @@ let next_id : Ref[Int32] = Ref(0)
 /// or minus the length of a UTF-8 error message at `output_addr`.
 #export_name("load")
 pub fn load() -> Int32 {
-  let input = input_bytes()
-  let table = @formats.read_geojson(input[:], slow_number=(s, e) => {
-    host_number(PAGE + s, e - s)
+  let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number=(s, e) => {
+    host_number(@wasmio.PAGE + s, e - s)
   }) catch {
-    e => return fail_with(e.message())
+    e => return @wasmio.fail_with(e.message())
   }
   let id = next_id.val
   next_id.val += 1
   datasets[id] = { table, index: None, }
-  input_len.val = 0
+  @wasmio.clear_input()
   id
 }
 
@@ -76,7 +75,7 @@ pub fn dispose(id : Int32) -> Unit {
 }
 
 ///|
-/// Measure kinds of `measure`: f64s per feature.
+/// Measure kinds of `measure`; mirrored in npm/src/analysis.ts.
 const MEASURE_AREA : Int32 = 0
 
 ///|
@@ -97,7 +96,7 @@ pub fn measure(id : Int32, kind : Int32) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }
   let t = d.table
   let n = t.length()
-  input_len.val = 0
+  @wasmio.clear_input()
   let out = if kind == MEASURE_AREA {
     FixedArray::makei(n, f => @analysis.area(t, trig, f))
   } else if kind == MEASURE_LENGTH {
@@ -123,7 +122,7 @@ pub fn measure(id : Int32, kind : Int32) -> Int32 {
   } else {
     return -1
   }
-  write_f64s(out)
+  @wasmio.write_f64s(out)
 }
 
 ///|
@@ -138,10 +137,10 @@ pub fn search(
   max_y : Double,
 ) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }
-  input_len.val = 0
+  @wasmio.clear_input()
   let out = []
   d.index().search(min_x, min_y, max_x, max_y, out)
-  write_i32s(out[:])
+  @wasmio.write_i32s(out[:])
 }
 
 ///|
@@ -157,10 +156,10 @@ pub fn nearest(
   max_distance : Double,
 ) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }
-  input_len.val = 0
+  @wasmio.clear_input()
   let out = []
   d.index().neighbors(x, y, out, max_results=k, max_distance~)
-  write_i32s(out[:])
+  @wasmio.write_i32s(out[:])
 }
 
 ///|
@@ -171,8 +170,8 @@ pub fn within(points : Int32, polygons : Int32) -> Int32 {
   guard datasets.get(points) is Some(p) && datasets.get(polygons) is Some(q) else {
     return -1
   }
-  input_len.val = 0
-  write_i32s(@analysis.points_within(p.table, q.table, q.index())[:])
+  @wasmio.clear_input()
+  @wasmio.write_i32s(@analysis.points_within(p.table, q.table, q.index())[:])
 }
 
 ///|
@@ -184,9 +183,9 @@ pub fn collect(polygons : Int32, points : Int32) -> Int32 {
   guard datasets.get(polygons) is Some(q) && datasets.get(points) is Some(p) else {
     return -1
   }
-  let column = @utf8.decode_lossy(input_bytes())
-  input_len.val = 0
-  write_f64s(@analysis.collect(q.table, p.table, p.index(), column))
+  let column = @utf8.decode_lossy(@wasmio.input_bytes())
+  @wasmio.clear_input()
+  @wasmio.write_f64s(@analysis.collect(q.table, p.table, p.index(), column))
 }
 
 ///|
@@ -203,9 +202,9 @@ pub fn grid(
   rows : Int32,
 ) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }
-  input_len.val = 0
+  @wasmio.clear_input()
   match @analysis.grid_count(d.table, min_x, min_y, max_x, max_y, cols, rows) {
-    Some(cells) => write_i32s(cells[:])
+    Some(cells) => @wasmio.write_i32s(cells[:])
     None => -1
   }
 }
