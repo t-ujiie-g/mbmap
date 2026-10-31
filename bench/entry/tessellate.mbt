@@ -31,11 +31,57 @@ fn number(v : @mvt.Value?) -> Double {
 }
 
 ///|
-/// Decodes the tile and tessellates what bench/maplibre/style.json draws: the
-/// fill layers' polygons and the line layers' lines with the style's filters,
-/// joins and caps (no style evaluation otherwise). `mode` bits pick fills
-/// and/or lines; with neither, the same geometry is only decoded. Returns the
-/// emitted vertex count (decoded point count for mode 0), or -1 on error.
+/// How bench/maplibre/style.json draws a feature; `passes` counts the line
+/// layers it belongs to (road features under road-casing are drawn twice).
+priv enum Draw {
+  Skip
+  Fill
+  Line(join~ : @tess.LineJoin, cap~ : @tess.LineCap, passes~ : Int32)
+}
+
+///|
+/// The style's layers and filters for feature `i`, hard-coded.
+fn draw_of(
+  layer : @mvt.Layer,
+  i : Int32,
+  rd_ctg : Int32?,
+  sngl_dbl : Int32?,
+) -> Draw {
+  let value = (key : Int32?) => {
+    match key {
+      Some(k) => number(layer.property(i, k))
+      None => @double.not_a_number
+    }
+  }
+  match (layer.name, layer.geom_type(i)) {
+    ("waterarea" | "structurea" | "building", Polygon) => Fill
+    ("building", LineString) | ("contour" | "river" | "boundary", _) =>
+      Line(join=Miter, cap=Butt, passes=1)
+    ("railway", _) => {
+      let s = value(sngl_dbl)
+      if s >= 1.0 && s <= 4.0 {
+        Line(join=Miter, cap=Butt, passes=1)
+      } else {
+        Skip
+      }
+    }
+    ("road", _) => {
+      let c = value(rd_ctg)
+      Line(
+        join=Round,
+        cap=Round,
+        passes=if c == 0.0 || c == 1.0 { 2 } else { 1 },
+      )
+    }
+    _ => Skip
+  }
+}
+
+///|
+/// Decodes the tile and tessellates what bench/maplibre/style.json draws (see
+/// `draw_of`). `mode` bits pick fills and/or lines; with neither, the same
+/// geometry is only decoded. Returns the vertex count emitted (points decoded
+/// for mode 0), or -1 on error.
 fn tessellate_tile(bytes : BytesView, mode : Int32) -> Int32 {
   fills.clear()
   lines.clear()
@@ -45,30 +91,8 @@ fn tessellate_tile(bytes : BytesView, mode : Int32) -> Int32 {
     let rd_ctg = layer.key_index("rdCtg")
     let sngl_dbl = layer.key_index("snglDbl")
     for i in 0..<layer.length() {
-      let ty = layer.geom_type(i)
-      let (fill, line, join, cap, casing) = match (layer.name, ty) {
-        ("waterarea" | "structurea" | "building", Polygon) =>
-          (true, false, @tess.Miter, @tess.Butt, false)
-        ("building", LineString) => (false, true, Miter, Butt, false)
-        ("contour" | "river" | "boundary", _) =>
-          (false, true, Miter, Butt, false)
-        ("railway", _) => {
-          let s = match sngl_dbl {
-            Some(k) => number(layer.property(i, k))
-            None => @double.not_a_number
-          }
-          (false, s >= 1.0 && s <= 4.0, Miter, Butt, false)
-        }
-        ("road", _) => {
-          let c = match rd_ctg {
-            Some(k) => number(layer.property(i, k))
-            None => @double.not_a_number
-          }
-          (false, true, Round, Round, c == 0.0 || c == 1.0)
-        }
-        _ => (false, false, Miter, Butt, false)
-      }
-      if !fill && !line {
+      let draw = draw_of(layer, i, rd_ctg, sngl_dbl)
+      if draw is Skip {
         continue
       }
       if !layer.decode_geometry(i, feature_geometry) {
@@ -76,23 +100,23 @@ fn tessellate_tile(bytes : BytesView, mode : Int32) -> Int32 {
       }
       let g = feature_geometry
       decoded += g.num_points()
-      if fill && (mode & MODE_FILL) != 0 {
-        fill_tess.add_polygons(g.coords[:], g.ring_ends[:], fills)
-      }
-      if line && (mode & MODE_LINE) != 0 {
-        let passes = if casing { 2 } else { 1 }
-        for _ in 0..<passes {
-          for r in 0..<g.num_rings() {
-            line_tess.add_line(
-              g.coords[:],
-              g.ring_start(r),
-              g.ring_ends[r],
-              lines,
-              join~,
-              cap~,
-            )
+      match draw {
+        Fill if (mode & MODE_FILL) != 0 =>
+          fill_tess.add_polygons(g.coords[:], g.ring_ends[:], fills)
+        Line(join~, cap~, passes~) if (mode & MODE_LINE) != 0 =>
+          for _ in 0..<passes {
+            for r in 0..<g.num_rings() {
+              line_tess.add_line(
+                g.coords[:],
+                g.ring_start(r),
+                g.ring_ends[r],
+                lines,
+                join~,
+                cap~,
+              )
+            }
           }
-        }
+        _ => ()
       }
     }
   }

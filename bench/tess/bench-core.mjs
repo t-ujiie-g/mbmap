@@ -4,8 +4,7 @@
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import earcut from "earcut";
-import { classifyRings } from "@maplibre/maplibre-gl-style-spec";
-import { MAX_POLYGON_RINGS } from "./reference.mjs";
+import { classify, flattenPolygon } from "./reference.mjs";
 import { createParser } from "../maplibre/parse-core.ts";
 import style from "../maplibre/style.json";
 
@@ -35,13 +34,8 @@ function jsDecode(buf) {
 function jsFill(buf) {
   let vertices = 0;
   for (const g of fillGeometries(buf)) {
-    for (const polygon of classifyRings(g, MAX_POLYGON_RINGS)) {
-      const flat = [], holes = [];
-      for (const ring of polygon) {
-        if (ring.length === 0) continue;
-        if (ring !== polygon[0]) holes.push(flat.length / 2);
-        for (const p of ring) flat.push(p.x, p.y);
-      }
+    for (const polygon of classify(g)) {
+      const { flat, holes } = flattenPolygon(polygon);
       earcut(flat, holes);
       vertices += flat.length / 2;
     }

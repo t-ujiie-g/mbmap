@@ -134,6 +134,8 @@ test "repeated and single points produce nothing" {
   assert_eq(extrude([5, 5, 5, 5, 5, 5]).num_vertices(), 0)
   let deduped = extrude([0, 0, 0, 0, 100, 0, 100, 0])
   assert_eq(deduped.num_vertices(), 4)
+  deduped.clear()
+  assert_eq((deduped.num_vertices(), deduped.indices.length()), (0, 0))
 }
 
 ///|

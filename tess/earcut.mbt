@@ -66,6 +66,14 @@ pub fn Earcut::new() -> Earcut {
 const BLOCK_EDGES : Int32 = 16
 
 ///|
+/// Coordinates are mapped into [0, Z_RANGE] for the z-order hash.
+const Z_RANGE : Double = 32767.0
+
+///|
+/// JS `Number.EPSILON`, for `deviation`'s roundoff bound.
+const DOUBLE_EPSILON : Double = 2.220446049250313e-16
+
+///|
 /// Above this many coordinates the z-order hash is used to find ears.
 const HASH_THRESHOLD : Int32 = 80 * 2
 
@@ -114,7 +122,7 @@ pub fn Earcut::triangulate(
       }
     }
     let size = @cmp.maximum(max_x - min_x, max_y - min_y)
-    inv_size = if size != 0.0 { 32767.0 / size } else { 0.0 }
+    inv_size = if size != 0.0 { Z_RANGE / size } else { 0.0 }
   }
   self.earcut_linked(outer, out, min_x, min_y, inv_size)
 }
@@ -1159,9 +1167,8 @@ pub fn deviation(
         coords[i + 1].to_double().abs(),
       )
     }
-    let eps = 2.220446049250313e-16
     return if polygon_area.abs() <=
-      coords.length().to_double() * max * max * eps {
+      coords.length().to_double() * max * max * DOUBLE_EPSILON {
       0.0
     } else {
       1.0

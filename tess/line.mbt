@@ -28,6 +28,10 @@ pub const LINE_VERTEX_STRIDE : Int32 = 5
 pub const MAX_MITER_LIMIT : Double = 2.0
 
 ///|
+/// Slack when deciding that a join is straight (miter length 1).
+const STRAIGHT_EPSILON : Double = 1.0e-9
+
+///|
 /// Segments in a half circle of a round cap; joins use proportionally fewer.
 const ROUND_SEGMENTS : Int32 = 8
 
@@ -132,7 +136,15 @@ pub fn LineTessellator::add_line(
     )
     return
   }
-  let mut prev = emitter.cap(xs[0], ys[0], nx[0], ny[0], cap, start=true)
+  let mut prev = emitter.pair_for_cap(
+    xs[0],
+    ys[0],
+    nx[0],
+    ny[0],
+    cap,
+    start=true,
+  )
+  emitter.cap_fan(xs[0], ys[0], nx[0], ny[0], cap, prev, start=true)
   for i in 1..<(n - 1) {
     prev = emitter.join_at(
       xs[i],
@@ -350,21 +362,6 @@ fn Emitter::cap_fan(
 }
 
 ///|
-fn Emitter::cap(
-  self : Emitter,
-  x : Int32,
-  y : Int32,
-  nx : Double,
-  ny : Double,
-  cap : LineCap,
-  start~ : Bool,
-) -> Int32 {
-  let pair = self.pair_for_cap(x, y, nx, ny, cap, start~)
-  self.cap_fan(x, y, nx, ny, cap, pair, start~)
-  pair
-}
-
-///|
 /// Emits the join at (x, y) between a segment with normal a and the next with
 /// normal b, attaching the incoming segment from `prev`, and returns the pair
 /// the outgoing segment starts from. Nearly straight joins share one pair;
@@ -388,7 +385,7 @@ fn Emitter::join_at(
   let miter = if mlen > 0.0 { 2.0 / mlen } else { @double.infinity }
   let use_miter = match self.join {
     Miter => miter <= self.miter_limit
-    Bevel => miter <= 1.0 + 1.0e-9
+    Bevel => miter <= 1.0 + STRAIGHT_EPSILON
     Round => miter < self.round_limit
   }
   if use_miter && close_to is None {
