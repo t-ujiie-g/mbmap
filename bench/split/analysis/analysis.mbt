@@ -103,10 +103,3 @@ pub fn Polygons::largest(self : Polygons, k : Int32) -> Array[Int32] {
   areas.sort_by((a, b) => b.1.compare(a.1))
   areas[:@cmp.minimum(k, areas.length())].iter().map(x => x.0).collect()
 }
-
-///|
-/// A one-line summary, for the error and logging paths that real analysis
-/// code has.
-pub fn Polygons::describe(self : Polygons) -> String {
-  "\{self.length()} polygons, \{self.ring_ends.length()} rings, \{self.coords.length() / 2} points"
-}

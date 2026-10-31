@@ -15,7 +15,7 @@ import { serve } from "../lib/serve.mjs";
 
 const runs = Number(process.argv.find((a) => a.startsWith("--runs="))?.split("=")[1] ?? 7);
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-const build = (pkg) => execFileSync("moon", ["build", pkg, "--target", "wasm-gc", "--release"], { cwd: ROOT, stdio: "ignore" });
+const build = (pkg) => execFileSync("moon", ["build", pkg, "--target", "wasm-gc", "--release"], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
 const files = {
   worker: ["worker", "_build/wasm-gc/release/build/worker/worker.wasm"],
   combined: ["bench/split/combined_entry", "_build/wasm-gc/release/build/bench/split/combined_entry/combined_entry.wasm"],

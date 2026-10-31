@@ -23,5 +23,4 @@ test "area, bbox, grid counts and ranking of columnar polygons" {
   let counts = p.grid_counts(5.0)
   assert_eq((counts.get(0), counts.get(2)), (Some(1), Some(1)))
   assert_eq(p.largest(5), [0, 1])
-  assert_eq(p.describe(), "2 polygons, 3 rings, 12 points")
 }

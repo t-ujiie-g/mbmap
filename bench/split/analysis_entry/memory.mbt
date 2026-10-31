@@ -65,10 +65,16 @@ pub fn output_addr() -> Int32 {
 /// counts do not match the input length.
 #export_name("analyze")
 pub fn analyze(n_rings : Int32, n_polys : Int32, n_points : Int32) -> Int32 {
+  // Bound each count by the input before multiplying, so the size check
+  // cannot overflow (AGENTS.md §8.2).
+  let len = input_len.val
   if n_rings < 0 ||
     n_polys < 0 ||
     n_points < 0 ||
-    (n_rings + n_polys) * 4 + n_points * 16 != input_len.val {
+    n_rings > len / 4 ||
+    n_polys > len / 4 ||
+    n_points > len / 16 ||
+    (n_rings + n_polys) * 4 + n_points * 16 != len {
     return -1
   }
   let ring_ends = FixedArray::makei(n_rings, i => load_i32(PAGE + i * 4))
@@ -79,8 +85,8 @@ pub fn analyze(n_rings : Int32, n_polys : Int32, n_points : Int32) -> Int32 {
   let coords = FixedArray::makei(n_points * 2, i => load_f64(at + i * 8))
   let p : @analysis.Polygons = { coords, ring_ends, poly_ends, }
   let out = output_start()
-  let len = n_polys * 40 + 44
-  if !ensure_memory(out + len) {
+  let out_len = n_polys * 40 + 44
+  if !ensure_memory(out + out_len) {
     return -1
   }
   for i in 0..<n_polys {
@@ -104,5 +110,5 @@ pub fn analyze(n_rings : Int32, n_polys : Int32, n_points : Int32) -> Int32 {
     )
   }
   store_i32(out + n_polys * 40 + 40, p.grid_counts(1.0).length())
-  len
+  out_len
 }
