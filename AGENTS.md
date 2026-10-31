@@ -24,7 +24,7 @@ moon test <pkg-dir> -u           # update snapshots (single target only; -u fail
 moon fmt && moon info            # before committing; regenerates pkg.generated.mbti
 ```
 
-npm package (from `npm/`): `npm ci && npm run build` writes `dist/` (index.js + .d.ts, worker.js, mbmap.wasm); `npm run size` checks the gzip budgets of VISION §2.
+npm package (from `npm/`): `npm ci && npm run build` writes `dist/` (index.js + .d.ts, worker.js, mbmap.wasm); `npm run size` checks the gzip budgets of VISION §2; `npm test` runs the TS unit tests (`npm/test/*.test.ts`, `element/*.test.ts`) with Node type stripping, so modules under test must be import-free or import other `.ts` files only.
 
 Benchmarks (from `bench/`, Node + Playwright):
 
@@ -44,8 +44,9 @@ npm run tess:node         # decode + tessellation vs MapLibre WorkerTile.parse i
 npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/WebKit
 npm run worker:browser    # worker process_tile per fixture, cold and warm, in three browsers
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style)
-npm run example           # serve the repo; open http://127.0.0.1:8080/examples/basic/
-npm run npm:pack          # build + npm pack npm/, install into examples/npm, check it in Chromium (CI runs this)
+npm run example           # serve the repo; open http://127.0.0.1:8080/examples/ (basic needs only this)
+npm run examples          # also pack npm/ into examples/{npm,element,react} (bench/npm/prepare.mjs), then serve
+npm run npm:pack          # build + npm pack npm/, install into examples/{npm,element,react}, check them in Chromium (CI runs this)
 ```
 
 Bench entry points that import TypeScript or MapLibre sources run through `node lib/run-bundled.mjs <entry>`; the MoonBit side of every mvt/tess bench is the single export package `bench/entry`.
@@ -88,6 +89,7 @@ Planned data/analysis/3D packages (VISION §3) ship as separate npm entry points
 - Camera math and tile covering live in `core` (`Transform`), pure and tested on all targets; `map` only wires DOM events, workers and the frame loop (renders on demand, falls back to a loaded ancestor clipped by scissor or loaded children).
 - `render_webgl2` and `map` are js-target only (`supported_targets = "js"`). On the js backend `FixedArray[Byte]`/`Bytes` are `Uint8Array`, but `FixedArray[Float]` is a plain JS `Array`, so GPU buffers need `extern "js"` typed-array wrappers.
 - `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side). `npm/src/index.ts` is a MapLibre-shaped TS facade (`Map`, `on`/`once`, `jumpTo`, …) over the `bundle/main` exports; esbuild aliases `mbmap-engine` to that build and `npm/src/engine.d.ts` types it, so keep both in sync with `bundle/main/main.mbt`. The facade resolves tile URLs against the style URL and loads `worker.js`/`mbmap.wasm` next to itself via `new URL(..., import.meta.url)`.
+- `element/element.ts` is `<mb-map>` (entry `mbmap/element`, ~1KB on top of the main entry, which it imports as `./index.js` rather than bundling). The map lives in an open shadow root; attributes are parsed strictly (invalid values fire `mb-error` and are kept out); `center`/`zoom` properties also take the attribute strings because React 19 sets props as properties when the element has one. Style the shadow box inline: a `div` rule in the shadow stylesheet also hit the facade's attribution overlay.
 - CI (`.github/workflows/ci.yml`) installs a pinned MoonBit toolchain verified by sha256; bumping `moon` means updating `MOONBIT_VERSION` and both hashes there.
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 

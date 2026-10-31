@@ -1,5 +1,72 @@
 # PROGRESS
 
+## Phase 6：Web Component `<mb-map>`（2026-10-31）
+
+状態：**完了**（完了条件「素の HTML と、主要な JS フレームワーク1つ（React）の example で動く」を満たした。どちらも `npm pack` した成果物を使い、`npm --prefix bench run npm:pack` と CI で確かめる）。
+
+### できたこと
+
+- **`element/element.ts`（`mbmap/element`）**：`<mb-map style-url center zoom worker-count worker-url wasm-url>`。
+  - 地図は open な Shadow DOM の中に作る。
+  - プロパティ：`map`、`mapStyle`（スタイルのオブジェクト）、`center`、`zoom`。
+  - イベント：`mb-load`、`mb-move`、`mb-idle`、`mb-error`。`detail` は `{ map, center, zoom, error? }` で、`bubbles` と `composed` を付けた。
+  - 属性は厳密に解釈する。`center` は範囲内の `lng,lat`、`zoom` は 0〜24 の10進数、`worker-count` は 0〜4。不正な値は受け付けず、`mb-error` を出して前の値を保つ（AGENTS.md §8.3）。
+  - 文書から外すと地図を解放し、戻すと同じカメラで作り直す。同じタスク内での移動（外してすぐ付け直す）では作り直さない。
+  - サーバーでのレンダリング（`HTMLElement` がない環境）でも、import しただけでは落ちない。
+  - main の入口を `./index.js` として import するので、`Map` を二重にバンドルしない。`sideEffects` には `element.js` だけを挙げた（import で要素を登録するため）。
+- **`examples/element`**：素の HTML と import map。
+- **`examples/react`**：React 19.3.1。`<mb-map zoom={...} onmb-move={...} />` のように、props とイベントをそのまま書く。
+  - esbuild でバンドルし、`worker.js` と `mbmap.wasm` をバンドルの隣にコピーする（`new URL(..., import.meta.url)` を書き換えないバンドラでの手順の例）。
+  - `StrictMode` でも地図は1つだけ作られる。
+- **`bench/npm/pack-test.mjs`**：3つの example（ファサード、素の HTML、React）を確かめるようにした。要素については次を確かめる。
+  - 属性の変更で `mb-move` が1回だけ出ること、不正な属性が `mb-error` になること。
+  - 移動・取り外し・付け直しのライフサイクル。
+  - 帰属表示が右下の1行であること。
+  - React では、ボタンで props を変えると地図が動くこと、ホイールでのズームが `onmb-move` 経由で React の表示に反映されること。
+
+### 見つけて直した問題
+
+- **React 19 は、要素に同じ名前のプロパティがあると、props を属性ではなくプロパティとして設定する**。そのため `zoom="14.5"` が文字列のままプロパティに入り、検証で弾かれていた。`center` と `zoom` のプロパティは、属性と同じ形の文字列も同じ規則で受け付けるようにした。
+- **Shadow DOM のスタイル `div{position:absolute;inset:0}` が、ファサードの帰属表示の `div` にも当たり、半透明の白で地図全体を覆っていた**。箱のスタイルはインラインで指定し、帰属表示は位置を明示するようにした。pack test で、帰属表示が右下の1行であることを確かめる。
+
+### ベンチ結果：配布物のサイズ（`bench/results/npm-size.json`、gzip -9）
+
+| 入口 | サイズ | 予算 |
+|---|---|---|
+| `mbmap`（`index.js`） | 22.7KB | 50KB |
+| `mbmap/element`（`element.js`。`mbmap` に加えて読む分） | **1.3KB** | 5KB |
+| Worker（`worker.js` と `mbmap.wasm`） | 78.1KB | 80KB |
+
+- 依存（example のみ）：`react` / `react-dom` 19.3.1（2026-10-14 リリース。依存は `scheduler` だけ。インストールスクリプトなし）。`npm audit` は 0 件。パッケージ本体の実行時の依存は、引き続きない。
+
+### リファクタリング（同じ PR に追加）
+
+AGENTS.md §7 の観点で、Phase 5〜6 の TS 側（ファサード、要素、スクリプト）を点検した。
+
+- 定数：要素のズーム上限を 24 から `MAX_ZOOM` = 22 に直した。core の `Transform` は 22 でクランプするので、23 や 24 が受け付けられたうえで黙って丸められていた（§8.3「丸めずに拒否する」に反していた）。Worker 数の上限も `MAX_WORKERS` として1か所にした。どちらも、MoonBit 側の元の定義を指すコメントを付けた。
+- 重複：中心座標の検証を `checkCenter` にまとめ、属性の文字列からとオブジェクトからの両方で使うようにした。
+- テスト：純粋な関数（URL の解決と検査、属性の解析）を依存のないモジュール（`npm/src/urls.ts`、`element/parse.ts`）に分け、`node --test` の単体テストを加えた（Node の型除去で TS のまま動かす）。CI でも実行する。
+- 却下した候補：イベントごとのカメラの読み取りを1回にする案。`getCenter` と `getZoom` は、どちらも MoonBit 側を1回ずつ呼ぶので、前後で回数が変わらない。
+
+セキュリティ（§8）で見つけて直したもの：
+
+- **中**：`worker-url` 属性や `workerUrl` オプションに、どんな URL でも渡せた。HTML のサニタイザがカスタム要素を通すページでは、`worker-url="data:text/javascript,..."` で任意のコードを Worker として動かせる。Worker はページと同じオリジンの http(s)、wasm は http(s) だけを受け付けるようにした（§8.3）。pack test でも、`data:` の Worker URL が拒否されることを確かめる。
+- **低**：`jumpTo({ zoom: NaN })` などの有限でないカメラが MoonBit 側まで届き、経度が NaN のまま地図が壊れていた。ファサードでは TypeError にした。core の `Transform` でも、有限でないカメラは無視するようにした（全ターゲットでテスト）。
+
+サイズ：メイン 22.4 → 22.7KB（URL とカメラの検査）、`mbmap/element` 1.2 → 1.3KB。`npm audit` は `bench/`、`npm/`、`examples/react/` のすべてで 0 件。
+
+### 既知の問題・次にやること
+
+- `mb-map` の属性はカメラの入力だけで、ユーザーの操作で動いたカメラを属性に書き戻さない（書き戻すと、フレームワークとの間でループしやすいため）。現在のカメラは、`mb-move` の `detail` かプロパティで読む。
+- `style-url` を変えると地図を作り直す（`setStyle` はまだない）。
+- Vite など、`new URL(..., import.meta.url)` を書き換えるバンドラでの動作は、まだ確かめていない。
+- Phase 5 からの残り：Worker の予算の残り 1.9KB。作成から `idle` までが MapLibre より約14ms 遅い。
+
+### 次にやること（Phase 6.5）
+
+- 入口の分割と、Wasm の遅延ロードの試作。2つ目の wasm-gc モジュールで、サイズと読み込み時間がどれだけ増えるかを測り、分割の粒度を決める。
+- 入口ごとのサイズ予算の仕組み（今の `size.mjs` を一般化する）。
+
 ## 方針の更新（2026-10-31、ユーザー判断）
 
 Phase 6 の前に、目標を「サーバーに頼らない WebGIS の実行基盤」に広げた（VISION §1、§3、§5、§8）。

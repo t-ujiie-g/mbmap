@@ -6,8 +6,13 @@
   "rows": [
     {
       "name": "main (index.js)",
-      "bytes": 22420,
+      "bytes": 22671,
       "budget": 50000
+    },
+    {
+      "name": "element (element.js, on top of main)",
+      "bytes": 1317,
+      "budget": 5000
     },
     {
       "name": "worker (worker.js + mbmap.wasm)",

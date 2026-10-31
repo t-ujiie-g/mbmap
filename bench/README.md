@@ -22,7 +22,8 @@ npm run tess:browser      # 同（3 ブラウザの module Worker 内）
 npm run worker:browser    # Worker の process_tile（冷えた状態・温まった状態）を 3 ブラウザで
 npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
 npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ で配信
-npm run npm:pack          # npm/ をビルドして npm pack し、examples/npm に入れて Chromium で確かめる
+npm run examples          # npm パッケージを pack して examples/{npm,element,react} に入れてから配信（一覧は /examples/）
+npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm,element,react} に入れて Chromium で確かめる
 ```
 
 ## entry/ と lib/
@@ -106,7 +107,13 @@ npm run npm:pack          # npm/ をビルドして npm pack し、examples/npm 
 
 ## npm/ — npm パッケージの確認
 
-`pack-test.mjs` は `npm/` をビルドして `npm pack` し、できた tarball を `examples/npm/node_modules/mbmap` に展開する（アプリが
-インストールするのと同じ形）。そのうえで Chromium で `examples/npm/` を開き、`load` が来ること、`jumpTo` で `move` が1回だけ
-出ること、帰属表示、スタイル URL の取得失敗が `error` イベントになること、描けないスタイルが例外になることを確かめる。
+`pack-test.mjs` は `npm/` をビルドして `npm pack` し、できた tarball を各 example の `node_modules/mbmap` に展開する（アプリが
+インストールするのと同じ形）。そのうえで Chromium で次を確かめる。
+
+- `examples/npm`（ファサード）：`load`、`jumpTo` で `move` が1回だけ出ること、帰属表示、スタイル URL の取得失敗が `error`
+  イベントになること、描けないスタイルが例外になること。
+- `examples/element`（素の HTML の `<mb-map>`）：属性で `mb-move` が1回だけ出ること、不正な属性が `mb-error` になり値が変わらない
+  こと、移動では地図を保ち、外すと解放し、戻すと同じカメラで作り直すこと、帰属表示が右下の1行であること。
+- `examples/react`（React 19 から `<mb-map>`）：ボタンで props を変えると地図が動くこと、ホイールでのズームが `onmb-move`
+  経由で React の表示に反映されること。esbuild でバンドルし、`worker.js` と `mbmap.wasm` をバンドルの隣にコピーする。
 fixture がなくてもタイルが 404 になるだけで地図は読み込まれるので、CI でも動く。

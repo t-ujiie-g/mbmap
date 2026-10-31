@@ -1,4 +1,5 @@
 import * as engine from "mbmap-engine";
+import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
 /** `[lng, lat]` or `{ lng, lat }`, as in MapLibre. */
 export type LngLatLike = [number, number] | { lng: number; lat: number };
@@ -32,8 +33,8 @@ export interface MapOptions {
   /**
    * Where the worker script and its wasm are served. They default to the
    * files next to this module, which suits bundlers that understand
-   * `new URL(..., import.meta.url)` and plain ESM serving. Module workers
-   * must be same-origin with the page.
+   * `new URL(..., import.meta.url)` and plain ESM serving. The worker must
+   * be a same-origin http(s) URL and the wasm an http(s) one.
    */
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
@@ -66,9 +67,11 @@ function toLngLat(c: LngLatLike): LngLat {
   return Array.isArray(c) ? { lng: c[0], lat: c[1] } : { lng: c.lng, lat: c.lat };
 }
 
-// URL() percent-encodes the braces of {z}/{x}/{y}; put them back.
-function resolveTemplate(template: string, base: URL): string {
-  return new URL(template, base).href.replace(/%7B([zxy])%7D/g, "{$1}");
+function checkCamera(c: Camera): Camera {
+  if (![c.lng, c.lat, c.zoom].every(Number.isFinite)) {
+    throw new TypeError(`mbmap: center and zoom must be finite numbers: ${JSON.stringify(c)}`);
+  }
+  return c;
 }
 
 /** The style with tile URLs resolved against the style's own URL. */
@@ -110,7 +113,7 @@ export class Map {
     this.#container = container;
     this.#options = options;
     const center = toLngLat(options.center ?? [0, 0]);
-    this.#camera = { ...center, zoom: options.zoom ?? 0 };
+    this.#camera = checkCamera({ ...center, zoom: options.zoom ?? 0 });
     if (getComputedStyle(container).position === "static") container.style.position = "relative";
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.cssText = "display:block;width:100%;height:100%";
@@ -140,14 +143,15 @@ export class Map {
     const resolved = resolveTiles(style, base);
     const o = this.#options;
     const c = this.#camera;
+    const page = new URL(document.baseURI);
     const map = engine.create_map(
       this.#canvas,
       JSON.stringify(resolved),
       c.lng,
       c.lat,
       c.zoom,
-      new URL(o.workerUrl ?? new URL("./worker.js", import.meta.url), document.baseURI).href,
-      new URL(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), document.baseURI).href,
+      workerScriptUrl(o.workerUrl ?? new URL("./worker.js", import.meta.url), page, location.origin),
+      wasmUrl(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), page),
       o.workerCount ?? 0,
     );
     this.#engine = map;
@@ -166,7 +170,7 @@ export class Map {
     if (texts.length === 0) return;
     const el = document.createElement("div");
     el.style.cssText =
-      "position:absolute;right:0;bottom:0;padding:0 5px;font:12px/20px sans-serif;" +
+      "position:absolute;top:auto;left:auto;right:0;bottom:0;padding:0 5px;font:12px/20px sans-serif;" +
       "color:#333;background:rgba(255,255,255,0.7);pointer-events:none";
     // Text only: attribution strings come from the style (AGENTS.md §8.3).
     el.textContent = texts.join(" | ");
@@ -246,11 +250,11 @@ export class Map {
     return this.#current().zoom;
   }
 
-  /** Moves the camera at once; fires `move` unless nothing changes. */
+  /** Moves the camera at once; fires `move` unless nothing changes. Throws a TypeError on non-finite values. */
   jumpTo(options: { center?: LngLatLike; zoom?: number }): this {
     const c = this.#current();
     const center = options.center ? toLngLat(options.center) : c;
-    const next = { lng: center.lng, lat: center.lat, zoom: options.zoom ?? c.zoom };
+    const next = checkCamera({ lng: center.lng, lat: center.lat, zoom: options.zoom ?? c.zoom });
     if (this.#engine) engine.map_set_camera(this.#engine, next.lng, next.lat, next.zoom);
     else this.#camera = next;
     return this;

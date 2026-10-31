@@ -4,21 +4,38 @@
   "private": true,
   "description": "A lightweight vector-tile map renderer for the Web, written in MoonBit",
   "license": "Apache-2.0",
-  "repository": { "type": "git", "url": "git+https://github.com/t-ujiie-g/mbmap.git", "directory": "npm" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/t-ujiie-g/mbmap.git",
+    "directory": "npm"
+  },
   "type": "module",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./element": {
+      "types": "./dist/element.d.ts",
+      "default": "./dist/element.js"
+    },
     "./worker.js": "./dist/worker.js",
     "./mbmap.wasm": "./dist/mbmap.wasm",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",
-  "sideEffects": false,
-  "files": ["dist", "NOTICE"],
+  "sideEffects": [
+    "./dist/element.js"
+  ],
+  "files": [
+    "dist",
+    "NOTICE"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "size": "node scripts/size.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.ts ../element/*.test.ts"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

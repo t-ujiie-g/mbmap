@@ -25,7 +25,8 @@ pub(all) struct TileTransform {
 
 ///|
 /// A camera applied to a viewport of `width` x `height` CSS pixels. Zoom is
-/// clamped to `[min_zoom, max_zoom]` and latitude to `MAX_LATITUDE`.
+/// clamped to `[min_zoom, max_zoom]` and latitude to `MAX_LATITUDE`; a camera
+/// with a non-finite value is ignored (`new` falls back to 0, 0, zoom 0).
 pub struct Transform {
   camera : Camera
   width : Double
@@ -43,7 +44,15 @@ pub fn Transform::new(
   max_zoom~ : Double = 22.0,
 ) -> Transform {
   {
-    camera: constrain(camera, min_zoom, max_zoom),
+    camera: constrain(
+      if finite(camera) {
+        camera
+      } else {
+        { center: { lng: 0.0, lat: 0.0, }, zoom: 0.0, }
+      },
+      min_zoom,
+      max_zoom,
+    ),
     width,
     height,
     min_zoom,
@@ -65,8 +74,17 @@ fn constrain(camera : Camera, min_zoom : Double, max_zoom : Double) -> Camera {
 }
 
 ///|
+fn finite(camera : Camera) -> Bool {
+  let ok = (x : Double) => !x.is_nan() && !x.is_inf()
+  ok(camera.zoom) && ok(camera.center.lng) && ok(camera.center.lat)
+}
+
+///|
 /// The same viewport looking through another camera.
 pub fn Transform::with_camera(self : Transform, camera : Camera) -> Transform {
+  if !finite(camera) {
+    return self
+  }
   { ..self, camera: constrain(camera, self.min_zoom, self.max_zoom), }
 }
 
