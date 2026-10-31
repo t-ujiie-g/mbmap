@@ -23,7 +23,10 @@ export async function runWorkerBench({ entry, name }) {
     await writeFile(path.join(ROOT, `bench/results/${name}-${browserName}.json`), JSON.stringify(result, null, 2) + "\n");
     console.log(`\n# ${browserName} ${result.env.version}`);
     if (result.error) console.log(result.error);
-    else printRows(result);
+    else {
+      printRows(result);
+      if (result.cold) console.log("cold:", JSON.stringify(result.cold), "output bytes:", result.outputBytes);
+    }
   }
   server.close();
 }

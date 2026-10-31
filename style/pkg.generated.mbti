@@ -1,11 +1,100 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/style"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
+pub fn parse_color(String) -> Color?
 
 // Errors
+pub(all) suberror StyleError {
+  Invalid(path~ : String, String)
+  Unsupported(path~ : String, String)
+} derive(Eq, @debug.Debug)
+pub fn StyleError::equal(Self, Self) -> Bool
+pub fn StyleError::not_equal(Self, Self) -> Bool
+pub fn StyleError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) enum Cap {
+  Butt
+  Square
+  Round
+} derive(Eq, @debug.Debug)
+pub fn Cap::equal(Self, Self) -> Bool
+pub fn Cap::not_equal(Self, Self) -> Bool
+pub fn Cap::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Color {
+  r : Double
+  g : Double
+  b : Double
+  a : Double
+} derive(Eq, @debug.Debug)
+pub fn Color::equal(Self, Self) -> Bool
+pub fn Color::not_equal(Self, Self) -> Bool
+pub fn Color::to_repr(Self) -> @debug.Repr
+
+pub(all) enum GeometryFilter {
+  AnyGeometry
+  OnlyPoint
+  OnlyLineString
+  OnlyPolygon
+} derive(Eq, @debug.Debug)
+pub fn GeometryFilter::equal(Self, Self) -> Bool
+pub fn GeometryFilter::not_equal(Self, Self) -> Bool
+pub fn GeometryFilter::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Join {
+  Miter
+  Bevel
+  Round
+} derive(Eq, @debug.Debug)
+pub fn Join::equal(Self, Self) -> Bool
+pub fn Join::not_equal(Self, Self) -> Bool
+pub fn Join::to_repr(Self) -> @debug.Repr
+
+pub(all) enum LayerKind {
+  Background
+  Fill
+  Line
+} derive(Eq, @debug.Debug)
+pub fn LayerKind::equal(Self, Self) -> Bool
+pub fn LayerKind::not_equal(Self, Self) -> Bool
+pub fn LayerKind::to_repr(Self) -> @debug.Repr
+
+pub struct Style {
+  sources : Array[VectorSource]
+  layers : Array[StyleLayer]
+}
+pub fn Style::parse(StringView) -> Self raise StyleError
+pub fn Style::source(Self, String) -> VectorSource?
+
+pub struct StyleLayer {
+  id : String
+  kind : LayerKind
+  source : String
+  source_layer : String
+  min_zoom : Double
+  max_zoom : Double
+  filter : GeometryFilter
+  color : Color
+  opacity : Double
+  width : Double
+  join : Join
+  cap : Cap
+  miter_limit : Double
+  round_limit : Double
+}
+
+pub struct VectorSource {
+  id : String
+  tiles : Array[String]
+  min_zoom : Int32
+  max_zoom : Int32
+}
 
 // Type aliases
 

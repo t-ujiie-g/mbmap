@@ -20,8 +20,10 @@ pub const EXTRUDE_SCALE : Int32 = 63
 ///|
 /// Ints per line vertex: x, y in tile units; extrusion x, y in `EXTRUDE_SCALE`
 /// units of half the line width; side, ±1 on the outlines and 0 on the center
-/// line, so the shader can antialias by distance.
-pub const LINE_VERTEX_STRIDE : Int32 = 5
+/// line; along, 1 at the far edge of a round cap and 0 elsewhere. The shader
+/// fades out where `length(side, along)` reaches 1, which antialiases the
+/// outlines and rounds the caps.
+pub const LINE_VERTEX_STRIDE : Int32 = 6
 
 ///|
 /// Longest miter that still fits an Int8 extrusion component.
@@ -32,7 +34,7 @@ pub const MAX_MITER_LIMIT : Double = 2.0
 const STRAIGHT_EPSILON : Double = 1.0e-9
 
 ///|
-/// Segments in a half circle of a round cap; joins use proportionally fewer.
+/// Fan segments per half turn of a round join.
 const ROUND_SEGMENTS : Int32 = 8
 
 ///|
@@ -144,7 +146,7 @@ pub fn LineTessellator::add_line(
     cap,
     start=true,
   )
-  emitter.cap_fan(xs[0], ys[0], nx[0], ny[0], cap, prev, start=true)
+  emitter.cap_extension(xs[0], ys[0], nx[0], ny[0], cap, prev, start=true)
   for i in 1..<(n - 1) {
     prev = emitter.join_at(
       xs[i],
@@ -166,7 +168,7 @@ pub fn LineTessellator::add_line(
     start=false,
   )
   emitter.quad(prev, end_pair)
-  emitter.cap_fan(
+  emitter.cap_extension(
     xs[last],
     ys[last],
     nx[last - 1],
@@ -235,6 +237,7 @@ fn Emitter::vertex(
   ex : Double,
   ey : Double,
   side : Int32,
+  along~ : Int32 = 0,
 ) -> Int32 {
   let v = self.out.vertices
   let id = v.length() / LINE_VERTEX_STRIDE
@@ -243,6 +246,7 @@ fn Emitter::vertex(
   v.push((ex * EXTRUDE_SCALE.to_double()).round().to_int())
   v.push((ey * EXTRUDE_SCALE.to_double()).round().to_int())
   v.push(side)
+  v.push(along)
   id
 }
 
@@ -274,13 +278,6 @@ fn Emitter::quad(self : Emitter, from : Int32, to : Int32) -> Unit {
   self.triangle(from, from + 1, to)
   self.triangle(from + 1, to + 1, to)
 }
-
-///|
-/// cos and sin of a round cap's step, π / `ROUND_SEGMENTS`.
-let cap_step : (Double, Double) = (
-  @math.cos(@math.PI / ROUND_SEGMENTS.to_double()),
-  @math.sin(@math.PI / ROUND_SEGMENTS.to_double()),
-)
 
 ///|
 /// Fills the outer arc around (x, y) from rim vertex `from` to rim vertex `to`
@@ -340,9 +337,9 @@ fn Emitter::pair_for_cap(
 }
 
 ///|
-/// For a round cap, fills the half circle beyond the end from the left outline
-/// of `pair` to its right one.
-fn Emitter::cap_fan(
+/// For a round cap, extends the line by half a width past the end with a quad
+/// whose far edge has `along` 1; the shader cuts it to a half disk.
+fn Emitter::cap_extension(
   self : Emitter,
   x : Int32,
   y : Int32,
@@ -353,11 +350,11 @@ fn Emitter::cap_fan(
   start~ : Bool,
 ) -> Unit {
   if cap is Round {
-    let center = self.vertex(x, y, 0.0, 0.0, 0)
-    // Rotating the left normal by +90° points backwards from the start.
-    let (c, s) = cap_step
-    let s = if start { s } else { -s }
-    self.fan(x, y, center, pair, pair + 1, nx, ny, c, s, ROUND_SEGMENTS, 1)
+    // Direction pointing away from the line, past this end.
+    let (ox, oy) = if start { (-ny, nx) } else { (ny, -nx) }
+    let far = self.vertex(x, y, nx + ox, ny + oy, 1, along=1)
+    ignore(self.vertex(x, y, -nx + ox, -ny + oy, -1, along=1))
+    self.quad(pair, far)
   }
 }
 

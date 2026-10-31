@@ -1,11 +1,50 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/worker"
 
+import {
+  "t-ujiie-g/mbmap/style",
+  "t-ujiie-g/mbmap/tess",
+}
+
 // Values
+pub const FILL_VERTEX_BYTES : Int32 = 4
+
+pub const KIND_FILL : Int32 = 1
+
+pub const KIND_LINE : Int32 = 2
+
+pub const LAYER_ENTRY_WORDS : Int32 = 7
+
+pub const LINE_VERTEX_BYTES : Int32 = 8
+
+pub const MAX_PACKED_BYTES : Int32 = 67108864
 
 // Errors
 
 // Types and methods
+pub struct PackedTile {
+  // private fields
+}
+pub fn PackedTile::add_alias(Self, Int32, Int32) -> Unit
+pub fn PackedTile::add_fill(Self, Int32, @tess.FillBuffers, extent? : Int32) -> Bool
+pub fn PackedTile::add_line(Self, Int32, @tess.LineBuffers, extent? : Int32) -> Bool
+pub fn PackedTile::begin(Self, Int32) -> Unit
+pub fn PackedTile::layer_count(Self) -> Int32
+pub fn PackedTile::length(Self) -> Int32
+pub fn PackedTile::new() -> Self
+pub fn PackedTile::overflowed(Self) -> Bool
+pub fn PackedTile::to_bytes(Self) -> Bytes
+
+pub struct TileProcessor {
+  style : @style.Style
+  out : PackedTile
+  // private fields
+}
+pub fn TileProcessor::error(Self) -> String
+pub fn TileProcessor::error_utf8(Self) -> Bytes
+pub fn TileProcessor::from_utf8(BytesView) -> Self raise @style.StyleError
+pub fn TileProcessor::new(@style.Style) -> Self
+pub fn TileProcessor::process(Self, String, BytesView, Int32) -> Bool
 
 // Type aliases
 

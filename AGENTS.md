@@ -40,6 +40,9 @@ npm run mvt:browser       # same, inside a module Worker in Chromium/Firefox/Web
 npm run tess:golden       # fills vs MapLibre's classifyRings + earcut on all fixtures (must stay 35/35)
 npm run tess:node         # decode + tessellation vs MapLibre WorkerTile.parse in Node
 npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/WebKit
+npm run worker:browser    # worker process_tile per fixture, cold and warm, in three browsers
+npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style)
+npm run example           # serve the repo; open http://127.0.0.1:8080/examples/basic/
 ```
 
 Bench entry points that import TypeScript or MapLibre sources run through `node lib/run-bundled.mjs <entry>`; the MoonBit side of every mvt/tess bench is the single export package `bench/entry`.
@@ -75,6 +78,9 @@ Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← w
 
 - `core`, `pbf`, `mvt`, `tess`, `style` are pure MoonBit and must pass tests on every backend.
 - `worker` ships as **wasm-gc** (decided in Phase 0). Tile bytes and output buffers cross the JS boundary through a linear-memory region managed by the worker, using inline-wasm load/store. Keep that wasm-gc-specific I/O inside `worker/` only. Do not pass data element-by-element through exported functions: per-element calls on GC arrays were 5–50× slower in Phase 0 benchmarks.
+- Tile pipeline: `map` (main thread) asks a worker for a tile → `worker/js/worker.mjs` fetches it, places it in linear memory and calls the wasm-gc exports of `worker` (`prepare_input`, `init_style`, `process_tile`, `output_addr`) → `TileProcessor` decodes, tessellates and packs every fill/line layer of the style into one `PackedTile` blob (header of `LAYER_ENTRY_WORDS` u32s per layer, Int16 positions, 16- or 32-bit indices, coordinates rescaled to `@core.TILE_EXTENT`; layers with the same geometry, like a road and its casing, share one buffer) → the glue slices it into ArrayBuffers and transfers them → `render_webgl2` uploads them as they are. In wasm-gc the blob is written in place in linear memory (`store_memory.mbt`); other targets use an array (`store_array.mbt`). The linear-memory files are wasm-gc only: in the wasm backend MoonBit's own heap lives in linear memory. The main thread never touches geometry (VISION §4-3).
+- `map` must not import `worker` (it would pull mvt/tess into the main bundle); shared constants live in `core` or are mirrored with a pointer to the original. `style` currently parses only what Phase 3 draws (constant paint, `geometry-type` filters) and reports anything else as `Unsupported` with its JSON path.
+- Camera math and tile covering live in `core` (`Transform`), pure and tested on all targets; `map` only wires DOM events, workers and the frame loop (renders on demand, falls back to a loaded ancestor clipped by scissor or loaded children).
 - `render_webgl2` and `map` are js-target only (`supported_targets = "js"`). On the js backend `FixedArray[Byte]`/`Bytes` are `Uint8Array`, but `FixedArray[Float]` is a plain JS `Array`, so GPU buffers need `extern "js"` typed-array wrappers.
 - `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side).
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
@@ -88,6 +94,9 @@ Backend facts measured so far (see PROGRESS.md):
 - wasm (linear memory) uses refcount + TLSF and is 6–9× slower than wasm-gc/JS on allocation-heavy code.
 - `wasm-opt -O3` made the wasm-gc mvt decoder 12–45% *slower* in every browser; do not run it on wasm-gc builds. For wasm (linear memory) it helps only on Node 22, whose older V8 does not inline small wasm functions (flags in `bench/backend/opt.mjs`).
 - In hot loops `FixedArray` beats `Array` (an `Array` access also loads and checks its length): switching earcut's node pool cut its time by about 25%. Prefer incremental rotation over per-vertex `sin`/`cos`/`atan2` (it made line extrusion about 40% faster).
+- V8 does not switch a running wasm call to optimized code, so a worker's first tile runs in baseline code (about 3–5× slower than warm). Warming up with a synthetic tile at init did not help first render in measurements and was removed.
+- Sharing one buffer between layers with the same geometry and packing in place instead of copying made `process_tile` 23–27% faster (median tile) and the output 17% smaller. Compiling the worker wasm once on the main thread and sending the module to every worker made no difference to first render and was reverted.
+- Line output size matters more than tessellation speed: round caps are square extensions that the line shader cuts with `length(side, along)`, and layers with at most 65536 vertices use 16-bit indices; together they cut the center tile's packed size from 2.0 MB to 0.8 MB and `process_tile` from 5.4 to 3.2 ms.
 - Copying linear memory into GC `Bytes` is fast when done 4 bytes per load into a `FixedArray[Byte]` and reinterpreted (`bench/entry/linear_memory.mbt`); `Bytes::makei` calls a closure per byte and is 2–6× slower.
 
 ## 5. Benchmark gotchas
@@ -129,10 +138,16 @@ A `.mbt` file over ~500 lines is a smell, not a rule. Split only at a logical bo
 - Tests assert on values, not just shapes.
 - Tests pass on all four targets.
 
-### 7.5 Performance invariants
-- Hot paths (pbf/mvt decode, tessellation, per-frame rendering) stay allocation-free and write into preallocated `FixedArray`/`Bytes` (VISION §4).
+### 7.5 Performance
+Invariants:
+- Hot paths (pbf/mvt decode, tessellation, worker packing, per-frame rendering) stay allocation-free and write into preallocated `FixedArray`/`Bytes` (VISION §4).
 - A refactor touching a hot path reruns the relevant bench and records any regression in PROGRESS.md before merging.
 - Bundle size is a budget (VISION §2), so a refactor must not add dependencies or runtime code to the main-thread bundle without measuring.
+
+Speed opportunities — every refactor also looks for measurable wins in the code it covers:
+- Find the cost first: profile or break the bench down (per-stage rows, `--output-wat` for wasm-gc) instead of guessing. Known traps: `raise` on hot paths, `Array` vs `FixedArray` in tight loops, per-element boundary calls, per-vertex trig, oversized output (§4).
+- List each candidate with its expected effect before changing code; keep a change only if the bench shows a win beyond run-to-run noise on the target browsers and no regression elsewhere.
+- Record what was tried in PROGRESS.md, including changes that did not help and were reverted, so they are not retried blindly.
 
 ### 7.6 Documentation freshness
 - PROGRESS.md and VISION.md match the code state.

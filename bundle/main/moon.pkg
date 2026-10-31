@@ -1,0 +1,15 @@
+// JS-facing exports of the main thread; the npm TypeScript facade wraps these.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/map",
+  "t-ujiie-g/mbmap/render_webgl2",
+}
+
+supported_targets = "js"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "js": { "format": "esm" } },
+)

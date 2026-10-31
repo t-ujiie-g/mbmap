@@ -19,6 +19,9 @@ npm run mvt:browser       # 同（3 ブラウザの module Worker 内）
 npm run tess:golden       # 面の三角形分割を MapLibre（classifyRings + earcut）と全 fixture で突き合わせる
 npm run tess:node         # デコード＋テッセレーション速度と MapLibre WorkerTile.parse（Node）
 npm run tess:browser      # 同（3 ブラウザの module Worker 内）
+npm run worker:browser    # Worker の process_tile（冷えた状態・温まった状態）を 3 ブラウザで
+npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
+npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ で配信
 ```
 
 ## entry/ と lib/
@@ -80,3 +83,21 @@ npm run tess:browser      # 同（3 ブラウザの module Worker 内）
   `WorkerTile.parse` を同じ Worker で計測する。MapLibre 側はスタイル式の評価・paint 属性・FeatureIndex・GPU 用
   バッファ詰めまで含むので、mbmap に有利な比較である。JS の `classifyRings + earcut` 行と `decode only` 行の差で
   earcut 単体を比べる。
+
+## render/ — 描画（mbmap と MapLibre）
+
+`examples/basic/style.json`（Phase 3 で読める範囲：定数の paint と geometry-type filter）と同じタイル・
+同じカメラ操作で両エンジンを計測する（Chromium + Metal GPU、1280×800、DPR 2、5 回の中央値）。
+
+- 初回描画：ナビゲーション開始から最初の `idle`（見えているタイルが揃って描かれた）まで。import 完了・
+  地図生成の時刻も記録する。mbmap は `bundle/main` を esbuild で minify したもの（アプリが配信する形）を読む。
+- フレーム：毎フレーム rAF でカメラを設定し（mbmap は `map_set_camera`、MapLibre は `jumpTo`）、
+  パン・ズームの各 3 秒間の rAF 間隔と、フレームごとの rAF コールバック CPU 時間の合計を測る（両エンジンとも
+  描画は rAF 内）。`--uncapped`（vsync なし）では rAF に GPU 同期待ちが入るので CPU 時間は比較に使わない。
+- サイズ：mbmap は minify 後の main bundle と、Worker（グルー JS＋wasm-gc）の gzip -9。
+
+## worker/ — Worker のタイル処理
+
+`worker` パッケージの wasm-gc ビルドが `examples/basic/style.json` で全 fixture を処理する時間（デコード、
+テッセレーション、GPU 用バッファへの書き込みまで）。`cold` は新しいインスタンスが各タイルを 1 回ずつ順に
+処理したもの（ページの最初のタイルに相当）、行の値は温まった後のタイルごとの中央値。出力バイト数も記録する。

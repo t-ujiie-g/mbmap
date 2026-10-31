@@ -1,1 +1,12 @@
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/render_webgl2",
+  "t-ujiie-g/mbmap/style",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
+  "moonbitlang/core/hashset",
+  "moonbitlang/core/math",
+}
+
 supported_targets = "js"
