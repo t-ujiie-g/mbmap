@@ -69,7 +69,10 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 
 - npm パッケージは1つ（`mbmap`）のまま、**subpath exports で入口を分ける**：`mbmap`（表示）、`mbmap/geojson`、`mbmap/analysis`、`mbmap/3d`、`mbmap/components` など。`import` しない入口はバンドルに入らない。
 - データ処理と解析の Wasm は、表示用 Worker とは**別のモジュール**にする。初めて使うときに `import()` で読み込み、専用の Worker で実行する。API は Promise を返す。
-- 入口の分割で増えるのは、主に Wasm モジュールごとの MoonBit ランタイムと core の重複である。この大きさと読み込み時間を Phase 6.5 で測り、分割の粒度を決める。
+- **分割の粒度（Phase 6.5 で計測して決定）**：入口ごとに Wasm モジュールを1つにすることを基本とする（例：`mbmap/analysis` → `analysis.wasm`）。ある機能群の固有のコードが gzip で約 20KB（モジュールごとに重複する core の約3倍）を超えたら、その機能群を別モジュールに切り出す（Clipper2 の移植や座標系変換が候補）。表示用 Worker に解析を入れる一体型にはしない。
+  - 根拠：wasm-gc のモジュールを増やす固定費はほぼ 0（空のモジュールで 0.18KB）。一方で、表示用 Worker と共通の core のコード（三角関数、整数の文字列化など）が、モジュールごとに約 6KB 重複する。読み込みは 1〜2.5ms で、一体型と比べても実行速度は変わらない（PROGRESS.md の Phase 6.5）。
+- **実行場所**：解析は、表示用とは別の専用の Worker で、初めて使うときに読み込む（Worker の起動は 2〜6ms）。長い解析がタイルの処理を待たせない。データは列指向の ArrayBuffer として transfer する。
+- 入口ごとのサイズ予算と、入口の間の参照の制限は `npm/scripts/size.mjs` が CI で確かめる。
 
 ### データの共通形式：列指向
 
