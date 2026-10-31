@@ -78,6 +78,7 @@ Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from ther
 ## 4. Architecture
 
 Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← worker` and `core ← render_webgl2 ← map ← (npm, element) ← adapters`. Nothing under `map/` may depend on a UI framework.
+Planned data/analysis/3D packages (VISION §3) ship as separate npm entry points with their own lazily loaded wasm and size budgets: `map` must never import them, and they exchange data with the display only through columnar (GeoArrow-compatible) buffers.
 
 - `core`, `pbf`, `mvt`, `tess`, `style` are pure MoonBit and must pass tests on every backend.
 - `worker` ships as **wasm-gc** (decided in Phase 0). Tile bytes and output buffers cross the JS boundary through a linear-memory region managed by the worker, using inline-wasm load/store. Keep that wasm-gc-specific I/O inside `worker/` only. Do not pass data element-by-element through exported functions: per-element calls on GC arrays were 5–50× slower in Phase 0 benchmarks.
