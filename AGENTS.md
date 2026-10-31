@@ -37,7 +37,12 @@ npm test                  # Node tests for bench tooling (lib/*.test.mjs)
 npm run mvt:golden        # mvt vs @mapbox/vector-tile on all fixtures (must stay 35/35)
 npm run mvt:node          # mvt decode bench in Node
 npm run mvt:browser       # same, inside a module Worker in Chromium/Firefox/WebKit
+npm run tess:golden       # fills vs MapLibre's classifyRings + earcut on all fixtures (must stay 35/35)
+npm run tess:node         # decode + tessellation vs MapLibre WorkerTile.parse in Node
+npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/WebKit
 ```
+
+Bench entry points that import TypeScript or MapLibre sources run through `node lib/run-bundled.mjs <entry>`; the MoonBit side of every mvt/tess bench is the single export package `bench/entry`.
 
 Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from there (VISION §2: never claim "fast" without a reproducible script).
 
@@ -75,13 +80,15 @@ Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← w
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 
 - `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and its `error()` is checked once at a boundary. Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
+- `tess` triangulates fills with a port of earcut 3.2.4 whose output matches the JS library exactly, after grouping rings like MapLibre's `classifyRings`, and extrudes lines into quads plus join/cap geometry (vertex layout in `LINE_VERTEX_STRIDE`). Tessellators and buffers are reusable objects so steady-state use does not allocate.
 - `mvt` decodes layer tables, feature headers and tags in `Tile::parse` (raising `MvtError` once per tile) and stores features column-wise; per-feature calls take an index (`layer.decode_geometry(i, out)`, `layer.property(i, key)`) and don't raise. Geometry is decoded lazily into a reusable `Geometry` buffer.
 
 Backend facts measured so far (see PROGRESS.md):
 - **In wasm-gc every call to a `raise` function allocates its result object, even on success.** Keep `raise` off hot paths: report errors through sticky state or return values, and raise only at coarse boundaries. This alone made the mvt decoder go from 1.3–2.2× slower than JS to faster than JS.
 - wasm (linear memory) uses refcount + TLSF and is 6–9× slower than wasm-gc/JS on allocation-heavy code.
 - `wasm-opt -O3` made the wasm-gc mvt decoder 12–45% *slower* in every browser; do not run it on wasm-gc builds. For wasm (linear memory) it helps only on Node 22, whose older V8 does not inline small wasm functions (flags in `bench/backend/opt.mjs`).
-- Copying linear memory into GC `Bytes` is fast when done 4 bytes per load into a `FixedArray[Byte]` and reinterpreted (`bench/mvt/entry/linear_memory.mbt`); `Bytes::makei` calls a closure per byte and is 2–6× slower.
+- In hot loops `FixedArray` beats `Array` (an `Array` access also loads and checks its length): switching earcut's node pool cut its time by about 25%. Prefer incremental rotation over per-vertex `sin`/`cos`/`atan2` (it made line extrusion about 40% faster).
+- Copying linear memory into GC `Bytes` is fast when done 4 bytes per load into a `FixedArray[Byte]` and reinterpreted (`bench/entry/linear_memory.mbt`); `Bytes::makei` calls a closure per byte and is 2–6× slower.
 
 ## 5. Benchmark gotchas
 

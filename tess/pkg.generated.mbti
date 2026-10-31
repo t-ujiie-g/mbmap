@@ -1,11 +1,77 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/tess"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
+pub const EXTRUDE_SCALE : Int32 = 63
+
+pub const LINE_VERTEX_STRIDE : Int32 = 5
+
+pub const MAX_MITER_LIMIT : Double = 2.0
+
+pub const MAX_POLYGON_RINGS : Int32 = 500
+
+pub fn deviation(ArrayView[Int32], ArrayView[Int32], ArrayView[Int32]) -> Double
+
+pub fn ring_area(ArrayView[Int32], Int32, Int32) -> Double
 
 // Errors
 
 // Types and methods
+pub struct Earcut {
+  // private fields
+}
+pub fn Earcut::new() -> Self
+pub fn Earcut::triangulate(Self, ArrayView[Int32], ArrayView[Int32], Array[Int32]) -> Unit
+
+pub struct FillBuffers {
+  vertices : Array[Int32]
+  indices : Array[Int32]
+}
+pub fn FillBuffers::clear(Self) -> Unit
+pub fn FillBuffers::new() -> Self
+pub fn FillBuffers::num_vertices(Self) -> Int32
+
+pub struct FillTessellator {
+  // private fields
+}
+pub fn FillTessellator::add_polygons(Self, ArrayView[Int32], ArrayView[Int32], FillBuffers) -> Unit
+pub fn FillTessellator::new() -> Self
+
+pub struct LineBuffers {
+  vertices : Array[Int32]
+  indices : Array[Int32]
+}
+pub fn LineBuffers::clear(Self) -> Unit
+pub fn LineBuffers::new() -> Self
+pub fn LineBuffers::num_vertices(Self) -> Int32
+
+pub(all) enum LineCap {
+  Butt
+  Square
+  Round
+} derive(Eq, @debug.Debug)
+pub fn LineCap::equal(Self, Self) -> Bool
+pub fn LineCap::not_equal(Self, Self) -> Bool
+pub fn LineCap::to_repr(Self) -> @debug.Repr
+
+pub(all) enum LineJoin {
+  Miter
+  Bevel
+  Round
+} derive(Eq, @debug.Debug)
+pub fn LineJoin::equal(Self, Self) -> Bool
+pub fn LineJoin::not_equal(Self, Self) -> Bool
+pub fn LineJoin::to_repr(Self) -> @debug.Repr
+
+pub struct LineTessellator {
+  // private fields
+}
+pub fn LineTessellator::add_line(Self, ArrayView[Int32], Int32, Int32, LineBuffers, join? : LineJoin, cap? : LineCap, miter_limit? : Double, round_limit? : Double) -> Unit
+pub fn LineTessellator::new() -> Self
 
 // Type aliases
 

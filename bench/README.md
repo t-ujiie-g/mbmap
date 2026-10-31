@@ -16,7 +16,17 @@ npm test                  # ベンチ用ツール（lib/）のテスト
 npm run mvt:golden        # mvt を @mapbox/vector-tile と全 fixture で突き合わせる
 npm run mvt:node          # mvt デコード速度（Node）
 npm run mvt:browser       # 同（3 ブラウザの module Worker 内）
+npm run tess:golden       # 面の三角形分割を MapLibre（classifyRings + earcut）と全 fixture で突き合わせる
+npm run tess:node         # デコード＋テッセレーション速度と MapLibre WorkerTile.parse（Node）
+npm run tess:browser      # 同（3 ブラウザの module Worker 内）
 ```
+
+## entry/ と lib/
+
+- `entry/`：mvt / tess ベンチと黄金テストが呼ぶ MoonBit の公開面（`#export_name`）。js と wasm-gc でビルドし、
+  `lib/entry.mjs` で読み込む。wasm-gc ではタイルを線形メモリに置き、wasm 内で `Bytes` へコピーしてから処理する。
+- `lib/`：静的サーバー、fixture の読み込み（`fixtures.mjs`、Node 用は `node-io.mjs`）、行ごとの計測（`rows.mjs`）、
+  Worker ベンチの実行（`worker-bench.mjs`）、esbuild 設定（`bundle.mjs`。`maplibre-src` で MapLibre の TS ソースを参照）。
 
 ## backend/ — Wasm バックエンド比較（Phase 0）
 
@@ -52,11 +62,21 @@ npm run mvt:browser       # 同（3 ブラウザの module Worker 内）
 
 ## mvt/ — MVT デコーダの黄金テストと速度
 
-`entry/`（`#export_name` で公開）を js と wasm-gc でビルドして使う。
-
 - `golden.mjs`：全 fixture を js ビルドの `tile_to_json` でデコードし、`@mapbox/vector-tile` の出力と
   レイヤー version / extent、全地物の id / type / properties / geometry まで完全比較。wasm-gc ビルドは
   点数・プロパティ数・座標総和を照合する。
 - `node.mjs` / `browser.mjs`：各実装が「パース＋全地物のプロパティ＋全ジオメトリ」を行う時間を
   タイルごとに計測。wasm-gc は「JS → 線形メモリ → wasm 内で `Bytes` へコピー」まで含む。
   `parse only` / `+ properties` / `+ geometry` は wasm-gc の内訳（いずれもコピー込み）。
+
+## tess/ — テッセレーションの黄金テストと速度
+
+- `golden.mjs`：全 fixture の全ポリゴン地物について、MapLibre の塗りの処理（`classifyRings(geometry, 500)` →
+  ポリゴンごとに earcut 3.2.4）と、mbmap の `FillTessellator` の頂点・インデックスを地物ごとの FNV ハッシュで
+  比較する（js ビルドは地物ごと、wasm-gc ビルドはタイル全体）。同じ三角形分割に対し earcut の `deviation`
+  （面積の相対誤差）も報告する。
+- `node.mjs` / `browser.mjs`：`maplibre/style.json` が描く内容（面レイヤーのポリゴン、線レイヤーの線をスタイルの
+  filter / join / cap どおりに）を mbmap でデコード＋テッセレーションする時間と、同じスタイルでの MapLibre
+  `WorkerTile.parse` を同じ Worker で計測する。MapLibre 側はスタイル式の評価・paint 属性・FeatureIndex・GPU 用
+  バッファ詰めまで含むので、mbmap に有利な比較である。JS の `classifyRings + earcut` 行と `decode only` 行の差で
+  earcut 単体を比べる。

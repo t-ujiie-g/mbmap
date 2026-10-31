@@ -2,15 +2,15 @@
 // @mapbox/vector-tile's output, and the wasm-gc build must agree on the totals.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import { ROOT } from "../lib/root.mjs";
-import { referenceJson, referenceTotals, loadWasmGc } from "./reference.mjs";
+import { loadEntry } from "../lib/entry.mjs";
+import { nodeFetchBytes, nodeImportJs } from "../lib/node-io.mjs";
+import { referenceJson, referenceTotals } from "./reference.mjs";
 
 const manifest = JSON.parse(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap.manifest.json"), "utf8"));
-const mbt = await import(pathToFileURL(path.join(ROOT, "_build/js/release/build/bench/mvt/entry/entry.js")).href);
-const gc = await loadWasmGc((rel) => readFile(path.join(ROOT, rel)));
+const { mbtJs: mbt, gc } = await loadEntry(nodeFetchBytes, nodeImportJs);
 
 function firstDiff(a, b, where = "") {
   if (typeof a !== typeof b || Array.isArray(a) !== Array.isArray(b)) return `${where}: ${JSON.stringify(a)?.slice(0, 80)} vs ${JSON.stringify(b)?.slice(0, 80)}`;
@@ -31,7 +31,8 @@ for (const key of Object.keys(manifest.tiles)) {
   if (text.startsWith("error:")) { failures++; console.log(`FAIL ${key}: ${text}`); continue; }
   const diff = firstDiff(JSON.parse(text), ref);
   const totals = referenceTotals(new VectorTile(new PbfReader(buf)));
-  const gcTotals = gc.decode(buf);
+  const e = gc.exports;
+  const gcTotals = { points: e.decode_mem(gc.copyIn(buf), buf.length), properties: e.last_properties(), coordSum: e.last_coord_sum() };
   const totalsOk = gcTotals.points === totals.points && gcTotals.properties === totals.properties && gcTotals.coordSum === totals.coordSum;
   for (const l of Object.values(ref)) features += l.features.length;
   if (diff || !totalsOk) {
