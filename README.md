@@ -31,6 +31,7 @@ moon fmt && moon info
 | `geojson_worker/` | GeoJSON ソースの Worker（読み込みとタイル分割） | wasm-gc |
 | `analysis_worker/` | 解析の Worker（データセットをハンドルで保持） | wasm-gc |
 | `wasmio/` | wasm-gc の Worker が JS とやりとりする線形メモリの入出力 | wasm-gc |
+| `label/` | ラベルの配置（グリフのアトラス、重なりを判定する画面のグリッド） | 全 |
 | `render_webgl2/` | WebGL2 FFI、シェーダ、描画パス | js |
 | `map/` | カメラ、入力、タイル選択、フレームループ（公開 MoonBit API） | js |
 

@@ -43,6 +43,8 @@ priv struct Paint {
   radius : Double
   stroke : FixedArray[Double]
   stroke_width : Double
+  halo : FixedArray[Double]
+  halo_width : Double
 }
 
 ///|
@@ -66,6 +68,7 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
   let c = color_of(layer.color, zoom, ctx)
   let opacity = number_or(layer.opacity.eval(zoom, ctx), 1.0)
   let circle = layer.kind is Circle
+  let symbol = layer.kind is Symbol
   let stroke : FixedArray[Double] = if circle {
     let s = color_of(layer.stroke_color, zoom, ctx)
     let o = number_or(layer.stroke_opacity.eval(zoom, ctx), 1.0)
@@ -87,6 +90,17 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
     stroke,
     stroke_width: if circle {
       number_or(layer.stroke_width.eval(zoom, ctx), 0.0)
+    } else {
+      0.0
+    },
+    halo: if symbol {
+      let h = color_of(layer.halo_color, zoom, ctx)
+      [h.r, h.g, h.b, h.a * opacity]
+    } else {
+      [0.0, 0.0, 0.0, 0.0]
+    },
+    halo_width: if symbol {
+      number_or(layer.halo_width.eval(zoom, ctx), 0.0)
     } else {
       0.0
     },

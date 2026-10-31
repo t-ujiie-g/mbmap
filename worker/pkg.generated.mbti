@@ -15,6 +15,8 @@ pub const KIND_FILL : Int32 = 1
 
 pub const KIND_LINE : Int32 = 2
 
+pub const KIND_SYMBOL : Int32 = 4
+
 pub const LAYER_ENTRY_WORDS : Int32 = 9
 
 pub const LINE_VERTEX_BYTES : Int32 = 8

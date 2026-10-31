@@ -83,6 +83,11 @@
         "circle-stroke-width": 1,
         "circle-stroke-color": "#ffffff"
       }
+    },
+    {
+      "id": "label", "type": "symbol", "source": "gsi", "source-layer": "label",
+      "layout": { "text-field": "{knj}", "text-size": 12, "text-max-width": 8 },
+      "paint": { "text-color": "#333333", "text-halo-color": "#ffffff", "text-halo-width": 1.5 }
     }
   ]
 }

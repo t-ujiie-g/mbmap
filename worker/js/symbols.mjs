@@ -1,0 +1,132 @@
+// Symbol layer entries: labels from the wasm (docs/FORMATS.md, "Labels") laid
+// out into glyph quads, with SDF glyphs drawn here by TinySDF.
+import TinySDF from "./tiny-sdf.mjs";
+import { layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
+
+// Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
+export const SYMBOL_VERTEX_BYTES = 16;
+// Floats per label in an entry's `labels`.
+export const LABEL_FLOATS = 8;
+// Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
+export const MAX_LABEL_CHARS = 256;
+
+const decoder = new TextDecoder();
+
+// SDF glyphs of one font, drawn once per worker; `fresh` lists the ones the
+// main thread has not been sent yet.
+export class Glyphs {
+  constructor(fontFamily) {
+    this.fontFamily = fontFamily;
+    this.sdf = null;
+    this.cache = new Map();
+    this.fresh = new Set();
+  }
+
+  metrics(cp) {
+    let g = this.cache.get(cp);
+    if (!g) {
+      this.sdf ??= new TinySDF({ fontSize: SDF_SIZE, buffer: SDF_BUFFER, radius: SDF_RADIUS, cutoff: 0.25, fontFamily: this.fontFamily });
+      const d = this.sdf.draw(String.fromCodePoint(cp));
+      g = { advance: d.glyphAdvance, left: d.glyphLeft - SDF_BUFFER, top: d.glyphTop + SDF_BUFFER, width: d.width, height: d.height, data: d.data };
+      this.cache.set(cp, g);
+      this.fresh.add(cp);
+    }
+    return g;
+  }
+
+  // The glyphs drawn since the last call, as transferable bitmaps.
+  take() {
+    const out = [];
+    for (const cp of this.fresh) {
+      const g = this.cache.get(cp);
+      out.push({ cp, width: g.width, height: g.height, data: new Uint8Array(g.data.buffer.slice(0)) });
+    }
+    this.fresh.clear();
+    return out;
+  }
+}
+
+// setInt16 wraps around, so offsets past its range are clamped.
+const quarterPixels = (px) => Math.max(-32768, Math.min(32767, Math.round(px * 4)));
+
+function readText(view, bytes, at, parts) {
+  let text = "";
+  for (let p = 0; p < parts; p++) {
+    const tag = view.getUint8(at++);
+    if (tag === 3) {
+      text += String(view.getFloat64(at, true));
+      at += 8;
+    } else if (tag === 4) {
+      const n = view.getUint32(at, true);
+      text += decoder.decode(bytes.subarray(at + 4, at + 4 + n));
+      at += 4 + n;
+    } else if (tag === 1 || tag === 2) {
+      text += tag === 2 ? "true" : "false";
+    }
+  }
+  return [text, at];
+}
+
+// One symbol entry: `bytes` are its labels; returns the entry's buffers.
+export function buildSymbols(bytes, glyphs) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const layout = {
+    anchor: view.getUint8(0),
+    offset: [view.getFloat64(4, true), view.getFloat64(12, true)],
+    maxWidth: view.getFloat64(20, true),
+    lineHeight: view.getFloat64(28, true),
+  };
+  const flags = { allowOverlap: view.getUint8(1) === 1, ignorePlacement: view.getUint8(2) === 1, padding: view.getFloat64(36, true) };
+  const count = view.getUint32(44, true);
+  const placed = [];
+  const local = new Map();
+  let quads = 0;
+  let at = 48;
+  for (let i = 0; i < count; i++) {
+    const x = view.getInt16(at, true);
+    const y = view.getInt16(at + 2, true);
+    const size = view.getFloat64(at + 4, true);
+    const parts = view.getUint32(at + 12, true);
+    let text;
+    [text, at] = readText(view, bytes, at + 16, parts);
+    const chars = [...text];
+    if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
+    const shaped = layoutLabel(text, Math.min(size, 256), layout, (cp) => glyphs.metrics(cp));
+    if (shaped.quads.length === 0) continue;
+    for (const q of shaped.quads) if (!local.has(q.cp)) local.set(q.cp, local.size);
+    placed.push({ x, y, size, shaped, first: quads });
+    quads += shaped.quads.length;
+  }
+  const vertices = new ArrayBuffer(quads * 4 * SYMBOL_VERTEX_BYTES);
+  const v = new DataView(vertices);
+  const wide = quads * 4 > 65536;
+  const indices = wide ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6);
+  const labels = new Float32Array(placed.length * LABEL_FLOATS);
+  placed.forEach((l, i) => {
+    labels.set([l.x, l.y, ...l.shaped.box, l.first * 6, l.shaped.quads.length * 6], i * LABEL_FLOATS);
+    l.shaped.quads.forEach((q, k) => {
+      const n = l.first + k;
+      const corners = [[q.x0, q.y0], [q.x1, q.y0], [q.x1, q.y1], [q.x0, q.y1]];
+      corners.forEach(([cx, cy], c) => {
+        const o = (n * 4 + c) * SYMBOL_VERTEX_BYTES;
+        v.setInt16(o, l.x, true);
+        v.setInt16(o + 2, l.y, true);
+        v.setInt16(o + 4, quarterPixels(cx), true);
+        v.setInt16(o + 6, quarterPixels(cy), true);
+        v.setUint16(o + 8, local.get(q.cp), true);
+        v.setUint16(o + 10, c, true);
+        v.setUint16(o + 12, Math.round(l.size * 16), true);
+      });
+      indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * 6);
+    });
+  });
+  return {
+    vertices,
+    indices: indices.buffer,
+    count: indices.length,
+    indexBytes: wide ? 4 : 2,
+    labels,
+    codepoints: Uint32Array.from(local.keys()),
+    ...flags,
+  };
+}

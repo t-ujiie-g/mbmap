@@ -66,3 +66,9 @@ pub extend SourceKind with @debug.Debug::{to_repr}
 
 ///|
 pub extend SourceKind with Eq::{not_equal, equal}
+
+///|
+pub extend TextAnchor with @debug.Debug::{to_repr}
+
+///|
+pub extend TextAnchor with Eq::{not_equal, equal}

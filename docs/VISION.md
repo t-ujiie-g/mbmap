@@ -63,6 +63,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `analysis/` … 空間索引（flatbush の移植）、計測・点の内外判定（Turf.js と同じ値）、空間クエリ、集計
 - `analysis_worker/` … `mbmap/analysis` の Worker のエントリ（`formats` と `analysis`）。データセットをハンドルで保持する
 - `wasmio/` … wasm-gc 専用。`geojson_worker` と `analysis_worker` が JS とやりとりする線形メモリの入出力
+- `label/` … ラベルの配置。グリフのアトラスの詰め込み、重なりを判定する画面のグリッド
 - `render_webgl2/` … js ターゲット。WebGL2 への FFI、シェーダ、描画パス
 - `map/` … カメラ、入力（パン/ピンチ/ホイール）、タイル選択とキャッシュ、フレームループ。**公開 MoonBit API の本体**
 - `npm/` … TS ファサード、`.d.ts`、ビルド・パッケージング

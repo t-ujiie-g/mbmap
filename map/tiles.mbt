@@ -100,6 +100,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
       self.finish(request, None)
     }
     "tile" => {
+      self.take_glyphs(msg)
       let request = get_int(msg, "id")
       guard self.requests.get(request) is Some(_) else { return }
       let meshes : Array[LayerMesh] = []
@@ -107,15 +108,21 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         let l = layer_at(msg, i)
         let shared = get_int(l, "shared")
         let kind = get_int(l, "kind")
-        let mesh = if shared >= 0 && shared < meshes.length() {
-          meshes[shared].mesh
+        let (mesh, labels) = if kind == KIND_SYMBOL {
+          let (mesh, labels) = self.symbol_mesh(l)
+          (mesh, Some(labels))
+        } else if shared >= 0 && shared < meshes.length() {
+          (meshes[shared].mesh, None)
         } else {
-          self.renderer.upload(
-            kind != KIND_FILL,
-            buffer_of(l, "vertices"),
-            buffer_of(l, "indices"),
-            get_int(l, "count"),
-            get_int(l, "indexBytes"),
+          (
+            self.renderer.upload(
+              kind != KIND_FILL,
+              buffer_of(l, "vertices"),
+              buffer_of(l, "indices"),
+              get_int(l, "count"),
+              get_int(l, "indexBytes"),
+            ),
+            None,
           )
         }
         let props = props_or_null(l)
@@ -130,6 +137,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
             Some({ obj: props, })
           },
           paint: None,
+          labels,
         })
       }
       self.finish(request, Some(meshes))

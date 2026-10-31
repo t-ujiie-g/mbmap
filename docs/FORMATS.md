@@ -34,6 +34,33 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.
   The glue decodes them into prototype-less objects.
 
+## Labels (`worker/labels.mbt`, read by `worker/js/symbols.mjs`)
+
+A symbol layer entry (`KIND_SYMBOL` 4) of the packed tile keeps its labels in its
+vertex range (no indices):
+
+- u8 text anchor (`center`, `left`, `right`, `top`, `bottom`, `top-left`,
+  `top-right`, `bottom-left`, `bottom-right`), u8 allow overlap, u8 ignore
+  placement, u8 0;
+- f64 offset x, offset y, max width, line height (ems), padding (px); u32 label count;
+- per label: i16 anchor x, y (`TILE_EXTENT` units, inside the tile), f64 text size
+  (px), u32 part count, then each part of the text as a property value (numbers and
+  booleans are written out by the glue).
+
+## Symbol vertices (`worker/js/symbols.mjs`)
+
+What the display worker sends for a symbol entry, 16 bytes per vertex, 4 per glyph
+quad (corners top-left, top-right, bottom-right, bottom-left):
+
+- i16 anchor x, y (`TILE_EXTENT` units);
+- i16 corner offset x, y from the anchor in quarter CSS pixels, y down;
+- u16 glyph index into the entry's `codepoints` and u16 corner (0-3), which the main
+  thread turns into atlas pixel coordinates before upload;
+- u16 text size in 1/16 px, u16 0.
+
+`labels` holds 8 floats per label: anchor x, y, its text box (min x, min y, max x,
+max y in CSS px from the anchor), first index and index count of its quads.
+
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 
 A GeoJSON source's tile, from the GeoJSON worker to a display worker:
@@ -62,7 +89,8 @@ A `@geom.Table` without feature ids:
 
 In:
 
-- `{type: "init", wasm, style}`: the wasm URL and the style JSON text.
+- `{type: "init", wasm, style, font}`: the wasm URL, the style JSON text and the
+  CSS font family labels are drawn in.
 - `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
   the index in the style's sources).
 - `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
@@ -72,10 +100,14 @@ In:
 Out:
 
 - `{type: "ready"}`, `{type: "error", message}`.
-- `{type: "tile", id, layers}`: per entry `{layer, kind, vertices, indices, count,
-  indexBytes, shared, props}`. Buffers are transferred, never copied; `shared` is
-  the index of an earlier entry whose buffers it reuses (or -1); `props` the group
-  properties (or null).
+- `{type: "tile", id, layers, glyphs}`: per entry `{layer, kind, vertices, indices,
+  count, indexBytes, shared, props}`. Buffers are transferred, never copied;
+  `shared` is the index of an earlier entry whose buffers it reuses (or -1); `props`
+  the group properties (or null). Symbol entries add `labels`, `codepoints`
+  (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`. `glyphs` are the
+  SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
+  byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
+  worker, so the main thread takes them even from tiles it no longer wants.
 - `{type: "tile-error", id, message}`.
 
 ## GeoJSON worker messages (`geojson_worker/js/worker.mjs`)

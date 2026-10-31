@@ -16,7 +16,7 @@ const ENTRIES = [
   { name: "mbmap", files: ["index.js"], budget: 50_000, references: ["./geojson.js", "./worker.js", "./mbmap.wasm"] },
   { name: "GeoJSON sources (loaded by mbmap when a style has one)", files: ["geojson.js"], budget: 5_000, references: ["./geojson-worker.js", "./geojson.wasm"] },
   { name: "mbmap/element (on top of mbmap)", files: ["element.js"], budget: 5_000, references: ["./index.js"] },
-  { name: "display worker", files: ["worker.js", "mbmap.wasm"], budget: 80_000, references: [] },
+  { name: "display worker", files: ["worker.js", "mbmap.wasm"], budget: 90_000, references: [] },
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
   { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./analysis-worker.js", "./analysis.wasm"] },
   { name: "analysis worker", files: ["analysis-worker.js", "analysis.wasm"], budget: 30_000, references: [] },

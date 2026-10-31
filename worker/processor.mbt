@@ -9,6 +9,7 @@ pub struct TileProcessor {
   priv line : @tess.LineTessellator
   priv fill_pool : Array[@tess.FillBuffers]
   priv line_pool : Array[@tess.LineBuffers]
+  priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
   priv mut error : String
@@ -23,6 +24,7 @@ pub fn TileProcessor::new(style : @style.Style) -> TileProcessor {
     line: @tess.LineTessellator::new(),
     fill_pool: [],
     line_pool: [],
+    label_pool: [],
     geometry: @mvt.Geometry::new(),
     inputs: style.layers.map(paint_inputs),
     error: "",
@@ -81,6 +83,7 @@ fn passes(filter : @style.Expr?, feature : FeatureRef, zoom : Double) -> Bool {
 /// half widths, so layers that differ only in paint (like a road and its
 /// casing) share one.
 fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
+  !(a.kind is Symbol) &&
   a.kind == b.kind &&
   a.source == b.source &&
   a.source_layer == b.source_layer &&
@@ -166,6 +169,7 @@ pub fn TileProcessor::process(
     let ok = match sl.kind {
       Fill => self.fill_layer(index, sl, layer, zoom, groups)
       Circle => self.circle_layer(index, sl, layer, zoom, groups)
+      Symbol => self.symbol_layer(index, sl, layer, zoom, groups)
       _ => self.line_layer(index, sl, layer, zoom, groups)
     }
     if !ok {

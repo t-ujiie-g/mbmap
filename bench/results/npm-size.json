@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 27287,
+      "bytes": 32155,
       "budget": 50000
     },
     {
@@ -21,8 +21,8 @@
     },
     {
       "name": "display worker",
-      "bytes": 76122,
-      "budget": 80000
+      "bytes": 82132,
+      "budget": 90000
     },
     {
       "name": "GeoJSON worker",

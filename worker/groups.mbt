@@ -20,6 +20,7 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
         sl.stroke_color,
         sl.stroke_opacity,
       ]
+    Symbol => [sl.color, sl.opacity, sl.halo_color, sl.halo_width]
     _ => [sl.color, sl.opacity]
   }
   for e in exprs {

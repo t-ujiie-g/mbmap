@@ -1,0 +1,5 @@
+// Label placement on the main thread: the glyph atlas's packing and the screen
+// grid that keeps labels from overlapping. Pure MoonBit, tested on every backend.
+import {
+  "moonbitlang/core/cmp",
+}

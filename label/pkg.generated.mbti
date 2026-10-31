@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/label"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Atlas {
+  width : Int32
+  height : Int32
+  // private fields
+}
+pub fn Atlas::new(Int32, Int32) -> Self
+pub fn Atlas::place(Self, Int32, Int32, Int32) -> (Int32, Int32)?
+pub fn Atlas::rect(Self, Int32) -> (Int32, Int32, Int32, Int32)?
+
+pub struct Grid {
+  // private fields
+}
+pub fn Grid::hits(Self, Double, Double, Double, Double) -> Bool
+pub fn Grid::insert(Self, Double, Double, Double, Double) -> Unit
+pub fn Grid::new(Double, Double, cell? : Double) -> Self
+
+// Type aliases
+
+// Traits

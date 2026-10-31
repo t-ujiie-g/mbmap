@@ -43,7 +43,7 @@
     "build": "node scripts/build.mjs",
     "size": "node scripts/size.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test test/*.test.ts ../element/*.test.ts"
+    "test": "node --test test/*.test.ts ../element/*.test.ts ../worker/js/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

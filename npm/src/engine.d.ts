@@ -18,6 +18,7 @@ declare module "mbmap-engine" {
     wasmUrl: string,
     workers: number,
     geojson: Provider | null,
+    font: string,
   ): EngineMap;
   export function map_camera(map: EngineMap): { lng: number; lat: number; zoom: number; bearing: number; pitch: number };
   export function map_set_camera(map: EngineMap, lng: number, lat: number, zoom: number, bearing: number, pitch: number): void;

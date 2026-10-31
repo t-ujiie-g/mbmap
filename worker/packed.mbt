@@ -11,6 +11,11 @@ pub const KIND_LINE : Int32 = 2
 pub const KIND_CIRCLE : Int32 = 3
 
 ///|
+/// Labels of a symbol layer: the entry's vertex range holds them (docs/FORMATS.md,
+/// "Labels"); the worker glue lays them out into glyph quads.
+pub const KIND_SYMBOL : Int32 = 4
+
+///|
 /// Bytes per packed fill vertex: x, y as Int16.
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
@@ -245,6 +250,24 @@ fn PackedTile::add_extruded(
     )
   }
   self.put_indices(istart, lines.indices, index_bytes)
+  true
+}
+
+///|
+/// Appends a symbol layer's labels (`Labels::bytes`); returns false if the tile
+/// would exceed `MAX_PACKED_BYTES`.
+fn PackedTile::add_labels(
+  self : PackedTile,
+  style_layer : Int32,
+  labels : Bytes,
+) -> Bool {
+  guard self.entry(style_layer, KIND_SYMBOL, labels.length(), 0, 0)
+    is Some((vstart, _, _)) else {
+    return false
+  }
+  for i, b in labels {
+    self.store.set_u8(vstart + i, b.to_int())
+  }
   true
 }
 

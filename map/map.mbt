@@ -15,6 +15,7 @@ priv struct LayerMesh {
   owned : Bool
   props : JsProps?
   mut paint : (Double, Paint)?
+  labels : LabelSet?
 }
 
 ///|
@@ -79,12 +80,19 @@ pub struct Map {
   priv mut rotating : Bool
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
+  priv has_labels : Bool
+  priv atlas : @label.Atlas
+  priv mut atlas_full : Bool
+  priv mut labels_dirty : Bool
+  priv mut placed_camera : @core.Camera?
+  priv mut placed_at : Double
+  priv mut placement_round : Int32
 }
 
 ///|
 /// Creates a map drawing `style_json` into `canvas` with `workers` tile workers
 /// (0 picks half the hardware threads, up to `MAX_WORKERS`); `geojson` gives
-/// GeoJSON sources' tiles.
+/// GeoJSON sources' tiles and `font` is the CSS font family labels are drawn in.
 pub fn Map::new(
   canvas : @render_webgl2.Canvas,
   style_json : String,
@@ -93,6 +101,7 @@ pub fn Map::new(
   wasm_url~ : String,
   workers~ : Int32 = 2,
   geojson~ : Provider = no_provider(),
+  font~ : String = "sans-serif",
 ) -> Map raise MapError {
   let style = @style.Style::from_json(parse_json(style_json)) catch {
     e => raise BadStyle(e)
@@ -135,6 +144,16 @@ pub fn Map::new(
     rotating: false,
     cleanups: [],
     destroyed: false,
+    has_labels: style.layers.iter().any(l => l.kind is Symbol),
+    atlas: @label.Atlas::new(
+      @render_webgl2.ATLAS_SIZE,
+      @render_webgl2.ATLAS_SIZE,
+    ),
+    atlas_full: false,
+    labels_dirty: false,
+    placed_camera: None,
+    placed_at: 0.0,
+    placement_round: 0,
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {
@@ -144,7 +163,7 @@ pub fn Map::new(
   }
   for _ in 0..<count {
     let w = spawn_worker(absolute_url(worker_url), msg => map.on_message(msg))
-    post_init(w, wasm, style_json)
+    post_init(w, wasm, style_json, font)
     map.workers.push(w)
   }
   map.attach_input()

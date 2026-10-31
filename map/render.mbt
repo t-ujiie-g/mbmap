@@ -49,6 +49,9 @@ fn Map::render(self : Map) -> Unit {
     }
     draws_of.set(s.id, draws)
   }
+  if self.placement_due() {
+    self.place_labels(draws_of)
+  }
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
   let zoom = t.camera.zoom
@@ -119,7 +122,20 @@ fn Map::draw_layer(
         p
       }
     }
-    if m.kind == KIND_LINE {
+    if m.labels is Some(s) {
+      // An ancestor standing in for several tiles is drawn once.
+      if s.drawn != self.frame_count {
+        s.drawn = self.frame_count
+        self.renderer.draw_symbols(
+          m.mesh,
+          at,
+          dpr,
+          [p.r, p.g, p.b, p.a],
+          p.halo,
+          p.halo_width * dpr,
+        )
+      }
+    } else if m.kind == KIND_LINE {
       self.renderer.draw_line(m.mesh, at, p.r, p.g, p.b, p.a, p.width * dpr)
     } else if m.kind == KIND_CIRCLE {
       self.renderer.draw_circle(

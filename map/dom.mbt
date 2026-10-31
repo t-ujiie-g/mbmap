@@ -61,8 +61,13 @@ extern "js" fn spawn_worker(
   #|(url, f) => { const w = new Worker(url, { type: "module" }); w.onmessage = (e) => f(e.data); return w; }
 
 ///|
-extern "js" fn post_init(w : Worker, wasm : String, style : String) -> Unit =
-  #|(w, wasm, style) => w.postMessage({ type: "init", wasm, style })
+extern "js" fn post_init(
+  w : Worker,
+  wasm : String,
+  style : String,
+  font : String,
+) -> Unit =
+  #|(w, wasm, style, font) => w.postMessage({ type: "init", wasm, style, font })
 
 ///|
 extern "js" fn post_tile(

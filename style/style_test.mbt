@@ -61,14 +61,15 @@ test "a style keeps its vector sources and drawable layers in order" {
     (gsi.tiles, gsi.min_zoom, gsi.max_zoom),
     (["https://x/{z}/{x}/{y}.pbf"], 4, 16),
   )
-  assert_eq(s.layers.map(l => l.id), ["bg", "water", "road"])
+  assert_eq(s.layers.map(l => l.id), ["bg", "water", "label", "road"])
   let water = s.layers[1]
   assert_eq(
     (water.kind, water.source_layer, water.filter),
     (Fill, "waterarea", None),
   )
   assert_eq(constant(water.opacity), Num(0.5))
-  let road = s.layers[2]
+  assert_eq(s.layers[2].kind, Symbol)
+  let road = s.layers[3]
   assert_eq((road.kind, road.min_zoom), (Line, 12.0))
   assert_eq(constant(road.width), Num(3.0))
   assert_eq(
@@ -281,5 +282,70 @@ test "GeoJSON sources keep MapLibre's options; their data stays outside" {
     } noraise {
       _ => fail("expected an error at \{bad.1}")
     }
+  }
+}
+
+///|
+test "symbol layers read text layout and halo, with MapLibre's defaults" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "a", "type": "symbol", "source": "s", "source-layer": "label",
+      #|   "layout": {"text-field": "{knj} ({n})", "text-size": 12, "text-anchor": "top-left",
+      #|              "text-offset": [0, 1], "text-max-width": 8, "text-allow-overlap": true},
+      #|   "paint": {"text-color": "#ff0000", "text-halo-color": "#ffffff", "text-halo-width": 1.5}},
+      #|  {"id": "b", "type": "symbol",
+      #|   "layout": {"text-field": ["concat", ["get", "a"], "-", ["to-string", ["get", "b"]]]}}
+      #|]}
+    ),
+  )
+  let a = s.layers[0]
+  assert_eq(a.kind, Symbol)
+  let t = a.text.unwrap()
+  assert_eq(t.field, [Get("knj"), Lit(Str(" (")), Get("n"), Lit(Str(")"))])
+  assert_eq(constant(t.size), Num(12.0))
+  assert_eq((t.anchor, t.offset, t.max_width), (TopLeft, (0.0, 1.0), 8.0))
+  assert_eq((t.allow_overlap, t.ignore_placement), (true, false))
+  assert_eq(constant(a.color), Color({ r: 1.0, g: 0.0, b: 0.0, a: 1.0, }))
+  assert_eq(constant(a.halo_width), Num(1.5))
+  let b = s.layers[1].text.unwrap()
+  assert_eq(b.field, [Get("a"), Lit(Str("-")), Get("b")])
+  assert_eq(constant(b.size), Num(16.0))
+  assert_eq(
+    (b.anchor, b.offset, b.max_width, b.line_height, b.padding),
+    (Center, (0.0, 0.0), 10.0, 1.2, 2.0),
+  )
+  assert_eq(
+    constant(s.layers[1].halo_color),
+    Color({ r: 0.0, g: 0.0, b: 0.0, a: 0.0, }),
+  )
+  assert_true(s.layers[1].text is Some(_) && s.layers[0].text is Some(_))
+}
+
+///|
+test "symbol placement on lines, icons and format are unsupported" {
+  let cases = [
+    ("{\"symbol-placement\": \"line\"}", "layers[0].layout.symbol-placement"),
+    ("{\"icon-image\": \"x\"}", "layers[0].layout.icon-image"),
+    ("{\"text-field\": [\"format\", \"a\", {}]}", "layers[0].layout.text-field"),
+  ]
+  for c in cases {
+    let text = "{\"layers\": [{\"id\": \"a\", \"type\": \"symbol\", \"layout\": \{c.0}}]}"
+    try @style.Style::parse(text) catch {
+      Unsupported(path~, _) => assert_eq(path, c.1)
+      e => fail("unexpected \{Repr(e)}")
+    } noraise {
+      _ => fail("expected \{c.0} to be unsupported")
+    }
+  }
+  try
+    @style.Style::parse(
+      "{\"layers\": [{\"id\": \"a\", \"type\": \"symbol\", \"layout\": {\"text-anchor\": \"middle\"}}]}",
+    )
+  catch {
+    Invalid(path~, _) => assert_eq(path, "layers[0].layout.text-anchor")
+    e => fail("unexpected \{Repr(e)}")
+  } noraise {
+    _ => fail("expected an unknown anchor to be invalid")
   }
 }

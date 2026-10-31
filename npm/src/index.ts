@@ -40,6 +40,8 @@ export interface MapOptions {
   /** Like `workerUrl` and `wasmUrl`, for the worker of GeoJSON sources. */
   geojsonWorkerUrl?: string | URL;
   geojsonWasmUrl?: string | URL;
+  /** The CSS font family labels are drawn in, from the fonts the browser has (default "sans-serif"). */
+  fontFamily?: string;
   /** Shows the sources' `attribution` text in a corner (default true). */
   attributionControl?: boolean;
 }
@@ -197,6 +199,7 @@ export class Map {
       wasmUrl(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), page),
       o.workerCount ?? 0,
       geojson,
+      o.fontFamily ?? "sans-serif",
     );
     this.#engine = map;
     engine.map_on_move(map, () => this.#emit("move"));
