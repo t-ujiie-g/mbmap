@@ -28,10 +28,10 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 
 ## API
 
-- `new Map(options)`：`container`、`style`、`center`、`zoom`、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`attributionControl`（既定 true。ソースの `attribution` を文字列として表示する）。
+- `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜60 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`attributionControl`（既定 true。ソースの `attribution` を文字列として表示する）。
   - スタイルがオブジェクトで、描けない内容を含むときは、例外を投げる。URL の場合は `error` イベントになる。
 - `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
-- `getCenter()`、`getZoom()`、`jumpTo({ center, zoom })`、`setCenter`、`setZoom`。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
+- `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜60 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
 - `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
 
 ## Web Component `<mb-map>`
@@ -41,11 +41,15 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 <mb-map style-url="/style.json" center="139.7671,35.6812" zoom="14" style="height: 400px"></mb-map>
 ```
 
-- 属性：`style-url`、`center`（`lng,lat`）、`zoom`（0〜22）、`worker-count`（0〜4）、`worker-url`、`wasm-url`。不正な値は受け付けず、`mb-error` を出す。
-- プロパティ：`map`（`Map`。作成前と削除後は null）、`mapStyle`（スタイルのオブジェクト。`style-url` より優先）、`center`、`zoom`。
-- イベント：`mb-load`、`mb-move`、`mb-idle`、`mb-error`。`detail` は `{ map, center, zoom, error? }` で、Shadow DOM の外まで伝わる。
+- 属性：`style-url`、`center`（`lng,lat`）、`zoom`（0〜22）、`bearing`、`pitch`（0〜60）、`worker-count`（0〜4）、`worker-url`、`wasm-url`。不正な値は受け付けず、`mb-error` を出す。
+- プロパティ：`map`（`Map`。作成前と削除後は null）、`mapStyle`（スタイルのオブジェクト。`style-url` より優先）、`center`、`zoom`、`bearing`、`pitch`。
+- イベント：`mb-load`、`mb-move`、`mb-idle`、`mb-error`。`detail` は `{ map, center, zoom, bearing, pitch, error? }` で、Shadow DOM の外まで伝わる。
 - 文書から外すと地図を解放し、戻すと同じカメラで作り直す。同じタスク内での移動では作り直さない。
 - React 19 からは、そのまま `<mb-map zoom={...} onmb-move={...} />` と書ける（`examples/react`）。
+
+## 操作
+
+ドラッグで移動、ホイールとピンチでズーム。右ドラッグ（または Ctrl＋ドラッグ）で、横に動かすと回転、縦に動かすと傾く。2本指をひねると回転する。
 
 ## 対応するスタイル
 

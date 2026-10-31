@@ -10,13 +10,15 @@ declare module "mbmap-engine" {
     lng: number,
     lat: number,
     zoom: number,
+    bearing: number,
+    pitch: number,
     workerUrl: string,
     wasmUrl: string,
     workers: number,
   ): EngineMap;
-  export function map_camera(map: EngineMap): { lng: number; lat: number; zoom: number };
-  export function map_set_camera(map: EngineMap, lng: number, lat: number, zoom: number): void;
-  export function map_on_move(map: EngineMap, f: (lng: number, lat: number, zoom: number) => void): number;
+  export function map_camera(map: EngineMap): { lng: number; lat: number; zoom: number; bearing: number; pitch: number };
+  export function map_set_camera(map: EngineMap, lng: number, lat: number, zoom: number, bearing: number, pitch: number): void;
+  export function map_on_move(map: EngineMap, f: () => void): number;
   export function map_on_idle(map: EngineMap, f: () => void): number;
   export function map_off(map: EngineMap, id: number): void;
   export function map_destroy(map: EngineMap): void;

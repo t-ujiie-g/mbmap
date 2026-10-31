@@ -28,6 +28,10 @@ export interface MapOptions {
   style: StyleSpecification | string;
   center?: LngLatLike;
   zoom?: number;
+  /** Degrees clockwise from north that point up (default 0). */
+  bearing?: number;
+  /** Degrees of tilt from looking straight down, 0 to 60 (default 0). */
+  pitch?: number;
   /** Tile workers; 0 (the default) picks half the hardware threads, 1 to 4. */
   workerCount?: number;
   /**
@@ -61,6 +65,8 @@ interface Camera {
   lng: number;
   lat: number;
   zoom: number;
+  bearing: number;
+  pitch: number;
 }
 
 function toLngLat(c: LngLatLike): LngLat {
@@ -68,8 +74,8 @@ function toLngLat(c: LngLatLike): LngLat {
 }
 
 function checkCamera(c: Camera): Camera {
-  if (![c.lng, c.lat, c.zoom].every(Number.isFinite)) {
-    throw new TypeError(`mbmap: center and zoom must be finite numbers: ${JSON.stringify(c)}`);
+  if (![c.lng, c.lat, c.zoom, c.bearing, c.pitch].every(Number.isFinite)) {
+    throw new TypeError(`mbmap: center, zoom, bearing and pitch must be finite numbers: ${JSON.stringify(c)}`);
   }
   return c;
 }
@@ -113,7 +119,12 @@ export class Map {
     this.#container = container;
     this.#options = options;
     const center = toLngLat(options.center ?? [0, 0]);
-    this.#camera = checkCamera({ ...center, zoom: options.zoom ?? 0 });
+    this.#camera = checkCamera({
+      ...center,
+      zoom: options.zoom ?? 0,
+      bearing: options.bearing ?? 0,
+      pitch: options.pitch ?? 0,
+    });
     if (getComputedStyle(container).position === "static") container.style.position = "relative";
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.cssText = "display:block;width:100%;height:100%";
@@ -150,6 +161,8 @@ export class Map {
       c.lng,
       c.lat,
       c.zoom,
+      c.bearing,
+      c.pitch,
       workerScriptUrl(o.workerUrl ?? new URL("./worker.js", import.meta.url), page, location.origin),
       wasmUrl(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), page),
       o.workerCount ?? 0,
@@ -250,12 +263,26 @@ export class Map {
     return this.#current().zoom;
   }
 
+  getBearing(): number {
+    return this.#current().bearing;
+  }
+
+  getPitch(): number {
+    return this.#current().pitch;
+  }
+
   /** Moves the camera at once; fires `move` unless nothing changes. Throws a TypeError on non-finite values. */
-  jumpTo(options: { center?: LngLatLike; zoom?: number }): this {
+  jumpTo(options: { center?: LngLatLike; zoom?: number; bearing?: number; pitch?: number }): this {
     const c = this.#current();
     const center = options.center ? toLngLat(options.center) : c;
-    const next = checkCamera({ lng: center.lng, lat: center.lat, zoom: options.zoom ?? c.zoom });
-    if (this.#engine) engine.map_set_camera(this.#engine, next.lng, next.lat, next.zoom);
+    const next = checkCamera({
+      lng: center.lng,
+      lat: center.lat,
+      zoom: options.zoom ?? c.zoom,
+      bearing: options.bearing ?? c.bearing,
+      pitch: options.pitch ?? c.pitch,
+    });
+    if (this.#engine) engine.map_set_camera(this.#engine, next.lng, next.lat, next.zoom, next.bearing, next.pitch);
     else this.#camera = next;
     return this;
   }
@@ -266,6 +293,15 @@ export class Map {
 
   setZoom(zoom: number): this {
     return this.jumpTo({ zoom });
+  }
+
+  setBearing(bearing: number): this {
+    return this.jumpTo({ bearing });
+  }
+
+  /** Clamped to 0-60 degrees. */
+  setPitch(pitch: number): this {
+    return this.jumpTo({ pitch });
   }
 
   /** Stops the workers, frees GPU memory and removes the map's elements. */

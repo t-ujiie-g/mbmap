@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 22682,
+      "bytes": 25255,
       "budget": 50000
     },
     {
       "name": "mbmap/element (on top of mbmap)",
-      "bytes": 1317,
+      "bytes": 1508,
       "budget": 5000
     },
     {

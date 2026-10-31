@@ -1,19 +1,25 @@
 ///|
-/// `{lng, lat, zoom}` as a JS object.
+/// `{lng, lat, zoom, bearing, pitch}` as a JS object.
 #external
 pub type JsCamera
 
 ///|
-extern "js" fn js_camera(lng : Double, lat : Double, zoom : Double) -> JsCamera =
-  #|(lng, lat, zoom) => ({ lng, lat, zoom })
+extern "js" fn js_camera(c : @core.Camera) -> JsCamera =
+  #|(c) => ({ lng: c.center.lng, lat: c.center.lat, zoom: c.zoom, bearing: c.bearing, pitch: c.pitch })
 
 ///|
 extern "js" fn throw_error(message : String) -> @map.Map =
   #|(m) => { throw new Error(m); }
 
 ///|
-fn camera_of(lng : Double, lat : Double, zoom : Double) -> @core.Camera {
-  { center: { lng, lat, }, zoom, }
+fn camera_of(
+  lng : Double,
+  lat : Double,
+  zoom : Double,
+  bearing : Double,
+  pitch : Double,
+) -> @core.Camera {
+  { center: { lng, lat, }, zoom, bearing, pitch, }
 }
 
 ///|
@@ -25,6 +31,8 @@ pub fn create_map(
   lng : Double,
   lat : Double,
   zoom : Double,
+  bearing : Double,
+  pitch : Double,
   worker_url : String,
   wasm_url : String,
   workers : Int32,
@@ -32,7 +40,7 @@ pub fn create_map(
   @map.Map::new(
     canvas,
     style_json,
-    camera_of(lng, lat, zoom),
+    camera_of(lng, lat, zoom, bearing, pitch),
     worker_url~,
     wasm_url~,
     workers~,
@@ -45,11 +53,10 @@ pub fn create_map(
 }
 
 ///|
-/// The camera as `{lng, lat, zoom}`.
+/// The camera as `{lng, lat, zoom, bearing, pitch}`.
 #export_name("map_camera")
 pub fn map_camera(map : @map.Map) -> JsCamera {
-  let c = map.camera()
-  js_camera(c.center.lng, c.center.lat, c.zoom)
+  js_camera(map.camera())
 }
 
 ///|
@@ -59,18 +66,18 @@ pub fn map_set_camera(
   lng : Double,
   lat : Double,
   zoom : Double,
+  bearing : Double,
+  pitch : Double,
 ) -> Unit {
-  map.set_camera(camera_of(lng, lat, zoom))
+  map.set_camera(camera_of(lng, lat, zoom, bearing, pitch))
 }
 
 ///|
-/// Calls `f(lng, lat, zoom)` on camera changes; returns an id for `map_off`.
+/// Calls `f` on camera changes (read the camera with `map_camera`); returns
+/// an id for `map_off`.
 #export_name("map_on_move")
-pub fn map_on_move(
-  map : @map.Map,
-  f : (Double, Double, Double) -> Unit,
-) -> Int32 {
-  map.on_move(c => f(c.center.lng, c.center.lat, c.zoom))
+pub fn map_on_move(map : @map.Map, f : () -> Unit) -> Int32 {
+  map.on_move(_ => f())
 }
 
 ///|

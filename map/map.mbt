@@ -49,6 +49,14 @@ const MAX_WORKERS : Int32 = 4
 const WHEEL_ZOOM_RATE : Double = 1.0 / 450.0
 
 ///|
+/// Bearing and pitch change per CSS pixel of a rotating drag (right button
+/// or Ctrl), as in MapLibre.
+const ROTATE_RATE : Double = 0.8
+
+///|
+const PITCH_RATE : Double = 0.5
+
+///|
 /// A map drawn into a canvas. It owns its camera, workers and GPU resources;
 /// the camera can be read and replaced as a value (`camera`, `set_camera`).
 pub struct Map {
@@ -69,7 +77,8 @@ pub struct Map {
   priv move_listeners : @hashmap.HashMap[Int32, (@core.Camera) -> Unit]
   priv idle_listeners : @hashmap.HashMap[Int32, () -> Unit]
   priv mut next_listener : Int32
-  priv pointers : @hashmap.HashMap[Int32, (Double, Double)]
+  priv pointers : Array[(Int32, Double, Double)]
+  priv mut rotating : Bool
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
 }
@@ -130,7 +139,8 @@ pub fn Map::new(
     move_listeners: @hashmap.HashMap([]),
     idle_listeners: @hashmap.HashMap([]),
     next_listener: 0,
-    pointers: @hashmap.HashMap([]),
+    pointers: [],
+    rotating: false,
     cleanups: [],
     destroyed: false,
   }

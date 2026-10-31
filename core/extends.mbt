@@ -32,7 +32,7 @@ pub extend Camera with @debug.Debug::{to_repr}
 pub extend Camera with Eq::{not_equal, equal}
 
 ///|
-pub extend TileTransform with @debug.Debug::{to_repr}
+pub extend Mat4 with @debug.Debug::{to_repr}
 
 ///|
-pub extend TileTransform with Eq::{not_equal, equal}
+pub extend Mat4 with Eq::{not_equal, equal}
