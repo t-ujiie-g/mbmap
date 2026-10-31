@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/bench/mvt/entry"
+
+// Values
+pub fn copy_mem(Int32, Int32) -> Int32
+
+pub fn decode_mem(Int32, Int32) -> Int32
+
+pub fn decode_mem_parts(Int32, Int32, Int32) -> Int32
+
+pub fn grow_memory(Int32) -> Int32
+
+pub fn last_coord_sum_value() -> Double
+
+pub fn last_properties_count() -> Int32
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

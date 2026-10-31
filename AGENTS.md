@@ -34,6 +34,9 @@ npm run backend:browser   # same, inside a module Worker in Chromium/Firefox/Web
 npm run maplibre:parse    # MapLibre WorkerTile.parse baseline
 npm run maplibre          # MapLibre first-render / frame-time / bundle-size baseline
 npm test                  # Node tests for bench tooling (lib/*.test.mjs)
+npm run mvt:golden        # mvt vs @mapbox/vector-tile on all fixtures (must stay 35/35)
+npm run mvt:node          # mvt decode bench in Node
+npm run mvt:browser       # same, inside a module Worker in Chromium/Firefox/WebKit
 ```
 
 Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from there (VISION §2: never claim "fast" without a reproducible script).
@@ -58,6 +61,8 @@ Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from ther
 - `bench/backend/entry` shows the working patterns for exports (`pkgtype(kind: "foreign_library")` + `#export_name`), `export-memory-name`, and per-file conditional compilation (`options(targets: {...})`).
 - `moon info` writes `.mbti` from the canonical backend (wasm), so js-only packages (`map`, `render_webgl2`) currently get none; `moon info --target js` only prints the diff against wasm. Settle how to track their interface before they gain public API.
 - Inline wasm via `extern "wasm" fn f(...) = #|(func ...)` works on both wasm and wasm-gc and is how linear memory is accessed.
+- Current idioms the compiler insists on: `derive(Eq, Debug)` on a public type needs a `pub extend T with ...` entry in the package's `extends.mbt` (copy a neighbouring one); `extend` is a keyword; `Ref(x)`, `Map([], capacity=n)`, `Array(capacity=n)`, `@cmp.minimum`; `try?` is gone (`try Some(e) catch { _ => None }`). In a function with a bare `raise`, `catch` can match constructors of several suberror types.
+- Script mode (`moon run x.mbtx`) currently fails with a core `gzip` alias conflict, so automation stays in Node scripts under `bench/`.
 
 ## 4. Architecture
 
@@ -69,7 +74,14 @@ Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← w
 - `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side).
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 
-Backend facts measured in Phase 0 (see PROGRESS.md): wasm (linear memory) uses refcount + TLSF and is 6–9× slower than wasm-gc/JS on allocation-heavy code. Node 22's older V8 does not inline small wasm functions, so wasm builds look 2–3× slower there than in current browsers. Release wasm builds should go through `wasm-opt -O3` (it needs explicit `--enable-*` feature flags; see `bench/backend/opt.mjs`).
+- `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and its `error()` is checked once at a boundary. Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
+- `mvt` decodes layer tables, feature headers and tags in `Tile::parse` (raising `MvtError` once per tile) and stores features column-wise; per-feature calls take an index (`layer.decode_geometry(i, out)`, `layer.property(i, key)`) and don't raise. Geometry is decoded lazily into a reusable `Geometry` buffer.
+
+Backend facts measured so far (see PROGRESS.md):
+- **In wasm-gc every call to a `raise` function allocates its result object, even on success.** Keep `raise` off hot paths: report errors through sticky state or return values, and raise only at coarse boundaries. This alone made the mvt decoder go from 1.3–2.2× slower than JS to faster than JS.
+- wasm (linear memory) uses refcount + TLSF and is 6–9× slower than wasm-gc/JS on allocation-heavy code.
+- `wasm-opt -O3` made the wasm-gc mvt decoder 12–45% *slower* in every browser; do not run it on wasm-gc builds. For wasm (linear memory) it helps only on Node 22, whose older V8 does not inline small wasm functions (flags in `bench/backend/opt.mjs`).
+- Copying linear memory into GC `Bytes` is fast when done 4 bytes per load into a `FixedArray[Byte]` and reinterpreted (`bench/mvt/entry/linear_memory.mbt`); `Bytes::makei` calls a closure per byte and is 2–6× slower.
 
 ## 5. Benchmark gotchas
 

@@ -1,11 +1,83 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/mvt"
 
+import {
+  "moonbitlang/core/debug",
+  "t-ujiie-g/mbmap/pbf",
+}
+
 // Values
+pub const DEFAULT_EXTENT : Int32 = 4096
 
 // Errors
+pub(all) suberror MvtError {
+  Malformed(@pbf.PbfError)
+  InvalidCommand(pos~ : Int32, Int32)
+  IndexOutOfRange(pos~ : Int32, Int32)
+  OddTagCount(pos~ : Int32)
+} derive(Eq, @debug.Debug)
+pub fn MvtError::equal(Self, Self) -> Bool
+pub fn MvtError::not_equal(Self, Self) -> Bool
+pub fn MvtError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) enum GeomType {
+  Unknown
+  Point
+  LineString
+  Polygon
+} derive(Eq, @debug.Debug)
+pub fn GeomType::equal(Self, Self) -> Bool
+pub fn GeomType::not_equal(Self, Self) -> Bool
+pub fn GeomType::to_repr(Self) -> @debug.Repr
+
+pub struct Geometry {
+  coords : Array[Int32]
+  ring_ends : Array[Int32]
+  // private fields
+}
+pub fn Geometry::error(Self) -> MvtError?
+pub fn Geometry::new() -> Self
+pub fn Geometry::num_points(Self) -> Int32
+pub fn Geometry::num_rings(Self) -> Int32
+pub fn Geometry::ring_start(Self, Int32) -> Int32
+
+pub struct Layer {
+  name : String
+  version : Int32
+  extent : Int32
+  keys : Array[String]
+  values : Array[Value]
+  // private fields
+}
+pub fn Layer::decode_geometry(Self, Int32, Geometry) -> Bool
+pub fn Layer::geom_type(Self, Int32) -> GeomType
+pub fn Layer::id(Self, Int32) -> UInt64?
+pub fn Layer::key_index(Self, String) -> Int32?
+pub fn Layer::length(Self) -> Int32
+pub fn Layer::load_geometry(Self, Int32) -> Array[Array[(Int32, Int32)]] raise MvtError
+pub fn Layer::properties(Self, Int32) -> Map[String, Value]
+pub fn Layer::property(Self, Int32, Int32) -> Value?
+
+pub struct Tile {
+  layers : Array[Layer]
+}
+pub fn Tile::layer(Self, String) -> Layer?
+pub fn Tile::parse(BytesView) -> Self raise MvtError
+
+pub(all) enum Value {
+  String(String)
+  Float(Float)
+  Double(Double)
+  Int(Int64)
+  UInt(UInt64)
+  SInt(Int64)
+  Bool(Bool)
+  Null
+} derive(Eq, @debug.Debug)
+pub fn Value::equal(Self, Self) -> Bool
+pub fn Value::not_equal(Self, Self) -> Bool
+pub fn Value::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

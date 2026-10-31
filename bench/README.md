@@ -13,6 +13,9 @@ npm run backend:browser   # 同（Chromium / Firefox / WebKit の module Worker 
 npm run maplibre:parse    # MapLibre WorkerTile.parse の基準値（Node）
 npm run maplibre          # MapLibre の初回描画・フレーム時間・バンドルサイズ（Chromium + Metal GPU）
 npm test                  # ベンチ用ツール（lib/）のテスト
+npm run mvt:golden        # mvt を @mapbox/vector-tile と全 fixture で突き合わせる
+npm run mvt:node          # mvt デコード速度（Node）
+npm run mvt:browser       # 同（3 ブラウザの module Worker 内）
 ```
 
 ## backend/ — Wasm バックエンド比較（Phase 0）
@@ -46,3 +49,14 @@ npm test                  # ベンチ用ツール（lib/）のテスト
 - `index.html` + `page.mjs` + `run.mjs`：1280×800、DPR 2、ローカル配信のタイルで
   `load` / 初回 `idle` までの時間、パン・ズーム中の rAF 間隔と `Map#_render` の CPU 時間を計測。
   ヘッドレス Chromium は既定で SwiftShader になるため `--use-angle=metal --enable-gpu` を付ける。
+
+## mvt/ — MVT デコーダの黄金テストと速度
+
+`entry/`（`#export_name` で公開）を js と wasm-gc でビルドして使う。
+
+- `golden.mjs`：全 fixture を js ビルドの `tile_to_json` でデコードし、`@mapbox/vector-tile` の出力と
+  レイヤー version / extent、全地物の id / type / properties / geometry まで完全比較。wasm-gc ビルドは
+  点数・プロパティ数・座標総和を照合する。
+- `node.mjs` / `browser.mjs`：各実装が「パース＋全地物のプロパティ＋全ジオメトリ」を行う時間を
+  タイルごとに計測。wasm-gc は「JS → 線形メモリ → wasm 内で `Bytes` へコピー」まで含む。
+  `parse only` / `+ properties` / `+ geometry` は wasm-gc の内訳（いずれもコピー込み）。
