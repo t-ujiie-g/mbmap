@@ -100,3 +100,8 @@ pub fn tile_containing(coord : MercatorCoord, z : Int32) -> TileId? {
   }
   Some({ z, x: clamp(coord.x), y: clamp(coord.y), })
 }
+
+///|
+/// The key under which a packed tile's group properties carry the geometry
+/// type, for paint that reads `["geometry-type"]`.
+pub const GEOMETRY_TYPE_KEY : String = "$type"

@@ -29,13 +29,13 @@ fn Map::render(self : Map) -> Unit {
   self.renderer.clear(r, g, b)
   let zoom = t.camera.zoom
   for index, layer in self.style.layers {
-    // Paint that does not read feature data is the same for every mesh.
-    let shared = paint_of(layer, zoom, JsProps::none())
     if layer.kind is Background ||
       zoom < layer.min_zoom ||
       zoom >= layer.max_zoom {
       continue
     }
+    // Paint that does not read feature data is the same for every mesh.
+    let shared = paint_of(layer, zoom, JsProps::none())
     for s in sources {
       match s {
         Own(id, meshes) =>
@@ -94,14 +94,20 @@ fn Map::draw_layer(
   meshes : Array[LayerMesh],
   dpr : Double,
 ) -> Unit {
+  let tt = self.transform.tile_transform(id, @core.TILE_EXTENT)
+  let zoom = self.transform.camera.zoom
   for m in meshes {
     if m.layer != index {
       continue
     }
-    let tt = self.transform.tile_transform(id, @core.TILE_EXTENT)
-    let p = match m.props {
-      Some(props) => paint_of(layer, self.transform.camera.zoom, props)
-      None => shared
+    let p = match (m.props, m.paint) {
+      (None, _) => shared
+      (Some(_), Some((z, p))) if z == zoom => p
+      (Some(props), _) => {
+        let p = paint_of(layer, zoom, props)
+        m.paint = Some((zoom, p))
+        p
+      }
     }
     if m.line {
       self.renderer.draw_line(m.mesh, tt, p.r, p.g, p.b, p.a, p.width * dpr)

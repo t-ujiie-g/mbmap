@@ -69,6 +69,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
             } else {
               Some({ obj: props, })
             },
+            paint: None,
           })
         }
         entry.state = Ready(meshes)

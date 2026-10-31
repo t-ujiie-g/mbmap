@@ -7,13 +7,15 @@ pub(all) suberror MapError {
 
 ///|
 /// `owned` is false when the mesh belongs to an earlier layer of the same tile;
-/// `props` are the inputs a data-driven layer's group shares.
+/// `props` are the inputs a data-driven layer's group shares, and `paint` caches
+/// their paint at the zoom it was evaluated for.
 priv struct LayerMesh {
   layer : Int32
   line : Bool
   mesh : @render_webgl2.Mesh
   owned : Bool
   props : JsProps?
+  mut paint : (Double, Paint)?
 }
 
 ///|

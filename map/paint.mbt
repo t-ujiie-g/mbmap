@@ -1,8 +1,7 @@
 ///|
-/// The properties shared by one group of a data-driven layer (a JS object
-/// from the worker), as expressions see them; `$type` holds the geometry type.
-/// The main thread evaluates every paint through this one context type, so
-/// the evaluator is compiled once (a JS null object stands for no feature).
+/// The properties a data-driven layer's group shares (a JS object from the
+/// worker; null for no feature). The only context type on the main thread, so
+/// `Expr::eval` is compiled into the bundle once.
 priv struct JsProps {
   obj : JsValue
 }
@@ -25,8 +24,8 @@ impl @style.FeatureContext for JsProps with fn property(self, key) {
 
 ///|
 impl @style.FeatureContext for JsProps with fn geometry_type(self) {
-  match prop_kind(self.obj, "$type") {
-    4 => get_string(self.obj, "$type")
+  match prop_kind(self.obj, @core.GEOMETRY_TYPE_KEY) {
+    4 => get_string(self.obj, @core.GEOMETRY_TYPE_KEY)
     _ => "Unknown"
   }
 }

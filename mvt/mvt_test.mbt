@@ -355,3 +355,24 @@ test "key_index and property read single values without building a map" {
   ])
   assert_eq(other.property(0, 0), None)
 }
+
+///|
+test "MvtError::message names the problem and its position" {
+  assert_eq(
+    @mvt.Malformed(@pbf.UnexpectedEof(pos=7)).message(),
+    "malformed protobuf at 7: unexpected end",
+  )
+  assert_eq(
+    @mvt.Malformed(@pbf.LengthOutOfRange(pos=2, 99)).message(),
+    "malformed protobuf at 2: length out of range",
+  )
+  assert_eq(
+    @mvt.InvalidCommand(pos=4, 5).message(),
+    "invalid geometry command 5 at 4",
+  )
+  assert_eq(
+    @mvt.IndexOutOfRange(pos=1, 9).message(),
+    "tag index 9 out of range at 1",
+  )
+  assert_eq(@mvt.OddTagCount(pos=3).message(), "odd tag count at 3")
+}

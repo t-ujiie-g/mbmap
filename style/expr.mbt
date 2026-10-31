@@ -10,6 +10,7 @@ pub(all) enum Value {
 } derive(Debug, Eq)
 
 ///|
+/// The comparison operators `==`, `!=`, `<`, `<=`, `>` and `>=`.
 pub(all) enum CmpOp {
   Eq
   Ne

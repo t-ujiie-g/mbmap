@@ -127,17 +127,25 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
 }
 
 ///|
-/// A layer's split of features by the values its paint reads.
+/// A layer's split of features by the values its paint reads; `active` is
+/// false when the paint reads none, so every feature goes to group 0.
 priv struct Groups {
   keys : Array[String]
   geometry : Bool
+  active : Bool
   values : Array[Array[@style.Value?]]
   scratch : Array[@style.Value?]
 }
 
 ///|
 fn Groups::new(inputs : (Array[String], Bool)) -> Groups {
-  { keys: inputs.0, geometry: inputs.1, values: [], scratch: [], }
+  {
+    keys: inputs.0,
+    geometry: inputs.1,
+    active: grouped(inputs),
+    values: [],
+    scratch: [],
+  }
 }
 
 ///|
@@ -146,14 +154,9 @@ fn grouped(inputs : (Array[String], Bool)) -> Bool {
 }
 
 ///|
-fn Groups::active(self : Groups) -> Bool {
-  grouped((self.keys, self.geometry))
-}
-
-///|
 /// The group of `feature` (at its current index), creating it if new.
 fn Groups::of(self : Groups, feature : FeatureRef) -> Int32 {
-  if !self.active() {
+  if !self.active {
     return 0
   }
   let s = self.scratch
@@ -188,7 +191,7 @@ fn json_of(v : @style.Value) -> Json {
 
 ///|
 /// Group `g`'s shared inputs as a JSON object: properties by name (absent
-/// ones omitted, so `has` stays correct) and the geometry type as `$type`.
+/// ones omitted, so `has` stays correct) and the geometry type as `@core.GEOMETRY_TYPE_KEY`.
 fn Groups::props_json(self : Groups, g : Int32) -> Bytes {
   let obj : Map[String, Json] = Map([])
   let v = self.values[g]
@@ -198,7 +201,7 @@ fn Groups::props_json(self : Groups, g : Int32) -> Bytes {
     }
   }
   if self.geometry && v[self.keys.length()] is Some(Str(t)) {
-    obj["$type"] = Json::string(t)
+    obj[@core.GEOMETRY_TYPE_KEY] = Json::string(t)
   }
   @utf8.encode(Json::object(obj).stringify())
 }
@@ -251,7 +254,7 @@ pub fn TileProcessor::process(
       continue
     }
     let groups = Groups::new(self.inputs[index])
-    if !groups.active() &&
+    if !groups.active &&
       done.search_by(d => same_geometry(style_layers[d.0], sl)) is Some(i) {
       if done[i].1 >= 0 {
         self.out.add_alias(index, done[i].1)
@@ -266,7 +269,7 @@ pub fn TileProcessor::process(
     if !ok {
       return false
     }
-    if !groups.active() {
+    if !groups.active {
       done.push(
         (index, if self.out.layer_count() > entries { entries } else { -1 }),
       )
@@ -348,7 +351,7 @@ fn TileProcessor::fill_layer(
       if !self.out.add_fill(index, b, extent=layer.extent) {
         return false
       }
-      if groups.active() {
+      if groups.active {
         self.out.set_props(groups.props_json(g))
       }
     }
@@ -400,7 +403,7 @@ fn TileProcessor::line_layer(
       if !self.out.add_line(index, b, extent=layer.extent) {
         return false
       }
-      if groups.active() {
+      if groups.active {
         self.out.set_props(groups.props_json(g))
       }
     }

@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub const GEOMETRY_TYPE_KEY : String = "$type"
+
 pub const MAX_LATITUDE : Double = 85.051128779806604
 
 pub const MAX_TILE_ZOOM : Int32 = 28

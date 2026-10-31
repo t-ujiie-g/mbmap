@@ -143,3 +143,33 @@ test "malformed styles are Invalid with a path" {
     }
   }
 }
+
+///|
+test "from_json takes a parsed document; errors read as one line" {
+  let s = @style.Style::from_json({
+    "layers": [{ "id": "bg", "type": "background" }],
+  })
+  assert_eq(s.layers.map(l => l.kind), [Background])
+  assert_eq(
+    @style.Invalid(path="layers[0].type", "missing").message(),
+    "layers[0].type: missing",
+  )
+  assert_eq(@style.Invalid(path="", "not an object").message(), "not an object")
+  assert_eq(
+    @style.Unsupported(path="sources.s", "url").message(),
+    "sources.s: unsupported: url",
+  )
+  assert_eq(@style.Unsupported(path="", "x").message(), "unsupported: x")
+}
+
+///|
+test "rgb() components are plain decimals" {
+  assert_eq(@style.parse_color("rgba(0,0,0,.5)").map(c => c.a), Some(0.5))
+  assert_eq(
+    @style.parse_color("rgb(12.5,0,0)").map(c => c.r),
+    Some(12.5 / 255.0),
+  )
+  for bad in ["rgb(1.2.3,0,0)", "rgb(,0,0)", "rgb(-1,0,0)", "rgb(1e2,0,0)"] {
+    assert_eq(@style.parse_color(bad), None)
+  }
+}
