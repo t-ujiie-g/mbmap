@@ -76,8 +76,29 @@ fn accepts(filter : @style.GeometryFilter, ty : @mvt.GeomType) -> Bool {
 }
 
 ///|
+/// Whether two layers produce identical buffers. Line extrusion is stored in
+/// half widths, so layers that differ only in paint (like a road and its
+/// casing) share one.
+fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
+  a.kind == b.kind &&
+  a.source == b.source &&
+  a.source_layer == b.source_layer &&
+  a.filter == b.filter &&
+  (
+    a.kind is Fill ||
+    (
+      a.join == b.join &&
+      a.cap == b.cap &&
+      a.miter_limit == b.miter_limit &&
+      a.round_limit == b.round_limit
+    )
+  )
+}
+
+///|
 /// Decodes `bytes`, a tile of source `source` at zoom `z`, and packs every fill
-/// and line layer of the style that draws from it into `out`, in style order.
+/// and line layer of the style that draws from it into `out`, in style order;
+/// a layer with the same geometry as an earlier one points at its buffers.
 /// Like MapLibre, a layer is skipped when `z` is outside its zoom range.
 /// Returns false on a malformed tile or an oversized result (see `error`).
 pub fn TileProcessor::process(
@@ -95,6 +116,8 @@ pub fn TileProcessor::process(
   let style_layers = self.style.layers
   self.out.begin(style_layers.length())
   let zoom = z.to_double()
+  // (style layer, its entry in `out` or -1 if it had no geometry)
+  let done : Array[(Int32, Int32)] = []
   for index, sl in style_layers {
     if sl.source != source ||
       sl.kind is Background ||
@@ -103,13 +126,27 @@ pub fn TileProcessor::process(
       continue
     }
     guard tile.layer(sl.source_layer) is Some(layer) else { continue }
-    let ok = match sl.kind {
-      Fill => self.fill_layer(index, sl, layer)
-      _ => self.line_layer(index, sl, layer)
+    let entries = self.out.layer_count()
+    match done.search_by(d => same_geometry(style_layers[d.0], sl)) {
+      Some(i) => {
+        let entry = done[i].1
+        if entry >= 0 {
+          self.out.add_alias(index, entry)
+        }
+      }
+      None => {
+        let ok = match sl.kind {
+          Fill => self.fill_layer(index, sl, layer)
+          _ => self.line_layer(index, sl, layer)
+        }
+        if !ok {
+          return false
+        }
+      }
     }
-    if !ok {
-      return false
-    }
+    done.push(
+      (index, if self.out.layer_count() > entries { entries } else { -1 }),
+    )
   }
   if self.out.overflowed() {
     self.error = "tile exceeds \{MAX_PACKED_BYTES} bytes"

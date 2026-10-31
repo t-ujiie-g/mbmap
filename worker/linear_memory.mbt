@@ -1,32 +1,6 @@
 // Memory layout: page 0 is left to MoonBit; input (a tile or the style JSON)
-// starts at INPUT_ADDR, output (a packed tile or an error message) follows it.
-
-///|
-extern "wasm" fn load_u8(addr : Int32) -> Int32 =
-  #|(func (param i32) (result i32) (i32.load8_u (local.get 0)))
-
-///|
-extern "wasm" fn load_i32(addr : Int32) -> Int32 =
-  #|(func (param i32) (result i32) (i32.load align=1 (local.get 0)))
-
-///|
-extern "wasm" fn store_i32(addr : Int32, v : Int32) =
-  #|(func (param i32) (param i32) (i32.store align=1 (local.get 0) (local.get 1)))
-
-///|
-extern "wasm" fn store_u8(addr : Int32, v : Int32) =
-  #|(func (param i32) (param i32) (i32.store8 (local.get 0) (local.get 1)))
-
-///|
-extern "wasm" fn memory_size() -> Int32 =
-  #|(func (result i32) (memory.size))
-
-///|
-extern "wasm" fn memory_grow(pages : Int32) -> Int32 =
-  #|(func (param i32) (result i32) (memory.grow (local.get 0)))
-
-///|
-const PAGE : Int32 = 65536
+// starts at INPUT_ADDR, output (a packed tile, written in place by its Store,
+// or an error message) follows it.
 
 ///|
 const INPUT_ADDR : Int32 = PAGE
@@ -36,16 +10,6 @@ let input_len : Ref[Int32] = Ref(0)
 
 ///|
 let processor : Ref[TileProcessor?] = Ref(None)
-
-///|
-/// Grows linear memory to at least `bytes`; false if the engine refuses.
-fn ensure_memory(bytes : Int32) -> Bool {
-  let have = memory_size() * PAGE
-  if bytes <= have {
-    return true
-  }
-  memory_grow((bytes - have + PAGE - 1) / PAGE) >= 0
-}
 
 ///|
 fn output_start() -> Int32 {
@@ -91,7 +55,8 @@ fn input_bytes() -> Bytes {
 }
 
 ///|
-/// Copies `bytes` to the output area; returns its length, or -1 without memory.
+/// Copies `bytes` (an error message) to the output area; returns its length,
+/// or -1 without memory.
 fn write_output(bytes : ArrayView[Byte]) -> Int32 {
   let at = output_start()
   let len = bytes.length()
@@ -148,8 +113,9 @@ pub fn process_tile(source : Int32, z : Int32) -> Int32 {
   if source < 0 || source >= p.style.sources.length() {
     return fail_with(@utf8.encode("no source \{source}"))
   }
+  p.out.place_at(output_start())
   if p.process(p.style.sources[source].id, input_bytes()[:], z) {
-    write_output(p.out.bytes())
+    p.out.length()
   } else {
     fail_with(p.error_utf8())
   }

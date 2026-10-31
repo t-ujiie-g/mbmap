@@ -7,10 +7,11 @@
 ## 動かし方
 
 ```sh
-moon build bundle/main --target js --release
-moon build worker --target wasm-gc --release
-npm --prefix bench run fixtures           # タイルを取得
-node bench/lib/serve.mjs                  # リポジトリのルートを配信（URL を表示）
+npm --prefix bench run fixtures           # タイルを取得（?remote=1 だけなら不要）
+npm --prefix bench run example            # ビルドしてリポジトリのルートを :8080 で配信
 ```
 
 表示された URL の `/examples/basic/` を開く。
+
+- 既定では、ベンチ用の fixture（東京駅周辺の z14、7×5 タイル）を読む。z14 未満にズームアウトしたり範囲外へパンしたりすると何も描かれないのは、データがないため。
+- `?remote=1` を付けると、国土地理院の配信サーバー（`experimental_bvmap`、z4〜16）から直接読むので、全国・全ズームで動く。`&zoom=10` のように初期ズームも指定できる。低ズームのタイル（z5 で確認）には、このスタイルが使う面のレイヤー（waterarea など）がないので、道路・鉄道・河川だけが描かれる。また配信のない範囲（一部の海域など）は 404 になり、ブラウザのコンソールにその記録が出る（地図は空として扱う）。

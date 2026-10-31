@@ -10,6 +10,7 @@ priv struct LayerMesh {
   layer : Int32
   line : Bool
   mesh : @render_webgl2.Mesh
+  owned : Bool
 }
 
 ///|
@@ -191,7 +192,9 @@ pub fn Map::gpu_bytes(self : Map) -> Int32 {
   for _, e in self.tiles {
     if e.state is Ready(meshes) {
       for m in meshes {
-        n += m.mesh.byte_size()
+        if m.owned {
+          n += m.mesh.byte_size()
+        }
       }
     }
   }
@@ -246,7 +249,9 @@ fn Map::release(self : Map, e : TileEntry) -> Unit {
   match e.state {
     Ready(meshes) =>
       for m in meshes {
-        self.renderer.release(m.mesh)
+        if m.owned {
+          self.renderer.release(m.mesh)
+        }
       }
     Loading(request~, worker~) => {
       post_cancel(self.workers[worker], request)

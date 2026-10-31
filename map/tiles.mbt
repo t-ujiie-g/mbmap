@@ -39,20 +39,27 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         console_warn("tile \{Repr(entry.id)}: \{get_string(msg, "message")}")
         entry.state = Failed
       } else {
-        let meshes = []
+        let meshes : Array[LayerMesh] = []
         for i in 0..<layers_of(msg) {
           let l = layer_at(msg, i)
+          let shared = get_int(l, "shared")
           let line = get_int(l, "kind") == KIND_LINE
-          meshes.push({
-            layer: get_int(l, "layer"),
-            line,
-            mesh: self.renderer.upload(
+          let mesh = if shared >= 0 && shared < meshes.length() {
+            meshes[shared].mesh
+          } else {
+            self.renderer.upload(
               line,
               buffer_of(l, "vertices"),
               buffer_of(l, "indices"),
               get_int(l, "count"),
               get_int(l, "indexBytes"),
-            ),
+            )
+          }
+          meshes.push({
+            layer: get_int(l, "layer"),
+            line,
+            mesh,
+            owned: shared < 0,
           })
         }
         entry.state = Ready(meshes)

@@ -27,9 +27,10 @@ pub const MAX_PACKED_BYTES : Int32 = 64 * 1024 * 1024
 ///|
 /// One tile's GPU-ready buffers, coordinates in `@core.TILE_EXTENT` units, in a single little-endian byte blob: a u32
 /// layer count, `LAYER_ENTRY_WORDS` u32s per layer, then 4-byte aligned vertex
-/// and index data at the offsets the entries give. Reused across tiles.
+/// and index data at the offsets the entries give; entries may share data.
+/// Reused across tiles.
 pub struct PackedTile {
-  priv mut data : FixedArray[Byte]
+  priv store : Store
   priv mut len : Int32
   priv mut layers : Int32
   priv mut overflow : Bool
@@ -37,17 +38,19 @@ pub struct PackedTile {
 
 ///|
 pub fn PackedTile::new() -> PackedTile {
-  {
-    data: FixedArray::make(64 * 1024, b'\x00'),
-    len: 0,
-    layers: 0,
-    overflow: false,
-  }
+  { store: Store::new(), len: 0, layers: 0, overflow: false, }
 }
 
 ///|
-pub fn PackedTile::bytes(self : PackedTile) -> ArrayView[Byte] {
-  self.data[:self.len]
+/// Bytes of the last packed tile (a copy, for tests and debugging).
+pub fn PackedTile::to_bytes(self : PackedTile) -> Bytes {
+  self.store.copy_out(self.len)
+}
+
+///|
+/// Length in bytes of the last packed tile.
+pub fn PackedTile::length(self : PackedTile) -> Int32 {
+  self.len
 }
 
 ///|
@@ -65,36 +68,21 @@ pub fn PackedTile::overflowed(self : PackedTile) -> Bool {
 ///|
 fn PackedTile::reserve(self : PackedTile, extra : Int32) -> Bool {
   let need = self.len + extra
-  if need > MAX_PACKED_BYTES {
+  if need > MAX_PACKED_BYTES || !self.store.ensure(need, self.len) {
     self.overflow = true
     return false
-  }
-  if need > self.data.length() {
-    let cap = @cmp.minimum(
-      MAX_PACKED_BYTES,
-      @cmp.maximum(need, self.data.length() * 2),
-    )
-    let grown = FixedArray::make(cap, b'\x00')
-    FixedArray::blit_to(self.data, grown, len=self.len)
-    self.data = grown
   }
   true
 }
 
 ///|
 fn PackedTile::put_u32(self : PackedTile, at : Int32, v : Int32) -> Unit {
-  let d = self.data
-  d[at] = v.to_byte()
-  d[at + 1] = (v >> 8).to_byte()
-  d[at + 2] = (v >> 16).to_byte()
-  d[at + 3] = (v >> 24).to_byte()
+  self.store.set_u32(at, v)
 }
 
 ///|
 fn PackedTile::put_i16(self : PackedTile, at : Int32, v : Int32) -> Unit {
-  let v = @cmp.maximum(-32768, @cmp.minimum(32767, v))
-  self.data[at] = v.to_byte()
-  self.data[at + 1] = (v >> 8).to_byte()
+  self.store.set_u16(at, @cmp.maximum(-32768, @cmp.minimum(32767, v)))
 }
 
 ///|
@@ -117,7 +105,7 @@ pub fn PackedTile::begin(self : PackedTile, max_layers : Int32) -> Unit {
   self.overflow = false
   let header = 4 + max_layers * LAYER_ENTRY_WORDS * 4
   if self.reserve(header) {
-    self.data.fill(b'\x00', start=0, end=header)
+    self.store.zero(0, header)
     self.len = header
   }
 }
@@ -160,10 +148,8 @@ fn PackedTile::put_indices(
   index_bytes : Int32,
 ) -> Unit {
   if index_bytes == 2 {
-    let d = self.data
     for i, v in indices {
-      d[at + i * 2] = v.to_byte()
-      d[at + i * 2 + 1] = (v >> 8).to_byte()
+      self.store.set_u16(at + i * 2, v)
     }
   } else {
     for i, v in indices {
@@ -221,16 +207,36 @@ pub fn PackedTile::add_line(
   }
   let v = lines.vertices
   let s = @tess.LINE_VERTEX_STRIDE
-  let d = self.data
   for i in 0..<n {
     let at = vstart + i * LINE_VERTEX_BYTES
     self.put_i16(at, rescale(v[i * s], extent))
     self.put_i16(at + 2, rescale(v[i * s + 1], extent))
-    d[at + 4] = v[i * s + 2].to_byte()
-    d[at + 5] = v[i * s + 3].to_byte()
-    d[at + 6] = v[i * s + 4].to_byte()
-    d[at + 7] = v[i * s + 5].to_byte()
+    // Four Int8s, little-endian: extrusion x, y, side, along.
+    self.store.set_u32(
+      at + 4,
+      (v[i * s + 2] & 0xff) |
+      ((v[i * s + 3] & 0xff) << 8) |
+      ((v[i * s + 4] & 0xff) << 16) |
+      ((v[i * s + 5] & 0xff) << 24),
+    )
   }
   self.put_indices(istart, lines.indices, index_bytes)
   true
+}
+
+///|
+/// Appends an entry for `style_layer` that points at entry `of`'s buffers.
+pub fn PackedTile::add_alias(
+  self : PackedTile,
+  style_layer : Int32,
+  of : Int32,
+) -> Unit {
+  let src = 4 + of * LAYER_ENTRY_WORDS * 4
+  let dst = 4 + self.layers * LAYER_ENTRY_WORDS * 4
+  self.put_u32(dst, style_layer)
+  for w in 1..<LAYER_ENTRY_WORDS {
+    self.put_u32(dst + w * 4, self.store.get_u32(src + w * 4))
+  }
+  self.layers += 1
+  self.put_u32(0, self.layers)
 }

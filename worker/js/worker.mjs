@@ -4,7 +4,8 @@
 //               {type: "tile", id, url, source, z}      source = index into style.sources
 //               {type: "cancel", id}
 // Messages out: {type: "ready"} | {type: "error", message}
-//               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes}]}
+//               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes, shared}]}
+//               where `shared` is the index of an earlier layer whose buffers it reuses, or -1
 //               {type: "tile-error", id, message}
 // Vertex and index buffers are transferred, never copied (VISION §4-3).
 
@@ -31,11 +32,19 @@ function unpack(packed) {
   const count = view.getUint32(0, true);
   const layers = [];
   const transfer = [];
+  const byOffset = new Map();
   for (let k = 0; k < count; k++) {
     const e = (i) => view.getUint32(4 + (k * LAYER_ENTRY_WORDS + i) * 4, true);
+    const shared = byOffset.get(e(2));
+    if (shared !== undefined) {
+      const { vertices, indices } = layers[shared];
+      layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared });
+      continue;
+    }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
     const indices = packed.slice(e(4), e(4) + e(5) * e(6)).buffer;
-    layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6) });
+    byOffset.set(e(2), k);
+    layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1 });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };

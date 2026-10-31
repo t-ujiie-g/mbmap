@@ -19,27 +19,21 @@ pub const LINE_VERTEX_BYTES : Int32 = 8
 
 pub const MAX_PACKED_BYTES : Int32 = 67108864
 
-pub fn init_style() -> Int32
-
-pub fn output_addr() -> Int32
-
-pub fn prepare_input(Int32) -> Int32
-
-pub fn process_tile(Int32, Int32) -> Int32
-
 // Errors
 
 // Types and methods
 pub struct PackedTile {
   // private fields
 }
+pub fn PackedTile::add_alias(Self, Int32, Int32) -> Unit
 pub fn PackedTile::add_fill(Self, Int32, @tess.FillBuffers, extent? : Int32) -> Bool
 pub fn PackedTile::add_line(Self, Int32, @tess.LineBuffers, extent? : Int32) -> Bool
 pub fn PackedTile::begin(Self, Int32) -> Unit
-pub fn PackedTile::bytes(Self) -> ArrayView[Byte]
 pub fn PackedTile::layer_count(Self) -> Int32
+pub fn PackedTile::length(Self) -> Int32
 pub fn PackedTile::new() -> Self
 pub fn PackedTile::overflowed(Self) -> Bool
+pub fn PackedTile::to_bytes(Self) -> Bytes
 
 pub struct TileProcessor {
   style : @style.Style

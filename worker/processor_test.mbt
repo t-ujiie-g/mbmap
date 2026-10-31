@@ -60,7 +60,7 @@ let style_json : String =
   #|]}
 
 ///|
-fn u32_at(b : ArrayView[Byte], at : Int32) -> Int32 {
+fn u32_at(b : BytesView, at : Int32) -> Int32 {
   b[at].to_int() |
   (b[at + 1].to_int() << 8) |
   (b[at + 2].to_int() << 16) |
@@ -68,7 +68,7 @@ fn u32_at(b : ArrayView[Byte], at : Int32) -> Int32 {
 }
 
 ///|
-fn i16_at(b : ArrayView[Byte], at : Int32) -> Int32 {
+fn i16_at(b : BytesView, at : Int32) -> Int32 {
   let v = b[at].to_int() | (b[at + 1].to_int() << 8)
   if v >= 0x8000 {
     v - 0x10000
@@ -89,7 +89,7 @@ fn sample_tile() -> Bytes {
 test "process packs fill and line layers of the source in style order" {
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(style_json)[:])
   assert_true(p.process("a", sample_tile()[:], 14))
-  let b = p.out.bytes()
+  let b = p.out.to_bytes()[:]
   assert_eq(u32_at(b, 0), 2)
   assert_eq(p.out.layer_count(), 2)
   let entry = (k : Int32, w : Int32) => {
@@ -154,7 +154,7 @@ test "coordinates beyond Int16 are clamped" {
     ]),
   ])
   assert_true(p.process("a", far[:], 14))
-  let b = p.out.bytes()
+  let b = p.out.to_bytes()[:]
   assert_eq(i16_at(b, u32_at(b, 4 + 2 * 4)), 32767)
 }
 
@@ -173,4 +173,52 @@ test "malformed tiles and styles fail with a message" {
   } noraise {
     _ => fail("expected a style error")
   }
+}
+
+///|
+test "layers with the same geometry share one buffer" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "casing", "type": "line", "source": "a", "source-layer": "line",
+    #|   "layout": {"line-cap": "round"}, "paint": {"line-width": 6}},
+    #|  {"id": "road", "type": "line", "source": "a", "source-layer": "line",
+    #|   "layout": {"line-cap": "round"}, "paint": {"line-width": 3, "line-color": "#fff"}},
+    #|  {"id": "butt", "type": "line", "source": "a", "source-layer": "line"}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", sample_tile()[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 3)
+  assert_eq((entry(0, 0), entry(1, 0), entry(2, 0)), (0, 1, 2))
+  // "road" reuses "casing"'s data; "butt" has another cap, so its own.
+  for w in 1..<@worker.LAYER_ENTRY_WORDS {
+    assert_eq(entry(1, w), entry(0, w))
+  }
+  assert_true(entry(2, 2) > entry(0, 2))
+}
+
+///|
+test "layers are rescaled to TILE_EXTENT" {
+  let l = tile_with("poly", 3, [
+    cmd(1, 1),
+    0,
+    0,
+    cmd(2, 2),
+    100,
+    0,
+    0,
+    100,
+    cmd(7, 1),
+  ])
+  l.write_tag(5, @pbf.WIRE_VARINT)
+  l.write_varint32(8192)
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style_json)[:])
+  assert_true(p.process("a", tile_of([l])[:], 14))
+  let b = p.out.to_bytes()[:]
+  let v = u32_at(b, 4 + 2 * 4)
+  assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (50, 0))
 }

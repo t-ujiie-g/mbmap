@@ -18,7 +18,8 @@
     "tess:node": "npm run build:moon && node lib/run-bundled.mjs bench/tess/node.mjs",
     "tess:browser": "npm run build:moon && node tess/browser.mjs",
     "render": "npm run build:moon && node render/run.mjs --runs=5 && node render/run.mjs --runs=5 --uncapped",
-    "example": "npm run build:moon && node lib/serve.mjs 8080"
+    "example": "npm run build:moon && node lib/serve.mjs 8080",
+    "worker:browser": "npm run build:moon && node worker/browser.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",

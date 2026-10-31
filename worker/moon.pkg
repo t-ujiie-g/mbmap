@@ -1,6 +1,6 @@
 // Worker-side tile processing. The pure part (processor.mbt, packed.mbt) runs and
 // is tested on every backend; linear_memory.mbt is the wasm-gc export surface
-// used by worker/js/worker.mjs.
+// used by worker/js/worker.mjs, and store_*.mbt back packed tiles per target.
 
 import {
   "t-ujiie-g/mbmap/core",
@@ -14,11 +14,12 @@ import {
 pkgtype(kind: "foreign_library")
 
 options(
-  targets: { "linear_memory.mbt": [ "wasm", "wasm-gc" ] },
-  link: {
-    "wasm": { "export-memory-name": "memory" },
-    "wasm-gc": { "export-memory-name": "memory" },
+  targets: {
+    "linear_memory.mbt": [ "wasm-gc" ],
+    "store_memory.mbt": [ "wasm-gc" ],
+    "store_array.mbt": [ "not", "wasm-gc" ],
   },
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
 )
 
 import {
