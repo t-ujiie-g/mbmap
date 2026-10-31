@@ -48,6 +48,25 @@ impl @style.FeatureContext for FeatureRef with fn property(self, key) {
 }
 
 ///|
+/// Writes an expression's value as a property value (docs/FORMATS.md,
+/// "Property values"); lists and colors are written as null.
+fn write_value(w : @core.ByteWriter, v : @style.Value) -> Unit {
+  match v {
+    Bool(false) => w.u8(@core.PROP_FALSE)
+    Bool(true) => w.u8(@core.PROP_TRUE)
+    Num(n) => {
+      w.u8(@core.PROP_NUMBER)
+      w.f64(n)
+    }
+    Str(s) => {
+      w.u8(@core.PROP_STRING)
+      w.utf8(s)
+    }
+    _ => w.u8(@core.PROP_NULL)
+  }
+}
+
+///|
 impl @style.FeatureContext for FeatureRef with fn geometry_type(self) {
   match self.features.geom_type(self.index) {
     Point => "Point"

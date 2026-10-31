@@ -63,19 +63,7 @@ fn Labels::add(
   w.f64(size)
   w.u32(parts.length())
   for v in parts {
-    match v {
-      Bool(false) => w.u8(@core.PROP_FALSE)
-      Bool(true) => w.u8(@core.PROP_TRUE)
-      Num(n) => {
-        w.u8(@core.PROP_NUMBER)
-        w.f64(n)
-      }
-      Str(s) => {
-        w.u8(@core.PROP_STRING)
-        w.utf8(s)
-      }
-      _ => w.u8(@core.PROP_NULL)
-    }
+    write_value(w, v)
   }
   self.count += 1
   true
@@ -101,8 +89,9 @@ fn TileProcessor::symbol_layer(
   groups : Groups,
 ) -> Bool {
   guard sl.text is Some(text) && text.field.length() > 0 else { return true }
-  for i in 0..<self.label_pool.length() {
-    self.label_pool[i] = Labels::new()
+  for l in self.label_pool {
+    l.w.clear()
+    l.count = 0
   }
   let feature = FeatureRef::new(layer)
   let extent = layer.extent()

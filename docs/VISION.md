@@ -26,7 +26,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 | 指標 | 目標（Phase 0 の MapLibre 6.16.0 実測値で更新。測定条件は PROGRESS.md） |
 |---|---|
 | メインスレッド側バンドル | gzip 50KB 以下 |
-| Worker（Wasm 含む） | gzip 80KB 以下 |
+| Worker（Wasm 含む） | gzip 100KB 以下（ラベルを入れた Phase 9.1 で 80KB から引き上げ） |
 | 1タイルのデコード＋テッセレーション（z14 都市部） | MapLibre の 1/2 以下の時間：bench fixtures の中央タイル 4.6ms 以下、35 タイル中央値 11.7ms 以下（同ハーネス・同スタイル） |
 | フレーム時間 | 中級 Android 端末で 60fps、パン・ズーム中の GC 停止なし（実機計測は当面行わない）。代理指標：1 フレームの描画 CPU 時間 p95 が 1.44ms 以下、20ms 超のフレーム 0 |
 | 初回描画まで | MapLibre より短いこと：同条件で 215ms 未満 |

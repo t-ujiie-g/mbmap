@@ -76,6 +76,12 @@ pub fn ByteWriter::pad4(self : ByteWriter) -> Unit {
 }
 
 ///|
+/// Empties the writer, keeping its capacity for reuse.
+pub fn ByteWriter::clear(self : ByteWriter) -> Unit {
+  self.buf.clear()
+}
+
+///|
 pub fn ByteWriter::to_bytes(self : ByteWriter) -> Bytes {
   Bytes::from_array(self.buf)
 }

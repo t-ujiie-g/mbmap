@@ -17,11 +17,8 @@ const NO_BREAK_AFTER = new Set([..."（「『【〈《〔｛"]);
 const ideographic = (cp) => cp >= 0x2e80;
 
 /**
- * Lays `text` out at `size` px: lines no wider than `maxWidth` ems where a
- * break is allowed (spaces, between ideographs), justified and anchored like
- * MapLibre. `metrics(cp)` gives a glyph's {advance, left, top, width, height}
- * at SDF_SIZE, `left`/`top` placing its padded bitmap against the pen.
- * Returns the glyph quads {cp, x0, y0, x1, y1} and the text box [x0, y0, x1, y1].
+ * Lays `text` out at `size` px, anchored and justified like MapLibre; `metrics(cp)`
+ * gives {advance, left, top, width, height} at SDF_SIZE. Returns glyph quads and the text box.
  */
 export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2 }, metrics) {
   const scale = size / SDF_SIZE;

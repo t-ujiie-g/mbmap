@@ -169,15 +169,16 @@ pub fn Renderer::upload_symbols(
 }
 
 ///|
-/// Shows the labels of a symbol mesh whose flag is set (`labels` as the worker
-/// sent them).
+/// Shows the labels of a symbol mesh whose flag is set: label `i` owns the
+/// indices from `labels[i * stride + stride - 2]`, as many as the float after it.
 pub fn Renderer::show(
   self : Renderer,
   mesh : Mesh,
   labels : JsBuffer,
+  stride : Int32,
   shown : FixedArray[Bool],
 ) -> Unit {
-  gl_show(self.gl, mesh, labels, shown)
+  gl_show(self.gl, mesh, labels, stride, shown)
 }
 
 ///|

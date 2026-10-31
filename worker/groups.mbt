@@ -107,19 +107,7 @@ fn Groups::props(self : Groups, g : Int32) -> Bytes {
   w.u32(entries.length())
   for e in entries {
     w.utf8(e.0)
-    match e.1 {
-      Bool(false) => w.u8(@core.PROP_FALSE)
-      Bool(true) => w.u8(@core.PROP_TRUE)
-      Num(n) => {
-        w.u8(@core.PROP_NUMBER)
-        w.f64(n)
-      }
-      Str(s) => {
-        w.u8(@core.PROP_STRING)
-        w.utf8(s)
-      }
-      _ => w.u8(@core.PROP_NULL)
-    }
+    write_value(w, e.1)
   }
   w.to_bytes()
 }

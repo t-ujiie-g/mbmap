@@ -2,6 +2,7 @@
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
 import { buildSymbols, Glyphs } from "./symbols.mjs";
+import { readString, readValue } from "./values.mjs";
 
 const LAYER_ENTRY_WORDS = 9; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
@@ -30,16 +31,12 @@ function withInput(bytes, run) {
 // ordinary property.
 function decodeProps(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let at = 0;
-  const u32 = () => { const v = view.getUint32(at, true); at += 4; return v; };
-  const str = () => { const n = u32(); const s = decoder.decode(bytes.subarray(at, at + n)); at += n; return s; };
   const props = Object.create(null);
-  for (let n = u32(); n > 0; n--) {
-    const key = str();
-    const type = bytes[at++];
-    if (type === 3) { props[key] = view.getFloat64(at, true); at += 8; }
-    else if (type === 4) props[key] = str();
-    else props[key] = type === 0 ? null : type === 2;
+  let at = 4;
+  for (let n = view.getUint32(0, true); n > 0; n--) {
+    let key;
+    [key, at] = readString(view, bytes, at);
+    [props[key], at] = readValue(view, bytes, at);
   }
   return props;
 }

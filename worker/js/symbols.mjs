@@ -2,11 +2,14 @@
 // out into glyph quads, with SDF glyphs drawn here by TinySDF.
 import TinySDF from "./tiny-sdf.mjs";
 import { layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
+import { readValue } from "./values.mjs";
 
 // Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
 export const SYMBOL_VERTEX_BYTES = 16;
-// Floats per label in an entry's `labels`.
+// Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
 export const LABEL_FLOATS = 8;
+// Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`).
+const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, count: 44, labels: 48 };
 // Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
 export const MAX_LABEL_CHARS = 256;
 // Most glyphs a worker keeps, and draws for one tile; past them characters are
@@ -15,7 +18,6 @@ export const MAX_GLYPHS = 4096;
 export const MAX_NEW_GLYPHS_PER_TILE = 1024;
 const BLANK = { advance: SDF_SIZE / 2, left: 0, top: 0, width: 0, height: 0 };
 
-const decoder = new TextDecoder();
 
 // SDF glyphs of one font, drawn once per worker; `fresh` lists the ones the
 // main thread has not been sent yet.
@@ -62,20 +64,14 @@ export class Glyphs {
 // setInt16 wraps around, so offsets past its range are clamped.
 const quarterPixels = (px) => Math.max(-32768, Math.min(32767, Math.round(px * 4)));
 
+// A label's text parts joined: null and absent parts are empty, numbers and
+// booleans as JS writes them.
 function readText(view, bytes, at, parts) {
   let text = "";
   for (let p = 0; p < parts; p++) {
-    const tag = view.getUint8(at++);
-    if (tag === 3) {
-      text += String(view.getFloat64(at, true));
-      at += 8;
-    } else if (tag === 4) {
-      const n = view.getUint32(at, true);
-      text += decoder.decode(bytes.subarray(at + 4, at + 4 + n));
-      at += 4 + n;
-    } else if (tag === 1 || tag === 2) {
-      text += tag === 2 ? "true" : "false";
-    }
+    let v;
+    [v, at] = readValue(view, bytes, at);
+    if (v != null) text += String(v);
   }
   return [text, at];
 }
@@ -84,17 +80,21 @@ function readText(view, bytes, at, parts) {
 export function buildSymbols(bytes, glyphs) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const layout = {
-    anchor: view.getUint8(0),
-    offset: [view.getFloat64(4, true), view.getFloat64(12, true)],
-    maxWidth: view.getFloat64(20, true),
-    lineHeight: view.getFloat64(28, true),
+    anchor: view.getUint8(HEADER.anchor),
+    offset: [view.getFloat64(HEADER.offset, true), view.getFloat64(HEADER.offset + 8, true)],
+    maxWidth: view.getFloat64(HEADER.maxWidth, true),
+    lineHeight: view.getFloat64(HEADER.lineHeight, true),
   };
-  const flags = { allowOverlap: view.getUint8(1) === 1, ignorePlacement: view.getUint8(2) === 1, padding: view.getFloat64(36, true) };
-  const count = view.getUint32(44, true);
+  const flags = {
+    allowOverlap: view.getUint8(HEADER.allowOverlap) === 1,
+    ignorePlacement: view.getUint8(HEADER.ignorePlacement) === 1,
+    padding: view.getFloat64(HEADER.padding, true),
+  };
+  const count = view.getUint32(HEADER.count, true);
   const placed = [];
   const local = new Map();
   let quads = 0;
-  let at = 48;
+  let at = HEADER.labels;
   for (let i = 0; i < count; i++) {
     const x = view.getInt16(at, true);
     const y = view.getInt16(at + 2, true);

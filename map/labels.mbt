@@ -3,12 +3,16 @@
 const KIND_SYMBOL : Int32 = 4
 
 ///|
+/// Floats per label in a symbol entry's `labels`: anchor x, y, box, first index
+/// and index count. Mirrors LABEL_FLOATS in worker/js/symbols.mjs.
+const LABEL_FLOATS : Int32 = 8
+
+///|
 /// How often labels are placed again while the camera moves, in milliseconds.
 const PLACEMENT_INTERVAL : Double = 100.0
 
 ///|
-/// A symbol mesh's labels as the worker sent them (`LABEL_FLOATS` floats
-/// each, worker/js/symbols.mjs) and which of them show.
+/// A symbol mesh's labels as the worker sent them and which of them show.
 priv struct LabelSet {
   labels : @render_webgl2.JsBuffer
   count : Int32
@@ -88,7 +92,7 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
     rects,
   )
   let labels = buffer_of(l, "labels")
-  let count = length_of(labels) / 8
+  let count = length_of(labels) / LABEL_FLOATS
   self.labels_dirty = true
   (
     mesh,
@@ -160,7 +164,7 @@ fn Map::place_labels(
         s.round = round
         let mut changed = false
         for i in 0..<s.count {
-          let at = i * 8
+          let at = i * LABEL_FLOATS
           let (cx, cy, _, cw) = d.0.matrix.apply(
             f32_at(s.labels, at),
             f32_at(s.labels, at + 1),
@@ -193,7 +197,7 @@ fn Map::place_labels(
           }
         }
         if changed {
-          self.renderer.show(m.mesh, s.labels, s.shown)
+          self.renderer.show(m.mesh, s.labels, LABEL_FLOATS, s.shown)
         }
       }
     }

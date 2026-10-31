@@ -308,23 +308,22 @@ extern "js" fn gl_upload_symbols(
   #|}
 
 ///|
-/// Draws only the labels whose `shown` flag is set: label `i` owns indices
-/// `labels[i * 8 + 6]` to that plus `labels[i * 8 + 7]`.
 extern "js" fn gl_show(
   gl : Gl,
   mesh : Mesh,
   labels : JsBuffer,
+  stride : Int32,
   shown : FixedArray[Bool],
 ) -> Unit =
-  #|(c, m, labels, shown) => {
+  #|(c, m, labels, stride, shown) => {
   #|  const gl = c.gl;
   #|  let n = 0;
-  #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[i * 8 + 7];
+  #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[(i + 1) * stride - 1];
   #|  const out = new m.all.constructor(n);
   #|  let at = 0;
   #|  for (let i = 0; i < shown.length; i++) {
   #|    if (!shown[i]) continue;
-  #|    const first = labels[i * 8 + 6], count = labels[i * 8 + 7];
+  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
   #|    out.set(m.all.subarray(first, first + count), at);
   #|    at += count;
   #|  }
