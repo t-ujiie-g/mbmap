@@ -222,3 +222,108 @@ test "layers are rescaled to TILE_EXTENT" {
   let v = u32_at(b, 4 + 2 * 4)
   assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (50, 0))
 }
+
+///|
+/// A "road" layer of line features, each with property `k` set to the given
+/// value (or no `k` for None).
+fn road_layer(ks : Array[Int32?]) -> @pbf.Writer {
+  let l = @pbf.Writer::new()
+  l.write_tag(1, @pbf.WIRE_LEN)
+  l.write_string("road")
+  for i, k in ks {
+    // MoveTo (i * 20, 0), LineTo (+10, +10).
+    let g = @pbf.Writer::new()
+    g.write_varint32(cmd(1, 1))
+    g.write_svarint32(i * 20)
+    g.write_svarint32(0)
+    g.write_varint32(cmd(2, 1))
+    g.write_svarint32(10)
+    g.write_svarint32(10)
+    let f = @pbf.Writer::new()
+    if k is Some(k) {
+      let t = @pbf.Writer::new()
+      t.write_varint32(0)
+      t.write_varint32(k)
+      f.write_tag(2, @pbf.WIRE_LEN)
+      f.write_bytes(t.to_bytes()[:])
+    }
+    f.write_tag(3, @pbf.WIRE_VARINT)
+    f.write_varint32(2)
+    f.write_tag(4, @pbf.WIRE_LEN)
+    f.write_bytes(g.to_bytes()[:])
+    l.write_tag(2, @pbf.WIRE_LEN)
+    l.write_bytes(f.to_bytes()[:])
+  }
+  l.write_tag(3, @pbf.WIRE_LEN)
+  l.write_string("k")
+  for v in 0..<2 {
+    let vw = @pbf.Writer::new()
+    vw.write_tag(4, @pbf.WIRE_VARINT)
+    vw.write_varint32(v)
+    l.write_tag(4, @pbf.WIRE_LEN)
+    l.write_bytes(vw.to_bytes()[:])
+  }
+  l
+}
+
+///|
+fn props_of(b : BytesView, k : Int32) -> String {
+  let entry = (w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  @utf8.decode_lossy(b[entry(7):entry(7) + entry(8)])
+}
+
+///|
+test "data-driven paint splits a layer into groups carrying their inputs" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "road", "type": "line", "source": "a", "source-layer": "road",
+    #|   "paint": {"line-width": ["case", ["has", "k"], ["match", ["get", "k"], 0, 2, 4], 1]}},
+    #|  {"id": "plain", "type": "line", "source": "a", "source-layer": "road"}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  // k = 0, 1, 0 and one feature without k: three groups in first-seen order.
+  assert_true(
+    p.process(
+      "a",
+      tile_of([road_layer([Some(0), Some(1), Some(0), None])])[:],
+      14,
+    ),
+  )
+  let b = p.out.to_bytes()[:]
+  assert_eq(p.out.layer_count(), 4)
+  assert_eq([props_of(b, 0), props_of(b, 1), props_of(b, 2)], [
+    "{\"k\":0}", "{\"k\":1}", "{}",
+  ])
+  // Group 0 holds two of the four lines: 2 x 4 vertices.
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(entry(0, 3), 8 * @worker.LINE_VERTEX_BYTES)
+  // The header has room for MAX_GROUPS entries of "road" and one of "plain".
+  assert_eq(
+    entry(0, 2),
+    4 + (@worker.MAX_GROUPS + 1) * @worker.LAYER_ENTRY_WORDS * 4,
+  )
+  // The ungrouped layer gets one entry without properties.
+  assert_eq(
+    (entry(3, 0), entry(3, 8), entry(3, 3)),
+    (1, 0, 16 * @worker.LINE_VERTEX_BYTES),
+  )
+}
+
+///|
+test "property filters select features" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [{"id": "one", "type": "line", "source": "a", "source-layer": "road",
+    #|   "filter": ["==", ["get", "k"], 1]}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(
+    p.process("a", tile_of([road_layer([Some(0), Some(1), None])])[:], 14),
+  )
+  let b = p.out.to_bytes()[:]
+  assert_eq(u32_at(b, 4 + 3 * 4), 4 * @worker.LINE_VERTEX_BYTES)
+}

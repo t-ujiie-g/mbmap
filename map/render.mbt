@@ -34,17 +34,20 @@ fn Map::render(self : Map) -> Unit {
       zoom >= layer.max_zoom {
       continue
     }
+    // Paint that does not read feature data is the same for every mesh.
+    let shared = paint_of(layer, zoom, JsProps::none())
     for s in sources {
       match s {
-        Own(id, meshes) => self.draw_layer(index, layer, id, meshes, dpr)
+        Own(id, meshes) =>
+          self.draw_layer(index, layer, shared, id, meshes, dpr)
         Ancestor(id, meshes, clip~) => {
           self.clip_to(clip, dpr, ph)
-          self.draw_layer(index, layer, id, meshes, dpr)
+          self.draw_layer(index, layer, shared, id, meshes, dpr)
           self.renderer.no_scissor()
         }
         Children(kids) =>
           for kid in kids {
-            self.draw_layer(index, layer, kid.0, kid.1, dpr)
+            self.draw_layer(index, layer, shared, kid.0, kid.1, dpr)
           }
         Nothing => ()
       }
@@ -68,11 +71,11 @@ fn Map::background(self : Map) -> (Double, Double, Double) {
   let zoom = self.transform.camera.zoom
   for l in self.style.layers {
     if l.kind is Background && zoom >= l.min_zoom && zoom < l.max_zoom {
-      let a = l.color.a * l.opacity
+      let p = paint_of(l, zoom, JsProps::none())
       return (
-        l.color.r * a + 1.0 - a,
-        l.color.g * a + 1.0 - a,
-        l.color.b * a + 1.0 - a,
+        p.r * p.a + 1.0 - p.a,
+        p.g * p.a + 1.0 - p.a,
+        p.b * p.a + 1.0 - p.a,
       )
     }
   }
@@ -80,25 +83,36 @@ fn Map::background(self : Map) -> (Double, Double, Double) {
 }
 
 ///|
+/// Draws `index`'s meshes of one tile; `shared` is the layer's paint for
+/// meshes without group properties.
 fn Map::draw_layer(
   self : Map,
   index : Int32,
   layer : @style.StyleLayer,
+  shared : Paint,
   id : @core.TileId,
   meshes : Array[LayerMesh],
   dpr : Double,
 ) -> Unit {
+  let tt = self.transform.tile_transform(id, @core.TILE_EXTENT)
+  let zoom = self.transform.camera.zoom
   for m in meshes {
     if m.layer != index {
       continue
     }
-    let tt = self.transform.tile_transform(id, @core.TILE_EXTENT)
-    let c = layer.color
-    let a = c.a * layer.opacity
+    let p = match (m.props, m.paint) {
+      (None, _) => shared
+      (Some(_), Some((z, p))) if z == zoom => p
+      (Some(props), _) => {
+        let p = paint_of(layer, zoom, props)
+        m.paint = Some((zoom, p))
+        p
+      }
+    }
     if m.line {
-      self.renderer.draw_line(m.mesh, tt, c.r, c.g, c.b, a, layer.width * dpr)
+      self.renderer.draw_line(m.mesh, tt, p.r, p.g, p.b, p.a, p.width * dpr)
     } else {
-      self.renderer.draw_fill(m.mesh, tt, c.r, c.g, c.b, a)
+      self.renderer.draw_fill(m.mesh, tt, p.r, p.g, p.b, p.a)
     }
   }
 }

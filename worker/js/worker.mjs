@@ -4,12 +4,13 @@
 //               {type: "tile", id, url, source, z}      source = index into style.sources
 //               {type: "cancel", id}
 // Messages out: {type: "ready"} | {type: "error", message}
-//               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes, shared}]}
-//               where `shared` is the index of an earlier layer whose buffers it reuses, or -1
+//               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes, shared, props}]}
+//               where `shared` is the index of an earlier layer whose buffers it reuses, or -1,
+//               and `props` the properties a data-driven layer's group shares, or null
 //               {type: "tile-error", id, message}
 // Vertex and index buffers are transferred, never copied (VISION §4-3).
 
-const LAYER_ENTRY_WORDS = 7;
+const LAYER_ENTRY_WORDS = 9;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
@@ -35,16 +36,17 @@ function unpack(packed) {
   const byOffset = new Map();
   for (let k = 0; k < count; k++) {
     const e = (i) => view.getUint32(4 + (k * LAYER_ENTRY_WORDS + i) * 4, true);
+    const props = e(8) > 0 ? JSON.parse(decoder.decode(packed.subarray(e(7), e(7) + e(8)))) : null;
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
       const { vertices, indices } = layers[shared];
-      layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared });
+      layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props });
       continue;
     }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
     const indices = packed.slice(e(4), e(4) + e(5) * e(6)).buffer;
     byOffset.set(e(2), k);
-    layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1 });
+    layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };

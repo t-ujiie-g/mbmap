@@ -1,5 +1,5 @@
 // mbmap vs MapLibre with the same style, tiles and camera script, in Chromium
-// with the Metal GPU. Usage: node render/run.mjs [--runs=5] [--uncapped]
+// with the Metal GPU. Usage: node render/run.mjs [--runs=11] [--uncapped]
 // Writes bench/results/render-chromium[-uncapped].json.
 import { readFile, writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
@@ -10,7 +10,7 @@ import { serve } from "../lib/serve.mjs";
 import { ROOT } from "../lib/root.mjs";
 
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
-const runs = Number(arg("runs", 5));
+const runs = Number(arg("runs", 11));
 const uncapped = process.argv.includes("--uncapped");
 const dpr = 2;
 
@@ -56,7 +56,7 @@ for (const [engine, rs] of Object.entries(results)) {
   };
 }
 const out = {
-  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, style: "examples/basic/style.json" },
+  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, style: "bench/maplibre/style.json" },
   params: { runs, statistic: "median of runs" }, sizes, summary, runs: results,
 };
 await writeFile(path.join(ROOT, `bench/results/render-chromium${uncapped ? "-uncapped" : ""}.json`), JSON.stringify(out, null, 2) + "\n");

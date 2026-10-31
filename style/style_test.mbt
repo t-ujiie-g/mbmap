@@ -48,6 +48,11 @@ let sample : String =
   #|}
 
 ///|
+fn constant(e : @style.Expr) -> @style.Value {
+  e.eval(0.0, @style.NoFeature::{ })
+}
+
+///|
 test "a style keeps its vector sources and drawable layers in order" {
   let s = @style.Style::parse(sample)
   assert_eq(s.sources.length(), 1)
@@ -59,35 +64,40 @@ test "a style keeps its vector sources and drawable layers in order" {
   assert_eq(s.layers.map(l => l.id), ["bg", "water", "road"])
   let water = s.layers[1]
   assert_eq(
-    (water.kind, water.source_layer, water.opacity, water.filter),
-    (Fill, "waterarea", 0.5, AnyGeometry),
+    (water.kind, water.source_layer, water.filter),
+    (Fill, "waterarea", None),
   )
+  assert_eq(constant(water.opacity), Num(0.5))
   let road = s.layers[2]
+  assert_eq((road.kind, road.min_zoom), (Line, 12.0))
+  assert_eq(constant(road.width), Num(3.0))
   assert_eq(
-    (road.kind, road.width, road.min_zoom, road.filter),
-    (Line, 3.0, 12.0, OnlyLineString),
+    road.filter,
+    Some(Compare(Eq, GeometryType, Lit(Str("LineString")))),
   )
-  assert_eq((road.join, road.cap, road.color.r), (Round, Square, 1.0))
+  assert_eq((road.join, road.cap), (Round, Square))
+  assert_eq(constant(road.color), Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }))
   assert_eq(
     (s.layers[0].kind, s.layers[0].max_zoom, road.miter_limit),
     (Background, 24.0, 2.0),
   )
+  assert_eq(constant(s.layers[0].width), Num(1.0))
 }
 
 ///|
-test "expressions and other filters are reported, not ignored" {
+test "unsupported expressions are reported with their path, not ignored" {
   let cases = [
     (
       (
-        #|{"layers": [{"id": "a", "type": "line", "paint": {"line-width": ["get", "w"]}}]}
+        #|{"layers": [{"id": "a", "type": "line", "paint": {"line-width": ["sqrt", 2]}}]}
       ),
       "layers[0].paint.line-width",
     ),
     (
       (
-        #|{"layers": [{"id": "a", "type": "fill", "filter": ["==", ["get", "k"], 1]}]}
+        #|{"layers": [{"id": "a", "type": "fill", "filter": ["all", ["get", "k", {}]]}]}
       ),
-      "layers[0].filter",
+      "layers[0].filter[1]",
     ),
     (
       (
@@ -131,5 +141,35 @@ test "malformed styles are Invalid with a path" {
     } noraise {
       _ => fail("expected Invalid at \{where_}")
     }
+  }
+}
+
+///|
+test "from_json takes a parsed document; errors read as one line" {
+  let s = @style.Style::from_json({
+    "layers": [{ "id": "bg", "type": "background" }],
+  })
+  assert_eq(s.layers.map(l => l.kind), [Background])
+  assert_eq(
+    @style.Invalid(path="layers[0].type", "missing").message(),
+    "layers[0].type: missing",
+  )
+  assert_eq(@style.Invalid(path="", "not an object").message(), "not an object")
+  assert_eq(
+    @style.Unsupported(path="sources.s", "url").message(),
+    "sources.s: unsupported: url",
+  )
+  assert_eq(@style.Unsupported(path="", "x").message(), "unsupported: x")
+}
+
+///|
+test "rgb() components are plain decimals" {
+  assert_eq(@style.parse_color("rgba(0,0,0,.5)").map(c => c.a), Some(0.5))
+  assert_eq(
+    @style.parse_color("rgb(12.5,0,0)").map(c => c.r),
+    Some(12.5 / 255.0),
+  )
+  for bad in ["rgb(1.2.3,0,0)", "rgb(,0,0)", "rgb(-1,0,0)", "rgb(1e2,0,0)"] {
+    assert_eq(@style.parse_color(bad), None)
   }
 }

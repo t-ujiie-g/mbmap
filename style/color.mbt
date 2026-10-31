@@ -87,7 +87,8 @@ fn parse_rgb(s : String) -> Color? {
   }
   let nums = []
   for p in parts {
-    nums.push(@string.parse_double(p) catch { _ => return None })
+    guard decimal(p) is Some(n) else { return None }
+    nums.push(n)
   }
   let a = if expected == 4 { nums[3] } else { 1.0 }
   for i in 0..<3 {
@@ -99,4 +100,34 @@ fn parse_rgb(s : String) -> Color? {
     return None
   }
   Some({ r: nums[0] / 255.0, g: nums[1] / 255.0, b: nums[2] / 255.0, a, })
+}
+
+///|
+/// Parses an unsigned decimal like `255`, `0.5` or `.5`; enough for color
+/// components, and lighter than a general float parser in the main bundle.
+fn decimal(s : String) -> Double? {
+  let mut value = 0.0
+  let mut scale = 0.0
+  let mut digits = 0
+  for c in s {
+    match c {
+      '0'..<='9' => {
+        let d = (c.to_int() - '0'.to_int()).to_double()
+        if scale == 0.0 {
+          value = value * 10.0 + d
+        } else {
+          value += d * scale
+          scale /= 10.0
+        }
+        digits += 1
+      }
+      '.' if scale == 0.0 => scale = 0.1
+      _ => return None
+    }
+  }
+  if digits == 0 {
+    None
+  } else {
+    Some(value)
+  }
 }

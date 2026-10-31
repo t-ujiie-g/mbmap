@@ -17,12 +17,6 @@ pub extend LayerKind with @debug.Debug::{to_repr}
 pub extend LayerKind with Eq::{not_equal, equal}
 
 ///|
-pub extend GeometryFilter with @debug.Debug::{to_repr}
-
-///|
-pub extend GeometryFilter with Eq::{not_equal, equal}
-
-///|
 pub extend Join with @debug.Debug::{to_repr}
 
 ///|
@@ -33,3 +27,36 @@ pub extend Cap with @debug.Debug::{to_repr}
 
 ///|
 pub extend Cap with Eq::{not_equal, equal}
+
+///|
+pub extend Value with @debug.Debug::{to_repr}
+
+///|
+pub extend Value with Eq::{not_equal, equal}
+
+///|
+pub extend CmpOp with @debug.Debug::{to_repr}
+
+///|
+pub extend CmpOp with Eq::{not_equal, equal}
+
+///|
+pub extend Interpolation with @debug.Debug::{to_repr}
+
+///|
+pub extend Interpolation with Eq::{not_equal, equal}
+
+///|
+pub extend Expr with @debug.Debug::{to_repr}
+
+///|
+pub extend Expr with Eq::{not_equal, equal}
+
+///|
+pub extend Expected with @debug.Debug::{to_repr}
+
+///|
+pub extend Expected with Eq::{not_equal, equal}
+
+///|
+pub extend NoFeature with FeatureContext::{geometry_type, property}

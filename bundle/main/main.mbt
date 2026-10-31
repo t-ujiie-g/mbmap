@@ -37,7 +37,10 @@ pub fn create_map(
     wasm_url~,
     workers~,
   ) catch {
-    e => throw_error("mbmap: \{Repr(e)}")
+    BadStyle(e) => throw_error("mbmap: style: \{e.message()}")
+    NoWebGL2 => throw_error("mbmap: WebGL2 is not available")
+    NoVectorSource =>
+      throw_error("mbmap: the style draws from no vector source")
   }
 }
 

@@ -6,11 +6,16 @@ pub(all) suberror MapError {
 } derive(Debug)
 
 ///|
+/// `owned` is false when the mesh belongs to an earlier layer of the same tile;
+/// `props` are the inputs a data-driven layer's group shares, and `paint` caches
+/// their paint at the zoom it was evaluated for.
 priv struct LayerMesh {
   layer : Int32
   line : Bool
   mesh : @render_webgl2.Mesh
   owned : Bool
+  props : JsProps?
+  mut paint : (Double, Paint)?
 }
 
 ///|
@@ -82,7 +87,9 @@ pub fn Map::new(
   wasm_url~ : String,
   workers~ : Int32 = 2,
 ) -> Map raise MapError {
-  let style = @style.Style::parse(style_json) catch { e => raise BadStyle(e) }
+  let style = @style.Style::from_json(parse_json(style_json)) catch {
+    e => raise BadStyle(e)
+  }
   // One vector source for now: the first one a layer draws from.
   let mut source_index = -1
   for l in style.layers {

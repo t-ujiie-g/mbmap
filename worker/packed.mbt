@@ -17,8 +17,9 @@ pub const LINE_VERTEX_BYTES : Int32 = 8
 ///|
 /// Ints per layer entry in the header: style layer index, kind, vertex byte
 /// offset, vertex byte length, index byte offset, index count, bytes per
-/// index (2 when the layer has at most 65536 vertices, else 4).
-pub const LAYER_ENTRY_WORDS : Int32 = 7
+/// index (2 when the layer has at most 65536 vertices, else 4), byte offset
+/// and length of the entry's group properties (UTF-8 JSON; length 0 if none).
+pub const LAYER_ENTRY_WORDS : Int32 = 9
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -98,7 +99,7 @@ fn rescale(v : Int32, extent : Int32) -> Int32 {
 }
 
 ///|
-/// Starts a tile that will hold at most `max_layers` layers.
+/// Starts a tile that will hold at most `max_layers` layer entries.
 pub fn PackedTile::begin(self : PackedTile, max_layers : Int32) -> Unit {
   self.len = 0
   self.layers = 0
@@ -239,4 +240,21 @@ pub fn PackedTile::add_alias(
   }
   self.layers += 1
   self.put_u32(0, self.layers)
+}
+
+///|
+/// Attaches `json`, the properties shared by the last entry's features, to it.
+fn PackedTile::set_props(self : PackedTile, json : Bytes) -> Unit {
+  if self.layers == 0 || !self.reserve(json.length() + 3) {
+    // Without room the entry keeps length 0; reserve() has flagged overflow.
+    return
+  }
+  let at = self.len
+  for i, b in json {
+    self.store.set_u8(at + i, b.to_int())
+  }
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 28, at)
+  self.put_u32(e + 32, json.length())
+  self.len = (at + json.length() + 3) / 4 * 4
 }

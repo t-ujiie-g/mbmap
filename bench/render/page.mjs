@@ -17,7 +17,7 @@ window.requestAnimationFrame = (f) => raf((t) => {
 
 const START = { lng: 139.7671, lat: 35.6812, zoom: 14.5 };
 const marks = { scriptStart: performance.now() };
-const styleText = await (await fetch("/examples/basic/style.json")).text();
+const styleText = (await (await fetch("/bench/maplibre/style.json")).text()).replaceAll("{origin}", location.origin);
 
 async function createMbmap() {
   // The minified build run.mjs produces, as an app bundler would ship it.

@@ -17,6 +17,7 @@ pub(all) suberror MvtError {
   OddTagCount(pos~ : Int32)
 } derive(Eq, @debug.Debug)
 pub fn MvtError::equal(Self, Self) -> Bool
+pub fn MvtError::message(Self) -> String
 pub fn MvtError::not_equal(Self, Self) -> Bool
 pub fn MvtError::to_repr(Self) -> @debug.Repr
 

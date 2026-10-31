@@ -14,16 +14,6 @@ pub(all) enum LayerKind {
 } derive(Debug, Eq)
 
 ///|
-/// The geometry types a layer draws. Only `["==", ["geometry-type"], t]`
-/// filters are understood so far.
-pub(all) enum GeometryFilter {
-  AnyGeometry
-  OnlyPoint
-  OnlyLineString
-  OnlyPolygon
-} derive(Debug, Eq)
-
-///|
 pub(all) enum Join {
   Miter
   Bevel
@@ -38,8 +28,9 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer. `color`, `opacity` and `width` are the layer type's
-/// paint values (`fill-*`, `line-*` or `background-*`); `width` is in CSS pixels.
+/// One drawable layer. `filter` (None: every feature) selects features;
+/// `color`, `opacity` and `width` are the layer type's paint values
+/// (`fill-*`, `line-*` or `background-*`), `width` in CSS pixels.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -47,10 +38,10 @@ pub struct StyleLayer {
   source_layer : String
   min_zoom : Double
   max_zoom : Double
-  filter : GeometryFilter
-  color : Color
-  opacity : Double
-  width : Double
+  filter : Expr?
+  color : Expr
+  opacity : Expr
+  width : Expr
   join : Join
   cap : Cap
   miter_limit : Double
@@ -84,12 +75,18 @@ pub fn Style::source(self : Style, id : String) -> VectorSource? {
 }
 
 ///|
-/// Parses a style. Unsupported values (expressions, other filters) are an
-/// error rather than being ignored.
+/// Parses a style. Unsupported values (expressions or layer properties
+/// outside the supported subset) are an error rather than being ignored.
 pub fn Style::parse(text : StringView) -> Style raise StyleError {
   let json = @json.parse(text, max_nesting_depth=64) catch {
     e => raise Invalid(path="", "not JSON: \{e}")
   }
+  Style::from_json(json)
+}
+
+///|
+/// `Style::parse` for an already parsed document.
+pub fn Style::from_json(json : Json) -> Style raise StyleError {
   guard json is Object(root) else { raise Invalid(path="", "not an object") }
   let sources = []
   if root.get("sources") is Some(Object(map)) {
@@ -165,25 +162,6 @@ fn string_or(
 }
 
 ///|
-fn color_or(
-  obj : Map[String, Json],
-  key : String,
-  path : String,
-  default : Color,
-) -> Color raise StyleError {
-  match obj.get(key) {
-    None => default
-    Some(String(s)) =>
-      match parse_color(s) {
-        Some(c) => c
-        None => raise Invalid(path="\{path}.\{key}", "not a color: \{s}")
-      }
-    Some(Array(_)) => raise Unsupported(path="\{path}.\{key}", "expressions")
-    Some(_) => raise Invalid(path="\{path}.\{key}", "not a color")
-  }
-}
-
-///|
 fn object_at(
   obj : Map[String, Json],
   key : String,
@@ -195,28 +173,6 @@ fn object_at(
     Some(_) => raise Invalid(path="\{path}.\{key}", "not an object")
   }
 }
-
-///|
-fn parse_filter(json : Json?, path : String) -> GeometryFilter raise StyleError {
-  match json {
-    None => AnyGeometry
-    Some(Array([String("=="), Array([String("geometry-type")]), String(t)])) =>
-      match t {
-        "Point" => OnlyPoint
-        "LineString" => OnlyLineString
-        "Polygon" => OnlyPolygon
-        _ => raise Invalid(path~, "unknown geometry type \{t}")
-      }
-    Some(_) =>
-      raise Unsupported(
-        path~,
-        "only [\"==\", [\"geometry-type\"], type] filters",
-      )
-  }
-}
-
-///|
-let black : Color = { r: 0.0, g: 0.0, b: 0.0, a: 1.0, }
 
 ///|
 fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
@@ -259,13 +215,53 @@ fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
     source_layer: string_or(l, "source-layer", path, ""),
     min_zoom: number_or(l, "minzoom", path, 0.0),
     max_zoom: number_or(l, "maxzoom", path, 24.0),
-    filter: parse_filter(l.get("filter"), "\{path}.filter"),
-    color: color_or(paint, "\{prefix}-color", ppath, black),
-    opacity: number_or(paint, "\{prefix}-opacity", ppath, 1.0),
-    width: number_or(paint, "line-width", ppath, 1.0),
+    filter: match l.get("filter") {
+      None => None
+      Some(f) => Some(compile(f, expected=BoolType, path="\{path}.filter"))
+    },
+    color: paint_expr(
+      paint,
+      "\{prefix}-color",
+      ppath,
+      ColorType,
+      Json::string("#000000"),
+    ),
+    opacity: paint_expr(
+      paint,
+      "\{prefix}-opacity",
+      ppath,
+      NumberType,
+      Json::number(1.0),
+    ),
+    width: paint_expr(paint, "line-width", ppath, NumberType, Json::number(1.0)),
     join,
     cap,
     miter_limit: number_or(layout, "line-miter-limit", lpath, 2.0),
     round_limit: number_or(layout, "line-round-limit", lpath, 1.05),
   })
+}
+
+///|
+fn paint_expr(
+  paint : Map[String, Json],
+  key : String,
+  path : String,
+  expected : Expected,
+  default : Json,
+) -> Expr raise StyleError {
+  compile(paint.get(key).unwrap_or(default), expected~, path="\{path}.\{key}")
+}
+
+///|
+/// A one-line description, e.g. `layers[3].paint.line-width: expressions`.
+pub fn StyleError::message(self : StyleError) -> String {
+  match self {
+    Invalid(path~, m) => if path == "" { m } else { "\{path}: \{m}" }
+    Unsupported(path~, m) =>
+      if path == "" {
+        "unsupported: \{m}"
+      } else {
+        "\{path}: unsupported: \{m}"
+      }
+  }
 }

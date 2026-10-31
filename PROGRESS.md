@@ -1,5 +1,89 @@
 # PROGRESS
 
+## Phase 4：`style` サブセット（2026-10-31）
+
+状態：**完了**（完了条件「国土地理院の簡易スタイル程度が描ける」を満たした。`bench/maplibre/style.json` を変更せずにそのまま描き、z14.5 と z16.5 のスクリーンショットが MapLibre とほぼ一致した）。
+
+### できたこと
+
+- **`style` の式**（`style/expr.mbt`、`style/eval.mbt`）：filter と paint を `Expr` にコンパイルして評価する。
+  - 対応：`literal`、`get`、`has`、`geometry-type`、`zoom`、`!`、`all`、`any`、`==` `!=` `<` `<=` `>` `>=`、`in`、`match`、`case`、`coalesce`、`interpolate`（linear / exponential。数値と色）、`step`。
+  - MapLibre と同じく、比較では型を変換しない。色のプロパティでは、文字列の定数をコンパイル時に色に変える。
+  - 未対応の式は JSON 上の場所付きで `Unsupported`、形が誤っている式は `Invalid` にする。ネストは `MAX_EXPR_DEPTH`（32）までで、深い入力でスタックを使い切らない（AGENTS.md §8.2）。
+  - 評価は `FeatureContext` トレイト（プロパティとジオメトリの種類）に対して行う。`feature_inputs` で、式が読むプロパティを列挙できる。
+  - レイヤーの filter・色・不透明度・線幅を `Expr` で持つようにした。Phase 3 の `GeometryFilter` は削除した。
+- **地物ごとに変わる paint**（ユーザー判断：属性値でグループ分け）：
+  - Worker は、paint が読むプロパティの値の組み合わせで地物をグループに分け、グループごとに別のエントリとして詰める（1レイヤー・1タイルあたり最大 `MAX_GROUPS` = 64）。エントリには、そのグループの値を JSON で付ける（ヘッダは1エントリ9語に増やした）。
+  - main は、描くたびに現在のズームでグループごとの paint を評価し、uniform で渡す。頂点属性は増やしていない。
+  - filter は Worker で、タイルのズームを使って評価する（MapLibre と同じ）。
+- **`map`**：スタイルの JSON は JS の `JSON.parse` で読み、MoonBit の `Json` に変換する（MoonBit の JSON パーサを main のバンドルに入れない）。評価は `JsProps` という1つの型で行い、`Expr::eval` がバンドルに1つだけ入るようにした。
+- **ベンチと example**：`bench/render` と `bench/worker` は、`bench/maplibre/style.json` を両エンジンにそのまま渡すようにした。`examples/basic/style.json` も同じレイヤーにした。
+
+### ベンチ結果：描画（Chromium 156 + ANGLE Metal / M2、1280×800、DPR 2、`bench/maplibre/style.json`、11回の中央値）
+
+| | mbmap | MapLibre 6.16.0 |
+|---|---|---|
+| メインの JS（gzip） | **20.6KB**（minify 後） | 295.5KB |
+| Worker（gzip） | **77.1KB**（JS グルーと wasm-gc） | 148.0KB |
+| 初回描画（ナビゲーション開始 → 初回 `idle`） | **98ms** | 99ms |
+| 　うち import 完了 | 44.3ms | 58.4ms |
+| 　うち地図の作成 → `idle` | 46ms | 32ms |
+| パン・ズーム中のフレーム間隔の平均 / p95 | 16.67 / 17.3〜17.5ms | 16.67 / 17.4〜17.6ms |
+| 1フレームの rAF の CPU 時間（p50 / p95） | **0.24〜0.31 / 0.43〜0.52ms** | 0.88〜1.07 / 1.35〜1.63ms |
+| 20ms を超えたフレーム | 0 | 0 |
+
+- 式とグループごとの paint を加えても、1フレームの CPU 時間は MapLibre の約1/3。数値はリファクタリング後のもの。代理指標の目標（p95 が 1.44ms 以下、20ms 超のフレーム 0）は満たしている。
+- **5回の中央値では、最初の数回（ブラウザが温まっていない）に引きずられて、mbmap が 116ms になった**。11回では、mbmap 97〜100ms（11回中9回）、MapLibre 99〜102ms で安定したので、既定を11回に変えた。
+- vsync なしでは、フレーム間隔の平均が mbmap 1.14〜1.40ms、MapLibre 0.99〜1.35ms だった（`bench/results/render-chromium-uncapped.json`）。Phase 3 と同じく、GPU との同期待ちが支配的。
+
+### ベンチ結果：Worker の `process_tile`（35タイル、ms、`bench/maplibre/style.json`）
+
+| | 温まった状態：中央タイル / タイル中央値 | 冷えた状態：最初の1枚 / タイル中央値 | 同じコードで Phase 3 のスタイル（温まった状態のタイル中央値） |
+|---|---|---|---|
+| Chromium 156 | 2.53 / 6.82 | 24.3 / 7.54 | 5.83（Phase 3：5.80） |
+| Firefox 157 | 3.28 / 8.86 | 22.8 / 9.44 | 7.54（Phase 3：7.42） |
+| WebKit 27.2 | 2.80 / 7.20 | 27.2 / 8.26 | 6.16（Phase 3：6.18） |
+
+- Phase 3 のスタイル（定数の paint）では Phase 3 と差がないので、式の評価そのものの負担は誤差の範囲。
+- 時間が増えたのはスタイルが重いため。道路の casing と本体は filter が違うのでバッファを共有できず、本体と建物は paint の値でグループに分かれる。
+
+### サイズと速度の改善（計測して判断したもの）
+
+| 候補 | 結果 | 判断 |
+|---|---|---|
+| Debug 表示（`Repr`）と `@string.parse_double` を、出荷するコードから外す（エラーは `message()` の文字列、色の数値は小さな自前のパーサ） | メインの gzip 49.1 → 20.65KB、Worker の wasm 82.4 → 75.4KB | 採用 |
+| main での評価を1つの型（`JsProps`。null のオブジェクトを「地物なし」とする）にまとめる | 20.65 → 20.49KB（minify 後は約 11KB 減） | 採用 |
+| ヘッダの大きさを、全レイヤーに64グループ分ではなく、グループに分けるレイヤーだけ64、ほかは1にする | 出力 59.69 → 58.97MB（35タイル）。時間は誤差の範囲 | 採用 |
+
+### リファクタリング（同じ PR に追加）
+
+AGENTS.md §7 の観点で点検した。
+
+- 定数：グループのプロパティでジオメトリの種類を運ぶキー `"$type"` を、`@core.GEOMETRY_TYPE_KEY` にまとめた（Worker と main の両方が使う）。
+- 重複・無駄：範囲外で描かないレイヤーの paint を評価していたのをやめた。`tile_transform` をメッシュごとではなくタイルごとに1回にした。
+- テスト：`Style::from_json`、`StyleError::message`、`MvtError::message` と、`rgb()` の数値パーサの境界（`.5`、`1.2.3`、空、負、指数表記）を直接テストした。
+- セキュリティ（§8）：式のネストに上限を設けた（Phase 4 本体で対応済み）。グループのプロパティは JSON.parse で作り、`Object.hasOwn` で読むので、`__proto__` を含むタイルでもプロトタイプは汚染されない。`npm audit` は 0 件。
+
+速度の候補：
+
+| 候補 | 結果 | 判断 |
+|---|---|---|
+| P1：`Expr::eval` のクロージャとイテレータをやめ、再帰とループで書く（wasm-gc ではノードごとに確保が起きるため） | Worker のタイル中央値：Chromium 6.54 → 6.60ms、Firefox 8.48 → 8.86ms、WebKit 7.10 → 6.84ms。誤差の範囲 | 元に戻した。filter の評価は Worker の主なコストではない |
+| P2：グループごとの paint を、メッシュに評価時のズームと一緒にキャッシュする（パン中は評価しない） | パンの rAF の CPU 時間 p50 / p95：改善前 0.33〜0.36 / 0.58〜0.63ms（3回）、改善後 0.31 / 0.52〜0.56ms（2回）。ズーム中は変わらない。メインは +0.15KB | 採用（効果は小さいが、範囲が重ならない） |
+
+### 既知の問題・次にやること
+
+- **地図の作成から `idle` までが、MapLibre より約14ms 遅い**（Phase 3 から変わらず）。import が速いぶん、初回描画全体ではまだ同等。
+- **1レイヤー・1タイルで値の組み合わせが64を超えると、超えた分の地物は64番目のグループの paint で描かれる**。プロパティ値から連続的に変わる paint（例：`["get", "width"]` をそのまま線幅に使う）は、グループではなく頂点属性で扱う必要がある。必要になったときに計測して決める。
+- 未対応の式：`to-number` などの型変換、算術（`+` `*` など）、`let` / `var`、`feature-state`。layout プロパティ（`line-join` など）は定数だけ読む。
+- 半透明の線で join の内側が重なる件（Phase 2）は、まだ残っている。
+- メインと Worker の両方がスタイルの JSON を解析している。スタイルの vector source は1つしか扱わない。
+
+### 次にやること（Phase 5）
+
+- npm パッケージ（TS ファサード、`.d.ts`、ESM）と、サイズ計測の CI
+- 完了条件：`npm pack` した成果物で example が動くこと
+
 ## Phase 3：`worker` + `render_webgl2` + `map` 最小版（2026-10-31）
 
 状態：**完了**（完了条件「fill / line / background が表示され、パン・ズームできる example」を満たした）。

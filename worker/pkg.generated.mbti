@@ -13,9 +13,11 @@ pub const KIND_FILL : Int32 = 1
 
 pub const KIND_LINE : Int32 = 2
 
-pub const LAYER_ENTRY_WORDS : Int32 = 7
+pub const LAYER_ENTRY_WORDS : Int32 = 9
 
 pub const LINE_VERTEX_BYTES : Int32 = 8
+
+pub const MAX_GROUPS : Int32 = 64
 
 pub const MAX_PACKED_BYTES : Int32 = 67108864
 
