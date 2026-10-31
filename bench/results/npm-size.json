@@ -1,0 +1,18 @@
+{
+  "env": {
+    "package": "mbmap@0.1.0",
+    "compression": "gzip -9"
+  },
+  "rows": [
+    {
+      "name": "main (index.js)",
+      "bytes": 22420,
+      "budget": 50000
+    },
+    {
+      "name": "worker (worker.js + mbmap.wasm)",
+      "bytes": 78143,
+      "budget": 80000
+    }
+  ]
+}

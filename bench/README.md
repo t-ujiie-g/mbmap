@@ -22,6 +22,7 @@ npm run tess:browser      # 同（3 ブラウザの module Worker 内）
 npm run worker:browser    # Worker の process_tile（冷えた状態・温まった状態）を 3 ブラウザで
 npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
 npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ で配信
+npm run npm:pack          # npm/ をビルドして npm pack し、examples/npm に入れて Chromium で確かめる
 ```
 
 ## entry/ と lib/
@@ -102,3 +103,10 @@ npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ 
 `worker` パッケージの wasm-gc ビルドが `maplibre/style.json` で全 fixture を処理する時間（デコード、
 テッセレーション、GPU 用バッファへの書き込みまで）。`cold` は新しいインスタンスが各タイルを 1 回ずつ順に
 処理したもの（ページの最初のタイルに相当）、行の値は温まった後のタイルごとの中央値。出力バイト数も記録する。
+
+## npm/ — npm パッケージの確認
+
+`pack-test.mjs` は `npm/` をビルドして `npm pack` し、できた tarball を `examples/npm/node_modules/mbmap` に展開する（アプリが
+インストールするのと同じ形）。そのうえで Chromium で `examples/npm/` を開き、`load` が来ること、`jumpTo` で `move` が1回だけ
+出ること、帰属表示、スタイル URL の取得失敗が `error` イベントになること、描けないスタイルが例外になることを確かめる。
+fixture がなくてもタイルが 404 になるだけで地図は読み込まれるので、CI でも動く。

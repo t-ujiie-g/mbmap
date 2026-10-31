@@ -173,3 +173,25 @@ test "rgb() components are plain decimals" {
     assert_eq(@style.parse_color(bad), None)
   }
 }
+
+///|
+test "tile URLs are relative or http(s)" {
+  let style = (url : String) => {
+    "{\"sources\": {\"s\": {\"type\": \"vector\", \"tiles\": [\"\{url}\"]}}, \"layers\": []}"
+  }
+  for
+    ok in [
+      "https://x/{z}/{x}/{y}.pbf", "HTTP://x/{z}", "/tiles/{z}/{x}/{y}.pbf", "tiles/{z}.pbf",
+      "//cdn.example/{z}", "a/b:c/{z}",
+    ] {
+    assert_eq(@style.Style::parse(style(ok)).sources[0].tiles, [ok])
+  }
+  for bad in ["javascript:alert(1)", "data:,x", "file:///etc/{z}", "blob:x"] {
+    try @style.Style::parse(style(bad)) catch {
+      Unsupported(path~, _) => assert_eq(path, "sources.s.tiles")
+      e => fail("unexpected \{Repr(e)}")
+    } noraise {
+      _ => fail("expected \{bad} to be refused")
+    }
+  }
+}

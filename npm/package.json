@@ -1,0 +1,27 @@
+{
+  "name": "mbmap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A lightweight vector-tile map renderer for the Web, written in MoonBit",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/t-ujiie-g/mbmap.git", "directory": "npm" },
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./worker.js": "./dist/worker.js",
+    "./mbmap.wasm": "./dist/mbmap.wasm",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": ["dist", "NOTICE"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "size": "node scripts/size.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}
