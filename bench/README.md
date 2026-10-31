@@ -22,6 +22,7 @@ npm run tess:browser      # 同（3 ブラウザの module Worker 内）
 npm run worker:browser    # Worker の process_tile（冷えた状態・温まった状態）を 3 ブラウザで
 npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
 npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ で配信
+npm run examples          # npm パッケージを pack して examples/{npm,element,react} に入れてから配信（一覧は /examples/）
 npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm,element,react} に入れて Chromium で確かめる
 ```
 

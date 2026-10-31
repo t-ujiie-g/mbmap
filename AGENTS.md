@@ -44,7 +44,8 @@ npm run tess:node         # decode + tessellation vs MapLibre WorkerTile.parse i
 npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/WebKit
 npm run worker:browser    # worker process_tile per fixture, cold and warm, in three browsers
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style)
-npm run example           # serve the repo; open http://127.0.0.1:8080/examples/basic/
+npm run example           # serve the repo; open http://127.0.0.1:8080/examples/ (basic needs only this)
+npm run examples          # also pack npm/ into examples/{npm,element,react} (bench/npm/prepare.mjs), then serve
 npm run npm:pack          # build + npm pack npm/, install into examples/{npm,element,react}, check them in Chromium (CI runs this)
 ```
 

@@ -29,6 +29,16 @@ moon fmt && moon info
 
 `npm/`、`element/`、`adapters/`、`examples/` は MoonBit パッケージではない（TS / HTML 側）。
 
+## 例を動かす
+
+```sh
+npm --prefix bench ci && npm --prefix npm ci   # 初回だけ
+npm --prefix bench run fixtures                # 東京駅周辺のタイルを取得
+npm --prefix bench run examples                # ビルドして 127.0.0.1:8080 で配信
+```
+
+http://127.0.0.1:8080/examples/ を開く（basic、npm パッケージ、`<mb-map>`、React の例）。詳しくは [examples/README.md](examples/README.md)。
+
 ## npm パッケージ
 
 `npm/` が npm パッケージ `mbmap`（TS ファサード、`.d.ts`、ESM）。使い方は [npm/README.md](npm/README.md)。

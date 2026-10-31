@@ -55,5 +55,5 @@ export function serve(port = 0) {
 // `node bench/lib/serve.mjs [port]` serves the repository for examples.
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const { origin } = await serve(Number(process.argv[2] ?? 8080));
-  console.log(`serving ${ROOT} at ${origin}/ (examples: ${origin}/examples/basic/)`);
+  console.log(`serving ${ROOT} at ${origin}/ (examples: ${origin}/examples/)`);
 }
