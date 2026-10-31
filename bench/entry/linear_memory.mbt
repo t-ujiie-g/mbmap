@@ -98,6 +98,7 @@ pub fn geojson_tiler_mem(
     buffer,
     wrap != 0,
     host_trig(),
+    slow_number=host_slow_number(addr),
   )
 }
 
@@ -105,7 +106,7 @@ pub fn geojson_tiler_mem(
 /// `read_only` on GeoJSON at `[addr, addr + len)`.
 #export_name("geojson_read_mem")
 pub fn geojson_read_mem(addr : Int32, len : Int32) -> Int32 {
-  read_only(bytes_from_mem(addr, len)[:])
+  read_only(bytes_from_mem(addr, len)[:], slow_number=host_slow_number(addr))
 }
 
 ///|

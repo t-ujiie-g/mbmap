@@ -1,0 +1,17 @@
+// The analysis worker's wasm-gc module: GeoJSON read into datasets kept by
+// handle, with their index built on first use. js/worker.mjs is its glue.
+
+import {
+  "t-ujiie-g/mbmap/analysis",
+  "t-ujiie-g/mbmap/formats",
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/encoding/utf8",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

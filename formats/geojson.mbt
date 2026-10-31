@@ -24,10 +24,15 @@ pub fn GeoJSONError::message(self : GeoJSONError) -> String {
 ///|
 /// Reads GeoJSON from UTF-8 into a table, one row per feature; like geojson-vt,
 /// a GeometryCollection gives a row per member. Coordinates that do not fit
-/// their type give `NoGeometry`.
-pub fn read_geojson(bytes : BytesView) -> @geom.Table raise GeoJSONError {
+/// their type give `NoGeometry`. `slow_number` parses the numbers the fast
+/// path cannot, from offsets into `bytes` (NaN rejects them).
+pub fn read_geojson(
+  bytes : BytesView,
+  slow_number~ : (Int32, Int32) -> Double = (s, e) => strconv_number(bytes[s:e]),
+) -> @geom.Table raise GeoJSONError {
   let p : Parser = {
     b: bytes,
+    slow_number,
     pos: 0,
     error: None,
     depth: 0,
@@ -50,6 +55,7 @@ pub fn read_geojson(bytes : BytesView) -> @geom.Table raise GeoJSONError {
 /// jumps to the end, so loops stop without raising on the hot path.
 priv struct Parser {
   b : BytesView
+  slow_number : (Int32, Int32) -> Double
   mut pos : Int32
   mut error : (Int32, String)?
   mut depth : Int32

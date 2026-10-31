@@ -15,8 +15,13 @@ fn build_tiler(
   buffer : Int32,
   wrap : Bool,
   trig : @tiler.Trig,
+  slow_number~ : (Int32, Int32) -> Double = (s, e) => {
+    @formats.strconv_number(bytes[s:e])
+  },
 ) -> Int32 {
-  let table = @formats.read_geojson(bytes) catch { _ => return -1 }
+  let table = @formats.read_geojson(bytes, slow_number~) catch {
+    _ => return -1
+  }
   let options : @tiler.TilerOptions = {
     max_zoom,
     index_max_zoom,
@@ -33,8 +38,13 @@ fn build_tiler(
 ///|
 /// Only `@formats.read_geojson`, to separate its cost in the bench; returns
 /// the feature count or -1.
-fn read_only(bytes : BytesView) -> Int32 {
-  (@formats.read_geojson(bytes) catch { _ => return -1 }).length()
+fn read_only(
+  bytes : BytesView,
+  slow_number~ : (Int32, Int32) -> Double = (s, e) => {
+    @formats.strconv_number(bytes[s:e])
+  },
+) -> Int32 {
+  (@formats.read_geojson(bytes, slow_number~) catch { _ => return -1 }).length()
 }
 
 ///|

@@ -60,6 +60,8 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `tiler/` … `geom/` の表からベクトルタイルを切り出す（geojson-vt 6.3.0 の移植）
 - `worker/` … 表示用 Worker のエントリ。メッセージプロトコルと Transferable なバッファ出力
 - `geojson_worker/` … GeoJSON ソース用 Worker のエントリ（`formats` と `tiler`）。`mbmap/geojson` の入口から遅延ロードする
+- `analysis/` … 空間索引（flatbush の移植）、計測・点の内外判定（Turf.js と同じ値）、空間クエリ、集計
+- `analysis_worker/` … `mbmap/analysis` の Worker のエントリ（`formats` と `analysis`）。データセットをハンドルで保持する
 - `render_webgl2/` … js ターゲット。WebGL2 への FFI、シェーダ、描画パス
 - `map/` … カメラ、入力（パン/ピンチ/ホイール）、タイル選択とキャッシュ、フレームループ。**公開 MoonBit API の本体**
 - `npm/` … TS ファサード、`.d.ts`、ビルド・パッケージング
@@ -67,7 +69,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `adapters/` … 後回し。rabbita、Luna 等の薄いラッパーを置く場所として予約だけしておく
 - `bench/`、`examples/`
 
-依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
+依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_worker`、`geom ← analysis ← analysis_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
 
 ### 入口の分割と遅延ロード
 
@@ -88,7 +90,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 
 - `geom/` の拡張 … 空間インデックス（R-tree）、計測
 - `formats/` の拡張 … FlatGeobuf、CSV など
-- `analysis/` … 空間クエリ、集計、ジオメトリ演算（Clipper2 などの移植を前提に、黄金テストで検証）
+- `analysis/` の拡張 … ジオメトリ演算（Clipper2 などの移植を前提に、黄金テストで検証）
 - `proj/` … 座標系変換（まず平面直角座標系と JGD2011）
 - `raster/` … DEM などのラスタと、その解析（傾斜、陰影、可視域）
 - 3D … カメラは `core` の `Transform` を一般化する。地形メッシュ、建物の押し出し、glTF / 3D Tiles の展開（Draco、meshopt）は `mbmap/3d` の入口に分ける

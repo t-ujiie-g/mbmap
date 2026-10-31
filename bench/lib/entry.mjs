@@ -6,12 +6,22 @@ export const ENTRY_WASM_GC = "_build/wasm-gc/release/build/bench/entry/entry.was
 
 const WASM_PAGE = 65536;
 
+// The JSON number at `addr` (ASCII); mirrors numberAt in geojson_worker/js/worker.mjs.
+let bytes = new Uint8Array(0);
+export function numberAt(buffer, addr, len) {
+  if (addr + len > bytes.length) bytes = new Uint8Array(buffer());
+  return Number(String.fromCharCode.apply(null, bytes.subarray(addr, addr + len)));
+}
+
 // `copyIn` places a tile in linear memory from the second page on and returns
 // its address, for the *_mem exports.
 export async function loadWasmGc(fetchBytes) {
-  // Math: the GeoJSON tiler projects with the host's sin and log (bench/entry/host_math.mbt).
-  const { instance } = await WebAssembly.instantiate(await fetchBytes(ENTRY_WASM_GC), { Math: { sin: Math.sin, log: Math.log } });
-  const e = instance.exports;
+  // The GeoJSON tiler projects with the host's sin and log, and the reader parses long numbers with
+  // its Number() (bench/entry/host_math.mbt).
+  let e = null;
+  const host = { number: (addr, len) => numberAt(() => e.memory.buffer, addr, len) };
+  const { instance } = await WebAssembly.instantiate(await fetchBytes(ENTRY_WASM_GC), { Math: { sin: Math.sin, log: Math.log }, host });
+  e = instance.exports;
   const base = WASM_PAGE;
   return {
     exports: e,

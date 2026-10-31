@@ -47,7 +47,7 @@ const checks = {
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
         // A style without GeoJSON sources never loads their module.
-        lazy: !loaded.some((n) => n.startsWith("geojson")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis")),
         styleError,
         thrown,
         workerRefused,
@@ -160,6 +160,31 @@ const checks = {
     const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /geojson/.test(n));
     const ok = ["geojson.js", "geojson-worker.js", "geojson.wasm", "places.geojson"].every((n) => loaded.includes(n)) && r.pitch === 50;
     return [ok, { loaded, pitch: r.pitch }];
+  },
+
+  async analysis(page, requests) {
+    const r = await page.evaluate(async () => {
+      const { load, distance } = await import("mbmap/analysis");
+      // A disposed dataset rejects; a non-http URL is refused before any request.
+      const d = await load({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [0, 0] } });
+      d.dispose();
+      const disposed = await d.areas().then(() => "", (e) => e.message);
+      const refused = await load("data:application/json,{}").then(() => "", (e) => e.message);
+      const malformed = await load(new TextEncoder().encode("{\"type\": ")).then(() => "", (e) => e.message);
+      return { ...window.__analysis, disposed, refused, malformed, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
+    });
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis/.test(n));
+    const ok =
+      ["analysis.js", "analysis-worker.js", "analysis.wasm"].every((n) => loaded.includes(n)) &&
+      r.areas.length === 6 &&
+      r.areas.every((a) => a > 90000 && a < 120000) &&
+      r.count.reduce((a, b) => a + b, 0) === r.inside &&
+      r.inside > 300 &&
+      /disposed/.test(r.disposed) &&
+      /http\(s\) URL/.test(r.refused) &&
+      /malformed GeoJSON/.test(r.malformed) &&
+      r.tokyoLondon === 9562323;
+    return [ok, { loaded, ...r }];
   },
 
   async react(page) {

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker --release --target wasm-gc && moon build bundle/main --release --target js && npm --prefix bench run opt",
+    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker analysis_worker --release --target wasm-gc && moon build bundle/main --release --target js && npm --prefix bench run opt",
     "opt": "node backend/opt.mjs",
     "test": "node --test lib/*.test.mjs",
     "fixtures": "node maplibre/fetch-tiles.mjs",
@@ -25,14 +25,26 @@
     "split": "node split/run.mjs --runs=15",
     "geojson:golden": "npm run build:moon && node --max-old-space-size=8192 geojson/golden.mjs",
     "geojson:node": "npm run build:moon && node --max-old-space-size=8192 geojson/node.mjs",
-    "geojson:browser": "npm run build:moon && node geojson/browser.mjs"
+    "geojson:browser": "npm run build:moon && node geojson/browser.mjs",
+    "analysis:golden": "npm run build:moon && node --max-old-space-size=8192 analysis/golden.mjs",
+    "analysis:node": "npm run build:moon && node --max-old-space-size=8192 analysis/node.mjs",
+    "analysis:browser": "npm run build:moon && node analysis/browser.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
     "@maplibre/geojson-vt": "6.3.0",
+    "@turf/area": "7.4.0",
+    "@turf/bbox": "7.4.0",
+    "@turf/boolean-point-in-polygon": "7.4.0",
+    "@turf/centroid": "7.4.0",
+    "@turf/collect": "7.4.0",
+    "@turf/distance": "7.4.0",
+    "@turf/length": "7.4.0",
+    "@turf/points-within-polygon": "7.4.0",
     "binaryen": "132.0.0",
     "earcut": "3.2.4",
     "esbuild": "0.28.2",
+    "flatbush": "4.6.2",
     "maplibre-gl": "6.16.0",
     "pbf": "5.1.2",
     "playwright": "1.64.1"

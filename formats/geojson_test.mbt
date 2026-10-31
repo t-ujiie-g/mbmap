@@ -176,3 +176,33 @@ test "input with more than MAX_GEOJSON_KEYS distinct keys is rejected" {
     _ => fail("expected the key limit to apply")
   }
 }
+
+///|
+test "long numbers go to slow_number with their offsets; NaN rejects them" {
+  let text = "{\"type\": \"Point\", \"coordinates\": [139.76712345678901, 1.5]}"
+  let bytes = @utf8.encode(text)
+  let seen = []
+  let t = @formats.read_geojson(bytes[:], slow_number=(s, e) => {
+    seen.push(@utf8.decode_lossy(bytes[s:e]))
+    @formats.strconv_number(bytes[s:e])
+  })
+  assert_eq(seen, ["139.76712345678901"])
+  assert_eq(t.coords, [139.76712345678901, 1.5])
+  try
+    @formats.read_geojson(bytes[:], slow_number=(_, _) => @double.not_a_number)
+  catch {
+    @formats.Malformed(pos~, m) => assert_eq((pos, m), (34, "invalid number"))
+  } noraise {
+    _ => fail("expected NaN to reject the number")
+  }
+}
+
+///|
+test "strconv_number parses JSON numbers and gives NaN otherwise" {
+  assert_eq(@formats.strconv_number(b"-1.25e-3"[:]), -0.00125)
+  assert_eq(
+    @formats.strconv_number(b"0.30000000000000004"[:]),
+    0.30000000000000004,
+  )
+  assert_true(@formats.strconv_number(b"x"[:]).is_nan())
+}

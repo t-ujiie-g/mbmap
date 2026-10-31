@@ -94,5 +94,24 @@ Out:
 - `{type: "tile", id, bytes}`: a columnar tile (transferred), or null when the source
   has nothing there, failed or was never loaded.
 
+## Analysis worker messages (`analysis_worker/js/worker.mjs`)
+
+In:
+
+- `{type: "init", wasm}`.
+- `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments:
+  - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8);
+  - `dispose`, `measure` (`kind`: 0 area, 1 length, 2 centroid, 3 bbox), `search`
+    (`bbox`), `nearest` (`x`, `y`, `k`, `maxDistance`), `grid` (`bbox`, `cols`,
+    `rows`), all with `dataset`;
+  - `within` (`points`, `polygons`) and `collect` (`polygons`, `points`, `property`).
+
+Out:
+
+- `{type: "result", id, value}`: `{dataset, features}` for `load`, null for
+  `dispose`, else a Float64Array or Int32Array (transferred). `collect` gives
+  count, numeric count and sum per polygon.
+- `{type: "result", id, error}`.
+
 The main thread's `map` asks for GeoJSON tiles through a provider (`map/dom.mbt`
 `Provider`): `(source id, z, x, y) => Promise<ArrayBuffer | null>`.

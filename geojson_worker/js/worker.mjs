@@ -6,6 +6,14 @@ let wasm = null;
 let ready = null;
 const loads = new Map();
 
+// A JSON number's ASCII text at `addr`, as the reader's slow path wants it.
+// The view is renewed only when memory grew (a detached view has length 0).
+let bytes = new Uint8Array(0);
+function numberAt(buffer, addr, len) {
+  if (addr + len > bytes.length) bytes = new Uint8Array(buffer());
+  return Number(String.fromCharCode.apply(null, bytes.subarray(addr, addr + len)));
+}
+
 function input(bytes) {
   const addr = wasm.prepare_input(bytes.length);
   if (addr < 0) throw new Error(`GeoJSON too large (${bytes.length} bytes)`);
@@ -37,7 +45,8 @@ function tile({ id, source, z, x, y }) {
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready) {
-    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, log: Math.log } })
+    const host = { number: (addr, len) => numberAt(() => wasm.memory.buffer, addr, len) };
+    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, log: Math.log }, host })
       .then(({ instance }) => { wasm = instance.exports; });
   } else if (msg?.type === "load" && ready && Number.isInteger(msg.source)) {
     const done = load(msg);

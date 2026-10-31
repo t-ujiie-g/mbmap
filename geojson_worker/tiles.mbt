@@ -7,6 +7,11 @@ fn host_sin(x : Double) -> Double = "Math" "sin"
 fn host_log(x : Double) -> Double = "Math" "log"
 
 ///|
+/// The JSON number at `[addr, addr + len)` of linear memory, by the host's
+/// `Number()`: correctly rounded like strconv, which it keeps out of the module.
+fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
+
+///|
 /// Turns MapLibre's GeoJSON source options, in pixels, into tile units.
 let units_per_pixel : Double = @core.TILE_EXTENT.to_double() / @core.TILE_SIZE
 
@@ -25,7 +30,9 @@ pub fn load(
   buffer : Double,
   tolerance : Double,
 ) -> Int32 {
-  let table = @formats.read_geojson(input_bytes()[:]) catch {
+  let table = @formats.read_geojson(input_bytes()[:], slow_number=(s, e) => {
+    host_number(PAGE + s, e - s)
+  }) catch {
     e => return -write_output(@utf8.encode(e.message()))
   }
   let options : @tiler.TilerOptions = {

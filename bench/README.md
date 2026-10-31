@@ -26,6 +26,8 @@ npm run examples          # npm パッケージを pack して examples/{npm,ele
 npm run split             # 2つ目の wasm-gc モジュールのサイズと読み込み時間（入口の分割の判断用）
 npm run geojson:golden    # tiler と @maplibre/geojson-vt の黄金テスト（範囲内の全タイル）
 npm run geojson:node      # GeoJSON の読み込み・索引・タイル切り出しを geojson-vt と比べる（geojson:browser は3ブラウザ）
+npm run analysis:golden   # 解析の wasm と Turf.js / flatbush の黄金テスト（全 fixture）
+npm run analysis:node     # 解析の速度を Turf.js + flatbush と比べる（analysis:browser は3ブラウザ）
 npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm,element,react} に入れて Chromium で確かめる
 ```
 
@@ -128,6 +130,16 @@ fixture がなくてもタイルが 404 になるだけで地図は読み込ま�
 - `split/analysis`：解析の代わりに置くパッケージ（列指向のポリゴンの球面面積、bbox、グリッド集計、面積順の上位）。本物の解析と同じく `Map`、ソート、`@math` を使う。
 - `split/analysis_entry`：それを単独の wasm-gc モジュールにしたもの。`split/combined_entry`：表示用 Worker に同じコードを入れた一体型。`split/empty_entry`：空のモジュール（ランタイムの下限）。
 - サイズ（gzip）に加えて、3ブラウザで、モジュール Worker の起動時間と、各モジュールの読み込み（fetch・コンパイル・インスタンス化）、解析の初回と温まった後の時間を測る。1万ポリゴン、15回の中央値。ローカルの配信なので、ネットワークの時間は含まない（サイズから見積もる）。
+
+## analysis/ — 解析（`mbmap/analysis`）
+
+配布する解析の wasm（`analysis_worker`）を、Worker のグルーを通さずに直接呼ぶ（`load.mjs`）。比べる相手は Turf.js 7.4.0 と flatbush 4.6.2
+（`reference.mjs`）。データは geojson/ の fixture。
+
+- `golden.mjs`：buildings・mixed・world・roads・points の全地物の面積・長さ・重心・bbox、各 200 個の矩形検索、各 400 個の近傍検索（k=10 と 1）、
+  点の内外判定・集計・グリッド集計を比べる。値はビット単位で一致しなければならない。
+- `node.mjs` / `browser.mjs`：同じ処理の速度。JS は `JSON.parse` 済みの GeoJSON に対して、mbmap は読み込んだデータセットに対して測る
+  （Worker とのメッセージは含まない）。5回の中央値。
 
 ## geojson/ — GeoJSON の読み込みとタイル分割
 

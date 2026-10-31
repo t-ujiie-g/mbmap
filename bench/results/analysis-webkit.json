@@ -1,0 +1,62 @@
+{
+  "env": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+    "browser": "webkit",
+    "version": "27.2"
+  },
+  "params": {
+    "runs": 5,
+    "statistic": "median of runs after one warm-up",
+    "data": {
+      "buildings": 32903929,
+      "polygons": 42515,
+      "points": 8018
+    }
+  },
+  "rows": {
+    "read (buildings)": {
+      "js": 47.01999999999998,
+      "mbmap": 318.74000000000024
+    },
+    "area": {
+      "js": 5.619999999999891,
+      "mbmap": 2.980000000000018
+    },
+    "length": {
+      "js": 60.92000000000007,
+      "mbmap": 32.25999999999976
+    },
+    "centroid": {
+      "js": 7,
+      "mbmap": 2.2599999999997635
+    },
+    "bbox": {
+      "js": 10.720000000000255,
+      "mbmap": 4.599999999999909
+    },
+    "bbox + index + 1000 searches": {
+      "js": 18.200000000000273,
+      "mbmap": 10.420000000000073
+    },
+    "1000 searches": {
+      "js": 1.8400000000001455,
+      "mbmap": 1.5600000000004002
+    },
+    "1000 nearest (k=10)": {
+      "js": 3.699999999999818,
+      "mbmap": 3.100000000000364
+    },
+    "points within polygons": {
+      "js": 3.2600000000002183,
+      "mbmap": 1.480000000000473
+    },
+    "collect": {
+      "js": 17.639999999999418,
+      "mbmap": 10.279999999999745
+    },
+    "grid 256 x 256": {
+      "js": 0.2599999999993088,
+      "mbmap": 0.3000000000001819
+    }
+  }
+}
