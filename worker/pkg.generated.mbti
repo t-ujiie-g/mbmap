@@ -9,6 +9,8 @@ import {
 // Values
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
+pub const KIND_CIRCLE : Int32 = 3
+
 pub const KIND_FILL : Int32 = 1
 
 pub const KIND_LINE : Int32 = 2
@@ -28,6 +30,7 @@ pub struct PackedTile {
   // private fields
 }
 pub fn PackedTile::add_alias(Self, Int32, Int32) -> Unit
+pub fn PackedTile::add_circles(Self, Int32, @tess.LineBuffers, extent? : Int32) -> Bool
 pub fn PackedTile::add_fill(Self, Int32, @tess.FillBuffers, extent? : Int32) -> Bool
 pub fn PackedTile::add_line(Self, Int32, @tess.LineBuffers, extent? : Int32) -> Bool
 pub fn PackedTile::begin(Self, Int32) -> Unit

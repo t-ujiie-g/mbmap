@@ -32,3 +32,24 @@ test "JsProps reports absent keys as None and other types as Null" {
   assert_eq(@style.FeatureContext::geometry_type(props), "Unknown")
   assert_eq(@style.FeatureContext::property(JsProps::none(), "b"), None)
 }
+
+///|
+test "paint_of evaluates circle radius and stroke; other kinds leave them empty" {
+  let style = @style.Style::parse(
+    (
+      #|{"layers": [{"id": "c", "type": "circle", "paint": {
+      #|  "circle-radius": ["match", ["get", "k"], 1, 8, 3],
+      #|  "circle-stroke-width": 2, "circle-stroke-color": "#0000ff", "circle-stroke-opacity": 0.5}},
+      #| {"id": "f", "type": "fill"}]}
+    ),
+  )
+  let c = paint_of(style.layers[0], 14.0, { obj: js_object("{\"k\": 1}"), })
+  assert_eq((c.radius, c.stroke_width), (8.0, 2.0))
+  assert_eq(
+    (c.stroke[0], c.stroke[1], c.stroke[2], c.stroke[3]),
+    (0.0, 0.0, 1.0, 0.5),
+  )
+  assert_eq(paint_of(style.layers[0], 14.0, JsProps::none()).radius, 3.0)
+  let f = paint_of(style.layers[1], 14.0, JsProps::none())
+  assert_eq((f.radius, f.stroke_width, f.stroke[3]), (0.0, 0.0, 0.0))
+}

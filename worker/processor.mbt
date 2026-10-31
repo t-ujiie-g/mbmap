@@ -89,6 +89,7 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   a.filter == b.filter &&
   (
     a.kind is Fill ||
+    a.kind is Circle ||
     (
       a.join == b.join &&
       a.cap == b.cap &&
@@ -109,10 +110,18 @@ pub const MAX_GROUPS : Int32 = 64
 fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
   let keys = []
   let mut geometry = false
-  let exprs = if sl.kind is Line {
-    [sl.color, sl.opacity, sl.width]
-  } else {
-    [sl.color, sl.opacity]
+  let exprs = match sl.kind {
+    Line => [sl.color, sl.opacity, sl.width]
+    Circle =>
+      [
+        sl.color,
+        sl.opacity,
+        sl.radius,
+        sl.stroke_width,
+        sl.stroke_color,
+        sl.stroke_opacity,
+      ]
+    _ => [sl.color, sl.opacity]
   }
   for e in exprs {
     let (ks, g) = e.feature_inputs()
@@ -264,6 +273,7 @@ pub fn TileProcessor::process(
     let entries = self.out.layer_count()
     let ok = match sl.kind {
       Fill => self.fill_layer(index, sl, layer, zoom, groups)
+      Circle => self.circle_layer(index, sl, layer, zoom, groups)
       _ => self.line_layer(index, sl, layer, zoom, groups)
     }
     if !ok {
@@ -401,6 +411,47 @@ fn TileProcessor::line_layer(
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
       if !self.out.add_line(index, b, extent=layer.extent) {
+        return false
+      }
+      if groups.active {
+        self.out.set_props(groups.props_json(g))
+      }
+    }
+  }
+  true
+}
+
+///|
+fn TileProcessor::circle_layer(
+  self : TileProcessor,
+  index : Int32,
+  sl : @style.StyleLayer,
+  layer : @mvt.Layer,
+  zoom : Double,
+  groups : Groups,
+) -> Bool {
+  for b in self.line_pool {
+    b.clear()
+  }
+  let feature = FeatureRef::new(layer)
+  for i in 0..<layer.length() {
+    feature.index = i
+    if layer.geom_type(i) is Point && passes(sl.filter, feature, zoom) {
+      if !self.decode(layer, i) {
+        return false
+      }
+      let g = self.geometry
+      @tess.add_points(
+        g.coords[:g.num_points() * 2],
+        self.line_buffers(groups.of(feature)),
+        extent=layer.extent,
+      )
+    }
+  }
+  for g in 0..<groups.count() {
+    let b = self.line_buffers(g)
+    if b.num_vertices() > 0 {
+      if !self.out.add_circles(index, b, extent=layer.extent) {
         return false
       }
       if groups.active {

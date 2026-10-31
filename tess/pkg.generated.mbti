@@ -14,6 +14,8 @@ pub const MAX_MITER_LIMIT : Double = 2.0
 
 pub const MAX_POLYGON_RINGS : Int32 = 500
 
+pub fn add_points(ArrayView[Int32], LineBuffers, extent? : Int32) -> Unit
+
 pub fn deviation(ArrayView[Int32], ArrayView[Int32], ArrayView[Int32]) -> Double
 
 pub fn ring_area(ArrayView[Int32], Int32, Int32) -> Double

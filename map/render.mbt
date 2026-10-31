@@ -108,8 +108,17 @@ fn Map::draw_layer(
         p
       }
     }
-    if m.line {
+    if m.kind == KIND_LINE {
       self.renderer.draw_line(m.mesh, at, p.r, p.g, p.b, p.a, p.width * dpr)
+    } else if m.kind == KIND_CIRCLE {
+      self.renderer.draw_circle(
+        m.mesh,
+        at,
+        [p.r, p.g, p.b, p.a],
+        p.stroke,
+        p.radius * dpr,
+        p.stroke_width * dpr,
+      )
     } else {
       self.renderer.draw_fill(m.mesh, at, p.r, p.g, p.b, p.a)
     }

@@ -1,6 +1,6 @@
 {
   "version": 8,
-  "name": "mbmap basic (GSI bvmap, fill/line/background only)",
+  "name": "mbmap basic (GSI bvmap, fill/line/circle/background)",
   "sources": {
     "gsi": {
       "type": "vector",
@@ -70,6 +70,19 @@
     {
       "id": "boundary", "type": "line", "source": "gsi", "source-layer": "boundary",
       "paint": { "line-color": "#a07ab0", "line-width": 1 }
+    },
+    {
+      "id": "elevation", "type": "circle", "source": "gsi", "source-layer": "elevation",
+      "paint": { "circle-radius": 2.5, "circle-color": "#8c6d31" }
+    },
+    {
+      "id": "symbol", "type": "circle", "source": "gsi", "source-layer": "symbol",
+      "paint": {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3, 18, 7],
+        "circle-color": ["match", ["get", "ftCode"], [3216, 3242], "#d6604d", [6311, 6312, 6321, 6341], "#4393c3", "#7f7f7f"],
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#ffffff"
+      }
     }
   ]
 }

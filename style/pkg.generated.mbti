@@ -107,6 +107,7 @@ pub(all) enum LayerKind {
   Background
   Fill
   Line
+  Circle
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
@@ -137,6 +138,10 @@ pub struct StyleLayer {
   color : Expr
   opacity : Expr
   width : Expr
+  radius : Expr
+  stroke_width : Expr
+  stroke_color : Expr
+  stroke_opacity : Expr
   join : Join
   cap : Cap
   miter_limit : Double

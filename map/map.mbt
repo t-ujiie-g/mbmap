@@ -6,12 +6,13 @@ pub(all) suberror MapError {
 } derive(Debug)
 
 ///|
-/// `owned` is false when the mesh belongs to an earlier layer of the same tile;
+/// `kind` is a packed layer kind (`KIND_*`); `owned` is false when the mesh
+/// belongs to an earlier layer of the same tile;
 /// `props` are the inputs a data-driven layer's group shares, and `paint` caches
 /// their paint at the zoom it was evaluated for.
 priv struct LayerMesh {
   layer : Int32
-  line : Bool
+  kind : Int32
   mesh : @render_webgl2.Mesh
   owned : Bool
   props : JsProps?
