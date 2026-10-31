@@ -15,22 +15,29 @@ const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit" 
 
 run("moon", ["build", "bundle/main", "--target", "js", "--release"], ROOT);
 run("moon", ["build", "worker", "--target", "wasm-gc", "--release"], ROOT);
+run("moon", ["build", "geojson_worker", "--target", "wasm-gc", "--release"], ROOT);
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 
 const common = { bundle: true, minify: true, format: "esm", target: "es2022", logLevel: "warning", legalComments: "none" };
+// The GeoJSON module stays a file of its own, loaded only by maps that need it.
+const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/geojson\.js$/ }, () => ({ path: "./geojson.js", external: true })) };
 await build({
   ...common,
   entryPoints: [path.join(PKG, "src/index.ts")],
   outfile: path.join(DIST, "index.js"),
   alias: { "mbmap-engine": path.join(ROOT, "_build/js/release/build/bundle/main/main.js") },
+  plugins: [geojsonEntry],
 });
+await build({ ...common, entryPoints: [path.join(PKG, "src/geojson.ts")], outfile: path.join(DIST, "geojson.js") });
+await build({ ...common, entryPoints: [path.join(ROOT, "geojson_worker/js/worker.mjs")], outfile: path.join(DIST, "geojson-worker.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js") });
 // The element imports the main entry rather than bundling a second copy of it.
 const mainEntry = { name: "main-entry", setup: (b) => b.onResolve({ filter: /^mbmap$/ }, () => ({ path: "./index.js", external: true })) };
 await build({ ...common, entryPoints: [path.join(ROOT, "element/element.ts")], outfile: path.join(DIST, "element.js"), plugins: [mainEntry] });
 // No wasm-opt: it made the wasm-gc worker slower in every browser (AGENTS.md §4).
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/worker/worker.wasm"), path.join(DIST, "mbmap.wasm"));
+await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geojson_worker/geojson_worker.wasm"), path.join(DIST, "geojson.wasm"));
 const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
 run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
 run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);

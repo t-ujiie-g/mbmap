@@ -262,10 +262,33 @@ pub fn TileProcessor::process(
   bytes : BytesView,
   z : Int32,
 ) -> Bool {
-  let tile = @mvt.Tile::parse(bytes) catch {
-    e => {
-      self.error = "malformed tile: \{e.message()}"
+  // A vector source's bytes are an MVT tile; a GeoJSON source's are a
+  // columnar tile (`ColumnTile`), whose single layer every style layer of
+  // that source draws from.
+  let geojson = self.style.source(source) is Some({ kind: GeoJSON, .. })
+  let mut tile = None
+  let mut columns = None
+  if geojson {
+    columns = ColumnTile::parse(bytes)
+    if columns is None {
+      self.error = "malformed GeoJSON tile"
       return false
+    }
+  } else {
+    tile = Some(
+      @mvt.Tile::parse(bytes) catch {
+        e => {
+          self.error = "malformed tile: \{e.message()}"
+          return false
+        }
+      },
+    )
+  }
+  let features_of = (sl : @style.StyleLayer) => {
+    match (tile, columns) {
+      (Some(t), _) => t.layer(sl.source_layer).map(l => Features::Mvt(l))
+      (_, Some(c)) => Some(Features::Columns(c))
+      _ => None
     }
   }
   let style_layers = self.style.layers
@@ -275,7 +298,7 @@ pub fn TileProcessor::process(
     !(sl.kind is Background) &&
     zoom >= sl.min_zoom.floor() &&
     zoom < sl.max_zoom &&
-    tile.layer(sl.source_layer) is Some(_)
+    features_of(sl) is Some(_)
   })
   let mut entries = 0
   for i, d in drawn {
@@ -287,9 +310,7 @@ pub fn TileProcessor::process(
   // Ungrouped layers packed so far: (style layer, its single entry or -1).
   let done : Array[(Int32, Int32)] = []
   for index, sl in style_layers {
-    guard drawn[index] && tile.layer(sl.source_layer) is Some(layer) else {
-      continue
-    }
+    guard drawn[index] && features_of(sl) is Some(layer) else { continue }
     let groups = Groups::new(self.inputs[index])
     if !groups.active &&
       done.search_by(d => same_geometry(style_layers[d.0], sl)) is Some(i) {
@@ -323,18 +344,16 @@ pub fn TileProcessor::process(
 ///|
 fn TileProcessor::decode(
   self : TileProcessor,
-  layer : @mvt.Layer,
+  layer : Features,
   i : Int32,
 ) -> Bool {
-  if layer.decode_geometry(i, self.geometry) {
-    return true
+  match layer.load(i, self.geometry) {
+    None => true
+    Some(why) => {
+      self.error = why
+      false
+    }
   }
-  let why = match self.geometry.error() {
-    Some(e) => e.message()
-    None => "unknown"
-  }
-  self.error = "malformed geometry in \{layer.name}[\{i}]: \{why}"
-  false
 }
 
 ///|
@@ -364,7 +383,7 @@ fn TileProcessor::fill_layer(
   self : TileProcessor,
   index : Int32,
   sl : @style.StyleLayer,
-  layer : @mvt.Layer,
+  layer : Features,
   zoom : Double,
   groups : Groups,
 ) -> Bool {
@@ -386,7 +405,7 @@ fn TileProcessor::fill_layer(
   for g in 0..<groups.count() {
     let b = self.fill_buffers(g)
     if b.num_vertices() > 0 {
-      if !self.out.add_fill(index, b, extent=layer.extent) {
+      if !self.out.add_fill(index, b, extent=layer.extent()) {
         return false
       }
       if groups.active {
@@ -402,7 +421,7 @@ fn TileProcessor::line_layer(
   self : TileProcessor,
   index : Int32,
   sl : @style.StyleLayer,
-  layer : @mvt.Layer,
+  layer : Features,
   zoom : Double,
   groups : Groups,
 ) -> Bool {
@@ -438,7 +457,7 @@ fn TileProcessor::line_layer(
   for g in 0..<groups.count() {
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
-      if !self.out.add_line(index, b, extent=layer.extent) {
+      if !self.out.add_line(index, b, extent=layer.extent()) {
         return false
       }
       if groups.active {
@@ -454,7 +473,7 @@ fn TileProcessor::circle_layer(
   self : TileProcessor,
   index : Int32,
   sl : @style.StyleLayer,
-  layer : @mvt.Layer,
+  layer : Features,
   zoom : Double,
   groups : Groups,
 ) -> Bool {
@@ -472,14 +491,14 @@ fn TileProcessor::circle_layer(
       @tess.add_points(
         g.coords[:g.num_points() * 2],
         self.line_buffers(groups.of(feature)),
-        extent=layer.extent,
+        extent=layer.extent(),
       )
     }
   }
   for g in 0..<groups.count() {
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
-      if !self.out.add_circles(index, b, extent=layer.extent) {
+      if !self.out.add_circles(index, b, extent=layer.extent()) {
         return false
       }
       if groups.active {

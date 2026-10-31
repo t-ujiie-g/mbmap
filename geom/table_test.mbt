@@ -70,3 +70,45 @@ test "end_ring_at closes rings over coordinates appended directly" {
   assert_eq((b.table.points(0), b.table.points(1)), ((0, 2), (2, 3)))
   assert_eq(b.table.rings(0), (0, 2))
 }
+
+///|
+test "to_bytes and from_bytes round-trip a table; malformed bytes are None" {
+  let b = @geom.TableBuilder::new()
+  for p in [(0.0, 0.0), (1.5, 0.0), (1.5, -2.25)] {
+    b.point(p.0, p.1)
+  }
+  b.end_ring()
+  b.end_part()
+  b.prop("name", Str("日本"))
+  b.prop("n", Num(-0.5))
+  b.end_feature(LineString)
+  b.prop("t", Bool(true))
+  b.prop("z", Null)
+  b.end_feature(Point)
+  let t = b.finish()
+  let bytes = t.to_bytes()
+  let u = @geom.Table::from_bytes(bytes[:]).unwrap()
+  assert_eq(u.kinds, [LineString, NoGeometry])
+  assert_eq(u.coords, t.coords)
+  assert_eq((u.parts(0), u.rings(0), u.points(0)), ((0, 1), (0, 1), (0, 3)))
+  for name in ["name", "n", "t", "z"] {
+    assert_eq(u.column(name).unwrap().values, t.column(name).unwrap().values)
+  }
+  // Every truncation fails, as do a bad kind and ends that go backwards.
+  for len in 0..<bytes.length() {
+    assert_eq(@geom.Table::from_bytes(bytes[0:len]).map(t => t.length()), None)
+  }
+  let bad_kind = bytes.to_array()
+  bad_kind[20] = b'\x09'
+  assert_eq(
+    @geom.Table::from_bytes(Bytes::from_array(bad_kind)[:]).map(t => t.length()),
+    None,
+  )
+  let backwards = bytes.to_array()
+  // The first feature's part end (after 20 bytes of counts and 4 of kinds).
+  backwards[24] = b'\x07'
+  assert_eq(
+    @geom.Table::from_bytes(Bytes::from_array(backwards)[:]).map(t => t.length()),
+    None,
+  )
+}

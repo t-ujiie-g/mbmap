@@ -229,3 +229,52 @@ extern "js" fn prevent_context_menu(
   target : @render_webgl2.Canvas,
 ) -> () -> Unit =
   #|(t) => { const f = (e) => e.preventDefault(); t.addEventListener("contextmenu", f); return () => t.removeEventListener("contextmenu", f); }
+
+///|
+/// Posts an already loaded tile (an ArrayBuffer, transferred) to a worker.
+extern "js" fn post_tile_bytes(
+  w : Worker,
+  id : Int32,
+  bytes : JsValue,
+  source : Int32,
+  z : Int32,
+) -> Unit =
+  #|(w, id, bytes, source, z) => w.postMessage({ type: "tile", id, bytes, source, z }, [bytes])
+
+///|
+/// Asks the GeoJSON provider for a tile and calls `done` with its bytes, or
+/// null when there is none or it failed (logged).
+extern "js" fn call_provider(
+  provider : Provider,
+  source : String,
+  z : Int32,
+  x : Int32,
+  y : Int32,
+  done : (JsValue) -> Unit,
+) -> Unit =
+  #|(p, s, z, x, y, done) => {
+  #|  Promise.resolve().then(() => p(s, z, x, y)).then(
+  #|    (b) => done(b ?? null),
+  #|    (e) => { console.warn(`mbmap: GeoJSON tile ${z}/${x}/${y}: ${e?.message ?? e}`); done(null); });
+  #|}
+
+///|
+/// The GeoJSON tile provider `Map::new` takes: a JS function `(source, z, x,
+/// y) => Promise<ArrayBuffer | null>` (source being the source's id), or JS
+/// null.
+#external
+pub type Provider
+
+///|
+/// No provider (JS null).
+pub fn no_provider() -> Provider {
+  null_provider()
+}
+
+///|
+extern "js" fn null_provider() -> Provider =
+  #|() => null
+
+///|
+extern "js" fn is_null_provider(p : Provider) -> Bool =
+  #|(p) => p == null

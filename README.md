@@ -27,6 +27,7 @@ moon fmt && moon info
 | `formats/` | GeoJSON などの読み込み（`geom` の表へ） | 全 |
 | `tiler/` | 地物の表からベクトルタイルを切り出す（geojson-vt の移植） | 全 |
 | `worker/` | Worker エントリ、メッセージプロトコル | 全（配布は Wasm） |
+| `geojson_worker/` | GeoJSON ソースの Worker（読み込みとタイル分割） | wasm-gc |
 | `render_webgl2/` | WebGL2 FFI、シェーダ、描画パス | js |
 | `map/` | カメラ、入力、タイル選択、フレームループ（公開 MoonBit API） | js |
 

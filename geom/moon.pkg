@@ -4,4 +4,5 @@
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 }

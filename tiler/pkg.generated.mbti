@@ -6,6 +6,19 @@ import {
 }
 
 // Values
+pub const VALUE_ABSENT : Int32 = 5
+
+pub const VALUE_FALSE : Int32 = 1
+
+pub const VALUE_NULL : Int32 = 0
+
+pub const VALUE_NUMBER : Int32 = 3
+
+pub const VALUE_STRING : Int32 = 4
+
+pub const VALUE_TRUE : Int32 = 2
+
+pub fn encode_tile(TileData, @geom.Table) -> Bytes
 
 // Errors
 

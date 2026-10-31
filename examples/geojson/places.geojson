@@ -1,0 +1,10 @@
+{"type": "FeatureCollection", "features": [
+  {"type": "Feature", "properties": {"kind": "park", "name": "皇居外苑"}, "geometry": {"type": "Polygon", "coordinates": [[[139.7555, 35.6822], [139.7605, 35.6822], [139.7608, 35.6788], [139.7562, 35.6772], [139.7550, 35.6795], [139.7555, 35.6822]]]}},
+  {"type": "Feature", "properties": {"kind": "plaza", "name": "丸の内駅前広場"}, "geometry": {"type": "Polygon", "coordinates": [[[139.7635, 35.6825], [139.7655, 35.6825], [139.7655, 35.6805], [139.7635, 35.6805], [139.7635, 35.6825]], [[139.7641, 35.6819], [139.7649, 35.6819], [139.7649, 35.6811], [139.7641, 35.6811], [139.7641, 35.6819]]]}},
+  {"type": "Feature", "properties": {"kind": "walk", "name": "行幸通り"}, "geometry": {"type": "LineString", "coordinates": [[139.7590, 35.6812], [139.7620, 35.6815], [139.7650, 35.6815]]}},
+  {"type": "Feature", "properties": {"kind": "walk", "name": "日比谷通り"}, "geometry": {"type": "MultiLineString", "coordinates": [[[139.7600, 35.6900], [139.7612, 35.6830], [139.7615, 35.6760]], [[139.7615, 35.6760], [139.7590, 35.6720]]]}},
+  {"type": "Feature", "properties": {"kind": "station", "name": "東京"}, "geometry": {"type": "Point", "coordinates": [139.7671, 35.6812]}},
+  {"type": "Feature", "properties": {"kind": "station", "name": "大手町"}, "geometry": {"type": "Point", "coordinates": [139.7660, 35.6850]}},
+  {"type": "Feature", "properties": {"kind": "station", "name": "二重橋前"}, "geometry": {"type": "Point", "coordinates": [139.7620, 35.6805]}},
+  {"type": "Feature", "properties": {"kind": "station", "name": "日比谷"}, "geometry": {"type": "Point", "coordinates": [139.7600, 35.6750]}}
+]}

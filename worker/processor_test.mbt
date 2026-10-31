@@ -395,3 +395,81 @@ test "circle layers pack one quad per point and share buffers like other kinds" 
   assert_eq((b[v + 4].to_int(), b[v + 5].to_int()), (256 - 63, 256 - 63))
   assert_eq((i16_at(b, v + 32), i16_at(b, v + 34)), (20, 30))
 }
+
+///|
+/// A GeoJSON source's tile as the GeoJSON worker sends it: two points (one
+/// with k = 1) and a square, cut at 0/0/0.
+fn geojson_tile() -> Bytes {
+  let b = @geom.TableBuilder::new()
+  b.point(0.0, 0.0)
+  b.end_ring()
+  b.end_part()
+  b.prop("k", Num(1.0))
+  b.end_feature(Point)
+  b.point(10.0, 10.0)
+  b.end_ring()
+  b.end_part()
+  b.end_feature(Point)
+  for
+    p in [
+      (-20.0, -20.0),
+      (20.0, -20.0),
+      (20.0, 20.0),
+      (-20.0, 20.0),
+      (-20.0, -20.0),
+    ] {
+    b.point(p.0, p.1)
+  }
+  b.end_ring()
+  b.end_part()
+  b.prop("name", Str("sq"))
+  b.end_feature(Polygon)
+  let table = b.finish()
+  let tiler = @tiler.Tiler::new(table)
+  @tiler.encode_tile(tiler.tile(0, 0, 0).unwrap(), table)
+}
+
+///|
+test "GeoJSON sources draw from columnar tiles, with filters and properties" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [
+    #|  {"id": "area", "type": "fill", "source": "g"},
+    #|  {"id": "dots", "type": "circle", "source": "g", "filter": ["has", "k"],
+    #|   "paint": {"circle-radius": ["get", "k"]}}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 2)
+  // The square: 4 corners (5 with the closing point), 2 triangles.
+  assert_eq((entry(0, 0), entry(0, 1), entry(0, 5)), (0, @worker.KIND_FILL, 6))
+  // Only the point with k, grouped by k.
+  assert_eq((entry(1, 0), entry(1, 1)), (1, @worker.KIND_CIRCLE))
+  assert_eq(entry(1, 3), 4 * @worker.LINE_VERTEX_BYTES)
+  assert_eq(props_of(b, 1), ["k=1"])
+  // The point at 0, 0 lands in the tile's center.
+  let v = entry(1, 2)
+  assert_eq((i16_at(b, v), i16_at(b, v + 2)), (2048, 2048))
+}
+
+///|
+test "malformed columnar tiles fail with a message" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "area", "type": "fill", "source": "g"}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let good = geojson_tile()
+  for n in [0, 3, 16, 20, good.length() - 1] {
+    assert_false(p.process("g", good[0:n], 0))
+    assert_eq(p.error(), "malformed GeoJSON tile")
+  }
+  // A ring count larger than the data can hold.
+  let bad = good.to_array()
+  bad[4] = b'\xff'
+  bad[5] = b'\xff'
+  assert_false(p.process("g", Bytes::from_array(bad)[:], 0))
+}

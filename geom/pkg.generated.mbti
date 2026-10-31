@@ -49,11 +49,13 @@ pub struct Table {
   // private fields
 }
 pub fn Table::column(Self, String) -> Column?
+pub fn Table::from_bytes(BytesView) -> Self?
 pub fn Table::length(Self) -> Int32
 pub fn Table::new() -> Self
 pub fn Table::parts(Self, Int32) -> (Int32, Int32)
 pub fn Table::points(Self, Int32) -> (Int32, Int32)
 pub fn Table::rings(Self, Int32) -> (Int32, Int32)
+pub fn Table::to_bytes(Self) -> Bytes
 
 pub struct TableBuilder {
   table : Table

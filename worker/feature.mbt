@@ -1,15 +1,15 @@
 ///|
-/// Feature `index` of an mvt layer, as expressions see it. Property names are
-/// resolved to the layer's key indices once per layer.
+/// Feature `index` of a layer's features, as expressions see it. Property
+/// names are resolved to key indices once per layer.
 priv struct FeatureRef {
-  layer : @mvt.Layer
+  features : Features
   mut index : Int32
   keys : Map[String, Int32]
 }
 
 ///|
-fn FeatureRef::new(layer : @mvt.Layer) -> FeatureRef {
-  { layer, index: 0, keys: Map([]), }
+fn FeatureRef::new(features : Features) -> FeatureRef {
+  { features, index: 0, keys: Map([]), }
 }
 
 ///|
@@ -30,7 +30,10 @@ impl @style.FeatureContext for FeatureRef with fn property(self, key) {
   let k = match self.keys.get(key) {
     Some(k) => k
     None => {
-      let k = self.layer.key_index(key).unwrap_or(-1)
+      let k = match self.features {
+        Mvt(l) => l.key_index(key).unwrap_or(-1)
+        Columns(c) => c.keys.search(key).unwrap_or(-1)
+      }
       self.keys[key] = k
       k
     }
@@ -38,12 +41,15 @@ impl @style.FeatureContext for FeatureRef with fn property(self, key) {
   if k < 0 {
     return None
   }
-  self.layer.property(self.index, k).map(style_value)
+  match self.features {
+    Mvt(l) => l.property(self.index, k).map(style_value)
+    Columns(c) => c.values[k][self.index]
+  }
 }
 
 ///|
 impl @style.FeatureContext for FeatureRef with fn geometry_type(self) {
-  match self.layer.geom_type(self.index) {
+  match self.features.geom_type(self.index) {
     Point => "Point"
     LineString => "LineString"
     Polygon => "Polygon"

@@ -21,7 +21,9 @@
     },
     "./worker.js": "./dist/worker.js",
     "./mbmap.wasm": "./dist/mbmap.wasm",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./geojson-worker.js": "./dist/geojson-worker.js",
+    "./geojson.wasm": "./dist/geojson.wasm"
   },
   "types": "./dist/index.d.ts",
   "sideEffects": [

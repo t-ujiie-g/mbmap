@@ -1,0 +1,39 @@
+{
+  "version": 8,
+  "name": "mbmap GeoJSON example",
+  "sources": {
+    "gsi": {
+      "type": "vector", "tiles": ["/bench/fixtures/gsi-bvmap/{z}/{x}/{y}.pbf"], "minzoom": 14, "maxzoom": 14,
+      "attribution": "国土地理院ベクトルタイル提供実験"
+    },
+    "places": { "type": "geojson", "data": "places.geojson" },
+    "route": {
+      "type": "geojson",
+      "data": {"type": "Feature", "properties": {}, "geometry": {"type": "LineString", "coordinates": [[139.7671, 35.6812], [139.7660, 35.6850], [139.7600, 35.6865]]}}
+    }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#f5f3ee" } },
+    { "id": "waterarea", "type": "fill", "source": "gsi", "source-layer": "waterarea", "paint": { "fill-color": "#a8d4f0" } },
+    { "id": "building", "type": "fill", "source": "gsi", "source-layer": "building", "paint": { "fill-color": "#e3ddd3" } },
+    { "id": "road", "type": "line", "source": "gsi", "source-layer": "road", "paint": { "line-color": "#ffffff", "line-width": 2 } },
+    {
+      "id": "places-area", "type": "fill", "source": "places", "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": { "fill-color": ["match", ["get", "kind"], "park", "#7cc47a", "#f2c46d"], "fill-opacity": 0.6 }
+    },
+    {
+      "id": "places-walk", "type": "line", "source": "places", "filter": ["==", ["get", "kind"], "walk"],
+      "layout": { "line-join": "round", "line-cap": "round" },
+      "paint": { "line-color": "#d9534f", "line-width": ["interpolate", ["linear"], ["zoom"], 14, 3, 18, 10] }
+    },
+    {
+      "id": "route", "type": "line", "source": "route",
+      "layout": { "line-join": "round", "line-cap": "round" },
+      "paint": { "line-color": "#3a6fd8", "line-width": 4, "line-opacity": 0.8 }
+    },
+    {
+      "id": "stations", "type": "circle", "source": "places", "filter": ["==", ["get", "kind"], "station"],
+      "paint": { "circle-radius": 7, "circle-color": "#ffffff", "circle-stroke-width": 3, "circle-stroke-color": "#2b2b2b" }
+    }
+  ]
+}

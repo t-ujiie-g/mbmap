@@ -242,3 +242,44 @@ test "layers with identically written filters share a filter_id" {
   )
   assert_eq(s.layers.map(l => l.filter_id), [0, -1, 1, 0])
 }
+
+///|
+test "GeoJSON sources keep MapLibre's options; their data stays outside" {
+  let s = @style.Style::parse(
+    (
+      #|{"sources": {
+      #|  "pts": {"type": "geojson", "data": "points.geojson", "maxzoom": 16, "buffer": 64},
+      #|  "inline": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
+      #|  "img": {"type": "image", "url": "x"}},
+      #| "layers": []}
+    ),
+  )
+  let pts = s.source("pts").unwrap()
+  assert_eq(
+    (pts.kind, pts.tiles, pts.max_zoom, pts.buffer, pts.tolerance),
+    (GeoJSON, [], 16, 64, 0.375),
+  )
+  let inline = s.source("inline").unwrap()
+  assert_eq((inline.max_zoom, inline.buffer), (18, 128))
+  assert_eq(s.source("img").map(x => x.id), None)
+  for
+    bad in [
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geojson\"}}, \"layers\": []}", "sources.g.data",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"buffer\": 600}}, \"layers\": []}",
+        "sources.g.buffer",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"cluster\": true}}, \"layers\": []}",
+        "sources.g.cluster",
+      ),
+    ] {
+    try @style.Style::parse(bad.0) catch {
+      Invalid(path~, _) | Unsupported(path~, _) => assert_eq(path, bad.1)
+    } noraise {
+      _ => fail("expected an error at \{bad.1}")
+    }
+  }
+}

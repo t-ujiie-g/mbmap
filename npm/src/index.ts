@@ -1,4 +1,5 @@
 import * as engine from "mbmap-engine";
+import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
 /** `[lng, lat]` or `{ lng, lat }`, as in MapLibre. */
@@ -42,6 +43,9 @@ export interface MapOptions {
    */
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
+  /** Like `workerUrl` and `wasmUrl`, for the worker of GeoJSON sources. */
+  geojsonWorkerUrl?: string | URL;
+  geojsonWasmUrl?: string | URL;
   /** Shows the sources' `attribution` text in a corner (default true). */
   attributionControl?: boolean;
 }
@@ -92,6 +96,24 @@ function resolveTiles(style: StyleSpecification, base: URL): StyleSpecification 
   return { ...style, sources };
 }
 
+/**
+ * The style's GeoJSON sources, and the style with their data left out: the
+ * GeoJSON worker gets the data, the map only the source's options.
+ */
+function splitGeoJSON(style: StyleSpecification): [GeoJSONSource[], StyleSpecification] {
+  const found: GeoJSONSource[] = [];
+  const sources = Object.fromEntries(
+    Object.entries(style.sources ?? {}).map(([id, s]) => {
+      const src = s as { type?: unknown; data?: unknown; maxzoom?: unknown; buffer?: unknown; tolerance?: unknown };
+      if (src?.type !== "geojson") return [id, s];
+      const num = (v: unknown, d: number) => (typeof v === "number" ? v : d);
+      found.push({ id, data: src.data, maxzoom: num(src.maxzoom, 18), buffer: num(src.buffer, 128), tolerance: num(src.tolerance, 0.375) });
+      return [id, { ...src, data: null }];
+    }),
+  );
+  return [found, { ...style, sources }];
+}
+
 function attributions(style: StyleSpecification): string[] {
   const out = new Set<string>();
   for (const s of Object.values(style.sources ?? {})) {
@@ -106,6 +128,7 @@ export class Map {
   #canvas: HTMLCanvasElement;
   #attribution: HTMLElement | null = null;
   #engine: engine.EngineMap | null = null;
+  #geojson: GeoJSONTiles | null = null;
   #camera: Camera;
   #listeners = new globalThis.Map<MapEventType, Set<MapEventListener>>();
   #loaded = false;
@@ -149,9 +172,32 @@ export class Map {
     }
   }
 
+  /**
+   * Creates the engine, at once or, when the style has GeoJSON sources,
+   * once their module is loaded (errors then come as `error` events).
+   */
   #start(style: StyleSpecification, base: URL): void {
     if (this.#removed) return;
-    const resolved = resolveTiles(style, base);
+    const [geojson, rest] = splitGeoJSON(resolveTiles(style, base));
+    if (geojson.length === 0) {
+      this.#create(rest, null);
+      return;
+    }
+    import("./geojson.js")
+      .then(({ createGeoJSONTiles }) => {
+        if (this.#removed) return;
+        const o = this.#options;
+        const tiles = createGeoJSONTiles(geojson, base, (e) => this.#fail(e), {
+          workerUrl: o.geojsonWorkerUrl,
+          wasmUrl: o.geojsonWasmUrl,
+        });
+        this.#geojson = tiles;
+        this.#create(rest, (source, z, x, y) => tiles.tile(source, z, x, y));
+      })
+      .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+  }
+
+  #create(resolved: StyleSpecification, geojson: engine.Provider | null): void {
     const o = this.#options;
     const c = this.#camera;
     const page = new URL(document.baseURI);
@@ -166,6 +212,7 @@ export class Map {
       workerScriptUrl(o.workerUrl ?? new URL("./worker.js", import.meta.url), page, location.origin),
       wasmUrl(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), page),
       o.workerCount ?? 0,
+      geojson,
     );
     this.#engine = map;
     engine.map_on_move(map, () => this.#emit("move"));
@@ -310,6 +357,8 @@ export class Map {
     this.#removed = true;
     if (this.#engine) engine.map_destroy(this.#engine);
     this.#engine = null;
+    this.#geojson?.terminate();
+    this.#geojson = null;
     this.#listeners.clear();
     this.#canvas.remove();
     this.#attribution?.remove();

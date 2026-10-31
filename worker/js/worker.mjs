@@ -2,6 +2,8 @@
 //
 // Messages in:  {type: "init", wasm, style}            wasm URL, style JSON text
 //               {type: "tile", id, url, source, z}      source = index into style.sources
+//               {type: "tile", id, bytes, source, z}    a tile already loaded (a GeoJSON
+//                                                       source's columnar tile), as an ArrayBuffer
 //               {type: "cancel", id}
 // Messages out: {type: "ready"} | {type: "error", message}
 //               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes, shared, props}]}
@@ -77,17 +79,22 @@ async function init({ wasm: url, style }) {
   withInput(encoder.encode(style), () => wasm.init_style());
 }
 
-async function loadTile({ id, url, source, z }) {
+async function loadTile({ id, url, bytes: given, source, z }) {
   const controller = new AbortController();
   pending.set(id, controller);
   try {
-    const res = await fetch(url, { signal: controller.signal, credentials: "omit" });
-    if (res.status === 404 || res.status === 204) {
-      postMessage({ type: "tile", id, layers: [] });
-      return;
+    let bytes;
+    if (given instanceof ArrayBuffer) {
+      bytes = new Uint8Array(given);
+    } else {
+      const res = await fetch(url, { signal: controller.signal, credentials: "omit" });
+      if (res.status === 404 || res.status === 204) {
+        postMessage({ type: "tile", id, layers: [] });
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      bytes = new Uint8Array(await res.arrayBuffer());
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const bytes = new Uint8Array(await res.arrayBuffer());
     if (controller.signal.aborted) return;
     const { layers, transfer } = unpack(withInput(bytes, () => wasm.process_tile(source, z)));
     postMessage({ type: "tile", id, layers }, transfer);

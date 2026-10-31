@@ -141,3 +141,5 @@ fixture がなくてもタイルが 404 になるだけで地図は読み込ま�
 - `node.mjs` / `browser.mjs`：geojson-vt（デコード＋`JSON.parse`、索引、タイル切り出し）と mbmap の wasm-gc ビルド（線形メモリへの
   コピー＋読み込み、索引、タイル切り出し）を比べる。MapLibre の GeoJSON ソースの設定で、z6〜16 のデータ上の全タイルを、毎回新しい
   索引から切り出す（キャッシュではなく実際に切る）。5回の中央値。
+- 読み込み方の比較：A は MoonBit で GeoJSON のテキストを読む（本番の方式）。B は JS の `JSON.parse` と JS のループで `geom` の表のバイト列
+  （`columnarize.mjs`）を作り、wasm で表と索引を作る。B の結果が A と同じタイルになることは、ハッシュで確かめた。
