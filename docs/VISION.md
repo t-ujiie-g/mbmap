@@ -1,7 +1,16 @@
 # MoonBit製 地図描画エンジン Vision
 ## 1. ゴール
 
-MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向けベクトルタイル地図描画エンジンを作る。
+MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向けベクトルタイル地図描画エンジンを作る。そのうえで、**サーバーに頼らない WebGIS の実行基盤**（フロントエンドで完結する GIS ライブラリ）に育てる。表示・データ加工・解析・3D がブラウザ内で完結し、しかも**使う分しか読み込まない**ことを目指す。
+
+| 柱 | 中身 | 位置づけ |
+|---|---|---|
+| 表示 | 2D ベクトルタイル、ラベル、GeoJSON、3D（地形、建物の押し出し、3D Tiles） | 入口。軽さと速さで選ばれる部分。3D は表示モードの1つとして扱う |
+| データ | 読み込みと変換（GeoJSON、FlatGeobuf、PMTiles、CSV、GeoParquet）、座標系変換（平面直角座標系など） | 解析と表示をつなぐ土台 |
+| 解析 | 空間インデックス、計測、空間クエリ、集計、ジオメトリ演算（buffer、交差、結合）、ラスタ解析（傾斜、陰影、可視域） | 差別化。Worker 上の Wasm で動かし、メインスレッドを塞がない |
+| コンポーネント | Web Components 製の計測、凡例、レイヤー一覧、属性テーブル、作図・編集 | 組み立て済みの UI。`<mb-map>` が土台 |
+
+ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、網羅は目指さない。各柱で、ブラウザ内で完結させる価値が大きいものから順に作る。
 
 - 比較対象：MapLibre GL JS、MachGL（Geolonia、gzip 約98KB・WebGL2・Web Worker 構成）
 - **特定の UI フレームワークに依存しない**。地図は「canvas を受け取って描く命令的なエンジン」とし、UI フレームワークとの統合は外側の薄い層で行う
@@ -21,6 +30,8 @@ MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向
 | 1タイルのデコード＋テッセレーション（z14 都市部） | MapLibre の 1/2 以下の時間：bench fixtures の中央タイル 4.6ms 以下、35 タイル中央値 11.7ms 以下（同ハーネス・同スタイル） |
 | フレーム時間 | 中級 Android 端末で 60fps、パン・ズーム中の GC 停止なし（実機計測は当面行わない）。代理指標：1 フレームの描画 CPU 時間 p95 が 1.44ms 以下、20ms 超のフレーム 0 |
 | 初回描画まで | MapLibre より短いこと：同条件で 215ms 未満 |
+
+上の2つのサイズ目標は、**表示の入口**（`mbmap` と表示用 Worker）の予算である。データ・解析・3D などの入口は、それぞれ別の予算を持ち、入口を作るときに計測してから決める。どの入口のサイズも CI で予算と比べ、超えたら失敗させる。**表示しか使わない利用者のバンドルは、ほかの入口を足しても1バイトも増えない**こと。
 
 数値はすべて `bench/` の再現可能なスクリプトで出すこと。体感や推測で「速い」と書かない。
 
@@ -54,6 +65,29 @@ MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向
 
 依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
 
+### 入口の分割と遅延ロード
+
+- npm パッケージは1つ（`mbmap`）のまま、**subpath exports で入口を分ける**：`mbmap`（表示）、`mbmap/geojson`、`mbmap/analysis`、`mbmap/3d`、`mbmap/components` など。`import` しない入口はバンドルに入らない。
+- データ処理と解析の Wasm は、表示用 Worker とは**別のモジュール**にする。初めて使うときに `import()` で読み込み、専用の Worker で実行する。API は Promise を返す。
+- 入口の分割で増えるのは、主に Wasm モジュールごとの MoonBit ランタイムと core の重複である。この大きさと読み込み時間を Phase 6.5 で測り、分割の粒度を決める。
+
+### データの共通形式：列指向
+
+- 内部でデータを受け渡す形式は、**GeoArrow 互換の列指向レイアウト**を ArrayBuffer として持つ（座標・オフセット・属性を列ごとの型付き配列にする）。mvt のデコーダが列指向で、Worker の出力を ArrayBuffer で transfer している今の設計の延長にある。
+- 読み込み → 解析 → 表示が、コピーなしに Worker の中で閉じるようにする。解析結果は、そのまま描画レイヤーのソースになる。
+- GeoArrow に寄せることで、GeoParquet、DuckDB-wasm、deck.gl などと変換なしでつながる。具体的なレイアウトは Phase 7 で計測して確定する。
+
+### 予定しているパッケージ（作るときに構成を確定する）
+
+- `geom/` … 列指向のジオメトリ表、空間インデックス（R-tree）、計測。`core` だけに依存する
+- `formats/` … GeoJSON、FlatGeobuf、CSV など（`geom/` に変換）
+- `analysis/` … 空間クエリ、集計、ジオメトリ演算（Clipper2 などの移植を前提に、黄金テストで検証）
+- `proj/` … 座標系変換（まず平面直角座標系と JGD2011）
+- `raster/` … DEM などのラスタと、その解析（傾斜、陰影、可視域）
+- 3D … カメラは `core` の `Transform` を一般化する。地形メッシュ、建物の押し出し、glTF / 3D Tiles の展開（Draco、meshopt）は `mbmap/3d` の入口に分ける
+
+`map/` は解析系のパッケージに依存しない。解析系は表示に依存せず、表示とは列指向のバッファだけでつながる。
+
 ## 4. 高性能化の設計原則
 
 1. **ホットパスでアロケーションしない**。頂点・インデックスは事前確保した `FixedArray`/`Bytes` に書き込む。Struct-of-Arrays を基本とする
@@ -64,6 +98,9 @@ MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向
 5. **フレームループは差分駆動**：カメラ・データが変わらないフレームは描画しない
 6. **遅延と予測**：表示範囲外の地物はデコードしない。ズーム遷移中は親/子タイルで穴埋め（overzoom/underzoom）
 7. **Worker プール**：`navigator.hardwareConcurrency` に応じて 1〜4。リクエストの優先度付けとキャンセル（見えなくなったタイルは破棄）
+8. **使う分しか読み込まない**：機能は入口ごとに分け、Wasm も入口ごとに遅延ロードする。入口ごとのサイズ予算を CI で守る
+9. **データは列指向のまま流す**：読み込み・解析・描画の間で、地物単位のオブジェクトを作らない。重い処理は Worker 上の Wasm で行う
+10. **3D を見越したカメラと座標**：カメラは bearing・pitch・高さを持つ 4×4 行列で表し、描画はタイルや中心からの相対座標で行う（float32 の精度不足を避ける）
 
 ## 5. スコープ
 
@@ -74,12 +111,20 @@ MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向
 - 操作：パン、ズーム、回転、傾け（ピッチ）
 - GeoJSON ソース（Worker 側でタイル分割、geojson-vt 相当）
 
-### 後回し
+### 次にやる（MVP の後、§8 の順）
 - `symbol`（ラベル）。日本語ラベルを想定し、**グリフ PBF ではなくローカルフォント＋Canvas2D で SDF を生成**する方式（MapLibre の `localIdeographFontFamily` 相当）を基本にする。衝突判定はグリッドインデックス
-- 地形（DEM）、3D 建物、PLATEAU、WebGPU バックエンド、MapLibre Tile (MLT)
+- データ：列指向のジオメトリ表、GeoJSON・FlatGeobuf・CSV の読み込み、座標系変換
+- 解析：空間インデックス、計測、空間クエリ、集計、ジオメトリ演算、ラスタ解析
+- 3D：地形（DEM）、`fill-extrusion`、3D Tiles / PLATEAU
+- コンポーネント：計測、凡例、レイヤー一覧、属性テーブル、作図・編集
+
+### 後回し
+- GeoParquet（依存が重いので、入口を分けたうえで検討）、ルート探索、WebGPU バックエンド、MapLibre Tile (MLT)
 
 ### やらない（当面）
 - Style Spec の完全互換、プラグイン機構、IE/古い Safari 対応
+- サーバー側の機能（タイル配信、データベース、認証、編集結果の保存先）。ライブラリはブラウザ内で完結させ、保存や共有は利用者のアプリに任せる
+- ArcGIS SDK の機能の網羅
 
 ## 6. API 方針
 
@@ -92,6 +137,15 @@ map.setStyle(next);
 map.addSource("pts", { type: "geojson", data });
 ```
 MapLibre の API に**名前と形を寄せる**（移行コストを下げるため）が、完全互換は目指さない。
+
+データ処理と解析は別の入口から使う。初回の呼び出しで Wasm を読み込み、Worker で実行して Promise を返す（イメージ。名前は作るときに決める）。
+```ts
+import { readGeoJSON } from "mbmap/geojson";
+import { buffer, area } from "mbmap/analysis";
+const table = await readGeoJSON(file);          // 列指向のジオメトリ表
+const zones = await buffer(table, { meters: 500 });
+map.addSource("zones", { type: "table", data: zones }); // コピーなしで描画に渡す
+```
 
 ### MoonBit
 - `map/` が素の API を提供する：`Map::new(canvas, options)`、`set_camera`、`on_move` など
@@ -130,9 +184,14 @@ MapLibre の API に**名前と形を寄せる**（移行コストを下げる�
 | 4 | `style` サブセット | 国土地理院の簡易スタイル程度が描ける |
 | 5 | npm パッケージ（TS ファサード、`.d.ts`、ESM、サイズ計測を CI に） | `npm pack` した成果物で example が動く |
 | 6 | Web Component `<mb-map>` | 素の HTML と、主要な JS フレームワーク1つ（例：React）の example で動く |
-| 7 | 回転・ピッチ、circle、GeoJSON ソース | — |
-| 8 | symbol（日本語ラベル） | — |
-| 以降 | UI ライブラリ向けアダプタ（rabbita、Luna 等） | 需要を見て判断 |
+| 6.5 | 試作：入口の分割と Wasm の遅延ロード | 2つ目の wasm-gc モジュールのサイズ増と読み込み時間が PROGRESS.md にあり、分割の粒度を決めた。入口ごとのサイズ予算を CI で確かめる仕組みがある |
+| 7 | 3D を見越したカメラ（回転・ピッチ）、circle、列指向データの基盤、GeoJSON ソース | 回転・ピッチできる example。列指向の形式を確定し、GeoJSON の読み込みとタイル分割を JS 実装（geojson-vt など）と黄金テスト・速度で比べた |
+| 8 | `mbmap/analysis` 第1弾：空間インデックス、計測、空間クエリ、集計 | JS 実装（flatbush、Turf.js など）との黄金テストと速度比較。表示だけの利用ではバンドルが増えないことを CI で確かめる |
+| 9 | symbol（日本語ラベル） | — |
+| 10 | 地形（DEM）、`fill-extrusion`、ラスタ解析（傾斜、陰影） | 国土地理院の DEM で地形を表示する example。解析結果を既存実装と比べた |
+| 11 | ジオメトリ演算（buffer、交差、結合）、座標系変換 | Clipper2・proj4js などとの黄金テスト |
+| 12〜 | 3D Tiles / PLATEAU、データ形式の拡充、UI コンポーネント群、作図・編集 | 各段階で完了条件を決める |
+| 以降 | UI ライブラリ向けアダプタ（rabbita、Luna 等）、WebGPU | 需要を見て判断 |
 
 ## 9. 最初の指示（Phase 0）
 
