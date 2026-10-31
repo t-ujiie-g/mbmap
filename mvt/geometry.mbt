@@ -40,10 +40,8 @@ pub fn Geometry::error(self : Geometry) -> MvtError? {
 }
 
 ///|
-/// Decodes feature `i`'s command stream into `out`, replacing its contents,
-/// and returns whether it succeeded (see `Geometry::error`). Each MoveTo starts
-/// a ring and ClosePath repeats the ring's first point, matching
-/// `@mapbox/vector-tile`'s `loadGeometry`.
+/// Decodes feature `i`'s geometry into `out`; false on failure (see
+/// `Geometry::error`). Rings match `@mapbox/vector-tile`'s `loadGeometry`.
 pub fn Layer::decode_geometry(self : Layer, i : Int32, out : Geometry) -> Bool {
   out.coords.clear()
   out.ring_ends.clear()

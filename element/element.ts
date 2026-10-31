@@ -31,11 +31,9 @@ const ATTRIBUTES = ["style-url", "center", "zoom", "bearing", "pitch", "worker-c
 const Base = (typeof HTMLElement === "undefined" ? class {} : HTMLElement) as typeof HTMLElement;
 
 /**
- * `<mb-map style-url="..." center="139.76,35.68" zoom="12">`. The map lives in
- * the shadow root, so frameworks see one element whose content they never
- * touch. Invalid attribute values are rejected with an `mb-error` event, and
- * the previous value is kept. The style can also be set as the `mapStyle`
- * property (an object); `map` is the underlying `Map` once created.
+ * `<mb-map style-url="..." center="139.76,35.68" zoom="12">`, the map in its
+ * shadow root. Invalid attributes fire `mb-error` and keep the previous value;
+ * `mapStyle` takes a style object and `map` is the `Map` once created.
  */
 export class MbMapElement extends Base {
   static observedAttributes = ATTRIBUTES;

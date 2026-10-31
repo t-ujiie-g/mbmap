@@ -1,9 +1,6 @@
-// Checks dist/ against the per-entry budgets of VISION §2 and §3: each entry's
-// gzip size stays within its budget, every .js/.wasm file belongs to exactly
-// one entry (a new module needs a budget), and each entry's JS references
-// only the files it may (so the display entry never pulls in another one).
-// Writes bench/results/npm-size.json, appends a table to $GITHUB_STEP_SUMMARY
-// when set and exits 1 on any failure.
+// Checks dist/ against VISION §2/§3's per-entry gzip budgets: every file belongs
+// to one entry and each entry's JS references only its own files. Writes
+// bench/results/npm-size.json (and $GITHUB_STEP_SUMMARY); exits 1 on failure.
 import { appendFile, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

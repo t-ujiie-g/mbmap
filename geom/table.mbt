@@ -29,14 +29,9 @@ pub struct Column {
 }
 
 ///|
-/// Features in columns. Feature `f` spans parts `part_ends[f - 1]..<part_ends[f]`
-/// (`0` for the first), part `p` rings `ring_ends[p - 1]..<ring_ends[p]` and
-/// ring `r` points `point_ends[r - 1]..<point_ends[r]`; point `i` is at
-/// `coords[2 * i]`, `coords[2 * i + 1]`. A part is a polygon (exterior ring,
-/// then holes), a line string (one ring) or, for points, one ring holding
-/// them all. These are GeoArrow's multipolygon offsets; line and point
-/// features drop levels in GeoArrow but not here, so all kinds share one
-/// layout. Coordinates are as read (longitude and latitude for GeoJSON).
+/// Features in columns with GeoArrow's multipolygon offsets for every kind:
+/// feature ends over parts, part ends over rings, ring ends over x, y pairs in
+/// `coords`. A line is a part of one ring; a feature's points are one ring.
 pub struct Table {
   kinds : Array[GeomKind]
   ids : Array[Prop?]
@@ -101,10 +96,8 @@ pub fn Table::points(self : Table, r : Int32) -> (Int32, Int32) {
 }
 
 ///|
-/// Appends features to a `Table`: `point`, `end_ring` and `end_part` build
-/// the geometry, `end_feature` closes it with its kind, id and properties,
-/// and `finish` returns the table. Unused rings and parts (with nothing in
-/// them) are dropped. Until `finish`, columns may be shorter than the table.
+/// Appends features to a `Table`; empty rings and parts are dropped. Until
+/// `finish`, columns may be shorter than the table.
 pub struct TableBuilder {
   table : Table
   priv props : Array[(String, Prop)]

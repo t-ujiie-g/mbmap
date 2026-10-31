@@ -75,11 +75,9 @@ pub fn ring_area(
 }
 
 ///|
-/// Tessellates one polygon feature given as rings of x, y pairs (`ring_ends[i]`
-/// is the point index one past ring `i`, as in `@mvt.Geometry`) and appends it
-/// to `out`. Rings are grouped like MapLibre's `classifyRings`: a ring wound
-/// like the first starts a polygon, the others are its holes; zero-area rings
-/// are dropped.
+/// Tessellates one polygon feature's rings (as in `@mvt.Geometry`) into `out`,
+/// grouped like MapLibre's `classifyRings`: a ring wound like the first starts
+/// a polygon, others are its holes, zero-area rings are dropped.
 pub fn FillTessellator::add_polygons(
   self : FillTessellator,
   coords : ArrayView[Int32],

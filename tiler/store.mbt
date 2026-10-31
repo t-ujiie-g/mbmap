@@ -2,16 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// Projected features (geojson-vt's internal features) in columns. Each
-/// conversion or clip writes the features it makes into a store of its own;
-/// a feature kept whole is shared by reference (`FRef`), as geojson-vt
-/// shares the object, and a store is freed once nothing refers to it.
-/// Feature `f` spans parts
-/// `part_ends[f - 1]..<part_ends[f]` and so on down to points, which are
-/// x, y and simplification importance triples in `pts`. `kind` is 1 for
-/// points, 2 for lines (a part is a line) and 3 for polygons (a part is a
-/// polygon: exterior ring, then holes). `size` is a ring's length (lines)
-/// or area (polygons) in world units, used to drop rings too small to show.
+/// geojson-vt's projected features, nested like `@geom.Table` with points as
+/// (x, y, importance) in `pts` and `size` a ring's length or area. A conversion
+/// or clip writes a store of its own; features kept whole are shared (`FRef`).
 priv struct Store {
   kind : Array[Int32]
   row : Array[Int32]
@@ -91,10 +84,8 @@ fn Store::end_part(self : Store) -> Unit {
 }
 
 ///|
-/// Closes the feature of parts closed since the last one and returns its
-/// index, or drops what was pushed for it and returns -1 if it is empty.
-/// The box follows geojson-vt's `createFeature`: all points of points and
-/// lines, but only each polygon's first ring.
+/// Closes the feature and returns its index, or -1 (dropping it) if empty.
+/// Like geojson-vt's `createFeature`, a polygon's box covers its first ring only.
 fn Store::end_feature(self : Store, kind : Int32, row : Int32) -> Int32 {
   let p0 = last_or_zero(self.part_ends)
   let p1 = self.ring_ends.length()

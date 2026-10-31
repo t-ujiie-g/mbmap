@@ -8,11 +8,9 @@ fn project_x(lng : Double) -> Double {
 }
 
 ///|
-/// The sine and natural logarithm the projection uses. The default is
-/// MoonBit's `@math`; a wasm-gc build can pass the host's `Math.sin` and
-/// `Math.log` instead, which give exactly the results geojson-vt sees (the
-/// pure implementations can differ in the last bit, which moves a rounded
-/// tile coordinate now and then) and leave the trig code out of the module.
+/// The projection's sine and logarithm. A wasm-gc build passes the host's
+/// `Math.sin`/`Math.log` to match geojson-vt bit for bit; `@math` differs in
+/// the last bit now and then.
 pub(all) struct Trig {
   sin : (Double) -> Double
   ln : (Double) -> Double

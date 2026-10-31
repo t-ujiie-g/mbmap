@@ -1,7 +1,6 @@
-// Input at PAGE: n_rings i32 ring ends, n_polys i32 polygon ends, then
-// 2 * n_points f64 coordinates. Output follows the input: per polygon its
-// area and bbox (5 f64), then the 10 largest indices (i32) and the number of
-// non-empty 1° grid cells (i32).
+// Input at PAGE: i32 ring ends, i32 polygon ends, f64 coordinates. Output
+// follows: per polygon area and bbox (5 f64), the 10 largest (i32), the
+// non-empty 1° cell count (i32).
 
 ///|
 extern "wasm" fn load_i32(addr : Int32) -> Int32 =

@@ -16,6 +16,18 @@ pub const MAX_PITCH : Double = 60.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
+pub const PROP_ABSENT : Int32 = 5
+
+pub const PROP_FALSE : Int32 = 1
+
+pub const PROP_NULL : Int32 = 0
+
+pub const PROP_NUMBER : Int32 = 3
+
+pub const PROP_STRING : Int32 = 4
+
+pub const PROP_TRUE : Int32 = 2
+
 pub const TILE_EXTENT : Int32 = 4096
 
 pub const TILE_SIZE : Double = 512.0
@@ -48,6 +60,32 @@ pub fn BBox::is_empty(Self) -> Bool
 pub fn BBox::not_equal(Self, Self) -> Bool
 pub fn BBox::to_repr(Self) -> @debug.Repr
 pub fn BBox::union(Self, Self) -> Self
+
+pub struct ByteReader {
+  // private fields
+}
+pub fn ByteReader::done(Self) -> Bool
+pub fn ByteReader::f64(Self) -> Double
+pub fn ByteReader::fail(Self) -> Unit
+pub fn ByteReader::i16(Self) -> Int32
+pub fn ByteReader::new(BytesView) -> Self
+pub fn ByteReader::ok(Self) -> Bool
+pub fn ByteReader::pad4(Self) -> Unit
+pub fn ByteReader::u32(Self) -> Int32
+pub fn ByteReader::u8(Self) -> Int32
+pub fn ByteReader::utf8(Self) -> String
+
+pub struct ByteWriter {
+  // private fields
+}
+pub fn ByteWriter::f64(Self, Double) -> Unit
+pub fn ByteWriter::i16(Self, Int32) -> Unit
+pub fn ByteWriter::new() -> Self
+pub fn ByteWriter::pad4(Self) -> Unit
+pub fn ByteWriter::to_bytes(Self) -> Bytes
+pub fn ByteWriter::u32(Self, Int32) -> Unit
+pub fn ByteWriter::u8(Self, Int32) -> Unit
+pub fn ByteWriter::utf8(Self, String) -> Unit
 
 pub(all) struct Camera {
   center : LngLat

@@ -1,7 +1,5 @@
-// Per-tile timing of bench rows. A row is { name, run(tile), expect?(tile) }:
-// `run` does the work and returns a value (or a promise of one, which is
-// awaited inside the timing) that must equal `expect(tile)` when the row has
-// one; a negative value always counts as a failure.
+// Per-tile timing of rows { name, run(tile), expect?(tile) }: `run`'s result
+// (awaited inside the timing) must equal `expect(tile)`; negative is a failure.
 import { CENTER_TILE } from "./fixtures.mjs";
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[s.length >> 1]; };

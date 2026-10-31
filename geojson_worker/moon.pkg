@@ -3,6 +3,7 @@
 // display worker. js/worker.mjs is its glue.
 
 import {
+  "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/tiler",

@@ -63,11 +63,9 @@ pub fn Mesh::byte_size(self : Mesh) -> Int32 {
 }
 
 ///|
-/// Where a mesh is drawn: `matrix` maps its tile units to clip space,
-/// `units_per_pixel` is tile units per device pixel at the center's depth
-/// (line widths are given in device pixels), `center_depth` is the clip w of
-/// the screen center, and only the part within `clip` (min x, min y, max x,
-/// max y in tile units) is drawn.
+/// Where a mesh is drawn: `matrix` maps tile units to clip space,
+/// `units_per_pixel` holds at `center_depth` (the center's clip w), and only
+/// the part within `clip` (min x, min y, max x, max y in tile units) shows.
 pub(all) struct Placement {
   matrix : @core.Mat4
   units_per_pixel : Double

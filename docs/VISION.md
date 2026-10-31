@@ -55,7 +55,11 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `mvt/` … Mapbox Vector Tile 2.1 デコーダ。地物は必要になるまでジオメトリを展開しない
 - `tess/` … ポリゴン三角形分割（earcut 移植）、線の太さ展開（join/cap、ミター制限）、点・円
 - `style/` … MapLibre Style Spec の**サブセット**（後述）の評価
-- `worker/` … Worker エントリ。メッセージプロトコルと Transferable なバッファ出力
+- `geom/` … 列指向の地物の表（GeoArrow のマルチポリゴンと同じオフセット、属性はキーごとの列）
+- `formats/` … 外部形式の読み込み（今は GeoJSON）。`geom/` の表にする
+- `tiler/` … `geom/` の表からベクトルタイルを切り出す（geojson-vt 6.3.0 の移植）
+- `worker/` … 表示用 Worker のエントリ。メッセージプロトコルと Transferable なバッファ出力
+- `geojson_worker/` … GeoJSON ソース用 Worker のエントリ（`formats` と `tiler`）。`mbmap/geojson` の入口から遅延ロードする
 - `render_webgl2/` … js ターゲット。WebGL2 への FFI、シェーダ、描画パス
 - `map/` … カメラ、入力（パン/ピンチ/ホイール）、タイル選択とキャッシュ、フレームループ。**公開 MoonBit API の本体**
 - `npm/` … TS ファサード、`.d.ts`、ビルド・パッケージング
@@ -63,7 +67,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `adapters/` … 後回し。rabbita、Luna 等の薄いラッパーを置く場所として予約だけしておく
 - `bench/`、`examples/`
 
-依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
+依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
 
 ### 入口の分割と遅延ロード
 
@@ -78,12 +82,12 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 
 - 内部でデータを受け渡す形式は、**GeoArrow 互換の列指向レイアウト**を ArrayBuffer として持つ（座標・オフセット・属性を列ごとの型付き配列にする）。mvt のデコーダが列指向で、Worker の出力を ArrayBuffer で transfer している今の設計の延長にある。
 - 読み込み → 解析 → 表示が、コピーなしに Worker の中で閉じるようにする。解析結果は、そのまま描画レイヤーのソースになる。
-- GeoArrow に寄せることで、GeoParquet、DuckDB-wasm、deck.gl などと変換なしでつながる。具体的なレイアウトは Phase 7 で計測して確定する。
+- GeoArrow に寄せることで、GeoParquet、DuckDB-wasm、deck.gl などと変換なしでつながる。確定したレイアウトは `geom/table.mbt` と [FORMATS.md](FORMATS.md)（Worker の間でやりとりするバイナリとメッセージ）にある。
 
 ### 予定しているパッケージ（作るときに構成を確定する）
 
-- `geom/` … 列指向のジオメトリ表、空間インデックス（R-tree）、計測。`core` だけに依存する
-- `formats/` … GeoJSON、FlatGeobuf、CSV など（`geom/` に変換）
+- `geom/` の拡張 … 空間インデックス（R-tree）、計測
+- `formats/` の拡張 … FlatGeobuf、CSV など
 - `analysis/` … 空間クエリ、集計、ジオメトリ演算（Clipper2 などの移植を前提に、黄金テストで検証）
 - `proj/` … 座標系変換（まず平面直角座標系と JGD2011）
 - `raster/` … DEM などのラスタと、その解析（傾斜、陰影、可視域）
@@ -94,7 +98,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 ## 4. 高性能化の設計原則
 
 1. **ホットパスでアロケーションしない**。頂点・インデックスは事前確保した `FixedArray`/`Bytes` に書き込む。Struct-of-Arrays を基本とする
-2. **頂点は量子化**：タイル内座標（extent 4096 → 8192 にスケール）を Int16 で持ち、GPU 転送量を半減。属性もできるだけ UInt8/Int16 正規化
+2. **頂点は量子化**：タイル内座標を `TILE_EXTENT`（4096）に換算して Int16 で持ち、GPU 転送量を半減。属性もできるだけ UInt8/Int16 正規化
 3. **ゼロコピー転送**：Worker の出力はそのまま `ArrayBuffer` として transfer し、メインスレッドでは `bufferData` するだけ。メインスレッドでジオメトリを触らない
    - ここは Wasm バックエンドの選択に直結する。**Phase 0 で `wasm`（線形メモリ）、`wasm-gc`、`js` の3つを実測**し、JS 側へのバッファ受け渡しコストとデコード速度で決めること
 4. **描画コール削減**：タイル×レイヤー単位でバッファを結合、VAO を使い回し、可能なら複数タイルを1ドローにまとめる。点や線端はインスタンシング
@@ -116,7 +120,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 
 ### 次にやる（MVP の後、§8 の順）
 - `symbol`（ラベル）。日本語ラベルを想定し、**グリフ PBF ではなくローカルフォント＋Canvas2D で SDF を生成**する方式（MapLibre の `localIdeographFontFamily` 相当）を基本にする。衝突判定はグリッドインデックス
-- データ：列指向のジオメトリ表、GeoJSON・FlatGeobuf・CSV の読み込み、座標系変換
+- データ：FlatGeobuf・CSV の読み込み、座標系変換（列指向の表と GeoJSON は Phase 7 で済み）
 - 解析：空間インデックス、計測、空間クエリ、集計、ジオメトリ演算、ラスタ解析
 - 3D：地形（DEM）、`fill-extrusion`、3D Tiles / PLATEAU
 - コンポーネント：計測、凡例、レイヤー一覧、属性テーブル、作図・編集

@@ -1,10 +1,6 @@
-// Phase 6.5 measurement: what a second wasm-gc module costs. Builds the
-// display worker, an analysis stand-in alone and linked into the worker, and
-// an empty module; records gzip sizes, then in Chromium, Firefox and WebKit
-// the time to start a module worker, load each module there (fetch, compile,
-// instantiate) and run the analysis cold and warm.
-// Usage: node split/run.mjs [--runs=7] [browser...]
-// Writes bench/results/split.json.
+// What a second wasm-gc module costs: gzip sizes, then per browser the time to
+// start a worker, load each module and run the analysis cold and warm.
+// Usage: node split/run.mjs [--runs=7] [browser...] (writes results/split.json)
 import { execFileSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";

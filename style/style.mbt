@@ -29,13 +29,9 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer. `filter` (None: every feature) selects features;
-/// `filter_id` is shared by the layers whose filters are written identically
-/// (-1 without a filter), so they can be compared without walking `Expr`s;
-/// `color` and `opacity` are the layer type's paint values (`fill-*`,
-/// `line-*`, `circle-*` or `background-*`); `width` is `line-width`;
-/// `radius` and the `stroke_*` values are the `circle-*` ones. Sizes are in
-/// CSS pixels.
+/// One drawable layer with its type's paint (sizes in CSS pixels).
+/// `filter_id` is shared by layers whose filters are written identically
+/// (-1 without one), so they compare without walking `Expr`s.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -68,10 +64,8 @@ pub(all) enum SourceKind {
 } derive(Debug, Eq)
 
 ///|
-/// A source layers draw from. `tiles` are the URL templates of a vector
-/// source (empty for GeoJSON). For GeoJSON, `buffer` (pixels of a 512 px
-/// tile kept around each tile) and `tolerance` (simplification in pixels)
-/// are MapLibre's GeoJSON source options.
+/// A source layers draw from: a vector source's URL templates, or a GeoJSON
+/// source's `buffer` and `tolerance` (MapLibre's options, in pixels).
 pub struct Source {
   id : String
   kind : SourceKind

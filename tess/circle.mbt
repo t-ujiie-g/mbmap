@@ -1,9 +1,7 @@
 ///|
-/// Appends a quad per point of `coords` (x, y pairs) inside the tile
-/// (`[0, extent)` on both axes, as MapLibre keeps them) to `out`, in the
-/// `LINE_VERTEX_STRIDE` layout: the corners' extrusions are ±`EXTRUDE_SCALE`,
-/// side and along 0. The shader sizes the quad by the circle's radius and
-/// stroke and cuts the circle out of it.
+/// Appends a quad per point of `coords` inside `[0, extent)`, as MapLibre keeps
+/// them, in the `LINE_VERTEX_STRIDE` layout with extrusions ±`EXTRUDE_SCALE`;
+/// the shader sizes it and cuts the circle out.
 pub fn add_points(
   coords : ArrayView[Int32],
   out : LineBuffers,

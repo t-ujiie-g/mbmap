@@ -1,15 +1,5 @@
-// Worker glue around the wasm-gc build of the MoonBit `geojson_worker` package.
-//
-// Messages in:  {type: "init", wasm}                                       wasm URL
-//               {type: "load", source, url | bytes, maxzoom, buffer, tolerance}
-//                 source = a number naming the source; url is fetched without
-//                 credentials, bytes is GeoJSON as UTF-8 (an ArrayBuffer)
-//               {type: "tile", id, source, z, x, y}
-// Messages out: {type: "loaded", source, features} | {type: "error", source, message}
-//               {type: "tile", id, bytes}  bytes: an encoded columnar tile (an
-//                 ArrayBuffer, transferred) or null when the source has nothing there
-// Tile requests for a source wait until it has loaded; one for a source that
-// failed or was never loaded gets null.
+// Glue around the wasm-gc build of `geojson_worker`; messages are in
+// docs/FORMATS.md ("GeoJSON worker messages").
 
 const decoder = new TextDecoder();
 let wasm = null;

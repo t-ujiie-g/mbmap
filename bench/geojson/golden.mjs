@@ -1,9 +1,6 @@
-// Golden test: the MoonBit port of geojson-vt (tiler, js build) must cut the
-// same tiles as @maplibre/geojson-vt: for every tile in range, the same
-// features in the same order, with the same type, source row and integer
-// coordinates (the js build in full, the wasm-gc build by a hash of each
-// tile). Runs geojson-vt's defaults and MapLibre's settings for GeoJSON
-// sources (in 4096 units), with and without wrapping. Usage: node geojson/golden.mjs
+// Golden test: tiler must cut every tile in range exactly as geojson-vt does
+// (js build in full, wasm-gc by hash), with geojson-vt's defaults and
+// MapLibre's settings, wrapping or not. Usage: node geojson/golden.mjs
 import { readFile } from "node:fs/promises";
 import { GeoJSONVT } from "@maplibre/geojson-vt";
 import { loadEntry } from "../lib/entry.mjs";

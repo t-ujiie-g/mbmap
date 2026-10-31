@@ -20,39 +20,15 @@ pub const FILL_VERTEX_BYTES : Int32 = 4
 pub const LINE_VERTEX_BYTES : Int32 = 8
 
 ///|
-/// Ints per layer entry in the header: style layer index, kind, vertex byte
-/// offset, vertex byte length, index byte offset, index count, bytes per
-/// index (2 when the layer has at most 65536 vertices, else 4), byte offset
-/// and length of the entry's group properties (length 0 if none).
+/// u32s per layer entry (docs/FORMATS.md, "Packed tile").
 pub const LAYER_ENTRY_WORDS : Int32 = 9
-
-///|
-/// Group properties are little-endian: a u32 entry count, then per entry a
-/// key (u32 byte length and UTF-8) and a value: one of these type bytes,
-/// followed by an f64 for `PROPS_NUMBER` or a u32 length and UTF-8 for
-/// `PROPS_STRING`. worker/js/worker.mjs decodes it.
-pub const PROPS_NULL : Int32 = 0
-
-///|
-pub const PROPS_FALSE : Int32 = 1
-
-///|
-pub const PROPS_TRUE : Int32 = 2
-
-///|
-pub const PROPS_NUMBER : Int32 = 3
-
-///|
-pub const PROPS_STRING : Int32 = 4
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
 pub const MAX_PACKED_BYTES : Int32 = 64 * 1024 * 1024
 
 ///|
-/// One tile's GPU-ready buffers, coordinates in `@core.TILE_EXTENT` units, in a single little-endian byte blob: a u32
-/// layer count, `LAYER_ENTRY_WORDS` u32s per layer, then 4-byte aligned vertex
-/// and index data at the offsets the entries give; entries may share data.
+/// One tile's GPU-ready buffers in one blob (docs/FORMATS.md, "Packed tile").
 /// Reused across tiles.
 pub struct PackedTile {
   priv store : Store
@@ -290,7 +266,7 @@ pub fn PackedTile::add_alias(
 }
 
 ///|
-/// Attaches `props` (`PROPS_*` form), the properties shared by the last
+/// Attaches `props` (docs/FORMATS.md, "Packed tile"), the properties shared by the last
 /// entry's features, to it.
 fn PackedTile::set_props(self : PackedTile, props : Bytes) -> Unit {
   if self.layers == 0 || !self.reserve(props.length() + 3) {

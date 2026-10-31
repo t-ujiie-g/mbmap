@@ -1,10 +1,6 @@
-// GeoJSON to tiles: @maplibre/geojson-vt (decode + JSON.parse, index, tiles)
-// against the wasm-gc build of mbmap's formats + tiler (copy into linear
-// memory + read, index, tiles), with MapLibre's GeoJSON source settings.
-// "B" is the other way to read: JSON.parse and a JS loop into geom's table
-// bytes (columnarize.mjs), then the table and index built in wasm.
-// "tiles" cuts every tile over the data from z6 to z16 from a fresh index,
-// so each is cut (drilled down) rather than served from the cache.
+// GeoJSON read, index and tiles: geojson-vt vs wasm-gc formats + tiler, with
+// MapLibre's settings. "B" reads with JSON.parse + columnarize.mjs instead;
+// "tiles" cuts every z6-z16 tile from a fresh index, so none comes from cache.
 import { GeoJSONVT } from "@maplibre/geojson-vt";
 import { columnarize } from "./columnarize.mjs";
 

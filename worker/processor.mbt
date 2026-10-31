@@ -1,9 +1,7 @@
 ///|
-/// Turns tiles of one style's vector sources into `PackedTile`s. Reuse one
-/// instance per worker: its tessellators and buffers keep their capacity.
-/// Features of a layer whose paint reads feature data are split into groups
-/// that share those inputs (see `MAX_GROUPS`); each group becomes an entry
-/// carrying the shared properties, so the renderer evaluates paint per group.
+/// Turns one style's tiles into `PackedTile`s, one entry per group of features
+/// sharing the inputs their paint reads. Reuse one per worker: its buffers keep
+/// their capacity.
 pub struct TileProcessor {
   style : @style.Style
   out : PackedTile
@@ -100,171 +98,16 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
 }
 
 ///|
-/// Most groups per layer and tile; features beyond are drawn with the last
-/// group's paint.
-pub const MAX_GROUPS : Int32 = 64
-
-///|
-/// Feature inputs of a layer's paint: property names, and whether it reads
-/// the geometry type.
-fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
-  let keys = []
-  let mut geometry = false
-  let exprs = match sl.kind {
-    Line => [sl.color, sl.opacity, sl.width]
-    Circle =>
-      [
-        sl.color,
-        sl.opacity,
-        sl.radius,
-        sl.stroke_width,
-        sl.stroke_color,
-        sl.stroke_opacity,
-      ]
-    _ => [sl.color, sl.opacity]
-  }
-  for e in exprs {
-    let (ks, g) = e.feature_inputs()
-    for k in ks {
-      if !keys.contains(k) {
-        keys.push(k)
-      }
-    }
-    geometry = geometry || g
-  }
-  (keys, geometry)
-}
-
-///|
-/// A layer's split of features by the values its paint reads; `active` is
-/// false when the paint reads none, so every feature goes to group 0.
-priv struct Groups {
-  keys : Array[String]
-  geometry : Bool
-  active : Bool
-  values : Array[Array[@style.Value?]]
-  scratch : Array[@style.Value?]
-}
-
-///|
-fn Groups::new(inputs : (Array[String], Bool)) -> Groups {
-  {
-    keys: inputs.0,
-    geometry: inputs.1,
-    active: grouped(inputs),
-    values: [],
-    scratch: [],
-  }
-}
-
-///|
-fn grouped(inputs : (Array[String], Bool)) -> Bool {
-  inputs.0.length() > 0 || inputs.1
-}
-
-///|
-/// The group of `feature` (at its current index), creating it if new.
-fn Groups::of(self : Groups, feature : FeatureRef) -> Int32 {
-  if !self.active {
-    return 0
-  }
-  let s = self.scratch
-  s.clear()
-  for k in self.keys {
-    s.push(@style.FeatureContext::property(feature, k))
-  }
-  if self.geometry {
-    s.push(Some(Str(@style.FeatureContext::geometry_type(feature))))
-  }
-  for g, v in self.values {
-    if v == s {
-      return g
-    }
-  }
-  if self.values.length() >= MAX_GROUPS {
-    return MAX_GROUPS - 1
-  }
-  self.values.push(s.copy())
-  self.values.length() - 1
-}
-
-///|
-fn push_u32(out : Array[Byte], v : Int32) -> Unit {
-  for i in 0..<4 {
-    out.push((v >> (i * 8)).to_byte())
-  }
-}
-
-///|
-fn push_string(out : Array[Byte], s : String) -> Unit {
-  let bytes = @utf8.encode(s)
-  push_u32(out, bytes.length())
-  for b in bytes {
-    out.push(b)
-  }
-}
-
-///|
-/// Group `g`'s shared inputs in `PROPS_*` form: properties by name (absent
-/// ones omitted, so `has` stays correct) and the geometry type under
-/// `@core.GEOMETRY_TYPE_KEY`.
-fn Groups::props(self : Groups, g : Int32) -> Bytes {
-  let out : Array[Byte] = []
-  let v = self.values[g]
-  let entries : Array[(String, @style.Value)] = []
-  for i, k in self.keys {
-    if v[i] is Some(x) {
-      entries.push((k, x))
-    }
-  }
-  if self.geometry && v[self.keys.length()] is Some(t) {
-    entries.push((@core.GEOMETRY_TYPE_KEY, t))
-  }
-  push_u32(out, entries.length())
-  for e in entries {
-    push_string(out, e.0)
-    match e.1 {
-      Bool(false) => out.push(PROPS_FALSE.to_byte())
-      Bool(true) => out.push(PROPS_TRUE.to_byte())
-      Num(n) => {
-        out.push(PROPS_NUMBER.to_byte())
-        let bits = n.reinterpret_as_uint64()
-        for i in 0..<8 {
-          out.push((bits >> (i * 8)).to_byte())
-        }
-      }
-      Str(s) => {
-        out.push(PROPS_STRING.to_byte())
-        push_string(out, s)
-      }
-      _ => out.push(PROPS_NULL.to_byte())
-    }
-  }
-  Bytes::from_array(out)
-}
-
-///|
-/// The number of groups to emit: at least one, even for an ungrouped layer.
-fn Groups::count(self : Groups) -> Int32 {
-  @cmp.maximum(1, self.values.length())
-}
-
-///|
-/// Decodes `bytes`, a tile of source `source` at zoom `z`, and packs every fill
-/// and line layer of the style that draws from it into `out`, in style order.
-/// An ungrouped layer with the same geometry as an earlier ungrouped one
-/// points at its buffers. Like MapLibre, a layer is skipped when `z` is
-/// outside its zoom range. Returns false on a malformed tile or an oversized
-/// result (see `error`).
+/// Packs every layer of the style drawing from tile `bytes` of `source` at zoom
+/// `z` into `out`, in style order (layers out of their zoom range are skipped,
+/// as MapLibre does). False on a malformed tile or an oversized result.
 pub fn TileProcessor::process(
   self : TileProcessor,
   source : String,
   bytes : BytesView,
   z : Int32,
 ) -> Bool {
-  // A vector source's bytes are an MVT tile; a GeoJSON source's are a
-  // columnar tile (`ColumnTile`), whose single layer every style layer of
-  // that source draws from.
+  // A GeoJSON source's columnar tile has one layer, which all its style layers use.
   let geojson = self.style.source(source) is Some({ kind: GeoJSON, .. })
   let mut tile = None
   let mut columns = None

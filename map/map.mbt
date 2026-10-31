@@ -6,10 +6,8 @@ pub(all) suberror MapError {
 } derive(Debug)
 
 ///|
-/// `kind` is a packed layer kind (`KIND_*`); `owned` is false when the mesh
-/// belongs to an earlier layer of the same tile;
-/// `props` are the inputs a data-driven layer's group shares, and `paint` caches
-/// their paint at the zoom it was evaluated for.
+/// `owned` is false when the mesh belongs to an earlier layer of the tile;
+/// `paint` caches the group's paint at the zoom it was evaluated for.
 priv struct LayerMesh {
   layer : Int32
   kind : Int32
@@ -84,12 +82,9 @@ pub struct Map {
 }
 
 ///|
-/// Creates a map drawing `style_json` into `canvas`. `worker_url` is
-/// worker/js/worker.mjs and `wasm_url` the wasm-gc build of the worker
-/// package. `workers` tile workers are started; 0 picks half the hardware
-/// threads, between 1 and `MAX_WORKERS`. `geojson` provides the tiles of
-/// GeoJSON sources (see `Provider`; the buffer is an encoded columnar tile,
-/// `@tiler.encode_tile`).
+/// Creates a map drawing `style_json` into `canvas` with `workers` tile workers
+/// (0 picks half the hardware threads, up to `MAX_WORKERS`); `geojson` gives
+/// GeoJSON sources' tiles.
 pub fn Map::new(
   canvas : @render_webgl2.Canvas,
   style_json : String,

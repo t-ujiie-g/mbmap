@@ -1,7 +1,5 @@
-// Imported packages' `#export_name`s are not exported, so the worker's and
-// the analysis' entry points are re-exported here; the analysis input gets
-// its own name. Both packages place their input at the same address, so only
-// one may be used at a time.
+// Imported packages' `#export_name`s are not exported, so both entry points are
+// re-exported here. Their inputs share an address: use one at a time.
 
 ///|
 #export_name("prepare_input")

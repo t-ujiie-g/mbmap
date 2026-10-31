@@ -78,10 +78,8 @@ fn draw_of(
 }
 
 ///|
-/// Decodes the tile and tessellates what bench/maplibre/style.json draws (see
-/// `draw_of`). `mode` bits pick fills and/or lines; with neither, the same
-/// geometry is only decoded. Returns the vertex count emitted (points decoded
-/// for mode 0), or -1 on error.
+/// Tessellates what bench/maplibre/style.json draws; `mode` bits pick fills
+/// and lines (neither: decode only). Returns vertices (points for mode 0), or -1.
 fn tessellate_tile(bytes : BytesView, mode : Int32) -> Int32 {
   fills.clear()
   lines.clear()
