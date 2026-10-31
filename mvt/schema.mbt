@@ -52,3 +52,35 @@ const VALUE_SINT : Int32 = (6 << 3) | @pbf.WIRE_VARINT
 
 ///|
 const VALUE_BOOL : Int32 = (7 << 3) | @pbf.WIRE_VARINT
+
+///|
+/// `Feature.type` values; `types[i]` stores one in its low bits next to `HAS_ID`.
+const GEOM_POINT : Int32 = 1
+
+///|
+const GEOM_LINESTRING : Int32 = 2
+
+///|
+const GEOM_POLYGON : Int32 = 3
+
+///|
+const GEOM_MASK : Int32 = 7
+
+///|
+const HAS_ID : Int32 = 8
+
+///|
+/// Geometry command integers: `id | count << 3` (MVT 2.1 §4.3.1).
+const CMD_MOVE_TO : Int32 = 1
+
+///|
+const CMD_LINE_TO : Int32 = 2
+
+///|
+const CMD_CLOSE_PATH : Int32 = 7
+
+///|
+const CMD_ID_MASK : Int32 = 7
+
+///|
+const CMD_COUNT_SHIFT : Int32 = 3

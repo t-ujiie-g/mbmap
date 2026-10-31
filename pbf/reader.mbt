@@ -1,7 +1,7 @@
 ///|
 /// Zero-copy protobuf cursor. Reads never raise (see AGENTS.md §4): a failed read
 /// records the first error, returns 0 and jumps to the end so `at_end` loops stop.
-/// Call `check` or `error` once at a boundary.
+/// Check `error` once at a boundary.
 pub struct Reader {
   priv data : Bytes
   priv mut pos : Int32
@@ -58,14 +58,6 @@ pub fn Reader::error(self : Reader) -> PbfError? {
 }
 
 ///|
-/// Raises the first recorded error, if any.
-pub fn Reader::check(self : Reader) -> Unit raise PbfError {
-  if self.error is Some(e) {
-    raise e
-  }
-}
-
-///|
 fn Reader::fail(self : Reader, err : PbfError) -> Unit {
   if self.error is None {
     self.error = Some(err)
@@ -90,8 +82,8 @@ fn Reader::byte(self : Reader) -> Int32 {
 pub fn Reader::read_tag(self : Reader) -> Int32 {
   let pos = self.pos
   let t = self.read_varint32()
-  match t & 7 {
-    0 | 1 | 2 | 5 => t
+  match t & WIRE_MASK {
+    WIRE_VARINT | WIRE_FIXED64 | WIRE_LEN | WIRE_FIXED32 => t
     w => {
       self.fail(UnsupportedWireType(pos~, w))
       0
@@ -160,8 +152,7 @@ pub fn Reader::read_svarint32(self : Reader) -> Int32 {
 }
 
 ///|
-/// Decodes a zigzag-encoded 32-bit value.
-pub fn zigzag32(v : Int32) -> Int32 {
+fn zigzag32(v : Int32) -> Int32 {
   (v.reinterpret_as_uint() >> 1).reinterpret_as_int() ^ -(v & 1)
 }
 
@@ -274,17 +265,6 @@ pub fn Reader::read_len_start(self : Reader) -> Int32 {
 }
 
 ///|
-/// Reads a length-delimited field as a reader over its contents (allocates).
-pub fn Reader::read_message(self : Reader) -> Reader {
-  let start = self.read_len_start()
-  let r = { data: self.data, pos: start, end: self.pos, error: None, }
-  if self.error is Some(e) {
-    r.error = Some(e)
-  }
-  r
-}
-
-///|
 /// Reads a length-delimited field as a view of the original buffer (no copy).
 pub fn Reader::read_bytes(self : Reader) -> BytesView {
   let start = self.read_len_start()
@@ -300,7 +280,7 @@ pub fn Reader::read_string(self : Reader) -> String {
 ///|
 /// Skips the value of a field whose tag was just read.
 pub fn Reader::skip(self : Reader, tag : Int32) -> Unit {
-  match tag & 7 {
+  match tag & WIRE_MASK {
     WIRE_VARINT => ignore(self.read_varint64())
     WIRE_FIXED64 => ignore(self.take(8))
     WIRE_FIXED32 => ignore(self.take(4))

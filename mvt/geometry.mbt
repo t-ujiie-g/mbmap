@@ -40,15 +40,6 @@ pub fn Geometry::error(self : Geometry) -> MvtError? {
 }
 
 ///|
-const CMD_MOVE_TO = 1
-
-///|
-const CMD_LINE_TO = 2
-
-///|
-const CMD_CLOSE_PATH = 7
-
-///|
 /// Decodes feature `i`'s command stream into `out`, replacing its contents,
 /// and returns whether it succeeded (see `Geometry::error`). Each MoveTo starts
 /// a ring and ClosePath repeats the ring's first point, matching
@@ -65,8 +56,8 @@ pub fn Layer::decode_geometry(self : Layer, i : Int32, out : Geometry) -> Bool {
   while !r.at_end() {
     let pos = r.pos()
     let header = r.read_varint32()
-    let cmd = header & 7
-    let count = (header.reinterpret_as_uint() >> 3).reinterpret_as_int()
+    let cmd = header & CMD_ID_MASK
+    let count = (header.reinterpret_as_uint() >> CMD_COUNT_SHIFT).reinterpret_as_int()
     if cmd == CMD_MOVE_TO || cmd == CMD_LINE_TO {
       // Every parameter takes at least one byte, which bounds `count`.
       if count > r.remaining() / 2 || (cmd == CMD_LINE_TO && ring_start < 0) {

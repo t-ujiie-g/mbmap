@@ -16,8 +16,6 @@ pub const WIRE_VARINT : Int32 = 0
 
 pub fn tag(Int32, Int32) -> Int32
 
-pub fn zigzag32(Int32) -> Int32
-
 // Errors
 pub(all) suberror PbfError {
   UnexpectedEof(pos~ : Int32)
@@ -34,7 +32,6 @@ pub struct Reader {
   // private fields
 }
 pub fn Reader::at_end(Self) -> Bool
-pub fn Reader::check(Self) -> Unit raise PbfError
 pub fn Reader::enter(Self) -> Int32
 pub fn Reader::error(Self) -> PbfError?
 pub fn Reader::exit(Self, Int32) -> Unit
@@ -49,7 +46,6 @@ pub fn Reader::read_fixed64(Self) -> UInt64
 pub fn Reader::read_float(Self) -> Float
 pub fn Reader::read_int64(Self) -> Int64
 pub fn Reader::read_len_start(Self) -> Int32
-pub fn Reader::read_message(Self) -> Self
 pub fn Reader::read_sint64(Self) -> Int64
 pub fn Reader::read_string(Self) -> String
 pub fn Reader::read_svarint32(Self) -> Int32

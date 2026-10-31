@@ -36,9 +36,6 @@ pub struct Layer {
 }
 
 ///|
-const HAS_ID = 8
-
-///|
 /// Largest key/value indices seen while decoding a layer's tags, checked
 /// against the tables once the whole layer (which may list them last) is read.
 priv struct TagCheck {
@@ -50,34 +47,54 @@ priv struct TagCheck {
 }
 
 ///|
+fn TagCheck::new() -> TagCheck {
+  { max_key: -1, max_key_pos: 0, max_value: -1, max_value_pos: 0, odd_pos: -1, }
+}
+
+///|
+fn TagCheck::record(
+  self : TagCheck,
+  k : Int32,
+  kpos : Int32,
+  v : Int32,
+  vpos : Int32,
+) -> Unit {
+  if k > self.max_key {
+    self.max_key = k
+    self.max_key_pos = kpos
+  }
+  if v > self.max_value {
+    self.max_value = v
+    self.max_value_pos = vpos
+  }
+}
+
+///|
+fn TagCheck::verify(self : TagCheck, layer : Layer) -> Unit raise MvtError {
+  if self.odd_pos >= 0 {
+    raise OddTagCount(pos=self.odd_pos)
+  }
+  if self.max_key >= layer.keys.length() {
+    raise IndexOutOfRange(pos=self.max_key_pos, self.max_key)
+  }
+  if self.max_value >= layer.values.length() {
+    raise IndexOutOfRange(pos=self.max_value_pos, self.max_value)
+  }
+}
+
+///|
 pub fn Tile::parse(bytes : BytesView) -> Tile raise MvtError {
   let r = @pbf.Reader::new(bytes)
   let layers = []
-  let check = {
-    max_key: -1,
-    max_key_pos: 0,
-    max_value: -1,
-    max_value_pos: 0,
-    odd_pos: -1,
-  }
   while !r.at_end() {
     let t = r.read_tag()
     if t == TILE_LAYER {
-      check.max_key = -1
-      check.max_value = -1
+      let check = TagCheck::new()
       let layer = parse_layer(r, @pbf.Reader::new(bytes), check)
       if r.failed() {
         break
       }
-      if check.odd_pos >= 0 {
-        raise OddTagCount(pos=check.odd_pos)
-      }
-      if check.max_key >= layer.keys.length() {
-        raise IndexOutOfRange(pos=check.max_key_pos, check.max_key)
-      }
-      if check.max_value >= layer.values.length() {
-        raise IndexOutOfRange(pos=check.max_value_pos, check.max_value)
-      }
+      check.verify(layer)
       layers.push(layer)
     } else {
       r.skip(t)
@@ -160,7 +177,10 @@ fn parse_feature_header(
       FEATURE_TAGS => decode_tags(r, tags, check)
       FEATURE_TYPE => {
         let ty = r.read_varint32()
-        flags = (flags & HAS_ID) | (if ty >= 1 && ty <= 3 { ty } else { 0 })
+        let known = ty == GEOM_POINT ||
+          ty == GEOM_LINESTRING ||
+          ty == GEOM_POLYGON
+        flags = (flags & HAS_ID) | (if known { ty } else { 0 })
       }
       FEATURE_GEOMETRY => {
         geom_start = r.read_len_start()
@@ -193,16 +213,9 @@ fn decode_tags(r : @pbf.Reader, tags : Array[Int32], check : TagCheck) -> Unit {
     let vpos = r.pos()
     let v = r.read_varint32()
     // Indices are uint32; anything that reads back negative is out of range.
-    let k = if k < 0 { 0x7fffffff } else { k }
-    let v = if v < 0 { 0x7fffffff } else { v }
-    if k > check.max_key {
-      check.max_key = k
-      check.max_key_pos = kpos
-    }
-    if v > check.max_value {
-      check.max_value = v
-      check.max_value_pos = vpos
-    }
+    let k = if k < 0 { @int.MAX_VALUE } else { k }
+    let v = if v < 0 { @int.MAX_VALUE } else { v }
+    check.record(k, kpos, v, vpos)
     tags.push(k)
     tags.push(v)
   }
@@ -227,10 +240,10 @@ pub fn Layer::length(self : Layer) -> Int32 {
 
 ///|
 pub fn Layer::geom_type(self : Layer, i : Int32) -> GeomType {
-  match self.types[i] & 7 {
-    1 => Point
-    2 => LineString
-    3 => Polygon
+  match self.types[i] & GEOM_MASK {
+    GEOM_POINT => Point
+    GEOM_LINESTRING => LineString
+    GEOM_POLYGON => Polygon
     _ => Unknown
   }
 }

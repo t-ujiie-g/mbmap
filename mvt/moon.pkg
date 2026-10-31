@@ -1,6 +1,7 @@
 import {
   "t-ujiie-g/mbmap/pbf",
   "moonbitlang/core/debug",
+  "moonbitlang/core/int",
 }
 
 import {

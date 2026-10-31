@@ -11,6 +11,9 @@ pub const WIRE_LEN : Int32 = 2
 pub const WIRE_FIXED32 : Int32 = 5
 
 ///|
+const WIRE_MASK : Int32 = 7
+
+///|
 /// Encodes a field tag, e.g. for matching: `tag(3, WIRE_LEN)`.
 pub fn tag(field : Int32, wire : Int32) -> Int32 {
   (field << 3) | wire

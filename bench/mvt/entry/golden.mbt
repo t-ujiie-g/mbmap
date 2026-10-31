@@ -55,8 +55,8 @@ pub fn tile_to_json(bytes : Bytes) -> String {
   let tile = @mvt.Tile::parse(bytes[:]) catch {
     e => return "error: \{Repr(e)}"
   }
-  for name in tile.layers.map(l => l.name) {
-    let layer = tile.layer(name).unwrap()
+  // Assigning in order keeps each name's first position and last layer, like a JS object.
+  for layer in tile.layers {
     let features = []
     for i in 0..<layer.length() {
       features.push(
@@ -65,7 +65,7 @@ pub fn tile_to_json(bytes : Bytes) -> String {
         },
       )
     }
-    layers[name] = Json::object({
+    layers[layer.name] = Json::object({
       "version": Json::number(layer.version.to_double()),
       "extent": Json::number(layer.extent.to_double()),
       "features": Json::array(features),

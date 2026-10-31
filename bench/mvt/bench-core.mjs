@@ -4,6 +4,10 @@ import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import { referenceTotals } from "./reference.mjs";
 
+// Rows that do not decode geometry return null (no point count to check);
+// a failed decode still returns -1. Mode bits as in entry/decode_all.mbt.
+const MODE_PROPERTIES = 1, MODE_GEOMETRY = 2;
+
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[s.length >> 1]; };
 
 export function decoders({ mbtJs, gc }) {
@@ -11,10 +15,10 @@ export function decoders({ mbtJs, gc }) {
   if (mbtJs) list.push(["mbt-js", (buf) => mbtJs.decode_bytes(buf)]);
   if (gc) {
     list.push(["mbt-wasm-gc (copy + decode)", (buf) => gc.decode(buf).points]);
-    list.push(["mbt-wasm-gc copy only", (buf) => { gc.exports.copy_mem(gc.copyIn(buf), buf.length); return -2; }]);
-    // Breakdown of the wasm-gc row (each includes the copy); mode bits: 1 properties, 2 geometry.
-    for (const [label, mode] of [["parse only", 0], ["+ properties", 1], ["+ geometry", 2]]) {
-      list.push([`mbt-wasm-gc ${label}`, (buf) => { const n = gc.exports.decode_mem_parts(gc.copyIn(buf), buf.length, mode); return mode & 2 ? n : -2; }]);
+    list.push(["mbt-wasm-gc copy only", (buf) => { gc.exports.copy_mem(gc.copyIn(buf), buf.length); return null; }]);
+    // Breakdown of the wasm-gc row; each includes the copy.
+    for (const [label, mode] of [["parse only", 0], ["+ properties", MODE_PROPERTIES], ["+ geometry", MODE_GEOMETRY]]) {
+      list.push([`mbt-wasm-gc ${label}`, (buf) => { const n = gc.exports.decode_mem_parts(gc.copyIn(buf), buf.length, mode); return n < 0 || mode & MODE_GEOMETRY ? n : null; }]);
     }
   }
   return list;
@@ -32,7 +36,7 @@ export function runDecodeBench(tiles, list, { warmup = 5, iterations = 15 } = {}
         const t0 = performance.now();
         const got = fn(buf);
         xs.push(performance.now() - t0);
-        if (got !== points && got !== -2) correct = false;
+        if (got !== null && got !== points) correct = false;
       }
       perTile.push({ key, ms: median(xs) });
     }

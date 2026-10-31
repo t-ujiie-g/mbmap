@@ -47,11 +47,6 @@ test "a failed read stops at the end and keeps the first error" {
   assert_true(r.at_end())
   ignore(r.read_fixed32())
   assert_eq(r.error(), Some(UnexpectedEof(pos=3)))
-  try r.check() catch {
-    err => assert_eq(err, UnexpectedEof(pos=3))
-  } noraise {
-    _ => fail("expected check to raise")
-  }
   let short = reader([0x01, 0x02])
   assert_eq(short.read_fixed32(), 0U)
   assert_eq(short.error(), Some(UnexpectedEof(pos=0)))
@@ -76,7 +71,6 @@ test "zigzag and 64-bit integers round-trip" {
   }
   assert_eq(r.read_int64(), -1L)
   assert_true(r.at_end() && !r.failed())
-  assert_eq(@pbf.zigzag32(3), -2)
 }
 
 ///|
@@ -124,13 +118,9 @@ fn nested() -> Bytes {
 }
 
 ///|
-test "read_message and read_bytes return views over the original buffer" {
+test "read_bytes returns a view over the original buffer" {
   let r = reader(nested())
-  assert_eq(r.read_tag(), @pbf.tag(3, @pbf.WIRE_LEN))
-  let m = r.read_message()
-  assert_eq(m.pos(), 2)
-  assert_eq(m.read_tag(), @pbf.tag(1, @pbf.WIRE_VARINT))
-  assert_eq(m.read_varint32(), 42)
+  r.skip(r.read_tag())
   assert_eq(r.read_tag(), @pbf.tag(4, @pbf.WIRE_LEN))
   let v = r.read_bytes()
   assert_eq(v.start_offset(), 8)

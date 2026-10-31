@@ -74,7 +74,7 @@ Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← w
 - `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side).
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 
-- `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and is checked once at a boundary (`check`/`error`). Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
+- `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and its `error()` is checked once at a boundary. Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
 - `mvt` decodes layer tables, feature headers and tags in `Tile::parse` (raising `MvtError` once per tile) and stores features column-wise; per-feature calls take an index (`layer.decode_geometry(i, out)`, `layer.property(i, key)`) and don't raise. Geometry is decoded lazily into a reusable `Geometry` buffer.
 
 Backend facts measured so far (see PROGRESS.md):

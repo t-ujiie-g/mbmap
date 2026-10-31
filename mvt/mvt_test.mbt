@@ -269,6 +269,8 @@ test "points, lines and closed polygons decode like loadGeometry" {
       cmd(7, 1),
     ]),
   )
+  assert_eq(poly.geom_type(0), Polygon)
+  assert_eq(mp.geom_type(0), Point)
   assert_eq(poly.load_geometry(0), [
     [(0, 0), (10, 0), (10, 10), (0, 0)],
     [(2, 8), (3, 8), (3, 9), (2, 8)],
