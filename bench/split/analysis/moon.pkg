@@ -1,0 +1,7 @@
+// A stand-in for an analysis package (measurement only): spherical area,
+// bounding boxes, grid counts and ranking over columnar polygons.
+
+import {
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/math",
+}

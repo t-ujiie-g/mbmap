@@ -1,0 +1,15 @@
+// The display worker with the analysis stand-in linked in (measurement
+// only): what a monolithic worker would weigh.
+
+import {
+  "t-ujiie-g/mbmap/worker",
+  "t-ujiie-g/mbmap/bench/split/analysis_entry",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

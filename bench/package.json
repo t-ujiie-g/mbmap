@@ -21,7 +21,8 @@
     "example": "npm run build:moon && node lib/serve.mjs 8080",
     "worker:browser": "npm run build:moon && node worker/browser.mjs",
     "npm:pack": "node npm/pack-test.mjs",
-    "examples": "node npm/prepare.mjs && npm run example"
+    "examples": "node npm/prepare.mjs && npm run example",
+    "split": "node split/run.mjs --runs=15"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",

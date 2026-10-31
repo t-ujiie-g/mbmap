@@ -5,17 +5,17 @@
   },
   "rows": [
     {
-      "name": "main (index.js)",
-      "bytes": 22671,
+      "name": "mbmap",
+      "bytes": 22682,
       "budget": 50000
     },
     {
-      "name": "element (element.js, on top of main)",
+      "name": "mbmap/element (on top of mbmap)",
       "bytes": 1317,
       "budget": 5000
     },
     {
-      "name": "worker (worker.js + mbmap.wasm)",
+      "name": "display worker",
       "bytes": 78143,
       "budget": 80000
     }

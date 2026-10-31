@@ -1,0 +1,6 @@
+// The smallest wasm-gc module MoonBit emits (measurement only): the runtime
+// floor every extra module pays.
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")

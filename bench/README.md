@@ -23,6 +23,7 @@ npm run worker:browser    # Worker の process_tile（冷えた状態・温ま�
 npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
 npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ で配信
 npm run examples          # npm パッケージを pack して examples/{npm,element,react} に入れてから配信（一覧は /examples/）
+npm run split             # 2つ目の wasm-gc モジュールのサイズと読み込み時間（入口の分割の判断用）
 npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm,element,react} に入れて Chromium で確かめる
 ```
 
@@ -117,3 +118,11 @@ npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm
 - `examples/react`（React 19 から `<mb-map>`）：ボタンで props を変えると地図が動くこと、ホイールでのズームが `onmb-move`
   経由で React の表示に反映されること。esbuild でバンドルし、`worker.js` と `mbmap.wasm` をバンドルの隣にコピーする。
 fixture がなくてもタイルが 404 になるだけで地図は読み込まれるので、CI でも動く。
+
+## split/ — 入口の分割のコスト（Phase 6.5）
+
+2つ目の wasm-gc モジュールで何が増えるかを測る（`npm run split`、`bench/results/split.json`）。
+
+- `split/analysis`：解析の代わりに置くパッケージ（列指向のポリゴンの球面面積、bbox、グリッド集計、面積順の上位）。本物の解析と同じく `Map`、ソート、`@math` を使う。
+- `split/analysis_entry`：それを単独の wasm-gc モジュールにしたもの。`split/combined_entry`：表示用 Worker に同じコードを入れた一体型。`split/empty_entry`：空のモジュール（ランタイムの下限）。
+- サイズ（gzip）に加えて、3ブラウザで、モジュール Worker の起動時間と、各モジュールの読み込み（fetch・コンパイル・インスタンス化）、解析の初回と温まった後の時間を測る。1万ポリゴン、15回の中央値。ローカルの配信なので、ネットワークの時間は含まない（サイズから見積もる）。
