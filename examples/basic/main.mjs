@@ -21,6 +21,8 @@ const map = mbmap.create_map(
   "/worker/js/worker.mjs",
   "/_build/wasm-gc/release/build/worker/worker.wasm",
   0, // tile workers: 0 = half the hardware threads, at most 4
+  null, // no GeoJSON sources
+  "sans-serif", // labels' font family
 );
 window.__map = map;
 window.__mbmap = mbmap;

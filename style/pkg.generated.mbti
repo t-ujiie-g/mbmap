@@ -108,6 +108,7 @@ pub(all) enum LayerKind {
   Fill
   Line
   Circle
+  Symbol
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
@@ -161,10 +162,40 @@ pub struct StyleLayer {
   stroke_width : Expr
   stroke_color : Expr
   stroke_opacity : Expr
+  halo_color : Expr
+  halo_width : Expr
+  text : TextLayout?
   join : Join
   cap : Cap
   miter_limit : Double
   round_limit : Double
+}
+
+pub(all) enum TextAnchor {
+  Center
+  Left
+  Right
+  Top
+  Bottom
+  TopLeft
+  TopRight
+  BottomLeft
+  BottomRight
+} derive(Eq, @debug.Debug)
+pub fn TextAnchor::equal(Self, Self) -> Bool
+pub fn TextAnchor::not_equal(Self, Self) -> Bool
+pub fn TextAnchor::to_repr(Self) -> @debug.Repr
+
+pub struct TextLayout {
+  field : Array[Expr]
+  size : Expr
+  anchor : TextAnchor
+  offset : (Double, Double)
+  max_width : Double
+  line_height : Double
+  padding : Double
+  allow_overlap : Bool
+  ignore_placement : Bool
 }
 
 pub(all) enum Value {

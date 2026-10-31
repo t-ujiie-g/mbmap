@@ -137,3 +137,60 @@ pub fn Renderer::draw_circle(
     stroke_width,
   )
 }
+
+///|
+/// Pixels per side of the glyph atlas texture.
+pub const ATLAS_SIZE : Int32 = 2048
+
+///|
+/// Copies a glyph bitmap (one byte per pixel) into the atlas at (x, y).
+pub fn Renderer::upload_glyph(
+  self : Renderer,
+  data : JsBuffer,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
+) -> Unit {
+  gl_glyph(self.gl, ATLAS_SIZE, ATLAS_SIZE, data, x, y, width, height)
+}
+
+///|
+/// Uploads a symbol entry's glyph quads; `rects` holds the atlas rectangle
+/// (x, y, width, height) of each of its glyphs. No label shows until `show`.
+pub fn Renderer::upload_symbols(
+  self : Renderer,
+  vertices : JsBuffer,
+  indices : JsBuffer,
+  index_bytes : Int32,
+  rects : FixedArray[Int32],
+) -> Mesh {
+  gl_upload_symbols(self.gl, vertices, indices, index_bytes, rects)
+}
+
+///|
+/// Shows the labels of a symbol mesh whose flag is set: label `i` owns the
+/// indices from `labels[i * stride + stride - 2]`, as many as the float after it.
+pub fn Renderer::show(
+  self : Renderer,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  shown : FixedArray[Bool],
+) -> Unit {
+  gl_show(self.gl, mesh, labels, stride, shown)
+}
+
+///|
+/// Draws a symbol mesh's shown labels: the halo first, then the text.
+pub fn Renderer::draw_symbols(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  dpr : Double,
+  color : FixedArray[Double],
+  halo : FixedArray[Double],
+  halo_width : Double,
+) -> Unit {
+  gl_draw_symbols(self.gl, mesh, at.matrix.m, dpr, color, halo, halo_width)
+}

@@ -26,7 +26,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 | 指標 | 目標（Phase 0 の MapLibre 6.16.0 実測値で更新。測定条件は PROGRESS.md） |
 |---|---|
 | メインスレッド側バンドル | gzip 50KB 以下 |
-| Worker（Wasm 含む） | gzip 80KB 以下 |
+| Worker（Wasm 含む） | gzip 100KB 以下（ラベルを入れた Phase 9.1 で 80KB から引き上げ） |
 | 1タイルのデコード＋テッセレーション（z14 都市部） | MapLibre の 1/2 以下の時間：bench fixtures の中央タイル 4.6ms 以下、35 タイル中央値 11.7ms 以下（同ハーネス・同スタイル） |
 | フレーム時間 | 中級 Android 端末で 60fps、パン・ズーム中の GC 停止なし（実機計測は当面行わない）。代理指標：1 フレームの描画 CPU 時間 p95 が 1.44ms 以下、20ms 超のフレーム 0 |
 | 初回描画まで | MapLibre より短いこと：同条件で 215ms 未満 |
@@ -63,6 +63,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `analysis/` … 空間索引（flatbush の移植）、計測・点の内外判定（Turf.js と同じ値）、空間クエリ、集計
 - `analysis_worker/` … `mbmap/analysis` の Worker のエントリ（`formats` と `analysis`）。データセットをハンドルで保持する
 - `wasmio/` … wasm-gc 専用。`geojson_worker` と `analysis_worker` が JS とやりとりする線形メモリの入出力
+- `label/` … ラベルの配置。グリフのアトラスの詰め込み、重なりを判定する画面のグリッド
 - `render_webgl2/` … js ターゲット。WebGL2 への FFI、シェーダ、描画パス
 - `map/` … カメラ、入力（パン/ピンチ/ホイール）、タイル選択とキャッシュ、フレームループ。**公開 MoonBit API の本体**
 - `npm/` … TS ファサード、`.d.ts`、ビルド・パッケージング

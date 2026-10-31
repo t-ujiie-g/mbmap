@@ -473,3 +473,62 @@ test "malformed columnar tiles fail with a message" {
   bad[5] = b'\xff'
   assert_false(p.process("g", Bytes::from_array(bad)[:], 0))
 }
+
+///|
+test "symbol layers pack their points' labels with the layer's layout" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [
+    #|  {"id": "t", "type": "symbol", "source": "g",
+    #|   "layout": {"text-field": "k={k}", "text-size": ["interpolate", ["linear"], ["zoom"], 0, 10, 10, 20],
+    #|              "text-anchor": "top", "text-offset": [0, 1.5]},
+    #|   "paint": {"text-color": ["match", ["get", "k"], 1, "#f00", "#00f"]}}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  // The two points split into two groups by their color input; the square has
+  // no label.
+  assert_eq(p.out.layer_count(), 2)
+  assert_eq((entry(0, 1), entry(0, 5)), (@worker.KIND_SYMBOL, 0))
+  assert_eq(props_of(b, 0), ["k=1"])
+  let r = @core.ByteReader::new(b[entry(0, 2):entry(0, 2) + entry(0, 3)])
+  assert_eq((r.u8(), r.u8(), r.u8(), r.u8()), (3, 0, 0, 0))
+  assert_eq([r.f64(), r.f64(), r.f64(), r.f64(), r.f64()], [
+    0.0, 1.5, 10.0, 1.2, 2.0,
+  ])
+  assert_eq(r.u32(), 1)
+  assert_eq((r.i16(), r.i16(), r.f64(), r.u32()), (2048, 2048, 10.0, 2))
+  assert_eq((r.u8(), r.utf8()), (@core.PROP_STRING, "k="))
+  assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
+  // The other point lacks k: its text is "k=" and a null part.
+  let r2 = @core.ByteReader::new(b[entry(1, 2):entry(1, 2) + entry(1, 3)])
+  for _ in 0..<44 {
+    r2.u8() |> ignore
+  }
+  assert_eq(r2.u32(), 1)
+  r2.i16() |> ignore
+  r2.i16() |> ignore
+  r2.f64() |> ignore
+  assert_eq(r2.u32(), 2)
+  r2.u8() |> ignore
+  assert_eq(r2.utf8(), "k=")
+  assert_eq(r2.u8(), @core.PROP_NULL)
+}
+
+///|
+test "labels whose text has no value are left out" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "t", "type": "symbol", "source": "g", "layout": {"text-field": "{k}"}},
+    #|            {"id": "u", "type": "symbol", "source": "g"}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  assert_eq(p.out.layer_count(), 1)
+  let at = u32_at(b, 4 + 2 * 4)
+  assert_eq(u32_at(b, at + 44), 1)
+}

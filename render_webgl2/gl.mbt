@@ -36,6 +36,8 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, "#version 300 es\nprecision highp float;\n" + fs));
   #|    gl.bindAttribLocation(p, 0, "a_pos");
   #|    gl.bindAttribLocation(p, 1, "a_data");
+  #|    gl.bindAttribLocation(p, 2, "a_tex");
+  #|    gl.bindAttribLocation(p, 3, "a_size");
   #|    gl.linkProgram(p);
   #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   #|    const u = { program: p };
@@ -85,8 +87,21 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  float t = smoothstep(u_inner - aa, u_inner, d);" +
   #|    "  o = mix(u_color, u_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
   #|    ["u_matrix", "u_px", "u_size", "u_depth", "u_clip", "u_color", "u_stroke", "u_inner"]);
+  #|  // Glyph quads face the viewer at a constant size: a_data is the corner's
+  #|  // offset from the anchor in quarter CSS pixels (y down), a_size the text
+  #|  // size in 1/16 px. The SDF edge is at 0.75 and falls by 1/16 per glyph
+  #|  // pixel (TinySDF radius 16, glyphs drawn at 48 px); u_halo widens it.
+  #|  const symbol = program(
+  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; uniform mat4 u_matrix; uniform vec2 u_px;" +
+  #|    "uniform float u_dpr; uniform vec2 u_atlas; out vec2 v_tex; out float v_scale;" +
+  #|    "void main() { vec4 c = u_matrix * vec4(a_pos, 0.0, 1.0); vec2 off = a_data * 0.25 * u_dpr * u_px * vec2(1.0, -1.0);" +
+  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_tex = a_tex / u_atlas; v_scale = a_size / 16.0 * u_dpr / 48.0; }",
+  #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale; out vec4 o;" +
+  #|    "void main() { float d = (0.75 - texture(u_glyphs, v_tex).r) * 16.0 * v_scale;" +
+  #|    "  o = u_color * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
+  #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_glyphs", "u_color", "u_halo"]);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, mat: new Float32Array(16), px: [0, 0] };
+  #|  return { gl, fill, line, circle, symbol, atlas: null, mat: new Float32Array(16), px: [0, 0] };
   #|}
 
 ///|
@@ -222,3 +237,133 @@ extern "js" fn gl_draw_circle(
 ///|
 extern "js" fn mesh_bytes(mesh : Mesh) -> Int32 =
   #|(m) => m.bytes
+
+///|
+/// Creates the glyph atlas texture (one byte per pixel) on first use.
+extern "js" fn gl_glyph(
+  gl : Gl,
+  width : Int32,
+  height : Int32,
+  data : JsBuffer,
+  x : Int32,
+  y : Int32,
+  w : Int32,
+  h : Int32,
+) -> Unit =
+  #|(c, width, height, data, x, y, w, h) => {
+  #|  const gl = c.gl;
+  #|  if (!c.atlas) {
+  #|    c.atlas = gl.createTexture();
+  #|    gl.bindTexture(gl.TEXTURE_2D, c.atlas);
+  #|    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, width, height, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|    c.atlasSize = [width, height];
+  #|  }
+  #|  gl.bindTexture(gl.TEXTURE_2D, c.atlas);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  #|  gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.RED, gl.UNSIGNED_BYTE, data);
+  #|}
+
+///|
+/// Uploads glyph quads after turning each vertex's glyph index and corner into
+/// atlas pixels from `rects` (x, y, width, height per glyph index). Nothing is
+/// drawn until `gl_show`.
+extern "js" fn gl_upload_symbols(
+  gl : Gl,
+  vertices : JsBuffer,
+  indices : JsBuffer,
+  index_bytes : Int32,
+  rects : FixedArray[Int32],
+) -> Mesh =
+  #|(c, vertices, indices, indexBytes, rects) => {
+  #|  const gl = c.gl;
+  #|  const v = new DataView(vertices);
+  #|  for (let o = 0; o < vertices.byteLength; o += 16) {
+  #|    const g = v.getUint16(o + 8, true) * 4, corner = v.getUint16(o + 10, true);
+  #|    v.setUint16(o + 8, rects[g] + (corner === 1 || corner === 2 ? rects[g + 2] : 0), true);
+  #|    v.setUint16(o + 10, rects[g + 1] + (corner >= 2 ? rects[g + 3] : 0), true);
+  #|  }
+  #|  const vao = gl.createVertexArray();
+  #|  gl.bindVertexArray(vao);
+  #|  const vbo = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(0);
+  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 16, 0);
+  #|  gl.enableVertexAttribArray(1);
+  #|  gl.vertexAttribPointer(1, 2, gl.SHORT, false, 16, 4);
+  #|  gl.enableVertexAttribArray(2);
+  #|  gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, false, 16, 8);
+  #|  gl.enableVertexAttribArray(3);
+  #|  gl.vertexAttribPointer(3, 1, gl.UNSIGNED_SHORT, false, 16, 12);
+  #|  const ibo = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  #|  gl.bindVertexArray(null);
+  #|  const all = indexBytes === 2 ? new Uint16Array(indices) : new Uint32Array(indices);
+  #|  const type = indexBytes === 2 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT;
+  #|  return { vao, vbo, ibo, all, count: 0, type, bytes: vertices.byteLength + indices.byteLength };
+  #|}
+
+///|
+extern "js" fn gl_show(
+  gl : Gl,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  shown : FixedArray[Bool],
+) -> Unit =
+  #|(c, m, labels, stride, shown) => {
+  #|  const gl = c.gl;
+  #|  let n = 0;
+  #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[(i + 1) * stride - 1];
+  #|  const out = new m.all.constructor(n);
+  #|  let at = 0;
+  #|  for (let i = 0; i < shown.length; i++) {
+  #|    if (!shown[i]) continue;
+  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
+  #|    out.set(m.all.subarray(first, first + count), at);
+  #|    at += count;
+  #|  }
+  #|  gl.bindVertexArray(null);
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ibo);
+  #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|  m.count = n;
+  #|}
+
+///|
+/// `color` and `halo` are straight RGBA; `halo_width` is in device pixels.
+extern "js" fn gl_draw_symbols(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  dpr : Double,
+  color : FixedArray[Double],
+  halo : FixedArray[Double],
+  halo_width : Double,
+) -> Unit =
+  #|(c, m, matrix, dpr, color, halo, haloWidth) => {
+  #|  if (m.count === 0 || !c.atlas) return;
+  #|  const gl = c.gl, p = c.symbol;
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
+  #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform2f(p.u_atlas, c.atlasSize[0], c.atlasSize[1]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, c.atlas);
+  #|  gl.uniform1i(p.u_glyphs, 0);
+  #|  gl.bindVertexArray(m.vao);
+  #|  // The halo goes under the whole layer's text of this tile, then the text.
+  #|  if (haloWidth > 0 && halo[3] > 0) {
+  #|    gl.uniform4f(p.u_color, halo[0] * halo[3], halo[1] * halo[3], halo[2] * halo[3], halo[3]);
+  #|    gl.uniform1f(p.u_halo, haloWidth);
+  #|    gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  }
+  #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
+  #|  gl.uniform1f(p.u_halo, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|}

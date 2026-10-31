@@ -12,6 +12,7 @@ pub(all) enum LayerKind {
   Fill
   Line
   Circle
+  Symbol
 } derive(Debug, Eq)
 
 ///|
@@ -29,9 +30,9 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer with its type's paint (sizes in CSS pixels).
-/// `filter_id` is shared by layers whose filters are written identically
-/// (-1 without one), so they compare without walking `Expr`s.
+/// One drawable layer with its type's paint (sizes in CSS pixels); `text` is a
+/// symbol layer's layout. `filter_id` is shared by layers whose filters are
+/// written identically (-1 without one), so they compare without walking `Expr`s.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -48,6 +49,9 @@ pub struct StyleLayer {
   stroke_width : Expr
   stroke_color : Expr
   stroke_opacity : Expr
+  halo_color : Expr
+  halo_width : Expr
+  text : TextLayout?
   join : Join
   cap : Cap
   miter_limit : Double
@@ -78,8 +82,8 @@ pub struct Source {
 
 ///|
 /// The drawable part of a MapLibre style: vector and GeoJSON sources, and
-/// the background, fill, line and circle layers in drawing order. Other
-/// source and layer types are skipped.
+/// the background, fill, line, circle and symbol layers in drawing order.
+/// Other source and layer types are skipped.
 pub struct Style {
   sources : Array[Source]
   layers : Array[StyleLayer]
@@ -268,6 +272,7 @@ fn parse_layer(
     "fill" => Fill
     "line" => Line
     "circle" => Circle
+    "symbol" => Symbol
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -283,6 +288,7 @@ fn parse_layer(
     Fill => "fill"
     Line => "line"
     Circle => "circle"
+    Symbol => "text"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter
@@ -351,6 +357,25 @@ fn parse_layer(
       NumberType,
       Json::number(1.0),
     ),
+    halo_color: paint_expr(
+      paint,
+      "text-halo-color",
+      ppath,
+      ColorType,
+      Json::string("rgba(0, 0, 0, 0)"),
+    ),
+    halo_width: paint_expr(
+      paint,
+      "text-halo-width",
+      ppath,
+      NumberType,
+      Json::number(0.0),
+    ),
+    text: if kind is Symbol {
+      Some(parse_text(layout, lpath))
+    } else {
+      None
+    },
     join,
     cap,
     miter_limit: number_or(layout, "line-miter-limit", lpath, 2.0),
