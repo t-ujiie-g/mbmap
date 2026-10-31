@@ -227,3 +227,18 @@ test "circle layers read radius and stroke, with MapLibre's defaults" {
     Color({ r: 0.0, g: 0.0, b: 0.0, a: 1.0, }),
   )
 }
+
+///|
+test "layers with identically written filters share a filter_id" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "a", "type": "line", "filter": ["==", ["get", "k"], 1]},
+      #|  {"id": "b", "type": "line"},
+      #|  {"id": "c", "type": "line", "filter": ["==", ["get", "k"], 2]},
+      #|  {"id": "d", "type": "fill", "filter": ["==", ["get", "k"], 1]}
+      #|]}
+    ),
+  )
+  assert_eq(s.layers.map(l => l.filter_id), [0, -1, 1, 0])
+}

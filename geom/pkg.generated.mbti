@@ -1,0 +1,74 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/geom"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Column {
+  name : String
+  values : Array[Prop?]
+}
+
+pub(all) enum GeomKind {
+  NoGeometry
+  Point
+  MultiPoint
+  LineString
+  MultiLineString
+  Polygon
+  MultiPolygon
+} derive(Eq, @debug.Debug)
+pub fn GeomKind::equal(Self, Self) -> Bool
+pub fn GeomKind::not_equal(Self, Self) -> Bool
+pub fn GeomKind::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Prop {
+  Null
+  Bool(Bool)
+  Num(Double)
+  Str(String)
+} derive(Eq, @debug.Debug)
+pub fn Prop::equal(Self, Self) -> Bool
+pub fn Prop::not_equal(Self, Self) -> Bool
+pub fn Prop::to_repr(Self) -> @debug.Repr
+
+pub struct Table {
+  kinds : Array[GeomKind]
+  ids : Array[Prop?]
+  part_ends : Array[Int32]
+  ring_ends : Array[Int32]
+  point_ends : Array[Int32]
+  coords : Array[Double]
+  columns : Array[Column]
+  // private fields
+}
+pub fn Table::column(Self, String) -> Column?
+pub fn Table::length(Self) -> Int32
+pub fn Table::new() -> Self
+pub fn Table::parts(Self, Int32) -> (Int32, Int32)
+pub fn Table::points(Self, Int32) -> (Int32, Int32)
+pub fn Table::rings(Self, Int32) -> (Int32, Int32)
+
+pub struct TableBuilder {
+  table : Table
+  // private fields
+}
+pub fn TableBuilder::discard_feature(Self) -> Unit
+pub fn TableBuilder::end_feature(Self, GeomKind, id? : Prop?) -> Unit
+pub fn TableBuilder::end_part(Self) -> Unit
+pub fn TableBuilder::end_ring(Self) -> Unit
+pub fn TableBuilder::end_ring_at(Self, Int32) -> Unit
+pub fn TableBuilder::finish(Self) -> Table
+pub fn TableBuilder::new() -> Self
+pub fn TableBuilder::point(Self, Double, Double) -> Unit
+pub fn TableBuilder::prop(Self, String, Prop) -> Unit
+
+// Type aliases
+
+// Traits

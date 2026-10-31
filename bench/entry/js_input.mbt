@@ -20,3 +20,36 @@ pub fn fill_digest(bytes : Bytes) -> String {
   ignore(fill_hash(bytes[:], hashes))
   hashes.map(h => h.to_string()).join(",")
 }
+
+///|
+/// `build_tiler` on the GeoJSON's UTF-8 Uint8Array.
+#export_name("geojson_tiler")
+pub fn geojson_tiler(
+  bytes : Bytes,
+  max_zoom : Int32,
+  index_max_zoom : Int32,
+  index_max_points : Int32,
+  tolerance : Double,
+  extent : Int32,
+  buffer : Int32,
+  wrap : Bool,
+) -> Int32 {
+  build_tiler(
+    bytes[:],
+    max_zoom,
+    index_max_zoom,
+    index_max_points,
+    tolerance,
+    extent,
+    buffer,
+    wrap,
+    @tiler.Trig::moonbit(),
+  )
+}
+
+///|
+/// `read_only` on the GeoJSON's UTF-8 Uint8Array.
+#export_name("geojson_read")
+pub fn geojson_read(bytes : Bytes) -> Int32 {
+  read_only(bytes[:])
+}

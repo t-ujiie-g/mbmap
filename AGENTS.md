@@ -43,6 +43,8 @@ npm run tess:golden       # fills vs MapLibre's classifyRings + earcut on all fi
 npm run tess:node         # decode + tessellation vs MapLibre WorkerTile.parse in Node
 npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/WebKit
 npm run worker:browser    # worker process_tile per fixture, cold and warm, in three browsers
+npm run geojson:golden    # tiler vs @maplibre/geojson-vt, every tile in range (js in full, wasm-gc by hash; must stay 0 differ)
+npm run geojson:node      # GeoJSON read + index + tiles vs geojson-vt in Node (also geojson:browser)
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style)
 npm run example           # serve the repo; open http://127.0.0.1:8080/examples/ (basic needs only this)
 npm run examples          # also pack npm/ into examples/{npm,element,react} (bench/npm/prepare.mjs), then serve
@@ -95,6 +97,8 @@ Planned data/analysis/3D packages (VISION §3) ship as separate npm entry points
 
 - `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and its `error()` is checked once at a boundary. Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
 - `tess` triangulates fills with a port of earcut 3.2.4 whose output matches the JS library exactly, after grouping rings like MapLibre's `classifyRings`, and extrudes lines into quads plus join/cap geometry (vertex layout in `LINE_VERTEX_STRIDE`). Tessellators and buffers are reusable objects so steady-state use does not allocate.
+- `geom` holds columnar feature tables (`Table`: kinds, nested part/ring/point offsets over interleaved coordinates, GeoArrow's multipolygon layout for every kind; properties as one `Column` per key, padded by `TableBuilder::finish`). `formats` reads GeoJSON straight from UTF-8 into a table (no JSON tree; sticky errors; `MAX_GEOJSON_DEPTH`; numbers take Clinger's exact fast path up to 15 digits and core `strconv` beyond, which is the reader's main cost on full-precision data). `tiler` is an exact port of @maplibre/geojson-vt 6.3.0 (`npm run geojson:golden` must stay at 0 differences): clipped features live in per-clip `Store`s referenced by `FRef`, so a feature kept whole is shared and stores are freed like geojson-vt's objects; `Trig` lets a wasm-gc build project with the host's `Math.sin`/`Math.log` (bit-identical to geojson-vt; the pure `@math` differs in the last bit now and then, which changed 314 of 4336 golden tiles), which moonrun cannot provide, so tests use the default.
+- Worker group properties travel as a small binary form (`PROPS_*` in `worker/packed.mbt`, decoded by `worker/js/worker.mjs` into prototype-less objects), not JSON: stringify pulled float printing into the worker. Layers share buffers when their filters are written identically (`filter_id`), not by comparing `Expr`s.
 - `mvt` decodes layer tables, feature headers and tags in `Tile::parse` (raising `MvtError` once per tile) and stores features column-wise; per-feature calls take an index (`layer.decode_geometry(i, out)`, `layer.property(i, key)`) and don't raise. Geometry is decoded lazily into a reusable `Geometry` buffer.
 
 Backend facts measured so far (see PROGRESS.md):

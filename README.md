@@ -23,6 +23,9 @@ moon fmt && moon info
 | `mvt/` | MVT 2.1 デコーダ | 全 |
 | `tess/` | earcut 移植、線の展開 | 全 |
 | `style/` | Style Spec サブセット評価 | 全 |
+| `geom/` | 列指向の地物の表（GeoArrow と同じオフセット、属性はキーごとの列） | 全 |
+| `formats/` | GeoJSON などの読み込み（`geom` の表へ） | 全 |
+| `tiler/` | 地物の表からベクトルタイルを切り出す（geojson-vt の移植） | 全 |
 | `worker/` | Worker エントリ、メッセージプロトコル | 全（配布は Wasm） |
 | `render_webgl2/` | WebGL2 FFI、シェーダ、描画パス | js |
 | `map/` | カメラ、入力、タイル選択、フレームループ（公開 MoonBit API） | js |

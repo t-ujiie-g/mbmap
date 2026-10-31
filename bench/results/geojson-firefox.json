@@ -1,0 +1,90 @@
+{
+  "env": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:157.0) Gecko/20100101 Firefox/157.0",
+    "browser": "firefox",
+    "version": "157.0"
+  },
+  "params": {
+    "runs": 5,
+    "statistic": "median of runs after one warm-up",
+    "options": {
+      "maxZoom": 18,
+      "indexMaxZoom": 5,
+      "indexMaxPoints": 100000,
+      "tolerance": 3,
+      "extent": 4096,
+      "buffer": 1024,
+      "wrap": true
+    }
+  },
+  "datasets": {
+    "points": {
+      "bytes": 1532376,
+      "features": 8018,
+      "tiles": 948,
+      "js": {
+        "parseMs": 5.540000000000006,
+        "indexMs": 2.260000000000005,
+        "tilesMs": 29.139999999999986,
+        "totalMs": 36.94
+      },
+      "mbmap": {
+        "readMs": 16.180000000000007,
+        "readIndexMs": 18.160000000000025,
+        "tilesMs": 17.32000000000005,
+        "totalMs": 35.480000000000075
+      }
+    },
+    "roads": {
+      "bytes": 30080119,
+      "features": 105617,
+      "tiles": 948,
+      "js": {
+        "parseMs": 127.18000000000006,
+        "indexMs": 102.17999999999984,
+        "tilesMs": 542.2599999999998,
+        "totalMs": 771.6199999999997
+      },
+      "mbmap": {
+        "readMs": 343.6999999999989,
+        "readIndexMs": 443.9599999999991,
+        "tilesMs": 202.4400000000005,
+        "totalMs": 646.3999999999996
+      }
+    },
+    "roads6": {
+      "bytes": 25820444,
+      "features": 105617,
+      "tiles": 948,
+      "js": {
+        "parseMs": 107.90000000000146,
+        "indexMs": 98.56000000000131,
+        "tilesMs": 625.9799999999996,
+        "totalMs": 832.4400000000023
+      },
+      "mbmap": {
+        "readMs": 237.90000000000146,
+        "readIndexMs": 305.5,
+        "tilesMs": 198.2599999999984,
+        "totalMs": 503.7599999999984
+      }
+    },
+    "buildings": {
+      "bytes": 32903929,
+      "features": 88375,
+      "tiles": 305,
+      "js": {
+        "parseMs": 147.04000000000087,
+        "indexMs": 236.23999999999796,
+        "tilesMs": 810.4800000000032,
+        "totalMs": 1193.760000000002
+      },
+      "mbmap": {
+        "readMs": 380.20000000000437,
+        "readIndexMs": 613.6200000000026,
+        "tilesMs": 903.9599999999991,
+        "totalMs": 1517.5800000000017
+      }
+    }
+  }
+}

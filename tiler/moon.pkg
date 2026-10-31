@@ -1,0 +1,13 @@
+// Vector tiles cut from a `@geom.Table`: a port of geojson-vt. Pure MoonBit,
+// tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/double",
+  "moonbitlang/core/math",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+} for "test"

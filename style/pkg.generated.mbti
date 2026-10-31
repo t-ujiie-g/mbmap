@@ -135,6 +135,7 @@ pub struct StyleLayer {
   min_zoom : Double
   max_zoom : Double
   filter : Expr?
+  filter_id : Int32
   color : Expr
   opacity : Expr
   width : Expr
