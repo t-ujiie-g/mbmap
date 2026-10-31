@@ -155,3 +155,24 @@ test "malformed input raises once with the position" {
     }
   }
 }
+
+///|
+test "input with more than MAX_GEOJSON_KEYS distinct keys is rejected" {
+  let features = (n : Int32) => {
+    let parts = Array::makei(n, i => {
+      "{\"type\": \"Feature\", \"geometry\": null, \"properties\": {\"k\{i}\": 1}}"
+    })
+    "{\"type\": \"FeatureCollection\", \"features\": [" + parts.join(",") + "]}"
+  }
+  assert_eq(
+    read(features(@formats.MAX_GEOJSON_KEYS)).length(),
+    @formats.MAX_GEOJSON_KEYS,
+  )
+  try read(features(@formats.MAX_GEOJSON_KEYS + 1)) catch {
+    @formats.Malformed(_) as e =>
+      assert_true(e.message().has_suffix("property keys"))
+    e => fail("unexpected \{Repr(e)}")
+  } noraise {
+    _ => fail("expected the key limit to apply")
+  }
+}

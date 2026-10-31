@@ -1,8 +1,5 @@
-// GeoJSON (already JSON.parse'd) to the bytes of geom's `Table::to_bytes`,
-// following formats/geojson.mbt's rules: one row per feature, a
-// GeometryCollection one row per member, coordinates beyond x and y dropped,
-// a geometry that does not fit its type kept without geometry, objects and
-// arrays in properties as JSON text. Pipeline B of the GeoJSON bench.
+// Parsed GeoJSON to `Table::to_bytes` (docs/FORMATS.md, "Table"), by
+// formats/geojson.mbt's rules: pipeline B of the GeoJSON bench.
 const KINDS = { Point: 1, MultiPoint: 2, LineString: 3, MultiLineString: 4, Polygon: 5, MultiPolygon: 6 };
 const DEPTH = { Point: 0, MultiPoint: 1, LineString: 1, MultiLineString: 2, Polygon: 2, MultiPolygon: 3 };
 

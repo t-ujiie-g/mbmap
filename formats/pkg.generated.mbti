@@ -9,6 +9,8 @@ import {
 // Values
 pub const MAX_GEOJSON_DEPTH : Int32 = 64
 
+pub const MAX_GEOJSON_KEYS : Int32 = 4096
+
 pub fn read_geojson(BytesView) -> @geom.Table raise GeoJSONError
 
 // Errors

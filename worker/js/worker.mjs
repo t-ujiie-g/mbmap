@@ -1,19 +1,7 @@
-// Worker glue around the wasm-gc build of the MoonBit `worker` package.
-//
-// Messages in:  {type: "init", wasm, style}            wasm URL, style JSON text
-//               {type: "tile", id, url, source, z}      source = index into style.sources
-//               {type: "tile", id, bytes, source, z}    a tile already loaded (a GeoJSON
-//                                                       source's columnar tile), as an ArrayBuffer
-//               {type: "cancel", id}
-// Messages out: {type: "ready"} | {type: "error", message}
-//               {type: "tile", id, layers: [{layer, kind, vertices, indices, count, indexBytes, shared, props}]}
-//               where `shared` is the index of an earlier layer whose buffers it reuses, or -1,
-//               and `props` the properties a data-driven layer's group shares (a
-//               prototype-less object, decoded from PROPS_* in worker/packed.mbt), or null
-//               {type: "tile-error", id, message}
-// Vertex and index buffers are transferred, never copied (VISION §4-3).
+// Glue around the wasm-gc build of `worker`. Messages and the packed tile are in
+// docs/FORMATS.md ("Display worker messages", "Packed tile").
 
-const LAYER_ENTRY_WORDS = 9;
+const LAYER_ENTRY_WORDS = 9; // worker/packed.mbt
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
@@ -31,8 +19,8 @@ function withInput(bytes, run) {
   return new Uint8Array(wasm.memory.buffer, out, n);
 }
 
-// Decodes group properties (see PROPS_* in worker/packed.mbt). The object has
-// no prototype, so a `__proto__` key from a tile is an ordinary property.
+// Tags are @core.PROP_*. Without a prototype, a tile's `__proto__` key is an
+// ordinary property.
 function decodeProps(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let at = 0;

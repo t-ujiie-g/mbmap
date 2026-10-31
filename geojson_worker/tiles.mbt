@@ -7,9 +7,8 @@ fn host_sin(x : Double) -> Double = "Math" "sin"
 fn host_log(x : Double) -> Double = "Math" "log"
 
 ///|
-/// Tile units per pixel of a 512 px tile, to turn MapLibre's GeoJSON source
-/// options (in pixels) into tiler options.
-const UNITS_PER_PIXEL : Double = 8.0
+/// Turns MapLibre's GeoJSON source options, in pixels, into tile units.
+let units_per_pixel : Double = @core.TILE_EXTENT.to_double() / @core.TILE_SIZE
 
 ///|
 /// Each loaded source's table and tiler, by its index in the style.
@@ -17,9 +16,8 @@ let sources : Map[Int32, (@geom.Table, @tiler.Tiler)] = Map([])
 
 ///|
 /// Reads the GeoJSON placed as input as source `source`, with its style
-/// options (`max_zoom`, and `buffer` and `tolerance` in pixels of a 512 px
-/// tile). Returns the feature count, or minus the length of a UTF-8 error
-/// message at `output_addr`.
+/// options (`buffer` and `tolerance` in pixels). Returns the feature count,
+/// or minus the length of a UTF-8 error message at `output_addr`.
 #export_name("load")
 pub fn load(
   source : Int32,
@@ -33,8 +31,8 @@ pub fn load(
   let options : @tiler.TilerOptions = {
     ..@tiler.TilerOptions::default(),
     max_zoom,
-    buffer: (buffer * UNITS_PER_PIXEL).round().to_int(),
-    tolerance: tolerance * UNITS_PER_PIXEL,
+    buffer: (buffer * units_per_pixel).round().to_int(),
+    tolerance: tolerance * units_per_pixel,
   }
   let trig : @tiler.Trig = { sin: host_sin, ln: host_log, }
   sources[source] = (table, @tiler.Tiler::new(table, options~, trig~))

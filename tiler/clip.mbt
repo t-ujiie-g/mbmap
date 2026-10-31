@@ -2,10 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// Features of `set` cut to `start / scale <= v < end / scale` along x
-/// (`axis` 0) or y (1); `min_all` and `max_all` bound the whole set on that
-/// axis. Features wholly inside are kept as they are, as is the whole set;
-/// None when nothing is left (geojson-vt's `clip`).
+/// geojson-vt's `clip`: `set` cut to `start / scale <= v < end / scale` along x
+/// (`axis` 0) or y (1), keeping features wholly inside as they are; None when
+/// nothing is left.
 fn clip(
   set : Array[FRef],
   scale : Double,
@@ -76,10 +75,8 @@ fn clip_points(
 }
 
 ///|
-/// Lines or polygon rings of `f` cut to the range, as a new feature in
-/// `out`. A line leaving the range is split into slices, each its own line;
-/// a ring stays one ring, closed again after the cut; a polygon left without
-/// rings is dropped.
+/// `f`'s lines or rings cut to the range, into `out`: a line splits into
+/// slices, a ring is closed again after the cut.
 fn clip_lines(
   f : FRef,
   out : Store,
@@ -156,7 +153,6 @@ fn clip_line(
       slice = out.pts.length() / 3
     }
   }
-  // The last point.
   let ax = pts[last * 3]
   let ay = pts[last * 3 + 1]
   let a = if axis == 0 { ax } else { ay }

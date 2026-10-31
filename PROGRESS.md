@@ -1,5 +1,62 @@
 # PROGRESS
 
+## リファクタリングとセキュリティチェック（Phase 7 の後、2026-10-31）
+
+状態：**完了**。プロジェクト全体を AGENTS.md §7 と §8 の順に見直した。重点はコメントの量。
+
+### やったこと
+
+- **コメント**：4行以上のコメントブロックが 57 個あった。ライセンス表記と、中身が3行の JSDoc を除いて、すべて3行以内にした。
+  - バイナリの形式と Worker のメッセージは、新しい [docs/FORMATS.md](docs/FORMATS.md) にまとめた。コードには節の名前だけを書く。
+  - コードの言い換えだけのコメントは消した（`element/parse.ts` の関数ごとの説明など）。
+  - 実装とずれていた説明を直した。`StyleSpecification` の「1つのベクトルソース」、`npm/scripts/build.mjs` の出力の一覧、VISION §4-2 の「8192 に換算」（実装は `TILE_EXTENT` 4096）。
+- **重複**：
+  - 属性値のバイナリ形式は、4か所で書き方も読み方も別々だった（`geom` の表、`tiler` の列指向タイル、`worker` のグループ属性、`ColumnTile`）。これを `core` の `ByteWriter` / `ByteReader`（エラーは読み手に残る方式）と、共通のタグ `PROP_*` にまとめた。
+  - `tiler` の `VALUE_*` と `worker` の `PROPS_*` はなくした。
+  - `geom` に `write_prop` / `read_prop` を置いた。
+- **定数**：
+  - `tiler` の既定の extent は `@core.TILE_EXTENT` を使う。
+  - `geojson_worker` のピクセルからタイル単位への換算は `TILE_EXTENT / TILE_SIZE` から求める。
+- **ファイルの分割**：
+  - `formats/geojson.mbt`（803行）を、JSON の字句解析（`json.mbt`）と GeoJSON の構造に分けた。
+  - `worker/processor.mbt` から `Groups` を `groups.mbt` に移した。
+- **テスト**：次のテストを足した。
+  - `encode_tile` のレイアウトと、タイルにないキーを省くこと。
+  - `write_prop` / `read_prop`。
+  - `ByteWriter` / `ByteReader`。
+  - 列指向タイルの、すべての長さでの切り詰め。
+- **試してやめたこと**：線形メモリの load/store を、wasm-gc 専用のパッケージ（`wasmio`）にまとめようとした。しかし、全ターゲット向けのパッケージ（`worker`）は、wasm-gc だけのパッケージを import できなかった（moon がビルド計画を作れない）。他のターゲット向けにスタブを書く方が、重複している約40行より重いので、やめた。AGENTS.md の規則は「wasm-gc 向けのエントリのパッケージ（`worker`、`geojson_worker`、ベンチ）の中に置く」に改めた。
+
+### セキュリティチェック（§8）
+
+- `npm audit` の結果は、`bench/`、`npm/`、`examples/react/` のどれも 0 件。依存は追加していない。
+- **直した点（中）**：GeoJSON の属性キーの種類に上限がなかった。キーごとに表と同じ長さの列ができるので、キーが地物ごとに違う入力ではメモリが膨らむ。そこで `MAX_GEOJSON_KEYS`（4096）を超える入力はエラーにした（テストあり）。
+- **直した点（低）**：`ByteReader` の範囲チェック `at + n > length` は、n が 2^31 に近いと Int32 で桁あふれして通ってしまう。その後のスライスで panic し、Worker が止まる。メモリ安全性の問題ではないが、`n > length - at` に直し、テストを足した。pbf の読み手と線形メモリの確認は、もともと桁あふれしない書き方だった。
+- **ドキュメント**：CSP を使うページでは `'wasm-unsafe-eval'` が要ることを、npm/README.md に書いた。
+- `innerHTML`、`eval`、`new Function`、認証情報付きの fetch は使っていない。開発用サーバーは 127.0.0.1 にだけ bind する。
+- リポジトリの Dependabot alerts は無効になっている（GitHub の設定）。有効にするかどうかは、リポジトリの所有者が決める。
+
+### ベンチ結果（`npm --prefix bench run worker:browser`、`bench/results/worker-*.json`、ms）
+
+グループ属性の書き出しを `ByteWriter` に替えたので計測した。差はどのブラウザでも計測のばらつきの範囲で、速度は落ちていない。
+
+| ブラウザ | 中央タイル（前 → 後） | タイルの中央値（前 → 後） | 合計（前 → 後） |
+|---|---|---|---|
+| Chromium 156 | 2.59 → 2.58 | 6.48 → 6.48 | 218.5 → 217.2 |
+| Firefox 157 | 3.30 → 3.30 | 8.48 → 8.44 | 283.7 → 280.6 |
+| WebKit 27.2 | 2.82 → 2.84 | 7.38 → 7.08 | 239.5 → 232.6 |
+
+サイズ（gzip）は次のとおり。どちらも予算内。
+
+- 表示用 Worker：75.9KB → 76.1KB
+- GeoJSON Worker：46.1KB → 46.5KB
+
+黄金テストはすべて変わらない。
+
+- mvt：35/35
+- tess：35/35
+- geojson：5377 タイル、差 0
+
 ## Phase 7.4：GeoJSON ソースの組み込み（2026-10-31）
 
 状態：**完了**（Phase 7 を終えた）。スタイルに GeoJSON ソースを書くだけで描ける。example では、MapLibre と同じスタイルで見た目がほぼ一致した（平面とピッチ 50°）。

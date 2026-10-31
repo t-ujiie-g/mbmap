@@ -38,10 +38,8 @@ fn angle(points : Array[(Double, Double)]) -> Double {
 }
 
 ///|
-/// A rotating drag turns the map (horizontal motion) and tilts it (vertical).
-/// Otherwise the map pans with the pointers' centroid and, with two or more
-/// pointers, zooms by their spread and turns with their angle, around the
-/// centroid.
+/// A rotating drag turns (horizontal) and tilts (vertical); otherwise pointers
+/// pan with their centroid and, two or more, zoom and turn around it.
 fn Map::on_pointer_move(self : Map, e : JsValue) -> Unit {
   let id = get_int(e, "pointerId")
   guard self.pointer_index(id) is Some(i) else { return }

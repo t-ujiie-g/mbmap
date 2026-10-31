@@ -112,3 +112,31 @@ test "to_bytes and from_bytes round-trip a table; malformed bytes are None" {
     None,
   )
 }
+
+///|
+test "write_prop and read_prop round-trip every value; unknown tags fail" {
+  let w = @core.ByteWriter::new()
+  let values : Array[@geom.Prop?] = [
+    None,
+    Some(Null),
+    Some(Bool(false)),
+    Some(Bool(true)),
+    Some(Num(-1.25)),
+    Some(Str("é")),
+  ]
+  for v in values {
+    @geom.write_prop(w, v)
+  }
+  let bytes = w.to_bytes()
+  assert_eq(bytes[0:4].to_owned().to_array(), [
+    b'\x05', b'\x00', b'\x01', b'\x02',
+  ])
+  let r = @core.ByteReader::new(bytes[:])
+  for v in values {
+    assert_eq(@geom.read_prop(r), v)
+  }
+  assert_true(r.done())
+  let bad = @core.ByteReader::new(b"\x09"[:])
+  assert_eq(@geom.read_prop(bad), None)
+  assert_false(bad.ok())
+}

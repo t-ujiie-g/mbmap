@@ -18,11 +18,9 @@ pub(all) enum LineCap {
 pub const EXTRUDE_SCALE : Int32 = 63
 
 ///|
-/// Ints per line vertex: x, y in tile units; extrusion x, y in `EXTRUDE_SCALE`
-/// units of half the line width; side, ±1 on the outlines and 0 on the center
-/// line; along, 1 at the far edge of a round cap and 0 elsewhere. The shader
-/// fades out where `length(side, along)` reaches 1, which antialiases the
-/// outlines and rounds the caps.
+/// Ints per line vertex: x, y; extrusion x, y (`EXTRUDE_SCALE` per half width);
+/// side (±1 at the outlines) and along (1 at a round cap's end). The shader
+/// fades out where `length(side, along)` reaches 1, rounding the caps.
 pub const LINE_VERTEX_STRIDE : Int32 = 6
 
 ///|
@@ -77,11 +75,9 @@ pub fn LineTessellator::new() -> LineTessellator {
 }
 
 ///|
-/// Appends the line through points `[start, end)` of `coords` (x, y pairs) to
-/// `out`. Repeated points are skipped; a line whose first and last points are
-/// equal is closed (joined at the start, no caps). `miter_limit` is the longest
-/// miter in half widths, clamped to `MAX_MITER_LIMIT`; round joins whose miter
-/// would be shorter than `round_limit` are drawn as miters.
+/// Appends the line through points `[start, end)` of `coords` to `out`; equal
+/// end points close it. `miter_limit` is in half widths (up to
+/// `MAX_MITER_LIMIT`); round joins shorter than `round_limit` become miters.
 pub fn LineTessellator::add_line(
   self : LineTessellator,
   coords : ArrayView[Int32],
@@ -280,10 +276,8 @@ fn Emitter::quad(self : Emitter, from : Int32, to : Int32) -> Unit {
 }
 
 ///|
-/// Fills the outer arc around (x, y) from rim vertex `from` to rim vertex `to`
-/// with `steps` triangles centered on `center`. Intermediate rim vertices are
-/// the unit vector (vx, vy) at `from`, rotated by the step angle given as its
-/// cosine `c` and sine `s` each time.
+/// Fills the arc around (x, y) from rim vertex `from` to `to` with `steps`
+/// triangles, rotating (vx, vy) by the step's cosine `c` and sine `s`.
 fn Emitter::fan(
   self : Emitter,
   x : Int32,
@@ -359,11 +353,9 @@ fn Emitter::cap_extension(
 }
 
 ///|
-/// Emits the join at (x, y) between a segment with normal a and the next with
-/// normal b, attaching the incoming segment from `prev`, and returns the pair
-/// the outgoing segment starts from. Nearly straight joins share one pair;
-/// otherwise the gap on the outer side is filled per `join`. `close_to` is the
-/// already emitted outgoing pair when closing a ring.
+/// Emits the join at (x, y) between normals a and b after the segment from
+/// `prev`, returning the outgoing pair (`close_to` when closing a ring); nearly
+/// straight joins share one pair.
 fn Emitter::join_at(
   self : Emitter,
   x : Int32,

@@ -121,3 +121,33 @@ test "simplification drops rings too small to see at a zoom" {
   assert_eq(t.tile(0, 0, 0).unwrap().types, [])
   assert_eq(t.tile(14, 8647, 7734).map(d => d.types), Some([3]))
 }
+
+///|
+test "encode_tile writes the columnar layout with only the tile's keys" {
+  let t = table(b => {
+    b.point(-90.0, 45.0)
+    b.end_ring()
+    b.end_part()
+    b.prop("k", Num(1.0))
+    b.prop("s", Str("x"))
+    b.end_feature(Point)
+    b.point(90.0, -45.0)
+    b.end_ring()
+    b.end_part()
+    b.prop("far", Bool(true))
+    b.end_feature(Point)
+  })
+  let d = @tiler.Tiler::new(t).tile(1, 0, 0).unwrap()
+  let bytes = @tiler.encode_tile(d, t)
+  let r = @core.ByteReader::new(bytes[:])
+  assert_eq((r.u32(), r.u32(), r.u32(), r.u32()), (1, 1, 1, 2))
+  assert_eq(r.u8(), 1)
+  r.pad4()
+  assert_eq((r.u32(), r.u32()), (1, 1))
+  assert_eq([r.i16(), r.i16()], d.xy)
+  r.pad4()
+  assert_eq((r.utf8(), r.utf8()), ("k", "s"))
+  assert_eq(@geom.read_prop(r), Some(Num(1.0)))
+  assert_eq(@geom.read_prop(r), Some(Str("x")))
+  assert_true(r.done())
+}

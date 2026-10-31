@@ -1,7 +1,6 @@
-// GeoJSON test data, generated (deterministically) into bench/dist/geojson/:
-// layers of the GSI bench tiles as lng/lat GeoJSON, and seeded random
-// features around the world that cross the antimeridian and reach high
-// latitudes. Attribution of the GSI data: 国土地理院ベクトルタイル提供実験.
+// Deterministic GeoJSON fixtures in bench/dist/geojson/: GSI tile layers as
+// lng/lat, and seeded features crossing the antimeridian and reaching high
+// latitudes. GSI data: 国土地理院ベクトルタイル提供実験.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { VectorTile } from "@mapbox/vector-tile";

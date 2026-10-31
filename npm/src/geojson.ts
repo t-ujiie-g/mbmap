@@ -1,6 +1,5 @@
-// GeoJSON sources: a worker of their own reads the data and cuts tiles in
-// wasm (geojson_worker). `Map` imports this module only when a style has a
-// GeoJSON source, so other maps never load it.
+// GeoJSON sources, served by their own worker. `Map` imports this module only
+// for styles that have one.
 import { workerScriptUrl, wasmUrl } from "./urls";
 
 /** A GeoJSON source of the style, by id. */
@@ -19,10 +18,7 @@ export interface GeoJSONTiles {
   terminate(): void;
 }
 
-/**
- * Starts the GeoJSON worker and loads `sources` into it. `base` resolves
- * data URLs; `onError` hears of sources that cannot be loaded.
- */
+/** Starts the GeoJSON worker and loads `sources`, resolving data URLs against `base`. */
 export function createGeoJSONTiles(
   sources: GeoJSONSource[],
   base: URL,

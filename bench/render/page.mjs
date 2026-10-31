@@ -1,7 +1,6 @@
-// Same style, tiles and camera script for mbmap and MapLibre (?engine=). Reports
-// ms from navigation start to the first `idle`, then for each scripted camera
-// move the rAF intervals and the CPU time of all rAF callbacks per frame (the
-// engines render inside rAF), with the camera set every frame.
+// One style, tiles and camera script for mbmap and MapLibre (?engine=): time to
+// first `idle`, then per scripted move the rAF intervals and per-frame CPU time
+// of all rAF callbacks (both engines render inside rAF).
 const params = new URLSearchParams(location.search);
 const engine = params.get("engine");
 const dpr = Number(params.get("dpr") ?? devicePixelRatio);

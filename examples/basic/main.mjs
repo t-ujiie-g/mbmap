@@ -1,8 +1,6 @@
-// Basic example: `npm --prefix bench run example`, then open /examples/basic/.
-// By default the style reads the z14 bench fixtures around Tokyo Station;
-// `?remote=1` reads GSI's live tiles (z4-16) instead, so the map works at
-// every zoom and everywhere in Japan. `?zoom=`, `?bearing=` and `?pitch=`
-// set the initial camera; right-drag (or Ctrl+drag) rotates and tilts.
+// `npm --prefix bench run example`, then /examples/basic/: the z14 fixtures, or
+// GSI's live tiles with `?remote=1`. `?zoom=`, `?bearing=`, `?pitch=` set the
+// camera; right-drag (or Ctrl+drag) rotates and tilts.
 import * as mbmap from "/_build/js/release/build/bundle/main/main.js";
 
 const GSI_TILES = "https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/{z}/{x}/{y}.pbf";

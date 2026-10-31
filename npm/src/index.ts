@@ -10,11 +10,7 @@ export interface LngLat {
   lat: number;
 }
 
-/**
- * A MapLibre style document. mbmap draws its background, fill and line
- * layers from one vector source; anything it cannot draw faithfully is an
- * error rather than being ignored.
- */
+/** A MapLibre style document; anything mbmap cannot draw faithfully is an error. */
 export interface StyleSpecification {
   version: 8;
   sources: Record<string, unknown>;
@@ -36,10 +32,8 @@ export interface MapOptions {
   /** Tile workers; 0 (the default) picks half the hardware threads, 1 to 4. */
   workerCount?: number;
   /**
-   * Where the worker script and its wasm are served. They default to the
-   * files next to this module, which suits bundlers that understand
-   * `new URL(..., import.meta.url)` and plain ESM serving. The worker must
-   * be a same-origin http(s) URL and the wasm an http(s) one.
+   * Where the worker (same-origin http(s)) and its wasm (http(s)) are served;
+   * by default next to this module, via `new URL(..., import.meta.url)`.
    */
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
@@ -52,11 +46,7 @@ export interface MapOptions {
 
 export type MapEventType = "load" | "move" | "idle" | "error";
 
-/**
- * `load` fires once, when the first view is drawn; `idle` each time the map
- * settles; `move` on every camera change; `error` when a style URL cannot be
- * used.
- */
+/** `load` fires once, at the first drawn view; `idle` when the map settles; `move` on camera changes. */
 export interface MapEvent {
   type: MapEventType;
   target: Map;
@@ -96,10 +86,7 @@ function resolveTiles(style: StyleSpecification, base: URL): StyleSpecification 
   return { ...style, sources };
 }
 
-/**
- * The style's GeoJSON sources, and the style with their data left out: the
- * GeoJSON worker gets the data, the map only the source's options.
- */
+/** The style's GeoJSON sources, and the style without their data (only their worker needs it). */
 function splitGeoJSON(style: StyleSpecification): [GeoJSONSource[], StyleSpecification] {
   const found: GeoJSONSource[] = [];
   const sources = Object.fromEntries(
@@ -172,10 +159,7 @@ export class Map {
     }
   }
 
-  /**
-   * Creates the engine, at once or, when the style has GeoJSON sources,
-   * once their module is loaded (errors then come as `error` events).
-   */
+  /** Creates the engine, after loading the GeoJSON module if the style needs it. */
   #start(style: StyleSpecification, base: URL): void {
     if (this.#removed) return;
     const [geojson, rest] = splitGeoJSON(resolveTiles(style, base));

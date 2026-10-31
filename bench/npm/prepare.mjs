@@ -1,7 +1,5 @@
-// Builds and packs npm/, then installs the tarball into the examples that use
-// the package (examples/npm, examples/element, examples/geojson, examples/react) as an app
-// would, and builds the React example. Used by `npm run examples` and by
-// pack-test.mjs. Usage: node npm/prepare.mjs
+// Builds and packs npm/, installs the tarball into the examples that use it
+// and builds the React one. Usage: node npm/prepare.mjs
 import { execFileSync } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";

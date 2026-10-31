@@ -1,7 +1,5 @@
-// Builds the package into dist/: the MoonBit main-thread build wrapped by the
-// TS facade (index.js + index.d.ts), the `<mb-map>` element (element.js +
-// element.d.ts), the worker glue (worker.js) and the wasm-gc worker
-// (mbmap.wasm). Usage: node scripts/build.mjs
+// Builds dist/: the facade, `<mb-map>`, the GeoJSON module and both workers
+// with their wasm. Usage: node scripts/build.mjs
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";

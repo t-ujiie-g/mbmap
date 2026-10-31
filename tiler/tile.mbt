@@ -2,13 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// One tile's features in columns, in tile units (`extent` per edge,
-/// relative to the tile's corner): feature `f` has MVT type `types[f]`
-/// (1 points, 2 lines, 3 polygons), comes from table row `rows[f]` and
-/// spans rings `ring_ends[f - 1]..<ring_ends[f]`; ring `r` spans points
-/// `point_ends[r - 1]..<point_ends[r]` at `xy[2 * i]`, `xy[2 * i + 1]`.
-/// The points of a points feature form one ring. Polygon exteriors wind
-/// clockwise in tile space (y down) and holes counterclockwise, as MVT wants.
+/// One tile's features in tile units, laid out as docs/FORMATS.md's "Columnar
+/// tile" (`rows` are their table rows). Exteriors wind clockwise with y down and
+/// holes counterclockwise, as MVT wants.
 pub struct TileData {
   types : Array[Int32]
   rows : Array[Int32]

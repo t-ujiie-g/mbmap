@@ -29,11 +29,9 @@ pub(all) struct Camera {
 } derive(Debug, Eq)
 
 ///|
-/// A camera applied to a viewport of `width` x `height` CSS pixels. Zoom is
-/// clamped to `[min_zoom, max_zoom]`, latitude to `MAX_LATITUDE` and pitch to
-/// `[0, MAX_PITCH]`; longitude and bearing wrap. A camera with a non-finite
-/// value is ignored (`new` falls back to 0, 0, zoom 0). Positions are handled
-/// in world pixels relative to the center, so precision holds at every zoom.
+/// A camera on a `width` x `height` CSS-pixel viewport, clamped to the zoom,
+/// `MAX_LATITUDE` and `MAX_PITCH` limits; non-finite cameras are ignored.
+/// Positions are world pixels relative to the center, so precision holds.
 pub struct Transform {
   camera : Camera
   width : Double

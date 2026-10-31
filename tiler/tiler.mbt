@@ -2,11 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// geojson-vt's options with its defaults: `max_zoom` keeps full detail,
-/// `index_max_zoom` and `index_max_points` bound the tiles cut up front
-/// (the rest are cut on demand), `tolerance` is the simplification in tile
-/// units, `buffer` the margin kept around each tile in tile units, and
-/// `wrap` copies features across the antimeridian.
+/// geojson-vt's options and defaults: tiles up to `index_max_zoom` (or
+/// `index_max_points`) are cut up front, the rest on demand; `tolerance` and
+/// `buffer` are in tile units.
 pub(all) struct TilerOptions {
   max_zoom : Int32
   index_max_zoom : Int32
@@ -24,7 +22,7 @@ pub fn TilerOptions::default() -> TilerOptions {
     index_max_zoom: 5,
     index_max_points: 100000,
     tolerance: 3.0,
-    extent: 4096,
+    extent: @core.TILE_EXTENT,
     buffer: 64,
     wrap: true,
   }

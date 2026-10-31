@@ -267,7 +267,7 @@ fn road_layer(ks : Array[Int32?]) -> @pbf.Writer {
 }
 
 ///|
-/// Entry `k`'s group properties (`PROPS_*` form) as `key=value` pairs.
+/// Entry `k`'s group properties as `key=value` pairs.
 fn props_of(b : BytesView, k : Int32) -> Array[String] raise {
   let entry = (w : Int32) => {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
@@ -286,14 +286,14 @@ fn props_of(b : BytesView, k : Int32) -> Array[String] raise {
     let key = str()
     let t = b[at].to_int()
     at += 1
-    let value = if t == @worker.PROPS_NUMBER {
+    let value = if t == @core.PROP_NUMBER {
       let mut bits = 0UL
       for i in 0..<8 {
         bits = bits | (b[at + i].to_uint64() << (i * 8))
       }
       at += 8
       bits.reinterpret_as_double().to_string()
-    } else if t == @worker.PROPS_STRING {
+    } else if t == @core.PROP_STRING {
       "\"\{str()}\""
     } else {
       ["null", "false", "true"][t]
@@ -463,7 +463,7 @@ test "malformed columnar tiles fail with a message" {
     #| "layers": [{"id": "area", "type": "fill", "source": "g"}]}
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
   let good = geojson_tile()
-  for n in [0, 3, 16, 20, good.length() - 1] {
+  for n in 0..<good.length() {
     assert_false(p.process("g", good[0:n], 0))
     assert_eq(p.error(), "malformed GeoJSON tile")
   }

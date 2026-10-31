@@ -1,7 +1,5 @@
 ///|
-/// A GeoJSON tile in columns, as `@tiler.encode_tile` writes it (tags
-/// mirror its `VALUE_*`): types (1 points, 2 lines, 3 polygons), feature
-/// ring ends, ring point ends, coordinates and one value column per key.
+/// A GeoJSON source's tile in columns (docs/FORMATS.md, "Columnar tile").
 priv struct ColumnTile {
   types : FixedArray[Int32]
   ring_ends : FixedArray[Int32]
@@ -15,113 +13,82 @@ priv struct ColumnTile {
 /// Reads `b`, checking every count and length against it (AGENTS.md §8.2);
 /// None if it is malformed.
 fn ColumnTile::parse(b : BytesView) -> ColumnTile? {
-  let mut at = 0
+  let r = @core.ByteReader::new(b)
   let n = b.length()
-  let u32 = () => {
-    if at + 4 > n {
-      at = n + 1
-      return 0
-    }
-    let v = b[at].to_int() |
-      (b[at + 1].to_int() << 8) |
-      (b[at + 2].to_int() << 16) |
-      (b[at + 3].to_int() << 24)
-    at += 4
-    v
-  }
-  let f = u32()
-  let r = u32()
-  let p = u32()
-  let k = u32()
-  // Each feature, ring and point takes at least a byte, four and four.
-  if f < 0 ||
-    r < 0 ||
+  let f = r.u32()
+  let rings = r.u32()
+  let p = r.u32()
+  let k = r.u32()
+  // A feature takes at least a byte, a ring four, a point four.
+  if !r.ok() ||
+    f < 0 ||
+    rings < 0 ||
     p < 0 ||
     k < 0 ||
     f > n ||
-    r > n / 4 ||
+    rings > n / 4 ||
     p > n / 4 ||
     k > n {
     return None
   }
-  let types = FixedArray::makei(f, i => b[at + i].to_int())
-  at += (f + 3) / 4 * 4
-  let ring_ends = FixedArray::makei(f, _ => u32())
-  let point_ends = FixedArray::makei(r, _ => u32())
-  if at + p * 4 > n {
-    return None
-  }
-  let xy = FixedArray::makei(p * 2, i => {
-    let v = b[at + i * 2].to_int() | (b[at + i * 2 + 1].to_int() << 8)
-    if v >= 0x8000 {
-      v - 0x10000
-    } else {
-      v
-    }
-  })
-  at += (p * 4 + 3) / 4 * 4
-  // Offsets must grow and stay within the counts.
-  let mut last = 0
-  for e in ring_ends {
-    if e < last || e > r {
-      return None
-    }
-    last = e
-  }
-  last = 0
-  for e in point_ends {
-    if e < last || e > p {
-      return None
-    }
-    last = e
-  }
-  let text = () => {
-    let len = u32()
-    if len < 0 || at + len > n {
-      at = n + 1
-      return ""
-    }
-    let s = @utf8.decode_lossy(b[at:at + len])
-    at += len
-    s
-  }
-  let keys = Array::makei(k, _ => text())
+  let types = FixedArray::makei(f, _ => r.u8())
+  r.pad4()
+  let ring_ends = ends(r, f, rings)
+  let point_ends = ends(r, rings, p)
+  let xy = FixedArray::makei(p * 2, _ => r.i16())
+  r.pad4()
+  let keys = Array::makei(k, _ => r.utf8())
   let values = []
   for _ in 0..<k {
-    let column = []
-    for _ in 0..<f {
-      if at >= n {
-        return None
-      }
-      let tag = b[at].to_int()
-      at += 1
-      column.push(
-        match tag {
-          0 => Some(@style.Value::Null)
-          1 => Some(Bool(false))
-          2 => Some(Bool(true))
-          3 => {
-            if at + 8 > n {
-              return None
-            }
-            let mut bits = 0UL
-            for i in 0..<8 {
-              bits = bits | (b[at + i].to_uint64() << (i * 8))
-            }
-            at += 8
-            Some(Num(bits.reinterpret_as_double()))
-          }
-          4 => Some(Str(text()))
-          _ => None
-        },
-      )
+    if !r.ok() {
+      return None
     }
-    values.push(column)
+    values.push(Array::makei(f, _ => read_value(r)))
   }
-  if at > n {
-    return None
-  }
+  guard r.done() else { return None }
   Some({ types, ring_ends, point_ends, xy, keys, values, })
+}
+
+///|
+/// `count` offsets that must grow and stay within `limit`.
+fn ends(
+  r : @core.ByteReader,
+  count : Int32,
+  limit : Int32,
+) -> FixedArray[Int32] {
+  let out = FixedArray::make(count, 0)
+  let mut last = 0
+  for i in 0..<count {
+    let e = r.u32()
+    if e < last || e > limit {
+      r.fail()
+      break
+    }
+    out[i] = e
+    last = e
+  }
+  out
+}
+
+///|
+fn read_value(r : @core.ByteReader) -> @style.Value? {
+  let tag = r.u8()
+  if tag == @core.PROP_NULL {
+    Some(Null)
+  } else if tag == @core.PROP_FALSE {
+    Some(Bool(false))
+  } else if tag == @core.PROP_TRUE {
+    Some(Bool(true))
+  } else if tag == @core.PROP_NUMBER {
+    Some(Num(r.f64()))
+  } else if tag == @core.PROP_STRING {
+    Some(Str(r.utf8()))
+  } else {
+    if tag != @core.PROP_ABSENT {
+      r.fail()
+    }
+    None
+  }
 }
 
 ///|

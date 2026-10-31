@@ -23,16 +23,6 @@ pub const MAX_GROUPS : Int32 = 64
 
 pub const MAX_PACKED_BYTES : Int32 = 67108864
 
-pub const PROPS_FALSE : Int32 = 1
-
-pub const PROPS_NULL : Int32 = 0
-
-pub const PROPS_NUMBER : Int32 = 3
-
-pub const PROPS_STRING : Int32 = 4
-
-pub const PROPS_TRUE : Int32 = 2
-
 // Errors
 
 // Types and methods

@@ -1,7 +1,5 @@
-// Prepares the examples that use the packed package (prepare.mjs) and checks
-// each in Chromium: the facade's camera, events and error paths, <mb-map>'s
-// attributes, events and lifecycle, and <mb-map> driven by React. Without the
-// fixtures, tiles 404 and the maps still load (empty), so CI runs this too.
+// Checks the examples built on the packed package in Chromium; without the
+// fixtures tiles 404 and maps load empty, so CI runs it too.
 // Usage: node npm/pack-test.mjs [--screenshots=dir]
 import path from "node:path";
 import { chromium } from "playwright";
