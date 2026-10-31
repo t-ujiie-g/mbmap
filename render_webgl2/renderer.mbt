@@ -76,12 +76,6 @@ pub(all) struct Placement {
 }
 
 ///|
-/// A clip rectangle that keeps everything.
-pub fn no_clip() -> FixedArray[Double] {
-  [-1.0e9, -1.0e9, 1.0e9, 1.0e9]
-}
-
-///|
 pub fn Renderer::draw_fill(
   self : Renderer,
   mesh : Mesh,

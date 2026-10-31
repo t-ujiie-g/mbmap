@@ -1,5 +1,67 @@
 # PROGRESS
 
+## Phase 7.4：GeoJSON ソースの組み込み（2026-10-31）
+
+状態：**完了**（Phase 7 を終えた）。スタイルに GeoJSON ソースを書くだけで描ける。example では、MapLibre と同じスタイルで見た目がほぼ一致した（平面とピッチ 50°）。
+
+### できたこと
+
+- **`style`**：GeoJSON ソース（`data` は必須。`maxzoom` 既定 18、`buffer` 既定 128、`tolerance` 既定 0.375 は MapLibre と同じ。`cluster` は Unsupported）。`VectorSource` を `Source`（`kind` が Vector / GeoJSON）に一般化した。
+- **`geojson_worker`**（wasm-gc。gzip 46.1KB、JS グルー込み）：
+  - ソースごとに `formats` で読み込み、`tiler` で索引を作る。タイルは `@tiler.encode_tile`（列指向のバイナリ）で返す。
+  - 投影の sin と log は、ホストの `Math` を使う（geojson-vt とビット単位で一致）。入力は 256MB まで（§8.2）。
+- **列指向のタイルの受け渡し**（ユーザー判断どおり、MVT を挟まない）：
+  - 表示用 Worker は、`ColumnTile` として読む。すべての数と長さを入力の範囲と照らし合わせ、不正な入力は「malformed GeoJSON tile」として拒否する。
+  - MVT のレイヤーと同じ `Features` 列挙型の裏に入れたので、filter、属性でのグループ分け、三角形分割は共通のコードを使う。
+- **`map`**：
+  - 複数のソースに対応した（ソースごとに `SourceTiles`。ズームの範囲もソースごと）。
+  - GeoJSON ソースのタイルは、ファサードの provider（ソース id、z, x, y → `Promise<ArrayBuffer | null>`）から受け取り、表示用 Worker に `bytes` として渡す。
+- **ファサード**：
+  - スタイルに GeoJSON ソースがあるときだけ、`import("./geojson.js")` で読み込む。
+  - エンジンに渡すスタイルからは、GeoJSON の `data` を除く。巨大なデータを、表示用 Worker まで JSON として運ばないため。
+  - `data` が URL ならスタイルの URL を基準に解決し、http(s) に限る。オブジェクトなら UTF-8 にして Worker に渡す。
+  - `geojsonWorkerUrl` と `geojsonWasmUrl` のオプションを加えた。
+- **描画**：すべてのタイルを、自分の範囲 `[0, 4096)` で切り取るようにした（フラグメントシェーダの `u_clip`）。地物はタイルの周りのバッファにはみ出し、隣のタイルも同じ部分を描くので、半透明の面に重なりの縞が出ていた（example で見つけた）。線は頂点の位置で、円は中心で切るので、継ぎ目は出ない。
+- **example**：`examples/geojson`。国土地理院のタイルの上に、URL のソース（面・穴のある面・線・MultiLineString・点。`kind` で塗り分け）と、スタイルに直接書いたソースを重ねる。
+- **pack test**：
+  - GeoJSON の例で、`geojson.js`・`geojson-worker.js`・`geojson.wasm`・`places.geojson` が読み込まれること、傾けても動くことを確かめる。
+  - GeoJSON のないスタイル（`examples/npm`）では、`geojson*` を一切読み込まないこと（遅延読み込み）も確かめる。
+
+### 読み込み方の比較（7.3 で保留した判断）
+
+GeoJSON をどこで読むかを計測で比べた（`bench/results/geojson-*.json`。「索引まで」の時間、ms）。
+
+- A：MoonBit で、テキストから直接読む（本番の方式）。
+- B：JS の `JSON.parse` と JS のループで表のバイト列を作り（`bench/geojson/columnarize.mjs`）、wasm で表と索引を作る。B が A と同じタイルを作ることは、ハッシュで確かめた。
+
+| | points | roads（17 桁） | roads6（6 桁） | buildings |
+|---|---|---|---|---|
+| Node（A / B） | **18** / 31 | **439** / 509 | **346** / 505 | 593 / **510** |
+| Chromium | **12** / 24 | **319** / 426 | **280** / 425 | **460** / 951 |
+| Firefox | 18 / 18 | 540 / 554 | **299** / 518 | 620 / 587 |
+| WebKit | 15 / 14 | 476 / **369** | 352 / 376 | 815 / **329** |
+
+**A を続ける**：V8（Chrome、Edge、Node）では A が速く、Firefox はほぼ同じ。WebKit では、B が速いデータもある。今回の計測は、geojson-vt 自身の時間も実行によって最大 2 倍近く揺れるほど、ばらつきが大きかった。読み込みの改善（数値の解釈、確保の削減）は、引き続きの課題。
+
+### ベンチ結果（Chromium 156 + Metal / M2、`bench/maplibre/style.json`、11回の中央値。GeoJSON は使っていない）
+
+| | mbmap | MapLibre 6.16.0 |
+|---|---|---|
+| メイン（`mbmap` の入口、gzip） | 27.3KB（7.3 では 26.3KB） | 295.5KB |
+| GeoJSON モジュール / GeoJSON Worker（GeoJSON があるときだけ） | 0.8KB / 46.1KB | — |
+| 表示用 Worker | 75.9KB（7.3 では 73.8KB。列指向のタイルの読み込みで +2.1KB） | 148.0KB |
+| 初回描画 | 98.8ms | 99.2ms |
+| 1フレームの rAF の CPU 時間（p50 / p95） | 0.37〜0.46 / 0.75〜0.79ms | 0.78〜0.91 / 1.30〜1.57ms |
+
+- タイルごとの切り取りで、フラグメントシェーダの分岐が全タイルに入った。それでも 1フレームの CPU 時間は 7.2（p95 0.65〜0.76ms）と同程度だった。
+
+### 既知の問題・次にやること
+
+- GeoJSON の読み込みは、V8 以外では geojson-vt（JS）より遅いことがある（7.3 の表）。
+- 未対応：`setData`（データの差し替え）、クラスタリング、`promoteId`、`generateId`。データはソースごとに一度読み込むだけ。
+- 線形メモリの補助関数のコピーが、`worker`・`geojson_worker`・bench の3か所にある。本番での2つ目の使い手（`geojson_worker`）ができたので、次のリファクタリングで共通化を検討する。
+- 次は VISION §8 の Phase 8（`mbmap/analysis` 第1弾：空間インデックス、計測、空間クエリ、集計）。
+
 ## Phase 7.3：列指向の表、GeoJSON の読み込み、geojson-vt の移植（2026-10-31）
 
 状態：**完了**（黄金テストは全タイル一致。速度は、Chromium・Node では全体で geojson-vt より速く、WebKit では遅い。下記）。

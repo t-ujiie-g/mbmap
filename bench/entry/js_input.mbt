@@ -53,3 +53,31 @@ pub fn geojson_tiler(
 pub fn geojson_read(bytes : Bytes) -> Int32 {
   read_only(bytes[:])
 }
+
+///|
+/// `table_tiler` on a `@geom.Table::to_bytes` Uint8Array (pipeline B).
+#export_name("geojson_tiler_table")
+pub fn geojson_tiler_table(
+  bytes : Bytes,
+  max_zoom : Int32,
+  index_max_zoom : Int32,
+  index_max_points : Int32,
+  tolerance : Double,
+  extent : Int32,
+  buffer : Int32,
+  wrap : Bool,
+) -> Int32 {
+  table_tiler(
+    bytes[:],
+    {
+      max_zoom,
+      index_max_zoom,
+      index_max_points,
+      tolerance,
+      extent,
+      buffer,
+      wrap,
+    },
+    @tiler.Trig::moonbit(),
+  )
+}

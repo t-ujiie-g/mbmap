@@ -21,6 +21,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/index.js` | メインスレッドの ESM（`Map`） |
 | `dist/index.d.ts` | 型定義 |
 | `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される） |
+| `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
 | `dist/worker.js` | タイル Worker（モジュール Worker） |
 | `dist/mbmap.wasm` | Worker が読む wasm-gc |
 
@@ -53,7 +54,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 
 ## 対応するスタイル
 
-background / fill / line / circle レイヤーと、1つの vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
+background / fill / line / circle レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`。クラスタリングは未対応）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
 
 WebGL2 とモジュール Worker、wasm-gc が必要（Chrome / Edge 119 以降、Firefox 120 以降、Safari 18.2 以降）。
 

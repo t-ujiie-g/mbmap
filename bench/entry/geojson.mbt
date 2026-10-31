@@ -91,3 +91,16 @@ pub fn geojson_tile_hash(z : Int32, x : Int32, y : Int32) -> Int32 {
     h
   }
 }
+
+///|
+/// `Tiler::new` on a table in `@geom.Table::to_bytes` form; returns the row
+/// count or -1 if the bytes are malformed.
+fn table_tiler(
+  bytes : BytesView,
+  options : @tiler.TilerOptions,
+  trig : @tiler.Trig,
+) -> Int32 {
+  guard @geom.Table::from_bytes(bytes) is Some(table) else { return -1 }
+  current_tiler.val = Some(@tiler.Tiler::new(table, options~, trig~))
+  table.length()
+}

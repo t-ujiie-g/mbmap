@@ -2,7 +2,7 @@
 pub(all) suberror MapError {
   BadStyle(@style.StyleError)
   NoWebGL2
-  NoVectorSource
+  NoSource
 } derive(Debug)
 
 ///|
@@ -64,13 +64,12 @@ pub struct Map {
   priv canvas : @render_webgl2.Canvas
   priv renderer : @render_webgl2.Renderer
   priv style : @style.Style
-  priv source_index : Int32
-  priv source : @style.VectorSource
+  priv sources : Array[SourceTiles]
+  priv geojson : Provider
   priv mut transform : @core.Transform
   priv workers : Array[Worker]
   priv mut next_worker : Int32
-  priv tiles : @hashmap.HashMap[Int64, TileEntry]
-  priv requests : @hashmap.HashMap[Int32, Int64]
+  priv requests : @hashmap.HashMap[Int32, (Int32, Int64)]
   priv mut next_request : Int32
   priv mut frame : Int32
   priv mut frame_count : Int32
@@ -88,7 +87,9 @@ pub struct Map {
 /// Creates a map drawing `style_json` into `canvas`. `worker_url` is
 /// worker/js/worker.mjs and `wasm_url` the wasm-gc build of the worker
 /// package. `workers` tile workers are started; 0 picks half the hardware
-/// threads, between 1 and `MAX_WORKERS`.
+/// threads, between 1 and `MAX_WORKERS`. `geojson` provides the tiles of
+/// GeoJSON sources (see `Provider`; the buffer is an encoded columnar tile,
+/// `@tiler.encode_tile`).
 pub fn Map::new(
   canvas : @render_webgl2.Canvas,
   style_json : String,
@@ -96,24 +97,20 @@ pub fn Map::new(
   worker_url~ : String,
   wasm_url~ : String,
   workers~ : Int32 = 2,
+  geojson~ : Provider = no_provider(),
 ) -> Map raise MapError {
   let style = @style.Style::from_json(parse_json(style_json)) catch {
     e => raise BadStyle(e)
   }
-  // One vector source for now: the first one a layer draws from.
-  let mut source_index = -1
-  for l in style.layers {
-    if l.kind is Background {
-      continue
-    }
-    for i, s in style.sources {
-      if s.id == l.source && source_index < 0 {
-        source_index = i
-      }
+  // The sources the drawable layers use, in style order.
+  let sources : Array[SourceTiles] = []
+  for i, s in style.sources {
+    if style.layers.iter().any(l => !(l.kind is Background) && l.source == s.id) {
+      sources.push({ index: i, source: s, tiles: @hashmap.HashMap([]), })
     }
   }
-  if source_index < 0 {
-    raise NoVectorSource
+  if sources.is_empty() {
+    raise NoSource
   }
   guard @render_webgl2.Renderer::new(canvas) is Some(renderer) else {
     raise NoWebGL2
@@ -122,8 +119,8 @@ pub fn Map::new(
     canvas,
     renderer,
     style,
-    source_index,
-    source: style.sources[source_index],
+    sources,
+    geojson,
     transform: @core.Transform::new(
       camera,
       css_width(canvas),
@@ -131,7 +128,6 @@ pub fn Map::new(
     ),
     workers: [],
     next_worker: 0,
-    tiles: @hashmap.HashMap([]),
     requests: @hashmap.HashMap([]),
     next_request: 0,
     frame: -1,
@@ -207,11 +203,13 @@ pub fn Map::frame_count(self : Map) -> Int32 {
 /// GPU bytes held by loaded tiles.
 pub fn Map::gpu_bytes(self : Map) -> Int32 {
   let mut n = 0
-  for _, e in self.tiles {
-    if e.state is Ready(meshes) {
-      for m in meshes {
-        if m.owned {
-          n += m.mesh.byte_size()
+  for src in self.sources {
+    for _, e in src.tiles {
+      if e.state is Ready(meshes) {
+        for m in meshes {
+          if m.owned {
+            n += m.mesh.byte_size()
+          }
         }
       }
     }
@@ -235,10 +233,12 @@ pub fn Map::destroy(self : Map) -> Unit {
   for w in self.workers {
     terminate(w)
   }
-  for _, e in self.tiles {
-    self.release(e)
+  for src in self.sources {
+    for _, e in src.tiles {
+      self.release(e)
+    }
+    src.tiles.clear()
   }
-  self.tiles.clear()
 }
 
 ///|

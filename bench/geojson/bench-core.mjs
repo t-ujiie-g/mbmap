@@ -1,9 +1,12 @@
 // GeoJSON to tiles: @maplibre/geojson-vt (decode + JSON.parse, index, tiles)
 // against the wasm-gc build of mbmap's formats + tiler (copy into linear
 // memory + read, index, tiles), with MapLibre's GeoJSON source settings.
+// "B" is the other way to read: JSON.parse and a JS loop into geom's table
+// bytes (columnarize.mjs), then the table and index built in wasm.
 // "tiles" cuts every tile over the data from z6 to z16 from a fresh index,
 // so each is cut (drilled down) rather than served from the cache.
 import { GeoJSONVT } from "@maplibre/geojson-vt";
+import { columnarize } from "./columnarize.mjs";
 
 export const OPTIONS = { maxZoom: 18, indexMaxZoom: 5, indexMaxPoints: 100000, tolerance: 3, extent: 4096, buffer: 1024, wrap: true };
 export const DATASETS = ["points", "roads", "roads6", "buildings"];
@@ -76,9 +79,16 @@ export async function runGeoJSONBench(fetchBytes, { gc }, { runs = 5 } = {}) {
       tilesMs: timeAfter(() => { index = new GeoJSONVT(data, o); }, () => { for (const [z, x, y] of tiles) index.getTile(z, x, y); }),
     };
     if (buildMbmap(bytes) !== data.features.length) throw new Error(`${name}: mbmap read a different feature count`);
+    const buildB = () => {
+      const table = columnarize(JSON.parse(decoder.decode(bytes)));
+      return e.geojson_tiler_table_mem(gc.copyIn(table), table.length, o.maxZoom, o.indexMaxZoom, o.indexMaxPoints, o.tolerance, o.extent, o.buffer, o.wrap ? 1 : 0);
+    };
+    if (buildB() !== data.features.length) throw new Error(`${name}: pipeline B read a different feature count`);
     const mbmap = {
       readMs: time(() => e.geojson_read_mem(gc.copyIn(bytes), bytes.length)),
       readIndexMs: time(() => buildMbmap(bytes)),
+      columnarizeMs: time(() => columnarize(JSON.parse(decoder.decode(bytes)))),
+      bReadIndexMs: time(buildB),
       tilesMs: timeAfter(() => buildMbmap(bytes), () => { for (const [z, x, y] of tiles) e.geojson_tile_size(z, x, y); }),
     };
     js.totalMs = js.parseMs + js.indexMs + js.tilesMs;
@@ -93,6 +103,6 @@ export function printGeoJSON(result) {
   console.table(Object.fromEntries(Object.entries(result.datasets).map(([n, d]) => [n, {
     MB: (d.bytes / 1e6).toFixed(1), tiles: d.tiles,
     "js parse": r(d.js.parseMs), "js index": r(d.js.indexMs), "js tiles": r(d.js.tilesMs), "js total": r(d.js.totalMs),
-    "mbmap read": r(d.mbmap.readMs), "mbmap read+index": r(d.mbmap.readIndexMs), "mbmap tiles": r(d.mbmap.tilesMs), "mbmap total": r(d.mbmap.totalMs),
+    "A read+index": r(d.mbmap.readIndexMs), "B parse+columns": r(d.mbmap.columnarizeMs), "B read+index": r(d.mbmap.bReadIndexMs), "mbmap tiles": r(d.mbmap.tilesMs), "mbmap total (A)": r(d.mbmap.totalMs),
   }])));
 }

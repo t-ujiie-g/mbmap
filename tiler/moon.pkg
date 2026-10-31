@@ -5,6 +5,7 @@ import {
   "t-ujiie-g/mbmap/geom",
   "moonbitlang/core/cmp",
   "moonbitlang/core/double",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/math",
 }
 

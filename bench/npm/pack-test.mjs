@@ -46,7 +46,10 @@ const checks = {
       } catch (e) {
         workerRefused = e.message;
       }
+      const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
+        // A style without GeoJSON sources never loads their module.
+        lazy: !loaded.some((n) => n.startsWith("geojson")),
         styleError,
         thrown,
         workerRefused,
@@ -70,6 +73,7 @@ const checks = {
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
       r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression sqrt" &&
+      r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
     return [ok, r];
@@ -145,6 +149,21 @@ const checks = {
     return [ok, r];
   },
 
+  async geojson(page, requests) {
+    const r = await page.evaluate(async () => {
+      const map = window.__map;
+      // Tilting re-requests tiles at lower zooms in the distance, from the
+      // GeoJSON worker too.
+      map.jumpTo({ pitch: 50 });
+      await map.once("idle");
+      return { pitch: map.getPitch() };
+    });
+    // The worker fetches the wasm and the URL source; the page the module.
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /geojson/.test(n));
+    const ok = ["geojson.js", "geojson-worker.js", "geojson.wasm", "places.geojson"].every((n) => loaded.includes(n)) && r.pitch === 50;
+    return [ok, { loaded, pitch: r.pitch }];
+  },
+
   async react(page) {
     await page.click("button >> text=+");
     await page.waitForFunction(() => document.querySelector("output").textContent === "15.50");
@@ -177,6 +196,8 @@ try {
   for (const [example, check] of Object.entries(checks)) {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
     const errors = [];
+    const requests = [];
+    page.on("request", (r) => requests.push(r.url()));
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element check provokes.
@@ -184,7 +205,7 @@ try {
     await page.goto(`${origin}/examples/${example}/`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });
     if (shots) await page.screenshot({ path: path.join(shots, `${example}.png`) });
-    const [ok, details] = await check(page);
+    const [ok, details] = await check(page, requests);
     const pass = ok && errors.length === 0;
     failed ||= !pass;
     console.log(`${pass ? "ok  " : "FAIL"} ${example} ${JSON.stringify({ ...details, errors })}`);

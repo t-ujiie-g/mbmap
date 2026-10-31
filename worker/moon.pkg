@@ -23,6 +23,8 @@ options(
 )
 
 import {
+  "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/pbf",
+  "t-ujiie-g/mbmap/tiler",
   "moonbitlang/core/encoding/utf8",
 } for "test"

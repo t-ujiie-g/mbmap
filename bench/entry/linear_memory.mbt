@@ -128,3 +128,33 @@ pub fn geojson_tile_mem(z : Int32, x : Int32, y : Int32, addr : Int32) -> Int32 
   }
   flat.length()
 }
+
+///|
+/// `table_tiler` on a table in `@geom.Table::to_bytes` form at
+/// `[addr, addr + len)` (pipeline B of the GeoJSON bench).
+#export_name("geojson_tiler_table_mem")
+pub fn geojson_tiler_table_mem(
+  addr : Int32,
+  len : Int32,
+  max_zoom : Int32,
+  index_max_zoom : Int32,
+  index_max_points : Int32,
+  tolerance : Double,
+  extent : Int32,
+  buffer : Int32,
+  wrap : Int32,
+) -> Int32 {
+  table_tiler(
+    bytes_from_mem(addr, len)[:],
+    {
+      max_zoom,
+      index_max_zoom,
+      index_max_points,
+      tolerance,
+      extent,
+      buffer,
+      wrap: wrap != 0,
+    },
+    host_trig(),
+  )
+}

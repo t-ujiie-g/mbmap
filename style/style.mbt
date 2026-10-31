@@ -59,23 +59,40 @@ pub struct StyleLayer {
 }
 
 ///|
-pub struct VectorSource {
+/// What a source draws from: vector tiles at URLs, or GeoJSON the map cuts
+/// into tiles itself (its data is handled outside the style, by the JS
+/// facade).
+pub(all) enum SourceKind {
+  Vector
+  GeoJSON
+} derive(Debug, Eq)
+
+///|
+/// A source layers draw from. `tiles` are the URL templates of a vector
+/// source (empty for GeoJSON). For GeoJSON, `buffer` (pixels of a 512 px
+/// tile kept around each tile) and `tolerance` (simplification in pixels)
+/// are MapLibre's GeoJSON source options.
+pub struct Source {
   id : String
+  kind : SourceKind
   tiles : Array[String]
   min_zoom : Int32
   max_zoom : Int32
+  buffer : Int32
+  tolerance : Double
 }
 
 ///|
-/// The drawable part of a MapLibre style: vector sources and the background,
-/// fill and line layers in drawing order. Other layer types are skipped.
+/// The drawable part of a MapLibre style: vector and GeoJSON sources, and
+/// the background, fill, line and circle layers in drawing order. Other
+/// source and layer types are skipped.
 pub struct Style {
-  sources : Array[VectorSource]
+  sources : Array[Source]
   layers : Array[StyleLayer]
 }
 
 ///|
-pub fn Style::source(self : Style, id : String) -> VectorSource? {
+pub fn Style::source(self : Style, id : String) -> Source? {
   for s in self.sources {
     if s.id == id {
       return Some(s)
@@ -131,9 +148,34 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
 }
 
 ///|
-fn parse_source(id : String, json : Json) -> VectorSource? raise StyleError {
+fn parse_source(id : String, json : Json) -> Source? raise StyleError {
   let path = "sources.\{id}"
   guard json is Object(s) else { raise Invalid(path~, "not an object") }
+  if s.get("type") is Some(String("geojson")) {
+    if s.get("data") is None {
+      raise Invalid(path="\{path}.data", "missing")
+    }
+    let buffer = number_or(s, "buffer", path, 128.0)
+    if buffer < 0.0 || buffer > 512.0 {
+      raise Invalid(path="\{path}.buffer", "not within 0-512")
+    }
+    let tolerance = number_or(s, "tolerance", path, 0.375)
+    if tolerance < 0.0 {
+      raise Invalid(path="\{path}.tolerance", "negative")
+    }
+    if s.get("cluster") is Some(True) {
+      raise Unsupported(path="\{path}.cluster", "clustering")
+    }
+    return Some({
+      id,
+      kind: GeoJSON,
+      tiles: [],
+      min_zoom: 0,
+      max_zoom: number_or(s, "maxzoom", path, 18.0).to_int(),
+      buffer: buffer.to_int(),
+      tolerance,
+    })
+  }
   guard s.get("type") is Some(String("vector")) else { return None }
   guard s.get("tiles") is Some(Array(urls)) else {
     raise Unsupported(path~, "only sources with `tiles` are supported")
@@ -150,9 +192,12 @@ fn parse_source(id : String, json : Json) -> VectorSource? raise StyleError {
   }
   Some({
     id,
+    kind: Vector,
     tiles,
     min_zoom: number_or(s, "minzoom", path, 0.0).to_int(),
     max_zoom: number_or(s, "maxzoom", path, 22.0).to_int(),
+    buffer: 0,
+    tolerance: 0.0,
   })
 }
 

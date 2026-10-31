@@ -17,26 +17,37 @@ fn Map::render(self : Map) -> Unit {
   self.renderer.set_viewport(pw, ph)
   self.transform = self.transform.resize(w, h)
   let t = self.transform
-  let z = t.tile_zoom(self.source.min_zoom, self.source.max_zoom)
-  let cover = if t.camera.zoom < self.source.min_zoom.to_double() {
-    []
-  } else {
-    t.covering_tiles(self.source.min_zoom, z)
-  }
-  self.update_tiles(cover)
-  // Where each tile's meshes go this frame, computed once for all layers.
-  let draws : Array[(@render_webgl2.Placement, Array[LayerMesh])] = []
-  for id in cover {
-    match self.source_for(id) {
-      Own(id, meshes) => draws.push((self.placement(id, None, dpr), meshes))
-      Ancestor(id, meshes, clip~) =>
-        draws.push((self.placement(id, Some(clip), dpr), meshes))
-      Children(kids) =>
-        for kid in kids {
-          draws.push((self.placement(kid.0, None, dpr), kid.1))
-        }
-      Nothing => ()
+  // Per source: its covering tiles, and where their meshes go this frame
+  // (computed once for all of the source's layers).
+  let mut settled = true
+  let draws_of : @hashmap.HashMap[
+    String,
+    Array[(@render_webgl2.Placement, Array[LayerMesh])],
+  ] = @hashmap.HashMap([])
+  for src in self.sources {
+    let s = src.source
+    let z = t.tile_zoom(s.min_zoom, s.max_zoom)
+    let cover = if t.camera.zoom < s.min_zoom.to_double() {
+      []
+    } else {
+      t.covering_tiles(s.min_zoom, z)
     }
+    self.update_tiles(src, cover)
+    let draws = []
+    for id in cover {
+      match src.fallback(id) {
+        Own(id, meshes) => draws.push((self.placement(id, None, dpr), meshes))
+        Ancestor(id, meshes, clip~) =>
+          draws.push((self.placement(id, Some(clip), dpr), meshes))
+        Children(kids) =>
+          for kid in kids {
+            draws.push((self.placement(kid.0, None, dpr), kid.1))
+          }
+        Nothing => ()
+      }
+      settled = settled && src.settled(id)
+    }
+    draws_of.set(s.id, draws)
   }
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
@@ -49,11 +60,11 @@ fn Map::render(self : Map) -> Unit {
     }
     // Paint that does not read feature data is the same for every mesh.
     let shared = paint_of(layer, zoom, JsProps::none())
-    for d in draws {
+    for d in draws_of.get(layer.source).unwrap_or([]) {
       self.draw_layer(index, layer, shared, d.0, d.1, dpr)
     }
   }
-  if cover.iter().all(id => self.settled(id)) {
+  if settled {
     if !self.idle_fired {
       self.idle_fired = true
       for _, f in self.idle_listeners {
@@ -126,8 +137,8 @@ fn Map::draw_layer(
 }
 
 ///|
-/// Where `id`'s meshes are drawn; with `clip`, only the part over that
-/// descendant tile (an ancestor standing in for it).
+/// Where `id`'s meshes are drawn: only the part over the tile itself, or with
+/// `clip` over that descendant tile (an ancestor standing in for it).
 fn Map::placement(
   self : Map,
   id : @core.TileId,
@@ -136,8 +147,10 @@ fn Map::placement(
 ) -> @render_webgl2.Placement {
   let t = self.transform
   let extent = @core.TILE_EXTENT
-  let rect = match clip {
-    None => @render_webgl2.no_clip()
+  let rect : FixedArray[Double] = match clip {
+    // A tile draws only within itself: features reach into the buffer
+    // around it, which its neighbors draw too (twice blended otherwise).
+    None => [0.0, 0.0, extent.to_double(), extent.to_double()]
     Some(c) => {
       let dz = c.z - id.z
       let size = (extent >> dz).to_double()

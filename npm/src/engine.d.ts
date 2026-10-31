@@ -4,6 +4,8 @@ declare module "mbmap-engine" {
   export interface EngineMap {
     readonly __engineMap: unique symbol;
   }
+  /** Tiles of GeoJSON sources, by source id (see map/dom.mbt `Provider`). */
+  export type Provider = (source: string, z: number, x: number, y: number) => Promise<ArrayBuffer | null>;
   export function create_map(
     canvas: HTMLCanvasElement,
     style: string,
@@ -15,6 +17,7 @@ declare module "mbmap-engine" {
     workerUrl: string,
     wasmUrl: string,
     workers: number,
+    geojson: Provider | null,
   ): EngineMap;
   export function map_camera(map: EngineMap): { lng: number; lat: number; zoom: number; bearing: number; pitch: number };
   export function map_set_camera(map: EngineMap, lng: number, lat: number, zoom: number, bearing: number, pitch: number): void;

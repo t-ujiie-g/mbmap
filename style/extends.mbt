@@ -60,3 +60,9 @@ pub extend Expected with Eq::{not_equal, equal}
 
 ///|
 pub extend NoFeature with FeatureContext::{geometry_type, property}
+
+///|
+pub extend SourceKind with @debug.Debug::{to_repr}
+
+///|
+pub extend SourceKind with Eq::{not_equal, equal}

@@ -36,6 +36,7 @@ pub fn create_map(
   worker_url : String,
   wasm_url : String,
   workers : Int32,
+  geojson : @map.Provider,
 ) -> @map.Map {
   @map.Map::new(
     canvas,
@@ -44,11 +45,11 @@ pub fn create_map(
     worker_url~,
     wasm_url~,
     workers~,
+    geojson~,
   ) catch {
     BadStyle(e) => throw_error("mbmap: style: \{e.message()}")
     NoWebGL2 => throw_error("mbmap: WebGL2 is not available")
-    NoVectorSource =>
-      throw_error("mbmap: the style draws from no vector source")
+    NoSource => throw_error("mbmap: the style draws from no source")
   }
 }
 
