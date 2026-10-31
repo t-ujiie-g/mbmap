@@ -1,0 +1,14 @@
+// The analysis stand-in as its own wasm-gc module (measurement only):
+// columnar input in linear memory, results written back to it.
+
+import {
+  "t-ujiie-g/mbmap/bench/split/analysis",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

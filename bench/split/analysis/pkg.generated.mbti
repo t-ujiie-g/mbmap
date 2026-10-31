@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/bench/split/analysis"
+
+// Values
+pub const EARTH_RADIUS : Double = 6371008.8
+
+// Errors
+
+// Types and methods
+pub(all) struct Polygons {
+  coords : FixedArray[Double]
+  ring_ends : FixedArray[Int32]
+  poly_ends : FixedArray[Int32]
+}
+pub fn Polygons::area(Self, Int32) -> Double
+pub fn Polygons::bbox(Self, Int32) -> (Double, Double, Double, Double)
+pub fn Polygons::grid_counts(Self, Double) -> Map[Int32, Int32]
+pub fn Polygons::largest(Self, Int32) -> Array[Int32]
+pub fn Polygons::length(Self) -> Int32
+
+// Type aliases
+
+// Traits

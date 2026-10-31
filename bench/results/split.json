@@ -1,0 +1,115 @@
+{
+  "env": {
+    "note": "local dev server, no HTTP cache"
+  },
+  "sizes": {
+    "worker": {
+      "raw": 176973,
+      "gzip": 77179
+    },
+    "combined": {
+      "raw": 184789,
+      "gzip": 80490
+    },
+    "analysis": {
+      "raw": 20262,
+      "gzip": 9374
+    },
+    "empty": {
+      "raw": 186,
+      "gzip": 182
+    }
+  },
+  "browsers": {
+    "chromium": {
+      "version": "156.0.8078.4",
+      "params": {
+        "runs": 15,
+        "polygons": 10000,
+        "statistic": "median of runs"
+      },
+      "modules": {
+        "worker": {
+          "spawnMs": 2.240000009536743,
+          "loadMs": 1.9600000083446503
+        },
+        "combined": {
+          "spawnMs": 2.2349999994039536,
+          "loadMs": 1.915000006556511,
+          "firstMs": 11.440000012516975,
+          "warmMs": 6.329999998211861
+        },
+        "analysis": {
+          "spawnMs": 3.114999994635582,
+          "loadMs": 1.3100000023841858,
+          "firstMs": 11.41499999165535,
+          "warmMs": 6.454999998211861
+        },
+        "empty": {
+          "spawnMs": 3.0900000035762787,
+          "loadMs": 1.0549999922513962
+        }
+      }
+    },
+    "firefox": {
+      "version": "157.0",
+      "params": {
+        "runs": 15,
+        "polygons": 10000,
+        "statistic": "median of runs"
+      },
+      "modules": {
+        "worker": {
+          "spawnMs": 5.020000000000437,
+          "loadMs": 5.959999999999999
+        },
+        "combined": {
+          "spawnMs": 5.079999999999927,
+          "loadMs": 5.94,
+          "firstMs": 12.759999999999998,
+          "warmMs": 8.880000000000003
+        },
+        "analysis": {
+          "spawnMs": 5.980000000000018,
+          "loadMs": 2.4799999999999995,
+          "firstMs": 11.119999999999997,
+          "warmMs": 8.339999999999996
+        },
+        "empty": {
+          "spawnMs": 6.100000000000023,
+          "loadMs": 1.42
+        }
+      }
+    },
+    "webkit": {
+      "version": "27.2",
+      "params": {
+        "runs": 15,
+        "polygons": 10000,
+        "statistic": "median of runs"
+      },
+      "modules": {
+        "worker": {
+          "spawnMs": 2.2000000000000455,
+          "loadMs": 2.7
+        },
+        "combined": {
+          "spawnMs": 2.119999999999891,
+          "loadMs": 2.7600000000000002,
+          "firstMs": 11.700000000000001,
+          "warmMs": 7.060000000000002
+        },
+        "analysis": {
+          "spawnMs": 3.319999999999993,
+          "loadMs": 1.9399999999999995,
+          "firstMs": 11.68,
+          "warmMs": 7.259999999999998
+        },
+        "empty": {
+          "spawnMs": 3.299999999999727,
+          "loadMs": 1.7400000000000002
+        }
+      }
+    }
+  }
+}
