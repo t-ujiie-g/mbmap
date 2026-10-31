@@ -9,6 +9,11 @@ export const SYMBOL_VERTEX_BYTES = 16;
 export const LABEL_FLOATS = 8;
 // Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
 export const MAX_LABEL_CHARS = 256;
+// Most glyphs a worker keeps, and draws for one tile; past them characters are
+// left blank, so a tile cannot make it draw without bound.
+export const MAX_GLYPHS = 4096;
+export const MAX_NEW_GLYPHS_PER_TILE = 1024;
+const BLANK = { advance: SDF_SIZE / 2, left: 0, top: 0, width: 0, height: 0 };
 
 const decoder = new TextDecoder();
 
@@ -20,11 +25,19 @@ export class Glyphs {
     this.sdf = null;
     this.cache = new Map();
     this.fresh = new Set();
+    this.budget = MAX_NEW_GLYPHS_PER_TILE;
+  }
+
+  // Starts a tile's allowance of new glyphs.
+  startTile() {
+    this.budget = MAX_NEW_GLYPHS_PER_TILE;
   }
 
   metrics(cp) {
     let g = this.cache.get(cp);
     if (!g) {
+      if (this.cache.size >= MAX_GLYPHS || this.budget <= 0) return BLANK;
+      this.budget--;
       this.sdf ??= new TinySDF({ fontSize: SDF_SIZE, buffer: SDF_BUFFER, radius: SDF_RADIUS, cutoff: 0.25, fontFamily: this.fontFamily });
       const d = this.sdf.draw(String.fromCodePoint(cp));
       g = { advance: d.glyphAdvance, left: d.glyphLeft - SDF_BUFFER, top: d.glyphTop + SDF_BUFFER, width: d.width, height: d.height, data: d.data };

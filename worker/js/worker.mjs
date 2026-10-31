@@ -104,6 +104,7 @@ async function loadTile({ id, url, bytes: given, source, z }) {
       bytes = new Uint8Array(await res.arrayBuffer());
     }
     if (controller.signal.aborted) return;
+    glyphs.startTile();
     const { layers, transfer } = unpack(withInput(bytes, () => wasm.process_tile(source, z)));
     if (controller.signal.aborted) return;
     // New glyphs go with the first tile posted after they were drawn; the main
