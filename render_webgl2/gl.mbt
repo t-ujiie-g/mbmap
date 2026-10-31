@@ -42,26 +42,35 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
   #|    return u;
   #|  };
+  #|  // u_clip is a rectangle in tile units outside which nothing is drawn: a
+  #|  // loaded ancestor stands in for a missing tile clipped to its area.
+  #|  const clip = "uniform vec4 u_clip; in vec2 v_pos;" +
+  #|    "bool outside() { return any(lessThan(v_pos, u_clip.xy)) || any(greaterThanEqual(v_pos, u_clip.zw)); }";
   #|  const fill = program(
-  #|    "in vec2 a_pos; uniform vec4 u_tile;" +
-  #|    "void main() { gl_Position = vec4(a_pos * u_tile.xy + u_tile.zw, 0.0, 1.0); }",
-  #|    "uniform vec4 u_color; out vec4 o; void main() { o = u_color; }",
-  #|    ["u_tile", "u_color"]);
-  #|  // Extrusion is in screen pixels, so widths stay constant across zooms;
-  #|  // the last pixel of the half width fades out for antialiasing.
+  #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos;" +
+  #|    "void main() { v_pos = a_pos; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    clip + "uniform vec4 u_color; out vec4 o; void main() { if (outside()) discard; o = u_color; }",
+  #|    ["u_matrix", "u_clip", "u_color"]);
+  #|  // Extrusion is in tile units scaled to device pixels at the center's
+  #|  // depth (u_units), so lines thin with distance when pitched, as the map
+  #|  // does. The last pixel of the half width fades out for antialiasing;
+  #|  // v_half is the half width in pixels at the vertex's own depth (clip w
+  #|  // grows with depth, u_depth is the center's), like MapLibre's gamma scale.
   #|  const line = program(
-  #|    "in vec2 a_pos; in vec4 a_data; uniform vec4 u_tile; uniform vec2 u_px; uniform float u_half;" +
-  #|    "out vec2 v_edge;" +
-  #|    "void main() { vec2 e = a_data.xy / 63.0 * u_half;" +
-  #|    "  gl_Position = vec4(a_pos * u_tile.xy + u_tile.zw + e * u_px, 0.0, 1.0); v_edge = a_data.zw; }",
+  #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_half;" +
+  #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half;" +
+  #|    "void main() { v_pos = a_pos + a_data.xy / 63.0 * u_half * u_units;" +
+  #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
+  #|    "  v_half = u_half * u_depth / gl_Position.w; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
-  #|    "uniform vec4 u_color; uniform float u_half; in vec2 v_edge; out vec4 o;" +
-  #|    "void main() { o = u_color * clamp((1.0 - length(v_edge)) * u_half, 0.0, 1.0); }",
-  #|    ["u_tile", "u_px", "u_half", "u_color"]);
+  #|    clip + "uniform vec4 u_color; in vec2 v_edge; in float v_half; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; o = u_color * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0); }",
+  #|    ["u_matrix", "u_units", "u_half", "u_depth", "u_clip", "u_color"]);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  #|  return { gl, fill, line, px: [0, 0] };
+  #|  // Reused for every draw, so WebGL does not convert an array each time.
+  #|  return { gl, fill, line, mat: new Float32Array(16) };
   #|}
 
 ///|
@@ -70,25 +79,11 @@ extern "js" fn is_null(gl : Gl) -> Bool =
 
 ///|
 extern "js" fn gl_viewport(gl : Gl, width : Int32, height : Int32) -> Unit =
-  #|(c, w, h) => { c.gl.viewport(0, 0, w, h); c.px = [2 / w, -2 / h]; }
+  #|(c, w, h) => c.gl.viewport(0, 0, w, h)
 
 ///|
 extern "js" fn gl_clear(gl : Gl, r : Double, g : Double, b : Double) -> Unit =
-  #|(c, r, g, b) => { c.gl.disable(c.gl.SCISSOR_TEST); c.gl.clearColor(r, g, b, 1); c.gl.clear(c.gl.COLOR_BUFFER_BIT); }
-
-///|
-extern "js" fn gl_scissor(
-  gl : Gl,
-  x : Int32,
-  y : Int32,
-  w : Int32,
-  h : Int32,
-) -> Unit =
-  #|(c, x, y, w, h) => { c.gl.enable(c.gl.SCISSOR_TEST); c.gl.scissor(x, y, w, h); }
-
-///|
-extern "js" fn gl_no_scissor(gl : Gl) -> Unit =
-  #|(c) => c.gl.disable(c.gl.SCISSOR_TEST)
+  #|(c, r, g, b) => { c.gl.clearColor(r, g, b, 1); c.gl.clear(c.gl.COLOR_BUFFER_BIT); }
 
 ///|
 extern "js" fn gl_upload(
@@ -125,22 +120,23 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|(c, m) => { c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo); }
 
 ///|
+/// `clip` is (min x, min y, max x, max y) in tile units.
 extern "js" fn gl_draw_fill(
   gl : Gl,
   mesh : Mesh,
-  sx : Double,
-  sy : Double,
-  tx : Double,
-  ty : Double,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
   r : Double,
   g : Double,
   b : Double,
   a : Double,
 ) -> Unit =
-  #|(c, m, sx, sy, tx, ty, r, g, b, a) => {
+  #|(c, m, matrix, clip, r, g, b, a) => {
   #|  const gl = c.gl, p = c.fill;
   #|  gl.useProgram(p.program);
-  #|  gl.uniform4f(p.u_tile, sx, sy, tx, ty);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
   #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
   #|  gl.bindVertexArray(m.vao);
   #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
@@ -150,21 +146,24 @@ extern "js" fn gl_draw_fill(
 extern "js" fn gl_draw_line(
   gl : Gl,
   mesh : Mesh,
-  sx : Double,
-  sy : Double,
-  tx : Double,
-  ty : Double,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  units : Double,
+  depth : Double,
   r : Double,
   g : Double,
   b : Double,
   a : Double,
   half : Double,
 ) -> Unit =
-  #|(c, m, sx, sy, tx, ty, r, g, b, a, half) => {
+  #|(c, m, matrix, clip, units, depth, r, g, b, a, half) => {
   #|  const gl = c.gl, p = c.line;
   #|  gl.useProgram(p.program);
-  #|  gl.uniform4f(p.u_tile, sx, sy, tx, ty);
-  #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform1f(p.u_units, units);
+  #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_half, half);
   #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
   #|  gl.bindVertexArray(m.vao);

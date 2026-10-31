@@ -217,3 +217,15 @@ extern "js" fn is_null_value(v : JsValue) -> Bool =
 ///|
 extern "js" fn js_null() -> JsValue =
   #|() => null
+
+///|
+/// Whether a pointerdown starts a rotating drag: right button or Ctrl held.
+extern "js" fn rotating_drag(e : JsValue) -> Bool =
+  #|(e) => e.button === 2 || e.ctrlKey
+
+///|
+/// Keeps the context menu from opening on the map, so right-drag rotates.
+extern "js" fn prevent_context_menu(
+  target : @render_webgl2.Canvas,
+) -> () -> Unit =
+  #|(t) => { const f = (e) => e.preventDefault(); t.addEventListener("contextmenu", f); return () => t.removeEventListener("contextmenu", f); }

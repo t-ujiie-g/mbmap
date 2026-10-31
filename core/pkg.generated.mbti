@@ -6,9 +6,13 @@ import {
 }
 
 // Values
+pub const FIELD_OF_VIEW : Double = 0.6435011087932844
+
 pub const GEOMETRY_TYPE_KEY : String = "$type"
 
 pub const MAX_LATITUDE : Double = 85.051128779806604
+
+pub const MAX_PITCH : Double = 60.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
@@ -48,6 +52,8 @@ pub fn BBox::union(Self, Self) -> Self
 pub(all) struct Camera {
   center : LngLat
   zoom : Double
+  bearing : Double
+  pitch : Double
 } derive(Eq, @debug.Debug)
 pub fn Camera::equal(Self, Self) -> Bool
 pub fn Camera::not_equal(Self, Self) -> Bool
@@ -61,6 +67,22 @@ pub fn LngLat::equal(Self, Self) -> Bool
 pub fn LngLat::not_equal(Self, Self) -> Bool
 pub fn LngLat::to_mercator(Self) -> MercatorCoord
 pub fn LngLat::to_repr(Self) -> @debug.Repr
+
+pub struct Mat4 {
+  m : FixedArray[Double]
+} derive(Eq, @debug.Debug)
+pub fn Mat4::apply(Self, Double, Double, Double, Double) -> (Double, Double, Double, Double)
+pub fn Mat4::equal(Self, Self) -> Bool
+pub fn Mat4::identity() -> Self
+pub fn Mat4::invert(Self) -> Self?
+pub fn Mat4::mul(Self, Self) -> Self
+pub fn Mat4::not_equal(Self, Self) -> Bool
+pub fn Mat4::perspective(Double, Double, Double, Double) -> Self
+pub fn Mat4::rotate_x(Self, Double) -> Self
+pub fn Mat4::rotate_z(Self, Double) -> Self
+pub fn Mat4::scale(Self, Double, Double, Double) -> Self
+pub fn Mat4::to_repr(Self) -> @debug.Repr
+pub fn Mat4::translate(Self, Double, Double, Double) -> Self
 
 pub(all) struct MercatorCoord {
   x : Double
@@ -88,30 +110,24 @@ pub fn TileId::not_equal(Self, Self) -> Bool
 pub fn TileId::parent(Self) -> Self?
 pub fn TileId::to_repr(Self) -> @debug.Repr
 
-pub(all) struct TileTransform {
-  scale_x : Double
-  scale_y : Double
-  translate_x : Double
-  translate_y : Double
-} derive(Eq, @debug.Debug)
-pub fn TileTransform::equal(Self, Self) -> Bool
-pub fn TileTransform::not_equal(Self, Self) -> Bool
-pub fn TileTransform::to_repr(Self) -> @debug.Repr
-
 pub struct Transform {
   camera : Camera
   width : Double
   height : Double
   min_zoom : Double
   max_zoom : Double
+  // private fields
 }
-pub fn Transform::covering_tiles(Self, Int32) -> Array[TileId]
+pub fn Transform::center_depth(Self) -> Double
+pub fn Transform::covering_tiles(Self, Int32, Int32) -> Array[TileId]
+pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
 pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
 pub fn Transform::new(Camera, Double, Double, min_zoom? : Double, max_zoom? : Double) -> Self
-pub fn Transform::panned(Self, Double, Double) -> Camera
+pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
-pub fn Transform::tile_transform(Self, TileId, Int32) -> TileTransform
+pub fn Transform::tile_matrix(Self, TileId, Int32) -> Mat4
+pub fn Transform::tile_scale(Self, TileId, Int32) -> Double
 pub fn Transform::tile_zoom(Self, Int32, Int32) -> Int32
 pub fn Transform::with_camera(Self, Camera) -> Self
 pub fn Transform::world_size(Self) -> Double

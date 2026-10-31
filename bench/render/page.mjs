@@ -26,13 +26,13 @@ async function createMbmap() {
   const canvas = document.createElement("canvas");
   canvas.id = "map";
   document.body.append(canvas);
-  const map = mbmap.create_map(canvas, styleText, START.lng, START.lat, START.zoom,
+  const map = mbmap.create_map(canvas, styleText, START.lng, START.lat, START.zoom, 0, 0,
     "/worker/js/worker.mjs", "/_build/wasm-gc/release/build/worker/worker.wasm", 0);
   let idle = null;
   mbmap.map_on_idle(map, () => idle?.());
   return {
     nextIdle: () => new Promise((r) => { idle = r; }),
-    set: (c) => mbmap.map_set_camera(map, c.lng, c.lat, c.zoom),
+    set: (c) => mbmap.map_set_camera(map, c.lng, c.lat, c.zoom, 0, 0),
     get: () => mbmap.map_camera(map),
   };
 }

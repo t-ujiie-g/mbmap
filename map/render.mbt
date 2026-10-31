@@ -21,10 +21,23 @@ fn Map::render(self : Map) -> Unit {
   let cover = if t.camera.zoom < self.source.min_zoom.to_double() {
     []
   } else {
-    t.covering_tiles(z)
+    t.covering_tiles(self.source.min_zoom, z)
   }
   self.update_tiles(cover)
-  let sources = cover.map(id => self.source_for(id))
+  // Where each tile's meshes go this frame, computed once for all layers.
+  let draws : Array[(@render_webgl2.Placement, Array[LayerMesh])] = []
+  for id in cover {
+    match self.source_for(id) {
+      Own(id, meshes) => draws.push((self.placement(id, None, dpr), meshes))
+      Ancestor(id, meshes, clip~) =>
+        draws.push((self.placement(id, Some(clip), dpr), meshes))
+      Children(kids) =>
+        for kid in kids {
+          draws.push((self.placement(kid.0, None, dpr), kid.1))
+        }
+      Nothing => ()
+    }
+  }
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
   let zoom = t.camera.zoom
@@ -36,21 +49,8 @@ fn Map::render(self : Map) -> Unit {
     }
     // Paint that does not read feature data is the same for every mesh.
     let shared = paint_of(layer, zoom, JsProps::none())
-    for s in sources {
-      match s {
-        Own(id, meshes) =>
-          self.draw_layer(index, layer, shared, id, meshes, dpr)
-        Ancestor(id, meshes, clip~) => {
-          self.clip_to(clip, dpr, ph)
-          self.draw_layer(index, layer, shared, id, meshes, dpr)
-          self.renderer.no_scissor()
-        }
-        Children(kids) =>
-          for kid in kids {
-            self.draw_layer(index, layer, shared, kid.0, kid.1, dpr)
-          }
-        Nothing => ()
-      }
+    for d in draws {
+      self.draw_layer(index, layer, shared, d.0, d.1, dpr)
     }
   }
   if cover.iter().all(id => self.settled(id)) {
@@ -90,11 +90,10 @@ fn Map::draw_layer(
   index : Int32,
   layer : @style.StyleLayer,
   shared : Paint,
-  id : @core.TileId,
+  at : @render_webgl2.Placement,
   meshes : Array[LayerMesh],
   dpr : Double,
 ) -> Unit {
-  let tt = self.transform.tile_transform(id, @core.TILE_EXTENT)
   let zoom = self.transform.camera.zoom
   for m in meshes {
     if m.layer != index {
@@ -110,27 +109,38 @@ fn Map::draw_layer(
       }
     }
     if m.line {
-      self.renderer.draw_line(m.mesh, tt, p.r, p.g, p.b, p.a, p.width * dpr)
+      self.renderer.draw_line(m.mesh, at, p.r, p.g, p.b, p.a, p.width * dpr)
     } else {
-      self.renderer.draw_fill(m.mesh, tt, p.r, p.g, p.b, p.a)
+      self.renderer.draw_fill(m.mesh, at, p.r, p.g, p.b, p.a)
     }
   }
 }
 
 ///|
-/// Scissors drawing to `id`'s area on screen.
-fn Map::clip_to(
+/// Where `id`'s meshes are drawn; with `clip`, only the part over that
+/// descendant tile (an ancestor standing in for it).
+fn Map::placement(
   self : Map,
   id : @core.TileId,
+  clip : @core.TileId?,
   dpr : Double,
-  ph : Int32,
-) -> Unit {
-  let b = id.mercator_bounds()
-  let (x0, y0) = self.transform.mercator_to_screen({ x: b.min_x, y: b.min_y, })
-  let (x1, y1) = self.transform.mercator_to_screen({ x: b.max_x, y: b.max_y, })
-  let left = (x0 * dpr).floor().to_int()
-  let right = (x1 * dpr).ceil().to_int()
-  let top = (y0 * dpr).floor().to_int()
-  let bottom = (y1 * dpr).ceil().to_int()
-  self.renderer.scissor(left, ph - bottom, right - left, bottom - top)
+) -> @render_webgl2.Placement {
+  let t = self.transform
+  let extent = @core.TILE_EXTENT
+  let rect = match clip {
+    None => @render_webgl2.no_clip()
+    Some(c) => {
+      let dz = c.z - id.z
+      let size = (extent >> dz).to_double()
+      let x0 = (c.x - (id.x << dz)).to_double() * size
+      let y0 = (c.y - (id.y << dz)).to_double() * size
+      [x0, y0, x0 + size, y0 + size]
+    }
+  }
+  {
+    matrix: t.tile_matrix(id, extent),
+    units_per_pixel: 1.0 / (t.tile_scale(id, extent) * dpr),
+    center_depth: t.center_depth(),
+    clip: rect,
+  }
 }

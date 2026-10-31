@@ -4,6 +4,9 @@
 /** Highest zoom; mirrors the default `max_zoom` of `Transform` in core/transform.mbt. */
 export const MAX_ZOOM = 22;
 
+/** Highest pitch in degrees; mirrors `MAX_PITCH` in core/transform.mbt. */
+export const MAX_PITCH = 60;
+
 /** Most tile workers; mirrors `MAX_WORKERS` in map/map.mbt (0 picks automatically). */
 export const MAX_WORKERS = 4;
 
@@ -31,6 +34,26 @@ export function checkZoom(z: number): number | null {
 /** A decimal zoom from 0 to `MAX_ZOOM`, or null. */
 export function parseZoom(value: string): number | null {
   return DECIMAL.test(value) ? checkZoom(Number(value)) : null;
+}
+
+/** A finite bearing in degrees (any value; the map wraps it), or null. */
+export function checkBearing(b: number): number | null {
+  return Number.isFinite(b) ? b : null;
+}
+
+/** A decimal bearing, or null. */
+export function parseBearing(value: string): number | null {
+  return DECIMAL.test(value) ? checkBearing(Number(value)) : null;
+}
+
+/** A pitch from 0 to `MAX_PITCH`, or null. */
+export function checkPitch(p: number): number | null {
+  return Number.isFinite(p) && p >= 0 && p <= MAX_PITCH ? p : null;
+}
+
+/** A decimal pitch from 0 to `MAX_PITCH`, or null. */
+export function parsePitch(value: string): number | null {
+  return DECIMAL.test(value) ? checkPitch(Number(value)) : null;
 }
 
 /** A worker count from 0 to `MAX_WORKERS`, or null. */

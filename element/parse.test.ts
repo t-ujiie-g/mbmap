@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MAX_ZOOM, parseCenter, parseWorkerCount, parseZoom } from "./parse.ts";
+import { MAX_PITCH, MAX_ZOOM, parseBearing, parseCenter, parsePitch, parseWorkerCount, parseZoom } from "./parse.ts";
 
 test("center is two in-range decimals", () => {
   assert.deepEqual(parseCenter("139.7671,35.6812"), { lng: 139.7671, lat: 35.6812 });
@@ -24,4 +24,13 @@ test("worker count is 0 to MAX_WORKERS", () => {
   for (const bad of ["5", "-1", "1.0", "", "01"]) {
     assert.equal(parseWorkerCount(bad), null, bad);
   }
+});
+
+test("bearing is any decimal; pitch is a decimal from 0 to MAX_PITCH", () => {
+  assert.equal(parseBearing("-45.5"), -45.5);
+  assert.equal(parseBearing("720"), 720);
+  assert.equal(parsePitch("30"), 30);
+  assert.equal(parsePitch(String(MAX_PITCH)), MAX_PITCH);
+  for (const bad of ["", "1e1", "NaN", "Infinity", "10deg"]) assert.equal(parseBearing(bad), null, bad);
+  for (const bad of ["", "-1", "61", "1e1", "NaN"]) assert.equal(parsePitch(bad), null, bad);
 });

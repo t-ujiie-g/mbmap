@@ -1,7 +1,17 @@
 import { Map, type LngLat, type MapOptions, type StyleSpecification } from "mbmap";
-import { checkCenter, checkZoom, parseCenter, parseWorkerCount, parseZoom } from "./parse";
+import {
+  checkBearing,
+  checkCenter,
+  checkPitch,
+  checkZoom,
+  parseBearing,
+  parseCenter,
+  parsePitch,
+  parseWorkerCount,
+  parseZoom,
+} from "./parse";
 
-export { MAX_WORKERS, MAX_ZOOM, parseCenter, parseZoom } from "./parse";
+export { MAX_PITCH, MAX_WORKERS, MAX_ZOOM, parseBearing, parseCenter, parsePitch, parseZoom } from "./parse";
 
 /** `detail` of the events `<mb-map>` dispatches (they bubble and cross shadow roots). */
 export interface MbMapEventDetail {
@@ -9,10 +19,12 @@ export interface MbMapEventDetail {
   map: Map | null;
   center: LngLat;
   zoom: number;
+  bearing: number;
+  pitch: number;
   error?: Error;
 }
 
-const ATTRIBUTES = ["style-url", "center", "zoom", "worker-count", "worker-url", "wasm-url"] as const;
+const ATTRIBUTES = ["style-url", "center", "zoom", "bearing", "pitch", "worker-count", "worker-url", "wasm-url"] as const;
 
 // Lets the module load where HTMLElement does not exist (server rendering);
 // the element is only defined in browsers.
@@ -33,6 +45,8 @@ export class MbMapElement extends Base {
   #style: StyleSpecification | null = null;
   #center: LngLat = { lng: 0, lat: 0 };
   #zoom = 0;
+  #bearing = 0;
+  #pitch = 0;
 
   /** The underlying map, or null before it is created or after removal. */
   get map(): Map | null {
@@ -79,6 +93,36 @@ export class MbMapElement extends Base {
     this.#map?.jumpTo({ zoom });
   }
 
+  get bearing(): number {
+    return this.#map?.getBearing() ?? this.#bearing;
+  }
+
+  /** Degrees clockwise from north, as a number or the attribute form. */
+  set bearing(value: number | string) {
+    const bearing = typeof value === "string" ? parseBearing(value) : checkBearing(value);
+    if (bearing === null) {
+      this.#reject("bearing", String(value));
+      return;
+    }
+    this.#bearing = bearing;
+    this.#map?.jumpTo({ bearing });
+  }
+
+  get pitch(): number {
+    return this.#map?.getPitch() ?? this.#pitch;
+  }
+
+  /** Degrees of tilt from 0 to `MAX_PITCH`, as a number or the attribute form. */
+  set pitch(value: number | string) {
+    const pitch = typeof value === "string" ? parsePitch(value) : checkPitch(value);
+    if (pitch === null) {
+      this.#reject("pitch", String(value));
+      return;
+    }
+    this.#pitch = pitch;
+    this.#map?.jumpTo({ pitch });
+  }
+
   connectedCallback(): void {
     if (!this.#box) {
       const root = this.attachShadow({ mode: "open" });
@@ -106,6 +150,10 @@ export class MbMapElement extends Base {
       this.center = value;
     } else if (name === "zoom") {
       this.zoom = value;
+    } else if (name === "bearing") {
+      this.bearing = value;
+    } else if (name === "pitch") {
+      this.pitch = value;
     } else if (name === "worker-count") {
       if (parseWorkerCount(value) === null) this.#reject(name, value);
     } else if (name === "style-url" && !this.#style) {
@@ -124,6 +172,8 @@ export class MbMapElement extends Base {
       style,
       center: this.#center,
       zoom: this.#zoom,
+      bearing: this.#bearing,
+      pitch: this.#pitch,
       workerCount: parseWorkerCount(this.getAttribute("worker-count") ?? "") ?? 0,
       workerUrl: this.getAttribute("worker-url") ?? undefined,
       wasmUrl: this.getAttribute("wasm-url") ?? undefined,
@@ -152,6 +202,8 @@ export class MbMapElement extends Base {
     // Keep the camera so that a re-attached element resumes where it was.
     this.#center = this.#map.getCenter();
     this.#zoom = this.#map.getZoom();
+    this.#bearing = this.#map.getBearing();
+    this.#pitch = this.#map.getPitch();
     this.#map.remove();
     this.#map = null;
   }
@@ -165,7 +217,14 @@ export class MbMapElement extends Base {
     if (error) console.error(error);
     const map = this.#map;
     if (!map && !error) return;
-    const detail: MbMapEventDetail = { map, center: this.center, zoom: this.zoom, ...(error ? { error } : {}) };
+    const detail: MbMapEventDetail = {
+      map,
+      center: this.center,
+      zoom: this.zoom,
+      bearing: this.bearing,
+      pitch: this.pitch,
+      ...(error ? { error } : {}),
+    };
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
   }
 }

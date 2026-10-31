@@ -21,4 +21,5 @@ http://127.0.0.1:8080/examples/ を開くと、すべての例へのリンクが
 - `npm run examples` は、`npm pack` した tarball を `npm/`・`element/`・`react/` の `node_modules/mbmap` に展開し（アプリがインストールするのと同じ形）、React の例を esbuild でバンドルしてから配信する。basic だけでよければ `npm --prefix bench run example` で足りる。
 - 同じ準備をしたうえで、各例の動作を Chromium で自動的に確かめるのが `npm --prefix bench run npm:pack`（CI でも実行する）。
 - 既定では、ベンチ用の fixture（東京駅周辺の z14、7×5 タイル）を読む。z14 未満にズームアウトしたり範囲外へパンしたりすると何も描かれないのは、データがないため。
+- basic は `?zoom=15&bearing=30&pitch=50` のように初期のカメラを指定できる。どの例でも、右ドラッグ（または Ctrl＋ドラッグ）で回転・傾き、2本指をひねると回転する。
 - basic に `?remote=1` を付けると、国土地理院の配信サーバー（`experimental_bvmap`、z4〜16）から直接読むので、全国・全ズームで動く。`&zoom=10` のように初期ズームも指定できる。低ズームのタイル（z5 で確認）には、このスタイルが使う面のレイヤー（waterarea など）がないので、道路・鉄道・河川だけが描かれる。また配信のない範囲（一部の海域など）は 404 になり、ブラウザのコンソールにその記録が出る（地図は空として扱う）。

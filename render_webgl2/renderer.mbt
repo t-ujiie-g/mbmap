@@ -26,7 +26,7 @@ pub fn Renderer::set_viewport(
 }
 
 ///|
-/// Clears the frame to an opaque color and drops any scissor.
+/// Clears the frame to an opaque color.
 pub fn Renderer::clear(
   self : Renderer,
   r : Double,
@@ -34,23 +34,6 @@ pub fn Renderer::clear(
   b : Double,
 ) -> Unit {
   gl_clear(self.gl, r, g, b)
-}
-
-///|
-/// Restricts drawing to a rectangle, in device pixels from the bottom left.
-pub fn Renderer::scissor(
-  self : Renderer,
-  x : Int32,
-  y : Int32,
-  w : Int32,
-  h : Int32,
-) -> Unit {
-  gl_scissor(self.gl, x, y, w, h)
-}
-
-///|
-pub fn Renderer::no_scissor(self : Renderer) -> Unit {
-  gl_no_scissor(self.gl)
 }
 
 ///|
@@ -79,27 +62,35 @@ pub fn Mesh::byte_size(self : Mesh) -> Int32 {
 }
 
 ///|
+/// Where a mesh is drawn: `matrix` maps its tile units to clip space,
+/// `units_per_pixel` is tile units per device pixel at the center's depth
+/// (line widths are given in device pixels), `center_depth` is the clip w of
+/// the screen center, and only the part within `clip` (min x, min y, max x,
+/// max y in tile units) is drawn.
+pub(all) struct Placement {
+  matrix : @core.Mat4
+  units_per_pixel : Double
+  center_depth : Double
+  clip : FixedArray[Double]
+}
+
+///|
+/// A clip rectangle that keeps everything.
+pub fn no_clip() -> FixedArray[Double] {
+  [-1.0e9, -1.0e9, 1.0e9, 1.0e9]
+}
+
+///|
 pub fn Renderer::draw_fill(
   self : Renderer,
   mesh : Mesh,
-  t : @core.TileTransform,
+  at : Placement,
   r : Double,
   g : Double,
   b : Double,
   a : Double,
 ) -> Unit {
-  gl_draw_fill(
-    self.gl,
-    mesh,
-    t.scale_x,
-    t.scale_y,
-    t.translate_x,
-    t.translate_y,
-    r,
-    g,
-    b,
-    a,
-  )
+  gl_draw_fill(self.gl, mesh, at.matrix.m, at.clip, r, g, b, a)
 }
 
 ///|
@@ -107,7 +98,7 @@ pub fn Renderer::draw_fill(
 pub fn Renderer::draw_line(
   self : Renderer,
   mesh : Mesh,
-  t : @core.TileTransform,
+  at : Placement,
   r : Double,
   g : Double,
   b : Double,
@@ -117,10 +108,10 @@ pub fn Renderer::draw_line(
   gl_draw_line(
     self.gl,
     mesh,
-    t.scale_x,
-    t.scale_y,
-    t.translate_x,
-    t.translate_y,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
     r,
     g,
     b,

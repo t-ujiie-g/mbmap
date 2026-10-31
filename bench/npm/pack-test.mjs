@@ -23,6 +23,9 @@ const checks = {
       map.jumpTo({ zoom: 15 });
       map.jumpTo({ zoom: 15 });
       await map.once("idle");
+      map.jumpTo({ bearing: 370, pitch: 75 });
+      const turned = { bearing: map.getBearing(), pitch: map.getPitch() };
+      await map.once("idle");
       // Error paths: a style URL that fails fires `error`; a bad style object throws.
       const { Map } = await import("mbmap");
       const div = document.createElement("div");
@@ -51,6 +54,7 @@ const checks = {
         center: map.getCenter(),
         zoom: map.getZoom(),
         moves,
+        turned,
         attribution: document.querySelector("#map > div")?.textContent,
         canvas: map.getCanvas().width > 0,
       };
@@ -58,7 +62,10 @@ const checks = {
     const ok =
       Math.abs(r.center.lng - 139.7671) < 1e-9 &&
       r.zoom === 15 &&
-      r.moves.length === 1 &&
+      r.moves.length === 2 &&
+      // Bearing wraps and pitch is clamped to 60.
+      Math.abs(r.turned.bearing - 10) < 1e-9 &&
+      r.turned.pitch === 60 &&
       r.attribution === ATTRIBUTION &&
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
@@ -77,9 +84,13 @@ const checks = {
       el.setAttribute("zoom", "15");
       el.setAttribute("center", "200,0"); // out of range: rejected
       el.setAttribute("zoom", "1e3"); // not a plain decimal: rejected
+      el.setAttribute("pitch", "61"); // above MAX_PITCH: rejected
       await new Promise((r) => el.addEventListener("mb-idle", r, { once: true }));
       const after = events.slice(before).map((e) => e.type);
       const camera = { center: el.center, zoom: el.zoom };
+      el.setAttribute("pitch", "45");
+      el.setAttribute("bearing", "-30");
+      const tilted = { pitch: el.pitch, bearing: el.bearing };
       // Moving the element keeps its map; detaching it frees the map, and
       // re-attaching creates a new one at the same camera.
       const map = el.map;
@@ -94,9 +105,10 @@ const checks = {
       return {
         after,
         camera,
+        tilted,
         kept,
         freed,
-        recreated: el.map !== null && el.map !== map && el.zoom === 15,
+        recreated: el.map !== null && el.map !== map && el.zoom === 15 && el.pitch === 45,
         shadow: el.shadowRoot.querySelectorAll("canvas").length,
         attribution: el.shadowRoot.querySelector("div > div")?.textContent,
         // The attribution is one line in the bottom corner, not an overlay.
@@ -105,9 +117,22 @@ const checks = {
         ),
       };
     });
+    // A right-button drag turns the map (horizontal) and tilts it (vertical).
+    const before = await page.evaluate(() => ({ bearing: document.querySelector("mb-map").bearing, pitch: document.querySelector("mb-map").pitch }));
+    await page.mouse.move(400, 300);
+    await page.mouse.down({ button: "right" });
+    await page.mouse.move(500, 260, { steps: 5 });
+    await page.mouse.up({ button: "right" });
+    const after = await page.evaluate(() => ({ bearing: document.querySelector("mb-map").bearing, pitch: document.querySelector("mb-map").pitch }));
+    r.dragged = { before, after };
+    const turn = ((after.bearing - before.bearing + 540) % 360) - 180;
     const ok =
+      Math.abs(turn + 80) < 1e-6 &&
+      Math.abs(after.pitch - Math.min(60, before.pitch + 20)) < 1e-6 &&
       r.after.filter((t) => t === "mb-move").length === 1 &&
-      r.after.filter((t) => t === "mb-error").length === 2 &&
+      r.after.filter((t) => t === "mb-error").length === 3 &&
+      r.tilted.pitch === 45 &&
+      r.tilted.bearing === -30 &&
       r.camera.zoom === 15 &&
       Math.abs(r.camera.center.lng - 139.7671) < 1e-9 &&
       r.kept &&
