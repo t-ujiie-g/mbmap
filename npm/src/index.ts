@@ -166,7 +166,7 @@ export class Map {
     if (texts.length === 0) return;
     const el = document.createElement("div");
     el.style.cssText =
-      "position:absolute;right:0;bottom:0;padding:0 5px;font:12px/20px sans-serif;" +
+      "position:absolute;top:auto;left:auto;right:0;bottom:0;padding:0 5px;font:12px/20px sans-serif;" +
       "color:#333;background:rgba(255,255,255,0.7);pointer-events:none";
     // Text only: attribution strings come from the style (AGENTS.md §8.3).
     el.textContent = texts.join(" | ");

@@ -11,3 +11,4 @@ bench/fixtures/gsi-bvmap/
 npm/dist/
 npm/LICENSE
 npm/NOTICE
+examples/react/dist/

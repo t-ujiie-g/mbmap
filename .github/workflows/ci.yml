@@ -29,6 +29,7 @@ jobs:
           cache-dependency-path: |
             npm/package-lock.json
             bench/package-lock.json
+            examples/react/package-lock.json
 
       - name: Install MoonBit (pinned, checksum-verified)
         run: |

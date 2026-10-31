@@ -1,6 +1,7 @@
 // Builds the package into dist/: the MoonBit main-thread build wrapped by the
-// TS facade (index.js + index.d.ts), the worker glue (worker.js) and the
-// wasm-gc worker (mbmap.wasm). Usage: node scripts/build.mjs
+// TS facade (index.js + index.d.ts), the `<mb-map>` element (element.js +
+// element.d.ts), the worker glue (worker.js) and the wasm-gc worker
+// (mbmap.wasm). Usage: node scripts/build.mjs
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -25,7 +26,12 @@ await build({
   alias: { "mbmap-engine": path.join(ROOT, "_build/js/release/build/bundle/main/main.js") },
 });
 await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js") });
+// The element imports the main entry rather than bundling a second copy of it.
+const mainEntry = { name: "main-entry", setup: (b) => b.onResolve({ filter: /^mbmap$/ }, () => ({ path: "./index.js", external: true })) };
+await build({ ...common, entryPoints: [path.join(ROOT, "element/element.ts")], outfile: path.join(DIST, "element.js"), plugins: [mainEntry] });
 // No wasm-opt: it made the wasm-gc worker slower in every browser (AGENTS.md §4).
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/worker/worker.wasm"), path.join(DIST, "mbmap.wasm"));
-run(process.execPath, [path.join(PKG, "node_modules/typescript/bin/tsc"), "-p", path.join(PKG, "tsconfig.json")], PKG);
+const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
+run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
+run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);
 for (const f of ["LICENSE", "NOTICE"]) await copyFile(path.join(ROOT, f), path.join(PKG, f));

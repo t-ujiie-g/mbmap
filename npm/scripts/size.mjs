@@ -11,6 +11,7 @@ const DIST = path.join(PKG, "dist");
 const gz = async (f) => gzipSync(await readFile(path.join(DIST, f)), { level: 9 }).length;
 const rows = [
   { name: "main (index.js)", bytes: await gz("index.js"), budget: 50_000 },
+  { name: "element (element.js, on top of main)", bytes: await gz("element.js"), budget: 5_000 },
   { name: "worker (worker.js + mbmap.wasm)", bytes: (await gz("worker.js")) + (await gz("mbmap.wasm")), budget: 80_000 },
 ];
 const kb = (n) => `${(n / 1000).toFixed(1)}KB`;
