@@ -33,11 +33,27 @@
 
 | 入口 | サイズ | 予算 |
 |---|---|---|
-| `mbmap`（`index.js`） | 22.4KB | 50KB |
-| `mbmap/element`（`element.js`。`mbmap` に加えて読む分） | **1.2KB** | 5KB |
+| `mbmap`（`index.js`） | 22.7KB | 50KB |
+| `mbmap/element`（`element.js`。`mbmap` に加えて読む分） | **1.3KB** | 5KB |
 | Worker（`worker.js` と `mbmap.wasm`） | 78.1KB | 80KB |
 
 - 依存（example のみ）：`react` / `react-dom` 19.3.1（2026-10-14 リリース。依存は `scheduler` だけ。インストールスクリプトなし）。`npm audit` は 0 件。パッケージ本体の実行時の依存は、引き続きない。
+
+### リファクタリング（同じ PR に追加）
+
+AGENTS.md §7 の観点で、Phase 5〜6 の TS 側（ファサード、要素、スクリプト）を点検した。
+
+- 定数：要素のズーム上限を 24 から `MAX_ZOOM` = 22 に直した。core の `Transform` は 22 でクランプするので、23 や 24 が受け付けられたうえで黙って丸められていた（§8.3「丸めずに拒否する」に反していた）。Worker 数の上限も `MAX_WORKERS` として1か所にした。どちらも、MoonBit 側の元の定義を指すコメントを付けた。
+- 重複：中心座標の検証を `checkCenter` にまとめ、属性の文字列からとオブジェクトからの両方で使うようにした。
+- テスト：純粋な関数（URL の解決と検査、属性の解析）を依存のないモジュール（`npm/src/urls.ts`、`element/parse.ts`）に分け、`node --test` の単体テストを加えた（Node の型除去で TS のまま動かす）。CI でも実行する。
+- 却下した候補：イベントごとのカメラの読み取りを1回にする案。`getCenter` と `getZoom` は、どちらも MoonBit 側を1回ずつ呼ぶので、前後で回数が変わらない。
+
+セキュリティ（§8）で見つけて直したもの：
+
+- **中**：`worker-url` 属性や `workerUrl` オプションに、どんな URL でも渡せた。HTML のサニタイザがカスタム要素を通すページでは、`worker-url="data:text/javascript,..."` で任意のコードを Worker として動かせる。Worker はページと同じオリジンの http(s)、wasm は http(s) だけを受け付けるようにした（§8.3）。pack test でも、`data:` の Worker URL が拒否されることを確かめる。
+- **低**：`jumpTo({ zoom: NaN })` などの有限でないカメラが MoonBit 側まで届き、経度が NaN のまま地図が壊れていた。ファサードでは TypeError にした。core の `Transform` でも、有限でないカメラは無視するようにした（全ターゲットでテスト）。
+
+サイズ：メイン 22.4 → 22.7KB（URL とカメラの検査）、`mbmap/element` 1.2 → 1.3KB。`npm audit` は `bench/`、`npm/`、`examples/react/` のすべてで 0 件。
 
 ### 既知の問題・次にやること
 

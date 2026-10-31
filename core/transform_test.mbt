@@ -92,3 +92,26 @@ test "tile_transform maps the tile's corners to their clip positions" {
     assert_true(close(clip_y, 1.0 - sy / 300.0))
   }
 }
+
+///|
+test "cameras with NaN or infinite values are ignored" {
+  let camera : @core.Camera = {
+    center: { lng: 139.0, lat: 35.0, },
+    zoom: 10.0,
+  }
+  let t = @core.Transform::new(camera, 100.0, 100.0)
+  let nan = 0.0 / 0.0
+  let inf = 1.0 / 0.0
+  let cameras : Array[@core.Camera] = [
+    { center: { lng: nan, lat: 0.0, }, zoom: 1.0, },
+    { center: { lng: 0.0, lat: -inf, }, zoom: 1.0, },
+    { center: { lng: 0.0, lat: 0.0, }, zoom: nan, },
+  ]
+  for bad in cameras {
+    assert_eq(t.with_camera(bad).camera, camera)
+    assert_eq(@core.Transform::new(bad, 100.0, 100.0).camera, {
+      center: { lng: 0.0, lat: 0.0, },
+      zoom: 0.0,
+    })
+  }
+}

@@ -37,9 +37,16 @@ const checks = {
       } catch (e) {
         thrown = e.message;
       }
+      let workerRefused = "";
+      try {
+        new Map({ container: div, style: { version: 8, sources: {}, layers: [] }, workerUrl: "data:text/javascript,1" });
+      } catch (e) {
+        workerRefused = e.message;
+      }
       return {
         styleError,
         thrown,
+        workerRefused,
         leftovers: div.children.length,
         center: map.getCenter(),
         zoom: map.getZoom(),
@@ -56,6 +63,7 @@ const checks = {
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
       r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression sqrt" &&
+      r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
     return [ok, r];
   },

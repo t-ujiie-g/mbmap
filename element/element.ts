@@ -1,4 +1,7 @@
 import { Map, type LngLat, type MapOptions, type StyleSpecification } from "mbmap";
+import { checkCenter, checkZoom, parseCenter, parseWorkerCount, parseZoom } from "./parse";
+
+export { MAX_WORKERS, MAX_ZOOM, parseCenter, parseZoom } from "./parse";
 
 /** `detail` of the events `<mb-map>` dispatches (they bubble and cross shadow roots). */
 export interface MbMapEventDetail {
@@ -7,22 +10,6 @@ export interface MbMapEventDetail {
   center: LngLat;
   zoom: number;
   error?: Error;
-}
-
-/** Strict `lng,lat`: two finite numbers within range, nothing else. */
-export function parseCenter(value: string): LngLat | null {
-  const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(value);
-  if (!m) return null;
-  const lng = Number(m[1]);
-  const lat = Number(m[2]);
-  return Math.abs(lng) <= 180 && Math.abs(lat) <= 90 ? { lng, lat } : null;
-}
-
-/** Strict zoom: a decimal number from 0 to 24. */
-export function parseZoom(value: string): number | null {
-  if (!/^\s*\d+(?:\.\d+)?\s*$/.test(value)) return null;
-  const z = Number(value);
-  return z <= 24 ? z : null;
 }
 
 const ATTRIBUTES = ["style-url", "center", "zoom", "worker-count", "worker-url", "wasm-url"] as const;
@@ -68,12 +55,12 @@ export class MbMapElement extends Base {
 
   /** A `{lng, lat}` or the attribute form `"lng,lat"` (frameworks such as React set props as properties). */
   set center(center: LngLat | string) {
-    const c = typeof center === "string" ? parseCenter(center) : center;
-    if (!c || !Number.isFinite(c.lng) || !Number.isFinite(c.lat)) {
-      this.#reject("center", String(center));
+    const c = typeof center === "string" ? parseCenter(center) : checkCenter(center);
+    if (!c) {
+      this.#reject("center", typeof center === "string" ? center : JSON.stringify(center));
       return;
     }
-    this.#center = { lng: c.lng, lat: c.lat };
+    this.#center = c;
     this.#map?.jumpTo({ center: this.#center });
   }
 
@@ -81,10 +68,10 @@ export class MbMapElement extends Base {
     return this.#map?.getZoom() ?? this.#zoom;
   }
 
-  /** A number or the attribute form, from 0 to 24. */
+  /** A number or the attribute form, from 0 to `MAX_ZOOM`. */
   set zoom(value: number | string) {
-    const zoom = typeof value === "string" ? parseZoom(value) : value;
-    if (zoom === null || !Number.isFinite(zoom) || zoom < 0 || zoom > 24) {
+    const zoom = typeof value === "string" ? parseZoom(value) : checkZoom(value);
+    if (zoom === null) {
       this.#reject("zoom", String(value));
       return;
     }
@@ -120,7 +107,7 @@ export class MbMapElement extends Base {
     } else if (name === "zoom") {
       this.zoom = value;
     } else if (name === "worker-count") {
-      if (!/^[0-4]$/.test(value)) this.#reject(name, value);
+      if (parseWorkerCount(value) === null) this.#reject(name, value);
     } else if (name === "style-url" && !this.#style) {
       this.#recreate();
     }
@@ -133,12 +120,11 @@ export class MbMapElement extends Base {
   #options(): Omit<MapOptions, "container"> | null {
     const style = this.#style ?? this.getAttribute("style-url");
     if (!style) return null;
-    const count = this.getAttribute("worker-count");
     return {
       style,
       center: this.#center,
       zoom: this.#zoom,
-      workerCount: count && /^[0-4]$/.test(count) ? Number(count) : 0,
+      workerCount: parseWorkerCount(this.getAttribute("worker-count") ?? "") ?? 0,
       workerUrl: this.getAttribute("worker-url") ?? undefined,
       wasmUrl: this.getAttribute("wasm-url") ?? undefined,
     };

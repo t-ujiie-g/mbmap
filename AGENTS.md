@@ -24,7 +24,7 @@ moon test <pkg-dir> -u           # update snapshots (single target only; -u fail
 moon fmt && moon info            # before committing; regenerates pkg.generated.mbti
 ```
 
-npm package (from `npm/`): `npm ci && npm run build` writes `dist/` (index.js + .d.ts, worker.js, mbmap.wasm); `npm run size` checks the gzip budgets of VISION §2.
+npm package (from `npm/`): `npm ci && npm run build` writes `dist/` (index.js + .d.ts, worker.js, mbmap.wasm); `npm run size` checks the gzip budgets of VISION §2; `npm test` runs the TS unit tests (`npm/test/*.test.ts`, `element/*.test.ts`) with Node type stripping, so modules under test must be import-free or import other `.ts` files only.
 
 Benchmarks (from `bench/`, Node + Playwright):
 

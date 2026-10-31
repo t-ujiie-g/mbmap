@@ -58,9 +58,9 @@ jobs:
       - name: Public interfaces (.mbti) are up to date
         run: moon info && git diff --exit-code -- '*.mbti'
 
-      - name: Build the npm package
+      - name: Build and unit-test the npm package
         working-directory: npm
-        run: npm ci && npm run build
+        run: npm ci && npm run build && npm test
       - name: Bundle sizes
         working-directory: npm
         run: npm run size
