@@ -2,7 +2,7 @@
 import { build } from "esbuild";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { ROOT } from "../lib/serve.mjs";
+import { ROOT } from "../lib/root.mjs";
 
 const outfile = path.join(ROOT, "bench/dist/parse-tile.mjs");
 await build({

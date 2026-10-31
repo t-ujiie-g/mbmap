@@ -4,7 +4,8 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { gzipSync, brotliCompressSync } from "node:zlib";
 import path from "node:path";
 import { chromium } from "playwright";
-import { serve, ROOT } from "../lib/serve.mjs";
+import { serve } from "../lib/serve.mjs";
+import { ROOT } from "../lib/root.mjs";
 
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const throttle = Number(arg("throttle", 1));

@@ -1,5 +1,3 @@
-// js: write output straight into a JS Float32Array through FFI.
-
 ///|
 #external
 type Float32Array
@@ -10,6 +8,7 @@ extern "js" fn f32_set(a : Float32Array, i : Int32, v : Float) =
 
 ///|
 /// Same algorithm as `@kernel.decode_deltas`, writing into a JS typed array.
+#export_name("decode_f32")
 pub fn decode_f32(
   src : FixedArray[Byte],
   len : Int32,

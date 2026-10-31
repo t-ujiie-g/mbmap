@@ -1,10 +1,5 @@
-// Baseline page: same tiles + same style as the future mbmap example.
-// Reports (ms from navigation start unless noted):
-//   importEnd   : maplibre-gl.mjs evaluated
-//   load        : 'load' event
-//   idle        : first 'idle' (all visible tiles loaded and drawn) = first full render
-// then runs scripted pan / zoom animations and records rAF frame intervals
-// and the CPU time of each Map#_render call.
+// MapLibre baseline page: first render (`load` / first `idle`), then scripted pan/zoom
+// recording rAF intervals and Map#_render CPU time. Run by run.mjs.
 const params = new URLSearchParams(location.search);
 const marks = { scriptStart: performance.now() };
 const maplibregl = await import("/bench/node_modules/maplibre-gl/dist/maplibre-gl.mjs");

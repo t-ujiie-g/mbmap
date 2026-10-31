@@ -1,7 +1,5 @@
-// MapLibre worker-side baseline: WorkerTile.parse (MVT decode + style
-// evaluation + bucket building + tessellation) on the bench fixtures with the
-// bench style. Mirrors maplibre-gl-js test/bench/lib/parse_tile.ts.
-// Bundled and run by parse-tile.mjs.
+// MapLibre worker baseline: WorkerTile.parse on the bench fixtures and style, the way
+// maplibre-gl-js test/bench/lib/parse_tile.ts does it. Bundled and run by parse-tile.mjs.
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {PbfReader} from 'pbf';
 import {VectorTile} from '@mapbox/vector-tile';
@@ -52,22 +50,21 @@ function median(xs: number[]) { const s = [...xs].sort((a, b) => a - b); return 
 
 const WARMUP = 5, ITER = 15;
 const rows = [];
-for (const [label, granularity] of [['noSubdivision', SubdivisionGranularitySetting.noSubdivision]] as const) {
-    for (const tile of tiles) {
-        for (let i = 0; i < WARMUP; i++) { await parse(tile, granularity); decodeOnly(tile); }
-        const parseMs = [], decodeMs = [];
-        let vertices = 0, buckets = 0;
-        for (let i = 0; i < ITER; i++) {
-            let t0 = performance.now();
-            const result = await parse(tile, granularity);
-            buckets = result.buckets.length;
-            parseMs.push(performance.now() - t0);
-            t0 = performance.now();
-            vertices = decodeOnly(tile);
-            decodeMs.push(performance.now() - t0);
-        }
-        rows.push({tile: tile.key, bytes: tile.buffer.length, granularity: label, geometryPoints: vertices, buckets, decodeMs: median(decodeMs), parseMs: median(parseMs)});
+const granularity = SubdivisionGranularitySetting.noSubdivision;
+for (const tile of tiles) {
+    for (let i = 0; i < WARMUP; i++) { await parse(tile, granularity); decodeOnly(tile); }
+    const parseMs = [], decodeMs = [];
+    let vertices = 0, buckets = 0;
+    for (let i = 0; i < ITER; i++) {
+        let t0 = performance.now();
+        const result = await parse(tile, granularity);
+        buckets = result.buckets.length;
+        parseMs.push(performance.now() - t0);
+        t0 = performance.now();
+        vertices = decodeOnly(tile);
+        decodeMs.push(performance.now() - t0);
     }
+    rows.push({tile: tile.key, bytes: tile.buffer.length, granularity: 'noSubdivision', geometryPoints: vertices, buckets, decodeMs: median(decodeMs), parseMs: median(parseMs)});
 }
 const sum = (k: string) => rows.reduce((a, r: any) => a + r[k], 0);
 const center = rows.find(r => r.tile === '14/14552/6451');

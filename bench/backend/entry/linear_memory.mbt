@@ -1,6 +1,3 @@
-// wasm / wasm-gc: read input from and write output to linear memory directly,
-// so JS can wrap both sides in typed array views.
-
 ///|
 extern "wasm" fn load_u8(addr : Int32) -> Int32 =
   #|(func (param i32) (result i32) (i32.load8_u (local.get 0)))
@@ -15,12 +12,15 @@ extern "wasm" fn memory_grow(pages : Int32) -> Int32 =
 
 ///|
 /// Grows linear memory by `pages` 64KiB pages; returns the previous size.
+#export_name("grow_memory")
 pub fn grow_memory(pages : Int32) -> Int32 {
   memory_grow(pages)
 }
 
 ///|
 /// Same algorithm as `@kernel.decode_deltas`, over raw addresses.
+/// Unchecked on purpose: the caller guarantees both regions are in bounds.
+#export_name("decode_mem")
 pub fn decode_mem(src : Int32, len : Int32, dst : Int32) -> Int32 {
   let end = src + len
   let mut pos = src
@@ -53,6 +53,7 @@ pub fn decode_mem(src : Int32, len : Int32, dst : Int32) -> Int32 {
 
 ///|
 /// Copies `len` bytes from linear memory at `addr` into `dst` inside wasm.
+#export_name("bytes_from_mem")
 pub fn bytes_from_mem(
   addr : Int32,
   len : Int32,
@@ -65,6 +66,7 @@ pub fn bytes_from_mem(
 
 ///|
 /// Copies the first `n` floats of `src` to linear memory at `addr` inside wasm.
+#export_name("floats_to_mem")
 pub fn floats_to_mem(src : FixedArray[Float], n : Int32, addr : Int32) -> Unit {
   for i in 0..<n {
     store_f32(addr + i * 4, src[i])

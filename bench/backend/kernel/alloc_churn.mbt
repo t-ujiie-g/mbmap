@@ -1,7 +1,3 @@
-// Allocation-heavy kernel: builds one Array of boxed points per "feature",
-// like a naive geometry decoder would. Measures allocator / GC throughput,
-// which differs most between backends (RC + TLSF on wasm, host GC elsewhere).
-
 ///|
 priv struct Point {
   x : Int32
@@ -9,7 +5,8 @@ priv struct Point {
 }
 
 ///|
-/// Builds `features` rings of `ring` points and returns a checksum.
+/// Builds `features` arrays of `ring` boxed points and returns a checksum.
+/// Exists to stress the allocator / GC, so it allocates on purpose.
 pub fn alloc_churn(features : Int32, ring : Int32) -> Int32 {
   let mut sum = 0
   for f in 0..<features {

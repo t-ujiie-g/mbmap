@@ -1,11 +1,9 @@
-// Downloads the bench tile fixtures (GSI experimental_bvmap, z14 around
-// Tokyo Station) into bench/fixtures/gsi-bvmap/ and checks them against
-// bench/fixtures/gsi-bvmap.manifest.json. Run with --update to rewrite the
-// manifest after an intentional fixture change.
+// Downloads the GSI bench tiles and verifies them against gsi-bvmap.manifest.json
+// (see bench/fixtures/README.md); --update rewrites the manifest.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { ROOT } from "../lib/serve.mjs";
+import { ROOT } from "../lib/root.mjs";
 
 export const TILES = { z: 14, x: [14549, 14555], y: [6449, 6453] };
 const URL_TEMPLATE = "https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/{z}/{x}/{y}.pbf";

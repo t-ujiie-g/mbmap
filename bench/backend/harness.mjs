@@ -1,16 +1,18 @@
-// Phase 0 backend comparison harness. Environment-agnostic (Node or Worker).
-//
-// Every variant decodes the same buffer of zigzag varint pairs (MVT-like
-// geometry deltas) into absolute Float32 coordinates and hands the result to
-// JS as a Float32Array that owns its ArrayBuffer (i.e. can be transferred
-// with postMessage). Each iteration is split into three phases:
-//   in     : getting the tile bytes to where the decoder can read them
-//   decode : the decode loop itself
-//   out    : getting a transferable Float32Array of the result
-// For linear-memory variants `outView` (a zero-copy view, not transferable)
-// is recorded as well.
+// Backend comparison harness for Node or a Worker; phases and variants are described in bench/README.md.
 
 export const DEFAULTS = { pairs: 500_000, warmup: 15, iterations: 40, seed: 42 };
+
+const WASM_PAGE = 65536;
+
+// wasm-gc keeps MoonBit objects on the GC heap, so the bench owns linear
+// memory from the second page on: input bytes, then 8-byte-aligned floats.
+function reserveRegion(e, inputLen, count) {
+  const src = WASM_PAGE;
+  const dst = src + ((inputLen + 7) & ~7);
+  const pages = Math.ceil((dst + count * 4 - e.memory.buffer.byteLength) / WASM_PAGE);
+  if (pages > 0) e.grow_memory(pages);
+  return { src, dst };
+}
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -126,28 +128,18 @@ function variants({ js, wasm, wasmOpt, wasmgc, wasmgcOpt }, count) {
     });
   }
 
-  const linear = (name, note, e, useMem) => ({
+  const linear = (name, note, e, { raw, gcRegion }) => ({
     name,
     note,
     make(input) {
-      let src, dst;
-      if (e.__gc) {
-        // wasm-gc: MoonBit objects live on the GC heap, so reserve our own
-        // region in the (otherwise unused) linear memory.
-        const need = input.length + count * 4 + 65536;
-        const pages = Math.ceil((need - e.memory.buffer.byteLength) / 65536);
-        if (pages > 0) e.grow_memory(pages);
-        src = 65536;
-        dst = src + ((input.length + 7) & ~7);
-      } else {
-        src = e.alloc_bytes(input.length);
-        dst = e.alloc_floats(count);
-      }
+      const { src, dst } = gcRegion
+        ? reserveRegion(e, input.length, count)
+        : { src: e.alloc_bytes(input.length), dst: e.alloc_floats(count) };
       return () => {
         const t0 = performance.now();
         new Uint8Array(e.memory.buffer, src, input.length).set(input);
         const t1 = performance.now();
-        if (useMem) e.decode_mem(src, input.length, dst);
+        if (raw) e.decode_mem(src, input.length, dst);
         else e.decode(src, input.length, dst);
         const t2 = performance.now();
         const view = new Float32Array(e.memory.buffer, dst, count);
@@ -161,8 +153,8 @@ function variants({ js, wasm, wasmOpt, wasmgc, wasmgcOpt }, count) {
 
   for (const [suffix, e] of [["", wasm], ["+opt", wasmOpt]]) {
     if (!e) continue;
-    list.push(linear(`mbt-wasm${suffix}`, "linear memory; safe FixedArray decode; view + slice()", e, false));
-    list.push(linear(`mbt-wasm-raw${suffix}`, "linear memory; raw load/store via inline wasm; view + slice()", e, true));
+    list.push(linear(`mbt-wasm${suffix}`, "linear memory; safe FixedArray decode; view + slice()", e, {}));
+    list.push(linear(`mbt-wasm-raw${suffix}`, "linear memory; raw load/store via inline wasm; view + slice()", e, { raw: true }));
   }
 
   for (const [suffix, gc] of [["", wasmgc], ["+opt", wasmgcOpt]]) {
@@ -189,18 +181,14 @@ function variants({ js, wasm, wasmOpt, wasmgc, wasmgcOpt }, count) {
     list.push(linear(
       `mbt-wasm-gc-mem${suffix}`,
       "wasm-gc code, I/O through linear memory with inline wasm; view + slice()",
-      Object.assign(Object.create(null), gc, { __gc: true }),
-      true,
+      gc,
+      { raw: true, gcRegion: true },
     ));
     list.push({
       name: `mbt-wasm-gc-copy${suffix}`,
       note: "wasm-gc; JS->linear memory, in-wasm copy to GC Bytes, safe decode, in-wasm copy back; view + slice()",
       make(input) {
-        const need = input.length + count * 4 + 65536;
-        const pages = Math.ceil((need - gc.memory.buffer.byteLength) / 65536);
-        if (pages > 0) gc.grow_memory(pages);
-        const srcAddr = 65536;
-        const dstAddr = srcAddr + ((input.length + 7) & ~7);
+        const { src: srcAddr, dst: dstAddr } = reserveRegion(gc, input.length, count);
         const src = gc.alloc_bytes(input.length);
         const dst = gc.alloc_floats(count);
         return () => {
@@ -221,7 +209,6 @@ function variants({ js, wasm, wasmOpt, wasmgc, wasmgcOpt }, count) {
   return list;
 }
 
-// Allocation-heavy workload: one Array of boxed points per feature.
 function allocJs(features, ring) {
   let sum = 0;
   for (let f = 0; f < features; f++) {
@@ -291,4 +278,10 @@ export function runSuite(modules, opts = {}) {
     params: { pairs, warmup, iterations, seed, inputBytes: input.length, outputFloats: count },
     rows,
   };
+}
+
+export function printTables(result) {
+  const ms = (s) => s?.median.toFixed(2);
+  console.table(result.rows.map((r) => ({ name: r.name, ok: r.correct, err: r.error, in: ms(r.in), decode: ms(r.decode), out: ms(r.out), total: ms(r.total) })));
+  console.table(result.alloc.rows.map((r) => ({ name: r.name, ok: r.correct, ms: ms(r.time) })));
 }

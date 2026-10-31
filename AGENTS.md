@@ -21,7 +21,7 @@ moon test --target all           # all tests on all backends
 moon test <pkg-dir> --target all # one package, e.g. moon test bench/backend/kernel
 moon test <pkg-dir> -F "glob"    # filter tests by name
 moon test <pkg-dir> -u           # update snapshots (single target only; -u fails with --target all)
-moon fmt && moon info            # before committing; also `moon info --target js` for js-only packages (map, render_webgl2)
+moon fmt && moon info            # before committing; regenerates pkg.generated.mbti
 ```
 
 Benchmarks (from `bench/`, Node + Playwright):
@@ -33,6 +33,7 @@ npm run backend:node      # backend comparison in Node (builds MoonBit + wasm-op
 npm run backend:browser   # same, inside a module Worker in Chromium/Firefox/WebKit
 npm run maplibre:parse    # MapLibre WorkerTile.parse baseline
 npm run maplibre          # MapLibre first-render / frame-time / bundle-size baseline
+npm test                  # Node tests for bench tooling (lib/*.test.mjs)
 ```
 
 Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from there (VISION §2: never claim "fast" without a reproducible script).
@@ -45,7 +46,7 @@ Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from ther
   moon check --target all
   moon test --target all
   moon fmt
-  moon info && moon info --target js   # commit .mbti diffs with the code
+  moon info                            # commit .mbti diffs with the code
   ```
   A `.mbti` diff means the public API changed; check it is intended.
 - A change that claims a perf effect reruns the relevant `bench/` script and updates PROGRESS.md with the new numbers.
@@ -54,7 +55,8 @@ Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from ther
 ## 3. Toolchain notes
 
 - moon 0.1.20261028 uses the **new DSL config files `moon.mod` / `moon.pkg`**, not `moon.mod.json` / `moon.pkg.json`. MoonBit syntax and tooling change quickly: verify APIs with `moon ide doc`, generated `.mbti`, or docs.moonbitlang.com instead of guessing from memory.
-- `bench/backend/entry/moon.pkg` shows the working patterns for per-backend link `exports`, `export-memory-name`, and per-file conditional compilation (`options(targets: {...})`).
+- `bench/backend/entry` shows the working patterns for exports (`pkgtype(kind: "foreign_library")` + `#export_name`), `export-memory-name`, and per-file conditional compilation (`options(targets: {...})`).
+- `moon info` writes `.mbti` from the canonical backend (wasm), so js-only packages (`map`, `render_webgl2`) currently get none; `moon info --target js` only prints the diff against wasm. Settle how to track their interface before they gain public API.
 - Inline wasm via `extern "wasm" fn f(...) = #|(func ...)` works on both wasm and wasm-gc and is how linear memory is accessed.
 
 ## 4. Architecture
@@ -67,7 +69,7 @@ Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← w
 - `npm/`, `element/`, `adapters/`, `examples/` are not MoonBit packages (TS/HTML side).
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 
-Backend facts measured in Phase 0 (see PROGRESS.md): wasm (linear memory) uses refcount + TLSF and is 6–9× slower than wasm-gc/JS on allocation-heavy code. Node 22's older V8 does not inline small wasm functions, so wasm builds look 2–3× slower there than in current browsers. Release wasm builds should go through `wasm-opt -O3` (needs `--enable-simd --enable-bulk-memory-opt` etc., see `bench/package.json` `opt` script).
+Backend facts measured in Phase 0 (see PROGRESS.md): wasm (linear memory) uses refcount + TLSF and is 6–9× slower than wasm-gc/JS on allocation-heavy code. Node 22's older V8 does not inline small wasm functions, so wasm builds look 2–3× slower there than in current browsers. Release wasm builds should go through `wasm-opt -O3` (it needs explicit `--enable-*` feature flags; see `bench/backend/opt.mjs`).
 
 ## 5. Benchmark gotchas
 
@@ -140,7 +142,7 @@ A `.mbt` file over ~500 lines is a smell, not a rule. Split only at a logical bo
 moon check --target all --deny-warn
 moon test --target all
 moon fmt
-moon info && moon info --target js
+moon info
 ```
 Then run the §8 security check on the touched area. Push only when everything is clean.
 
@@ -173,7 +175,7 @@ Everything fetched at runtime is attacker-controllable. Decoders must fail safel
 
 ### 8.4 Repo and tooling hygiene
 - No secrets, tokens or personal data in code, fixtures, bench results or commit messages. Bench results record the environment, not user identifiers.
-- `bench/lib/serve.mjs` is a dev-only server: it must bind to `127.0.0.1` and refuse paths outside the repo root.
+- `bench/lib/serve.mjs` is a dev-only server: it must bind to `127.0.0.1`, refuse paths outside the repo root and dotfiles (`.git`, `.env`), and survive malformed URLs. `bench/lib/serve.test.mjs` pins this down.
 - Ported code keeps its license header and a `NOTICE` entry (VISION §7). License review is part of the dependency check.
 
 ## 9. Things to avoid

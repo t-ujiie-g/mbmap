@@ -1,11 +1,7 @@
-// Phase 0 backend comparison kernel.
-// Decodes a stream of zigzag-encoded varint pairs (dx, dy), accumulates them
-// like MVT geometry deltas and writes the absolute coordinates as Float.
-// This is pure MoonBit and shared by all backends.
-
 ///|
-/// Decodes `len` bytes of `src` into `out` and returns the number of floats
-/// written. `out` must have room for every decoded value.
+/// Decodes zigzag varint (dx, dy) pairs from the first `len` bytes of `src`,
+/// accumulating them like MVT geometry deltas, and returns the floats written.
+/// `out` must have room for every decoded value.
 pub fn decode_deltas(
   src : FixedArray[Byte],
   len : Int32,

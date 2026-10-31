@@ -12,11 +12,12 @@ npm run backend:node      # Wasm バックエンド比較（Node）
 npm run backend:browser   # 同（Chromium / Firefox / WebKit の module Worker 内）
 npm run maplibre:parse    # MapLibre WorkerTile.parse の基準値（Node）
 npm run maplibre          # MapLibre の初回描画・フレーム時間・バンドルサイズ（Chromium + Metal GPU）
+npm test                  # ベンチ用ツール（lib/）のテスト
 ```
 
 ## backend/ — Wasm バックエンド比較（Phase 0）
 
-`kernel/`（純 MoonBit）と `entry/`（バックエンドごとの export 面）を `wasm` / `wasm-gc` / `js` で
+`kernel/`（純 MoonBit）と `entry/`（`#export_name` で公開する export 面）を `wasm` / `wasm-gc` / `js` で
 `--release` ビルドし、さらに `wasm-opt -O3` 版を作って比較する。
 
 - **decode**：zigzag varint 対（MVT ジオメトリのデルタ相当）100 万値・約 1.35MB をデコードし、
