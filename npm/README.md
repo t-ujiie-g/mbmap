@@ -53,7 +53,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 
 ## 対応するスタイル
 
-background / fill / line レイヤーと、1つの vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
+background / fill / line / circle レイヤーと、1つの vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
 
 WebGL2 とモジュール Worker、wasm-gc が必要（Chrome / Edge 119 以降、Firefox 120 以降、Safari 18.2 以降）。
 

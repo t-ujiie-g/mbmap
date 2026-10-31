@@ -6,6 +6,11 @@ pub const KIND_FILL : Int32 = 1
 pub const KIND_LINE : Int32 = 2
 
 ///|
+/// Circles share the line vertex layout: a quad per point whose extrusion
+/// is ±`@tess.EXTRUDE_SCALE` (see `@tess.add_points`).
+pub const KIND_CIRCLE : Int32 = 3
+
+///|
 /// Bytes per packed fill vertex: x, y as Int16.
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
@@ -195,10 +200,33 @@ pub fn PackedTile::add_line(
   lines : @tess.LineBuffers,
   extent~ : Int32 = @core.TILE_EXTENT,
 ) -> Bool {
+  self.add_extruded(style_layer, KIND_LINE, lines, extent)
+}
+
+///|
+/// Appends a circle layer (quads from `@tess.add_points`); returns false if
+/// the tile would exceed `MAX_PACKED_BYTES`.
+pub fn PackedTile::add_circles(
+  self : PackedTile,
+  style_layer : Int32,
+  points : @tess.LineBuffers,
+  extent~ : Int32 = @core.TILE_EXTENT,
+) -> Bool {
+  self.add_extruded(style_layer, KIND_CIRCLE, points, extent)
+}
+
+///|
+fn PackedTile::add_extruded(
+  self : PackedTile,
+  style_layer : Int32,
+  kind : Int32,
+  lines : @tess.LineBuffers,
+  extent : Int32,
+) -> Bool {
   let n = lines.num_vertices()
   guard self.entry(
       style_layer,
-      KIND_LINE,
+      kind,
       n * LINE_VERTEX_BYTES,
       n,
       lines.indices.length(),

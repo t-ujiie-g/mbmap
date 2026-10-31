@@ -1,5 +1,39 @@
 # PROGRESS
 
+## Phase 7.2：circle レイヤー（2026-10-31）
+
+状態：**7.2 完了**（`bench/maplibre/style.json` に circle レイヤーを2つ加え、平面とピッチ 55° の両方で、MapLibre と位置・色・大きさが一致することをスクリーンショットで確かめた）。
+
+### できたこと
+
+- **`style`**：`circle` レイヤー。paint は `circle-color`、`circle-opacity`、`circle-radius`（既定 5）、`circle-stroke-width`（既定 0）、`circle-stroke-color`、`circle-stroke-opacity`。どれも式で書ける（ズームや属性値に応じて変えられる）。
+- **`tess`**：`add_points`。タイル内（`[0, extent)`）の点ごとに四角形を1つ作る（MapLibre と同じく、タイル外の点は捨てる）。頂点の並びは線と同じにしたので、詰め込みとアップロードは線の経路を使い回す。
+- **`worker`**：`KIND_CIRCLE`。属性値によるグループ分けと、同じジオメトリのレイヤーでのバッファ共有は、ほかの種類と同じく効く（半径だけが違う2つのレイヤーは、1つのバッファを共有する）。
+- **`render_webgl2`**：circle のシェーダ。投影した中心の周りに、画面空間で半径＋ストロークだけ広げ、深さに合わせて縮める（MapLibre の既定 `circle-pitch-alignment: viewport` と `circle-pitch-scale: map`）。塗りとストロークの境と外周は、1ピクセルでアンチエイリアスする。
+- **`map`**：メッシュは種類（`KIND_*`）を持ち、circle の半径とストロークを評価して描く。
+- **スタイル**：`bench/maplibre/style.json` と `examples/basic/style.json` に、`elevation`（標高点。定数の paint）と `symbol`（地図記号の点。`ftCode` による `match` で色分け、ズームで半径を補間、白いストローク）を加えた。
+
+### ベンチ結果（Chromium 156 + Metal / M2、11回の中央値。スタイルに circle を加えたので、Phase 7.1 とは負荷が違う）
+
+| | mbmap | MapLibre 6.16.0 |
+|---|---|---|
+| メイン（`mbmap` の入口、gzip） | 25.9KB | 295.5KB |
+| Worker（gzip） | **78.8KB**（予算 80KB） | 148.0KB |
+| 初回描画 | 97.9ms | 99.1ms |
+| 1フレームの rAF の CPU 時間（p50 / p95） | 0.34〜0.44 / 0.65〜0.76ms | 0.80〜0.95 / 1.40〜1.54ms |
+| `process_tile`（温まった状態、タイル中央値） | 6.48ms | — |
+
+- **初回描画は、実行によって 98ms 前後と 113ms 前後に分かれる**。差はちょうど1フレームで、最後のタイルが vsync の直前に間に合うかどうかで決まる。同じコードで続けて測ると、circle なしで 11回中1回、circle ありで 11回中4回が遅いほうになった。別の実行では、circle ありで 11回中 6〜7回が遅かった。レイヤーが増えると、間に合わない回が増える。根本的な原因は、Phase 3 から残っている「作成から idle までが遅い」（Worker の最初のタイルが最適化前のコードで動く）こと。
+- 1フレームの CPU 時間は、7.1（p95 0.46〜0.59ms）より増えた。circle レイヤーが2つ増え、タイルごと・グループごとの描画呼び出しが増えたため。MapLibre の約半分で、代理指標の目標（p95 1.44ms 以下）は満たしている。
+- 試してやめたこと：ANGLE（Metal）がシェーダのパイプラインを最初の描画で作るのが原因と考え、初期化時に3つのプログラムで空の三角形を描いて準備させた。すると、11回中 10回が遅いほうになったので元に戻した。
+
+### 既知の問題・次にやること
+
+- **Worker の予算の残りは 1.2KB**（78.8KB / 80KB）。7.3 で GeoJSON を足す前に、wasm の中で何が大きいかを調べ、削る必要がある。GeoJSON のタイル分割は、表示用 Worker に入れるか、別の入口にするかも、ここで決める（VISION §3 の方針では、入口を分けられる）。
+- 初回描画が1フレームずれる問題（上記）。
+- 未対応：`circle-blur`、`circle-translate`、`circle-pitch-alignment: map`（地面に寝かせる）、`circle-pitch-scale: viewport`。
+- 次は 7.3（列指向データと GeoJSON ソース）。
+
 ## Phase 7.1：3D を見越したカメラ（回転・ピッチ）（2026-10-31）
 
 Phase 7 は大きいので、3つの PR に分ける：7.1 カメラ（この PR）、7.2 circle レイヤー、7.3 列指向データと GeoJSON ソース。

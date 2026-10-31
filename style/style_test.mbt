@@ -195,3 +195,35 @@ test "tile URLs are relative or http(s)" {
     }
   }
 }
+
+///|
+test "circle layers read radius and stroke, with MapLibre's defaults" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "a", "type": "circle", "source": "s", "source-layer": "pts",
+      #|   "paint": {"circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2, 20, 12],
+      #|             "circle-color": "#ff0000", "circle-stroke-width": 1, "circle-stroke-color": "#ffffff"}},
+      #|  {"id": "b", "type": "circle"}
+      #|]}
+    ),
+  )
+  let a = s.layers[0]
+  assert_eq(a.kind, Circle)
+  assert_eq(a.radius.eval(15.0, @style.NoFeature::{ }), Num(7.0))
+  assert_eq(constant(a.color), Color({ r: 1.0, g: 0.0, b: 0.0, a: 1.0, }))
+  assert_eq(constant(a.stroke_width), Num(1.0))
+  assert_eq(
+    constant(a.stroke_color),
+    Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }),
+  )
+  let b = s.layers[1]
+  assert_eq(
+    (constant(b.radius), constant(b.stroke_width), constant(b.stroke_opacity)),
+    (Num(5.0), Num(0.0), Num(1.0)),
+  )
+  assert_eq(
+    constant(b.stroke_color),
+    Color({ r: 0.0, g: 0.0, b: 0.0, a: 1.0, }),
+  )
+}

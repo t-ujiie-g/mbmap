@@ -69,8 +69,24 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    ["u_matrix", "u_units", "u_half", "u_depth", "u_clip", "u_color"]);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  #|  // Circles face the viewer (MapLibre's pitch-alignment "viewport") and
+  #|  // shrink with distance like the map ("pitch-scale" "map"): the quad is
+  #|  // expanded around the projected center by u_size device pixels at the
+  #|  // center's depth. u_inner is the fill radius over u_size; outside it is
+  #|  // the stroke.
+  #|  const circle = program(
+  #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform vec2 u_px; uniform float u_size;" +
+  #|    "uniform float u_depth; out vec2 v_extrude; out vec2 v_pos;" +
+  #|    "void main() { v_pos = a_pos; v_extrude = a_data.xy / 63.0; vec4 c = u_matrix * vec4(a_pos, 0.0, 1.0);" +
+  #|    "  gl_Position = c + vec4(v_extrude * u_size * u_px * u_depth, 0.0, 0.0); }",
+  #|    clip + "uniform vec4 u_color; uniform vec4 u_stroke; uniform float u_size; uniform float u_inner;" +
+  #|    "in vec2 v_extrude; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; float d = length(v_extrude); float aa = 1.0 / u_size;" +
+  #|    "  float t = smoothstep(u_inner - aa, u_inner, d);" +
+  #|    "  o = mix(u_color, u_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
+  #|    ["u_matrix", "u_px", "u_size", "u_depth", "u_clip", "u_color", "u_stroke", "u_inner"]);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, mat: new Float32Array(16) };
+  #|  return { gl, fill, line, circle, mat: new Float32Array(16), px: [0, 0] };
   #|}
 
 ///|
@@ -79,7 +95,7 @@ extern "js" fn is_null(gl : Gl) -> Bool =
 
 ///|
 extern "js" fn gl_viewport(gl : Gl, width : Int32, height : Int32) -> Unit =
-  #|(c, w, h) => c.gl.viewport(0, 0, w, h)
+  #|(c, w, h) => { c.gl.viewport(0, 0, w, h); c.px = [2 / w, 2 / h]; }
 
 ///|
 extern "js" fn gl_clear(gl : Gl, r : Double, g : Double, b : Double) -> Unit =
@@ -166,6 +182,39 @@ extern "js" fn gl_draw_line(
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_half, half);
   #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
+  #|  gl.bindVertexArray(m.vao);
+  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|}
+
+///|
+/// `color` and `stroke` are straight RGBA; sizes are in device pixels.
+extern "js" fn gl_draw_circle(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  depth : Double,
+  color : FixedArray[Double],
+  stroke : FixedArray[Double],
+  radius : Double,
+  stroke_width : Double,
+) -> Unit =
+  #|(c, m, matrix, clip, depth, color, stroke, radius, strokeWidth) => {
+  #|  const gl = c.gl, p = c.circle;
+  #|  const size = radius + strokeWidth;
+  #|  if (size <= 0) return;
+  #|  // Without a stroke the edge fades to the fill color.
+  #|  const s = strokeWidth > 0 ? stroke : color;
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
+  #|  gl.uniform1f(p.u_size, size);
+  #|  gl.uniform1f(p.u_depth, depth);
+  #|  gl.uniform1f(p.u_inner, radius / size);
+  #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
+  #|  gl.uniform4f(p.u_stroke, s[0] * s[3], s[1] * s[3], s[2] * s[3], s[3]);
   #|  gl.bindVertexArray(m.vao);
   #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
   #|}

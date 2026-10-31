@@ -37,17 +37,18 @@ pub fn Renderer::clear(
 }
 
 ///|
-/// Uploads a packed fill (`line` false) or line layer; `count` is its index
-/// count and `index_bytes` 2 or 4.
+/// Uploads a packed layer; `extruded` is true for the line vertex layout
+/// (lines and circles), false for fills. `count` is its index count and
+/// `index_bytes` 2 or 4.
 pub fn Renderer::upload(
   self : Renderer,
-  line : Bool,
+  extruded : Bool,
   vertices : JsBuffer,
   indices : JsBuffer,
   count : Int32,
   index_bytes : Int32,
 ) -> Mesh {
-  gl_upload(self.gl, line, vertices, indices, count, index_bytes)
+  gl_upload(self.gl, extruded, vertices, indices, count, index_bytes)
 }
 
 ///|
@@ -117,5 +118,30 @@ pub fn Renderer::draw_line(
     b,
     a,
     width / 2.0 + 0.5,
+  )
+}
+
+///|
+/// Draws circles with `radius` and `stroke_width` in device pixels at the
+/// center's depth; `color` and `stroke` are straight RGBA.
+pub fn Renderer::draw_circle(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  color : FixedArray[Double],
+  stroke : FixedArray[Double],
+  radius : Double,
+  stroke_width : Double,
+) -> Unit {
+  gl_draw_circle(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.center_depth,
+    color,
+    stroke,
+    radius,
+    stroke_width,
   )
 }

@@ -1,6 +1,13 @@
 ///|
-/// `@worker.KIND_LINE`, mirrored so the main bundle does not pull in the worker.
+/// `@worker.KIND_FILL`, `KIND_LINE` and `KIND_CIRCLE`, mirrored so the main
+/// bundle does not pull in the worker.
+const KIND_FILL : Int32 = 1
+
+///|
 const KIND_LINE : Int32 = 2
+
+///|
+const KIND_CIRCLE : Int32 = 3
 
 ///|
 fn Map::request_tile(self : Map, id : @core.TileId) -> Unit {
@@ -46,12 +53,12 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         for i in 0..<layers_of(msg) {
           let l = layer_at(msg, i)
           let shared = get_int(l, "shared")
-          let line = get_int(l, "kind") == KIND_LINE
+          let kind = get_int(l, "kind")
           let mesh = if shared >= 0 && shared < meshes.length() {
             meshes[shared].mesh
           } else {
             self.renderer.upload(
-              line,
+              kind != KIND_FILL,
               buffer_of(l, "vertices"),
               buffer_of(l, "indices"),
               get_int(l, "count"),
@@ -61,7 +68,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           let props = props_or_null(l)
           meshes.push({
             layer: get_int(l, "layer"),
-            line,
+            kind,
             mesh,
             owned: shared < 0,
             props: if is_null_value(props) {

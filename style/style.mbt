@@ -11,6 +11,7 @@ pub(all) enum LayerKind {
   Background
   Fill
   Line
+  Circle
 } derive(Debug, Eq)
 
 ///|
@@ -29,8 +30,10 @@ pub(all) enum Cap {
 
 ///|
 /// One drawable layer. `filter` (None: every feature) selects features;
-/// `color`, `opacity` and `width` are the layer type's paint values
-/// (`fill-*`, `line-*` or `background-*`), `width` in CSS pixels.
+/// `color` and `opacity` are the layer type's paint values (`fill-*`,
+/// `line-*`, `circle-*` or `background-*`); `width` is `line-width`;
+/// `radius` and the `stroke_*` values are the `circle-*` ones. Sizes are in
+/// CSS pixels.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -42,6 +45,10 @@ pub struct StyleLayer {
   color : Expr
   opacity : Expr
   width : Expr
+  radius : Expr
+  stroke_width : Expr
+  stroke_color : Expr
+  stroke_opacity : Expr
   join : Join
   cap : Cap
   miter_limit : Double
@@ -202,6 +209,7 @@ fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
     "background" => Background
     "fill" => Fill
     "line" => Line
+    "circle" => Circle
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -216,6 +224,7 @@ fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
     Background => "background"
     Fill => "fill"
     Line => "line"
+    Circle => "circle"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter
@@ -255,6 +264,34 @@ fn parse_layer(path : String, json : Json) -> StyleLayer? raise StyleError {
       Json::number(1.0),
     ),
     width: paint_expr(paint, "line-width", ppath, NumberType, Json::number(1.0)),
+    radius: paint_expr(
+      paint,
+      "circle-radius",
+      ppath,
+      NumberType,
+      Json::number(5.0),
+    ),
+    stroke_width: paint_expr(
+      paint,
+      "circle-stroke-width",
+      ppath,
+      NumberType,
+      Json::number(0.0),
+    ),
+    stroke_color: paint_expr(
+      paint,
+      "circle-stroke-color",
+      ppath,
+      ColorType,
+      Json::string("#000000"),
+    ),
+    stroke_opacity: paint_expr(
+      paint,
+      "circle-stroke-opacity",
+      ppath,
+      NumberType,
+      Json::number(1.0),
+    ),
     join,
     cap,
     miter_limit: number_or(layout, "line-miter-limit", lpath, 2.0),
