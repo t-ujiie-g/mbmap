@@ -58,6 +58,11 @@ fn Store::ensure(self : Store, need : Int32, _keep : Int32) -> Bool {
 }
 
 ///|
+fn Store::set_u8(self : Store, at : Int32, v : Int32) -> Unit {
+  store_u8(self.base + at, v)
+}
+
+///|
 fn Store::set_u16(self : Store, at : Int32, v : Int32) -> Unit {
   store_i16(self.base + at, v)
 }

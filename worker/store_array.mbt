@@ -25,6 +25,11 @@ fn Store::ensure(self : Store, need : Int32, keep : Int32) -> Bool {
 }
 
 ///|
+fn Store::set_u8(self : Store, at : Int32, v : Int32) -> Unit {
+  self.data[at] = v.to_byte()
+}
+
+///|
 fn Store::set_u16(self : Store, at : Int32, v : Int32) -> Unit {
   self.data[at] = v.to_byte()
   self.data[at + 1] = (v >> 8).to_byte()

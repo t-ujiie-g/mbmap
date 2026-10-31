@@ -36,7 +36,10 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
       self.requests.remove(request)
       guard self.tiles.get(key) is Some(entry) else { return }
       if kind == "tile-error" {
-        console_warn("tile \{Repr(entry.id)}: \{get_string(msg, "message")}")
+        let id = entry.id
+        console_warn(
+          "tile \{id.z}/\{id.x}/\{id.y}: \{get_string(msg, "message")}",
+        )
         entry.state = Failed
       } else {
         let meshes : Array[LayerMesh] = []
@@ -55,11 +58,17 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
               get_int(l, "indexBytes"),
             )
           }
+          let props = props_or_null(l)
           meshes.push({
             layer: get_int(l, "layer"),
             line,
             mesh,
             owned: shared < 0,
+            props: if is_null_value(props) {
+              None
+            } else {
+              Some({ obj: props, })
+            },
           })
         }
         entry.state = Ready(meshes)

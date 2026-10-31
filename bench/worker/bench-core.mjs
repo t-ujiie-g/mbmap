@@ -1,5 +1,5 @@
 // The wasm-gc build of the `worker` package processing every fixture with
-// examples/basic/style.json, as tile workers do: "cold" is a fresh instance
+// bench/maplibre/style.json, as tile workers do: "cold" is a fresh instance
 // handling each tile once in order (what a page's first tiles see), "warm"
 // the per-tile median after warm-up.
 import { runRows } from "../lib/rows.mjs";
@@ -11,7 +11,7 @@ export async function loadWorker(fetchBytes) {
     const addr = e.prepare_input(bytes.length);
     new Uint8Array(e.memory.buffer, addr, bytes.length).set(bytes);
   };
-  put(await fetchBytes("examples/basic/style.json"));
+  put(await fetchBytes("bench/maplibre/style.json"));
   if (e.init_style() !== 0) throw new Error("style failed");
   return (buf) => {
     put(buf);

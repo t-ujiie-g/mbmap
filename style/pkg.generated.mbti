@@ -6,6 +6,10 @@ import {
 }
 
 // Values
+pub const MAX_EXPR_DEPTH : Int32 = 32
+
+pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
+
 pub fn parse_color(String) -> Color?
 
 // Errors
@@ -14,6 +18,7 @@ pub(all) suberror StyleError {
   Unsupported(path~ : String, String)
 } derive(Eq, @debug.Debug)
 pub fn StyleError::equal(Self, Self) -> Bool
+pub fn StyleError::message(Self) -> String
 pub fn StyleError::not_equal(Self, Self) -> Bool
 pub fn StyleError::to_repr(Self) -> @debug.Repr
 
@@ -27,6 +32,18 @@ pub fn Cap::equal(Self, Self) -> Bool
 pub fn Cap::not_equal(Self, Self) -> Bool
 pub fn Cap::to_repr(Self) -> @debug.Repr
 
+pub(all) enum CmpOp {
+  Eq
+  Ne
+  Lt
+  Le
+  Gt
+  Ge
+} derive(Eq, @debug.Debug)
+pub fn CmpOp::equal(Self, Self) -> Bool
+pub fn CmpOp::not_equal(Self, Self) -> Bool
+pub fn CmpOp::to_repr(Self) -> @debug.Repr
+
 pub(all) struct Color {
   r : Double
   g : Double
@@ -37,15 +54,45 @@ pub fn Color::equal(Self, Self) -> Bool
 pub fn Color::not_equal(Self, Self) -> Bool
 pub fn Color::to_repr(Self) -> @debug.Repr
 
-pub(all) enum GeometryFilter {
-  AnyGeometry
-  OnlyPoint
-  OnlyLineString
-  OnlyPolygon
+pub(all) enum Expected {
+  AnyType
+  ColorType
+  NumberType
+  BoolType
 } derive(Eq, @debug.Debug)
-pub fn GeometryFilter::equal(Self, Self) -> Bool
-pub fn GeometryFilter::not_equal(Self, Self) -> Bool
-pub fn GeometryFilter::to_repr(Self) -> @debug.Repr
+pub fn Expected::equal(Self, Self) -> Bool
+pub fn Expected::not_equal(Self, Self) -> Bool
+pub fn Expected::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Expr {
+  Lit(Value)
+  Get(String)
+  Has(String)
+  GeometryType
+  Zoom
+  Not(Expr)
+  All(Array[Expr])
+  Any(Array[Expr])
+  Compare(CmpOp, Expr, Expr)
+  In(Expr, Expr)
+  Match(Expr, Array[(Array[Value], Expr)], Expr)
+  Case(Array[(Expr, Expr)], Expr)
+  Coalesce(Array[Expr])
+  Interpolate(Interpolation, Expr, Array[(Double, Expr)])
+  Step(Expr, Expr, Array[(Double, Expr)])
+} derive(Eq, @debug.Debug)
+pub fn Expr::equal(Self, Self) -> Bool
+pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
+pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
+pub fn Expr::not_equal(Self, Self) -> Bool
+pub fn Expr::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Interpolation {
+  Exponential(Double)
+} derive(Eq, @debug.Debug)
+pub fn Interpolation::equal(Self, Self) -> Bool
+pub fn Interpolation::not_equal(Self, Self) -> Bool
+pub fn Interpolation::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Join {
   Miter
@@ -65,10 +112,17 @@ pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
 pub fn LayerKind::to_repr(Self) -> @debug.Repr
 
+pub(all) struct NoFeature {
+}
+pub fn NoFeature::geometry_type(Self) -> String
+pub fn NoFeature::property(Self, String) -> Value?
+pub impl FeatureContext for NoFeature
+
 pub struct Style {
   sources : Array[VectorSource]
   layers : Array[StyleLayer]
 }
+pub fn Style::from_json(Json) -> Self raise StyleError
 pub fn Style::parse(StringView) -> Self raise StyleError
 pub fn Style::source(Self, String) -> VectorSource?
 
@@ -79,15 +133,27 @@ pub struct StyleLayer {
   source_layer : String
   min_zoom : Double
   max_zoom : Double
-  filter : GeometryFilter
-  color : Color
-  opacity : Double
-  width : Double
+  filter : Expr?
+  color : Expr
+  opacity : Expr
+  width : Expr
   join : Join
   cap : Cap
   miter_limit : Double
   round_limit : Double
 }
+
+pub(all) enum Value {
+  Null
+  Bool(Bool)
+  Num(Double)
+  Str(String)
+  Color(Color)
+  List(Array[Value])
+} derive(Eq, @debug.Debug)
+pub fn Value::equal(Self, Self) -> Bool
+pub fn Value::not_equal(Self, Self) -> Bool
+pub fn Value::to_repr(Self) -> @debug.Repr
 
 pub struct VectorSource {
   id : String
@@ -99,3 +165,7 @@ pub struct VectorSource {
 // Type aliases
 
 // Traits
+pub(open) trait FeatureContext {
+  fn property(Self, String) -> Value?
+  fn geometry_type(Self) -> String
+}

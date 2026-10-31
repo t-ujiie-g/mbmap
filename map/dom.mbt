@@ -146,3 +146,74 @@ extern "js" fn capture_pointer(
 /// Wheel delta in CSS pixels, whatever the event's delta mode.
 extern "js" fn wheel_pixels(e : JsValue) -> Double =
   #|(e) => e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1)
+
+///|
+/// The JS value parsed from `text` with JSON.parse, rebuilt as a MoonBit Json
+/// through the given constructors (keeps a JSON parser out of the bundle).
+extern "js" fn parse_json_js(
+  text : String,
+  null_ : () -> Json,
+  bool_ : (Bool) -> Json,
+  num : (Double) -> Json,
+  str : (String) -> Json,
+  arr : (FixedArray[Json]) -> Json,
+  obj : (FixedArray[String], FixedArray[Json]) -> Json,
+) -> Json =
+  #|(text, mkNull, mkBool, mkNum, mkStr, mkArr, mkObj) => {
+  #|  const build = (v) => {
+  #|    if (v === null) return mkNull();
+  #|    switch (typeof v) {
+  #|      case "boolean": return mkBool(v);
+  #|      case "number": return mkNum(v);
+  #|      case "string": return mkStr(v);
+  #|    }
+  #|    if (Array.isArray(v)) return mkArr(v.map(build));
+  #|    const keys = Object.keys(v);
+  #|    return mkObj(keys, keys.map((k) => build(v[k])));
+  #|  };
+  #|  return build(JSON.parse(text));
+  #|}
+
+///|
+fn parse_json(text : String) -> Json {
+  parse_json_js(
+    text,
+    () => Json::null(),
+    b => Json::boolean(b),
+    n => Json::number(n),
+    s => Json::string(s),
+    items => Json::array(items.iter().collect()),
+    (keys, values) => {
+      let m = Map([])
+      for i, k in keys {
+        m[k] = values[i]
+      }
+      Json::object(m)
+    },
+  )
+}
+
+///|
+/// 0 absent, 1 null, 2 boolean, 3 number, 4 string, 5 other.
+extern "js" fn prop_kind(obj : JsValue, key : String) -> Int32 =
+  #|(o, k) => {
+  #|  if (o == null || !Object.hasOwn(o, k)) return 0;
+  #|  const v = o[k];
+  #|  return v === null ? 1 : typeof v === "boolean" ? 2 : typeof v === "number" ? 3 : typeof v === "string" ? 4 : 5;
+  #|}
+
+///|
+extern "js" fn prop_bool(obj : JsValue, key : String) -> Bool =
+  #|(o, k) => o[k]
+
+///|
+extern "js" fn props_or_null(layer : JsValue) -> JsValue =
+  #|(l) => l.props ?? null
+
+///|
+extern "js" fn is_null_value(v : JsValue) -> Bool =
+  #|(v) => v == null
+
+///|
+extern "js" fn js_null() -> JsValue =
+  #|() => null

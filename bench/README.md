@@ -56,7 +56,8 @@ npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ 
 
 ## maplibre/ — MapLibre 基準値
 
-- `style.json`：background / fill / line のみ（MVP と同じ範囲の Style Spec）。両エンジンで共通に使う。
+- `style.json`：background / fill / line のみ（MVP と同じ範囲の Style Spec）。filter、`match`、`interpolate`、
+  `step` を含む。`render/` と `worker/` も、このファイルをそのまま使う。
 - `parse-tile.ts`：MapLibre の `src/` を esbuild でバンドルし `WorkerTile.parse` を直接呼ぶ
   （maplibre-gl-js の `test/bench/lib/parse_tile.ts` と同じ方法）。
 - `index.html` + `page.mjs` + `run.mjs`：1280×800、DPR 2、ローカル配信のタイルで
@@ -86,8 +87,8 @@ npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ 
 
 ## render/ — 描画（mbmap と MapLibre）
 
-`examples/basic/style.json`（Phase 3 で読める範囲：定数の paint と geometry-type filter）と同じタイル・
-同じカメラ操作で両エンジンを計測する（Chromium + Metal GPU、1280×800、DPR 2、5 回の中央値）。
+`maplibre/style.json` をそのまま両エンジンに渡し、同じタイル・同じカメラ操作で計測する（Chromium + Metal GPU、
+1280×800、DPR 2、11 回の中央値。最初の数回はブラウザが温まっておらず遅いため、5 回では中央値がぶれた）。
 
 - 初回描画：ナビゲーション開始から最初の `idle`（見えているタイルが揃って描かれた）まで。import 完了・
   地図生成の時刻も記録する。mbmap は `bundle/main` を esbuild で minify したもの（アプリが配信する形）を読む。
@@ -98,6 +99,6 @@ npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ 
 
 ## worker/ — Worker のタイル処理
 
-`worker` パッケージの wasm-gc ビルドが `examples/basic/style.json` で全 fixture を処理する時間（デコード、
+`worker` パッケージの wasm-gc ビルドが `maplibre/style.json` で全 fixture を処理する時間（デコード、
 テッセレーション、GPU 用バッファへの書き込みまで）。`cold` は新しいインスタンスが各タイルを 1 回ずつ順に
 処理したもの（ページの最初のタイルに相当）、行の値は温まった後のタイルごとの中央値。出力バイト数も記録する。

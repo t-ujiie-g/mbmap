@@ -92,7 +92,7 @@ fn fail_with(message : Bytes) -> Int32 {
 #export_name("init_style")
 pub fn init_style() -> Int32 {
   try TileProcessor::from_utf8(input_bytes()[:]) catch {
-    e => fail_with(@utf8.encode("\{Repr(e)}"))
+    e => fail_with(@utf8.encode(e.message()))
   } noraise {
     p => {
       processor.val = Some(p)
