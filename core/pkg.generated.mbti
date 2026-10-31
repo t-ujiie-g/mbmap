@@ -10,6 +10,10 @@ pub const MAX_LATITUDE : Double = 85.051128779806604
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
+pub const TILE_EXTENT : Int32 = 4096
+
+pub const TILE_SIZE : Double = 512.0
+
 pub fn lat_from_mercator_y(Double) -> Double
 
 pub fn lng_from_mercator_x(Double) -> Double
@@ -38,6 +42,14 @@ pub fn BBox::is_empty(Self) -> Bool
 pub fn BBox::not_equal(Self, Self) -> Bool
 pub fn BBox::to_repr(Self) -> @debug.Repr
 pub fn BBox::union(Self, Self) -> Self
+
+pub(all) struct Camera {
+  center : LngLat
+  zoom : Double
+} derive(Eq, @debug.Debug)
+pub fn Camera::equal(Self, Self) -> Bool
+pub fn Camera::not_equal(Self, Self) -> Bool
+pub fn Camera::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LngLat {
   lng : Double
@@ -73,6 +85,35 @@ pub fn TileId::new(Int32, Int32, Int32) -> Self?
 pub fn TileId::not_equal(Self, Self) -> Bool
 pub fn TileId::parent(Self) -> Self?
 pub fn TileId::to_repr(Self) -> @debug.Repr
+
+pub(all) struct TileTransform {
+  scale_x : Double
+  scale_y : Double
+  translate_x : Double
+  translate_y : Double
+} derive(Eq, @debug.Debug)
+pub fn TileTransform::equal(Self, Self) -> Bool
+pub fn TileTransform::not_equal(Self, Self) -> Bool
+pub fn TileTransform::to_repr(Self) -> @debug.Repr
+
+pub struct Transform {
+  camera : Camera
+  width : Double
+  height : Double
+  min_zoom : Double
+  max_zoom : Double
+}
+pub fn Transform::covering_tiles(Self, Int32) -> Array[TileId]
+pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
+pub fn Transform::new(Camera, Double, Double, min_zoom? : Double, max_zoom? : Double) -> Self
+pub fn Transform::panned(Self, Double, Double) -> Camera
+pub fn Transform::resize(Self, Double, Double) -> Self
+pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
+pub fn Transform::tile_transform(Self, TileId, Int32) -> TileTransform
+pub fn Transform::tile_zoom(Self, Int32, Int32) -> Int32
+pub fn Transform::with_camera(Self, Camera) -> Self
+pub fn Transform::world_size(Self) -> Double
+pub fn Transform::zoomed_around(Self, Double, Double, Double) -> Camera
 
 // Type aliases
 

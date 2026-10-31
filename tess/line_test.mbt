@@ -98,14 +98,22 @@ test "bevel and over-limit miter joins fill the outer corner with one triangle" 
 }
 
 ///|
-test "round caps and joins add fans close to the circle area" {
+test "round caps are square extensions that the shader cuts to half disks" {
   let capped = extrude([0, 0, 1000, 0], cap=Round)
   assert_valid(capped)
-  let half_disk = @math.PI * 10.0 * 10.0 / 2.0
-  let area = line_area(capped, 10.0)
-  let body = 1000.0 * 20.0
-  assert_true(area > body + 2.0 * half_disk * 0.95)
-  assert_true(area < body + 2.0 * half_disk)
+  assert_true(near(line_area(capped, 10.0), (1000.0 + 20.0) * 20.0))
+  let s = @tess.LINE_VERTEX_STRIDE
+  let mut far = 0
+  for i in 0..<capped.num_vertices() {
+    let along = capped.vertices[i * s + 5]
+    assert_true(along == 0 || along == 1)
+    far += along
+  }
+  assert_eq(far, 4)
+}
+
+///|
+test "round joins add a fan close to the circle area" {
   let joined = extrude([0, 0, 1000, 0, 1000, 500], join=Round)
   assert_valid(joined)
   // Quarter-circle fill on top of the bevel-style arms.

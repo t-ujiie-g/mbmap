@@ -8,7 +8,7 @@ import {
 // Values
 pub const EXTRUDE_SCALE : Int32 = 63
 
-pub const LINE_VERTEX_STRIDE : Int32 = 5
+pub const LINE_VERTEX_STRIDE : Int32 = 6
 
 pub const MAX_MITER_LIMIT : Double = 2.0
 

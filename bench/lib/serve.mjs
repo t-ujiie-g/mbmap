@@ -2,6 +2,7 @@
 import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { ROOT } from "./root.mjs";
 
 const TYPES = {
@@ -29,9 +30,10 @@ export function resolveRequestPath(pathname) {
 
 export function serve(port = 0) {
   const server = http.createServer(async (req, res) => {
-    const file = resolveRequestPath(new URL(req.url, "http://x").pathname);
+    let file = resolveRequestPath(new URL(req.url, "http://x").pathname);
     if (!file) { res.writeHead(403).end(); return; }
     try {
+      if ((await stat(file)).isDirectory()) file = path.join(file, "index.html");
       if (!(await stat(file)).isFile()) throw new Error("not a file");
       const body = await readFile(file);
       res.writeHead(200, {
@@ -48,4 +50,10 @@ export function serve(port = 0) {
     }
   });
   return new Promise((resolve) => server.listen(port, "127.0.0.1", () => resolve({ server, origin: `http://127.0.0.1:${server.address().port}` })));
+}
+
+// `node bench/lib/serve.mjs [port]` serves the repository for examples.
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  const { origin } = await serve(Number(process.argv[2] ?? 8080));
+  console.log(`serving ${ROOT} at ${origin}/ (examples: ${origin}/examples/basic/)`);
 }

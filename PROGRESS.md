@@ -1,5 +1,88 @@
 # PROGRESS
 
+## Phase 3：`worker` + `render_webgl2` + `map` 最小版（2026-10-31）
+
+状態：**完了**（完了条件「fill / line / background が表示され、パン・ズームできる example」を満たした）。
+
+### できたこと
+
+- **`core`**：`Camera`（中心とズーム。値として受け渡しできる）と `Transform`。テストは全ターゲットで7件。
+  - 画面座標とメルカトル座標の相互変換。
+  - パン、カーソル位置を中心にしたズーム（その点が動かない）。
+  - ズームと緯度の制限、経度の折り返し。
+  - タイルズームの決定と、画面を覆うタイルの列挙（中心に近い順）。
+  - タイル→クリップ空間のアフィン変換（`TileTransform`）。
+  - `TILE_EXTENT`（4096）を定義した。
+- **`style`（最小版）**：Phase 3 で描ける範囲だけを読む。
+  - vector source（`tiles`、minzoom / maxzoom）。
+  - background / fill / line レイヤー。`["==", ["geometry-type"], t]` 形式の filter、定数の色・不透明度・線幅、join / cap / miter-limit / round-limit、`visibility: none`。
+  - 色は `#rgb`、`#rgba`、`#rrggbb`、`#rrggbbaa`、`rgb()`、`rgba()` と、名前3つ。
+  - 未対応の種類のレイヤーは読み飛ばす。式（配列）や未対応の filter は、JSON 上の場所付きで `Unsupported` エラーにする。
+- **`worker`**：
+  - `TileProcessor`（純 MoonBit、全ターゲットでテスト）。スタイルのうち、そのソースの fill / line レイヤーを、MapLibre と同じくタイルのズームで判定して処理する。結果を `PackedTile` に詰める。
+  - `PackedTile` の中身：ヘッダ（レイヤーごとに7語）、Int16 の座標（`TILE_EXTENT` に換算し、Int16 の範囲にクランプ）、16bit か 32bit のインデックス。上限は 64MB で、超えたらエラーにする。
+  - wasm-gc のエクスポート（`linear_memory.mbt`）と、JS グルー（`worker/js/worker.mjs`）。グルーは fetch（認証情報を送らない、`AbortController` 付き）、線形メモリへの入出力、ArrayBuffer の transfer を担う。
+- **`render_webgl2`**：
+  - WebGL2 の FFI は、少数の高水準な JS 関数にまとめた。
+  - fill のシェーダと、line のシェーダを用意した。line は押し出しを画面ピクセルで行うので、ズームしても線幅が一定になる。`length(side, along)` で、アンチエイリアスと丸い cap を描く。
+  - 合成は premultiplied alpha。読み込み中の代わりに描く親タイルの範囲は scissor で切り取る。
+- **`map`**：公開 MoonBit API（`Map::new`、`camera`、`set_camera`、`on_move`、`on_idle`、`off`、`destroy`）。
+  - 入力：ドラッグでパン、複数ポインタでピンチズーム、ホイールでカーソル位置を中心にズーム。
+  - タイル：画面を覆うタイルを要求し、不要になった読み込みは取り消す。LRU のキャッシュ（96枚）を持つ。
+  - 読み込み中のタイル：読み込み済みの祖先（最大4段上、scissor で切り取る）か、子タイルで代わりに描く。
+  - フレームループは、変更があったときだけ描く。DPR に対応し、`ResizeObserver` で大きさの変化を拾う。
+  - Worker 数の既定は「ハードウェアスレッドの半分、1〜4」（VISION §4-7）。
+  - VISION §6 のとおり、値が変わらない `set_camera` ではイベントを出さない。
+- **`bundle/main`**：JS 向けのエクスポート。npm の TS ファサード（Phase 5）がこれを包む。
+- **`examples/basic`**：国土地理院のタイル（fixture）を描く例。`npm --prefix bench run example` で配信できる。Playwright で次を確認した。
+  - 描画のスクリーンショット。
+  - ドラッグでカメラが動き、`move` が5回出ること。
+  - ホイール 450px でズームが 14.5→15.0 になること（ズームの中心は固定）。
+  - オーバーズーム時の見た目。
+- **`bench/render`**：mbmap と MapLibre を、同じスタイル・同じタイル・同じカメラ操作で比べるベンチ（`npm --prefix bench run render`）。
+
+### ベンチ結果：描画（Chromium 156 + ANGLE Metal / M2、1280×800、DPR 2、`examples/basic/style.json`、5回の中央値）
+
+| | mbmap | MapLibre 6.16.0 |
+|---|---|---|
+| メインの JS（gzip） | **49.0KB**（minify 後） | 295.5KB |
+| Worker（gzip） | **71.1KB**（JS グルーと wasm-gc） | 148.0KB |
+| 初回描画（ナビゲーション開始 → 初回 `idle`） | **98ms** | 100ms |
+| 　うち import 完了 | 45ms | 58ms |
+| 　うち地図の作成 → `idle` | 45ms | 33ms |
+| パン・ズーム中のフレーム間隔の平均 / p95 | 16.67 / 17.3〜17.5ms | 16.67 / 17.4〜17.6ms |
+| 1フレームの rAF の CPU 時間（p50 / p95） | **0.17〜0.23 / 0.29〜0.44ms** | 0.77〜0.92 / 1.30〜1.52ms |
+| 20ms を超えたフレーム | 0 | 0 |
+
+- 1フレームの CPU 時間は MapLibre の約1/4。代理指標の目標（p95 が 1.44ms 以下、20ms 超のフレーム 0）は満たした。
+- バンドルの目標（メイン 50KB 以下、Worker 80KB 以下）も満たした。ただし、メインは 49.0KB で余裕がない。
+- **初回描画は MapLibre とほぼ同じで、「より短い」という目標ははっきりとは達成できていない**。mbmap は import が速く、地図を作ってから `idle` までが遅い（既知の問題を参照）。
+- vsync なしで測ると、フレーム間隔の平均は mbmap 1.11〜1.44ms、MapLibre 0.94〜1.27ms だった。どちらも GPU との同期待ちが支配的で、rAF の CPU 時間は比較に使えない（`bench/results/render-chromium-uncapped.json`）。
+
+### 改善と、その計測
+
+- **丸い cap をシェーダで描くようにし、インデックスを可能なら16bit にした**。中央タイルの出力が 2.04MB から 0.79MB に、`process_tile`（温まった状態）が 5.4ms から 3.2ms になった。道路の各レイヤーの頂点数は 4.3万から 1.9万に減った。
+- **Worker 数を「ハードウェアスレッドの半分」にした**。2のときは最初のタイルが2つずつ待たされていた。
+- **初期化時に合成タイルでウォームアップする案を試したが、効果がなかったので削除した**（4回ずつ2組の比較で、作成→idle の中央値は、あり 60・61ms、なし 54・61ms）。
+
+### 既知の問題・次にやること
+
+- **地図の作成から `idle` までが、MapLibre より約12ms 遅い**。主な原因は、各 Worker の最初のタイルが最適化前のコードで動くこと（`process_tile` が温まった状態の3〜5倍かかる）。対策の候補は次のとおり。
+  - main で一度だけコンパイルした `WebAssembly.Module` を Worker に配る。
+  - 最初のタイルを分割して処理する。
+  - 本番環境では Chrome の wasm コードキャッシュ（128KB を超えるモジュールが対象）が効くので、それも含めて測る。
+- **メインのバンドルは 49.0KB で、目標まで余裕がない**。Phase 4 で式の評価を加える前に、何が大きいかを調べる（JSON パーサ、Debug 表示用のコードなど）。Worker の wasm（157KB、gzip 69KB）も同様に調べる。
+- `map` と `render_webgl2` は DOM に依存するので、単体テストがない。カメラの計算は `core` で、タイルの処理は `worker` でテストし、統合部分は Playwright での操作で確かめた。
+- スタイルの vector source は1つしか扱わない（レイヤーが最初に参照するもの）。
+- 半透明の線で join の内側が重なる件（Phase 2）は、まだ残っている。
+- メインと Worker の両方がスタイルの JSON を解析している。
+
+### 次にやること（Phase 4）
+
+- `style` のサブセット：filter（`==` `!=` `in` `all` `any` `get` `has` `match`）と、`interpolate` / `step` によるズーム依存の値
+- 地物ごとに変わる paint（`match` による色など）の扱い。Worker で評価して頂点属性にするか、レイヤーを分けるかを、計測して決める
+- 完了条件：`bench/maplibre/style.json`（国土地理院の簡易スタイル）がそのまま描けること。そのうえで初回描画とフレームを MapLibre と比べる
+
 ## Phase 2：`tess`（earcut の移植、線の展開）（2026-10-31）
 
 状態：**完了**（完了条件「面積一致テスト、JS 版 earcut との速度比較」を満たした）。
