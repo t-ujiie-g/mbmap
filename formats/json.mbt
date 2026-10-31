@@ -217,7 +217,7 @@ let exact_powers : FixedArray[Double] = [
 
 ///|
 /// A JSON number. Up to 15 digits with an exponent within ±22 take Clinger's
-/// exact fast path; anything else goes to the core parser.
+/// exact fast path; anything else goes to `slow_number`.
 fn Parser::number(self : Parser) -> Double {
   self.peek() |> ignore
   let b = self.b
@@ -296,11 +296,21 @@ fn Parser::number(self : Parser) -> Double {
     }
     return if negative { -v } else { v }
   }
-  @string.parse_double(@utf8.decode_lossy(b[start:i])) catch {
-    _ => {
-      self.fail("invalid number")
-      0.0
-    }
+  let v = (self.slow_number)(start, i)
+  if v.is_nan() {
+    self.pos = start
+    self.fail("invalid number")
+    return 0.0
+  }
+  v
+}
+
+///|
+/// A JSON number's text parsed with core `strconv` (NaN if it is not one):
+/// the default slow path of `read_geojson`.
+pub fn strconv_number(text : BytesView) -> Double {
+  @string.parse_double(@utf8.decode_lossy(text)) catch {
+    _ => @double.not_a_number
   }
 }
 

@@ -24,6 +24,7 @@ export async function prepareExamples() {
   await install("npm");
   await install("element");
   await install("geojson");
+  await install("analysis");
   // npm ci empties node_modules, so the tarball goes in afterwards.
   run("npm", ["ci", "--no-audit", "--no-fund"], path.join(ROOT, "examples/react"));
   await install("react");

@@ -26,8 +26,18 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 46519,
-      "budget": 50000
+      "bytes": 22271,
+      "budget": 30000
+    },
+    {
+      "name": "mbmap/analysis",
+      "bytes": 1414,
+      "budget": 5000
+    },
+    {
+      "name": "analysis worker",
+      "bytes": 22333,
+      "budget": 30000
     }
   ]
 }

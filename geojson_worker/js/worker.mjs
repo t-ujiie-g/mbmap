@@ -1,6 +1,8 @@
 // Glue around the wasm-gc build of `geojson_worker`; messages are in
 // docs/FORMATS.md ("GeoJSON worker messages").
 
+import { hostNumber } from "../../wasmio/js/host.mjs";
+
 const decoder = new TextDecoder();
 let wasm = null;
 let ready = null;
@@ -16,6 +18,7 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance }) {
   await ready;
   let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
   if (!data) {
+    if (typeof url !== "string" || !/^https?:/.test(url)) throw new Error("data must be an http(s) URL");
     const res = await fetch(url, { credentials: "omit" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     data = new Uint8Array(await res.arrayBuffer());
@@ -37,7 +40,8 @@ function tile({ id, source, z, x, y }) {
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready) {
-    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, log: Math.log } })
+    const host = { number: hostNumber(() => wasm.memory) };
+    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, log: Math.log }, host })
       .then(({ instance }) => { wasm = instance.exports; });
   } else if (msg?.type === "load" && ready && Number.isInteger(msg.source)) {
     const done = load(msg);

@@ -22,6 +22,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/index.d.ts` | 型定義 |
 | `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される） |
 | `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
+| `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
 | `dist/worker.js` | タイル Worker（モジュール Worker） |
 | `dist/mbmap.wasm` | Worker が読む wasm-gc |
 
@@ -36,6 +37,24 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 - `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
 - `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜60 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
 - `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
+
+## 解析 `mbmap/analysis`
+
+```js
+import { load } from "mbmap/analysis";
+
+const blocks = await load(polygonsGeoJSON);  // オブジェクト、UTF-8 のバイト列、http(s) の URL
+const shops = await load("/data/shops.geojson");
+const area = await blocks.areas();           // Float64Array（m²）
+const { count, mean } = await blocks.collect(shops, "sales");
+blocks.dispose();
+```
+
+- 初めての `load` で、専用の Worker と wasm を読み込む。データと空間索引は Worker の中に置いたままにし、各メソッドは結果だけを型付き配列で返す（Promise）。
+- `Dataset`：`length`（地物数）、`areas()`、`lengths()`（m）、`centroids()`、`bboxes()`、`search(bbox)`、`nearest(x, y, { k, maxDistance })`、`pointsWithin(polygons)`、`collect(points, property)`、`grid(bbox, cols, rows)`、`dispose()`。
+- 計測と点の内外判定は Turf.js 7.4.0 と同じ値になり、索引の検索は flatbush 4.6.2 と同じ順になる（黄金テストで確かめている）。境界上の点は内側として扱う。`nearest` の距離は経緯度の箱の距離（度）。
+- `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
+- `terminate()`：Worker を止める。読み込んだデータは失われる。
 
 ## Web Component `<mb-map>`
 

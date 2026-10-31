@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/analysis"
+
+import {
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const EARTH_RADIUS : Double = 6371008.8
+
+pub const MAX_GRID_CELLS : Int32 = 16777216
+
+pub fn area(@geom.Table, Trig, Int32) -> Double
+
+pub fn bbox(@geom.Table, Int32) -> (Double, Double, Double, Double)
+
+pub fn centroid(@geom.Table, Int32) -> (Double, Double)
+
+pub fn collect(@geom.Table, @geom.Table, Index, String) -> FixedArray[Double]
+
+pub fn contains_point(@geom.Table, Int32, Double, Double) -> Bool
+
+pub fn distance(Trig, Double, Double, Double, Double) -> Double
+
+pub fn grid_count(@geom.Table, Double, Double, Double, Double, Int32, Int32) -> FixedArray[Int32]?
+
+pub fn length(@geom.Table, Trig, Int32) -> Double
+
+pub fn points_within(@geom.Table, @geom.Table, Index) -> Array[Int32]
+
+// Errors
+
+// Types and methods
+pub struct Index {
+  // private fields
+}
+pub fn Index::add(Self, Double, Double, Double, Double) -> Int32
+pub fn Index::finish(Self) -> Bool
+pub fn Index::neighbors(Self, Double, Double, Array[Int32], max_results? : Int32, max_distance? : Double) -> Unit
+pub fn Index::new(Int32, node_size? : Int32) -> Self
+pub fn Index::of_table(@geom.Table) -> Self
+pub fn Index::search(Self, Double, Double, Double, Double, Array[Int32]) -> Unit
+
+pub(all) struct Trig {
+  sin : (Double) -> Double
+  cos : (Double) -> Double
+  atan2 : (Double, Double) -> Double
+}
+pub fn Trig::moonbit() -> Self
+
+// Type aliases
+
+// Traits

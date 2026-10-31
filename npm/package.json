@@ -19,11 +19,17 @@
       "types": "./dist/element.d.ts",
       "default": "./dist/element.js"
     },
+    "./analysis": {
+      "types": "./dist/analysis.d.ts",
+      "default": "./dist/analysis.js"
+    },
     "./worker.js": "./dist/worker.js",
     "./mbmap.wasm": "./dist/mbmap.wasm",
     "./package.json": "./package.json",
     "./geojson-worker.js": "./dist/geojson-worker.js",
-    "./geojson.wasm": "./dist/geojson.wasm"
+    "./geojson.wasm": "./dist/geojson.wasm",
+    "./analysis-worker.js": "./dist/analysis-worker.js",
+    "./analysis.wasm": "./dist/analysis.wasm"
   },
   "types": "./dist/index.d.ts",
   "sideEffects": [
