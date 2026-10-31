@@ -1,0 +1,514 @@
+{
+  "env": {
+    "browser": "chromium 156.0.8078.4",
+    "headless": true,
+    "uncapped": false,
+    "cpuThrottle": 4,
+    "viewport": "1280x800",
+    "dpr": 2,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+    "maplibre": "6.16.0",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36"
+  },
+  "params": {
+    "runs": 5,
+    "statistic": "median of runs"
+  },
+  "sizes": {
+    "maplibre-gl.mjs": {
+      "raw": 1108049,
+      "gzip": 295496,
+      "brotli": 241249
+    },
+    "maplibre-gl-worker.mjs": {
+      "raw": 519372,
+      "gzip": 148036,
+      "brotli": 121563
+    },
+    "maplibre-gl.css": {
+      "raw": 71596,
+      "gzip": 10161,
+      "brotli": 8326
+    }
+  },
+  "summary": {
+    "importEnd": 85.74500000476837,
+    "load": 322.4599999934435,
+    "idle": 322.4899999946356,
+    "scenarios": {
+      "pan": {
+        "frameMeanMs": 16.66599447513812,
+        "frameP95Ms": 16.670000000000073,
+        "frameMaxMs": 16.670000000000073,
+        "over20ms": 0,
+        "renderCpuP50Ms": 0.8250000029802322,
+        "renderCpuP95Ms": 1.9750000089406967,
+        "longTasks": 0
+      },
+      "pan-back": {
+        "frameMeanMs": 16.666022099447513,
+        "frameP95Ms": 16.670000000000073,
+        "frameMaxMs": 16.670000000000073,
+        "over20ms": 0,
+        "renderCpuP50Ms": 0.5349999964237213,
+        "renderCpuP95Ms": 1.2450000047683716,
+        "longTasks": 0
+      },
+      "zoom-in": {
+        "frameMeanMs": 16.666022099447513,
+        "frameP95Ms": 16.670000000000073,
+        "frameMaxMs": 16.670000000000073,
+        "over20ms": 0,
+        "renderCpuP50Ms": 0.6850000023841858,
+        "renderCpuP95Ms": 2.5750000029802322,
+        "longTasks": 0
+      },
+      "zoom-out": {
+        "frameMeanMs": 16.66602209944752,
+        "frameP95Ms": 16.670000000000073,
+        "frameMaxMs": 16.670000000000073,
+        "over20ms": 0,
+        "renderCpuP50Ms": 0.6950000077486038,
+        "renderCpuP95Ms": 1.9399999976158142,
+        "longTasks": 0
+      }
+    }
+  },
+  "runs": [
+    {
+      "marks": {
+        "scriptStart": 50.30500000715256,
+        "importEnd": 89.3200000077486,
+        "mapConstructed": 123.89499999582767,
+        "load": 325.9350000023842,
+        "idle": 325.9650000035763
+      },
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "dpr": 2,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "version": "6.16.0",
+      "scenarios": [
+        {
+          "name": "pan",
+          "frames": 182,
+          "frameMs": {
+            "mean": 16.665989010989012,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.8299999982118607,
+            "p95": 1.9849999994039536,
+            "max": 4.3599999994039536
+          },
+          "longTasks": []
+        },
+        {
+          "name": "pan-back",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6599999964237213,
+            "p95": 1.5150000005960464,
+            "max": 2.135000005364418
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-in",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66602209944752,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6949999928474426,
+            "p95": 2.9300000071525574,
+            "max": 10.33500000834465
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-out",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66602209944752,
+            "p50": 16.665000000000873,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.8150000125169754,
+            "p95": 1.9249999970197678,
+            "max": 5.605000004172325
+          },
+          "longTasks": []
+        }
+      ]
+    },
+    {
+      "marks": {
+        "scriptStart": 46.45999999344349,
+        "importEnd": 85.74500000476837,
+        "mapConstructed": 118.45999999344349,
+        "load": 322.4599999934435,
+        "idle": 322.4899999946356
+      },
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "dpr": 2,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "version": "6.16.0",
+      "scenarios": [
+        {
+          "name": "pan",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.8550000041723251,
+            "p95": 1.9750000089406967,
+            "max": 3.5550000071525574
+          },
+          "longTasks": []
+        },
+        {
+          "name": "pan-back",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.666022099447513,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.5450000017881393,
+            "p95": 1.2799999862909317,
+            "max": 2.290000006556511
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-in",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.666022099447513,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.635000005364418,
+            "p95": 2.429999992251396,
+            "max": 4.689999997615814
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-out",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.665000000000873,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.7349999994039536,
+            "p95": 1.6200000047683716,
+            "max": 6.075000002980232
+          },
+          "longTasks": []
+        }
+      ]
+    },
+    {
+      "marks": {
+        "scriptStart": 46.945000007748604,
+        "importEnd": 84.68999999761581,
+        "mapConstructed": 116.93999999761581,
+        "load": 313.45000000298023,
+        "idle": 313.48499999940395
+      },
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "dpr": 2,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "version": "6.16.0",
+      "scenarios": [
+        {
+          "name": "pan",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.666022099447513,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.800000011920929,
+            "p95": 1.6150000095367432,
+            "max": 3.355000004172325
+          },
+          "longTasks": []
+        },
+        {
+          "name": "pan-back",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.5300000011920929,
+            "p95": 1.2450000047683716,
+            "max": 1.8200000077486038
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-in",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.666022099447513,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6199999898672104,
+            "p95": 2.5750000029802322,
+            "max": 4.955000013113022
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-out",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66602209944752,
+            "p50": 16.665000000000873,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6950000077486038,
+            "p95": 1.969999998807907,
+            "max": 5.384999990463257
+          },
+          "longTasks": []
+        }
+      ]
+    },
+    {
+      "marks": {
+        "scriptStart": 46.060000002384186,
+        "importEnd": 85.45499999821186,
+        "mapConstructed": 117.84999999403954,
+        "load": 339.3149999976158,
+        "idle": 339.3449999988079
+      },
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "dpr": 2,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "version": "6.16.0",
+      "scenarios": [
+        {
+          "name": "pan",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.8250000029802322,
+            "p95": 2.094999998807907,
+            "max": 4.180000007152557
+          },
+          "longTasks": []
+        },
+        {
+          "name": "pan-back",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.666022099447513,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000528
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.5349999964237213,
+            "p95": 1.1099999994039536,
+            "max": 2.155000001192093
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-in",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6850000023841858,
+            "p95": 2.2349999994039536,
+            "max": 7.9000000059604645
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-out",
+          "frames": 177,
+          "frameMs": {
+            "mean": 17.04262711864406,
+            "p50": 16.665000000000873,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 83.32999999999993
+          },
+          "over20ms": 1,
+          "renderCpuMs": {
+            "p50": 0.635000005364418,
+            "p95": 1.9849999994039536,
+            "max": 5.069999992847443
+          },
+          "longTasks": []
+        }
+      ]
+    },
+    {
+      "marks": {
+        "scriptStart": 48.90499998629093,
+        "importEnd": 86.87999999523163,
+        "mapConstructed": 119.82499998807907,
+        "load": 318.69999998807907,
+        "idle": 318.73499999940395
+      },
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "dpr": 2,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "version": "6.16.0",
+      "scenarios": [
+        {
+          "name": "pan",
+          "frames": 182,
+          "frameMs": {
+            "mean": 16.665989010989012,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6949999928474426,
+            "p95": 1.9099999964237213,
+            "max": 4.1400000005960464
+          },
+          "longTasks": []
+        },
+        {
+          "name": "pan-back",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.666022099447513,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.5,
+            "p95": 1.0649999976158142,
+            "max": 1.4750000089406967
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-in",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66602209944751,
+            "p50": 16.664999999999964,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6900000125169754,
+            "p95": 2.830000013113022,
+            "max": 5.004999995231628
+          },
+          "longTasks": []
+        },
+        {
+          "name": "zoom-out",
+          "frames": 181,
+          "frameMs": {
+            "mean": 16.66599447513812,
+            "p50": 16.665000000000873,
+            "p95": 16.670000000000073,
+            "p99": 16.670000000000073,
+            "max": 16.670000000000073
+          },
+          "over20ms": 0,
+          "renderCpuMs": {
+            "p50": 0.6749999970197678,
+            "p95": 1.9399999976158142,
+            "max": 6.180000007152557
+          },
+          "longTasks": []
+        }
+      ]
+    }
+  ]
+}

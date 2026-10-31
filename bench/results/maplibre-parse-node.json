@@ -1,0 +1,346 @@
+{
+  "env": {
+    "runtime": "node v22.23.4",
+    "v8": "12.4.254.21-node.57",
+    "maplibre": "6.16.0"
+  },
+  "params": {
+    "warmup": 5,
+    "iterations": 15,
+    "tiles": 35,
+    "statistic": "median per tile"
+  },
+  "summary": {
+    "center": {
+      "tile": "14/14552/6451",
+      "bytes": 178668,
+      "granularity": "noSubdivision",
+      "geometryPoints": 23696,
+      "buckets": 10,
+      "decodeMs": 2.056291999999303,
+      "parseMs": 9.174250000000029
+    },
+    "medianTileParseMs": 23.399333000001207,
+    "medianTileDecodeMs": 3.298208000000045,
+    "totalParseMs": 784.2642060000081,
+    "totalDecodeMs": 113.19583199999784,
+    "totalBytes": 13275538
+  },
+  "rows": [
+    {
+      "tile": "14/14549/6449",
+      "bytes": 370237,
+      "granularity": "noSubdivision",
+      "geometryPoints": 61199,
+      "buckets": 9,
+      "decodeMs": 3.298208000000045,
+      "parseMs": 23.86095899999998
+    },
+    {
+      "tile": "14/14549/6450",
+      "bytes": 429955,
+      "granularity": "noSubdivision",
+      "geometryPoints": 75885,
+      "buckets": 10,
+      "decodeMs": 3.588583999999969,
+      "parseMs": 26.048332999999957
+    },
+    {
+      "tile": "14/14549/6451",
+      "bytes": 364757,
+      "granularity": "noSubdivision",
+      "geometryPoints": 64037,
+      "buckets": 9,
+      "decodeMs": 3.194166000000223,
+      "parseMs": 22.37804099999994
+    },
+    {
+      "tile": "14/14549/6452",
+      "bytes": 327289,
+      "granularity": "noSubdivision",
+      "geometryPoints": 57596,
+      "buckets": 9,
+      "decodeMs": 2.8629580000001624,
+      "parseMs": 19.525082999999995
+    },
+    {
+      "tile": "14/14549/6453",
+      "bytes": 368922,
+      "granularity": "noSubdivision",
+      "geometryPoints": 65551,
+      "buckets": 10,
+      "decodeMs": 3.216957999999977,
+      "parseMs": 22.56162499999982
+    },
+    {
+      "tile": "14/14550/6449",
+      "bytes": 403525,
+      "granularity": "noSubdivision",
+      "geometryPoints": 70312,
+      "buckets": 9,
+      "decodeMs": 3.4494589999999334,
+      "parseMs": 23.664999999999964
+    },
+    {
+      "tile": "14/14550/6450",
+      "bytes": 413403,
+      "granularity": "noSubdivision",
+      "geometryPoints": 74314,
+      "buckets": 10,
+      "decodeMs": 3.8854999999998654,
+      "parseMs": 24.374374999999873
+    },
+    {
+      "tile": "14/14550/6451",
+      "bytes": 384467,
+      "granularity": "noSubdivision",
+      "geometryPoints": 68907,
+      "buckets": 9,
+      "decodeMs": 3.208417000000736,
+      "parseMs": 22.829249999999774
+    },
+    {
+      "tile": "14/14550/6452",
+      "bytes": 401618,
+      "granularity": "noSubdivision",
+      "geometryPoints": 74925,
+      "buckets": 9,
+      "decodeMs": 3.868583000000399,
+      "parseMs": 24.18566699999974
+    },
+    {
+      "tile": "14/14550/6453",
+      "bytes": 396432,
+      "granularity": "noSubdivision",
+      "geometryPoints": 74689,
+      "buckets": 10,
+      "decodeMs": 3.7331249999997453,
+      "parseMs": 23.50195799999983
+    },
+    {
+      "tile": "14/14551/6449",
+      "bytes": 392849,
+      "granularity": "noSubdivision",
+      "geometryPoints": 68373,
+      "buckets": 10,
+      "decodeMs": 3.3339999999998327,
+      "parseMs": 23.41816700000072
+    },
+    {
+      "tile": "14/14551/6450",
+      "bytes": 453463,
+      "granularity": "noSubdivision",
+      "geometryPoints": 82754,
+      "buckets": 10,
+      "decodeMs": 4.130750000000262,
+      "parseMs": 26.417457999999897
+    },
+    {
+      "tile": "14/14551/6451",
+      "bytes": 312603,
+      "granularity": "noSubdivision",
+      "geometryPoints": 54711,
+      "buckets": 9,
+      "decodeMs": 2.713999999999942,
+      "parseMs": 17.772500000000036
+    },
+    {
+      "tile": "14/14551/6452",
+      "bytes": 338541,
+      "granularity": "noSubdivision",
+      "geometryPoints": 62509,
+      "buckets": 10,
+      "decodeMs": 2.842959000000519,
+      "parseMs": 20.33941600000071
+    },
+    {
+      "tile": "14/14551/6453",
+      "bytes": 359657,
+      "granularity": "noSubdivision",
+      "geometryPoints": 68401,
+      "buckets": 10,
+      "decodeMs": 2.967040999999881,
+      "parseMs": 21.694666000000325
+    },
+    {
+      "tile": "14/14552/6449",
+      "bytes": 437132,
+      "granularity": "noSubdivision",
+      "geometryPoints": 75400,
+      "buckets": 10,
+      "decodeMs": 3.5794169999990118,
+      "parseMs": 26.12249999999949
+    },
+    {
+      "tile": "14/14552/6450",
+      "bytes": 488887,
+      "granularity": "noSubdivision",
+      "geometryPoints": 85080,
+      "buckets": 9,
+      "decodeMs": 3.9780829999999696,
+      "parseMs": 27.812541999999667
+    },
+    {
+      "tile": "14/14552/6451",
+      "bytes": 178668,
+      "granularity": "noSubdivision",
+      "geometryPoints": 23696,
+      "buckets": 10,
+      "decodeMs": 2.056291999999303,
+      "parseMs": 9.174250000000029
+    },
+    {
+      "tile": "14/14552/6452",
+      "bytes": 364555,
+      "granularity": "noSubdivision",
+      "geometryPoints": 57683,
+      "buckets": 9,
+      "decodeMs": 3.1286659999987023,
+      "parseMs": 20.772917000000234
+    },
+    {
+      "tile": "14/14552/6453",
+      "bytes": 193420,
+      "granularity": "noSubdivision",
+      "geometryPoints": 32916,
+      "buckets": 9,
+      "decodeMs": 1.9193750000013097,
+      "parseMs": 11.018917000001238
+    },
+    {
+      "tile": "14/14553/6449",
+      "bytes": 519425,
+      "granularity": "noSubdivision",
+      "geometryPoints": 86728,
+      "buckets": 9,
+      "decodeMs": 4.071625000000495,
+      "parseMs": 30.068209000000934
+    },
+    {
+      "tile": "14/14553/6450",
+      "bytes": 779048,
+      "granularity": "noSubdivision",
+      "geometryPoints": 132384,
+      "buckets": 9,
+      "decodeMs": 5.840957999998864,
+      "parseMs": 45.359582999999475
+    },
+    {
+      "tile": "14/14553/6451",
+      "bytes": 579020,
+      "granularity": "noSubdivision",
+      "geometryPoints": 95093,
+      "buckets": 9,
+      "decodeMs": 4.617459000000963,
+      "parseMs": 33.53754099999969
+    },
+    {
+      "tile": "14/14553/6452",
+      "bytes": 346346,
+      "granularity": "noSubdivision",
+      "geometryPoints": 56299,
+      "buckets": 9,
+      "decodeMs": 2.964625000000524,
+      "parseMs": 19.86225000000013
+    },
+    {
+      "tile": "14/14553/6453",
+      "bytes": 52607,
+      "granularity": "noSubdivision",
+      "geometryPoints": 7606,
+      "buckets": 9,
+      "decodeMs": 0.39391599999908067,
+      "parseMs": 3.2558329999992566
+    },
+    {
+      "tile": "14/14554/6449",
+      "bytes": 616445,
+      "granularity": "noSubdivision",
+      "geometryPoints": 100934,
+      "buckets": 10,
+      "decodeMs": 4.8478329999998095,
+      "parseMs": 36.36462500000016
+    },
+    {
+      "tile": "14/14554/6450",
+      "bytes": 591145,
+      "granularity": "noSubdivision",
+      "geometryPoints": 100964,
+      "buckets": 8,
+      "decodeMs": 5.084292000001369,
+      "parseMs": 36.84916700000031
+    },
+    {
+      "tile": "14/14554/6451",
+      "bytes": 517770,
+      "granularity": "noSubdivision",
+      "geometryPoints": 89271,
+      "buckets": 10,
+      "decodeMs": 4.304207999999562,
+      "parseMs": 30.084458999999697
+    },
+    {
+      "tile": "14/14554/6452",
+      "bytes": 318780,
+      "granularity": "noSubdivision",
+      "geometryPoints": 54800,
+      "buckets": 10,
+      "decodeMs": 2.6839579999978014,
+      "parseMs": 18.633041000000958
+    },
+    {
+      "tile": "14/14554/6453",
+      "bytes": 106407,
+      "granularity": "noSubdivision",
+      "geometryPoints": 15810,
+      "buckets": 10,
+      "decodeMs": 0.8072089999986929,
+      "parseMs": 6.322416000002704
+    },
+    {
+      "tile": "14/14555/6449",
+      "bytes": 397088,
+      "granularity": "noSubdivision",
+      "geometryPoints": 63163,
+      "buckets": 10,
+      "decodeMs": 3.4915409999994154,
+      "parseMs": 23.399333000001207
+    },
+    {
+      "tile": "14/14555/6450",
+      "bytes": 460113,
+      "granularity": "noSubdivision",
+      "geometryPoints": 77967,
+      "buckets": 9,
+      "decodeMs": 3.657875000000786,
+      "parseMs": 26.765417000002344
+    },
+    {
+      "tile": "14/14555/6451",
+      "bytes": 377976,
+      "granularity": "noSubdivision",
+      "geometryPoints": 63179,
+      "buckets": 10,
+      "decodeMs": 3.194167000001471,
+      "parseMs": 22.147415999999794
+    },
+    {
+      "tile": "14/14555/6452",
+      "bytes": 159522,
+      "granularity": "noSubdivision",
+      "geometryPoints": 26482,
+      "buckets": 10,
+      "decodeMs": 1.685750000000553,
+      "parseMs": 9.609917000001587
+    },
+    {
+      "tile": "14/14555/6453",
+      "bytes": 73466,
+      "granularity": "noSubdivision",
+      "geometryPoints": 8725,
+      "buckets": 10,
+      "decodeMs": 0.5938749999986612,
+      "parseMs": 4.531374999998661
+    }
+  ]
+}

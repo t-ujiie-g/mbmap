@@ -1,0 +1,13 @@
+mbmap
+Copyright 2026 t-ujiie-g
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party code ported into this repository is listed below with its original
+license and source. (None yet.)
+
+Test / benchmark data:
+- bench/fixtures/gsi-bvmap/ (downloaded, not committed):
+  国土地理院ベクトルタイル提供実験 (GSI Japan, experimental_bvmap)
+  https://maps.gsi.go.jp/development/vt.html
+  Used under the GSI content terms of use (国土地理院コンテンツ利用規約).

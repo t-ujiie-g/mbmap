@@ -1,0 +1,19 @@
+// Export surface of the backend comparison bench; exported names come from `#export_name`.
+
+import {
+  "t-ujiie-g/mbmap/bench/backend/kernel",
+}
+
+pkgtype(kind: "foreign_library")
+
+options(
+  targets: {
+    "linear_memory.mbt": [ "wasm", "wasm-gc" ],
+    "js_typed_array.mbt": [ "js" ],
+  },
+  link: {
+    "wasm": { "export-memory-name": "memory" },
+    "wasm-gc": { "export-memory-name": "memory" },
+    "js": { "format": "esm" },
+  },
+)
