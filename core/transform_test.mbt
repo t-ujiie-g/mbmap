@@ -277,3 +277,33 @@ test "keeping turns and tilts the map around a screen point" {
     assert_true((x - 200.0).abs() < 1.0e-3 && (y - 400.0).abs() < 1.0e-3)
   }
 }
+
+///|
+test "with_elevation keeps the lifted center at the middle of the screen" {
+  let t = @core.Transform::new(
+    { ..tokyo(), pitch: 50.0, bearing: 20.0, },
+    800.0,
+    600.0,
+  )
+  let lifted = t.with_elevation(1000.0)
+  assert_eq((t.elevation, lifted.elevation), (0.0, 1000.0))
+  // The center tile and the center's position in its units.
+  let z = 14
+  let c = t.camera.center.to_mercator()
+  let n = (1 << z).to_double()
+  let id = @core.TileId::new(z, (c.x * n).to_int(), (c.y * n).to_int()).unwrap()
+  let ux = (c.x * n - id.x.to_double()) * 4096.0
+  let uy = (c.y * n - id.y.to_double()) * 4096.0
+  let screen = (tr : @core.Transform, h : Double) => {
+    let (x, y, _, w) = tr.tile_matrix(id, 4096).apply(ux, uy, h, 1.0)
+    (x / w, y / w)
+  }
+  let near = (a : (Double, Double)) => a.0.abs() < 1.0e-9 && a.1.abs() < 1.0e-9
+  assert_true(near(screen(t, 0.0)))
+  assert_true(near(screen(lifted, 1000.0 * lifted.pixels_per_meter())))
+  // Ground at height 0 now sits below the middle (it is lower than the center).
+  assert_true(screen(lifted, 0.0).1 < -0.01)
+  // Moving the camera keeps the elevation; NaN is ignored.
+  assert_eq(lifted.with_camera({ ..tokyo(), zoom: 13.0, }).elevation, 1000.0)
+  assert_eq(lifted.with_elevation(@double.not_a_number).elevation, 1000.0)
+}

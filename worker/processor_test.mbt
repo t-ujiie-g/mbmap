@@ -575,8 +575,12 @@ test "dem_tile reads a raster-dem source's tiles and refuses others" {
     }
   })
   let out = p.dem_tile(d, rgba[:], 2, 14).unwrap()
-  // 8 slope bytes, then 8 runs of 2 border elevations.
-  assert_eq(out.length(), 8 + 16 * 8)
+  // 8 slope bytes, 8 runs of 2 border elevations, then 4 f32 elevations.
+  assert_eq(out.length(), 8 + 16 * 8 + 4 * 4)
+  assert_eq(
+    out[8 + 16 * 8:].to_owned(),
+    b"\x00\x00\x20\x41\x00\x00\x20\x41\x00\x00\x20\x41\x00\x00\x20\x41",
+  )
   assert_eq(out[:8].to_owned().to_array(), Array::make(8, b'\x80'))
   let r = @core.ByteReader::new(out[8:])
   assert_eq((r.f64(), r.f64()), (10.0, 10.0))

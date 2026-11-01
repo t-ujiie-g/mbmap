@@ -115,13 +115,18 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         let shared = get_int(l, "shared")
         let kind = get_int(l, "kind")
         let (mesh, labels) = if kind == KIND_HILLSHADE {
-          (
-            self.renderer.upload_slopes(
-              buffer_of(l, "image"),
-              get_int(l, "size"),
-            ),
-            None,
+          let mesh = self.renderer.upload_slopes(
+            buffer_of(l, "image"),
+            get_int(l, "size"),
           )
+          if self.is_terrain_source(request) {
+            self.renderer.add_elevations(
+              mesh,
+              buffer_of(l, "elevations"),
+              get_int(l, "size"),
+            )
+          }
+          (mesh, None)
         } else if kind == KIND_SYMBOL {
           let (mesh, labels) = self.symbol_mesh(l)
           (mesh, Some(labels))
@@ -155,6 +160,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           dem: if kind == KIND_HILLSHADE {
             Some({
               edges: f64_array(buffer_of(l, "edges")),
+              heights: buffer_of(l, "elevations"),
               size: get_int(l, "size"),
             })
           } else {

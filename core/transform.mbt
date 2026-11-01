@@ -32,12 +32,14 @@ pub(all) struct Camera {
 /// A camera on a `width` x `height` CSS-pixel viewport, clamped to the zoom,
 /// `MAX_LATITUDE` and `MAX_PITCH` limits; non-finite cameras are ignored.
 /// Positions are world pixels relative to the center, so precision holds.
+/// `elevation` (meters) lifts the center onto terrain; the camera orbits it.
 pub struct Transform {
   camera : Camera
   width : Double
   height : Double
   min_zoom : Double
   max_zoom : Double
+  elevation : Double
   priv view : Mat4
   priv inverse : Mat4
 }
@@ -55,7 +57,14 @@ pub fn Transform::new(
   } else {
     { center: { lng: 0.0, lat: 0.0, }, zoom: 0.0, bearing: 0.0, pitch: 0.0, }
   }
-  make(constrain(camera, min_zoom, max_zoom), width, height, min_zoom, max_zoom)
+  make(
+    constrain(camera, min_zoom, max_zoom),
+    width,
+    height,
+    min_zoom,
+    max_zoom,
+    0.0,
+  )
 }
 
 ///|
@@ -65,14 +74,17 @@ fn make(
   height : Double,
   min_zoom : Double,
   max_zoom : Double,
+  elevation : Double,
 ) -> Transform {
-  let view = view_projection(camera, width, height)
+  let lift = elevation * pixels_per_meter(camera.zoom, camera.center.lat)
+  let view = view_projection(camera, width, height, lift)
   {
     camera,
     width,
     height,
     min_zoom,
     max_zoom,
+    elevation,
     view,
     inverse: view.invert().unwrap_or(Mat4::identity()),
   }
@@ -90,10 +102,16 @@ fn center_distance(height : Double) -> Double {
 }
 
 ///|
-/// World pixels relative to the center (y south) to clip space, as MapLibre
-/// builds it: perspective, y flipped, pulled back by the camera distance,
-/// pitched, then rotated by the bearing.
-fn view_projection(camera : Camera, width : Double, height : Double) -> Mat4 {
+/// World pixels relative to the center (y south, z up) to clip space, as
+/// MapLibre builds it: perspective, y flipped, pulled back by the camera
+/// distance, pitched, rotated by the bearing, and lowered by `lift` world
+/// pixels so the center sits on the terrain.
+fn view_projection(
+  camera : Camera,
+  width : Double,
+  height : Double,
+  lift : Double,
+) -> Mat4 {
   let d = center_distance(height)
   let pitch = radians(camera.pitch)
   let half_fov = FIELD_OF_VIEW / 2.0
@@ -101,12 +119,52 @@ fn view_projection(camera : Camera, width : Double, height : Double) -> Mat4 {
   let top = @math.sin(half_fov) *
     d /
     @math.sin(@math.PI / 2.0 - pitch - half_fov)
-  let far = (@math.sin(pitch) * top + d) * 1.01
+  // Terrain below the center reaches beyond the plane: leave room for it.
+  let far = (@math.sin(pitch) * top + d) * 1.01 + lift.abs() * 2.0
   Mat4::perspective(FIELD_OF_VIEW, width / height, height / 50.0, far)
   .scale(1.0, -1.0, 1.0)
   .translate(0.0, 0.0, -d)
   .rotate_x(pitch)
   .rotate_z(-radians(camera.bearing))
+  .translate(0.0, 0.0, -lift)
+}
+
+///|
+/// The Earth's equatorial circumference in meters (Web Mercator's world width).
+const EARTH_CIRCUMFERENCE : Double = 40075016.6855785
+
+///|
+/// World pixels per meter of height at `lat`, zoom `zoom` (MapLibre's
+/// mercatorZfromAltitude scaled to the world).
+fn pixels_per_meter(zoom : Double, lat : Double) -> Double {
+  TILE_SIZE *
+  @math.pow(2.0, zoom) /
+  (EARTH_CIRCUMFERENCE * @math.cos(radians(lat)))
+}
+
+///|
+/// World pixels per meter of height at the center, for lifting terrain.
+pub fn Transform::pixels_per_meter(self : Transform) -> Double {
+  pixels_per_meter(self.camera.zoom, self.camera.center.lat)
+}
+
+///|
+/// The same view with the center at `elevation` meters (terrain under it).
+pub fn Transform::with_elevation(
+  self : Transform,
+  elevation : Double,
+) -> Transform {
+  if elevation == self.elevation || elevation.is_nan() || elevation.is_inf() {
+    return self
+  }
+  make(
+    self.camera,
+    self.width,
+    self.height,
+    self.min_zoom,
+    self.max_zoom,
+    elevation,
+  )
 }
 
 ///|
@@ -152,6 +210,7 @@ pub fn Transform::with_camera(self : Transform, camera : Camera) -> Transform {
     self.height,
     self.min_zoom,
     self.max_zoom,
+    self.elevation,
   )
 }
 
@@ -164,7 +223,7 @@ pub fn Transform::resize(
   if width == self.width && height == self.height {
     return self
   }
-  make(self.camera, width, height, self.min_zoom, self.max_zoom)
+  make(self.camera, width, height, self.min_zoom, self.max_zoom, self.elevation)
 }
 
 ///|

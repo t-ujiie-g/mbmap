@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { deflateSync } from "node:zlib";
-import { decodePng } from "./png.mjs";
+import { decodePng, encodePng, gsiToTerrarium } from "./png.mjs";
 
 // A PNG of `rows` (RGB bytes per row), each row with its own filter byte.
 function png(width, rows, filters) {
@@ -35,4 +35,21 @@ test("RGB rows decode through every filter type into RGBA", () => {
   assert.deepEqual(px(0, 4), [3, 3, 3, 255]);
   assert.deepEqual(px(1, 4), [5, 5, 5, 255]);
   assert.throws(() => decodePng(Buffer.from("nope")));
+});
+
+test("encodePng round-trips RGB through decodePng with valid CRCs", () => {
+  const rgba = Uint8Array.from([1, 2, 3, 255, 250, 128, 0, 255, 9, 8, 7, 255, 0, 0, 0, 255]);
+  const buf = encodePng(2, 2, rgba);
+  assert.deepEqual(decodePng(buf), { width: 2, height: 2, rgba });
+  assert.equal(buf.readUInt32BE(buf.length - 4), 0xae426082); // every PNG's IEND CRC
+});
+
+test("gsiToTerrarium keeps heights, signs and turns no data into 0 m", () => {
+  // 12.34 m, -1 m (two's complement), no data.
+  const gsi = Uint8Array.from([0, 4, 210, 255, 255, 255, 156, 255, 128, 0, 0, 255]);
+  const t = gsiToTerrarium(gsi);
+  const m = (i) => t[i * 4] * 256 + t[i * 4 + 1] + t[i * 4 + 2] / 256 - 32768;
+  assert.ok(Math.abs(m(0) - 12.34) < 1 / 256);
+  assert.equal(m(1), -1);
+  assert.equal(m(2), 0);
 });

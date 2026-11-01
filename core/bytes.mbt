@@ -58,6 +58,15 @@ pub fn ByteWriter::f64(self : ByteWriter, v : Double) -> Unit {
 }
 
 ///|
+/// `v` rounded to the nearest 32-bit float.
+pub fn ByteWriter::f32(self : ByteWriter, v : Double) -> Unit {
+  let bits = Float::from_double(v).reinterpret_as_uint()
+  for i in 0..<4 {
+    self.buf.push((bits >> (i * 8)).to_byte())
+  }
+}
+
+///|
 /// A u32 byte length and the UTF-8 bytes.
 pub fn ByteWriter::utf8(self : ByteWriter, s : String) -> Unit {
   let b = @utf8.encode(s)

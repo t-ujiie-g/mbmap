@@ -164,6 +164,7 @@ pub fn SourceKind::to_repr(Self) -> @debug.Repr
 pub struct Style {
   sources : Array[Source]
   layers : Array[StyleLayer]
+  terrain : Terrain?
 }
 pub fn Style::from_json(Json) -> Self raise StyleError
 pub fn Style::parse(StringView) -> Self raise StyleError
@@ -193,6 +194,11 @@ pub struct StyleLayer {
   cap : Cap
   miter_limit : Double
   round_limit : Double
+}
+
+pub struct Terrain {
+  source : String
+  exaggeration : Double
 }
 
 pub(all) enum TextAnchor {

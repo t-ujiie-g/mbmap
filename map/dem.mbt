@@ -1,8 +1,10 @@
 ///|
 /// A `raster-dem` tile's border elevations (`@raster.dem_edges`), kept so its
-/// neighbors' edge slopes can be redone when either arrives.
+/// neighbors' edge slopes can be redone when either arrives, and its heights
+/// (a Float32Array, row by row) for looking terrain up.
 priv struct DemTile {
   edges : FixedArray[Double]
+  heights : @render_webgl2.JsBuffer
   size : Int32
 }
 

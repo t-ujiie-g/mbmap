@@ -370,8 +370,9 @@ fn unpack_of(e : @style.DemEncoding) -> @raster.Unpack {
 ///|
 /// A `size` x `size` RGBA tile `rgba` of the `raster-dem` source with index
 /// `source` at zoom `z`, for its hillshade layers: the slopes
-/// (`@raster.hillshade_slopes`), then the border elevations (`@raster.dem_edges`)
-/// as f64s. None (see `error`) for another source or a malformed tile.
+/// (`@raster.hillshade_slopes`), the border elevations (`@raster.dem_edges`) as
+/// f64s, then every elevation as an f32 (no data as 0 m), for terrain. None (see
+/// `error`) for another source or a malformed tile.
 pub fn TileProcessor::dem_tile(
   self : TileProcessor,
   source : Int32,
@@ -396,6 +397,9 @@ pub fn TileProcessor::dem_tile(
   }
   for v in @raster.dem_edges(elev, size) {
     w.f64(v)
+  }
+  for v in elev {
+    w.f32(if v.is_nan() { 0.0 } else { v })
   }
   Some(w.to_bytes())
 }

@@ -244,3 +244,67 @@ pub fn Renderer::draw_symbols(
 ) -> Unit {
   gl_draw_symbols(self.gl, mesh, at.matrix.m, dpr, color, halo, halo_width)
 }
+
+///|
+/// Gives a `raster-dem` tile's mesh its elevations (`size` x `size` f32s) for
+/// terrain.
+pub fn Renderer::add_elevations(
+  self : Renderer,
+  mesh : Mesh,
+  elevations : JsBuffer,
+  size : Int32,
+) -> Unit {
+  gl_add_elevations(self.gl, mesh, elevations, size)
+}
+
+///|
+/// A new offscreen target of `size` x `size` pixels.
+pub fn Renderer::target(self : Renderer, size : Int32) -> Target {
+  gl_target_new(self.gl, size)
+}
+
+///|
+pub fn Renderer::release_target(self : Renderer, target : Target) -> Unit {
+  gl_target_release(self.gl, target)
+}
+
+///|
+/// Draws into `target`, cleared to an opaque color, until `end_target`.
+pub fn Renderer::begin_target(
+  self : Renderer,
+  target : Target,
+  r : Double,
+  g : Double,
+  b : Double,
+) -> Unit {
+  gl_target_begin(self.gl, target, r, g, b)
+}
+
+///|
+/// Draws into the canvas again.
+pub fn Renderer::end_target(self : Renderer) -> Unit {
+  gl_target_end(self.gl)
+}
+
+///|
+/// Clears the canvas's depth, before drawing terrain.
+pub fn Renderer::clear_depth(self : Renderer) -> Unit {
+  gl_clear_depth(self.gl)
+}
+
+///|
+/// Draws a terrain tile: `mesh`'s elevations (the part at `dem`: offset x, y and
+/// scale in the DEM tile) lift the tile's grid by `scale` world pixels per
+/// meter, skirts hang `skirt` world pixels below its edges, and `target` holds
+/// what is drawn on it.
+pub fn Renderer::draw_terrain(
+  self : Renderer,
+  mesh : Mesh,
+  target : Target,
+  at : Placement,
+  scale : Double,
+  skirt : Double,
+  dem : FixedArray[Double],
+) -> Unit {
+  gl_draw_terrain(self.gl, mesh, target, at.matrix.m, scale, skirt, dem)
+}
