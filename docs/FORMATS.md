@@ -145,7 +145,9 @@ In:
   geometry module is fetched on the first geometry call).
 - `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments
   (no argument may be named `op`):
-  - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8);
+  - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8),
+    and `crs` (EPSG code of its coordinates; anything but 4326 is transformed to
+    4326 by the geometry module, which every other call then assumes);
   - `dispose`, `measure` (`kind`: 0 area, 1 length, 2 centroid, 3 bbox), `search`
     (`bbox`), `nearest` (`x`, `y`, `k`, `maxDistance`), `grid` (`bbox`, `cols`,
     `rows`), all with `dataset`;
@@ -156,11 +158,14 @@ In:
     `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`);
   - geometry, each giving a new dataset: `buffer` (`dataset`, `meters`, `mode` 0
     geodesic or 1 planar, `join` 0 round, 1 miter, 2 square, 3 bevel, `cap` 0
-    round, 1 butt, 2 square, `arcTolerance` in meters), `dissolve` (`dataset`) and
+    round, 1 butt, 2 square, `arcTolerance` in meters, `crs` the projected EPSG
+    code a planar buffer is measured in), `dissolve` (`dataset`) and
     `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect); the datasets go to
     the geometry module and back as Table bytes;
-  - `toGeoJSON` (`dataset`): its Table bytes decoded into a FeatureCollection
-    (`analysis_worker/js/table.mjs`).
+  - `toGeoJSON` (`dataset`, `crs`): its Table bytes, transformed to `crs` when
+    given, decoded into a FeatureCollection (`analysis_worker/js/table.mjs`);
+  - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to` EPSG
+    codes): the pairs in `to`, NaN where a point is out of the projection's reach.
 
 Out:
 

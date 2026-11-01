@@ -31,18 +31,18 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 2115,
+      "bytes": 2442,
       "budget": 5000
     },
     {
       "name": "analysis worker",
-      "bytes": 27513,
+      "bytes": 27761,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 39683,
-      "budget": 45000
+      "bytes": 44204,
+      "budget": 50000
     }
   ]
 }

@@ -1,0 +1,2784 @@
+{
+  "reference": "proj4js 2.22.0",
+  "points": 200,
+  "worst": {
+    "meters": {
+      "js": 3.725290298461914e-9,
+      "wasm": 3.725290298461914e-9
+    },
+    "degrees": {
+      "js": 2.842170943040401e-14,
+      "wasm": 2.842170943040401e-14
+    }
+  },
+  "rows": [
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 4612,
+      "unit": "degrees",
+      "maxJs": 2.842170943040401e-14,
+      "maxWasm": 2.842170943040401e-14
+    },
+    {
+      "label": "inverse",
+      "from": 4612,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6668,
+      "unit": "degrees",
+      "maxJs": 2.842170943040401e-14,
+      "maxWasm": 2.842170943040401e-14
+    },
+    {
+      "label": "inverse",
+      "from": 6668,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 2.842170943040401e-14,
+      "maxWasm": 2.842170943040401e-14
+    },
+    {
+      "label": "inverse",
+      "from": 4326,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 3857,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 3857,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6669,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6669,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2443,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4260876923799515e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2443,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6670,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.09405867382884e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6670,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2444,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2444,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6671,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6671,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2445,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4260876923799515e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2445,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6672,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6672,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2446,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4260876923799515e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2446,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6673,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4151737559586763e-9
+    },
+    {
+      "label": "inverse",
+      "from": 6673,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2447,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4115357771515846e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2447,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6674,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6674,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2448,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4115357771515846e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2448,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6675,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6675,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2449,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2449,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6676,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6676,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2450,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2450,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6677,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4115357771515846e-9
+    },
+    {
+      "label": "inverse",
+      "from": 6677,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2451,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.4260876923799515e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2451,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6678,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6678,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2452,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2452,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6679,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.3969838619232178e-9
+    },
+    {
+      "label": "inverse",
+      "from": 6679,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2453,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2453,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6680,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6680,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2454,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.3969838619232178e-9
+    },
+    {
+      "label": "inverse",
+      "from": 2454,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6681,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6681,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2455,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2455,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6682,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.057678885757923e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6682,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2456,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 3.4924596548080444e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2456,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6683,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6683,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2457,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 6.984919309616089e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2457,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6684,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 3.5652192309498787e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6684,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2458,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 6.984919309616089e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2458,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6685,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6685,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2459,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.130438461899757e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2459,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6686,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 6.984919309616089e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6686,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2460,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 3.7834979593753815e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2460,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6687,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 6.984919309616089e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6687,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 2461,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 7.275957614183426e-10
+    },
+    {
+      "label": "inverse",
+      "from": 2461,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32601,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32601,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32701,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32701,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32602,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32602,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32702,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32702,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32603,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32603,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32703,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32703,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32604,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32604,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32704,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32704,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32605,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32605,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32705,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32705,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32606,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32606,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32706,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32706,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32607,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32607,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32707,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32707,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32608,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32608,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32708,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32708,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32609,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32609,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32709,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.1641532182693481e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32709,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32610,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32610,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32710,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32710,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32611,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32611,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32711,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32711,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32612,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32612,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32712,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32712,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32613,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.3969838619232178e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32613,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32713,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32713,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32614,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 2.3283064365386963e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32614,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32714,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32714,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32615,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32615,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32715,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32715,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32616,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32616,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32716,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32716,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32617,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32617,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32717,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32717,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32618,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32618,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32718,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32718,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32619,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32619,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32719,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32719,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32620,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32620,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32720,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32720,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32621,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32621,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32721,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32721,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32622,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32622,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32722,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32722,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32623,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32623,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32723,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32723,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32624,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32624,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32724,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32724,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32625,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32625,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32725,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32725,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32626,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32626,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32726,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32726,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32627,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32627,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32727,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32727,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32628,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32628,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32728,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32728,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.7763568394002505e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32629,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32629,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32729,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32729,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32630,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32630,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32730,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32730,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32631,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32631,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.0658141036401503e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32731,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32731,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32632,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 2.3283064365386963e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32632,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32732,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32732,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32633,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32633,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32733,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32733,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32634,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32634,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32734,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32734,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32635,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32635,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32735,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.1641532182693481e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32735,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32636,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32636,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32736,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32736,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32637,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32637,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32737,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32737,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32638,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32638,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32738,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32738,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32639,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32639,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32739,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32739,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32640,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32640,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32740,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32740,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32641,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32641,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32741,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32741,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32642,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32642,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32742,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32742,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32643,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32643,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32743,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32743,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32644,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32644,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32744,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32744,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32645,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.1641532182693481e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32645,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32745,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32745,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32646,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32646,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32746,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32746,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32647,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32647,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32747,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32747,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32648,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32648,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32748,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32748,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32649,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32649,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32749,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32749,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32650,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32650,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 3.552713678800501e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32750,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32750,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32651,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32651,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32751,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32751,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32652,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32652,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32752,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32752,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32653,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32653,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32753,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32753,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32654,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32654,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32754,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32754,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32655,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32655,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32755,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32755,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32656,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32656,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32756,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32756,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32657,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.3969838619232178e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32657,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32757,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 32757,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32658,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32658,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32758,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 5.820766091346741e-11
+    },
+    {
+      "label": "inverse",
+      "from": 32758,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32659,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32659,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32759,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 0
+    },
+    {
+      "label": "inverse",
+      "from": 32759,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32660,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32660,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 32760,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 32760,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6688,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6688,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 3097,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 3097,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 1.4210854715202004e-14
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6689,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.3969838619232178e-9
+    },
+    {
+      "label": "inverse",
+      "from": 6689,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 3098,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 4.656612873077393e-10
+    },
+    {
+      "label": "inverse",
+      "from": 3098,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6690,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6690,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 3099,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 3099,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6691,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6691,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 3100,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 3100,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 6692,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 9.313225746154785e-10
+    },
+    {
+      "label": "inverse",
+      "from": 6692,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "forward",
+      "from": 4326,
+      "to": 3101,
+      "unit": "meters",
+      "maxJs": 0,
+      "maxWasm": 1.862645149230957e-9
+    },
+    {
+      "label": "inverse",
+      "from": 3101,
+      "to": 4326,
+      "unit": "degrees",
+      "maxJs": 0,
+      "maxWasm": 7.105427357601002e-15
+    },
+    {
+      "label": "plane IX to UTM 54",
+      "from": 6677,
+      "to": 6691,
+      "unit": "meters",
+      "maxJs": 2.3865140974521637e-9,
+      "maxWasm": 2.3865140974521637e-9
+    },
+    {
+      "label": "plane IX to Web Mercator",
+      "from": 6677,
+      "to": 3857,
+      "unit": "meters",
+      "maxJs": 3.725290298461914e-9,
+      "maxWasm": 3.725290298461914e-9
+    }
+  ]
+}

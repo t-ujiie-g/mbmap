@@ -43,7 +43,7 @@ function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
 
-async function load({ url, bytes }) {
+async function load({ url, bytes, crs }) {
   let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
   if (!data) {
     check(typeof url === "string" && /^https?:/.test(url));
@@ -53,7 +53,14 @@ async function load({ url, bytes }) {
   }
   input(data);
   const dataset = counted(wasm.load());
-  return { dataset, features: wasm.feature_count(dataset) };
+  if (crs === undefined || crs === 4326) return { dataset, features: wasm.feature_count(dataset) };
+  // Coordinates in another CRS: kept as longitude and latitude.
+  check(Number.isInteger(crs));
+  try {
+    return await geometryOp([dataset], (g) => g.transform(crs, 4326));
+  } finally {
+    wasm.dispose(dataset);
+  }
 }
 
 // Fetches the DEM tiles of `url` (a {z}/{x}/{y} template) at zoom `z` covering
@@ -171,9 +178,9 @@ const OPS = {
     input(encoder.encode(property));
     return f64s(wasm.collect(polygons, points));
   },
-  buffer({ dataset, meters, mode, join, cap, arcTolerance }) {
-    check(isId(dataset) && Number.isFinite(meters) && [mode, join, cap].every(Number.isInteger) && arcTolerance >= 0);
-    return geometryOp([dataset], (g) => g.buffer(meters, mode, join, cap, arcTolerance));
+  buffer({ dataset, meters, mode, join, cap, arcTolerance, crs }) {
+    check(isId(dataset) && Number.isFinite(meters) && [mode, join, cap, crs].every(Number.isInteger) && arcTolerance >= 0);
+    return geometryOp([dataset], (g) => g.buffer(meters, mode, join, cap, arcTolerance, crs));
   },
   dissolve({ dataset }) {
     check(isId(dataset));
@@ -183,9 +190,26 @@ const OPS = {
     check(isId(a) && isId(b) && [0, 1, 2].includes(kind));
     return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
   },
-  toGeoJSON({ dataset }) {
-    check(isId(dataset));
-    return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(dataset))));
+  async toGeoJSON({ dataset, crs }) {
+    check(isId(dataset) && (crs === undefined || Number.isInteger(crs)));
+    if (crs === undefined || crs === 4326) return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(dataset))));
+    const { dataset: projected } = await geometryOp([dataset], (g) => g.transform(4326, crs));
+    try {
+      return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(projected))));
+    } finally {
+      wasm.dispose(projected);
+    }
+  },
+  async transform({ coords, from, to }) {
+    check(coords instanceof ArrayBuffer && coords.byteLength % 16 === 0 && Number.isInteger(from) && Number.isInteger(to));
+    const geo = await geometryModule();
+    const bytes = new Uint8Array(coords);
+    const addr = geo.prepare_input(bytes.length);
+    if (addr < 0) throw new Error(`input too large (${bytes.length} bytes)`);
+    new Uint8Array(geo.memory.buffer, addr, bytes.length).set(bytes);
+    const n = geo.transform_coords(from, to);
+    if (n < 0) throw new Error(n === -2 ? "out of memory" : decoder.decode(outputOf(geo, -n)));
+    return new Float64Array(outputOf(geo, n * 8).buffer);
   },
   grid({ dataset, bbox, cols, rows }) {
     check(isId(dataset) && isBox(bbox) && Number.isInteger(cols) && Number.isInteger(rows));

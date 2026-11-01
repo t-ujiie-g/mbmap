@@ -1,7 +1,7 @@
 ///|
 /// Where a buffer's distance is measured: `Geodesic`, on the ground (each
 /// feature in a plane where distances from its center are true), or `Planar`,
-/// in Web Mercator meters (as the map is drawn).
+/// in the plane of a projected CRS (`buffer`'s `crs`, Web Mercator by default).
 pub(all) enum BufferMode {
   Geodesic
   Planar
@@ -116,17 +116,24 @@ fn tree_of(paths : Array[Array[@clipper.Point64]]) -> @clipper.PolyPath64 {
 /// points only grow), as polygons keeping its properties. `join` turns
 /// corners, `cap` ends lines (`Round`, `Butt` or `Square`); `arc_tolerance`
 /// (meters, 0 for distance / 500) bounds how far round edges stray from true
-/// arcs. Features that vanish keep their row with no geometry.
+/// arcs. Features that vanish, or that `crs` cannot project, keep their row
+/// with no geometry.
 pub fn buffer(
   t : @geom.Table,
   meters : Double,
   mode~ : BufferMode = Geodesic,
+  crs? : @proj.Crs,
   join~ : @clipper.JoinType = Round,
   cap~ : @clipper.EndType = Round,
   arc_tolerance~ : Double = 0.0,
 ) -> @geom.Table {
   let b = @geom.TableBuilder::new()
+  let plane = match crs {
+    Some(c) => c
+    None => @proj.Crs::from_epsg(3857).unwrap()
+  }
   for f in 0..<t.length() {
+    let mut reached = true
     let (fwd, inv) : (
       (Double, Double) -> (Double, Double),
       (Double, Double) -> (Double, Double),
@@ -135,7 +142,19 @@ pub fn buffer(
         let plane = LocalPlane::new((w + e) / 2.0, (s + n) / 2.0)
         ((x, y) => plane.forward(x, y), (x, y) => plane.inverse(x, y))
       }
-      _ => (mercator, mercator_inverse)
+      _ =>
+        (
+          (x, y) => {
+            match plane.forward(x, y) {
+              Some(p) => p
+              None => {
+                reached = false
+                (0.0, 0.0)
+              }
+            }
+          },
+          (x, y) => plane.inverse(x, y).unwrap_or((0.0, 0.0)),
+        )
     }
     let to_int = (lon : Double, lat : Double) => {
       let (x, y) = fwd(lon, lat)
@@ -149,6 +168,11 @@ pub fn buffer(
       inv(p.x.to_double() / METER_SCALE, p.y.to_double() / METER_SCALE)
     }
     let shape = shape_of(t, f, to_int, densify=BUFFER_DENSIFY)
+    if !reached {
+      copy_props(b, t, f)
+      b.end_feature(NoGeometry, id=t.ids[f])
+      continue
+    }
     let o = @clipper.ClipperOffset::new(
       arc_tolerance=arc_tolerance * METER_SCALE,
     )
@@ -353,4 +377,36 @@ pub fn intersect(a : @geom.Table, b : @geom.Table) -> @geom.Table {
     }
   }
   out.finish()
+}
+
+///|
+/// `t` with every coordinate taken from `from` to `to`; None if some point is
+/// beyond either projection's reach.
+pub fn transform(
+  t : @geom.Table,
+  from : @proj.Crs,
+  to : @proj.Crs,
+) -> @geom.Table? {
+  let b = @geom.TableBuilder::new()
+  for f in 0..<t.length() {
+    let (p0, p1) = t.parts(f)
+    for p in p0..<p1 {
+      let (r0, r1) = t.rings(p)
+      for r in r0..<r1 {
+        let (i0, i1) = t.points(r)
+        for i in i0..<i1 {
+          guard @proj.transform(from, to, t.coords[i * 2], t.coords[i * 2 + 1])
+            is Some((x, y)) else {
+            return None
+          }
+          b.point(x, y)
+        }
+        b.end_ring()
+      }
+      b.end_part()
+    }
+    copy_props(b, t, f)
+    b.end_feature(t.kinds[f], id=t.ids[f])
+  }
+  Some(b.finish())
 }

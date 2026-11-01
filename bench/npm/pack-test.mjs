@@ -191,6 +191,15 @@ const checks = {
       const erased = (await (await squares.erase(await load(fc([sq(0.5, "c")])))).toGeoJSON()).features;
       const overlaid = (await (await squares.intersect(await load(fc([sq(0.5, "c")])))).toGeoJSON()).features;
       const badBuffer = await pt.buffer(NaN).then(() => "", (e) => e.message);
+      // Coordinate systems: Tokyo Station in plane rectangular IX (EPSG:6677).
+      const { transform } = await import("mbmap/analysis");
+      const ix = await transform([139.7671, 35.6812], "EPSG:4326", "EPSG:6677");
+      const station = await load({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [ix[0], ix[1]] } }, { crs: 6677 });
+      const back = (await station.toGeoJSON()).features[0].geometry.coordinates;
+      const inIx = (await station.toGeoJSON({ crs: "urn:ogc:def:crs:EPSG::6677" })).features[0].geometry.coordinates;
+      const ring = (await (await station.buffer(100, { mode: "planar", crs: 6677 })).toGeoJSON({ crs: 6677 })).features[0].geometry.coordinates[0];
+      const planarRadius = Math.max(...ring.map(([x, y]) => Math.abs(Math.hypot(x - ix[0], y - ix[1]) - 100)));
+      const unknownCrs = await transform([0, 0], 4326, 9999).then(() => "", (e) => e.message);
       const geometry = {
         circle: [circle.geometry.type, circle.geometry.coordinates[0].length, circle.properties.id],
         clipped: [clipped.geometry.type, clipped.geometry.coordinates, clipped.properties.name],
@@ -198,6 +207,11 @@ const checks = {
         erased: erased.map((f) => f.properties.name),
         overlaid: overlaid.map((f) => `${f.properties.name}/${f.properties.name_2}`),
         badBuffer,
+        ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
+        back: back.map((v) => Math.round(v * 1e7) / 1e7),
+        inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
+        planarRadius,
+        unknownCrs,
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
@@ -221,7 +235,13 @@ const checks = {
       r.geometry.merged[0] === 1 && r.geometry.merged[1] >= 5 &&
       JSON.stringify(r.geometry.erased) === JSON.stringify(["a"]) &&
       JSON.stringify(r.geometry.overlaid) === JSON.stringify(["a/c", "b/c"]) &&
-      /invalid buffer options/.test(r.geometry.badBuffer);
+      /invalid buffer options/.test(r.geometry.badBuffer) &&
+      // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
+      JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&
+      JSON.stringify(r.geometry.back) === JSON.stringify([139.7671, 35.6812]) &&
+      JSON.stringify(r.geometry.inIx) === JSON.stringify([-5995.185, -35367.23]) &&
+      r.geometry.planarRadius < 0.02 &&
+      /unsupported CRS EPSG:9999/.test(r.geometry.unknownCrs);
     return [ok, { loaded, ...r }];
   },
 

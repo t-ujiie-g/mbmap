@@ -1,5 +1,37 @@
 # PROGRESS
 
+## Phase 11.2：座標系の変換（平面直角座標系・UTM・Web メルカトル）（2026-11-02）
+
+状態：**完了**。
+
+### できたこと
+
+- **`proj`**（純 MoonBit、全ターゲット）：EPSG コードから座標系を作る（`Crs::from_epsg`）。
+  - 経緯度：4326（WGS84）、4612（JGD2000）、6668（JGD2011）。
+  - Web メルカトル：3857（3785、900913）。球面の式（proj4js の merc.js）。
+  - 平面直角座標系 I〜XIX 系：6669〜6687（JGD2011）、2443〜2461（JGD2000）。
+  - UTM：32601〜32660、32701〜32760（WGS84）、6688〜6692・3097〜3101（JGD2011・JGD2000 の 51〜55 帯）。
+  - 横メルカトルは proj4js 2.22.0 の `etmerc`（Poder/Engsager の Krüger 級数、6 次）の移植。
+  - 投影の範囲外（Web メルカトルの極、横メルカトルの中央子午線から遠い点）は `None` を返す。
+  - JGD2000・JGD2011 と WGS84 の間の測地系の変換はしない（proj4js でも towgs84 が 0）。Tokyo 測地系などの 7 パラメータ変換は 11.3 で扱う。
+- **`overlay`**：`transform(table, from, to)` を足した。範囲外の点を含む地物は、行を残してジオメトリなしにする。`buffer` の planar は、渡された投影座標系（既定は 3857）の平面で測る。
+- **geometry.wasm**：`transform`（表）と `transform_coords`（座標の組。範囲外は NaN）を足した。`buffer` は座標系のコードを受け取り、経緯度や未対応のコードは拒む。
+- **`mbmap/analysis`**：`load(data, { crs })`、`toGeoJSON({ crs })`、`buffer(m, { mode: "planar", crs })`、`transform(coords, from, to)`。`crs` は数値、`"EPSG:6677"`、`"urn:ogc:def:crs:EPSG::6677"`、`"CRS84"` を受け付ける。Worker の中のデータセットは常に 4326 で持つ。
+
+### 黄金テスト（`npm run proj:golden`、`bench/results/proj-golden.json`）
+
+- proj4js 2.22.0（bench の devDependency、`--save-exact --ignore-scripts`、npm audit 0 件）と、対応する 172 の座標系すべてで比べた。各座標系の範囲に散らした 200 点の順変換・逆変換と、平面直角 IX 系 → UTM 54 帯、IX 系 → 3857 の変換、合わせて 69,200 点。
+- 最大の差：3.7e-9 m、2.8e-14°（js・wasm-gc とも）。許容は 1mm / 1e-8°。
+
+### サイズ（`bench/results/npm-size.json`）
+
+- mbmap/analysis 2.1 → 2.4KB、解析 Worker 27.5 → 27.8KB、geometry.wasm 39.7 → 44.2KB。
+- geometry.wasm の予算を 45KB から 50KB に上げた。11.3 で投影を足すと 45KB を超える見込みのため。投影が ~20KB を超えたら、別のモジュールに分けることを検討する（AGENTS §4 の基準）。
+
+### 確認
+
+- pack test（Chromium）で、東京駅の IX 系の座標が proj4js と同じ（-5995.185, -35367.230）こと、IX 系で読んで経緯度に戻ること、IX 系で 100m の planar buffer が IX 系で円（誤差 0.7mm）になること、未対応のコードを拒むことを確かめた。
+
 ## Phase 11.1：ジオメトリ演算（Clipper2 の移植、buffer・dissolve・clip・erase・intersect）（2026-11-02）
 
 状態：**完了**。Phase 11 は、11.1（ジオメトリ演算）、11.2（座標系変換：平面直角座標系・UTM・Web メルカトル）、11.3（proj 文字列と投影の追加、7 パラメータの測地系変換）の順に進める。

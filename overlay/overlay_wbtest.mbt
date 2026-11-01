@@ -73,10 +73,13 @@ test "a geodesic buffer puts a point's circle at the distance in its local plane
 test "a planar buffer is round in Web Mercator meters" {
   let t = table([(Point, [[(139.7, 35.7)]], "a")])
   let out = buffer(t, 1000.0, mode=Planar)
-  let (cx, cy) = mercator(139.7, 35.7)
+  let mercator = @proj.Crs::from_epsg(3857).unwrap()
+  let (cx, cy) = mercator.forward(139.7, 35.7).unwrap()
   let (i0, i1) = out.points(0)
   for i in i0..<i1 {
-    let (x, y) = mercator(out.coords[i * 2], out.coords[i * 2 + 1])
+    let (x, y) = mercator
+      .forward(out.coords[i * 2], out.coords[i * 2 + 1])
+      .unwrap()
     let d = ((x - cx) * (x - cx) + (y - cy) * (y - cy)).sqrt()
     assert_true(d < 1000.01 && d > 1000.0 - 2.1)
   }
@@ -152,4 +155,44 @@ test "intersect keeps both layers' properties, renaming shared keys" {
     Some(Str("b1")),
     Some(Str("b2")),
   ])
+}
+
+///|
+test "a planar buffer in plane rectangular IX is round in that plane" {
+  let crs = @proj.Crs::from_epsg(6677).unwrap()
+  let t = table([(Point, [[(139.7, 35.7)]], "a")])
+  let out = buffer(t, 1000.0, mode=Planar, crs~)
+  let (cx, cy) = crs.forward(139.7, 35.7).unwrap()
+  let (i0, i1) = out.points(0)
+  for i in i0..<i1 {
+    let (x, y) = crs.forward(out.coords[i * 2], out.coords[i * 2 + 1]).unwrap()
+    let d = ((x - cx) * (x - cx) + (y - cy) * (y - cy)).sqrt()
+    assert_true((d - 1000.0).abs() < 0.02)
+  }
+  // A point the CRS cannot reach keeps its row without geometry.
+  let far = buffer(
+    table([(Point, [[(49.83333333333334, 0.0)]], "b")]),
+    10.0,
+    mode=Planar,
+    crs~,
+  )
+  assert_eq((far.length(), far.kinds[0]), (1, NoGeometry))
+}
+
+///|
+test "transform takes a table to another CRS and back" {
+  let ix = @proj.Crs::from_epsg(6677).unwrap()
+  let wgs = @proj.Crs::from_epsg(4326).unwrap()
+  let t = table([(Polygon, [square(139.7, 35.6, 0.1)], "a")])
+  let projected = transform(t, wgs, ix).unwrap()
+  assert_true(projected.coords[0].abs() > 1000.0)
+  assert_eq(projected.column("name").unwrap().values[0], Some(Str("a")))
+  let back = transform(projected, ix, wgs).unwrap()
+  for i, v in back.coords {
+    assert_true((v - t.coords[i]).abs() < 1.0e-9)
+  }
+  assert_true(
+    transform(table([(Point, [[(49.83333333333334, 0.0)]], "b")]), wgs, ix)
+    is None,
+  )
 }

@@ -91,21 +91,3 @@ fn LocalPlane::inverse(
   let lon = @math.atan2(x * sc, rho * self.cos0 * cc - y * self.sin0 * sc)
   (self.lon0 + degrees(lon), degrees(lat))
 }
-
-///|
-/// Web Mercator (EPSG:3857) meters.
-fn mercator(lon : Double, lat : Double) -> (Double, Double) {
-  let lat = @cmp.maximum(-85.0511287798066, @cmp.minimum(85.0511287798066, lat))
-  (
-    GRS80_A * radians(lon),
-    GRS80_A * @math.ln(@math.tan(PI / 4.0 + radians(lat) / 2.0)),
-  )
-}
-
-///|
-fn mercator_inverse(x : Double, y : Double) -> (Double, Double) {
-  (
-    degrees(x / GRS80_A),
-    degrees(2.0 * @math.atan(@math.exp(y / GRS80_A)) - PI / 2.0),
-  )
-}

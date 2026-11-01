@@ -4,12 +4,13 @@ package "t-ujiie-g/mbmap/overlay"
 import {
   "t-ujiie-g/mbmap/clipper",
   "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/proj",
 }
 
 // Values
 pub const DEGREE_SCALE : Double = 10000000.0
 
-pub fn buffer(@geom.Table, Double, mode? : BufferMode, join? : @clipper.JoinType, cap? : @clipper.EndType, arc_tolerance? : Double) -> @geom.Table
+pub fn buffer(@geom.Table, Double, mode? : BufferMode, crs? : @proj.Crs, join? : @clipper.JoinType, cap? : @clipper.EndType, arc_tolerance? : Double) -> @geom.Table
 
 pub fn clip(@geom.Table, @geom.Table) -> @geom.Table
 
@@ -18,6 +19,8 @@ pub fn dissolve(@geom.Table) -> @geom.Table
 pub fn erase(@geom.Table, @geom.Table) -> @geom.Table
 
 pub fn intersect(@geom.Table, @geom.Table) -> @geom.Table
+
+pub fn transform(@geom.Table, @proj.Crs, @proj.Crs) -> @geom.Table?
 
 // Errors
 

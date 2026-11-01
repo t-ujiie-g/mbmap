@@ -42,9 +42,10 @@ fn tables(len : Int32) -> (@geom.Table, @geom.Table?)? {
 }
 
 ///|
-/// `@overlay.buffer` of the input table: `mode` 0 geodesic, 1 planar; `join`
-/// 0 round, 1 miter, 2 square, 3 bevel; `cap` 0 round, 1 butt, 2 square.
-/// Returns the result's length at `output_addr`, or minus an error's.
+/// `@overlay.buffer` of the input table: `mode` 0 geodesic, 1 planar in the
+/// projected CRS with EPSG code `crs`; `join` 0 round, 1 miter, 2 square, 3
+/// bevel; `cap` 0 round, 1 butt, 2 square. Returns the result's length at
+/// `output_addr`, or minus an error's.
 #export_name("buffer")
 pub fn buffer(
   meters : Double,
@@ -52,6 +53,7 @@ pub fn buffer(
   join : Int32,
   cap : Int32,
   arc_tolerance : Double,
+  crs : Int32,
 ) -> Int32 {
   guard tables(-1) is Some((t, _)) else {
     return @wasmio.fail_with("malformed table")
@@ -74,7 +76,12 @@ pub fn buffer(
     _ => Round
   }
   let mode : @overlay.BufferMode = if mode == 1 { Planar } else { Geodesic }
-  finish(@overlay.buffer(t, meters, mode~, join~, cap~, arc_tolerance~))
+  guard @proj.Crs::from_epsg(crs) is Some(plane) && !plane.is_geographic() else {
+    return @wasmio.fail_with("unsupported or unprojected CRS EPSG:\{crs}")
+  }
+  finish(
+    @overlay.buffer(t, meters, mode~, crs=plane, join~, cap~, arc_tolerance~),
+  )
 }
 
 ///|
@@ -101,4 +108,59 @@ pub fn overlay(len_a : Int32, op : Int32) -> Int32 {
     2 => finish(@overlay.intersect(a, b))
     _ => @wasmio.fail_with("unknown overlay \{op}")
   }
+}
+
+///|
+fn crs_of(code : Int32) -> @proj.Crs? {
+  @proj.Crs::from_epsg(code)
+}
+
+///|
+/// The input table with its coordinates taken from EPSG `from` to EPSG `to`.
+#export_name("transform")
+pub fn transform(from : Int32, to : Int32) -> Int32 {
+  guard tables(-1) is Some((t, _)) else {
+    return @wasmio.fail_with("malformed table")
+  }
+  guard crs_of(from) is Some(f) else {
+    return @wasmio.fail_with("unsupported CRS EPSG:\{from}")
+  }
+  guard crs_of(to) is Some(t2) else {
+    return @wasmio.fail_with("unsupported CRS EPSG:\{to}")
+  }
+  match @overlay.transform(t, f, t2) {
+    Some(out) => finish(out)
+    None => @wasmio.fail_with("a point lies beyond the projection's reach")
+  }
+}
+
+///|
+/// The input's f64 x, y pairs taken from EPSG `from` to EPSG `to`, as f64s at
+/// `output_addr` (NaN where a projection cannot reach); returns their count.
+#export_name("transform_coords")
+pub fn transform_coords(from : Int32, to : Int32) -> Int32 {
+  guard crs_of(from) is Some(f) else {
+    return @wasmio.fail_with("unsupported CRS EPSG:\{from}")
+  }
+  guard crs_of(to) is Some(t) else {
+    return @wasmio.fail_with("unsupported CRS EPSG:\{to}")
+  }
+  let input = @wasmio.input_bytes()
+  let n = input.length() / 16
+  let out = FixedArray::make(n * 2, @double.not_a_number)
+  let f64 = (at : Int32) => {
+    let mut bits = 0UL
+    for k in 0..<8 {
+      bits = bits | (input[at + k].to_uint64() << (k * 8))
+    }
+    bits.reinterpret_as_double()
+  }
+  for i in 0..<n {
+    if @proj.transform(f, t, f64(i * 16), f64(i * 16 + 8)) is Some((x, y)) {
+      out[i * 2] = x
+      out[i * 2 + 1] = y
+    }
+  }
+  @wasmio.clear_input()
+  @wasmio.write_f64s(out)
 }
