@@ -319,7 +319,33 @@ test "symbol layers read text layout and halo, with MapLibre's defaults" {
     constant(s.layers[1].halo_color),
     Color({ r: 0.0, g: 0.0, b: 0.0, a: 0.0, }),
   )
-  assert_true(s.layers[1].text is Some(_) && s.layers[0].text is Some(_))
+  assert_eq((b.vertical, b.sort_key), (false, None))
+}
+
+///|
+test "text-writing-mode takes its first mode; symbol-sort-key compiles" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "v", "type": "symbol", "layout": {"text-writing-mode": ["vertical", "horizontal"],
+      #|   "symbol-sort-key": ["get", "rank"]}},
+      #|  {"id": "h", "type": "symbol", "layout": {"text-writing-mode": ["horizontal", "vertical"]}}
+      #|]}
+    ),
+  )
+  let v = s.layers[0].text.unwrap()
+  assert_eq((v.vertical, v.sort_key), (true, Some(Get("rank"))))
+  assert_false(s.layers[1].text.unwrap().vertical)
+  try
+    @style.Style::parse(
+      "{\"layers\": [{\"id\": \"a\", \"type\": \"symbol\", \"layout\": {\"text-writing-mode\": \"vertical\"}}]}",
+    )
+  catch {
+    Invalid(path~, _) => assert_eq(path, "layers[0].layout.text-writing-mode")
+    e => fail("unexpected \{Repr(e)}")
+  } noraise {
+    _ => fail("expected a bare string to be invalid")
+  }
 }
 
 ///|

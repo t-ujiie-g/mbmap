@@ -48,7 +48,7 @@ npm run geojson:golden    # tiler vs @maplibre/geojson-vt, every tile in range (
 npm run geojson:node      # GeoJSON read + index + tiles vs geojson-vt in Node (also geojson:browser)
 npm run analysis:golden   # analysis wasm vs Turf.js 7.4.0 / flatbush 4.6.2 on all fixtures (must stay all identical)
 npm run analysis:node     # analysis vs Turf.js + flatbush in Node (also analysis:browser)
-npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style)
+npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style); node render/run.mjs --labels adds the label layers
 npm run example           # serve the repo; open http://127.0.0.1:8080/examples/ (basic needs only this)
 npm run examples          # also pack npm/ into examples/{npm,element,react} (bench/npm/prepare.mjs), then serve
 npm run npm:pack          # build + npm pack npm/, install into examples/{npm,element,react}, check them in Chromium (CI runs this)
@@ -126,6 +126,7 @@ Backend facts measured so far (see PROGRESS.md):
 - Bundling MapLibre `src/` with esbuild requires `useDefineForClassFields: false` and an alias to `node_modules/maplibre-gl/src` (package `exports` blocks deep imports).
 - Inline `<script type="module">` in bench pages did not execute under Playwright; keep page code in external `.mjs` files.
 - Register MapLibre `load`/`idle` listeners immediately after constructing the map (idle can fire in the same task as load).
+- Never pass tile templates through `new URL()`: it percent-encodes `{z}`/`{x}`/`{y}` and every tile 404s (MapLibre then draws an empty map quietly, which voided the render comparisons until Phase 9.2). Check that both engines draw before trusting a comparison.
 - `bench/fixtures/gsi-bvmap/` (~13MB) is gitignored; only the manifest is committed. Attribution: 国土地理院ベクトルタイル提供実験.
 
 ## 6. Testing conventions

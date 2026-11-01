@@ -41,10 +41,10 @@ vertex range (no indices):
 
 - u8 text anchor (`center`, `left`, `right`, `top`, `bottom`, `top-left`,
   `top-right`, `bottom-left`, `bottom-right`), u8 allow overlap, u8 ignore
-  placement, u8 0;
+  placement, u8 vertical writing;
 - f64 offset x, offset y, max width, line height (ems), padding (px); u32 label count;
 - per label: i16 anchor x, y (`TILE_EXTENT` units, inside the tile), f64 text size
-  (px), u32 part count, then each part of the text as a property value (numbers and
+  (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
   booleans are written out by the glue).
 
 ## Symbol vertices (`worker/js/symbols.mjs`)

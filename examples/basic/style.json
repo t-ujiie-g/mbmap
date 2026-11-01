@@ -86,7 +86,14 @@
     },
     {
       "id": "label", "type": "symbol", "source": "gsi", "source-layer": "label",
-      "layout": { "text-field": "{knj}", "text-size": 12, "text-max-width": 8 },
+      "filter": ["!", ["in", ["get", "arrng"], ["literal", [2, 4]]]],
+      "layout": { "text-field": "{knj}", "text-size": 12, "text-max-width": 8, "symbol-sort-key": ["get", "annoCtg"] },
+      "paint": { "text-color": "#333333", "text-halo-color": "#ffffff", "text-halo-width": 1.5 }
+    },
+    {
+      "id": "label-vertical", "type": "symbol", "source": "gsi", "source-layer": "label",
+      "filter": ["in", ["get", "arrng"], ["literal", [2, 4]]],
+      "layout": { "text-field": "{knj}", "text-size": 12, "text-max-width": 8, "text-writing-mode": ["vertical"], "symbol-sort-key": ["get", "annoCtg"] },
       "paint": { "text-color": "#333333", "text-halo-color": "#ffffff", "text-halo-width": 1.5 }
     }
   ]
