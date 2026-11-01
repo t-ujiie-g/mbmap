@@ -19,10 +19,7 @@ fn Map::render(self : Map) -> Unit {
   let terrain = self.terrain_source()
   if terrain is Some(src) &&
     elevation_at(src, self.transform.camera.center.to_mercator()) is Some(e) {
-    let exaggeration = self.style.terrain
-      .map(t => t.exaggeration)
-      .unwrap_or(1.0)
-    self.transform = self.transform.with_elevation(e * exaggeration)
+    self.transform = self.transform.with_elevation(e * self.exaggeration())
   }
   let t = self.transform
   // Per source: its covering tiles, and where their meshes go this frame
@@ -158,11 +155,7 @@ fn Map::draw_extrusions(
   let zoom = t.camera.zoom
   // Heights were taken at the tile's zoom and one deeper.
   let mix = @cmp.maximum(0.0, @cmp.minimum(1.0, zoom - d.id.z.to_double()))
-  let exaggeration = if on_terrain {
-    self.style.terrain.map(t => t.exaggeration).unwrap_or(1.0)
-  } else {
-    0.0
-  }
+  let exaggeration = if on_terrain { self.exaggeration() } else { 0.0 }
   for m in d.meshes {
     if m.layer != index || m.ground is None {
       continue

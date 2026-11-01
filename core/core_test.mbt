@@ -86,13 +86,12 @@ test "tile keys are unique across zooms" {
 }
 
 ///|
-test "BBox add_point, union, contains and intersects" {
+test "BBox add_point, contains and intersects" {
   let e = @core.BBox::empty()
   assert_true(e.is_empty())
   assert_false(e.contains(0.0, 0.0))
   let b = e.add_point(1.0, 2.0).add_point(3.0, -1.0)
   assert_eq(b, { min_x: 1.0, min_y: -1.0, max_x: 3.0, max_y: 2.0, })
-  assert_eq(e.union(b), b)
   assert_true(b.contains(1.0, -1.0))
   assert_false(b.contains(3.0, 0.0))
   let c : @core.BBox = { min_x: 3.0, min_y: 0.0, max_x: 4.0, max_y: 1.0, }

@@ -1,5 +1,51 @@
 # PROGRESS
 
+## リファクタリングとセキュリティチェック（Phase 10 のあと）（2026-11-01）
+
+AGENTS.md §7 の観点を順に見て、指摘の一覧を作ってから直した。§8 のセキュリティチェックも行った。
+
+### リファクタリング
+
+- 定数・重複：
+  - 地形の誇張率を取り出す式が 3 か所にあったので、`Map::exaggeration` にまとめた。
+  - 同じ JS 関数（`f32_index` と `f32_at`）を 1 つにした。
+- 未使用：`BBox::union`（テストからしか呼ばれない）を消した。`Transform::mercator_to_screen` もテストからしか呼ばれないが、`screen_to_mercator` と対になり、ファサードの `project()` に使う予定なので残した。
+- ファイル分割：
+  - `render_webgl2/gl.mbt`（915 行）の 3D 部分（標高テクスチャ、描画先、地形、深度、空、押し出し）を `gl_3d.mbt` に分けた。
+  - `renderer.mbt` も同じく `renderer_3d.mbt` に分けた。
+  - `gl.mbt` は 626 行のまま。大半は全シェーダーを持つ初期化で、そこは分けない。
+- テスト：
+  - 照明の向き（`light_direction`、MapLibre の `sphericalToCartesian` と画面の向きでの回転）を純粋な関数に切り出し、値を確かめるテストを足した。
+  - `extrusion_runs` にもテストを足した。
+- ドキュメント：README のパッケージ表に押し出し・地形・空を足し、`TERRAIN_TEXTURE` の説明を直した。
+- コメント：3 行を超えていたシェーダーの説明（線、円、文字、押し出し、地形）を縮めた。
+
+### 速度（§7.5）
+
+| 候補 | 結果 | 判断 |
+|---|---|---|
+| 地形のテクスチャを、ズーム・方位・重なるタイル・タイルの中身の版（`content_version`）が変わらない間は使い回す | 地形・45° のパンで 1 フレームの CPU（p50）が 0.70〜0.78 → 0.39〜0.44ms（`main` と交互に各 3 回 × 2 巡）。ラベル＋地形のパンも 0.57〜0.83 → 0.27〜0.56ms。ズーム中は毎フレーム描き直すので変わらない（0.73〜0.80 → 0.78〜0.83ms） | 採用 |
+| ラベルの遮蔽用の深度パスを、symbol レイヤーがないときは描かない | 上の計測に含む | 採用 |
+| 描画先テクスチャ：全ズームのタイル以外は 512 px、予備は 32 → 8 枚 | GPU メモリの削減（下の S1） | 採用 |
+
+- 11 回の計測（`render-chromium-terrain.json`、`-labels-terrain.json`、`render-chromium.json`）は、MapLibre の値も前回より 3〜6 割高く、マシンが遅い状態で取れた。そのため効果は上の交互の計測で判断した。
+- 11 回の値は、地形・45° の mbmap が pan 0.71 / pan-back 0.60 / zoom-in 1.32 / zoom-out 1.36ms、MapLibre が 1.66 / 2.72 / 2.25 / 2.62ms。
+- 地形なしの描画は変わらない（idle 115ms、p50 0.55〜0.70ms）。
+- main バンドル：43.1KB → 43.5KB。
+
+### セキュリティチェック（§8）
+
+| # | 重要度 | 場所 | 内容 | 対応 |
+|---|---|---|---|---|
+| S1 | 中 | `map/terrain.mbt` の描画先 | dpr 2 では描画先が 1 枚 4MB。高いピッチで地形を見ると、表示中のタイル分に予備 32 枚が加わり、GPU メモリが数百 MB に達しうる | 全ズームのタイル以外は 512 px、予備は 8 枚にした |
+
+- 依存関係：npm audit は bench/・npm/ とも 0 件。Dependabot の未解決アラートなし。固定している版（maplibre-gl 6.16.0、playwright 1.64.1、esbuild 0.28.2、binaryen 132.0.0、typescript 7.0.2、pbf 5.1.2）にも GitHub Advisories の該当なし。moon は 0.1.20261028。
+- 信頼できない入力：
+  - DEM タイルは一辺 1024 まで。Worker の出力はその範囲で、線形メモリの確保も確かめている。
+  - 押し出しの高さは NaN を 0 にして 0〜6553.5m に切る。頂点数は `MAX_PACKED_BYTES` の範囲。
+  - `sky`・`light`・`terrain`・`fill-extrusion` の値は不正なら Invalid か Unsupported。ブレンド値は 0〜1 に収める。有限でない誇張率は `with_elevation` が無視する。
+- Web：`innerHTML`・`eval`・`new Function` は使っていない。タイルと標高タイルは `credentials: "omit"` で取得。wasm は同一オリジンの URL から読む。開発用サーバーのテスト（`bench/lib/serve.test.mjs`）は通る。
+
 ## Phase 10.5：fill-extrusion（建物の押し出し）（2026-11-01）
 
 状態：**完了**。Phase 10（3D：DEM、地形、ピッチ 85°、空と霧、地形上のラベル、押し出し）を終えた。
