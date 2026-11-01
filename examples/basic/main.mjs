@@ -13,6 +13,7 @@ if (params.get("terrain") === "1") {
   const json = JSON.parse(style);
   json.sources.dem = { type: "raster-dem", tiles: ["/bench/fixtures/gsi-dem/{z}/{x}/{y}.png"], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" };
   json.terrain = { source: "dem", exaggeration: Number(params.get("exaggeration") ?? 3) };
+  json.sky = { "sky-color": "#88C6FC", "horizon-color": "#ffffff", "fog-color": "#ffffff" };
   style = JSON.stringify(json);
 }
 if (params.get("remote") === "1") {

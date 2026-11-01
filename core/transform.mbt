@@ -8,10 +8,18 @@ pub const TILE_SIZE : Double = 512.0
 pub const TILE_EXTENT : Int32 = 4096
 
 ///|
-/// Highest pitch in degrees. Up to here the horizon stays off screen (pitch
-/// plus half the field of view is below 90°), so every screen point maps to
-/// the ground.
-pub const MAX_PITCH : Double = 60.0
+/// Highest pitch in degrees, as in MapLibre. Above about 70° the horizon comes
+/// on screen: the ground ends there (`Transform::horizon`) and the sky begins.
+pub const MAX_PITCH : Double = 85.0
+
+///|
+/// The ground is drawn up to this share of the way to the true horizon, and
+/// never past this many degrees from straight down (MapLibre's
+/// `getMercatorHorizon`), so the far plane stays finite.
+const HORIZON_SHARE : Double = 0.85
+
+///|
+const MAX_HORIZON_ANGLE : Double = 89.25
 
 ///|
 /// Vertical field of view in radians, MapLibre's default (about 36.87°).
@@ -113,20 +121,60 @@ fn view_projection(
   lift : Double,
 ) -> Mat4 {
   let d = center_distance(height)
-  let pitch = radians(camera.pitch)
-  let half_fov = FIELD_OF_VIEW / 2.0
-  // Far enough for the top edge of the screen, which looks farthest away.
-  let top = @math.sin(half_fov) *
-    d /
-    @math.sin(@math.PI / 2.0 - pitch - half_fov)
-  // Terrain below the center reaches beyond the plane: leave room for it.
-  let far = (@math.sin(pitch) * top + d) * 1.01 + lift.abs() * 2.0
+  let far = far_distance(camera.pitch, height, lift)
   Mat4::perspective(FIELD_OF_VIEW, width / height, height / 50.0, far)
   .scale(1.0, -1.0, 1.0)
   .translate(0.0, 0.0, -d)
-  .rotate_x(pitch)
+  .rotate_x(radians(camera.pitch))
   .rotate_z(-radians(camera.bearing))
   .translate(0.0, 0.0, -lift)
+}
+
+///|
+/// Depth (CSS pixels along the view axis) of the farthest ground drawn: the
+/// top edge of the screen or the horizon line, whichever is lower. Terrain
+/// below the center (`lift` world pixels) reaches beyond it: room is left.
+fn far_distance(pitch : Double, height : Double, lift : Double) -> Double {
+  let d = center_distance(height)
+  let p = radians(pitch)
+  let above = @cmp.minimum(
+    FIELD_OF_VIEW / 2.0,
+    @math.atan(horizon_distance(pitch, height) / d),
+  )
+  let top = @math.sin(above) * d / @math.sin(@math.PI / 2.0 - p - above)
+  (@math.sin(p) * top + d) * 1.01 + lift.abs() * 2.0
+}
+
+///|
+/// The depths (CSS pixels along the view axis) over which terrain fog is
+/// measured, as in MapLibre's fog matrix: from the camera's distance to sea
+/// level to the far plane.
+pub fn Transform::fog_range(self : Transform) -> (Double, Double) {
+  let d = center_distance(self.height)
+  let lift = self.elevation * self.pixels_per_meter()
+  let pitch = radians(@cmp.minimum(self.camera.pitch, MAX_HORIZON_ANGLE))
+  (
+    @cmp.maximum(d / 2.0, d + lift / @math.cos(pitch)),
+    far_distance(self.camera.pitch, self.height, lift),
+  )
+}
+
+///|
+/// CSS pixels from the screen center up to the horizon line (MapLibre's
+/// `getMercatorHorizon`); beyond the screen's top edge below about 70°.
+fn horizon_distance(pitch : Double, height : Double) -> Double {
+  center_distance(height) *
+  @cmp.minimum(
+    @math.tan(radians(90.0 - pitch)) * HORIZON_SHARE,
+    @math.tan(radians(MAX_HORIZON_ANGLE - pitch)),
+  )
+}
+
+///|
+/// CSS pixels from the screen center up to the horizon line, above which the
+/// sky is drawn and no point maps to the ground.
+pub fn Transform::horizon(self : Transform) -> Double {
+  horizon_distance(self.camera.pitch, self.height)
 }
 
 ///|
@@ -234,12 +282,14 @@ pub fn Transform::world_size(self : Transform) -> Double {
 
 ///|
 /// The ground point (world pixels relative to the center) under the screen
-/// point (x, y): where the ray through it meets the map plane.
+/// point (x, y): where the ray through it meets the map plane. Points above the
+/// horizon line take the ground at the line.
 fn Transform::ground(
   self : Transform,
   x : Double,
   y : Double,
 ) -> (Double, Double) {
+  let y = @cmp.maximum(y, self.height / 2.0 - self.horizon())
   let nx = x / self.width * 2.0 - 1.0
   let ny = 1.0 - y / self.height * 2.0
   let (ax, ay, az, aw) = self.inverse.apply(nx, ny, -1.0, 1.0)
@@ -255,7 +305,7 @@ fn Transform::ground(
 
 ///|
 /// Mercator position under the screen point (x, y), measured in CSS pixels
-/// from the viewport's top-left corner.
+/// from the viewport's top-left corner (at the horizon for a point above it).
 pub fn Transform::screen_to_mercator(
   self : Transform,
   x : Double,
@@ -372,9 +422,16 @@ pub fn Transform::tile_zoom(
 const LOD_DISTANCE : Double = 1.5
 
 ///|
+/// Zoom levels below a source's `min_z` that distant ground may want and still
+/// be drawn from `min_z` tiles; farther ground is left to the fog.
+const MIN_ZOOM_SLACK : Int32 = 2
+
+///|
 /// Tiles that intersect the view, from `max_z` near the camera down to
 /// `min_z` far from it (with pitch, distant ground is drawn from lower
-/// zooms), nearest to the center first. The tiles never overlap.
+/// zooms), nearest to the center first. The tiles never overlap. Ground that
+/// wants a zoom more than `MIN_ZOOM_SLACK` below `min_z` gets no tiles, as in
+/// MapLibre (which drops anything below `min_z`).
 pub fn Transform::covering_tiles(
   self : Transform,
   min_z : Int32,
@@ -416,11 +473,17 @@ pub fn Transform::covering_tiles(
       ws -
       cam_y
     let dist = (nx * nx + ny * ny + cam_z * cam_z).sqrt()
-    let split = tile.z < min_z ||
-      (
-        tile.z < max_z &&
-        dist < LOD_DISTANCE * d * (1 << (max_z - tile.z - 1)).to_double()
-      )
+    let near = (levels : Int32) => {
+      dist < LOD_DISTANCE * d * @math.pow(2.0, levels.to_double())
+    }
+    let split = if tile.z < min_z {
+      if !near(max_z - min_z + MIN_ZOOM_SLACK) {
+        continue
+      }
+      true
+    } else {
+      tile.z < max_z && near(max_z - tile.z - 1)
+    }
     if split && tile.children() is Some(kids) {
       for k in kids {
         stack.push(k)

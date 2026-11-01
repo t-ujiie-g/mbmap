@@ -94,6 +94,7 @@ pub struct Style {
   sources : Array[Source]
   layers : Array[StyleLayer]
   terrain : Terrain?
+  sky : Sky?
 }
 
 ///|
@@ -175,7 +176,7 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
     }
     Some(_) => raise Invalid(path="terrain", "not an object")
   }
-  { sources, layers, terrain, }
+  { sources, layers, terrain, sky: parse_sky(root.get("sky")), }
 }
 
 ///|

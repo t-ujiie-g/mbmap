@@ -21,7 +21,7 @@ const checks = {
       map.jumpTo({ zoom: 15 });
       map.jumpTo({ zoom: 15 });
       await map.once("idle");
-      map.jumpTo({ bearing: 370, pitch: 75 });
+      map.jumpTo({ bearing: 370, pitch: 89 });
       const turned = { bearing: map.getBearing(), pitch: map.getPitch() };
       await map.once("idle");
       // Error paths: a style URL that fails fires `error`; a bad style object throws.
@@ -64,9 +64,9 @@ const checks = {
       Math.abs(r.center.lng - 139.7671) < 1e-9 &&
       r.zoom === 15 &&
       r.moves.length === 2 &&
-      // Bearing wraps and pitch is clamped to 60.
+      // Bearing wraps and pitch is clamped to 85.
       Math.abs(r.turned.bearing - 10) < 1e-9 &&
-      r.turned.pitch === 60 &&
+      r.turned.pitch === 85 &&
       r.attribution === ATTRIBUTION &&
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
@@ -86,7 +86,7 @@ const checks = {
       el.setAttribute("zoom", "15");
       el.setAttribute("center", "200,0"); // out of range: rejected
       el.setAttribute("zoom", "1e3"); // not a plain decimal: rejected
-      el.setAttribute("pitch", "61"); // above MAX_PITCH: rejected
+      el.setAttribute("pitch", "86"); // above MAX_PITCH: rejected
       await new Promise((r) => el.addEventListener("mb-idle", r, { once: true }));
       const after = events.slice(before).map((e) => e.type);
       const camera = { center: el.center, zoom: el.zoom };
@@ -130,7 +130,7 @@ const checks = {
     const turn = ((after.bearing - before.bearing + 540) % 360) - 180;
     const ok =
       Math.abs(turn + 80) < 1e-6 &&
-      Math.abs(after.pitch - Math.min(60, before.pitch + 20)) < 1e-6 &&
+      Math.abs(after.pitch - Math.min(85, before.pitch + 20)) < 1e-6 &&
       r.after.filter((t) => t === "mb-move").length === 1 &&
       r.after.filter((t) => t === "mb-error").length === 3 &&
       r.tilted.pitch === 45 &&

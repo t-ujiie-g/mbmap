@@ -135,16 +135,37 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // bottom up, so v flips).
   #|  const terrain = program(
   #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform sampler2D u_elev; uniform float u_scale;" +
-  #|    "uniform float u_skirt; uniform vec3 u_dem; out vec2 v_uv;" +
+  #|    "uniform float u_skirt; uniform vec3 u_dem; uniform vec2 u_fog; out vec2 v_uv; out float v_fog;" +
   #|    "float h(ivec2 p) { ivec2 n = textureSize(u_elev, 0) - 1; return texelFetch(u_elev, clamp(p, ivec2(0), n), 0).r; }" +
   #|    "void main() { v_uv = a_pos / 4096.0;" +
   #|    "  vec2 t = (u_dem.xy + v_uv * u_dem.z) * vec2(textureSize(u_elev, 0)) - 0.5;" +
   #|    "  ivec2 i = ivec2(floor(t)); vec2 f = t - floor(t);" +
   #|    "  float e = mix(mix(h(i), h(i + ivec2(1, 0)), f.x), mix(h(i + ivec2(0, 1)), h(i + ivec2(1, 1)), f.x), f.y);" +
-  #|    "  gl_Position = u_matrix * vec4(a_pos, e * u_scale - a_data.x * u_skirt, 1.0); }",
-  #|    "uniform sampler2D u_image; in vec2 v_uv; out vec4 o;" +
-  #|    "void main() { o = texture(u_image, vec2(v_uv.x, 1.0 - v_uv.y)); }",
-  #|    ["u_matrix", "u_elev", "u_scale", "u_skirt", "u_dem", "u_image"]);
+  #|    "  gl_Position = u_matrix * vec4(a_pos, e * u_scale - a_data.x * u_skirt, 1.0);" +
+  #|    "  float near = u_fog.x, far = u_fog.y;" +
+  #|    "  v_fog = ((far + near) / (far - near) - 2.0 * far * near / ((far - near) * gl_Position.w)) * 0.5 + 0.5; }",
+  #|    "uniform sampler2D u_image; uniform vec4 u_fog_color; uniform vec4 u_horizon_color;" +
+  #|    "uniform vec3 u_fog_blend; in vec2 v_uv; in float v_fog; out vec4 o;" +
+  #|    "vec4 lin(vec4 c) { return pow(c, vec4(2.2)); }" +
+  #|    "void main() { vec4 c = texture(u_image, vec2(v_uv.x, 1.0 - v_uv.y));" +
+  #|    "  if (u_fog_blend.y > 0.0 && v_fog > u_fog_blend.x) {" +
+  #|    "    float h = smoothstep(0.0, 1.0, max((v_fog - u_fog_blend.z) / (1.0 - u_fog_blend.z), 0.0));" +
+  #|    "    vec4 fog = mix(lin(u_fog_color), lin(u_horizon_color), h);" +
+  #|    "    float k = max(v_fog - u_fog_blend.x, 0.0) / (1.0 - u_fog_blend.x);" +
+  #|    "    c = pow(mix(lin(c), fog, k * k * u_fog_blend.y), vec4(1.0 / 2.2)); }" +
+  #|    "  o = c; }",
+  #|    ["u_matrix", "u_elev", "u_scale", "u_skirt", "u_dem", "u_image", "u_fog", "u_fog_color",
+  #|     "u_horizon_color", "u_fog_blend"]);
+  #|  // The sky: a screen quad (from gl_VertexID, no buffers) colored above the
+  #|  // horizon line u_horizon (device pixels from the bottom), blending from
+  #|  // the horizon's color over u_blend pixels (MapLibre's sky shader).
+  #|  const sky = program(
+  #|    "void main() { gl_Position = vec4(float(gl_VertexID & 1) * 2.0 - 1.0, float(gl_VertexID >> 1) * 2.0 - 1.0, 1.0, 1.0); }",
+  #|    "uniform vec4 u_sky; uniform vec4 u_horizon_color; uniform float u_horizon; uniform float u_blend; out vec4 o;" +
+  #|    "void main() { float b = gl_FragCoord.y - u_horizon; if (b <= 0.0) discard;" +
+  #|    "  o = b < u_blend ? mix(u_sky, u_horizon_color, pow(1.0 - b / u_blend, 2.0)) : u_sky; }",
+  #|    ["u_sky", "u_horizon_color", "u_horizon", "u_blend"]);
+  #|  const empty = gl.createVertexArray();
   #|  // The grid: 65 x 65 vertices, then a skirt vertex under each edge vertex.
   #|  const N = 64, verts = [], data = [], idx = [];
   #|  for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) { verts.push(x * 4096 / N, y * 4096 / N); data.push(0, 0, 0, 0); }
@@ -175,7 +196,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, symbol, hillshade, terrain, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, line, circle, symbol, hillshade, terrain, sky, empty, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -609,8 +630,11 @@ extern "js" fn gl_draw_terrain(
   scale : Double,
   skirt : Double,
   dem : FixedArray[Double],
+  fog : FixedArray[Double],
+  fog_color : FixedArray[Double],
+  horizon : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, t, matrix, scale, skirt, dem) => {
+  #|(c, m, t, matrix, scale, skirt, dem, fog, fogColor, horizon) => {
   #|  if (!m.elev) return;
   #|  const gl = c.gl, p = c.terrain;
   #|  gl.useProgram(p.program);
@@ -619,6 +643,10 @@ extern "js" fn gl_draw_terrain(
   #|  gl.uniform1f(p.u_scale, scale);
   #|  gl.uniform1f(p.u_skirt, skirt);
   #|  gl.uniform3f(p.u_dem, dem[0], dem[1], dem[2]);
+  #|  gl.uniform2f(p.u_fog, fog[0], fog[1]);
+  #|  gl.uniform3f(p.u_fog_blend, fog[2], fog[3], fog[4]);
+  #|  gl.uniform4f(p.u_fog_color, fogColor[0], fogColor[1], fogColor[2], fogColor[3]);
+  #|  gl.uniform4f(p.u_horizon_color, horizon[0], horizon[1], horizon[2], horizon[3]);
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, m.elev);
   #|  gl.uniform1i(p.u_elev, 0);
@@ -633,4 +661,23 @@ extern "js" fn gl_draw_terrain(
   #|  gl.enable(gl.BLEND);
   #|  gl.disable(gl.DEPTH_TEST);
   #|  gl.activeTexture(gl.TEXTURE0);
+  #|}
+
+///|
+extern "js" fn gl_draw_sky(
+  gl : Gl,
+  horizon_y : Double,
+  blend : Double,
+  sky : FixedArray[Double],
+  horizon : FixedArray[Double],
+) -> Unit =
+  #|(c, y, blend, sky, horizon) => {
+  #|  const gl = c.gl, p = c.sky;
+  #|  gl.useProgram(p.program);
+  #|  gl.uniform1f(p.u_horizon, y);
+  #|  gl.uniform1f(p.u_blend, blend);
+  #|  gl.uniform4f(p.u_sky, sky[0], sky[1], sky[2], sky[3]);
+  #|  gl.uniform4f(p.u_horizon_color, horizon[0], horizon[1], horizon[2], horizon[3]);
+  #|  gl.bindVertexArray(c.empty);
+  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   #|}
