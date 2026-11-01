@@ -2,11 +2,15 @@
 // docs/FORMATS.md ("Analysis worker messages").
 
 import { hostNumber } from "../../wasmio/js/host.mjs";
+import { tableToGeoJSON } from "./table.mjs";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let wasm = null;
 let ready = null;
+// The geometry module (geometry_worker), instantiated on its first use.
+let geometryUrl = null;
+let geometry = null;
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
 
@@ -94,6 +98,40 @@ async function loadDem({ url, z, bounds, encoding }) {
   return { grid, width, height, bounds: [lng(x0), latOf(y1 + 1), lng(x1 + 1), latOf(y0)] };
 }
 
+// Bytes from `exports`' output area after a call that returned `n`.
+function outputOf(exports, n) {
+  const at = exports.output_addr();
+  return new Uint8Array(exports.memory.buffer.slice(at, at + n));
+}
+
+async function geometryModule() {
+  if (!geometry) {
+    check(typeof geometryUrl === "string");
+    geometry = WebAssembly.instantiateStreaming(fetch(geometryUrl), {}).then(({ instance }) => instance.exports);
+  }
+  return geometry;
+}
+
+// Runs `call` in the geometry module on `tables` (datasets, in Table bytes)
+// and keeps its result as a new dataset.
+async function geometryOp(tables, call) {
+  const geo = await geometryModule();
+  const bytes = tables.map((id) => outputOf(wasm, counted(wasm.table_out(id))));
+  const len = bytes.reduce((s, b) => s + b.length, 0);
+  const addr = geo.prepare_input(len);
+  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
+  let at = addr;
+  for (const b of bytes) {
+    new Uint8Array(geo.memory.buffer, at, b.length).set(b);
+    at += b.length;
+  }
+  const n = call(geo, bytes[0].length);
+  if (n < 0) throw new Error(n === -2 ? "out of memory" : decoder.decode(outputOf(geo, -n)));
+  input(outputOf(geo, n));
+  const dataset = counted(wasm.load_table());
+  return { dataset, features: wasm.feature_count(dataset) };
+}
+
 const OPS = {
   load,
   loadDem,
@@ -133,6 +171,22 @@ const OPS = {
     input(encoder.encode(property));
     return f64s(wasm.collect(polygons, points));
   },
+  buffer({ dataset, meters, mode, join, cap, arcTolerance }) {
+    check(isId(dataset) && Number.isFinite(meters) && [mode, join, cap].every(Number.isInteger) && arcTolerance >= 0);
+    return geometryOp([dataset], (g) => g.buffer(meters, mode, join, cap, arcTolerance));
+  },
+  dissolve({ dataset }) {
+    check(isId(dataset));
+    return geometryOp([dataset], (g) => g.dissolve());
+  },
+  overlay({ a, b, kind }) {
+    check(isId(a) && isId(b) && [0, 1, 2].includes(kind));
+    return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
+  },
+  toGeoJSON({ dataset }) {
+    check(isId(dataset));
+    return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(dataset))));
+  },
   grid({ dataset, bbox, cols, rows }) {
     check(isId(dataset) && isBox(bbox) && Number.isInteger(cols) && Number.isInteger(rows));
     return i32s(wasm.grid(dataset, ...bbox, cols, rows));
@@ -149,6 +203,7 @@ async function run(msg) {
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
+    geometryUrl = typeof msg.geometry === "string" ? msg.geometry : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 }, host })
       .then(({ instance }) => { wasm = instance.exports; });

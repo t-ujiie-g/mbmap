@@ -141,8 +141,10 @@ Out:
 
 In:
 
-- `{type: "init", wasm}`.
-- `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments:
+- `{type: "init", wasm, geometry}`: the analysis and geometry wasm URLs (the
+  geometry module is fetched on the first geometry call).
+- `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments
+  (no argument may be named `op`):
   - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8);
   - `dispose`, `measure` (`kind`: 0 area, 1 length, 2 centroid, 3 bbox), `search`
     (`bbox`), `nearest` (`x`, `y`, `k`, `maxDistance`), `grid` (`bbox`, `cols`,
@@ -151,11 +153,19 @@ In:
   - `loadDem` (`url` a `{z}/{x}/{y}` template, `z`, `bounds`, `encoding` as
     `[kind, r, g, b, base]` with kind 0 Mapbox, 1 Terrarium, 2 GSI, 3 custom),
     `gridValues` (`grid`, `kind` 0 elevations, 1 slope, 2 aspect) and
-    `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`).
+    `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`);
+  - geometry, each giving a new dataset: `buffer` (`dataset`, `meters`, `mode` 0
+    geodesic or 1 planar, `join` 0 round, 1 miter, 2 square, 3 bevel, `cap` 0
+    round, 1 butt, 2 square, `arcTolerance` in meters), `dissolve` (`dataset`) and
+    `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect); the datasets go to
+    the geometry module and back as Table bytes;
+  - `toGeoJSON` (`dataset`): its Table bytes decoded into a FeatureCollection
+    (`analysis_worker/js/table.mjs`).
 
 Out:
 
-- `{type: "result", id, value}`: `{dataset, features}` for `load`, `{grid, width,
+- `{type: "result", id, value}`: `{dataset, features}` for `load` and the geometry
+  calls, a FeatureCollection for `toGeoJSON`, `{grid, width,
   height, bounds}` for `loadDem`, null for
   `dispose`, else a Float64Array or Int32Array (transferred). `collect` gives
   count, numeric count and sum per polygon.

@@ -1,0 +1,28 @@
+{
+  "env": {
+    "node": "v22.23.4",
+    "tiles": 5,
+    "buildings": 17764
+  },
+  "params": {
+    "runs": 5,
+    "statistic": "median of total ms over the tiles"
+  },
+  "summary": {
+    "dissolve": {
+      "mbmap": 192.8,
+      "mbmapGeoJSON": 198.7,
+      "turf": 2333.1
+    },
+    "buffer10m": {
+      "mbmap": 490.8,
+      "mbmapGeoJSON": 570.2,
+      "turf": 1176.9
+    },
+    "clipByWater": {
+      "mbmap": 74.3,
+      "mbmapGeoJSON": 73.9,
+      "turf": 957.2
+    }
+  }
+}

@@ -209,3 +209,27 @@ pub fn grid(
     None => -1
   }
 }
+
+///|
+/// Writes dataset `id` in `@geom.Table::to_bytes` form at `output_addr`;
+/// returns its length, or -1 for an unknown dataset (-2 without memory).
+#export_name("table_out")
+pub fn table_out(id : Int32) -> Int32 {
+  guard datasets.get(id) is Some(d) else { return -1 }
+  @wasmio.write_bytes(d.table.to_bytes()[:])
+}
+
+///|
+/// Reads a table in `@geom.Table::to_bytes` form placed as input into a new
+/// dataset. Returns its handle, or minus the length of an error message.
+#export_name("load_table")
+pub fn load_table() -> Int32 {
+  guard @geom.Table::from_bytes(@wasmio.input_bytes()[:]) is Some(table) else {
+    return @wasmio.fail_with("malformed table")
+  }
+  let id = next_id.val
+  next_id.val += 1
+  datasets[id] = { table, index: None, }
+  @wasmio.clear_input()
+  id
+}

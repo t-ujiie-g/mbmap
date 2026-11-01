@@ -23,6 +23,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される） |
 | `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
 | `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
+| `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
 | `dist/worker.js` | タイル Worker（モジュール Worker） |
 | `dist/mbmap.wasm` | Worker が読む wasm-gc |
 
@@ -53,6 +54,12 @@ blocks.dispose();
 - 初めての `load` で、専用の Worker と wasm を読み込む。データと空間索引は Worker の中に置いたままにし、各メソッドは結果だけを型付き配列で返す（Promise）。
 - `Dataset`：`length`（地物数）、`areas()`、`lengths()`（m）、`centroids()`、`bboxes()`、`search(bbox)`、`nearest(x, y, { k, maxDistance })`、`pointsWithin(polygons)`、`collect(points, property)`、`grid(bbox, cols, rows)`、`dispose()`。
 - 計測と点の内外判定は Turf.js 7.4.0 と同じ値になり、索引の検索は flatbush 4.6.2 と同じ順になる（黄金テストで確かめている）。境界上の点は内側として扱う。`nearest` の距離は経緯度の箱の距離（度）。
+- ジオメトリ演算（Clipper2 2.0.1 の移植。C++ 版と同じ結果になることを黄金テストで確かめている。初めて呼んだときに `geometry.wasm` を読む）。どれも結果を新しい `Dataset` で返す：
+  - `buffer(meters, { mode, join, cap, arcTolerance })`：地物ごとに広げる（負の値で縮める。属性は残る）。`mode: "geodesic"`（既定）は地面の上の距離（地物ごとの局所的な正距方位図法で、楕円体の 2 つの曲率半径に合わせる）、`"planar"` はウェブメルカトルの平面上の距離。`join` は `round`・`miter`・`square`・`bevel`、`cap`（線の端）は `round`・`butt`・`square`。
+  - `dissolve()`：多角形をすべて 1 つの地物に結合する（属性なし）。
+  - `clip(other)` / `erase(other)`：`other` の多角形の範囲で切る／除く（自分の属性を残す）。線は線のまま、点は内外で選ぶ。
+  - `intersect(other)`：重なる組ごとに 1 地物、両方の属性を持つ（`other` の同名のキーには `_2` を付ける）。
+  - `toGeoJSON()`：FeatureCollection として取り出す（Worker の中で組み立てる）。
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。

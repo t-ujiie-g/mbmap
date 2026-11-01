@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker analysis_worker --release --target wasm-gc && moon build bundle/main --release --target js && npm --prefix bench run opt",
+    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker analysis_worker geometry_worker --release --target wasm-gc && moon build bundle/main --release --target js && npm --prefix bench run opt",
     "opt": "node backend/opt.mjs",
     "test": "node --test lib/*.test.mjs",
     "fixtures": "node maplibre/fetch-tiles.mjs",
@@ -30,7 +30,9 @@
     "analysis:node": "npm run build:moon && node --max-old-space-size=8192 analysis/node.mjs",
     "analysis:browser": "npm run build:moon && node analysis/browser.mjs",
     "terrain:golden": "npm run build:moon && node terrain/golden.mjs",
-    "clipper:golden": "npm run build:moon && node clipper/golden.mjs && node clipper/offset-golden.mjs"
+    "clipper:golden": "npm run build:moon && node clipper/golden.mjs && node clipper/offset-golden.mjs",
+    "buffer:check": "npm run build:moon && node clipper/buffer-check.mjs",
+    "geometry:node": "npm run build:moon && node clipper/node.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
@@ -52,6 +54,11 @@
     "playwright": "1.64.1"
   },
   "dependencies": {
-    "clipper2-wasm": "0.4.0"
+    "@turf/buffer": "7.4.0",
+    "@turf/difference": "7.4.0",
+    "@turf/intersect": "7.4.0",
+    "@turf/union": "7.4.0",
+    "clipper2-wasm": "0.4.0",
+    "geographiclib-geodesic": "2.2.0"
   }
 }
