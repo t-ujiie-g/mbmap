@@ -159,3 +159,52 @@ pub fn geojson_tiler_table_mem(
     host_trig(),
   )
 }
+
+///|
+/// `words_hash` of `clip_words` on input i32s at `[addr, addr + len)`.
+#export_name("clip_hash_mem")
+pub fn clip_hash_mem(
+  addr : Int32,
+  len : Int32,
+  op : Int32,
+  fill : Int32,
+  tree : Int32,
+) -> Int32 {
+  words_hash(
+    clip_words(words_of(bytes_from_mem(addr, len)[:]), op, fill, tree=tree != 0),
+  )
+}
+
+///|
+/// `words_hash` of `offset_words` on input i32s at `[addr, addr + len)`.
+#export_name("offset_hash_mem")
+pub fn offset_hash_mem(
+  addr : Int32,
+  len : Int32,
+  delta : Double,
+  join : Int32,
+  end : Int32,
+  miter_limit : Double,
+  arc_tolerance : Double,
+) -> Int32 {
+  words_hash(
+    offset_words(
+      words_of(bytes_from_mem(addr, len)[:]),
+      delta,
+      join,
+      end,
+      miter_limit,
+      arc_tolerance,
+    ),
+  )
+}
+
+///|
+/// FNV-1a over 32-bit words.
+fn words_hash(words : Array[Int32]) -> Int32 {
+  let mut h = 0x811c9dc5
+  for v in words {
+    h = (h ^ v) * 0x01000193
+  }
+  h
+}

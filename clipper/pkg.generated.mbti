@@ -1,0 +1,128 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/clipper"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const MAX_COORD : Int64 = 2305843009213693951
+
+pub fn area(ArrayView[Point64]) -> Double
+
+pub fn boolean_op(ClipType, FillRule, Array[Array[Point64]], Array[Array[Point64]]) -> Array[Array[Point64]]
+
+pub fn difference(Array[Array[Point64]], Array[Array[Point64]], FillRule) -> Array[Array[Point64]]
+
+pub fn inflate_paths(Array[Array[Point64]], Double, JoinType, EndType, miter_limit? : Double, arc_tolerance? : Double) -> Array[Array[Point64]]
+
+pub fn intersect(Array[Array[Point64]], Array[Array[Point64]], FillRule) -> Array[Array[Point64]]
+
+pub fn point_in_polygon(Point64, ArrayView[Point64]) -> PointInPolygonResult
+
+pub fn union(Array[Array[Point64]], Array[Array[Point64]], FillRule) -> Array[Array[Point64]]
+
+pub fn xor(Array[Array[Point64]], Array[Array[Point64]], FillRule) -> Array[Array[Point64]]
+
+// Errors
+
+// Types and methods
+pub(all) enum ClipType {
+  NoClip
+  Intersection
+  Union
+  Difference
+  Xor
+} derive(Eq, @debug.Debug)
+pub fn ClipType::equal(Self, Self) -> Bool
+pub fn ClipType::not_equal(Self, Self) -> Bool
+pub fn ClipType::to_repr(Self) -> @debug.Repr
+
+pub struct Clipper64 {
+  // private fields
+}
+pub fn Clipper64::add_clip(Self, Array[Array[Point64]]) -> Unit
+pub fn Clipper64::add_open_subject(Self, Array[Array[Point64]]) -> Unit
+pub fn Clipper64::add_subject(Self, Array[Array[Point64]]) -> Unit
+pub fn Clipper64::clear(Self) -> Unit
+pub fn Clipper64::execute(Self, ClipType, FillRule) -> (Array[Array[Point64]], Array[Array[Point64]])?
+pub fn Clipper64::execute_tree(Self, ClipType, FillRule) -> (PolyPath64, Array[Array[Point64]])?
+pub fn Clipper64::new() -> Self
+pub fn Clipper64::set_preserve_collinear(Self, Bool) -> Unit
+pub fn Clipper64::set_reverse_solution(Self, Bool) -> Unit
+
+pub struct ClipperOffset {
+  // private fields
+}
+pub fn ClipperOffset::add_paths(Self, Array[Array[Point64]], JoinType, EndType) -> Unit
+pub fn ClipperOffset::execute(Self, Double) -> Array[Array[Point64]]
+pub fn ClipperOffset::new(miter_limit? : Double, arc_tolerance? : Double, preserve_collinear? : Bool, reverse_solution? : Bool) -> Self
+
+pub(all) enum EndType {
+  Polygon
+  Joined
+  Butt
+  Square
+  Round
+} derive(Eq)
+pub fn EndType::equal(Self, Self) -> Bool
+pub fn EndType::not_equal(Self, Self) -> Bool
+
+pub(all) enum FillRule {
+  EvenOdd
+  NonZero
+  Positive
+  Negative
+} derive(Eq, @debug.Debug)
+pub fn FillRule::equal(Self, Self) -> Bool
+pub fn FillRule::not_equal(Self, Self) -> Bool
+pub fn FillRule::to_repr(Self) -> @debug.Repr
+
+pub(all) enum JoinType {
+  Square
+  Bevel
+  Round
+  Miter
+} derive(Eq)
+pub fn JoinType::equal(Self, Self) -> Bool
+pub fn JoinType::not_equal(Self, Self) -> Bool
+
+pub(all) struct Point64 {
+  x : Int64
+  y : Int64
+} derive(Eq, @debug.Debug)
+pub fn Point64::equal(Self, Self) -> Bool
+pub fn Point64::not_equal(Self, Self) -> Bool
+pub fn Point64::to_repr(Self) -> @debug.Repr
+
+pub(all) enum PointInPolygonResult {
+  IsOn
+  IsInside
+  IsOutside
+} derive(Eq, @debug.Debug)
+pub fn PointInPolygonResult::equal(Self, Self) -> Bool
+pub fn PointInPolygonResult::not_equal(Self, Self) -> Bool
+pub fn PointInPolygonResult::to_repr(Self) -> @debug.Repr
+
+pub struct PolyPath64 {
+  polygon : Array[Point64]
+  children : Array[PolyPath64]
+  // private fields
+}
+pub fn PolyPath64::is_hole(Self) -> Bool
+pub fn PolyPath64::level(Self) -> Int32
+pub fn PolyPath64::new() -> Self
+
+pub(all) struct Rect64 {
+  left : Int64
+  top : Int64
+  right : Int64
+  bottom : Int64
+} derive(Eq, @debug.Debug)
+pub fn Rect64::equal(Self, Self) -> Bool
+pub fn Rect64::not_equal(Self, Self) -> Bool
+pub fn Rect64::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

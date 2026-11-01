@@ -29,7 +29,8 @@
     "analysis:golden": "npm run build:moon && node --max-old-space-size=8192 analysis/golden.mjs",
     "analysis:node": "npm run build:moon && node --max-old-space-size=8192 analysis/node.mjs",
     "analysis:browser": "npm run build:moon && node analysis/browser.mjs",
-    "terrain:golden": "npm run build:moon && node terrain/golden.mjs"
+    "terrain:golden": "npm run build:moon && node terrain/golden.mjs",
+    "clipper:golden": "npm run build:moon && node clipper/golden.mjs && node clipper/offset-golden.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
@@ -49,5 +50,8 @@
     "maplibre-gl": "6.16.0",
     "pbf": "5.1.2",
     "playwright": "1.64.1"
+  },
+  "dependencies": {
+    "clipper2-wasm": "0.4.0"
   }
 }
