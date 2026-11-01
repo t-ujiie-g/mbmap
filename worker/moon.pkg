@@ -5,6 +5,7 @@
 import {
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/mvt",
+  "t-ujiie-g/mbmap/raster",
   "t-ujiie-g/mbmap/style",
   "t-ujiie-g/mbmap/tess",
   "moonbitlang/core/cmp",

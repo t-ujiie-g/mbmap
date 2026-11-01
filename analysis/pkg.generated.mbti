@@ -31,6 +31,18 @@ pub fn points_within(@geom.Table, @geom.Table, Index) -> Array[Int32]
 // Errors
 
 // Types and methods
+pub struct Grid {
+  elev : FixedArray[Double]
+  width : Int32
+  height : Int32
+  res_x : Double
+  res_y : Double
+}
+pub fn Grid::aspect(Self, Trig) -> FixedArray[Double]
+pub fn Grid::hillshade(Self, Trig, azimuth? : Double, altitude? : Double, z? : Double) -> Bytes
+pub fn Grid::new(FixedArray[Double], Int32, Int32, Double, Double) -> Self
+pub fn Grid::slope(Self, Trig) -> FixedArray[Double]
+
 pub struct Index {
   // private fields
 }

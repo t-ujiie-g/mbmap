@@ -102,6 +102,22 @@ pub fn init_style() -> Int32 {
 }
 
 ///|
+/// Turns the RGBA pixels placed as input (a `size` x `size` tile of the
+/// `raster-dem` source with index `source`, at zoom `z`) into what its hillshade
+/// layers need (`TileProcessor::dem_tile`) at `output_addr`. Returns their length, or minus the length
+/// of a UTF-8 error message there.
+#export_name("process_dem")
+pub fn process_dem(source : Int32, z : Int32, size : Int32) -> Int32 {
+  guard processor.val is Some(p) else {
+    return fail_with(@utf8.encode("style not initialized"))
+  }
+  match p.dem_tile(source, input_bytes()[:], size, z) {
+    Some(slopes) => write_output(slopes[:].to_fixedarray()[:])
+    None => fail_with(p.error_utf8())
+  }
+}
+
+///|
 /// Processes the tile placed as input for the style's source with index
 /// `source` at zoom `z`. Returns the packed tile's length at `output_addr`, or
 /// minus the length of a UTF-8 error message there.

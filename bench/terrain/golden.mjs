@@ -1,0 +1,113 @@
+// Golden test: slope, aspect and hillshade of the analysis wasm against GDAL's
+// gdaldem (Horn's method) on the Mt Fuji DEM fixtures, mosaicked into one grid.
+// gdaldem leaves border cells without data, so the interior is compared. Needs
+// gdaldem on PATH. Usage: node terrain/golden.mjs
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { ROOT } from "../lib/root.mjs";
+import { nodeFetchBytes } from "../lib/node-io.mjs";
+import { decodePng } from "../lib/png.mjs";
+import { loadAnalysis } from "../analysis/load.mjs";
+
+const SET = { z: 12, x: [3625, 3628], y: [1616, 1619], dir: "bench/fixtures/gsi-dem-fuji" };
+const SIZE = 256;
+const cols = SET.x[1] - SET.x[0] + 1;
+const rows = SET.y[1] - SET.y[0] + 1;
+const width = cols * SIZE;
+const height = rows * SIZE;
+
+// The mosaic's RGBA, tile by tile.
+const rgba = new Uint8Array(width * height * 4);
+for (let ty = 0; ty < rows; ty++) {
+  for (let tx = 0; tx < cols; tx++) {
+    const png = decodePng(await readFile(path.join(ROOT, SET.dir, `${SET.z}/${SET.x[0] + tx}/${SET.y[0] + ty}.png`)));
+    for (let y = 0; y < SIZE; y++) {
+      rgba.set(png.rgba.subarray(y * SIZE * 4, (y + 1) * SIZE * 4), ((ty * SIZE + y) * width + tx * SIZE) * 4);
+    }
+  }
+}
+// Cells as wide on the ground as Web Mercator pixels at the mosaic's middle latitude.
+const n = 2 ** SET.z;
+const lat = Math.atan(Math.sinh(Math.PI * (1 - (2 * (SET.y[0] + rows / 2)) / n))) * 180 / Math.PI;
+const res = (40075016.6855785 / n / SIZE) * Math.cos((lat * Math.PI) / 180);
+
+const wasm = await loadAnalysis(nodeFetchBytes);
+const e = wasm.exports;
+const at = e.prepare_input(rgba.length);
+new Uint8Array(e.memory.buffer, at, rgba.length).set(rgba);
+const id = e.load_dem(width, height, 2, 0, 0, 0, 0, res, res);
+if (id < 0) throw new Error("load_dem failed");
+const f64s = (count) => new Float64Array(e.memory.buffer, e.output_addr(), count).slice();
+const elev = f64s(e.grid_values(id, 0));
+const slope = f64s(e.grid_values(id, 1));
+const aspect = f64s(e.grid_values(id, 2));
+const shade = new Uint8Array(e.memory.buffer, e.output_addr(), e.grid_hillshade(id, 315, 45, 1)).slice();
+
+// The same elevations for gdaldem, as an ASCII grid (no data as 0 m, as ours).
+const dir = path.join(ROOT, "bench/dist/terrain");
+await mkdir(dir, { recursive: true });
+const lines = [`ncols ${width}`, `nrows ${height}`, "xllcorner 0", "yllcorner 0", `cellsize ${res}`];
+for (let y = 0; y < height; y++) lines.push(Array.from(elev.subarray(y * width, (y + 1) * width), (v) => (Number.isNaN(v) ? 0 : v)).join(" "));
+await writeFile(path.join(dir, "dem.asc"), lines.join("\n") + "\n");
+const gdal = (args, out) => {
+  execFileSync("gdaldem", [...args, path.join(dir, "dem.asc"), path.join(dir, out), "-of", "AAIGrid", "-q"]);
+  return readGrid(path.join(dir, out));
+};
+// An ASCII grid's no-data value and cells.
+function readGrid(file) {
+  const text = readFileSync(file, "utf8").trim().split("\n");
+  const header = {};
+  let i = 0;
+  while (/^[a-zA-Z]/.test(text[i])) {
+    const [k, v] = text[i].trim().split(/\s+/);
+    header[k.toLowerCase()] = Number(v);
+    i++;
+  }
+  const values = text.slice(i).join(" ").trim().split(/\s+/).map(Number);
+  return { nodata: header.nodata_value, values };
+}
+
+let failures = 0;
+// `tolerance` is a number, or per cell a function of its index.
+function compare(name, ours, theirs, tolerance, skip = () => false, angle = false) {
+  let worst = 0;
+  let over = 0;
+  let exact = 0;
+  let compared = 0;
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const k = y * width + x;
+      const t = theirs.values[k];
+      if (t === theirs.nodata || skip(k, t)) continue;
+      const raw = Math.abs(ours[k] - t);
+      // Angles wrap: 359.99 and 0.01 degrees are 0.02 apart.
+      const d = angle ? Math.min(raw, 360 - raw) : raw;
+      compared++;
+      if (d === 0) exact++;
+      worst = Math.max(worst, d);
+      if (d > (typeof tolerance === "function" ? tolerance(k) : tolerance)) {
+        over++;
+      }
+    }
+  }
+  if (over > 0) failures++;
+  const tol = typeof tolerance === "function" ? "per cell" : tolerance;
+  console.log(`${name}: ${compared} cells, ${exact} exact, max difference ${worst.toPrecision(3)} (tolerance ${tol}), ${over} over`);
+}
+compare("slope (degrees)", slope, gdal(["slope"], "slope.asc"), 0.01);
+// GDAL reads the elevations as float32 (about 2^-24 relative error), which moves
+// Horn's sums by up to 8 times that and turns the aspect by atan(error / sums):
+// visible where the ground is nearly flat. Cells under 0.5 degrees are left out.
+const maxElev = elev.reduce((m, v) => (Number.isNaN(v) ? m : Math.max(m, Math.abs(v))), 0);
+const sumError = 8 * maxElev * 2 ** -24;
+const aspectTolerance = (k) => {
+  const sums = 8 * res * Math.tan((slope[k] * Math.PI) / 180);
+  return 0.01 + (Math.atan(sumError / sums) * 180) / Math.PI;
+};
+const theirAspect = gdal(["aspect"], "aspect.asc");
+compare("aspect (degrees)", aspect, theirAspect, aspectTolerance, (k) => slope[k] < 0.5 || Number.isNaN(aspect[k]), true);
+compare("hillshade (0-255)", shade, gdal(["hillshade"], "hillshade.asc"), 1);
+console.log(failures === 0 ? "all within tolerance" : `${failures} comparisons out of tolerance`);
+process.exit(failures === 0 ? 0 : 1);

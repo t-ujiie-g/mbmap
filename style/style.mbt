@@ -13,6 +13,7 @@ pub(all) enum LayerKind {
   Line
   Circle
   Symbol
+  Hillshade
 } derive(Debug, Eq)
 
 ///|
@@ -52,6 +53,7 @@ pub struct StyleLayer {
   halo_color : Expr
   halo_width : Expr
   text : TextLayout?
+  hillshade : HillshadePaint?
   join : Join
   cap : Cap
   miter_limit : Double
@@ -59,23 +61,27 @@ pub struct StyleLayer {
 }
 
 ///|
-/// What a source draws from: vector tiles at URLs, or GeoJSON the map cuts
-/// into tiles itself (its data is handled outside the style, by the JS
-/// facade).
+/// What a source draws from: vector tiles or elevation (`raster-dem`) tiles at
+/// URLs, or GeoJSON the map cuts into tiles itself (its data is handled
+/// outside the style, by the JS facade).
 pub(all) enum SourceKind {
   Vector
   GeoJSON
+  RasterDem
 } derive(Debug, Eq)
 
 ///|
-/// A source layers draw from: a vector source's URL templates, or a GeoJSON
-/// source's `buffer` and `tolerance` (MapLibre's options, in pixels).
+/// A source layers draw from: URL templates of tiles `tile_size` pixels wide
+/// (with a `raster-dem` source's `encoding`), or a GeoJSON source's `buffer`
+/// and `tolerance` (MapLibre's options, in pixels).
 pub struct Source {
   id : String
   kind : SourceKind
   tiles : Array[String]
   min_zoom : Int32
   max_zoom : Int32
+  tile_size : Int32
+  encoding : DemEncoding
   buffer : Int32
   tolerance : Double
 }
@@ -170,11 +176,17 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       tiles: [],
       min_zoom: 0,
       max_zoom: number_or(s, "maxzoom", path, 18.0).to_int(),
+      tile_size: 512,
+      encoding: Mapbox,
       buffer: buffer.to_int(),
       tolerance,
     })
   }
-  guard s.get("type") is Some(String("vector")) else { return None }
+  let kind = match s.get("type") {
+    Some(String("vector")) => Vector
+    Some(String("raster-dem")) => RasterDem
+    _ => return None
+  }
   guard s.get("tiles") is Some(Array(urls)) else {
     raise Unsupported(path~, "only sources with `tiles` are supported")
   }
@@ -188,12 +200,22 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
     }
     tiles.push(url)
   }
+  let tile_size = number_or(s, "tileSize", path, 512.0).to_int()
+  if !(tile_size is (128 | 256 | 512)) {
+    raise Unsupported(path="\{path}.tileSize", "only 128, 256 and 512")
+  }
   Some({
     id,
-    kind: Vector,
+    kind,
     tiles,
     min_zoom: number_or(s, "minzoom", path, 0.0).to_int(),
     max_zoom: number_or(s, "maxzoom", path, 22.0).to_int(),
+    tile_size,
+    encoding: if kind is RasterDem {
+      parse_encoding(s, path)
+    } else {
+      Mapbox
+    },
     buffer: 0,
     tolerance: 0.0,
   })
@@ -273,6 +295,7 @@ fn parse_layer(
     "line" => Line
     "circle" => Circle
     "symbol" => Symbol
+    "hillshade" => Hillshade
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -289,6 +312,7 @@ fn parse_layer(
     Line => "line"
     Circle => "circle"
     Symbol => "text"
+    Hillshade => "hillshade"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter
@@ -373,6 +397,11 @@ fn parse_layer(
     ),
     text: if kind is Symbol {
       Some(parse_text(layout, lpath))
+    } else {
+      None
+    },
+    hillshade: if kind is Hillshade {
+      Some(parse_hillshade(paint, ppath))
     } else {
       None
     },

@@ -1,6 +1,7 @@
 import {
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/label",
+  "t-ujiie-g/mbmap/raster",
   "t-ujiie-g/mbmap/render_webgl2",
   "t-ujiie-g/mbmap/style",
   "moonbitlang/core/cmp",

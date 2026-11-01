@@ -141,7 +141,7 @@ pub fn TileProcessor::process(
   let zoom = z.to_double()
   let drawn = style_layers.map(sl => {
     sl.source == source &&
-    !(sl.kind is Background) &&
+    !(sl.kind is (Background | Hillshade)) &&
     zoom >= sl.min_zoom.floor() &&
     zoom < sl.max_zoom &&
     features_of(sl) is Some(_)
@@ -354,4 +354,48 @@ fn TileProcessor::circle_layer(
     }
   }
   true
+}
+
+///|
+/// The RGB unpacking of a `raster-dem` source's encoding.
+fn unpack_of(e : @style.DemEncoding) -> @raster.Unpack {
+  match e {
+    Mapbox => @raster.Unpack::mapbox()
+    Terrarium => @raster.Unpack::terrarium()
+    Gsi => @raster.Unpack::gsi()
+    Custom(r, g, b, base) => { r, g, b, base, gsi: false, }
+  }
+}
+
+///|
+/// A `size` x `size` RGBA tile `rgba` of the `raster-dem` source with index
+/// `source` at zoom `z`, for its hillshade layers: the slopes
+/// (`@raster.hillshade_slopes`), then the border elevations (`@raster.dem_edges`)
+/// as f64s. None (see `error`) for another source or a malformed tile.
+pub fn TileProcessor::dem_tile(
+  self : TileProcessor,
+  source : Int32,
+  rgba : BytesView,
+  size : Int32,
+  z : Int32,
+) -> Bytes? {
+  guard source >= 0 &&
+    source < self.style.sources.length() &&
+    self.style.sources[source] is { kind: RasterDem, encoding, .. } else {
+    self.error = "no DEM source \{source}"
+    return None
+  }
+  if size <= 0 || size > 1024 || rgba.length() != size * size * 4 {
+    self.error = "DEM tile is not \{size} x \{size} RGBA"
+    return None
+  }
+  let elev = @raster.elevations(rgba, unpack_of(encoding))
+  let w = @core.ByteWriter::new()
+  for b in @raster.hillshade_slopes(elev, size, z) {
+    w.u8(b.to_int())
+  }
+  for v in @raster.dem_edges(elev, size) {
+    w.f64(v)
+  }
+  Some(w.to_bytes())
 }

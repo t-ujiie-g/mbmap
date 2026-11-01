@@ -1,0 +1,12 @@
+// Elevation rasters: DEM tiles decoded from RGB, the slopes the hillshade
+// layer draws from, and terrain analysis. Pure MoonBit, tested on every backend.
+
+import {
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/double",
+  "moonbitlang/core/math",
+}
+
+import {
+  "moonbitlang/core/double",
+} for "test"

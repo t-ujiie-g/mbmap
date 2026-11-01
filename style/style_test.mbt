@@ -31,7 +31,7 @@ let sample : String =
   #|  "version": 8,
   #|  "sources": {
   #|    "gsi": { "type": "vector", "tiles": ["https://x/{z}/{x}/{y}.pbf"], "minzoom": 4, "maxzoom": 16 },
-  #|    "dem": { "type": "raster-dem", "url": "x" }
+  #|    "photo": { "type": "raster", "url": "x" }
   #|  },
   #|  "layers": [
   #|    { "id": "bg", "type": "background", "paint": { "background-color": "#f5f3ee" } },
@@ -373,5 +373,71 @@ test "symbol placement on lines, icons and format are unsupported" {
     e => fail("unexpected \{Repr(e)}")
   } noraise {
     _ => fail("expected an unknown anchor to be invalid")
+  }
+}
+
+///|
+test "raster-dem sources and hillshade layers, with MapLibre's defaults" {
+  let s = @style.Style::parse(
+    (
+      #|{"sources": {
+      #|   "gsi": {"type": "raster-dem", "tiles": ["https://x/{z}/{x}/{y}.png"], "tileSize": 256,
+      #|           "maxzoom": 14, "encoding": "gsi"},
+      #|   "rgb": {"type": "raster-dem", "tiles": ["t/{z}/{x}/{y}.png"], "encoding": "custom",
+      #|           "redFactor": 655.36, "greenFactor": 2.56, "blueFactor": 0.01},
+      #|   "plain": {"type": "raster-dem", "tiles": ["t"]}},
+      #| "layers": [
+      #|  {"id": "h", "type": "hillshade", "source": "gsi",
+      #|   "paint": {"hillshade-illumination-anchor": "map", "hillshade-exaggeration": 0.8,
+      #|             "hillshade-shadow-color": "#473b24"}},
+      #|  {"id": "d", "type": "hillshade", "source": "rgb"}
+      #|]}
+    ),
+  )
+  let gsi = s.source("gsi").unwrap()
+  assert_eq(
+    (gsi.kind, gsi.tile_size, gsi.max_zoom, gsi.encoding),
+    (RasterDem, 256, 14, Gsi),
+  )
+  assert_eq(s.source("rgb").unwrap().encoding, Custom(655.36, 2.56, 0.01, 0.0))
+  let plain = s.source("plain").unwrap()
+  assert_eq((plain.tile_size, plain.encoding), (512, Mapbox))
+  let h = s.layers[0].hillshade.unwrap()
+  assert_eq((s.layers[0].kind, h.viewport), (Hillshade, false))
+  assert_eq(constant(h.exaggeration), Num(0.8))
+  assert_eq(
+    constant(h.shadow),
+    Color({ r: 71.0 / 255.0, g: 59.0 / 255.0, b: 36.0 / 255.0, a: 1.0, }),
+  )
+  let d = s.layers[1].hillshade.unwrap()
+  assert_eq(
+    (constant(d.direction), constant(d.exaggeration), d.viewport),
+    (Num(335.0), Num(0.5), true),
+  )
+  assert_eq(constant(d.highlight), Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }))
+}
+
+///|
+test "unknown DEM encodings, odd tile sizes and other hillshade methods are refused" {
+  let cases = [
+    (
+      "{\"sources\": {\"d\": {\"type\": \"raster-dem\", \"tiles\": [\"t\"], \"encoding\": \"x\"}}, \"layers\": []}",
+      "sources.d.encoding",
+    ),
+    (
+      "{\"sources\": {\"d\": {\"type\": \"raster-dem\", \"tiles\": [\"t\"], \"tileSize\": 300}}, \"layers\": []}",
+      "sources.d.tileSize",
+    ),
+    (
+      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"hillshade-method\": \"igor\"}}]}",
+      "layers[0].paint.hillshade-method",
+    ),
+  ]
+  for c in cases {
+    try @style.Style::parse(c.0) catch {
+      Invalid(path~, _) | Unsupported(path~, _) => assert_eq(path, c.1)
+    } noraise {
+      _ => fail("expected \{c.1} to be refused")
+    }
   }
 }

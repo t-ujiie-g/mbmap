@@ -232,3 +232,34 @@ test "points_within, collect and grid_count" {
     @analysis.grid_count(pts, 0.0, 0.0, 1.0, 1.0, 1 << 13, 1 << 13) is None,
   )
 }
+
+///|
+test "slope, aspect and hillshade of a plane facing east" {
+  // Falling 1 m per 1 m cell eastward: 45 degrees, facing east (90).
+  let trig = @analysis.Trig::moonbit()
+  let n = 4
+  let g = @analysis.Grid::new(
+    FixedArray::makei(n * n, i => -(i % n).to_double()),
+    n,
+    n,
+    1.0,
+    1.0,
+  )
+  let near = (a : Double, b : Double) => (a - b).abs() < 1.0e-9
+  // Inner cells see the full plane; border cells repeat their neighbors.
+  assert_true(near(g.slope(trig)[5], 45.0))
+  assert_true(near(g.aspect(trig)[5], 90.0))
+  // Light from the east (90) falls straight on it: brightest; from the west, darkest.
+  let east = g.hillshade(trig, azimuth=90.0, altitude=45.0)
+  let west = g.hillshade(trig, azimuth=270.0, altitude=45.0)
+  assert_true(east[5] > b'\xf0')
+  assert_eq(west[5], b'\x01')
+  // A flat grid has no aspect and the shade of the sun's altitude.
+  let flat = @analysis.Grid::new(FixedArray::make(n * n, 3.0), n, n, 10.0, 10.0)
+  assert_true(flat.aspect(trig)[5].is_nan())
+  assert_eq(flat.slope(trig)[5], 0.0)
+  assert_eq(
+    flat.hillshade(trig)[5].to_int(),
+    (1.0 + 254.0 * @math.sin(@math.PI / 4.0)).round().to_int(),
+  )
+}

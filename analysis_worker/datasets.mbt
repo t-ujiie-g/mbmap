@@ -68,10 +68,11 @@ pub fn feature_count(id : Int32) -> Int32 {
 }
 
 ///|
-/// Frees dataset `id`.
+/// Frees dataset or grid `id`.
 #export_name("dispose")
 pub fn dispose(id : Int32) -> Unit {
   datasets.remove(id)
+  grids.remove(id)
 }
 
 ///|

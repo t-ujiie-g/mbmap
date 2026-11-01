@@ -10,6 +10,11 @@ const KIND_LINE : Int32 = 2
 const KIND_CIRCLE : Int32 = 3
 
 ///|
+/// A `raster-dem` tile's slopes for its source's hillshade layers (the worker's
+/// entry has layer -1: it serves every hillshade layer of the source).
+const KIND_HILLSHADE : Int32 = 5
+
+///|
 /// The tiles of one source the style's layers draw from: `index` is its
 /// position in the style's sources (the worker knows sources by it).
 priv struct SourceTiles {
@@ -32,7 +37,7 @@ fn Map::request_tile(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
     state: Loading(request~, worker~),
     last_used: self.frame_count,
   })
-  if src.source.kind is Vector {
+  if src.source.kind is (Vector | RasterDem) {
     let tiles = src.source.tiles
     post_tile(
       self.workers[worker],
@@ -40,6 +45,7 @@ fn Map::request_tile(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
       tile_url(tiles[request % tiles.length()], id.z, id.x, id.y),
       src.index,
       id.z,
+      src.source.kind is RasterDem,
     )
     return
   }
@@ -108,7 +114,15 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         let l = layer_at(msg, i)
         let shared = get_int(l, "shared")
         let kind = get_int(l, "kind")
-        let (mesh, labels) = if kind == KIND_SYMBOL {
+        let (mesh, labels) = if kind == KIND_HILLSHADE {
+          (
+            self.renderer.upload_slopes(
+              buffer_of(l, "image"),
+              get_int(l, "size"),
+            ),
+            None,
+          )
+        } else if kind == KIND_SYMBOL {
           let (mesh, labels) = self.symbol_mesh(l)
           (mesh, Some(labels))
         } else if shared >= 0 && shared < meshes.length() {
@@ -138,9 +152,24 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           },
           paint: None,
           labels,
+          dem: if kind == KIND_HILLSHADE {
+            Some({
+              edges: f64_array(buffer_of(l, "edges")),
+              size: get_int(l, "size"),
+            })
+          } else {
+            None
+          },
         })
       }
+      let at = self.requests.get(request)
       self.finish(request, Some(meshes))
+      if at is Some((source, key)) &&
+        self.source_tiles(source) is Some(src) &&
+        src.tiles.get(key) is Some(entry) &&
+        dem_of(meshes) is Some(_) {
+        self.stitch_dem(src, entry.id)
+      }
     }
     "error" => console_warn("worker: \{get_string(msg, "message")}")
     _ => ()

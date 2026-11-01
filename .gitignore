@@ -12,3 +12,5 @@ npm/dist/
 npm/LICENSE
 npm/NOTICE
 examples/react/dist/
+bench/fixtures/gsi-dem/
+bench/fixtures/gsi-dem-fuji/

@@ -6,6 +6,7 @@ import { readString, readValue } from "./values.mjs";
 
 const LAYER_ENTRY_WORDS = 9; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
+const KIND_HILLSHADE = 5; // map/tiles.mbt
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
@@ -84,7 +85,20 @@ async function init({ wasm: url, style, font }) {
   withInput(encoder.encode(style), () => wasm.init_style());
 }
 
-async function loadTile({ id, url, bytes: given, source, z }) {
+// A DEM tile's pixels exactly as stored: no color management, no premultiplying.
+let demCanvas = null;
+async function demPixels(bytes) {
+  const bitmap = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+  const size = bitmap.width;
+  if (bitmap.height !== size) throw new Error(`DEM tile is ${size} x ${bitmap.height}, not square`);
+  if (demCanvas?.width !== size) demCanvas = new OffscreenCanvas(size, size);
+  const ctx = demCanvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return { size, rgba: new Uint8Array(ctx.getImageData(0, 0, size, size).data.buffer) };
+}
+
+async function loadTile({ id, url, bytes: given, source, z, dem }) {
   const controller = new AbortController();
   pending.set(id, controller);
   try {
@@ -101,6 +115,15 @@ async function loadTile({ id, url, bytes: given, source, z }) {
       bytes = new Uint8Array(await res.arrayBuffer());
     }
     if (controller.signal.aborted) return;
+    if (dem === true) {
+      const { size, rgba } = await demPixels(bytes);
+      if (controller.signal.aborted) return;
+      const out = withInput(rgba, () => wasm.process_dem(source, z, size));
+      const image = out.slice(0, size * size * 2).buffer;
+      const edges = new Float64Array(out.slice(size * size * 2).buffer);
+      postMessage({ type: "tile", id, layers: [{ layer: -1, kind: KIND_HILLSHADE, image, edges, size }], glyphs: [] }, [image, edges.buffer]);
+      return;
+    }
     glyphs.startTile();
     const { layers, transfer } = unpack(withInput(bytes, () => wasm.process_tile(source, z)));
     if (controller.signal.aborted) return;

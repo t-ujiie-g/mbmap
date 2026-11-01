@@ -93,6 +93,8 @@ In:
   CSS font family labels are drawn in.
 - `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
   the index in the style's sources).
+- `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),
+  decode its pixels and send its slopes.
 - `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
@@ -109,6 +111,10 @@ Out:
   byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
   worker, so the main thread takes them even from tiles it no longer wants.
 - `{type: "tile-error", id, message}`.
+- A `raster-dem` tile's message has one entry `{layer: -1, kind: 5, image, edges,
+  size}`: `image` holds the slopes (`@raster.hillshade_slopes`, two bytes per pixel
+  of a `size` x `size` tile) and `edges` (Float64Array) its border elevations
+  (`@raster.dem_edges`), for every hillshade layer of the source.
 
 ## GeoJSON worker messages (`geojson_worker/js/worker.mjs`)
 
@@ -136,11 +142,16 @@ In:
   - `dispose`, `measure` (`kind`: 0 area, 1 length, 2 centroid, 3 bbox), `search`
     (`bbox`), `nearest` (`x`, `y`, `k`, `maxDistance`), `grid` (`bbox`, `cols`,
     `rows`), all with `dataset`;
-  - `within` (`points`, `polygons`) and `collect` (`polygons`, `points`, `property`).
+  - `within` (`points`, `polygons`) and `collect` (`polygons`, `points`, `property`);
+  - `loadDem` (`url` a `{z}/{x}/{y}` template, `z`, `bounds`, `encoding` as
+    `[kind, r, g, b, base]` with kind 0 Mapbox, 1 Terrarium, 2 GSI, 3 custom),
+    `gridValues` (`grid`, `kind` 0 elevations, 1 slope, 2 aspect) and
+    `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`).
 
 Out:
 
-- `{type: "result", id, value}`: `{dataset, features}` for `load`, null for
+- `{type: "result", id, value}`: `{dataset, features}` for `load`, `{grid, width,
+  height, bounds}` for `loadDem`, null for
   `dispose`, else a Float64Array or Int32Array (transferred). `collect` gives
   count, numeric count and sum per polygon.
 - `{type: "result", id, error}`.

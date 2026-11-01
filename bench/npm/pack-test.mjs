@@ -171,7 +171,14 @@ const checks = {
       const disposed = await d.areas().then(() => "", (e) => e.message);
       const refused = await load("data:application/json,{}").then(() => "", (e) => e.message);
       const malformed = await load(new TextEncoder().encode("{\"type\": ")).then(() => "", (e) => e.message);
-      return { ...window.__analysis, disposed, refused, malformed, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
+      // A DEM grid of the Mt Fuji fixtures (tiles 404 without them: 0 m).
+      const { loadDem } = await import("mbmap/analysis");
+      const dem = await loadDem("/bench/fixtures/gsi-dem-fuji/{z}/{x}/{y}.png", { zoom: 12, bounds: [138.6, 35.25, 138.85, 35.45], encoding: "gsi" });
+      const slope = await dem.slope();
+      const shade = await dem.hillshade();
+      const grid = { width: dem.width, height: dem.height, slopes: slope.length, shades: shade.length, west: Math.round(dem.bounds[0] * 1000) / 1000 };
+      dem.dispose();
+      return { ...window.__analysis, disposed, refused, malformed, grid, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
     const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis/.test(n));
     const ok =
@@ -183,7 +190,11 @@ const checks = {
       /disposed/.test(r.disposed) &&
       /http\(s\) URL/.test(r.refused) &&
       /malformed GeoJSON/.test(r.malformed) &&
-      r.tokyoLondon === 9562323;
+      r.tokyoLondon === 9562323 &&
+      // Tiles 3624-3627 x 1617-1619 at z12: 4 x 3 of 256 cells.
+      r.grid.width === 1024 && r.grid.height === 768 &&
+      r.grid.slopes === 1024 * 768 && r.grid.shades === 1024 * 768 &&
+      r.grid.west === 138.516;
     return [ok, { loaded, ...r }];
   },
 

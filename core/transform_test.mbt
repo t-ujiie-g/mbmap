@@ -132,6 +132,14 @@ test "tile_zoom floors the camera zoom into the source range" {
   assert_eq(t.tile_zoom(0, 22), 14)
   assert_eq(t.tile_zoom(0, 12), 12)
   assert_eq(t.tile_zoom(15, 18), 15)
+  // 256-pixel tiles are one zoom deeper, 128-pixel ones two.
+  assert_eq(t.tile_zoom(0, 22, tile_size=256), 15)
+  assert_eq(t.tile_zoom(0, 22, tile_size=128), 16)
+  assert_eq(t.tile_zoom(0, 14, tile_size=256), 14)
+  assert_eq(
+    (@core.zoom_shift(512), @core.zoom_shift(256), @core.zoom_shift(128)),
+    (0, 1, 2),
+  )
 }
 
 ///|
