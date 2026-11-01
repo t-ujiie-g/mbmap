@@ -15,8 +15,29 @@ export interface AnalysisOptions {
 }
 
 /**
+ * A coordinate reference system by EPSG code: a number, `"EPSG:6677"`,
+ * `"urn:ogc:def:crs:EPSG::6677"`, or `"CRS84"` (= 4326). Supported: 4326, 4612
+ * and 6668 (longitude, latitude), 3857 (Web Mercator), Japan's plane
+ * rectangular zones (6669-6687 on JGD2011, 2443-2461 on JGD2000) and UTM
+ * (32601-32660, 32701-32760 on WGS 84; 6688-6692 and 3097-3101 on JGD2011 and
+ * JGD2000). Projected coordinates are easting, then northing.
+ */
+export type Crs = string | number;
+
+/** `crs` as an EPSG code. */
+function crsCode(crs: Crs): number {
+  if (typeof crs === "number" && Number.isInteger(crs) && crs > 0) return crs;
+  if (typeof crs === "string") {
+    if (/^\s*(OGC:)?CRS84\s*$/i.test(crs)) return 4326;
+    const m = /^\s*(?:EPSG:|urn:ogc:def:crs:EPSG::)?(\d{1,6})\s*$/i.exec(crs);
+    if (m) return Number(m[1]);
+  }
+  throw new Error(`mbmap: analysis: not an EPSG code: ${String(crs)}`);
+}
+
+/**
  * How `buffer` measures its distance: `"geodesic"` on the ground (true meters
- * anywhere), `"planar"` in Web Mercator meters (round as the map draws it).
+ * anywhere), `"planar"` in a projected CRS's plane (`crs`, Web Mercator by default).
  */
 export type BufferMode = "geodesic" | "planar";
 
@@ -29,6 +50,13 @@ export interface BufferOptions {
   cap?: "round" | "butt" | "square";
   /** How far round edges may stray from true arcs, in meters (default: distance / 500). */
   arcTolerance?: number;
+  /** The projected CRS a planar buffer is measured in (default EPSG:3857). */
+  crs?: Crs;
+}
+
+export interface LoadOptions extends AnalysisOptions {
+  /** The CRS of the data's coordinates (default EPSG:4326); they are kept as longitude and latitude. */
+  crs?: Crs;
 }
 
 /** Per polygon: the points inside, how many have a numeric value, their sum and mean (NaN without one). */
@@ -172,12 +200,18 @@ export class Dataset {
    * grow) as polygons with its properties; vanished features keep their row
    * without geometry.
    */
-  buffer(meters: number, { mode = "geodesic", join = "round", cap = "round", arcTolerance = 0 }: BufferOptions = {}): Promise<Dataset> {
+  buffer(meters: number, { mode = "geodesic", join = "round", cap = "round", arcTolerance = 0, crs = 3857 }: BufferOptions = {}): Promise<Dataset> {
     if (!(mode in { geodesic: 0, planar: 1 }) || !(join in JOIN) || !(cap in CAP) || !Number.isFinite(meters) || !(arcTolerance >= 0)) {
       return Promise.reject(new Error("mbmap: analysis: invalid buffer options"));
     }
+    let code: number;
+    try {
+      code = crsCode(crs);
+    } catch (e) {
+      return Promise.reject(e);
+    }
     return this.#geometry("buffer", {
-      dataset: Dataset.#idOf(this, "buffered"), meters, mode: mode === "planar" ? 1 : 0, join: JOIN[join], cap: CAP[cap], arcTolerance,
+      dataset: Dataset.#idOf(this, "buffered"), meters, mode: mode === "planar" ? 1 : 0, join: JOIN[join], cap: CAP[cap], arcTolerance, crs: code,
     });
   }
 
@@ -204,9 +238,13 @@ export class Dataset {
     return this.#geometry("overlay", { a: Dataset.#idOf(this, "intersected"), b: Dataset.#idOf(other, "intersecting"), kind: OVERLAY.intersect });
   }
 
-  /** The dataset as a GeoJSON FeatureCollection (feature ids are not kept). */
-  toGeoJSON(): Promise<{ type: "FeatureCollection"; features: object[] }> {
-    return this.#call("toGeoJSON");
+  /** The dataset as a GeoJSON FeatureCollection (feature ids are not kept), in `crs` if given. */
+  toGeoJSON({ crs }: { crs?: Crs } = {}): Promise<{ type: "FeatureCollection"; features: object[] }> {
+    try {
+      return this.#call("toGeoJSON", crs === undefined ? {} : { crs: crsCode(crs) });
+    } catch (e) {
+      return Promise.reject(e);
+    }
   }
 
   /** Frees the dataset in the worker; later calls on it reject. */
@@ -302,7 +340,8 @@ export async function loadDem(tiles: string, options: DemOptions): Promise<DemGr
  * Reads GeoJSON into the analysis worker: an object, its UTF-8 bytes, or an
  * http(s) URL (resolved against the page, fetched without credentials).
  */
-export async function load(data: unknown, options: AnalysisOptions = {}): Promise<Dataset> {
+export async function load(data: unknown, options: LoadOptions = {}): Promise<Dataset> {
+  const crs = options.crs === undefined ? undefined : crsCode(options.crs);
   start(options);
   let args: object;
   let transfer: Transferable[] = [];
@@ -319,8 +358,20 @@ export async function load(data: unknown, options: AnalysisOptions = {}): Promis
     args = { bytes };
     transfer = [bytes];
   }
-  const { dataset, features } = await call<{ dataset: number; features: number }>("load", args, transfer);
+  const { dataset, features } = await call<{ dataset: number; features: number }>("load", { ...args, crs }, transfer);
   return new Dataset(dataset, features);
+}
+
+/**
+ * x, y pairs taken from `from` to `to` (NaN where a projection cannot reach),
+ * in the analysis worker; the first call loads the geometry module.
+ */
+export async function transform(coords: ArrayLike<number>, from: Crs, to: Crs, options: AnalysisOptions = {}): Promise<Float64Array> {
+  const codes = { from: crsCode(from), to: crsCode(to) };
+  start(options);
+  const buffer = Float64Array.from(coords).buffer;
+  if (buffer.byteLength % 16 !== 0) throw new Error("mbmap: analysis: coordinates must come in x, y pairs");
+  return call<Float64Array>("transform", { coords: buffer, ...codes }, [buffer]);
 }
 
 /** Great-circle distance in meters between two `[lng, lat]` points; mirrors `@analysis.distance`. */

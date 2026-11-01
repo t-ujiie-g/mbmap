@@ -208,3 +208,30 @@ fn words_hash(words : Array[Int32]) -> Int32 {
   }
   h
 }
+
+///|
+extern "wasm" fn store_f64(addr : Int32, v : Double) =
+  #|(func (param i32) (param f64) (f64.store align=1 (local.get 0) (local.get 1)))
+
+///|
+/// Writes `proj_coords` on f64 pairs at `[addr, addr + len)` as f64s at `out`
+/// (growing memory as needed); returns how many.
+#export_name("proj_mem")
+pub fn proj_mem(
+  addr : Int32,
+  len : Int32,
+  from : Int32,
+  to : Int32,
+  out : Int32,
+) -> Int32 {
+  let values = proj_coords(bytes_from_mem(addr, len)[:], from, to)
+  let need = out + values.length() * 8
+  let have = memory_grow(0) * 65536
+  if need > have {
+    memory_grow((need - have + 65535) / 65536) |> ignore
+  }
+  for i, v in values {
+    store_f64(out + i * 8, v)
+  }
+  values.length()
+}

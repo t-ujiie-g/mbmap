@@ -20,7 +20,7 @@ const ENTRIES = [
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
   { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./analysis-worker.js", "./analysis.wasm", "./geometry.wasm"] },
   { name: "analysis worker", files: ["analysis-worker.js", "analysis.wasm"], budget: 30_000, references: [] },
-  { name: "geometry (loaded by the analysis worker on first use)", files: ["geometry.wasm"], budget: 45_000, references: [] },
+  { name: "geometry (loaded by the analysis worker on first use)", files: ["geometry.wasm"], budget: 50_000, references: [] },
 ];
 
 const failures = [];

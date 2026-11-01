@@ -111,3 +111,10 @@ pub fn offset_bytes(
   .map(v => v.to_string())
   .join(",")
 }
+
+///|
+/// `proj_coords` on f64 pairs in a Uint8Array, as comma-separated numbers.
+#export_name("proj_bytes")
+pub fn proj_bytes(bytes : Bytes, from : Int32, to : Int32) -> String {
+  proj_coords(bytes[:], from, to).map(v => v.to_string()).join(",")
+}

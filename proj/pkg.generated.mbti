@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/proj"
+
+// Values
+pub let grs80 : Ellipsoid
+
+pub fn transform(Crs, Crs, Double, Double) -> (Double, Double)?
+
+pub let wgs84 : Ellipsoid
+
+// Errors
+
+// Types and methods
+pub struct Crs {
+  code : Int32
+  // private fields
+}
+pub fn Crs::forward(Self, Double, Double) -> (Double, Double)?
+pub fn Crs::from_epsg(Int32) -> Self?
+pub fn Crs::inverse(Self, Double, Double) -> (Double, Double)?
+pub fn Crs::is_geographic(Self) -> Bool
+
+pub(all) struct Ellipsoid {
+  a : Double
+  rf : Double
+}
+
+// Type aliases
+
+// Traits
