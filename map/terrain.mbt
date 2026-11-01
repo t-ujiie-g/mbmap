@@ -36,30 +36,17 @@ fn Map::terrain_source(self : Map) -> SourceTiles? {
 }
 
 ///|
-/// The terrain's height in meters under the camera's center, from the deepest
-/// loaded DEM tile there (bilinear), or None before any has loaded.
-fn Map::center_elevation(self : Map, src : SourceTiles) -> Double? {
-  let c = self.transform.camera.center.to_mercator()
+/// The terrain's height in meters at `m`, from the deepest loaded DEM tile
+/// there, or None where none has loaded.
+fn elevation_at(src : SourceTiles, m : @core.MercatorCoord) -> Double? {
   let mut z = src.source.max_zoom
   while z >= src.source.min_zoom {
     let n = (1 << z).to_double()
-    if @core.tile_containing(c, z) is Some(id) &&
+    if @core.tile_containing(m, z) is Some(id) &&
       src.ready(id).bind(dem_of) is Some((_, d)) {
-      let size = d.size
-      let fx = (c.x * n - id.x.to_double()) * size.to_double() - 0.5
-      let fy = (c.y * n - id.y.to_double()) * size.to_double() - 0.5
-      let at = (x : Int32, y : Int32) => {
-        let cx = @cmp.maximum(0, @cmp.minimum(size - 1, x))
-        let cy = @cmp.maximum(0, @cmp.minimum(size - 1, y))
-        f32_index(d.heights, cy * size + cx)
-      }
-      let x0 = fx.floor().to_int()
-      let y0 = fy.floor().to_int()
-      let tx = fx - x0.to_double()
-      let ty = fy - y0.to_double()
-      let top = at(x0, y0) * (1.0 - tx) + at(x0 + 1, y0) * tx
-      let bottom = at(x0, y0 + 1) * (1.0 - tx) + at(x0 + 1, y0 + 1) * tx
-      return Some(top * (1.0 - ty) + bottom * ty)
+      return Some(
+        d.height_at(m.x * n - id.x.to_double(), m.y * n - id.y.to_double()),
+      )
     }
     z -= 1
   }
@@ -95,8 +82,8 @@ fn texture_placement(
 }
 
 ///|
-/// The loaded DEM tile under terrain tile `id` (itself or its nearest loaded
-/// ancestor) and `id`'s part of it: offset x, y and scale.
+/// The loaded DEM tile under terrain tile `id` (itself or its nearest loaded ancestor)
+/// and `id`'s part of it: offset x, y and scale.
 fn dem_under(
   src : SourceTiles,
   id : @core.TileId,
@@ -133,8 +120,7 @@ fn Map::render_terrain(
 ) -> Unit {
   let t = self.transform
   let zoom = t.camera.zoom
-  let exaggeration = self.style.terrain.map(t => t.exaggeration).unwrap_or(1.0)
-  let scale = t.pixels_per_meter() * exaggeration
+  let scale = self.terrain_scale()
   let (r, g, b) = self.background()
   let size = TERRAIN_TEXTURE *
     @cmp.maximum(1, @cmp.minimum(2, dpr.round().to_int()))
@@ -145,6 +131,8 @@ fn Map::render_terrain(
   )
   let z = @cmp.maximum(t.tile_zoom(0, 24), dem_z)
   let fog = self.fog()
+  let skirt = SKIRT_METERS * t.pixels_per_meter()
+  let drawn = []
   self.renderer.clear_depth()
   for id in t.covering_tiles(src.source.min_zoom, z) {
     guard dem_under(src, id) is Some((mesh, part)) else { continue }
@@ -174,17 +162,25 @@ fn Map::render_terrain(
       }
     }
     self.renderer.end_target()
-    self.renderer.draw_terrain(
-      mesh,
-      target,
-      self.placement(id, None, dpr),
-      scale,
-      SKIRT_METERS * t.pixels_per_meter(),
-      part,
-      fog,
-    )
+    let at = self.placement(id, None, dpr)
+    self.renderer.draw_terrain(mesh, target, at, scale, skirt, part, fog)
+    drawn.push((mesh, target, at, part))
   }
+  // The same grids again into the depth target labels are hidden by.
+  self.renderer.begin_depth()
+  for d in drawn {
+    let (mesh, target, at, part) = d
+    self.renderer.draw_terrain(mesh, target, at, scale, skirt, part, fog)
+  }
+  self.renderer.end_depth()
   self.prune_targets()
+}
+
+///|
+/// World pixels per meter of terrain height (exaggerated) at this camera.
+fn Map::terrain_scale(self : Map) -> Double {
+  let exaggeration = self.style.terrain.map(t => t.exaggeration).unwrap_or(1.0)
+  self.transform.pixels_per_meter() * exaggeration
 }
 
 ///|

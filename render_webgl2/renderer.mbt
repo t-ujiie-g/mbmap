@@ -232,7 +232,9 @@ pub fn Renderer::show(
 }
 
 ///|
-/// Draws a symbol mesh's shown labels: the halo first, then the text.
+/// Draws a symbol mesh's shown labels: the halo first, then the text, smaller
+/// in the distance, raised by their heights (`set_heights`) times
+/// `height_scale` and faded out behind terrain drawn by `begin_depth`.
 pub fn Renderer::draw_symbols(
   self : Renderer,
   mesh : Mesh,
@@ -241,8 +243,50 @@ pub fn Renderer::draw_symbols(
   color : FixedArray[Double],
   halo : FixedArray[Double],
   halo_width : Double,
+  height_scale~ : Double = 0.0,
 ) -> Unit {
-  gl_draw_symbols(self.gl, mesh, at.matrix.m, dpr, color, halo, halo_width)
+  gl_draw_symbols(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    dpr,
+    color,
+    halo,
+    halo_width,
+    at.center_depth,
+    height_scale,
+  )
+}
+
+///|
+/// Sets each label's anchor elevation in meters (`heights`, one per label of
+/// `labels`, laid out as for `show`), raised by `draw_symbols`' `height_scale`.
+pub fn Renderer::set_heights(
+  self : Renderer,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  heights : FixedArray[Double],
+) -> Unit {
+  gl_set_heights(self.gl, mesh, labels, stride, heights)
+}
+
+///|
+/// Draws terrain into the depth target until `end_depth`; symbols drawn after
+/// that fade where it hides them, until `reset_depth`.
+pub fn Renderer::begin_depth(self : Renderer) -> Unit {
+  gl_depth_begin(self.gl)
+}
+
+///|
+pub fn Renderer::end_depth(self : Renderer) -> Unit {
+  gl_depth_end(self.gl)
+}
+
+///|
+/// Symbols are no longer hidden by terrain depth (a frame without terrain).
+pub fn Renderer::reset_depth(self : Renderer) -> Unit {
+  gl_depth_reset(self.gl)
 }
 
 ///|

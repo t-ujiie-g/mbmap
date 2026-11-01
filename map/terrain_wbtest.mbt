@@ -22,3 +22,27 @@ test "texture_placement maps a tile and its child into the terrain texture" {
   assert_true(overlap(kid, into) && overlap(into, kid))
   assert_true(!overlap(@core.TileId::new(11, 7, 13).unwrap(), into))
 }
+
+///|
+extern "js" fn f32_buffer(
+  values : FixedArray[Double],
+) -> @render_webgl2.JsBuffer =
+  #|(v) => Float32Array.from(v)
+
+///|
+test "height_at interpolates between pixel centers like the terrain shader" {
+  // 2 x 2 pixels: 0 and 100 m on the top row, 200 and 300 m below.
+  let d : DemTile = {
+    edges: [],
+    heights: f32_buffer([0.0, 100.0, 200.0, 300.0]),
+    size: 2,
+  }
+  // Pixel centers sit at 1/4 and 3/4; the tile's middle is their average.
+  assert_eq(d.height_at(0.25, 0.25), 0.0)
+  assert_eq(d.height_at(0.75, 0.75), 300.0)
+  assert_eq(d.height_at(0.5, 0.5), 150.0)
+  assert_eq(d.height_at(0.5, 0.25), 50.0)
+  // Beyond the outer centers the edge pixels repeat.
+  assert_eq(d.height_at(0.0, 0.0), 0.0)
+  assert_eq(d.height_at(1.0, 1.0), 300.0)
+}

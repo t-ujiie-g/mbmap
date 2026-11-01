@@ -17,7 +17,8 @@ fn Map::render(self : Map) -> Unit {
   self.renderer.set_viewport(pw, ph)
   self.transform = self.transform.resize(w, h)
   let terrain = self.terrain_source()
-  if terrain is Some(src) && self.center_elevation(src) is Some(e) {
+  if terrain is Some(src) &&
+    elevation_at(src, self.transform.camera.center.to_mercator()) is Some(e) {
     let exaggeration = self.style.terrain
       .map(t => t.exaggeration)
       .unwrap_or(1.0)
@@ -68,7 +69,10 @@ fn Map::render(self : Map) -> Unit {
   let zoom = t.camera.zoom
   if terrain is Some(src) {
     self.render_terrain(src, draws_of, dpr)
+  } else {
+    self.renderer.reset_depth()
   }
+  let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
   for index, layer in self.style.layers {
     // With terrain, all but symbols are drawn onto it.
     if layer.kind is Background ||
@@ -80,7 +84,7 @@ fn Map::render(self : Map) -> Unit {
     // Paint that does not read feature data is the same for every mesh.
     let shared = paint_of(layer, zoom, JsProps::none())
     for d in draws_of.get(layer.source).unwrap_or([]) {
-      self.draw_layer(index, layer, shared, d.at, d.meshes, dpr)
+      self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
     }
   }
   if settled {
@@ -114,7 +118,7 @@ fn Map::background(self : Map) -> (Double, Double, Double) {
 
 ///|
 /// Draws `index`'s meshes of one tile; `shared` is the layer's paint for
-/// meshes without group properties.
+/// meshes without group properties; `height_scale` raises labels on terrain.
 fn Map::draw_layer(
   self : Map,
   index : Int32,
@@ -123,6 +127,7 @@ fn Map::draw_layer(
   at : @render_webgl2.Placement,
   meshes : Array[LayerMesh],
   dpr : Double,
+  height_scale~ : Double = 0.0,
 ) -> Unit {
   let zoom = self.transform.camera.zoom
   for m in meshes {
@@ -153,6 +158,7 @@ fn Map::draw_layer(
           [p.r, p.g, p.b, p.a],
           p.halo,
           p.halo_width * dpr,
+          height_scale~,
         )
       }
     } else if m.kind == KIND_LINE {

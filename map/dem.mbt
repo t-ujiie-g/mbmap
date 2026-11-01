@@ -54,3 +54,24 @@ fn Map::stitch_dem(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
     )
   }
 }
+
+///|
+/// The height in meters at (`x`, `y`), fractions of the tile from its top-left
+/// corner, interpolated between pixel centers as the terrain shader does.
+fn DemTile::height_at(self : DemTile, x : Double, y : Double) -> Double {
+  let size = self.size
+  let fx = x * size.to_double() - 0.5
+  let fy = y * size.to_double() - 0.5
+  let at = (x : Int32, y : Int32) => {
+    let cx = @cmp.maximum(0, @cmp.minimum(size - 1, x))
+    let cy = @cmp.maximum(0, @cmp.minimum(size - 1, y))
+    f32_index(self.heights, cy * size + cx)
+  }
+  let x0 = fx.floor().to_int()
+  let y0 = fy.floor().to_int()
+  let tx = fx - x0.to_double()
+  let ty = fy - y0.to_double()
+  let top = at(x0, y0) * (1.0 - tx) + at(x0 + 1, y0) * tx
+  let bottom = at(x0, y0 + 1) * (1.0 - tx) + at(x0 + 1, y0 + 1) * tx
+  top * (1.0 - ty) + bottom * ty
+}

@@ -125,6 +125,9 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
               buffer_of(l, "elevations"),
               get_int(l, "size"),
             )
+            // Labels stand on terrain: look their heights up again.
+            self.dem_version += 1
+            self.labels_dirty = true
           }
           (mesh, None)
         } else if kind == KIND_SYMBOL {
