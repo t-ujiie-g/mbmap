@@ -84,6 +84,7 @@ fn Map::finish(self : Map, request : Int32, meshes : Array[LayerMesh]?) -> Unit 
     src.tiles.get(key) is Some(entry) else {
     return
   }
+  self.content_version += 1
   entry.state = match meshes {
     Some(m) => Ready(m)
     None => Failed

@@ -91,7 +91,8 @@ pub struct Map {
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
   priv has_labels : Bool
-  priv targets : @hashmap.HashMap[Int64, (@render_webgl2.Target, Int32)]
+  priv targets : @hashmap.HashMap[Int64, TerrainTarget]
+  priv mut content_version : Int32
   priv atlas : @label.Atlas
   priv mut atlas_full : Bool
   priv mut labels_dirty : Bool
@@ -159,6 +160,7 @@ pub fn Map::new(
     destroyed: false,
     has_labels: style.layers.iter().any(l => l.kind is Symbol),
     targets: @hashmap.HashMap([]),
+    content_version: 0,
     atlas: @label.Atlas::new(
       @render_webgl2.ATLAS_SIZE,
       @render_webgl2.ATLAS_SIZE,
@@ -293,6 +295,7 @@ fn Map::request_render(self : Map) -> Unit {
 
 ///|
 fn Map::release(self : Map, e : TileEntry) -> Unit {
+  self.content_version += 1
   match e.state {
     Ready(meshes) =>
       for m in meshes {

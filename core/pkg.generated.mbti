@@ -61,7 +61,6 @@ pub fn BBox::intersects(Self, Self) -> Bool
 pub fn BBox::is_empty(Self) -> Bool
 pub fn BBox::not_equal(Self, Self) -> Bool
 pub fn BBox::to_repr(Self) -> @debug.Repr
-pub fn BBox::union(Self, Self) -> Self
 
 pub struct ByteReader {
   // private fields

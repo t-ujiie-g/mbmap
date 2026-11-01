@@ -34,11 +34,6 @@ pub fn BBox::add_point(self : BBox, x : Double, y : Double) -> BBox {
 }
 
 ///|
-pub fn BBox::union(self : BBox, other : BBox) -> BBox {
-  self.add_point(other.min_x, other.min_y).add_point(other.max_x, other.max_y)
-}
-
-///|
 pub fn BBox::contains(self : BBox, x : Double, y : Double) -> Bool {
   x >= self.min_x && x < self.max_x && y >= self.min_y && y < self.max_y
 }

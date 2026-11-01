@@ -18,10 +18,10 @@ moon fmt && moon info
 
 | パッケージ | 役割 | ターゲット |
 |---|---|---|
-| `core/` | タイル座標・Web Mercator・BBox・行列 | 全 |
+| `core/` | タイル座標・Web Mercator・BBox・行列、カメラ（ピッチ 85° まで、地平線、地形の高さ） | 全 |
 | `pbf/` | Protocol Buffers 最小デコーダ | 全 |
 | `mvt/` | MVT 2.1 デコーダ | 全 |
-| `tess/` | earcut 移植、線の展開 | 全 |
+| `tess/` | earcut 移植、線の展開、fill-extrusion の壁と屋根 | 全 |
 | `style/` | Style Spec サブセット評価 | 全 |
 | `geom/` | 列指向の地物の表（GeoArrow と同じオフセット、属性はキーごとの列） | 全 |
 | `formats/` | GeoJSON などの読み込み（`geom` の表へ） | 全 |
@@ -34,7 +34,7 @@ moon fmt && moon info
 | `raster/` | 標高タイルの読み込み（RGB から標高）、hillshade 用の勾配 | 全 |
 | `label/` | ラベルの配置（グリフのアトラス、重なりを判定する画面のグリッド） | 全 |
 | `render_webgl2/` | WebGL2 FFI、シェーダ、描画パス | js |
-| `map/` | カメラ、入力、タイル選択、フレームループ（公開 MoonBit API） | js |
+| `map/` | カメラ、入力、タイル選択、フレームループ、地形・空・ラベルの配置（公開 MoonBit API） | js |
 
 `npm/`、`element/`、`adapters/`、`examples/` は MoonBit パッケージではない（TS / HTML 側）。
 

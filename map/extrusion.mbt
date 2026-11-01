@@ -1,18 +1,20 @@
 ///|
-/// The style's light at this camera: toward the light from its `position`
-/// (MapLibre's `sphericalToCartesian`, azimuth from north), turned with the
-/// map's bearing when anchored to the viewport.
-fn Map::extrusion_light(self : Map) -> @render_webgl2.ExtrusionLight {
-  let light = self.style.light
-  let zoom = self.transform.camera.zoom
-  let (r, azimuth, polar) = light.position
+/// The direction toward a light at `position` (radial distance, azimuth from
+/// north and polar angle in degrees: MapLibre's `sphericalToCartesian`), turned
+/// by `bearing` degrees when it is anchored to the viewport.
+fn light_direction(
+  position : (Double, Double, Double),
+  viewport : Bool,
+  bearing : Double,
+) -> (Double, Double, Double) {
+  let (r, azimuth, polar) = position
   let a = (azimuth + 90.0) * @math.PI / 180.0
   let p = polar * @math.PI / 180.0
   let x = r * @math.cos(a) * @math.sin(p)
   let y = r * @math.sin(a) * @math.sin(p)
   let z = r * @math.cos(p)
-  let direction = if light.viewport {
-    let b = self.transform.camera.bearing * @math.PI / 180.0
+  if viewport {
+    let b = bearing * @math.PI / 180.0
     (
       x * @math.cos(b) - y * @math.sin(b),
       x * @math.sin(b) + y * @math.cos(b),
@@ -21,9 +23,20 @@ fn Map::extrusion_light(self : Map) -> @render_webgl2.ExtrusionLight {
   } else {
     (x, y, z)
   }
+}
+
+///|
+/// The style's light at this camera.
+fn Map::extrusion_light(self : Map) -> @render_webgl2.ExtrusionLight {
+  let light = self.style.light
+  let zoom = self.transform.camera.zoom
   let c = color_of(light.color, zoom, JsProps::none())
   {
-    direction,
+    direction: light_direction(
+      light.position,
+      light.viewport,
+      self.transform.camera.bearing,
+    ),
     intensity: number_or(light.intensity.eval(zoom, JsProps::none()), 0.5),
     color: (c.r, c.g, c.b),
   }

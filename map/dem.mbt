@@ -30,6 +30,7 @@ fn dem_of(meshes : Array[LayerMesh]) -> (@render_webgl2.Mesh, DemTile)? {
 /// the same way). Sides are 0 top, 1 bottom, 2 left, 3 right.
 fn Map::stitch_dem(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
   guard src.ready(id).bind(dem_of) is Some((mesh, own)) else { return }
+  self.content_version += 1
   let n = 1 << id.z
   let neighbors = [(0, 0, -1, 1), (1, 0, 1, 0), (2, -1, 0, 3), (3, 1, 0, 2)]
   for s in neighbors {
@@ -65,7 +66,7 @@ fn DemTile::height_at(self : DemTile, x : Double, y : Double) -> Double {
   let at = (x : Int32, y : Int32) => {
     let cx = @cmp.maximum(0, @cmp.minimum(size - 1, x))
     let cy = @cmp.maximum(0, @cmp.minimum(size - 1, y))
-    f32_index(self.heights, cy * size + cx)
+    f32_at(self.heights, cy * size + cx)
   }
   let x0 = fx.floor().to_int()
   let y0 = fy.floor().to_int()
