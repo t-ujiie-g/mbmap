@@ -1,0 +1,293 @@
+{
+  "reference": "GeographicLib 2.2.0 (WGS84 geodesics)",
+  "results": [
+    {
+      "lat": 0,
+      "meters": 10,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.0003793577207300558,
+      "maxRelativeError": 0.00003793577207300558
+    },
+    {
+      "lat": 0,
+      "meters": 10,
+      "kind": "line",
+      "vertices": 63,
+      "maxErrorMeters": 0.001038901639983436,
+      "maxRelativeError": 0.00010389016399834362
+    },
+    {
+      "lat": 0,
+      "meters": 10,
+      "kind": "polygon",
+      "vertices": 57,
+      "maxErrorMeters": 0.0010260169654969786,
+      "maxRelativeError": 0.00010260169654969786
+    },
+    {
+      "lat": 0,
+      "meters": 1000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.00046187391171770287,
+      "maxRelativeError": 4.6187391171770287e-7
+    },
+    {
+      "lat": 0,
+      "meters": 1000,
+      "kind": "line",
+      "vertices": 79,
+      "maxErrorMeters": 0.0021215365975422174,
+      "maxRelativeError": 0.000002121536597542217
+    },
+    {
+      "lat": 0,
+      "meters": 1000,
+      "kind": "polygon",
+      "vertices": 57,
+      "maxErrorMeters": 0.0006102969705352734,
+      "maxRelativeError": 6.102969705352734e-7
+    },
+    {
+      "lat": 0,
+      "meters": 50000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.010564815471298061,
+      "maxRelativeError": 2.1129630942596122e-7
+    },
+    {
+      "lat": 0,
+      "meters": 50000,
+      "kind": "line",
+      "vertices": 529,
+      "maxErrorMeters": 2.1872439786893665,
+      "maxRelativeError": 0.00004374487957378733
+    },
+    {
+      "lat": 0,
+      "meters": 50000,
+      "kind": "polygon",
+      "vertices": 723,
+      "maxErrorMeters": 0.5356553641977371,
+      "maxRelativeError": 0.000010713107283954741
+    },
+    {
+      "lat": 35.68,
+      "meters": 10,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.0003794204329921058,
+      "maxRelativeError": 0.00003794204329921058
+    },
+    {
+      "lat": 35.68,
+      "meters": 10,
+      "kind": "line",
+      "vertices": 64,
+      "maxErrorMeters": 0.0006056059291150717,
+      "maxRelativeError": 0.00006056059291150717
+    },
+    {
+      "lat": 35.68,
+      "meters": 10,
+      "kind": "polygon",
+      "vertices": 57,
+      "maxErrorMeters": 0.0011388278789841166,
+      "maxRelativeError": 0.00011388278789841167
+    },
+    {
+      "lat": 35.68,
+      "meters": 1000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.0011750609280625213,
+      "maxRelativeError": 0.0000011750609280625213
+    },
+    {
+      "lat": 35.68,
+      "meters": 1000,
+      "kind": "line",
+      "vertices": 80,
+      "maxErrorMeters": 0.002950061924593683,
+      "maxRelativeError": 0.000002950061924593683
+    },
+    {
+      "lat": 35.68,
+      "meters": 1000,
+      "kind": "polygon",
+      "vertices": 60,
+      "maxErrorMeters": 0.0029322291592279726,
+      "maxRelativeError": 0.0000029322291592279726
+    },
+    {
+      "lat": 35.68,
+      "meters": 50000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 1.8743664881258155,
+      "maxRelativeError": 0.000037487329762516314
+    },
+    {
+      "lat": 35.68,
+      "meters": 50000,
+      "kind": "line",
+      "vertices": 596,
+      "maxErrorMeters": 5.737086430337513,
+      "maxRelativeError": 0.00011474172860675026
+    },
+    {
+      "lat": 35.68,
+      "meters": 50000,
+      "kind": "polygon",
+      "vertices": 649,
+      "maxErrorMeters": 6.07314284471795,
+      "maxRelativeError": 0.00012146285689435899
+    },
+    {
+      "lat": 60,
+      "meters": 10,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.0003794141497284187,
+      "maxRelativeError": 0.00003794141497284187
+    },
+    {
+      "lat": 60,
+      "meters": 10,
+      "kind": "line",
+      "vertices": 68,
+      "maxErrorMeters": 0.0009761604278519798,
+      "maxRelativeError": 0.00009761604278519797
+    },
+    {
+      "lat": 60,
+      "meters": 10,
+      "kind": "polygon",
+      "vertices": 57,
+      "maxErrorMeters": 0.0006728130198823123,
+      "maxRelativeError": 0.00006728130198823124
+    },
+    {
+      "lat": 60,
+      "meters": 1000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.0011127736394200838,
+      "maxRelativeError": 0.0000011127736394200838
+    },
+    {
+      "lat": 60,
+      "meters": 1000,
+      "kind": "line",
+      "vertices": 74,
+      "maxErrorMeters": 0.00395402650633514,
+      "maxRelativeError": 0.0000039540265063351396
+    },
+    {
+      "lat": 60,
+      "meters": 1000,
+      "kind": "polygon",
+      "vertices": 60,
+      "maxErrorMeters": 0.0027224576523394717,
+      "maxRelativeError": 0.0000027224576523394716
+    },
+    {
+      "lat": 60,
+      "meters": 50000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 1.7135906767070992,
+      "maxRelativeError": 0.00003427181353414199
+    },
+    {
+      "lat": 60,
+      "meters": 50000,
+      "kind": "line",
+      "vertices": 390,
+      "maxErrorMeters": 4.233177753078053,
+      "maxRelativeError": 0.00008466355506156106
+    },
+    {
+      "lat": 60,
+      "meters": 50000,
+      "kind": "polygon",
+      "vertices": 593,
+      "maxErrorMeters": 5.296798369388853,
+      "maxRelativeError": 0.00010593596738777706
+    },
+    {
+      "lat": 80,
+      "meters": 10,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.00037938000926729387,
+      "maxRelativeError": 0.000037938000926729384
+    },
+    {
+      "lat": 80,
+      "meters": 10,
+      "kind": "line",
+      "vertices": 60,
+      "maxErrorMeters": 0.008034777045853758,
+      "maxRelativeError": 0.0008034777045853759
+    },
+    {
+      "lat": 80,
+      "meters": 10,
+      "kind": "polygon",
+      "vertices": 57,
+      "maxErrorMeters": 0.0010114578104154504,
+      "maxRelativeError": 0.00010114578104154503
+    },
+    {
+      "lat": 80,
+      "meters": 1000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.0007186216550962854,
+      "maxRelativeError": 7.186216550962854e-7
+    },
+    {
+      "lat": 80,
+      "meters": 1000,
+      "kind": "line",
+      "vertices": 66,
+      "maxErrorMeters": 0.8490801979626212,
+      "maxRelativeError": 0.0008490801979626212
+    },
+    {
+      "lat": 80,
+      "meters": 1000,
+      "kind": "polygon",
+      "vertices": 62,
+      "maxErrorMeters": 0.0016429022008424,
+      "maxRelativeError": 0.0000016429022008424
+    },
+    {
+      "lat": 80,
+      "meters": 50000,
+      "kind": "point",
+      "vertices": 51,
+      "maxErrorMeters": 0.6841497048226302,
+      "maxRelativeError": 0.000013682994096452603
+    },
+    {
+      "lat": 80,
+      "meters": 50000,
+      "kind": "line",
+      "vertices": 261,
+      "maxErrorMeters": 55.270146160146396,
+      "maxRelativeError": 0.0011054029232029279
+    },
+    {
+      "lat": 80,
+      "meters": 50000,
+      "kind": "polygon",
+      "vertices": 495,
+      "maxErrorMeters": 2.0286584208370186,
+      "maxRelativeError": 0.00004057316841674037
+    }
+  ]
+}

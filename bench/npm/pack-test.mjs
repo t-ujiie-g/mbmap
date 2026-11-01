@@ -47,7 +47,7 @@ const checks = {
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
         // A style without GeoJSON sources never loads their module.
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry")),
         styleError,
         thrown,
         workerRefused,
@@ -178,11 +178,32 @@ const checks = {
       const shade = await dem.hillshade();
       const grid = { width: dem.width, height: dem.height, slopes: slope.length, shades: shade.length, west: Math.round(dem.bounds[0] * 1000) / 1000 };
       dem.dispose();
-      return { ...window.__analysis, disposed, refused, malformed, grid, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
+      // Geometry operations (geometry.wasm, loaded now): a 500 m circle, a line
+      // cut by a square, two squares merged, erased and overlaid.
+      const sq = (x, name) => ({ type: "Feature", properties: { name }, geometry: { type: "Polygon", coordinates: [[[x, 0], [x + 1, 0], [x + 1, 1], [x, 1], [x, 0]]] } });
+      const fc = (features) => ({ type: "FeatureCollection", features });
+      const pt = await load({ type: "Feature", properties: { id: 1 }, geometry: { type: "Point", coordinates: [139.7, 35.7] } });
+      const circle = (await (await pt.buffer(500)).toGeoJSON()).features[0];
+      const line = await load(fc([{ type: "Feature", properties: { name: "l" }, geometry: { type: "LineString", coordinates: [[-1, 0.5], [2, 0.5]] } }]));
+      const squares = await load(fc([sq(0, "a"), sq(0.5, "b")]));
+      const clipped = (await (await line.clip(squares)).toGeoJSON()).features[0];
+      const merged = (await (await squares.dissolve()).toGeoJSON()).features;
+      const erased = (await (await squares.erase(await load(fc([sq(0.5, "c")])))).toGeoJSON()).features;
+      const overlaid = (await (await squares.intersect(await load(fc([sq(0.5, "c")])))).toGeoJSON()).features;
+      const badBuffer = await pt.buffer(NaN).then(() => "", (e) => e.message);
+      const geometry = {
+        circle: [circle.geometry.type, circle.geometry.coordinates[0].length, circle.properties.id],
+        clipped: [clipped.geometry.type, clipped.geometry.coordinates, clipped.properties.name],
+        merged: [merged.length, merged[0].geometry.coordinates[0].length],
+        erased: erased.map((f) => f.properties.name),
+        overlaid: overlaid.map((f) => `${f.properties.name}/${f.properties.name_2}`),
+        badBuffer,
+      };
+      return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -194,7 +215,13 @@ const checks = {
       // Tiles 3624-3627 x 1617-1619 at z12: 4 x 3 of 256 cells.
       r.grid.width === 1024 && r.grid.height === 768 &&
       r.grid.slopes === 1024 * 768 && r.grid.shades === 1024 * 768 &&
-      r.grid.west === 138.516;
+      r.grid.west === 138.516 &&
+      r.geometry.circle[0] === "Polygon" && r.geometry.circle[1] > 40 && r.geometry.circle[2] === 1 &&
+      JSON.stringify(r.geometry.clipped) === JSON.stringify(["LineString", [[0, 0.5], [1.5, 0.5]], "l"]) &&
+      r.geometry.merged[0] === 1 && r.geometry.merged[1] >= 5 &&
+      JSON.stringify(r.geometry.erased) === JSON.stringify(["a"]) &&
+      JSON.stringify(r.geometry.overlaid) === JSON.stringify(["a/c", "b/c"]) &&
+      /invalid buffer options/.test(r.geometry.badBuffer);
     return [ok, { loaded, ...r }];
   },
 

@@ -1,6 +1,7 @@
 // Export surface for the mvt and tess benches and golden tests; names come from `#export_name`.
 
 import {
+  "t-ujiie-g/mbmap/clipper",
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/mvt",

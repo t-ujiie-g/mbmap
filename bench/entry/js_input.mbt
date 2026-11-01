@@ -81,3 +81,33 @@ pub fn geojson_tiler_table(
     @tiler.Trig::moonbit(),
   )
 }
+
+///|
+/// `clip_words` on input i32s in a Uint8Array, as comma-separated i32s.
+#export_name("clip_bytes")
+pub fn clip_bytes(
+  bytes : Bytes,
+  op : Int32,
+  fill : Int32,
+  tree : Int32,
+) -> String {
+  clip_words(words_of(bytes[:]), op, fill, tree=tree != 0)
+  .map(v => v.to_string())
+  .join(",")
+}
+
+///|
+/// `offset_words` on input i32s in a Uint8Array, as comma-separated i32s.
+#export_name("offset_bytes")
+pub fn offset_bytes(
+  bytes : Bytes,
+  delta : Double,
+  join : Int32,
+  end : Int32,
+  miter_limit : Double,
+  arc_tolerance : Double,
+) -> String {
+  offset_words(words_of(bytes[:]), delta, join, end, miter_limit, arc_tolerance)
+  .map(v => v.to_string())
+  .join(",")
+}

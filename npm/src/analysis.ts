@@ -1,5 +1,6 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
-// first `load`. Measures and predicates match Turf.js; the index is flatbush.
+// first `load`. Measures and predicates match Turf.js; the index is flatbush;
+// geometry operations are Clipper2's, in a module loaded on their first use.
 import { wasmUrl, workerScriptUrl } from "./urls";
 
 /** `[minX, minY, maxX, maxY]` in degrees. */
@@ -9,6 +10,25 @@ export interface AnalysisOptions {
   /** Where the analysis worker and its wasm are served (by default next to this module). */
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
+  /** Where the geometry module (buffers and overlays) is served. */
+  geometryWasmUrl?: string | URL;
+}
+
+/**
+ * How `buffer` measures its distance: `"geodesic"` on the ground (true meters
+ * anywhere), `"planar"` in Web Mercator meters (round as the map draws it).
+ */
+export type BufferMode = "geodesic" | "planar";
+
+export interface BufferOptions {
+  /** Default `"geodesic"`. */
+  mode?: BufferMode;
+  /** How corners turn: default `"round"`. */
+  join?: "round" | "miter" | "square" | "bevel";
+  /** How lines end: default `"round"`. */
+  cap?: "round" | "butt" | "square";
+  /** How far round edges may stray from true arcs, in meters (default: distance / 500). */
+  arcTolerance?: number;
 }
 
 /** Per polygon: the points inside, how many have a numeric value, their sum and mean (NaN without one). */
@@ -38,7 +58,11 @@ function start(options: AnalysisOptions): Worker {
     if (typeof msg.error === "string") call.reject(new Error(`mbmap: analysis: ${msg.error}`));
     else call.resolve(msg.value);
   };
-  w.postMessage({ type: "init", wasm: wasmUrl(options.wasmUrl ?? new URL("./analysis.wasm", import.meta.url), page) });
+  w.postMessage({
+    type: "init",
+    wasm: wasmUrl(options.wasmUrl ?? new URL("./analysis.wasm", import.meta.url), page),
+    geometry: wasmUrl(options.geometryWasmUrl ?? new URL("./geometry.wasm", import.meta.url), page),
+  });
   worker = w;
   return w;
 }
@@ -52,6 +76,11 @@ function call<T>(op: string, args: object, transfer: Transferable[] = []): Promi
     w.postMessage({ type: "call", id, op, ...args }, transfer);
   });
 }
+
+// Codes of geometry_worker/geometry.mbt.
+const JOIN = { round: 0, miter: 1, square: 2, bevel: 3 } as const;
+const CAP = { round: 0, butt: 1, square: 2 } as const;
+const OVERLAY = { clip: 0, erase: 1, intersect: 2 } as const;
 
 // Mirrors MEASURE_* in analysis_worker/datasets.mbt.
 const MEASURE = { area: 0, length: 1, centroid: 2, bbox: 3 } as const;
@@ -131,6 +160,53 @@ export class Dataset {
   /** Point counts of a `cols` x `rows` grid over `bbox`, row by row from its south edge. */
   grid(bbox: BBox, cols: number, rows: number): Promise<Int32Array> {
     return this.#call("grid", { bbox, cols, rows });
+  }
+
+  async #geometry(op: string, args: object): Promise<Dataset> {
+    const { dataset, features } = await call<{ dataset: number; features: number }>(op, args);
+    return new Dataset(dataset, features);
+  }
+
+  /**
+   * Every feature grown by `meters` (shrunk if negative; lines and points only
+   * grow) as polygons with its properties; vanished features keep their row
+   * without geometry.
+   */
+  buffer(meters: number, { mode = "geodesic", join = "round", cap = "round", arcTolerance = 0 }: BufferOptions = {}): Promise<Dataset> {
+    if (!(mode in { geodesic: 0, planar: 1 }) || !(join in JOIN) || !(cap in CAP) || !Number.isFinite(meters) || !(arcTolerance >= 0)) {
+      return Promise.reject(new Error("mbmap: analysis: invalid buffer options"));
+    }
+    return this.#geometry("buffer", {
+      dataset: Dataset.#idOf(this, "buffered"), meters, mode: mode === "planar" ? 1 : 0, join: JOIN[join], cap: CAP[cap], arcTolerance,
+    });
+  }
+
+  /** All polygons merged into one feature without properties (lines and points are left out). */
+  dissolve(): Promise<Dataset> {
+    return this.#geometry("dissolve", { dataset: Dataset.#idOf(this, "dissolved") });
+  }
+
+  /** This dataset's features cut to the area of `other`'s polygons, with their properties. */
+  clip(other: Dataset): Promise<Dataset> {
+    return this.#geometry("overlay", { a: Dataset.#idOf(this, "clipped"), b: Dataset.#idOf(other, "clipping"), kind: OVERLAY.clip });
+  }
+
+  /** This dataset's features without the area of `other`'s polygons, with their properties. */
+  erase(other: Dataset): Promise<Dataset> {
+    return this.#geometry("overlay", { a: Dataset.#idOf(this, "erased"), b: Dataset.#idOf(other, "erasing"), kind: OVERLAY.erase });
+  }
+
+  /**
+   * One feature per overlap of a feature here with a polygon of `other`, with
+   * the properties of both (`other`'s keys also found here get the suffix `_2`).
+   */
+  intersect(other: Dataset): Promise<Dataset> {
+    return this.#geometry("overlay", { a: Dataset.#idOf(this, "intersected"), b: Dataset.#idOf(other, "intersecting"), kind: OVERLAY.intersect });
+  }
+
+  /** The dataset as a GeoJSON FeatureCollection (feature ids are not kept). */
+  toGeoJSON(): Promise<{ type: "FeatureCollection"; features: object[] }> {
+    return this.#call("toGeoJSON");
   }
 
   /** Frees the dataset in the worker; later calls on it reject. */

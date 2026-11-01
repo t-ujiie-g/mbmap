@@ -31,6 +31,9 @@ blocks.forEach((b, i) => {
   const tr = rows.insertRow();
   for (const v of [b.properties.name, Math.round(areas[i]).toLocaleString(), counts.count[i], counts.mean[i].toFixed(1)]) tr.insertCell().textContent = v;
 });
+// The blocks grown by 30 m on the ground and merged: geometry.wasm, loaded now.
+const zone = await (await polygons.buffer(30)).dissolve();
+const zoneGeoJSON = await zone.toGeoJSON();
 const within = new Set(inside);
 points.forEach((p, i) => (p.properties.inside = within.has(i)));
 
@@ -42,6 +45,7 @@ const map = new Map({
     version: 8,
     sources: {
       gsi: { type: "vector", tiles: ["/bench/fixtures/gsi-bvmap/{z}/{x}/{y}.pbf"], minzoom: 14, maxzoom: 14, attribution: "国土地理院ベクトルタイル提供実験" },
+      zone: { type: "geojson", data: zoneGeoJSON },
       blocks: { type: "geojson", data: { type: "FeatureCollection", features: blocks } },
       points: { type: "geojson", data: { type: "FeatureCollection", features: points } },
     },
@@ -49,6 +53,8 @@ const map = new Map({
       { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
       { id: "building", type: "fill", source: "gsi", "source-layer": "building", paint: { "fill-color": "#e3ddd3" } },
       { id: "road", type: "line", source: "gsi", "source-layer": "road", paint: { "line-color": "#ffffff", "line-width": 2 } },
+      { id: "zone", type: "fill", source: "zone", paint: { "fill-color": "#3b82f6", "fill-opacity": 0.15 } },
+      { id: "zone-edge", type: "line", source: "zone", paint: { "line-color": "#3b82f6", "line-width": 1.5 } },
       {
         id: "blocks", type: "fill", source: "blocks",
         paint: { "fill-color": ["interpolate", ["linear"], ["get", "count"], 40, "#fde0c5", 90, "#e4572e"], "fill-opacity": 0.7 },
