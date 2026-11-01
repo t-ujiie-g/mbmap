@@ -4,7 +4,7 @@
     "uncapped": true,
     "viewport": "1280x800",
     "dpr": 2,
-    "style": "bench/maplibre/style-labels.json"
+    "style": "bench/maplibre/style.json + examples/basic labels"
   },
   "params": {
     "runs": 11,

@@ -1,7 +1,7 @@
 // mbmap vs MapLibre with the same style, tiles and camera script, in Chromium
 // with the Metal GPU. Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels]
 // Writes bench/results/render-chromium[-labels][-uncapped].json.
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 import path from "node:path";
 import { build } from "esbuild";
@@ -12,9 +12,16 @@ import { ROOT } from "../lib/root.mjs";
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const runs = Number(arg("runs", 11));
 const uncapped = process.argv.includes("--uncapped");
-// The style with the label layers of examples/basic, drawn from local fonts by both engines.
+// --labels adds the label layers of examples/basic, drawn from local fonts by both engines.
 const labels = process.argv.includes("--labels");
-const style = labels ? "bench/maplibre/style-labels.json" : "bench/maplibre/style.json";
+const style = labels ? "bench/dist/style-labels.json" : "bench/maplibre/style.json";
+if (labels) {
+  const base = JSON.parse(await readFile(path.join(ROOT, "bench/maplibre/style.json"), "utf8"));
+  const basic = JSON.parse(await readFile(path.join(ROOT, "examples/basic/style.json"), "utf8"));
+  base.layers.push(...basic.layers.filter((l) => l.type === "symbol"));
+  await mkdir(path.join(ROOT, "bench/dist"), { recursive: true });
+  await writeFile(path.join(ROOT, style), JSON.stringify(base));
+}
 const dpr = 2;
 
 // Shipped sizes: mbmap's js bundle minified as a bundler would, its worker
@@ -62,7 +69,7 @@ for (const [engine, rs] of Object.entries(results)) {
   };
 }
 const out = {
-  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, style },
+  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, style: labels ? "bench/maplibre/style.json + examples/basic labels" : style },
   params: { runs, statistic: "median of runs" }, sizes, summary, runs: results,
 };
 await writeFile(path.join(ROOT, `bench/results/render-chromium${labels ? "-labels" : ""}${uncapped ? "-uncapped" : ""}.json`), JSON.stringify(out, null, 2) + "\n");

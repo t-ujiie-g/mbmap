@@ -46,10 +46,8 @@ function verticalize(cps) {
 }
 
 /**
- * Lays `text` out at `size` px, anchored and justified like MapLibre, in columns
- * when `vertical` and the text has upright characters. `metrics(cp)` gives
- * {advance, left, top, width, height} at SDF_SIZE. Returns glyph quads (corners
- * of the padded bitmap: top-left, top-right, bottom-right, bottom-left) and the box.
+ * Lays `text` out at `size` px like MapLibre, in columns when `vertical` and it has upright
+ * characters; `metrics(cp)` is at SDF_SIZE. Returns quads (bitmap corners from top-left, clockwise) and the box.
  */
 export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2, vertical = false }, metrics) {
   const scale = size / SDF_SIZE;
@@ -74,6 +72,11 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
   // A glyph's padded bitmap against its pen and baseline, before any turn.
   const rect = (m) => [m.left * scale, -m.top * scale, (m.left + m.width) * scale, (m.height - m.top) * scale];
   const inked = (m) => m.width > 2 * SDF_BUFFER && m.height > 2 * SDF_BUFFER;
+  // An unturned glyph with its pen at x and its baseline at y.
+  const standing = (cp, m, x, y) => {
+    const [l, t, r, b] = rect(m);
+    return { cp, corners: [[x + l, y + t], [x + r, y + t], [x + r, y + b], [x + l, y + b]] };
+  };
   lines.forEach((line, i) => {
     let pen = (along - lengths[i]) * justify;
     if (!columns) {
@@ -81,10 +84,7 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
       pen += x0;
       for (const cp of line) {
         const m = metrics(cp);
-        if (inked(m)) {
-          const [l, t, r, b] = rect(m);
-          quads.push({ cp, corners: [[pen + l, baseline + t], [pen + r, baseline + t], [pen + r, baseline + b], [pen + l, baseline + b]] });
-        }
+        if (inked(m)) quads.push(standing(cp, m, pen, baseline));
         pen += m.advance * scale;
       }
       return;
@@ -94,17 +94,13 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
     pen += y0;
     for (const cp of line) {
       const m = metrics(cp);
-      if (inked(m)) {
+      if (inked(m) && upright(cp)) {
+        quads.push(standing(cp, m, center - (m.advance * scale) / 2, pen + ASCENT * size));
+      } else if (inked(m)) {
+        // Turned a quarter clockwise, the em box centered on the column.
         const [l, t, r, b] = rect(m);
-        if (upright(cp)) {
-          const x = center - (m.advance * scale) / 2;
-          const y = pen + ASCENT * size;
-          quads.push({ cp, corners: [[x + l, y + t], [x + r, y + t], [x + r, y + b], [x + l, y + b]] });
-        } else {
-          // Turned a quarter clockwise, the em box centered on the column.
-          const x = center + (ASCENT - 0.5) * size;
-          quads.push({ cp, corners: [[x - t, pen + l], [x - t, pen + r], [x - b, pen + r], [x - b, pen + l]] });
-        }
+        const x = center + (ASCENT - 0.5) * size;
+        quads.push({ cp, corners: [[x - t, pen + l], [x - t, pen + r], [x - b, pen + r], [x - b, pen + l]] });
       }
       pen += advance(cp);
     }
