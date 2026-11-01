@@ -93,6 +93,15 @@ pub struct Source {
 pub struct Style {
   sources : Array[Source]
   layers : Array[StyleLayer]
+  terrain : Terrain?
+}
+
+///|
+/// The style's `terrain`: the `raster-dem` source the ground is raised from
+/// and how much heights are exaggerated.
+pub struct Terrain {
+  source : String
+  exaggeration : Double
 }
 
 ///|
@@ -148,7 +157,25 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
       layers.push(layer)
     }
   }
-  { sources, layers, }
+  let terrain = match root.get("terrain") {
+    None | Some(Null) => None
+    Some(Object(t)) => {
+      let source = string_or(t, "source", "terrain", "")
+      guard sources.iter().any(s => s.id == source && s.kind is RasterDem) else {
+        raise Invalid(
+          path="terrain.source",
+          "not a raster-dem source: \{source}",
+        )
+      }
+      let exaggeration = number_or(t, "exaggeration", "terrain", 1.0)
+      if exaggeration < 0.0 {
+        raise Invalid(path="terrain.exaggeration", "negative")
+      }
+      Some({ source, exaggeration, })
+    }
+    Some(_) => raise Invalid(path="terrain", "not an object")
+  }
+  { sources, layers, terrain, }
 }
 
 ///|

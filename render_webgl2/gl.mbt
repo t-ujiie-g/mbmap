@@ -21,7 +21,7 @@ type Gl
 /// The WebGL2 context with its two programs; JS null if WebGL2 is unavailable.
 extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|(canvas) => {
-  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: false, stencil: false, premultipliedAlpha: true });
+  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: false, premultipliedAlpha: true });
   #|  if (!gl) return null;
   #|  const compile = (type, src) => {
   #|    const s = gl.createShader(type);
@@ -128,8 +128,55 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.enableVertexAttribArray(0);
   #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
   #|  gl.bindVertexArray(null);
+  #|  // Terrain: a grid over a tile raised by its elevations (R32F, bilinear by
+  #|  // hand: float textures do not filter; u_dem is the tile's part of the DEM
+  #|  // tile, offset and scale), a_data.x = 1 on the skirts that
+  #|  // hang below the edges and hide cracks; the map drawn into u_image (rows
+  #|  // bottom up, so v flips).
+  #|  const terrain = program(
+  #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform sampler2D u_elev; uniform float u_scale;" +
+  #|    "uniform float u_skirt; uniform vec3 u_dem; out vec2 v_uv;" +
+  #|    "float h(ivec2 p) { ivec2 n = textureSize(u_elev, 0) - 1; return texelFetch(u_elev, clamp(p, ivec2(0), n), 0).r; }" +
+  #|    "void main() { v_uv = a_pos / 4096.0;" +
+  #|    "  vec2 t = (u_dem.xy + v_uv * u_dem.z) * vec2(textureSize(u_elev, 0)) - 0.5;" +
+  #|    "  ivec2 i = ivec2(floor(t)); vec2 f = t - floor(t);" +
+  #|    "  float e = mix(mix(h(i), h(i + ivec2(1, 0)), f.x), mix(h(i + ivec2(0, 1)), h(i + ivec2(1, 1)), f.x), f.y);" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, e * u_scale - a_data.x * u_skirt, 1.0); }",
+  #|    "uniform sampler2D u_image; in vec2 v_uv; out vec4 o;" +
+  #|    "void main() { o = texture(u_image, vec2(v_uv.x, 1.0 - v_uv.y)); }",
+  #|    ["u_matrix", "u_elev", "u_scale", "u_skirt", "u_dem", "u_image"]);
+  #|  // The grid: 65 x 65 vertices, then a skirt vertex under each edge vertex.
+  #|  const N = 64, verts = [], data = [], idx = [];
+  #|  for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) { verts.push(x * 4096 / N, y * 4096 / N); data.push(0, 0, 0, 0); }
+  #|  const edge = [];
+  #|  for (let i = 0; i <= N; i++) edge.push(i, N * (N + 1) + i, i * (N + 1), i * (N + 1) + N);
+  #|  const skirtOf = new Map();
+  #|  for (const v of edge) if (!skirtOf.has(v)) { skirtOf.set(v, verts.length / 2); verts.push(verts[v * 2], verts[v * 2 + 1]); data.push(1, 0, 0, 0); }
+  #|  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  #|    const a = y * (N + 1) + x, b = a + 1, c = a + N + 1, d = c + 1;
+  #|    idx.push(a, c, b, b, c, d);
+  #|  }
+  #|  const wall = (p, q) => { const sp = skirtOf.get(p), sq = skirtOf.get(q); idx.push(p, sp, q, q, sp, sq); };
+  #|  for (let i = 0; i < N; i++) {
+  #|    wall(i, i + 1); wall(N * (N + 1) + i, N * (N + 1) + i + 1);
+  #|    wall(i * (N + 1), (i + 1) * (N + 1)); wall(i * (N + 1) + N, (i + 1) * (N + 1) + N);
+  #|  }
+  #|  const grid = gl.createVertexArray();
+  #|  gl.bindVertexArray(grid);
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  #|  gl.bufferData(gl.ARRAY_BUFFER, new Int16Array(verts), gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(0);
+  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  #|  gl.bufferData(gl.ARRAY_BUFFER, new Int8Array(data), gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(1);
+  #|  gl.vertexAttribPointer(1, 4, gl.BYTE, false, 4, 0);
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+  #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, symbol, hillshade, quad, atlas: null, mat: new Float32Array(16), px: [0, 0] };
+  #|  return { gl, fill, line, circle, symbol, hillshade, terrain, quad, grid: { vao: grid, count: idx.length },
+  #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
 ///|
@@ -138,7 +185,7 @@ extern "js" fn is_null(gl : Gl) -> Bool =
 
 ///|
 extern "js" fn gl_viewport(gl : Gl, width : Int32, height : Int32) -> Unit =
-  #|(c, w, h) => { c.gl.viewport(0, 0, w, h); c.px = [2 / w, 2 / h]; }
+  #|(c, w, h) => { c.gl.viewport(0, 0, w, h); c.px = [2 / w, 2 / h]; c.size = [w, h]; }
 
 ///|
 extern "js" fn gl_clear(gl : Gl, r : Double, g : Double, b : Double) -> Unit =
@@ -177,6 +224,7 @@ extern "js" fn gl_upload(
 ///|
 extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|(c, m) => {
+  #|  if (m.elev) c.gl.deleteTexture(m.elev);
   #|  if (m.texture) { c.gl.deleteTexture(m.texture); return; }
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
   #|}
@@ -464,4 +512,125 @@ extern "js" fn gl_draw_hillshade(
   #|  gl.uniform1i(p.u_image, 0);
   #|  gl.bindVertexArray(c.quad);
   #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|}
+
+///|
+/// An offscreen draw target: a framebuffer with a color texture.
+#external
+pub type Target
+
+///|
+/// Adds a DEM tile's elevations (`size` x `size` f32s) to its slopes mesh as a
+/// float texture, for terrain.
+extern "js" fn gl_add_elevations(
+  gl : Gl,
+  mesh : Mesh,
+  elevations : JsBuffer,
+  size : Int32,
+) -> Unit =
+  #|(c, m, data, size) => {
+  #|  const gl = c.gl;
+  #|  if (m.elev) gl.deleteTexture(m.elev);
+  #|  m.elev = gl.createTexture();
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.elev);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, size, size, 0, gl.RED, gl.FLOAT, data);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  #|  m.bytes += size * size * 4;
+  #|}
+
+///|
+extern "js" fn gl_target_new(gl : Gl, size : Int32) -> Target =
+  #|(c, size) => {
+  #|  const gl = c.gl;
+  #|  const texture = gl.createTexture();
+  #|  gl.bindTexture(gl.TEXTURE_2D, texture);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|  const fb = gl.createFramebuffer();
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  #|  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  #|  return { fb, texture, size };
+  #|}
+
+///|
+extern "js" fn gl_target_release(gl : Gl, target : Target) -> Unit =
+  #|(c, t) => { c.gl.deleteFramebuffer(t.fb); c.gl.deleteTexture(t.texture); }
+
+///|
+/// Draws into `target` from now on (cleared to an opaque color), or back into
+/// the canvas of `width` x `height` when `target` is null.
+extern "js" fn gl_target_begin(
+  gl : Gl,
+  target : Target,
+  r : Double,
+  g : Double,
+  b : Double,
+) -> Unit =
+  #|(c, t, r, g, b) => {
+  #|  const gl = c.gl;
+  #|  c.saved ??= c.size.slice();
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+  #|  gl.viewport(0, 0, t.size, t.size);
+  #|  c.px = [2 / t.size, 2 / t.size];
+  #|  gl.clearColor(r, g, b, 1);
+  #|  gl.clear(gl.COLOR_BUFFER_BIT);
+  #|}
+
+///|
+extern "js" fn gl_target_end(gl : Gl) -> Unit =
+  #|(c) => {
+  #|  const gl = c.gl, [w, h] = c.saved ?? c.size;
+  #|  c.saved = null;
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  #|  gl.viewport(0, 0, w, h);
+  #|  c.px = [2 / w, 2 / h];
+  #|}
+
+///|
+/// Clears the canvas's depth for a frame with terrain.
+extern "js" fn gl_clear_depth(gl : Gl) -> Unit =
+  #|(c) => { c.gl.clear(c.gl.DEPTH_BUFFER_BIT); }
+
+///|
+/// Draws a terrain tile: the grid raised by `mesh`'s elevations times `scale`
+/// (world pixels per meter, exaggerated), covered by `target`'s picture, with
+/// depth testing.
+extern "js" fn gl_draw_terrain(
+  gl : Gl,
+  mesh : Mesh,
+  target : Target,
+  matrix : FixedArray[Double],
+  scale : Double,
+  skirt : Double,
+  dem : FixedArray[Double],
+) -> Unit =
+  #|(c, m, t, matrix, scale, skirt, dem) => {
+  #|  if (!m.elev) return;
+  #|  const gl = c.gl, p = c.terrain;
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform1f(p.u_scale, scale);
+  #|  gl.uniform1f(p.u_skirt, skirt);
+  #|  gl.uniform3f(p.u_dem, dem[0], dem[1], dem[2]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.elev);
+  #|  gl.uniform1i(p.u_elev, 0);
+  #|  gl.activeTexture(gl.TEXTURE1);
+  #|  gl.bindTexture(gl.TEXTURE_2D, t.texture);
+  #|  gl.uniform1i(p.u_image, 1);
+  #|  gl.enable(gl.DEPTH_TEST);
+  #|  gl.depthFunc(gl.LEQUAL);
+  #|  gl.disable(gl.BLEND);
+  #|  gl.bindVertexArray(c.grid.vao);
+  #|  gl.drawElements(gl.TRIANGLES, c.grid.count, gl.UNSIGNED_SHORT, 0);
+  #|  gl.enable(gl.BLEND);
+  #|  gl.disable(gl.DEPTH_TEST);
+  #|  gl.activeTexture(gl.TEXTURE0);
   #|}

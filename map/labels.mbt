@@ -137,10 +137,7 @@ fn Map::placement_due(self : Map) -> Bool {
 /// may overlap or be overlapped.
 fn Map::place_labels(
   self : Map,
-  draws_of : @hashmap.HashMap[
-    String,
-    Array[(@render_webgl2.Placement, Array[LayerMesh])],
-  ],
+  draws_of : @hashmap.HashMap[String, Array[Draw]],
 ) -> Unit {
   let t = self.transform
   let (w, h) = (t.width, t.height)
@@ -157,7 +154,7 @@ fn Map::place_labels(
       continue
     }
     for d in draws_of.get(layer.source).unwrap_or([]) {
-      for m in d.1 {
+      for m in d.meshes {
         guard m.layer == index && m.labels is Some(s) && s.round != round else {
           continue
         }
@@ -165,7 +162,7 @@ fn Map::place_labels(
         let mut changed = false
         for i in 0..<s.count {
           let at = i * LABEL_FLOATS
-          let (cx, cy, _, cw) = d.0.matrix.apply(
+          let (cx, cy, _, cw) = d.at.matrix.apply(
             f32_at(s.labels, at),
             f32_at(s.labels, at + 1),
             0.0,

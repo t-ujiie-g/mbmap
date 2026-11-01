@@ -82,6 +82,7 @@ pub struct Map {
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
   priv has_labels : Bool
+  priv targets : @hashmap.HashMap[Int64, (@render_webgl2.Target, Int32)]
   priv atlas : @label.Atlas
   priv mut atlas_full : Bool
   priv mut labels_dirty : Bool
@@ -110,7 +111,8 @@ pub fn Map::new(
   // The sources the drawable layers use, in style order.
   let sources : Array[SourceTiles] = []
   for i, s in style.sources {
-    if style.layers.iter().any(l => !(l.kind is Background) && l.source == s.id) {
+    if style.layers.iter().any(l => !(l.kind is Background) && l.source == s.id) ||
+      style.terrain.map(t => t.source) == Some(s.id) {
       sources.push({ index: i, source: s, tiles: @hashmap.HashMap([]), })
     }
   }
@@ -146,6 +148,7 @@ pub fn Map::new(
     cleanups: [],
     destroyed: false,
     has_labels: style.layers.iter().any(l => l.kind is Symbol),
+    targets: @hashmap.HashMap([]),
     atlas: @label.Atlas::new(
       @render_webgl2.ATLAS_SIZE,
       @render_webgl2.ATLAS_SIZE,

@@ -4,6 +4,7 @@
 const params = new URLSearchParams(location.search);
 const engine = params.get("engine");
 const dpr = Number(params.get("dpr") ?? devicePixelRatio);
+const pitch = Number(params.get("pitch") ?? 0);
 
 // CPU time of all rAF callbacks, summed per frame (callbacks of one frame share `t`).
 const frameCpu = new Map();
@@ -25,13 +26,13 @@ async function createMbmap() {
   const canvas = document.createElement("canvas");
   canvas.id = "map";
   document.body.append(canvas);
-  const map = mbmap.create_map(canvas, styleText, START.lng, START.lat, START.zoom, 0, 0,
+  const map = mbmap.create_map(canvas, styleText, START.lng, START.lat, START.zoom, 0, pitch,
     "/worker/js/worker.mjs", "/_build/wasm-gc/release/build/worker/worker.wasm", 0, null, "sans-serif");
   let idle = null;
   mbmap.map_on_idle(map, () => idle?.());
   return {
     nextIdle: () => new Promise((r) => { idle = r; }),
-    set: (c) => mbmap.map_set_camera(map, c.lng, c.lat, c.zoom, 0, 0),
+    set: (c) => mbmap.map_set_camera(map, c.lng, c.lat, c.zoom, 0, pitch),
     get: () => mbmap.map_camera(map),
   };
 }
@@ -45,10 +46,10 @@ async function createMaplibre() {
   const style = JSON.parse(styleText);
   // The templates are absolute already ({origin} above); new URL() would
   // percent-encode their braces and every tile would 404.
-  const map = new maplibregl.Map({ container: div, style, center: [START.lng, START.lat], zoom: START.zoom, attributionControl: false, pixelRatio: dpr, fadeDuration: 0 });
+  const map = new maplibregl.Map({ container: div, style, center: [START.lng, START.lat], zoom: START.zoom, pitch, attributionControl: false, pixelRatio: dpr, fadeDuration: 0 });
   return {
     nextIdle: () => new Promise((r) => map.once("idle", r)),
-    set: (c) => map.jumpTo({ center: [c.lng, c.lat], zoom: c.zoom }),
+    set: (c) => map.jumpTo({ center: [c.lng, c.lat], zoom: c.zoom, pitch }),
     get: () => ({ lng: map.getCenter().lng, lat: map.getCenter().lat, zoom: map.getZoom() }),
   };
 }

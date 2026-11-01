@@ -118,10 +118,13 @@ async function loadTile({ id, url, bytes: given, source, z, dem }) {
     if (dem === true) {
       const { size, rgba } = await demPixels(bytes);
       if (controller.signal.aborted) return;
+      // Slopes, border elevations (f64) and elevations (f32): worker/processor.mbt `dem_tile`.
       const out = withInput(rgba, () => wasm.process_dem(source, z, size));
-      const image = out.slice(0, size * size * 2).buffer;
-      const edges = new Float64Array(out.slice(size * size * 2).buffer);
-      postMessage({ type: "tile", id, layers: [{ layer: -1, kind: KIND_HILLSHADE, image, edges, size }], glyphs: [] }, [image, edges.buffer]);
+      const s = size * size * 2;
+      const image = out.slice(0, s).buffer;
+      const edges = new Float64Array(out.slice(s, s + 8 * size * 8).buffer);
+      const elevations = new Float32Array(out.slice(s + 8 * size * 8).buffer);
+      postMessage({ type: "tile", id, layers: [{ layer: -1, kind: KIND_HILLSHADE, image, edges, elevations, size }], glyphs: [] }, [image, edges.buffer, elevations.buffer]);
       return;
     }
     glyphs.startTile();

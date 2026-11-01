@@ -16,14 +16,18 @@ fn Map::render(self : Map) -> Unit {
   set_canvas_size(self.canvas, pw, ph)
   self.renderer.set_viewport(pw, ph)
   self.transform = self.transform.resize(w, h)
+  let terrain = self.terrain_source()
+  if terrain is Some(src) && self.center_elevation(src) is Some(e) {
+    let exaggeration = self.style.terrain
+      .map(t => t.exaggeration)
+      .unwrap_or(1.0)
+    self.transform = self.transform.with_elevation(e * exaggeration)
+  }
   let t = self.transform
   // Per source: its covering tiles, and where their meshes go this frame
   // (computed once for all of the source's layers).
   let mut settled = true
-  let draws_of : @hashmap.HashMap[
-    String,
-    Array[(@render_webgl2.Placement, Array[LayerMesh])],
-  ] = @hashmap.HashMap([])
+  let draws_of : @hashmap.HashMap[String, Array[Draw]] = @hashmap.HashMap([])
   for src in self.sources {
     let s = src.source
     let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
@@ -37,12 +41,17 @@ fn Map::render(self : Map) -> Unit {
     let draws = []
     for id in cover {
       match src.fallback(id) {
-        Own(id, meshes) => draws.push((self.placement(id, None, dpr), meshes))
+        Own(id, meshes) =>
+          draws.push({ id, at: self.placement(id, None, dpr), meshes, })
         Ancestor(id, meshes, clip~) =>
-          draws.push((self.placement(id, Some(clip), dpr), meshes))
+          draws.push({ id, at: self.placement(id, Some(clip), dpr), meshes, })
         Children(kids) =>
           for kid in kids {
-            draws.push((self.placement(kid.0, None, dpr), kid.1))
+            draws.push({
+              id: kid.0,
+              at: self.placement(kid.0, None, dpr),
+              meshes: kid.1,
+            })
           }
         Nothing => ()
       }
@@ -56,8 +65,13 @@ fn Map::render(self : Map) -> Unit {
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
   let zoom = t.camera.zoom
+  if terrain is Some(src) {
+    self.render_terrain(src, draws_of, dpr)
+  }
   for index, layer in self.style.layers {
+    // With terrain, all but symbols are drawn onto it.
     if layer.kind is Background ||
+      (terrain is Some(_) && !(layer.kind is Symbol)) ||
       zoom < layer.min_zoom ||
       zoom >= layer.max_zoom {
       continue
@@ -65,7 +79,7 @@ fn Map::render(self : Map) -> Unit {
     // Paint that does not read feature data is the same for every mesh.
     let shared = paint_of(layer, zoom, JsProps::none())
     for d in draws_of.get(layer.source).unwrap_or([]) {
-      self.draw_layer(index, layer, shared, d.0, d.1, dpr)
+      self.draw_layer(index, layer, shared, d.at, d.meshes, dpr)
     }
   }
   if settled {

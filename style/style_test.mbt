@@ -441,3 +441,32 @@ test "unknown DEM encodings, odd tile sizes and other hillshade methods are refu
     }
   }
 }
+
+///|
+test "terrain names a raster-dem source and an exaggeration" {
+  let base =
+    #|{"sources": {"dem": {"type": "raster-dem", "tiles": ["t"]}, "v": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [],
+  let s = @style.Style::parse(
+    base + "\"terrain\": {\"source\": \"dem\", \"exaggeration\": 1.5}}",
+  )
+  assert_eq(s.terrain.map(t => (t.source, t.exaggeration)), Some(("dem", 1.5)))
+  let plain = @style.Style::parse(base + "\"terrain\": {\"source\": \"dem\"}}")
+  assert_eq(plain.terrain.map(t => t.exaggeration), Some(1.0))
+  assert_true(@style.Style::parse(base + "\"x\": 1}").terrain is None)
+  for
+    c in [
+      ("\"terrain\": {\"source\": \"v\"}}", "terrain.source"),
+      (
+        "\"terrain\": {\"source\": \"dem\", \"exaggeration\": -1}}", "terrain.exaggeration",
+      ),
+      ("\"terrain\": 3}", "terrain"),
+    ] {
+    try @style.Style::parse(base + c.0) catch {
+      Invalid(path~, _) => assert_eq(path, c.1)
+      e => fail("unexpected \{Repr(e)}")
+    } noraise {
+      _ => fail("expected \{c.0} to be invalid")
+    }
+  }
+}
