@@ -1,0 +1,16 @@
+// The coordinate system module the analysis worker loads on first use:
+// `@proj` over coordinate pairs, computing with the host's `Math`.
+
+import {
+  "t-ujiie-g/mbmap/proj",
+  "t-ujiie-g/mbmap/wasmio",
+  "moonbitlang/core/double",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

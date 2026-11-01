@@ -233,3 +233,50 @@ pub fn load_table() -> Int32 {
   @wasmio.clear_input()
   id
 }
+
+///|
+/// Writes dataset `id`'s coordinates (f64 x, y pairs) at `output_addr`;
+/// returns their count, or -1 for an unknown dataset.
+#export_name("coords_out")
+pub fn coords_out(id : Int32) -> Int32 {
+  guard datasets.get(id) is Some(d) else { return -1 }
+  @wasmio.write_f64s(FixedArray::from_array(d.table.coords))
+}
+
+///|
+/// A new dataset of dataset `id` with the coordinates placed as input (f64
+/// x, y pairs, as many as `coords_out` gives); a feature with a NaN keeps its
+/// row with no geometry. Returns its handle, -1 for an unknown dataset, or
+/// minus the length of an error message.
+#export_name("with_coords")
+pub fn with_coords(id : Int32) -> Int32 {
+  guard datasets.get(id) is Some(d) else { return -1 }
+  let input = @wasmio.input_bytes()
+  guard input.length() == d.table.coords.length() * 8 else {
+    return @wasmio.fail_with("coordinates do not match the dataset")
+  }
+  let at = Ref(0)
+  let f64 = () => {
+    let mut bits = 0UL
+    for k in 0..<8 {
+      bits = bits | (input[at.val + k].to_uint64() << (k * 8))
+    }
+    at.val += 8
+    bits.reinterpret_as_double()
+  }
+  // map_coords visits the pairs in order.
+  let table = d.table.map_coords((_, _) => {
+    let x = f64()
+    let y = f64()
+    if x.is_nan() || y.is_nan() {
+      None
+    } else {
+      Some((x, y))
+    }
+  })
+  @wasmio.clear_input()
+  let id = next_id.val
+  next_id.val += 1
+  datasets[id] = { table, index: None, }
+  id
+}

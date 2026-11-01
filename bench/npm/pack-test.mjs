@@ -47,7 +47,7 @@ const checks = {
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
         // A style without GeoJSON sources never loads their module.
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("proj")),
         styleError,
         thrown,
         workerRefused,
@@ -200,6 +200,14 @@ const checks = {
       const ring = (await (await station.buffer(100, { mode: "planar", crs: 6677 })).toGeoJSON({ crs: 6677 })).features[0].geometry.coordinates[0];
       const planarRadius = Math.max(...ring.map(([x, y]) => Math.abs(Math.hypot(x - ix[0], y - ix[1]) - 100)));
       const unknownCrs = await transform([0, 0], 4326, 9999).then(() => "", (e) => e.message);
+      // A PROJ string (Lambert 93, loading the parser), a named one, the Tokyo datum.
+      const { defineCrs } = await import("mbmap/analysis");
+      const lambert = "+proj=lcc +lat_0=46.5 +lon_0=3 +lat_1=49 +lat_2=44 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
+      const paris = await transform([2.3522, 48.8566], 4326, lambert);
+      defineCrs("EPSG:2154", lambert);
+      const named = await transform([2.3522, 48.8566], "CRS84", "epsg:2154");
+      const tokyoDatum = await transform([139.7671, 35.6812], 4326, 30169);
+      const badProj = await transform([0, 0], 4326, "+proj=geos +h=35785831").then(() => "", (e) => e.message);
       const geometry = {
         circle: [circle.geometry.type, circle.geometry.coordinates[0].length, circle.properties.id],
         clipped: [clipped.geometry.type, clipped.geometry.coordinates, clipped.properties.name],
@@ -212,12 +220,16 @@ const checks = {
         inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
         planarRadius,
         unknownCrs,
+        paris: Array.from(paris, (v) => Math.round(v * 1000) / 1000),
+        named: Array.from(named, (v) => Math.round(v * 1000) / 1000),
+        tokyoDatum: Array.from(tokyoDatum, (v) => Math.round(v * 1000) / 1000),
+        badProj,
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|proj/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -241,7 +253,12 @@ const checks = {
       JSON.stringify(r.geometry.back) === JSON.stringify([139.7671, 35.6812]) &&
       JSON.stringify(r.geometry.inIx) === JSON.stringify([-5995.185, -35367.23]) &&
       r.geometry.planarRadius < 0.02 &&
-      /unsupported CRS EPSG:9999/.test(r.geometry.unknownCrs);
+      /unsupported CRS EPSG:9999/.test(r.geometry.unknownCrs) &&
+      // proj4js: Paris in Lambert 93, Tokyo Station in plane IX on the Tokyo datum.
+      JSON.stringify(r.geometry.paris) === JSON.stringify([652469.023, 6862035.259]) &&
+      JSON.stringify(r.geometry.named) === JSON.stringify(r.geometry.paris) &&
+      JSON.stringify(r.geometry.tokyoDatum) === JSON.stringify([-5701.993, -35723.01]) &&
+      /unsupported projection: \+proj=geos/.test(r.geometry.badProj);
     return [ok, { loaded, ...r }];
   },
 

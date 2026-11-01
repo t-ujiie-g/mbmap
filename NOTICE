@@ -113,9 +113,10 @@ license and source.
   Exceptions, Copyright (c) LLVM Project contributors
   (https://llvm.org/LICENSE.txt).
 
-- proj/etmerc.mbt: port of proj4js 2.22.0's extended transverse Mercator
-  (lib/projections/etmerc.js and the helpers it uses in lib/common/), and the
-  spherical Web Mercator of lib/projections/merc.js used in proj/crs.mbt
+- proj/*.mbt and npm/src/projstring.ts: port of proj4js 2.22.0 (the
+  projections of lib/projections/ named in proj/crs.mbt, lib/common/, the
+  datum shifts of lib/datum*.js, lib/Proj.js, lib/transform.js,
+  lib/projString.js and the tables of lib/constants/)
   https://github.com/proj4js/proj4js — MIT License:
 
     Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen
@@ -138,6 +139,10 @@ license and source.
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
+
+- proj/cylindrical.mbt: Equal Earth follows proj4js's lib/projections/eqearth.js,
+  Copyright 2018 Bernie Jenny, Monash University, Melbourne, Australia,
+  Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
 Test / benchmark data:
 - bench/fixtures/gsi-bvmap/ (downloaded, not committed):

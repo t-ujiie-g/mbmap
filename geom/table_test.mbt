@@ -140,3 +140,41 @@ test "write_prop and read_prop round-trip every value; unknown tags fail" {
   assert_eq(@geom.read_prop(bad), None)
   assert_false(bad.ok())
 }
+
+///|
+test "map_coords maps every pair and empties a feature it cannot map" {
+  let b = @geom.TableBuilder::new()
+  for p in [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 0.0)] {
+    b.point(p.0, p.1)
+  }
+  b.end_ring()
+  b.end_part()
+  b.prop("name", Str("a"))
+  b.end_feature(Polygon, id=Some(Num(1.0)))
+  b.point(-1.0, 5.0)
+  b.end_ring()
+  b.end_part()
+  b.prop("name", Str("b"))
+  b.end_feature(Point)
+  b.end_feature(NoGeometry)
+  let t = b.finish()
+  let seen = []
+  let m = t.map_coords((x, y) => {
+    seen.push(x)
+    if x < 0.0 {
+      None
+    } else {
+      Some((x * 2.0, y + 1.0))
+    }
+  })
+  assert_eq(seen, [0.0, 4.0, 4.0, 0.0, -1.0])
+  assert_eq(m.kinds, [Polygon, NoGeometry, NoGeometry])
+  assert_eq(m.coords, [0.0, 1.0, 8.0, 1.0, 8.0, 5.0, 0.0, 1.0])
+  assert_eq((m.parts(0), m.rings(0), m.parts(1)), ((0, 1), (0, 1), (1, 1)))
+  assert_eq(m.ids, [Some(Num(1.0)), None, None])
+  assert_eq(m.column("name").unwrap().values, [
+    Some(Str("a")),
+    Some(Str("b")),
+    None,
+  ])
+}

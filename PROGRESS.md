@@ -1,5 +1,56 @@
 # PROGRESS
 
+## Phase 11.3：PROJ 文字列、投影の追加、7 パラメータの測地系変換（2026-11-02）
+
+状態：**完了**。Phase 11（ジオメトリ演算と座標系）はこれで終わり。
+
+### ユーザー判断（2026-11-02）
+
+- geometry.wasm の予算：45KB → 50KB（11.2 の報告で了承）。
+- 座標系の wasm：座標系を geometry.wasm に同居させると 59.4KB（予算 50KB 超え）になったため、proj.wasm に分ける案を選んだ（予算を上げる案、投影を減らす案と比べて）。
+
+### できたこと
+
+- **`proj`**：proj4js 2.22.0 の変換の流れを移植した。
+  - 投影 27 種：longlat、merc（球・楕円体、`lat_ts`）、tmerc（etmerc）、utm、lcc（1SP・2SP）、aea、aeqd（Vincenty、極）、stere（極・斜軸）、sterea（ガウス球）、cass、laea（極・赤道・斜軸）、eqc、eqdc、sinu、eck6、moll、robin、cea、mill、poly、omerc（方位角・2 点、`no_uoff`、`gamma`）、somerc、krovak、ortho、gnom、eqearth、bonne。
+  - 測地系の変換：`towgs84` の 3・7 パラメータ（Helmert）で、地心直交座標を経て WGS84 を経由する。proj4js の近道（`+datum=WGS84` の判定、途中で高さを捨てること）も同じにした。
+  - 本初子午線（`pm`）、単位（`units`、`to_meter`）、`lon_wrap`、`+R_A`。
+  - `Definition`（解析済みの PROJ 文字列）から `Crs::new`。EPSG コードの表に日本測地系を足した：4301、30161〜30179（平面直角座標系）、3092〜3096（UTM）。3 パラメータは EPSG:15484（-146.414, 507.337, 680.507）。
+  - 計算は `Trig` を通す（既定は MoonBit の `@math`）。proj.wasm はホストの `Math` を渡すので、proj4js と同じ関数で計算する。
+  - proj4js が明らかに誤っているところは PROJ に合わせた：`+R_A` で半径を変えない（PROJ 9.9 の `proj` と同じ値を単体テストで確かめた）、sinu の順変換と stere の赤道の場合に偽原点を足さない、gnom の中心で緯度が未定義になる。どれもコードにコメントを残した。
+- **PROJ 文字列**：`npm/src/projstring.ts` が proj4js の `projString.js` と同じように読み、楕円体（44）・測地系（17）・単位・本初子午線の表を引いて、34 個の f64（docs/FORMATS.md「CRS definition」）にする。`+nadgrids`（グリッドによる変換）と未対応の投影はエラーにする。`mbmap/analysis` が、初めて PROJ 文字列を受け取ったときにだけ `projstring.js` を読む。
+- **`mbmap/analysis`**：`crs` に PROJ 文字列と、`defineCrs(name, projString)` で付けた名前を渡せるようになった。
+- **proj.wasm（`proj_worker`）**：`define_crs`、`crs_kind`、`transform_coords`。データセットは座標の f64 の組だけを受け渡す（解析 wasm の `coords_out` / `with_coords` と `@geom.Table::map_coords`）。
+- **planar buffer**：解析 Worker がデータセットを座標系の平面に移し（proj.wasm）、その平面で buffer を取り（geometry.wasm）、経緯度に戻す（proj.wasm）。`@overlay.buffer` の `Planar` は「座標そのものの平面で測る」になり、overlay は proj に依存しなくなった。頂点だけを変換するので、辺は投影した平面でまっすぐになる（GIS ソフトで投影したレイヤに buffer を取るのと同じ。以前は経緯度で 0.01° ごとに区切ってから投影していた）。
+
+### 黄金テスト（`npm run proj:golden`、`bench/results/proj-golden.json`）
+
+- proj4js 2.22.0 と、EPSG コード 197（11.2 の 172 に日本測地系の 25 を足した）と PROJ 文字列 43（Lambert 93、NTF のパリ子午線、US フィート、Conus Albers、NSIDC 極ステレオ、RD New、Soldner Berlin、LAEA Europe、EASE-Grid 2.0、Alaska・マレー半島の斜軸メルカトル、スイス LV95、Krovak、英国ナショナルグリッドなど）で比べた。
+- 合わせて 240 の座標系、94,600 点（順変換・逆変換・座標系どうし。proj4js が投影できない 1,400 点は除いた）。最大の差は 4.7e-9 m、4.3e-14°（js と wasm-gc。wasm-gc はホストの `Math` で計算する）。許容は 1mm / 1e-8°。
+- `+R_A` だけは proj4js が半径を変えないので、黄金テストから外し、PROJ 9.9 の値で単体テストにした。
+
+### サイズ（`bench/results/npm-size.json`）
+
+| 構成 | geometry.wasm | proj.wasm |
+|---|---|---|
+| 座標系を geometry.wasm に同居 | 59.4KB | ― |
+| proj.wasm に分け、表のバイト列で受け渡す | 38.2KB | 35.8KB |
+| ホストの `Math` を使う（core の math 約 7KB が外れる） | 38.2KB | 29.4KB |
+| 座標の組だけを受け渡す（geom が外れる） | 38.2KB | 21.8KB |
+
+- 最後の構成を採った。proj.wasm の予算は 25KB。
+- mbmap/analysis 2.4 → 2.6KB、projstring.js 2.7KB（予算 5KB）、解析 Worker 27.8 → 28.9KB（予算 30KB。`coords_out` / `with_coords` と、モジュールの読み込みの共通化）。
+
+### 確認
+
+- pack test（Chromium）：Lambert 93 の PROJ 文字列でパリが proj4js と同じ（652469.023, 6862035.259）になること、`defineCrs` の名前でも同じこと、日本測地系の IX 系で東京駅が proj4js と同じ（-5701.993, -35723.010）になること、未対応の投影（geos）を拒むこと、IX 系の planar buffer が IX 系で円（誤差 0.7mm）になること、proj.wasm と projstring.js が使うときにだけ読まれること。
+- `npm run buffer:check`：測地線の buffer は 11.1 と同じ精度（点 ≤ 0.004%、多角形 ≤ 0.013%、80° の線 ≤ 0.11%）。
+
+### 次にやること
+
+- VISION §8 の次の Phase（Phase 12）。範囲はユーザーと確認する。
+- 座標系で残っているもの：グリッドによる測地系の変換（TKY2JGD、NTv2）、WKT・PROJJSON の読み込み、軸の順（`+axis`）。
+
 ## Phase 11.2：座標系の変換（平面直角座標系・UTM・Web メルカトル）（2026-11-02）
 
 状態：**完了**。

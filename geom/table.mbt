@@ -227,3 +227,56 @@ pub fn TableBuilder::discard_feature(self : TableBuilder) -> Unit {
   t.coords.truncate(start_of_last(t.point_ends) * 2)
   self.props.clear()
 }
+
+///|
+/// The table with every x, y pair mapped by `f`, called once on each pair in
+/// order; a feature with a pair `f` rejects keeps its row, id and properties
+/// with no geometry.
+pub fn Table::map_coords(
+  self : Table,
+  f : (Double, Double) -> (Double, Double)?,
+) -> Table {
+  let b = TableBuilder::new()
+  let mapped = []
+  for i in 0..<self.length() {
+    let (p0, p1) = self.parts(i)
+    let (r0, _) = if p0 < p1 { self.rings(p0) } else { (0, 0) }
+    let (_, r1) = if p0 < p1 { self.rings(p1 - 1) } else { (0, 0) }
+    let (c0, _) = if r0 < r1 { self.points(r0) } else { (0, 0) }
+    let (_, c1) = if r0 < r1 { self.points(r1 - 1) } else { (0, 0) }
+    mapped.clear()
+    let mut ok = true
+    for c in c0..<c1 {
+      match f(self.coords[c * 2], self.coords[c * 2 + 1]) {
+        Some((x, y)) => {
+          mapped.push(x)
+          mapped.push(y)
+        }
+        None => ok = false
+      }
+    }
+    let kind = if ok {
+      for p in p0..<p1 {
+        let (r0, r1) = self.rings(p)
+        for r in r0..<r1 {
+          let (i0, i1) = self.points(r)
+          for c in i0..<i1 {
+            b.point(mapped[(c - c0) * 2], mapped[(c - c0) * 2 + 1])
+          }
+          b.end_ring()
+        }
+        b.end_part()
+      }
+      self.kinds[i]
+    } else {
+      NoGeometry
+    }
+    for c in self.columns {
+      if c.values[i] is Some(v) {
+        b.prop(c.name, v)
+      }
+    }
+    b.end_feature(kind, id=self.ids[i])
+  }
+  b.finish()
+}

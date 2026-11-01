@@ -214,7 +214,7 @@ extern "wasm" fn store_f64(addr : Int32, v : Double) =
   #|(func (param i32) (param f64) (f64.store align=1 (local.get 0) (local.get 1)))
 
 ///|
-/// Writes `proj_coords` on f64 pairs at `[addr, addr + len)` as f64s at `out`
+/// Writes `proj_coords` (with the host's `Math`) on `[addr, addr + len)` as f64s at `out`
 /// (growing memory as needed); returns how many.
 #export_name("proj_mem")
 pub fn proj_mem(
@@ -224,7 +224,12 @@ pub fn proj_mem(
   to : Int32,
   out : Int32,
 ) -> Int32 {
-  let values = proj_coords(bytes_from_mem(addr, len)[:], from, to)
+  let values = proj_coords(
+    bytes_from_mem(addr, len)[:],
+    from,
+    to,
+    trig=host_proj_trig(),
+  )
   let need = out + values.length() * 8
   let have = memory_grow(0) * 65536
   if need > have {

@@ -12,27 +12,45 @@ export interface AnalysisOptions {
   wasmUrl?: string | URL;
   /** Where the geometry module (buffers and overlays) is served. */
   geometryWasmUrl?: string | URL;
+  /** Where the coordinate system module is served. */
+  projWasmUrl?: string | URL;
 }
 
 /**
- * A coordinate reference system by EPSG code: a number, `"EPSG:6677"`,
- * `"urn:ogc:def:crs:EPSG::6677"`, or `"CRS84"` (= 4326). Supported: 4326, 4612
- * and 6668 (longitude, latitude), 3857 (Web Mercator), Japan's plane
- * rectangular zones (6669-6687 on JGD2011, 2443-2461 on JGD2000) and UTM
- * (32601-32660, 32701-32760 on WGS 84; 6688-6692 and 3097-3101 on JGD2011 and
- * JGD2000). Projected coordinates are easting, then northing.
+ * A coordinate reference system: an EPSG code (a number, `"EPSG:6677"`,
+ * `"urn:ogc:def:crs:EPSG::6677"`), `"CRS84"` (= 4326), a PROJ string
+ * (`"+proj=lcc +lat_1=49 ..."`), or a name given to one with `defineCrs`. The
+ * EPSG codes known without a definition are listed in the package README.
  */
 export type Crs = string | number;
 
-/** `crs` as an EPSG code. */
-function crsCode(crs: Crs): number {
+// An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it.
+type CrsArg = number | Float64Array;
+
+const named = new Map<string, string>();
+
+/**
+ * Names `projString` so that `name` can be passed wherever a CRS is taken, as
+ * `proj4.defs` does (`defineCrs("EPSG:2154", "+proj=lcc ...")`); it overrides
+ * a known EPSG code of that name. The string is parsed when first used.
+ */
+export function defineCrs(name: string, projString: string): void {
+  if (typeof projString !== "string" || !projString.trim().startsWith("+")) throw new Error(`mbmap: analysis: not a PROJ string: ${String(projString)}`);
+  named.set(name.trim().toUpperCase(), projString);
+}
+
+/** `crs` as the analysis worker takes it; PROJ strings load their parser on first use. */
+async function crsArg(crs: Crs): Promise<CrsArg> {
   if (typeof crs === "number" && Number.isInteger(crs) && crs > 0) return crs;
   if (typeof crs === "string") {
-    if (/^\s*(OGC:)?CRS84\s*$/i.test(crs)) return 4326;
-    const m = /^\s*(?:EPSG:|urn:ogc:def:crs:EPSG::)?(\d{1,6})\s*$/i.exec(crs);
+    const key = crs.trim().toUpperCase();
+    const text = named.get(key) ?? (key.startsWith("+") ? crs : undefined);
+    if (text !== undefined) return (await import("./projstring.js")).parseProjString(text);
+    if (/^(OGC:)?CRS84$/.test(key)) return 4326;
+    const m = /^(?:EPSG:|URN:OGC:DEF:CRS:EPSG::)?(\d{1,6})$/.exec(key);
     if (m) return Number(m[1]);
   }
-  throw new Error(`mbmap: analysis: not an EPSG code: ${String(crs)}`);
+  throw new Error(`mbmap: analysis: not a CRS: ${String(crs)}`);
 }
 
 /**
@@ -90,6 +108,7 @@ function start(options: AnalysisOptions): Worker {
     type: "init",
     wasm: wasmUrl(options.wasmUrl ?? new URL("./analysis.wasm", import.meta.url), page),
     geometry: wasmUrl(options.geometryWasmUrl ?? new URL("./geometry.wasm", import.meta.url), page),
+    proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
   });
   worker = w;
   return w;
@@ -204,15 +223,9 @@ export class Dataset {
     if (!(mode in { geodesic: 0, planar: 1 }) || !(join in JOIN) || !(cap in CAP) || !Number.isFinite(meters) || !(arcTolerance >= 0)) {
       return Promise.reject(new Error("mbmap: analysis: invalid buffer options"));
     }
-    let code: number;
-    try {
-      code = crsCode(crs);
-    } catch (e) {
-      return Promise.reject(e);
-    }
-    return this.#geometry("buffer", {
+    return crsArg(crs).then((code) => this.#geometry("buffer", {
       dataset: Dataset.#idOf(this, "buffered"), meters, mode: mode === "planar" ? 1 : 0, join: JOIN[join], cap: CAP[cap], arcTolerance, crs: code,
-    });
+    }));
   }
 
   /** All polygons merged into one feature without properties (lines and points are left out). */
@@ -239,12 +252,8 @@ export class Dataset {
   }
 
   /** The dataset as a GeoJSON FeatureCollection (feature ids are not kept), in `crs` if given. */
-  toGeoJSON({ crs }: { crs?: Crs } = {}): Promise<{ type: "FeatureCollection"; features: object[] }> {
-    try {
-      return this.#call("toGeoJSON", crs === undefined ? {} : { crs: crsCode(crs) });
-    } catch (e) {
-      return Promise.reject(e);
-    }
+  async toGeoJSON({ crs }: { crs?: Crs } = {}): Promise<{ type: "FeatureCollection"; features: object[] }> {
+    return this.#call("toGeoJSON", crs === undefined ? {} : { crs: await crsArg(crs) });
   }
 
   /** Frees the dataset in the worker; later calls on it reject. */
@@ -341,7 +350,7 @@ export async function loadDem(tiles: string, options: DemOptions): Promise<DemGr
  * http(s) URL (resolved against the page, fetched without credentials).
  */
 export async function load(data: unknown, options: LoadOptions = {}): Promise<Dataset> {
-  const crs = options.crs === undefined ? undefined : crsCode(options.crs);
+  const crs = options.crs === undefined ? undefined : await crsArg(options.crs);
   start(options);
   let args: object;
   let transfer: Transferable[] = [];
@@ -367,7 +376,7 @@ export async function load(data: unknown, options: LoadOptions = {}): Promise<Da
  * in the analysis worker; the first call loads the geometry module.
  */
 export async function transform(coords: ArrayLike<number>, from: Crs, to: Crs, options: AnalysisOptions = {}): Promise<Float64Array> {
-  const codes = { from: crsCode(from), to: crsCode(to) };
+  const codes = { from: await crsArg(from), to: await crsArg(to) };
   start(options);
   const buffer = Float64Array.from(coords).buffer;
   if (buffer.byteLength % 16 !== 0) throw new Error("mbmap: analysis: coordinates must come in x, y pairs");

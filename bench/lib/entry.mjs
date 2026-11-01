@@ -10,11 +10,11 @@ const WASM_PAGE = 65536;
 // `copyIn` places a tile in linear memory from the second page on and returns
 // its address, for the *_mem exports.
 export async function loadWasmGc(fetchBytes) {
-  // The GeoJSON tiler projects with the host's sin and log, and the reader parses long numbers with
-  // its Number() (bench/entry/host_math.mbt).
+  // The GeoJSON tiler and proj compute with the host's Math, and the reader parses long numbers
+  // with its Number() (bench/entry/host_math.mbt).
   let e = null;
   const host = { number: hostNumber(() => e.memory) };
-  const { instance } = await WebAssembly.instantiate(await fetchBytes(ENTRY_WASM_GC), { Math: { sin: Math.sin, log: Math.log }, host });
+  const { instance } = await WebAssembly.instantiate(await fetchBytes(ENTRY_WASM_GC), { Math, host });
   e = instance.exports;
   const base = WASM_PAGE;
   return {

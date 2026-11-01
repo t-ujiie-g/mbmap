@@ -30,7 +30,8 @@
     "./geojson.wasm": "./dist/geojson.wasm",
     "./analysis-worker.js": "./dist/analysis-worker.js",
     "./analysis.wasm": "./dist/analysis.wasm",
-    "./geometry.wasm": "./dist/geometry.wasm"
+    "./geometry.wasm": "./dist/geometry.wasm",
+    "./proj.wasm": "./dist/proj.wasm"
   },
   "types": "./dist/index.d.ts",
   "sideEffects": [

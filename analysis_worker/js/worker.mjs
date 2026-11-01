@@ -8,9 +8,10 @@ const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let wasm = null;
 let ready = null;
-// The geometry module (geometry_worker), instantiated on its first use.
-let geometryUrl = null;
-let geometry = null;
+// The geometry (geometry_worker) and coordinate system (proj_worker)
+// modules, each instantiated on its first use.
+// proj_worker computes with the host's Math, as proj4js does.
+const modules = { geometry: { url: null, exports: null, imports: {} }, proj: { url: null, exports: null, imports: { Math } } };
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
 
@@ -38,6 +39,9 @@ const i32s = (n) => {
 };
 
 const isId = (v) => Number.isInteger(v) && v >= 0;
+// An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it.
+const isCrs = (c) => (Number.isInteger(c) && c > 0) || (c instanceof Float64Array && c.length === 34);
+const isLonLat = (c) => c === undefined || c === 4326;
 const isBox = (b) => Array.isArray(b) && b.length === 4 && b.every(Number.isFinite);
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");
@@ -53,11 +57,11 @@ async function load({ url, bytes, crs }) {
   }
   input(data);
   const dataset = counted(wasm.load());
-  if (crs === undefined || crs === 4326) return { dataset, features: wasm.feature_count(dataset) };
+  if (isLonLat(crs)) return { dataset, features: wasm.feature_count(dataset) };
   // Coordinates in another CRS: kept as longitude and latitude.
-  check(Number.isInteger(crs));
   try {
-    return await geometryOp([dataset], (g) => g.transform(crs, 4326));
+    check(isCrs(crs));
+    return await reproject(dataset, await crsId(crs), 4326);
   } finally {
     wasm.dispose(dataset);
   }
@@ -111,32 +115,66 @@ function outputOf(exports, n) {
   return new Uint8Array(exports.memory.buffer.slice(at, at + n));
 }
 
-async function geometryModule() {
-  if (!geometry) {
-    check(typeof geometryUrl === "string");
-    geometry = WebAssembly.instantiateStreaming(fetch(geometryUrl), {}).then(({ instance }) => instance.exports);
+function module(name) {
+  const m = modules[name];
+  if (!m.exports) {
+    check(typeof m.url === "string");
+    m.exports = WebAssembly.instantiateStreaming(fetch(m.url), m.imports).then(({ instance }) => instance.exports);
   }
-  return geometry;
+  return m.exports;
+}
+
+// Copies `bytes` (one after another) into `exports`' input area.
+function inputTo(exports, bytes) {
+  const len = bytes.reduce((s, b) => s + b.length, 0);
+  const addr = exports.prepare_input(len);
+  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
+  let at = addr;
+  for (const b of bytes) {
+    new Uint8Array(exports.memory.buffer, at, b.length).set(b);
+    at += b.length;
+  }
+}
+
+function checked(exports, n) {
+  if (n < 0) throw new Error(n === -2 ? "out of memory" : decoder.decode(outputOf(exports, -n)));
+  return n;
+}
+
+// The coordinate system module's id for `crs`: an EPSG code as it is, a
+// definition made there once (handle h is -1 - h).
+const defined = new Map();
+async function crsId(crs) {
+  if (typeof crs === "number") return crs;
+  const key = Array.from(crs).join(",");
+  if (!defined.has(key)) {
+    const proj = await module("proj");
+    inputTo(proj, [new Uint8Array(crs.buffer, crs.byteOffset, crs.byteLength)]);
+    defined.set(key, -1 - checked(proj, proj.define_crs()));
+  }
+  return defined.get(key);
 }
 
 // Runs `call` in the geometry module on `tables` (datasets, in Table bytes)
 // and keeps its result as a new dataset.
 async function geometryOp(tables, call) {
-  const geo = await geometryModule();
+  const exports = await module("geometry");
   const bytes = tables.map((id) => outputOf(wasm, counted(wasm.table_out(id))));
-  const len = bytes.reduce((s, b) => s + b.length, 0);
-  const addr = geo.prepare_input(len);
-  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
-  let at = addr;
-  for (const b of bytes) {
-    new Uint8Array(geo.memory.buffer, at, b.length).set(b);
-    at += b.length;
-  }
-  const n = call(geo, bytes[0].length);
-  if (n < 0) throw new Error(n === -2 ? "out of memory" : decoder.decode(outputOf(geo, -n)));
-  input(outputOf(geo, n));
+  inputTo(exports, bytes);
+  input(outputOf(exports, checked(exports, call(exports, bytes[0].length))));
   const dataset = counted(wasm.load_table());
   return { dataset, features: wasm.feature_count(dataset) };
+}
+
+// Dataset `dataset` taken from CRS `from` to CRS `to` (module ids), as a new
+// dataset: its coordinates go through the coordinate system module.
+async function reproject(dataset, from, to) {
+  const proj = await module("proj");
+  const n = counted(wasm.coords_out(dataset));
+  inputTo(proj, [outputOf(wasm, n * 8)]);
+  input(outputOf(proj, checked(proj, proj.transform_coords(from, to)) * 8));
+  const id = counted(wasm.with_coords(dataset));
+  return { dataset: id, features: wasm.feature_count(id) };
 }
 
 const OPS = {
@@ -178,9 +216,22 @@ const OPS = {
     input(encoder.encode(property));
     return f64s(wasm.collect(polygons, points));
   },
-  buffer({ dataset, meters, mode, join, cap, arcTolerance, crs }) {
-    check(isId(dataset) && Number.isFinite(meters) && [mode, join, cap, crs].every(Number.isInteger) && arcTolerance >= 0);
-    return geometryOp([dataset], (g) => g.buffer(meters, mode, join, cap, arcTolerance, crs));
+  async buffer({ dataset, meters, mode, join, cap, arcTolerance, crs }) {
+    check(isId(dataset) && Number.isFinite(meters) && [mode, join, cap].every(Number.isInteger) && arcTolerance >= 0 && isCrs(crs));
+    const op = (id) => geometryOp([id], (g) => g.buffer(meters, mode, join, cap, arcTolerance));
+    if (mode !== 1) return op(dataset);
+    // Planar: in the CRS's plane, then back.
+    const id = await crsId(crs);
+    const proj = await module("proj");
+    if (checked(proj, proj.crs_kind(id)) === 1) throw new Error("a planar buffer needs a projected CRS");
+    const temps = [];
+    try {
+      temps.push((await reproject(dataset, 4326, id)).dataset);
+      temps.push((await op(temps[0])).dataset);
+      return await reproject(temps[1], id, 4326);
+    } finally {
+      for (const t of temps) wasm.dispose(t);
+    }
   },
   dissolve({ dataset }) {
     check(isId(dataset));
@@ -191,9 +242,9 @@ const OPS = {
     return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
   },
   async toGeoJSON({ dataset, crs }) {
-    check(isId(dataset) && (crs === undefined || Number.isInteger(crs)));
-    if (crs === undefined || crs === 4326) return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(dataset))));
-    const { dataset: projected } = await geometryOp([dataset], (g) => g.transform(4326, crs));
+    check(isId(dataset) && (crs === undefined || isCrs(crs)));
+    if (isLonLat(crs)) return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(dataset))));
+    const { dataset: projected } = await reproject(dataset, 4326, await crsId(crs));
     try {
       return tableToGeoJSON(outputOf(wasm, counted(wasm.table_out(projected))));
     } finally {
@@ -201,15 +252,11 @@ const OPS = {
     }
   },
   async transform({ coords, from, to }) {
-    check(coords instanceof ArrayBuffer && coords.byteLength % 16 === 0 && Number.isInteger(from) && Number.isInteger(to));
-    const geo = await geometryModule();
-    const bytes = new Uint8Array(coords);
-    const addr = geo.prepare_input(bytes.length);
-    if (addr < 0) throw new Error(`input too large (${bytes.length} bytes)`);
-    new Uint8Array(geo.memory.buffer, addr, bytes.length).set(bytes);
-    const n = geo.transform_coords(from, to);
-    if (n < 0) throw new Error(n === -2 ? "out of memory" : decoder.decode(outputOf(geo, -n)));
-    return new Float64Array(outputOf(geo, n * 8).buffer);
+    check(coords instanceof ArrayBuffer && coords.byteLength % 16 === 0 && isCrs(from) && isCrs(to));
+    const [f, t] = [await crsId(from), await crsId(to)];
+    const proj = await module("proj");
+    inputTo(proj, [new Uint8Array(coords)]);
+    return new Float64Array(outputOf(proj, checked(proj, proj.transform_coords(f, t)) * 8).buffer);
   },
   grid({ dataset, bbox, cols, rows }) {
     check(isId(dataset) && isBox(bbox) && Number.isInteger(cols) && Number.isInteger(rows));
@@ -227,7 +274,8 @@ async function run(msg) {
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
-    geometryUrl = typeof msg.geometry === "string" ? msg.geometry : null;
+    modules.geometry.url = typeof msg.geometry === "string" ? msg.geometry : null;
+    modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 }, host })
       .then(({ instance }) => { wasm = instance.exports; });

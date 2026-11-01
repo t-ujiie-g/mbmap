@@ -1,10 +1,52 @@
 ///|
-/// The host's `Math.sin` and `Math.log` (wasm builds only): the projection
-/// then matches geojson-vt bit for bit. The host passes `{ Math }` as imports.
+/// The host's `Math` (wasm builds only): the GeoJSON projection then matches
+/// geojson-vt bit for bit, and proj computes as proj4js does. The host passes
+/// `{ Math }` as imports.
 fn host_sin(x : Double) -> Double = "Math" "sin"
 
 ///|
 fn host_log(x : Double) -> Double = "Math" "log"
+
+///|
+fn host_cos(x : Double) -> Double = "Math" "cos"
+
+///|
+fn host_tan(x : Double) -> Double = "Math" "tan"
+
+///|
+fn host_asin(x : Double) -> Double = "Math" "asin"
+
+///|
+fn host_acos(x : Double) -> Double = "Math" "acos"
+
+///|
+fn host_atan(x : Double) -> Double = "Math" "atan"
+
+///|
+fn host_atan2(y : Double, x : Double) -> Double = "Math" "atan2"
+
+///|
+fn host_exp(x : Double) -> Double = "Math" "exp"
+
+///|
+fn host_pow(x : Double, y : Double) -> Double = "Math" "pow"
+
+///|
+/// The functions proj_worker takes from the host.
+fn host_proj_trig() -> @proj.Trig {
+  {
+    sin: host_sin,
+    cos: host_cos,
+    tan: host_tan,
+    asin: host_asin,
+    acos: host_acos,
+    atan: host_atan,
+    atan2: host_atan2,
+    exp: host_exp,
+    ln: host_log,
+    pow: host_pow,
+  }
+}
 
 ///|
 fn host_trig() -> @tiler.Trig {

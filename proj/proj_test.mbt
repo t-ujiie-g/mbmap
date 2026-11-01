@@ -4,27 +4,49 @@ fn near(a : (Double, Double), b : (Double, Double), tol : Double) -> Bool {
 }
 
 ///|
-test "Tokyo Station in plane rectangular IX, UTM 54 and Web Mercator, as proj4js gives" {
-  let crs = (code : Int32) => @proj.Crs::from_epsg(code).unwrap()
-  let tokyo = (139.7671, 35.6812)
+fn epsg(code : Int32) -> @proj.Crs {
+  @proj.Crs::from_epsg(code).unwrap()
+}
+
+///|
+let tokyo_station : (Double, Double) = (139.7671, 35.6812)
+
+///|
+test "Tokyo Station in plane rectangular IX, UTM 54, Web Mercator and the Tokyo datum, as proj4js gives" {
+  let wgs = epsg(4326)
   // proj4js 2.22.0's results (bench/proj/golden.mjs checks every CRS).
   let cases = [
     (6677, (-5995.185165978678, -35367.230132542936)),
     (2451, (-5995.185165978678, -35367.230132542936)),
     (6691, (388433.37462039513, 3949290.0134295365)),
     (3857, (15558802.401652545, 4256843.186542427)),
+    (30169, (-5701.993464301608, -35723.00993903457)),
+    (4301, (139.77033413284113, 35.677960647310144)),
   ]
   for c in cases {
     let (code, expected) = c
-    let xy = crs(code).forward(tokyo.0, tokyo.1).unwrap()
+    let (x, y) = tokyo_station
+    let xy = @proj.transform(wgs, epsg(code), x, y).unwrap()
     assert_true(near(xy, expected, 1.0e-6))
-    assert_true(near(crs(code).inverse(xy.0, xy.1).unwrap(), tokyo, 1.0e-11))
-    assert_true(!crs(code).is_geographic())
+    assert_true(
+      near(
+        @proj.transform(epsg(code), wgs, xy.0, xy.1).unwrap(),
+        tokyo_station,
+        // A datum shift drops the height it makes, as proj4js does: about
+        // 5 mm back on the Tokyo datum.
+        if code == 30169 || code == 4301 {
+          1.0e-7
+        } else {
+          1.0e-9
+        },
+      ),
+    )
+    assert_eq(epsg(code).is_geographic(), code == 4301)
   }
   // Southern UTM zones count northing from 10,000 km at the equator.
   assert_true(
     near(
-      crs(32754).forward(141.0, -35.0).unwrap(),
+      @proj.transform(wgs, epsg(32754), 141.0, -35.0).unwrap(),
       (500000.0, 6126956.93546574),
       1.0e-6,
     ),
@@ -33,8 +55,8 @@ test "Tokyo Station in plane rectangular IX, UTM 54 and Web Mercator, as proj4js
   assert_true(
     near(
       @proj.transform(
-        crs(6677),
-        crs(6691),
+        epsg(6677),
+        epsg(6691),
         -5995.185165978678,
         -35367.230132542936,
       ).unwrap(),
@@ -45,24 +67,149 @@ test "Tokyo Station in plane rectangular IX, UTM 54 and Web Mercator, as proj4js
 }
 
 ///|
-test "geographic CRSs pass coordinates through and unknown codes are refused" {
-  let wgs = @proj.Crs::from_epsg(4326).unwrap()
-  assert_true(wgs.is_geographic())
-  assert_eq(wgs.forward(1.0, 2.0), Some((1.0, 2.0)))
-  assert_eq(
-    @proj.transform(wgs, @proj.Crs::from_epsg(6668).unwrap(), 1.0, 2.0),
-    Some((1.0, 2.0)),
+test "definitions from PROJ strings: Lambert 93 and the British National Grid's 7-parameter shift" {
+  let wgs = epsg(4326)
+  let l93 = @proj.Definition::new(Lcc, 6378137.0, 6356752.314140356)
+  l93.lat0 = 46.5 * 0.017453292519943295
+  l93.long0 = 3.0 * 0.017453292519943295
+  l93.lat1 = 49.0 * 0.017453292519943295
+  l93.lat2 = 44.0 * 0.017453292519943295
+  l93.x0 = 700000.0
+  l93.y0 = 6600000.0
+  l93.towgs84 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  let l93 = @proj.Crs::new(l93).unwrap()
+  assert_true(
+    near(
+      @proj.transform(wgs, l93, 2.3522, 48.8566).unwrap(),
+      (652469.022709136, 6862035.259420076),
+      1.0e-6,
+    ),
   )
-  for code in [0, 6667, 2442, 32661, 6693, 99999] {
+  let osgb = @proj.Definition::new(Tmerc, 6377563.396, 6356256.91)
+  osgb.lat0 = 49.0 * 0.017453292519943295
+  osgb.long0 = -2.0 * 0.017453292519943295
+  osgb.k0 = 0.9996012717
+  osgb.x0 = 400000.0
+  osgb.y0 = -100000.0
+  osgb.towgs84 = [446.448, -125.157, 542.06, 0.15, 0.247, 0.842, -20.489]
+  let osgb = @proj.Crs::new(osgb).unwrap()
+  let xy = @proj.transform(wgs, osgb, -0.1276, 51.5072).unwrap()
+  assert_true(near(xy, (530043.1949909067, 180358.2078843171), 1.0e-6))
+  assert_true(
+    near(
+      @proj.transform(osgb, wgs, xy.0, xy.1).unwrap(),
+      (-0.1276, 51.5072),
+      1.0e-7,
+    ),
+  )
+}
+
+///|
+test "geographic CRSs pass coordinates through and unknown codes are refused" {
+  let wgs = epsg(4326)
+  assert_true(wgs.is_geographic())
+  assert_eq(@proj.transform(wgs, wgs, 1.0, 2.0), Some((1.0, 2.0)))
+  assert_true(
+    near(
+      @proj.transform(wgs, epsg(6668), 1.0, 2.0).unwrap(),
+      (1.0, 2.0),
+      1.0e-12,
+    ),
+  )
+  for code in [0, 6667, 2442, 30160, 32661, 6693, 3091, 99999] {
     assert_true(@proj.Crs::from_epsg(code) is None)
   }
+}
+
+///|
+test "points out of a projection's reach and bad definitions give None" {
+  let wgs = epsg(4326)
   // Web Mercator cannot reach the poles; a transverse Mercator a point on the
   // equator 90° from its meridian.
-  assert_eq(@proj.Crs::from_epsg(3857).unwrap().forward(0.0, 90.0), None)
-  assert_eq(
-    @proj.Crs::from_epsg(6677).unwrap().forward(49.83333333333334, 0.0),
-    None,
+  assert_eq(@proj.transform(wgs, epsg(3857), 0.0, 90.0), None)
+  assert_eq(@proj.transform(wgs, epsg(6677), 49.83333333333334, 0.0), None)
+  assert_eq(@proj.transform(epsg(6677), wgs, 1.0e8, 0.0), None)
+  assert_eq(@proj.transform(wgs, epsg(6677), @double.not_a_number, 0.0), None)
+  // A transverse Mercator needs an ellipsoid, an oblique Mercator its line.
+  assert_true(
+    @proj.Crs::new(@proj.Definition::new(Tmerc, 6371000.0, 6371000.0)) is None,
   )
-  assert_eq(@proj.Crs::from_epsg(6677).unwrap().inverse(1.0e8, 0.0), None)
-  assert_eq(@proj.grs80.a, @proj.wgs84.a)
+  assert_true(
+    @proj.Crs::new(@proj.Definition::new(Omerc, 6378137.0, 6356752.3)) is None,
+  )
+  assert_true(@proj.Crs::new(@proj.Definition::new(LongLat, 0.0, 0.0)) is None)
+  let zone = @proj.Definition::new(Utm, 6378137.0, 6356752.3)
+  zone.zone = 61
+  assert_true(@proj.Crs::new(zone) is None)
+}
+
+///|
+test "decode reads the slots docs/FORMATS.md lays out and refuses others" {
+  let s = FixedArray::make(@proj.DEFINITION_SLOTS, @double.not_a_number)
+  s[0] = 4.0 // Lcc
+  s[1] = 6378137.0
+  s[2] = 6356752.314140356
+  s[3] = 0.0
+  s[4] = 7.0
+  for i in 5..<12 {
+    s[i] = 0.0
+  }
+  s[12] = 0.0
+  s[14] = 0.0
+  s[16] = 46.5 * 0.017453292519943295
+  s[17] = 49.0 * 0.017453292519943295
+  s[18] = 44.0 * 0.017453292519943295
+  s[20] = 3.0 * 0.017453292519943295
+  s[26] = 700000.0
+  s[27] = 6600000.0
+  for i in 30..<34 {
+    s[i] = 0.0
+  }
+  let d = @proj.Definition::decode(s[:]).unwrap()
+  assert_true(d.proj is Lcc && d.towgs84.length() == 7 && d.zone == 0)
+  let l93 = @proj.Crs::new(d).unwrap()
+  assert_true(
+    near(
+      @proj.transform(epsg(4326), l93, 2.3522, 48.8566).unwrap(),
+      (652469.022709136, 6862035.259420076),
+      1.0e-6,
+    ),
+  )
+  assert_true(@proj.Definition::decode(s[:33]) is None)
+  s[4] = 2.0
+  assert_true(@proj.Definition::decode(s[:]) is None)
+  s[4] = 0.0
+  s[0] = 27.0
+  assert_true(@proj.Definition::decode(s[:]) is None)
+  s[0] = 1.5
+  assert_true(@proj.Definition::decode(s[:]) is None)
+  s[0] = 4.0
+  s[13] = -1.0
+  assert_true(@proj.Crs::new(@proj.Definition::decode(s[:]).unwrap()) is None)
+}
+
+///|
+test "+R_A projects on the sphere of the ellipsoid's area, as PROJ does" {
+  // PROJ 9.9's `proj +proj=mill +R_A +ellps=WGS84` (proj4js keeps a's length).
+  let mill = @proj.Definition::new(Mill, 6378137.0, 6356752.314245179)
+  mill.r_a = true
+  let mill = @proj.Crs::new(mill).unwrap()
+  assert_true(
+    near(
+      @proj.transform(epsg(4326), mill, 10.0, 20.0).unwrap(),
+      (1111950.519781, 2253381.689608),
+      1.0e-5,
+    ),
+  )
+}
+
+///|
+test "Trig::moonbit is what a CRS computes with by default" {
+  let (x, y) = tokyo_station
+  let wgs = @proj.Crs::from_epsg(4326, trig=@proj.Trig::moonbit()).unwrap()
+  let ix = @proj.Crs::from_epsg(6677, trig=@proj.Trig::moonbit()).unwrap()
+  assert_eq(
+    @proj.transform(wgs, ix, x, y),
+    @proj.transform(epsg(4326), epsg(6677), x, y),
+  )
 }

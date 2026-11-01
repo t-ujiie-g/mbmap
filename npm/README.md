@@ -24,6 +24,8 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
 | `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
+| `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読み込む（場所は `projWasmUrl` で変えられる） |
+| `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ読み込む |
 | `dist/worker.js` | タイル Worker（モジュール Worker） |
 | `dist/mbmap.wasm` | Worker が読む wasm-gc |
 
@@ -60,12 +62,12 @@ blocks.dispose();
   - `clip(other)` / `erase(other)`：`other` の多角形の範囲で切る／除く（自分の属性を残す）。線は線のまま、点は内外で選ぶ。
   - `intersect(other)`：重なる組ごとに 1 地物、両方の属性を持つ（`other` の同名のキーには `_2` を付ける）。
   - `toGeoJSON({ crs })`：FeatureCollection として取り出す（Worker の中で組み立てる）。`crs` を渡すとその座標系の座標で返す。
-- 座標系：`load(data, { crs })` で投影座標のデータを読める（読み込むときに経緯度へ変換する）。`crs` は `6677`、`"EPSG:6677"`、`"urn:ogc:def:crs:EPSG::6677"`、`"CRS84"` のように書ける。`buffer` の `mode: "planar"` は `crs`（既定は 3857）の平面で測る。`transform(coords, from, to)` は `[x, y, x, y, …]` を別の座標系に変換して `Float64Array` で返す（投影の範囲外の点は NaN）。対応する EPSG コード：
-  - 経緯度：4326（WGS84）、4612（JGD2000）、6668（JGD2011）
-  - Web メルカトル：3857（3785、900913）
-  - 平面直角座標系 I〜XIX 系：6669〜6687（JGD2011）、2443〜2461（JGD2000）
-  - UTM：32601〜32660、32701〜32760（WGS84）、6688〜6692（JGD2011、51〜55 帯）、3097〜3101（JGD2000、51〜55 帯）
-  - 値は proj4js 2.22.0 と 1mm 未満で一致する（黄金テストで確かめている）。JGD2000・JGD2011 と WGS84 の間の測地系の変換はしない（同じものとして扱う）。
+- 座標系：`load(data, { crs })` で投影座標のデータを読める（読み込むときに経緯度へ変換する）。`buffer` の `mode: "planar"` は `crs`（既定は 3857）の平面で測る。`transform(coords, from, to)` は `[x, y, x, y, …]` を別の座標系に変換して `Float64Array` で返す（投影の範囲外の点は NaN）。初めて座標系を使ったときに `proj.wasm` を読む。
+  - `crs` に渡せるもの：EPSG コード（`6677`、`"EPSG:6677"`、`"urn:ogc:def:crs:EPSG::6677"`）、`"CRS84"`、PROJ 文字列（`"+proj=lcc +lat_0=46.5 …"`。epsg.io などにある形）、`defineCrs(name, projString)` で名前を付けたもの（`proj4.defs` と同じ使い方。`defineCrs("EPSG:2154", "+proj=lcc …")`）。
+  - PROJ 文字列なしで使える EPSG コード：経緯度 4326（WGS84）・4612（JGD2000）・6668（JGD2011）・4301（日本測地系）、Web メルカトル 3857（3785、900913）、平面直角座標系 I〜XIX 系 6669〜6687（JGD2011）・2443〜2461（JGD2000）・30161〜30179（日本測地系）、UTM 32601〜32660・32701〜32760（WGS84）・6688〜6692（JGD2011、51〜55 帯）・3097〜3101（JGD2000）・3092〜3096（日本測地系）。
+  - 投影：`longlat`、`merc`、`tmerc`（`etmerc`）、`utm`、`lcc`、`aea`、`aeqd`、`stere`、`sterea`、`cass`、`laea`、`eqc`、`eqdc`、`sinu`、`eck6`、`moll`、`robin`、`cea`、`mill`、`poly`、`omerc`、`somerc`、`krovak`、`ortho`、`gnom`、`eqearth`、`bonne`。
+  - 測地系の変換は `+towgs84`（3 または 7 パラメータ）と `+datum`（`WGS84`、`NAD83`、`potsdam`、`OSGB36`、`ch1903` など proj4js と同じ名前）で、WGS84 を経由して行う。日本測地系は EPSG の 3 パラメータ（-146.414, 507.337, 680.507）。グリッドによる変換（`+nadgrids`、TKY2JGD など）は使えない。JGD2000・JGD2011 と WGS84 は同じものとして扱う。
+  - 値は proj4js 2.22.0 と 1mm 未満で一致する（240 の座標系で黄金テストをしている）。proj4js が明らかに誤っているところ（`+R_A` の半径、正弦図法などの偽原点）は PROJ に合わせた。
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。

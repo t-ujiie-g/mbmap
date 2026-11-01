@@ -18,9 +18,11 @@ const ENTRIES = [
   { name: "mbmap/element (on top of mbmap)", files: ["element.js"], budget: 5_000, references: ["./index.js"] },
   { name: "display worker", files: ["worker.js", "mbmap.wasm"], budget: 100_000, references: [] },
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
-  { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./analysis-worker.js", "./analysis.wasm", "./geometry.wasm"] },
+  { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./projstring.js", "./analysis-worker.js", "./analysis.wasm", "./geometry.wasm", "./proj.wasm"] },
+  { name: "PROJ strings (loaded by mbmap/analysis on the first one)", files: ["projstring.js"], budget: 5_000, references: [] },
   { name: "analysis worker", files: ["analysis-worker.js", "analysis.wasm"], budget: 30_000, references: [] },
   { name: "geometry (loaded by the analysis worker on first use)", files: ["geometry.wasm"], budget: 50_000, references: [] },
+  { name: "coordinate systems (loaded by the analysis worker on first use)", files: ["proj.wasm"], budget: 25_000, references: [] },
 ];
 
 const failures = [];
