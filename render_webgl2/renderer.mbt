@@ -394,3 +394,74 @@ pub fn Renderer::draw_sky(
 ) -> Unit {
   gl_draw_sky(self.gl, horizon_y, blend, sky, horizon)
 }
+
+///|
+/// Uploads a fill-extrusion entry; its ground is 0 m until `set_ground`.
+pub fn Renderer::upload_extrusion(
+  self : Renderer,
+  vertices : JsBuffer,
+  indices : JsBuffer,
+  count : Int32,
+  index_bytes : Int32,
+) -> Mesh {
+  gl_upload_extrusion(self.gl, vertices, indices, count, index_bytes)
+}
+
+///|
+/// The features of an extrusion entry's `vertices`: for each run of vertices
+/// sharing a centroid, its first vertex and the centroid's x and y (tile units).
+pub fn extrusion_runs(vertices : JsBuffer) -> FixedArray[Int32] {
+  extrusion_runs_of(vertices)
+}
+
+///|
+/// Sets the ground in meters under each run of `runs` (`extrusion_runs`).
+pub fn Renderer::set_ground(
+  self : Renderer,
+  mesh : Mesh,
+  runs : FixedArray[Int32],
+  heights : FixedArray[Double],
+) -> Unit {
+  gl_set_ground(self.gl, mesh, runs, heights)
+}
+
+///|
+/// How extrusions are lit: `direction` toward the light (x, y, z, in tile
+/// axes), `intensity`, and `color` (straight RGB).
+pub(all) struct ExtrusionLight {
+  direction : (Double, Double, Double)
+  intensity : Double
+  color : (Double, Double, Double)
+}
+
+///|
+/// Draws an extrusion mesh, `color` (straight RGB) lit by `light` at `opacity`;
+/// `t` mixes its heights from the tile's zoom (0) to one deeper (1), `scale`
+/// is world pixels per meter and `ground` the terrain exaggeration (0 without
+/// terrain).
+pub fn Renderer::draw_extrusion(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  color : (Double, Double, Double),
+  opacity : Double,
+  light : ExtrusionLight,
+  gradient : Bool,
+  t : Double,
+  scale : Double,
+  ground : Double,
+) -> Unit {
+  let (lx, ly, lz) = light.direction
+  let (lr, lg, lb) = light.color
+  gl_draw_extrusion(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    [color.0, color.1, color.2],
+    opacity,
+    [lx, ly, lz, light.intensity, lr, lg, lb],
+    gradient,
+    [t, scale, ground],
+  )
+}

@@ -10,6 +10,10 @@ const KIND_LINE : Int32 = 2
 const KIND_CIRCLE : Int32 = 3
 
 ///|
+/// `@worker.KIND_EXTRUSION`, mirrored like the other kinds.
+const KIND_EXTRUSION : Int32 = 6
+
+///|
 /// A `raster-dem` tile's slopes for its source's hillshade layers (the worker's
 /// entry has layer -1: it serves every hillshade layer of the source).
 const KIND_HILLSHADE : Int32 = 5
@@ -135,6 +139,16 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           (mesh, Some(labels))
         } else if shared >= 0 && shared < meshes.length() {
           (meshes[shared].mesh, None)
+        } else if kind == KIND_EXTRUSION {
+          (
+            self.renderer.upload_extrusion(
+              buffer_of(l, "vertices"),
+              buffer_of(l, "indices"),
+              get_int(l, "count"),
+              get_int(l, "indexBytes"),
+            ),
+            None,
+          )
         } else {
           (
             self.renderer.upload(
@@ -160,6 +174,14 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           },
           paint: None,
           labels,
+          ground: if kind == KIND_EXTRUSION {
+            Some({
+              runs: @render_webgl2.extrusion_runs(buffer_of(l, "vertices")),
+              at: 0,
+            })
+          } else {
+            None
+          },
           dem: if kind == KIND_HILLSHADE {
             Some({
               edges: f64_array(buffer_of(l, "edges")),

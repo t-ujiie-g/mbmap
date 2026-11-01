@@ -97,6 +97,12 @@ pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
+pub struct ExtrusionPaint {
+  height : Expr
+  base : Expr
+  vertical_gradient : Bool
+}
+
 pub struct HillshadePaint {
   direction : Expr
   viewport : Bool
@@ -129,10 +135,18 @@ pub(all) enum LayerKind {
   Circle
   Symbol
   Hillshade
+  FillExtrusion
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
 pub fn LayerKind::to_repr(Self) -> @debug.Repr
+
+pub struct Light {
+  viewport : Bool
+  color : Expr
+  intensity : Expr
+  position : (Double, Double, Double)
+}
 
 pub(all) struct NoFeature {
 }
@@ -175,6 +189,7 @@ pub struct Style {
   layers : Array[StyleLayer]
   terrain : Terrain?
   sky : Sky?
+  light : Light
 }
 pub fn Style::from_json(Json) -> Self raise StyleError
 pub fn Style::parse(StringView) -> Self raise StyleError
@@ -200,6 +215,7 @@ pub struct StyleLayer {
   halo_width : Expr
   text : TextLayout?
   hillshade : HillshadePaint?
+  extrusion : ExtrusionPaint?
   join : Join
   cap : Cap
   miter_limit : Double

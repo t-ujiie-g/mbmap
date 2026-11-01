@@ -589,3 +589,35 @@ test "dem_tile reads a raster-dem source's tiles and refuses others" {
   assert_eq(p.dem_tile(d, rgba[:4], 2, 14), None)
   assert_eq(p.error(), "DEM tile is not 2 x 2 RGBA")
 }
+
+///|
+test "fill-extrusion layers pack walls, roofs and per-feature heights" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "flat", "type": "fill", "source": "a", "source-layer": "poly"},
+    #|  {"id": "box", "type": "fill-extrusion", "source": "a", "source-layer": "poly",
+    #|   "paint": {"fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 14, 10, 15, 25.25],
+    #|    "fill-extrusion-base": -3}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", sample_tile()[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  // Its own entry, not an alias of the fill with the same geometry.
+  assert_eq(p.out.layer_count(), 2)
+  assert_eq((entry(1, 0), entry(1, 1)), (1, @worker.KIND_EXTRUSION))
+  // A triangle: 3 walls and a 1-triangle roof of 3 vertices.
+  let n = entry(1, 3) / @worker.EXTRUSION_VERTEX_BYTES
+  assert_eq((n, entry(1, 5)), (3 * 4 + 4, 3 * 6 + 3))
+  let v = entry(1, 2)
+  let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
+  // Centroid of (0, 0), (100, 0), (100, 100) (the commands are deltas); base
+  // clamped to 0; height 10 m at z14 and 25.3 m (decimeters) at z15.
+  assert_eq((i16_at(b, v + 12), i16_at(b, v + 14)), (66, 33))
+  assert_eq(
+    (u16(v + 16), u16(v + 18), u16(v + 20), u16(v + 22)),
+    (0, 0, 100, 253),
+  )
+}

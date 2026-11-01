@@ -14,6 +14,7 @@ pub(all) enum LayerKind {
   Circle
   Symbol
   Hillshade
+  FillExtrusion
 } derive(Debug, Eq)
 
 ///|
@@ -54,6 +55,7 @@ pub struct StyleLayer {
   halo_width : Expr
   text : TextLayout?
   hillshade : HillshadePaint?
+  extrusion : ExtrusionPaint?
   join : Join
   cap : Cap
   miter_limit : Double
@@ -95,6 +97,7 @@ pub struct Style {
   layers : Array[StyleLayer]
   terrain : Terrain?
   sky : Sky?
+  light : Light
 }
 
 ///|
@@ -176,7 +179,13 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
     }
     Some(_) => raise Invalid(path="terrain", "not an object")
   }
-  { sources, layers, terrain, sky: parse_sky(root.get("sky")), }
+  {
+    sources,
+    layers,
+    terrain,
+    sky: parse_sky(root.get("sky")),
+    light: parse_light(root.get("light")),
+  }
 }
 
 ///|
@@ -324,6 +333,7 @@ fn parse_layer(
     "circle" => Circle
     "symbol" => Symbol
     "hillshade" => Hillshade
+    "fill-extrusion" => FillExtrusion
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -341,6 +351,7 @@ fn parse_layer(
     Circle => "circle"
     Symbol => "text"
     Hillshade => "hillshade"
+    FillExtrusion => "fill-extrusion"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter
@@ -430,6 +441,11 @@ fn parse_layer(
     },
     hillshade: if kind is Hillshade {
       Some(parse_hillshade(paint, ppath))
+    } else {
+      None
+    },
+    extrusion: if kind is FillExtrusion {
+      Some(parse_extrusion(paint, ppath))
     } else {
       None
     },

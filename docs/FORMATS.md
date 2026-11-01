@@ -23,14 +23,18 @@ payload:
 What the display worker writes for a tile, read by `worker/js/worker.mjs`:
 
 - u32 entry count, then `LAYER_ENTRY_WORDS` u32s per entry: style layer index, kind
-  (`KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3), vertex byte offset and length,
+  (`KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3, `KIND_EXTRUSION` 6), vertex byte
+  offset and length,
   index byte offset, index count, bytes per index (2 up to 65536 vertices, else 4),
   group properties byte offset and length (0 if none).
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
   same data (layers with the same geometry). Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
-  along as i8 (`LINE_VERTEX_BYTES` 8). Coordinates are in `@core.TILE_EXTENT`
-  units.
+  along as i8 (`LINE_VERTEX_BYTES` 8). Extrusion vertices
+  (`EXTRUSION_VERTEX_BYTES` 24) are x, y, normal x, y, z (times 2^14; x's lowest
+  bit set on the top edge), 0, and the feature's centroid x, y as i16, then its
+  base and height at the tile's zoom and one deeper as u16 decimeters (0 to
+  6553.5 m). Coordinates are in `@core.TILE_EXTENT` units.
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.
   The glue decodes them into prototype-less objects.
 
