@@ -196,6 +196,8 @@ pub struct TextLayout {
   padding : Double
   allow_overlap : Bool
   ignore_placement : Bool
+  vertical : Bool
+  sort_key : Expr?
 }
 
 pub(all) enum Value {

@@ -33,7 +33,7 @@ fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
   h.u8(anchor_code(t.anchor))
   h.u8(if t.allow_overlap { 1 } else { 0 })
   h.u8(if t.ignore_placement { 1 } else { 0 })
-  h.u8(0)
+  h.u8(if t.vertical { 1 } else { 0 })
   for v in [t.offset.0, t.offset.1, t.max_width, t.line_height, t.padding] {
     h.f64(v)
   }
@@ -52,6 +52,7 @@ fn Labels::add(
   x : Int32,
   y : Int32,
   size : Double,
+  sort_key : Double,
   parts : Array[@style.Value],
 ) -> Bool {
   if parts.iter().all(v => v is (Null | Str(""))) {
@@ -61,6 +62,7 @@ fn Labels::add(
   w.i16(x)
   w.i16(y)
   w.f64(size)
+  w.f64(sort_key)
   w.u32(parts.length())
   for v in parts {
     write_value(w, v)
@@ -109,6 +111,10 @@ fn TileProcessor::symbol_layer(
       Num(n) if n > 0.0 => n
       _ => continue
     }
+    let sort_key = match text.sort_key.map(e => e.eval(zoom, feature)) {
+      Some(Num(n)) => n
+      _ => 0.0
+    }
     if !self.decode(layer, i) {
       return false
     }
@@ -118,7 +124,7 @@ fn TileProcessor::symbol_layer(
       let x = rescale(g.coords[p * 2], extent)
       let y = rescale(g.coords[p * 2 + 1], extent)
       if x >= 0 && y >= 0 && x < @core.TILE_EXTENT && y < @core.TILE_EXTENT {
-        out.add(x, y, size, parts) |> ignore
+        out.add(x, y, size, sort_key, parts) |> ignore
       }
     }
   }

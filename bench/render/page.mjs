@@ -16,7 +16,7 @@ window.requestAnimationFrame = (f) => raf((t) => {
 
 const START = { lng: 139.7671, lat: 35.6812, zoom: 14.5 };
 const marks = { scriptStart: performance.now() };
-const styleText = (await (await fetch("/bench/maplibre/style.json")).text()).replaceAll("{origin}", location.origin);
+const styleText = (await (await fetch(params.get("style") ?? "/bench/maplibre/style.json")).text()).replaceAll("{origin}", location.origin);
 
 async function createMbmap() {
   // The minified build run.mjs produces, as an app bundler would ship it.
@@ -43,7 +43,8 @@ async function createMaplibre() {
   div.id = "map";
   document.body.append(div);
   const style = JSON.parse(styleText);
-  for (const s of Object.values(style.sources)) s.tiles = s.tiles.map((t) => new URL(t, location.href).href);
+  // The templates are absolute already ({origin} above); new URL() would
+  // percent-encode their braces and every tile would 404.
   const map = new maplibregl.Map({ container: div, style, center: [START.lng, START.lat], zoom: START.zoom, attributionControl: false, pixelRatio: dpr, fadeDuration: 0 });
   return {
     nextIdle: () => new Promise((r) => map.once("idle", r)),

@@ -501,7 +501,10 @@ test "symbol layers pack their points' labels with the layer's layout" {
     0.0, 1.5, 10.0, 1.2, 2.0,
   ])
   assert_eq(r.u32(), 1)
-  assert_eq((r.i16(), r.i16(), r.f64(), r.u32()), (2048, 2048, 10.0, 2))
+  assert_eq(
+    (r.i16(), r.i16(), r.f64(), r.f64(), r.u32()),
+    (2048, 2048, 10.0, 0.0, 2),
+  )
   assert_eq((r.u8(), r.utf8()), (@core.PROP_STRING, "k="))
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
   // The other point lacks k: its text is "k=" and a null part.
@@ -512,6 +515,7 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq(r2.u32(), 1)
   r2.i16() |> ignore
   r2.i16() |> ignore
+  r2.f64() |> ignore
   r2.f64() |> ignore
   assert_eq(r2.u32(), 2)
   r2.u8() |> ignore
@@ -531,4 +535,23 @@ test "labels whose text has no value are left out" {
   assert_eq(p.out.layer_count(), 1)
   let at = u32_at(b, 4 + 2 * 4)
   assert_eq(u32_at(b, at + 44), 1)
+}
+
+///|
+test "vertical writing and sort keys reach the labels" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "t", "type": "symbol", "source": "g", "filter": ["has", "k"],
+    #|   "layout": {"text-field": "{k}", "text-writing-mode": ["vertical"], "symbol-sort-key": ["get", "k"]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let at = u32_at(b, 4 + 2 * 4)
+  let r = @core.ByteReader::new(b[at:])
+  assert_eq((r.u8(), r.u8(), r.u8(), r.u8()), (0, 0, 0, 1))
+  for _ in 0..<5 {
+    r.f64() |> ignore
+  }
+  assert_eq(r.u32(), 1)
+  assert_eq((r.i16(), r.i16(), r.f64(), r.f64()), (2048, 2048, 16.0, 1.0))
 }

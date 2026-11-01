@@ -8,20 +8,22 @@ const glyphs = {
   metrics: () => ({ advance: SDF_SIZE, left: -SDF_BUFFER, top: SDF_SIZE * 0.88 + SDF_BUFFER, width: SDF_SIZE + 2 * SDF_BUFFER, height: SDF_SIZE + 2 * SDF_BUFFER }),
 };
 
-// A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y, size, parts).
-function entry(labels) {
+// A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
+// size, parts, sort key).
+function entry(labels, vertical = 0) {
   const bytes = [];
   const u8 = (v) => bytes.push(v & 0xff);
   const u32 = (v) => [0, 8, 16, 24].forEach((s) => u8(v >>> s));
   const f64 = (v) => bytes.push(...new Uint8Array(new Float64Array([v]).buffer));
   const i16 = (v) => [0, 8].forEach((s) => u8(v >> s));
-  [0, 0, 0, 0].forEach(u8);
+  [0, 0, 0, vertical].forEach(u8);
   [0, 0, 10, 1, 2].forEach(f64);
   u32(labels.length);
-  for (const [x, y, size, parts] of labels) {
+  for (const [x, y, size, parts, key = 0] of labels) {
     i16(x);
     i16(y);
     f64(size);
+    f64(key);
     u32(parts.length);
     for (const p of parts) {
       if (typeof p === "number") {
@@ -64,4 +66,9 @@ test("long labels are cut and far corners clamp to the i16 range", () => {
   for (let o = 0; o < s.vertices.byteLength; o += SYMBOL_VERTEX_BYTES) xs.push(v.getInt16(o + 4, true));
   assert.equal(Math.min(...xs), -32768);
   assert.equal(Math.max(...xs), 32767);
+});
+
+test("lower sort keys come first", () => {
+  const s = buildSymbols(entry([[1, 0, 10, ["a"], 5], [2, 0, 10, ["b"], -1], [3, 0, 10, ["c"], 5]]), glyphs);
+  assert.deepEqual([0, 1, 2].map((i) => s.labels[i * LABEL_FLOATS]), [2, 1, 3]);
 });

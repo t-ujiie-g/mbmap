@@ -10,41 +10,103 @@ export const SDF_RADIUS = 16;
 // `@style.TextAnchor` order (worker/labels.mbt `anchor_code`).
 const ANCHORS = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
 
+// The em box's share above the baseline.
+const ASCENT = 0.88;
+
 // Japanese line-breaking rules (kinsoku): no break before closing marks and
 // small kana, none after opening brackets.
-const NO_BREAK_BEFORE = new Set([..."、。，．）」』】〉》〕｝！？ー・：；ぁぃぅぇぉっゃゅょァィゥェォッャュョ"]);
-const NO_BREAK_AFTER = new Set([..."（「『【〈《〔｛"]);
+const NO_BREAK_BEFORE = new Set([..."、。，．）」』】〉》〕｝！？ー・：；ぁぃぅぇぉっゃゅょァィゥェォッャュョ︑︒︶﹂﹄︼︾︺"]);
+const NO_BREAK_AFTER = new Set([..."（「『【〈《〔｛︵﹁﹃︻︽︹"]);
 const ideographic = (cp) => cp >= 0x2e80;
 
+// Characters that stand upright in vertical text (a subset of UAX #50's U and
+// Tu: CJK, kana, Hangul, full-width and vertical forms); the rest lie sideways,
+// as does the prolonged sound mark.
+const UPRIGHT = [[0x1100, 0x11ff], [0x2e80, 0x303f], [0x3040, 0x31ff], [0x3200, 0x9fff], [0xa000, 0xa4cf],
+  [0xac00, 0xd7af], [0xf900, 0xfaff], [0xfe10, 0xfe1f], [0xfe30, 0xfe4f], [0xff00, 0xffef], [0x20000, 0x3ffff]];
+const upright = (cp) => cp !== 0x30fc && UPRIGHT.some(([a, b]) => cp >= a && cp <= b);
+
+// MapLibre's vertical forms of punctuation (util/verticalize_punctuation.ts).
+const VERTICAL_FORMS = new Map(Object.entries({
+  "!": "︕", "#": "＃", "$": "＄", "%": "％", "&": "＆", "(": "︵", ")": "︶", "*": "＊", "+": "＋", ",": "︐",
+  "-": "︲", ".": "・", "/": "／", ":": "︓", ";": "︔", "<": "︿", "=": "＝", ">": "﹀", "?": "︖", "@": "＠",
+  "[": "﹇", "\\": "＼", "]": "﹈", "^": "＾", "_": "︳", "`": "｀", "{": "︷", "|": "―", "}": "︸", "~": "～",
+  "¢": "￠", "£": "￡", "¥": "￥", "¦": "￤", "¬": "￢", "¯": "￣", "–": "︲", "—": "︱", "‘": "﹃", "’": "﹄",
+  "“": "﹁", "”": "﹂", "…": "︙", "⋯": "︙", "‧": "・", "₩": "￦", "、": "︑", "。": "︒", "〈": "︿", "〉": "﹀",
+  "《": "︽", "》": "︾", "「": "﹁", "」": "﹂", "『": "﹃", "』": "﹄", "【": "︻", "】": "︼", "〔": "︹", "〕": "︺",
+  "〖": "︗", "〗": "︘", "！": "︕", "（": "︵", "）": "︶", "，": "︐", "－": "︲", "．": "・", "：": "︓", "；": "︔",
+  "＜": "︿", "＞": "﹀", "？": "︖", "［": "﹇", "］": "﹈", "＿": "︳", "｛": "︷", "｜": "―", "｝": "︸", "｟": "︵",
+  "｠": "︶", "｡": "︒", "｢": "﹁", "｣": "﹂",
+}).map(([k, v]) => [k.codePointAt(0), v.codePointAt(0)]));
+
+// Punctuation in its vertical form, unless a neighbour lies sideways (MapLibre's rule).
+function verticalize(cps) {
+  const sideways = (cp) => cp !== undefined && !upright(cp) && !VERTICAL_FORMS.has(cp);
+  return cps.map((cp, i) => (VERTICAL_FORMS.has(cp) && !sideways(cps[i - 1]) && !sideways(cps[i + 1]) ? VERTICAL_FORMS.get(cp) : cp));
+}
+
 /**
- * Lays `text` out at `size` px, anchored and justified like MapLibre; `metrics(cp)`
- * gives {advance, left, top, width, height} at SDF_SIZE. Returns glyph quads and the text box.
+ * Lays `text` out at `size` px, anchored and justified like MapLibre, in columns
+ * when `vertical` and the text has upright characters. `metrics(cp)` gives
+ * {advance, left, top, width, height} at SDF_SIZE. Returns glyph quads (corners
+ * of the padded bitmap: top-left, top-right, bottom-right, bottom-left) and the box.
  */
-export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2 }, metrics) {
+export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2, vertical = false }, metrics) {
   const scale = size / SDF_SIZE;
-  const lines = breakLines([...text].map((c) => c.codePointAt(0)), maxWidth * size, (cp) => metrics(cp).advance * scale);
-  const widths = lines.map((l) => l.reduce((w, cp) => w + metrics(cp).advance * scale, 0));
-  const width = Math.max(0, ...widths);
-  const height = lines.length * lineHeight * size;
+  let cps = [...text].map((c) => c.codePointAt(0));
+  const columns = vertical && cps.some(upright);
+  if (columns) cps = verticalize(cps);
+  const advance = (cp) => (columns && upright(cp) ? size : metrics(cp).advance * scale);
+  const lines = breakLines(cps, maxWidth * size, advance);
+  const lengths = lines.map((l) => l.reduce((w, cp) => w + advance(cp), 0));
+  const across = lines.length * lineHeight * size;
+  const along = Math.max(0, ...lengths);
+  const [width, height] = columns ? [across, along] : [along, across];
   const name = ANCHORS[anchor] ?? "center";
   const ax = name.endsWith("left") ? 0 : name.endsWith("right") ? -width : -width / 2;
   const ay = name.startsWith("top") ? 0 : name.startsWith("bottom") ? -height : -height / 2;
   const x0 = ax + offset[0] * size;
   const y0 = ay + offset[1] * size;
-  const justify = name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5;
+  const justify = columns
+    ? (name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5)
+    : (name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5);
   const quads = [];
+  // A glyph's padded bitmap against its pen and baseline, before any turn.
+  const rect = (m) => [m.left * scale, -m.top * scale, (m.left + m.width) * scale, (m.height - m.top) * scale];
+  const inked = (m) => m.width > 2 * SDF_BUFFER && m.height > 2 * SDF_BUFFER;
   lines.forEach((line, i) => {
-    let pen = x0 + (width - widths[i]) * justify;
-    // The em box sits in the middle of the line box; 0.88 em of it above the baseline.
-    const baseline = y0 + i * lineHeight * size + (lineHeight - 1) * size / 2 + 0.88 * size;
+    let pen = (along - lengths[i]) * justify;
+    if (!columns) {
+      const baseline = y0 + i * lineHeight * size + ((lineHeight - 1) * size) / 2 + ASCENT * size;
+      pen += x0;
+      for (const cp of line) {
+        const m = metrics(cp);
+        if (inked(m)) {
+          const [l, t, r, b] = rect(m);
+          quads.push({ cp, corners: [[pen + l, baseline + t], [pen + r, baseline + t], [pen + r, baseline + b], [pen + l, baseline + b]] });
+        }
+        pen += m.advance * scale;
+      }
+      return;
+    }
+    // Columns run right to left; each character takes its advance down the column.
+    const center = x0 + width - (i + 0.5) * lineHeight * size;
+    pen += y0;
     for (const cp of line) {
       const m = metrics(cp);
-      if (m.width > 2 * SDF_BUFFER && m.height > 2 * SDF_BUFFER) {
-        const qx = pen + m.left * scale;
-        const qy = baseline - m.top * scale;
-        quads.push({ cp, x0: qx, y0: qy, x1: qx + m.width * scale, y1: qy + m.height * scale });
+      if (inked(m)) {
+        const [l, t, r, b] = rect(m);
+        if (upright(cp)) {
+          const x = center - (m.advance * scale) / 2;
+          const y = pen + ASCENT * size;
+          quads.push({ cp, corners: [[x + l, y + t], [x + r, y + t], [x + r, y + b], [x + l, y + b]] });
+        } else {
+          // Turned a quarter clockwise, the em box centered on the column.
+          const x = center + (ASCENT - 0.5) * size;
+          quads.push({ cp, corners: [[x - t, pen + l], [x - t, pen + r], [x - b, pen + r], [x - b, pen + l]] });
+        }
       }
-      pen += m.advance * scale;
+      pen += advance(cp);
     }
   });
   return { quads, box: [x0, y0, x0 + width, y0 + height] };
@@ -80,5 +142,5 @@ function breakLines(cps, limit, advance) {
     }
   }
   lines.push(line);
-  return lines.map((l) => (l[l.length - 1] === 32 ? l.slice(0, -1) : l)).filter((l, i, all) => l.length > 0 || all.length === 1);
+  return lines.map((l) => (l[l.length - 1] === 32 ? l.slice(0, -1) : l)).filter((l, _, all) => l.length > 0 || all.length === 1);
 }

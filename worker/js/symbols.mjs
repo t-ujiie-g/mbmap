@@ -9,7 +9,7 @@ export const SYMBOL_VERTEX_BYTES = 16;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
 export const LABEL_FLOATS = 8;
 // Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`).
-const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, count: 44, labels: 48 };
+const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, count: 44, labels: 48 };
 // Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
 export const MAX_LABEL_CHARS = 256;
 // Most glyphs a worker keeps, and draws for one tile; past them characters are
@@ -84,6 +84,7 @@ export function buildSymbols(bytes, glyphs) {
     offset: [view.getFloat64(HEADER.offset, true), view.getFloat64(HEADER.offset + 8, true)],
     maxWidth: view.getFloat64(HEADER.maxWidth, true),
     lineHeight: view.getFloat64(HEADER.lineHeight, true),
+    vertical: view.getUint8(HEADER.vertical) === 1,
   };
   const flags = {
     allowOverlap: view.getUint8(HEADER.allowOverlap) === 1,
@@ -99,16 +100,22 @@ export function buildSymbols(bytes, glyphs) {
     const x = view.getInt16(at, true);
     const y = view.getInt16(at + 2, true);
     const size = view.getFloat64(at + 4, true);
-    const parts = view.getUint32(at + 12, true);
+    const key = view.getFloat64(at + 12, true);
+    const parts = view.getUint32(at + 20, true);
     let text;
-    [text, at] = readText(view, bytes, at + 16, parts);
+    [text, at] = readText(view, bytes, at + 24, parts);
     const chars = [...text];
     if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
     const shaped = layoutLabel(text, Math.min(size, 256), layout, (cp) => glyphs.metrics(cp));
     if (shaped.quads.length === 0) continue;
-    for (const q of shaped.quads) if (!local.has(q.cp)) local.set(q.cp, local.size);
-    placed.push({ x, y, size, shaped, first: quads });
-    quads += shaped.quads.length;
+    placed.push({ x, y, size, key, shaped });
+  }
+  // Lower sort keys are placed (and drawn) first; ties keep their order.
+  placed.sort((a, b) => a.key - b.key);
+  for (const l of placed) {
+    for (const q of l.shaped.quads) if (!local.has(q.cp)) local.set(q.cp, local.size);
+    l.first = quads;
+    quads += l.shaped.quads.length;
   }
   const vertices = new ArrayBuffer(quads * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
@@ -119,8 +126,7 @@ export function buildSymbols(bytes, glyphs) {
     labels.set([l.x, l.y, ...l.shaped.box, l.first * 6, l.shaped.quads.length * 6], i * LABEL_FLOATS);
     l.shaped.quads.forEach((q, k) => {
       const n = l.first + k;
-      const corners = [[q.x0, q.y0], [q.x1, q.y0], [q.x1, q.y1], [q.x0, q.y1]];
-      corners.forEach(([cx, cy], c) => {
+      q.corners.forEach(([cx, cy], c) => {
         const o = (n * 4 + c) * SYMBOL_VERTEX_BYTES;
         v.setInt16(o, l.x, true);
         v.setInt16(o + 2, l.y, true);

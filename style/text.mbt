@@ -15,7 +15,8 @@ pub(all) enum TextAnchor {
 ///|
 /// A symbol layer's text layout: `field` is `text-field` as parts to join
 /// (strings, or numbers and booleans the worker glue writes out), sizes in
-/// CSS pixels, `offset`, `max_width` and `line_height` in ems.
+/// CSS pixels, `offset`, `max_width` and `line_height` in ems. `vertical` is
+/// the first `text-writing-mode`; `sort_key` is `symbol-sort-key`.
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
@@ -26,6 +27,8 @@ pub struct TextLayout {
   padding : Double
   allow_overlap : Bool
   ignore_placement : Bool
+  vertical : Bool
+  sort_key : Expr?
 }
 
 ///|
@@ -131,5 +134,20 @@ fn parse_text(
     padding: number_or(layout, "text-padding", path, 2.0),
     allow_overlap: bool_or(layout, "text-allow-overlap", path, false),
     ignore_placement: bool_or(layout, "text-ignore-placement", path, false),
+    vertical: match layout.get("text-writing-mode") {
+      None | Some(Array([])) => false
+      Some(Array([String("vertical"), ..])) => true
+      Some(Array([String("horizontal"), ..])) => false
+      Some(_) =>
+        raise Invalid(
+          path="\{path}.text-writing-mode",
+          "not a list of horizontal and vertical",
+        )
+    },
+    sort_key: match layout.get("symbol-sort-key") {
+      None => None
+      Some(j) =>
+        Some(compile(j, expected=NumberType, path="\{path}.symbol-sort-key"))
+    },
   }
 }
