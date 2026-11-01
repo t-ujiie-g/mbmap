@@ -140,8 +140,8 @@ license and source.
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 
-- proj/cylindrical.mbt: Equal Earth follows proj4js's lib/projections/eqearth.js,
-  Copyright 2018 Bernie Jenny, Monash University, Melbourne, Australia,
+- proj/pseudocylindrical.mbt: Equal Earth follows proj4js's
+  lib/projections/eqearth.js, Copyright 2018 Bernie Jenny, Monash University, Melbourne, Australia,
   Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
 Test / benchmark data:

@@ -41,7 +41,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28906,
+      "bytes": 28862,
       "budget": 30000
     },
     {
@@ -51,7 +51,7 @@
     },
     {
       "name": "coordinate systems (loaded by the analysis worker on first use)",
-      "bytes": 21797,
+      "bytes": 21647,
       "budget": 25000
     }
   ]

@@ -6,13 +6,16 @@ import { wasmUrl, workerScriptUrl } from "./urls";
 /** `[minX, minY, maxX, maxY]` in degrees. */
 export type BBox = [number, number, number, number];
 
+/**
+ * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the
+ * geometry module of buffers and overlays (`geometryWasmUrl`) and the
+ * coordinate system module (`projWasmUrl`) are served; by default next to
+ * this module.
+ */
 export interface AnalysisOptions {
-  /** Where the analysis worker and its wasm are served (by default next to this module). */
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
-  /** Where the geometry module (buffers and overlays) is served. */
   geometryWasmUrl?: string | URL;
-  /** Where the coordinate system module is served. */
   projWasmUrl?: string | URL;
 }
 
@@ -59,21 +62,22 @@ async function crsArg(crs: Crs): Promise<CrsArg> {
  */
 export type BufferMode = "geodesic" | "planar";
 
+/**
+ * - `mode`: default `"geodesic"`.
+ * - `join`: how corners turn (default `"round"`); `cap`: how lines end (default `"round"`).
+ * - `arcTolerance`: how far round edges may stray from true arcs, in meters (default: distance / 500).
+ * - `crs`: the projected CRS a planar buffer is measured in (default EPSG:3857).
+ */
 export interface BufferOptions {
-  /** Default `"geodesic"`. */
   mode?: BufferMode;
-  /** How corners turn: default `"round"`. */
   join?: "round" | "miter" | "square" | "bevel";
-  /** How lines end: default `"round"`. */
   cap?: "round" | "butt" | "square";
-  /** How far round edges may stray from true arcs, in meters (default: distance / 500). */
   arcTolerance?: number;
-  /** The projected CRS a planar buffer is measured in (default EPSG:3857). */
   crs?: Crs;
 }
 
+/** `crs`: the CRS of the data's coordinates (default EPSG:4326); they are kept as longitude and latitude. */
 export interface LoadOptions extends AnalysisOptions {
-  /** The CRS of the data's coordinates (default EPSG:4326); they are kept as longitude and latitude. */
   crs?: Crs;
 }
 
@@ -267,10 +271,9 @@ export class Dataset {
 /** How a DEM's RGB holds elevations: MapLibre's encodings, GSI's, or custom factors. */
 export type DemEncoding = "mapbox" | "terrarium" | "gsi" | { redFactor: number; greenFactor: number; blueFactor: number; baseShift?: number };
 
+/** `zoom`: the tile zoom to read (the grid's cells are its pixels); `bounds`: the area to cover (the grid snaps outward to whole tiles). */
 export interface DemOptions extends AnalysisOptions {
-  /** Tile zoom to read; the grid's cells are its pixels. */
   zoom: number;
-  /** The area to cover; the grid snaps outward to whole tiles. */
   bounds: BBox;
   encoding?: DemEncoding;
 }

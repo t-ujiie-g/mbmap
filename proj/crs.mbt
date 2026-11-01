@@ -301,15 +301,7 @@ pub fn Crs::new(d : Definition, trig~ : Trig = Trig::moonbit()) -> Crs? {
   Some({
     m,
     projection,
-    datum: Datum::new(
-      d.towgs84,
-      d.a,
-      if (d.a - d.b).abs() < EPSLN {
-        d.a
-      } else {
-        d.b
-      },
-    ),
+    datum: Datum::new(d.towgs84, d.a, p.b),
     datum_wgs84: d.datum_wgs84,
     to_meter: d.to_meter,
     from_greenwich: d.from_greenwich,
@@ -335,7 +327,7 @@ fn finite(p : (Double, Double)) -> (Double, Double)? {
 ///|
 /// This CRS's coordinates to longitude and latitude in radians on its own
 /// datum and from Greenwich.
-fn Crs::to_geodetic(self : Crs, x : Double, y : Double) -> (Double, Double)? {
+fn Crs::to_geodetic(self : Crs, x : Double, y : Double) -> (Double, Double) {
   let m = self.m
   let (lon, lat) = match self.projection {
     LongLat => (x * D2R, y * D2R)
@@ -374,7 +366,7 @@ fn Crs::to_geodetic(self : Crs, x : Double, y : Double) -> (Double, Double)? {
       }
     }
   }
-  finite((lon + self.from_greenwich, lat))
+  (lon + self.from_greenwich, lat)
 }
 
 ///|
@@ -383,7 +375,7 @@ fn Crs::from_geodetic(
   self : Crs,
   lon : Double,
   lat : Double,
-) -> (Double, Double)? {
+) -> (Double, Double) {
   let m = self.m
   let lon = lon - self.from_greenwich
   let xy = match self.projection {
@@ -393,7 +385,7 @@ fn Crs::from_geodetic(
       } else {
         self.long_wrap + adjust_lon(lon - self.long_wrap)
       }
-      return finite((lon * R2D, lat * R2D))
+      return (lon * R2D, lat * R2D)
     }
     Merc(m) => m.forward(lon, lat)
     Tmerc(t) => t.forward(lon, lat)
@@ -421,13 +413,11 @@ fn Crs::from_geodetic(
     Bonne(l) => l.forward(lon, lat)
   }
   let (x, y) = xy
-  finite(
-    if self.to_meter.is_nan() || self.to_meter == 0.0 {
-      (x, y)
-    } else {
-      (x / self.to_meter, y / self.to_meter)
-    },
-  )
+  if self.to_meter.is_nan() || self.to_meter == 0.0 {
+    (x, y)
+  } else {
+    (x / self.to_meter, y / self.to_meter)
+  }
 }
 
 ///|
@@ -452,9 +442,8 @@ pub fn transform(
     return finite((x, y))
   }
   let m = from.m
-  guard finite((x, y)) is Some(_) && from.to_geodetic(x, y) is Some((lon, lat)) else {
-    return None
-  }
+  // NaN and infinities run through to the one check at the end.
+  let (lon, lat) = from.to_geodetic(x, y)
   let p = if not_wgs(from, to) {
     let p = datum_transform(m, from.datum, wgs84_datum, (lon, lat, 0.0))
     // proj4js returns the intermediate point in degrees, without its height.
@@ -463,6 +452,5 @@ pub fn transform(
   } else {
     datum_transform(m, from.datum, to.datum, (lon, lat, 0.0))
   }
-  guard finite((p.0, p.1)) is Some(_) else { return None }
-  to.from_geodetic(p.0, p.1)
+  finite(to.from_geodetic(p.0, p.1))
 }

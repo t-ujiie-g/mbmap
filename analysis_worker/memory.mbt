@@ -1,13 +1,9 @@
 ///|
-/// Largest input accepted (AGENTS.md §8.2: limit the size before reading).
-pub const MAX_INPUT_BYTES : Int32 = 256 * 1024 * 1024
-
-///|
 /// Makes room for `len` input bytes and returns where JS should write them,
 /// or -1 if `len` is too large.
 #export_name("prepare_input")
 pub fn prepare_input(len : Int32) -> Int32 {
-  @wasmio.prepare_input(len, MAX_INPUT_BYTES)
+  @wasmio.prepare_input(len, @wasmio.MAX_INPUT_BYTES)
 }
 
 ///|

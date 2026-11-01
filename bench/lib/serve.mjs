@@ -36,11 +36,12 @@ export function serve(port = 0) {
       if ((await stat(file)).isDirectory()) file = path.join(file, "index.html");
       if (!(await stat(file)).isFile()) throw new Error("not a file");
       const body = await readFile(file);
+      // The cross-origin isolation headers enable high-resolution timers
+      // (performance.now) in browsers.
       res.writeHead(200, {
         "content-type": TYPES[path.extname(file)] ?? "application/octet-stream",
         "cache-control": "no-store",
         "x-content-type-options": "nosniff",
-        // Enables high-resolution timers (performance.now) in browsers.
         "cross-origin-opener-policy": "same-origin",
         "cross-origin-embedder-policy": "require-corp",
       });

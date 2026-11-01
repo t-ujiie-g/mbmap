@@ -4,15 +4,15 @@
 // See NOTICE.
 
 ///|
+/// How a datum shifts to WGS 84: `Unknown` (no `towgs84`: never shifted),
+/// `Wgs84` (a zero shift), or a Helmert shift of three or seven parameters
+/// (rotations in radians, the scale as a factor).
 priv enum DatumKind {
-  /// No `towgs84`: coordinates are never shifted.
   Unknown
-  /// Zero shift: the same as WGS 84.
   Wgs84
   ThreeParam
-  /// Rotations in radians and the scale as a factor.
   SevenParam
-}
+} derive(Eq)
 
 ///|
 /// A datum: its Helmert shift to WGS 84 and its ellipsoid.
@@ -85,15 +85,6 @@ fn Datum::same(self : Datum, other : Datum) -> Bool {
     }
   }
   true
-}
-
-///|
-impl Eq for DatumKind with fn equal(a, b) {
-  match (a, b) {
-    (Unknown, Unknown) | (Wgs84, Wgs84) => true
-    (ThreeParam, ThreeParam) | (SevenParam, SevenParam) => true
-    _ => false
-  }
 }
 
 ///|
@@ -172,7 +163,7 @@ fn geocentric_to_geodetic(
   let mut cphi0 = st * (1.0 - es) * rx
   let mut sphi0 = ct * rx
   let mut height = 0.0
-  for iter = 1; iter <= 30; iter = iter + 1 {
+  for _ in 0..<30 {
     let rn = a / (1.0 - es * sphi0 * sphi0).sqrt()
     height = p * cphi0 + z * sphi0 - rn * (1.0 - es * sphi0 * sphi0)
     let rk = es * rn / (rn + height)

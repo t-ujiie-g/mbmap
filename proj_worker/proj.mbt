@@ -1,8 +1,4 @@
 ///|
-/// Largest input accepted (AGENTS.md §8.2: limit the size before reading).
-pub const MAX_INPUT_BYTES : Int32 = 256 * 1024 * 1024
-
-///|
 const MAX_DEFINED_CRS : Int32 = 1024
 
 ///|
@@ -10,7 +6,7 @@ const MAX_DEFINED_CRS : Int32 = 1024
 /// or -1 if `len` is too large.
 #export_name("prepare_input")
 pub fn prepare_input(len : Int32) -> Int32 {
-  @wasmio.prepare_input(len, MAX_INPUT_BYTES)
+  @wasmio.prepare_input(len, @wasmio.MAX_INPUT_BYTES)
 }
 
 ///|
@@ -66,6 +62,9 @@ let trig : @proj.Trig = {
 }
 
 ///|
+let nan2 : (Double, Double) = (@double.not_a_number, @double.not_a_number)
+
+///|
 /// The CRSs `define_crs` made, by handle.
 let defined : Array[@proj.Crs] = []
 
@@ -89,30 +88,18 @@ fn crs_name(id : Int32) -> String {
 }
 
 ///|
-fn f64_at(b : Bytes, at : Int32) -> Double {
-  let mut bits = 0UL
-  for k in 0..<8 {
-    bits = bits | (b[at + k].to_uint64() << (k * 8))
-  }
-  bits.reinterpret_as_double()
-}
-
-///|
 /// Makes the CRS encoded in the input (docs/FORMATS.md "CRS definition") and
 /// returns its handle.
 #export_name("define_crs")
 pub fn define_crs() -> Int32 {
-  let input = @wasmio.input_bytes()
+  let slots = @wasmio.input_f64s()
   @wasmio.clear_input()
-  guard input.length() == @proj.DEFINITION_SLOTS * 8 else {
+  guard slots.length() == @proj.DEFINITION_SLOTS else {
     return @wasmio.fail_with("malformed CRS definition")
   }
   guard defined.length() < MAX_DEFINED_CRS else {
     return @wasmio.fail_with("too many CRS definitions")
   }
-  let slots = FixedArray::makei(@proj.DEFINITION_SLOTS, i => {
-    f64_at(input, i * 8)
-  })
   match @proj.Definition::decode(slots[:]).bind(d => @proj.Crs::new(d, trig~)) {
     Some(crs) => {
       defined.push(crs)
@@ -143,15 +130,13 @@ pub fn transform_coords(from : Int32, to : Int32) -> Int32 {
   guard crs_of(to) is Some(t) else {
     return @wasmio.fail_with("unsupported CRS \{crs_name(to)}")
   }
-  let input = @wasmio.input_bytes()
-  let n = input.length() / 16
-  let out = FixedArray::make(n * 2, @double.not_a_number)
-  for i in 0..<n {
-    if @proj.transform(f, t, f64_at(input, i * 16), f64_at(input, i * 16 + 8))
-      is Some((x, y)) {
-      out[i * 2] = x
-      out[i * 2 + 1] = y
-    }
+  let out = @wasmio.input_f64s()
+  for i in 0..<(out.length() / 2) {
+    let (x, y) = @proj.transform(f, t, out[i * 2], out[i * 2 + 1]).unwrap_or(
+      nan2,
+    )
+    out[i * 2] = x
+    out[i * 2 + 1] = y
   }
   @wasmio.clear_input()
   @wasmio.write_f64s(out)

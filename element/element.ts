@@ -13,9 +13,8 @@ import {
 
 export { MAX_PITCH, MAX_WORKERS, MAX_ZOOM, parseBearing, parseCenter, parsePitch, parseZoom } from "./parse";
 
-/** `detail` of the events `<mb-map>` dispatches (they bubble and cross shadow roots). */
+/** `detail` of the events `<mb-map>` dispatches (they bubble and cross shadow roots); `map` is null only for an `mb-error` before the map exists. */
 export interface MbMapEventDetail {
-  /** Null only for an `mb-error` before the map exists. */
   map: Map | null;
   center: LngLat;
   zoom: number;

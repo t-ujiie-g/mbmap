@@ -4,6 +4,8 @@ import { build } from "esbuild";
 import path from "node:path";
 import { ROOT } from "./root.mjs";
 
+// MapLibre redeclares base-class fields in subclasses; it is built with
+// useDefineForClassFields=false, so the bundle must be too.
 export async function bundle(entry, outfile, { platform }) {
   await build({
     entryPoints: [path.join(ROOT, entry)],
@@ -11,8 +13,6 @@ export async function bundle(entry, outfile, { platform }) {
     target: platform === "node" ? "node22" : "es2022",
     minify: true, logLevel: "warning",
     external: ["/_build/*"],
-    // MapLibre redeclares base-class fields in subclasses; it is built with
-    // useDefineForClassFields=false, so the bundle must be too.
     tsconfigRaw: { compilerOptions: { useDefineForClassFields: false } },
     loader: { ".glsl": "text" },
     alias: { "maplibre-src": path.join(ROOT, "bench/node_modules/maplibre-gl/src") },

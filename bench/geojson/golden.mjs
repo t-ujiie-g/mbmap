@@ -18,10 +18,10 @@ function hash(flat) {
 }
 const files = await makeGeoJSONFixtures();
 
+// `maplibre` is MapLibre's GeoJSON source: maxzoom 18, buffer 128 and
+// tolerance 0.375 of a 512 px tile, in 4096-unit tiles.
 export const OPTION_SETS = {
   defaults: { maxZoom: 14, indexMaxZoom: 5, indexMaxPoints: 100000, tolerance: 3, extent: 4096, buffer: 64, wrap: true },
-  // MapLibre's GeoJSON source: maxzoom 18, buffer 128 and tolerance 0.375
-  // of a 512 px tile, in 4096-unit tiles.
   maplibre: { maxZoom: 18, indexMaxZoom: 5, indexMaxPoints: 100000, tolerance: 3, extent: 4096, buffer: 1024, wrap: true },
   noWrap: { maxZoom: 14, indexMaxZoom: 5, indexMaxPoints: 100000, tolerance: 3, extent: 4096, buffer: 64, wrap: false },
 };

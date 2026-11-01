@@ -7,8 +7,6 @@ import {
 }
 
 // Values
-pub const DEGREE_SCALE : Double = 10000000.0
-
 pub fn buffer(@geom.Table, Double, mode? : BufferMode, join? : @clipper.JoinType, cap? : @clipper.EndType, arc_tolerance? : Double) -> @geom.Table
 
 pub fn clip(@geom.Table, @geom.Table) -> @geom.Table

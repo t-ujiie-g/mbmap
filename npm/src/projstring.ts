@@ -6,6 +6,7 @@
 // can load it.
 
 const D2R = 0.01745329251994329577;
+// `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
 const SLOTS = 34;
 
 // The order of `proj/encoding.mbt` `methods`.
