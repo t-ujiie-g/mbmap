@@ -70,29 +70,44 @@ function readGrid(file) {
 }
 
 let failures = 0;
-function compare(name, ours, theirs, tolerance, skip = () => false) {
+// `tolerance` is a number, or per cell a function of its index.
+function compare(name, ours, theirs, tolerance, skip = () => false, angle = false) {
   let worst = 0;
   let over = 0;
+  let exact = 0;
   let compared = 0;
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const k = y * width + x;
       const t = theirs.values[k];
       if (t === theirs.nodata || skip(k, t)) continue;
-      const d = Math.abs(ours[k] - t);
+      const raw = Math.abs(ours[k] - t);
+      // Angles wrap: 359.99 and 0.01 degrees are 0.02 apart.
+      const d = angle ? Math.min(raw, 360 - raw) : raw;
       compared++;
+      if (d === 0) exact++;
       worst = Math.max(worst, d);
-      if (d > tolerance) over++;
+      if (d > (typeof tolerance === "function" ? tolerance(k) : tolerance)) {
+        over++;
+      }
     }
   }
   if (over > 0) failures++;
-  console.log(`${name}: ${compared} cells, max difference ${worst.toPrecision(3)} (tolerance ${tolerance}), ${over} over`);
+  const tol = typeof tolerance === "function" ? "per cell" : tolerance;
+  console.log(`${name}: ${compared} cells, ${exact} exact, max difference ${worst.toPrecision(3)} (tolerance ${tol}), ${over} over`);
 }
 compare("slope (degrees)", slope, gdal(["slope"], "slope.asc"), 0.01);
-// Aspect turns fast where the ground is nearly flat; there float32 noise in
-// GDAL moves it, so cells under 0.5 degrees of slope are left out.
+// GDAL reads the elevations as float32 (about 2^-24 relative error), which moves
+// Horn's sums by up to 8 times that and turns the aspect by atan(error / sums):
+// visible where the ground is nearly flat. Cells under 0.5 degrees are left out.
+const maxElev = elev.reduce((m, v) => (Number.isNaN(v) ? m : Math.max(m, Math.abs(v))), 0);
+const sumError = 8 * maxElev * 2 ** -24;
+const aspectTolerance = (k) => {
+  const sums = 8 * res * Math.tan((slope[k] * Math.PI) / 180);
+  return 0.01 + (Math.atan(sumError / sums) * 180) / Math.PI;
+};
 const theirAspect = gdal(["aspect"], "aspect.asc");
-compare("aspect (degrees)", aspect, theirAspect, 0.01, (k) => slope[k] < 0.5 || Number.isNaN(aspect[k]));
+compare("aspect (degrees)", aspect, theirAspect, aspectTolerance, (k) => slope[k] < 0.5 || Number.isNaN(aspect[k]), true);
 compare("hillshade (0-255)", shade, gdal(["hillshade"], "hillshade.asc"), 1);
 console.log(failures === 0 ? "all within tolerance" : `${failures} comparisons out of tolerance`);
 process.exit(failures === 0 ? 0 : 1);
