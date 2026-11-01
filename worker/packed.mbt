@@ -16,6 +16,10 @@ pub const KIND_CIRCLE : Int32 = 3
 pub const KIND_SYMBOL : Int32 = 4
 
 ///|
+/// Extruded polygons (`@tess.ExtrusionBuffers`), `EXTRUSION_VERTEX_BYTES` per vertex.
+pub const KIND_EXTRUSION : Int32 = 6
+
+///|
 /// Bytes per packed fill vertex: x, y as Int16.
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
@@ -23,6 +27,12 @@ pub const FILL_VERTEX_BYTES : Int32 = 4
 /// Bytes per packed line vertex: x, y as Int16; extrusion x, y, side and
 /// along as Int8 (see `@tess.LINE_VERTEX_STRIDE`).
 pub const LINE_VERTEX_BYTES : Int32 = 8
+
+///|
+/// Bytes per packed extrusion vertex: x, y, normal x, y, z, 0, centroid x, y as
+/// Int16 (see `@tess.EXTRUSION_VERTEX_STRIDE`), then base and height at the
+/// tile's zoom and one deeper as Uint16 decimeters (0 to 6553.5 m).
+pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
@@ -189,6 +199,57 @@ pub fn PackedTile::add_fill(
     self.put_i16(vstart + i * 4 + 2, rescale(v[i * 2 + 1], extent))
   }
   self.put_indices(istart, fills.indices, index_bytes)
+  true
+}
+
+///|
+/// Meters as the Uint16 decimeters of an extrusion vertex, clamped.
+fn decimeters(m : Double) -> Int32 {
+  if m.is_nan() {
+    0
+  } else {
+    (@cmp.maximum(0.0, @cmp.minimum(6553.5, m)) * 10.0).round().to_int()
+  }
+}
+
+///|
+/// Appends a fill-extrusion layer; returns false if the tile would exceed
+/// `MAX_PACKED_BYTES`.
+pub fn PackedTile::add_extrusion(
+  self : PackedTile,
+  style_layer : Int32,
+  b : @tess.ExtrusionBuffers,
+  extent~ : Int32 = @core.TILE_EXTENT,
+) -> Bool {
+  let n = b.num_vertices()
+  guard self.entry(
+      style_layer,
+      KIND_EXTRUSION,
+      n * EXTRUSION_VERTEX_BYTES,
+      n,
+      b.indices.length(),
+    )
+    is Some((vstart, istart, index_bytes)) else {
+    return false
+  }
+  let v = b.vertices
+  let s = @tess.EXTRUSION_VERTEX_STRIDE
+  let h = @tess.EXTRUSION_HEIGHTS
+  for i in 0..<n {
+    let at = vstart + i * EXTRUSION_VERTEX_BYTES
+    self.put_i16(at, rescale(v[i * s], extent))
+    self.put_i16(at + 2, rescale(v[i * s + 1], extent))
+    self.put_i16(at + 4, v[i * s + 2])
+    self.put_i16(at + 6, v[i * s + 3])
+    self.put_i16(at + 8, v[i * s + 4])
+    self.put_i16(at + 10, 0)
+    self.put_i16(at + 12, rescale(v[i * s + 5], extent))
+    self.put_i16(at + 14, rescale(v[i * s + 6], extent))
+    for k in 0..<h {
+      self.store.set_u16(at + 16 + k * 2, decimeters(b.heights[i * h + k]))
+    }
+  }
+  self.put_indices(istart, b.indices, index_bytes)
   true
 }
 

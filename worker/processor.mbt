@@ -7,7 +7,9 @@ pub struct TileProcessor {
   out : PackedTile
   priv fill : @tess.FillTessellator
   priv line : @tess.LineTessellator
+  priv extrusion : @tess.ExtrusionTessellator
   priv fill_pool : Array[@tess.FillBuffers]
+  priv extrusion_pool : Array[@tess.ExtrusionBuffers]
   priv line_pool : Array[@tess.LineBuffers]
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
@@ -22,7 +24,9 @@ pub fn TileProcessor::new(style : @style.Style) -> TileProcessor {
     out: PackedTile::new(),
     fill: @tess.FillTessellator::new(),
     line: @tess.LineTessellator::new(),
+    extrusion: @tess.ExtrusionTessellator::new(),
     fill_pool: [],
+    extrusion_pool: [],
     line_pool: [],
     label_pool: [],
     geometry: @mvt.Geometry::new(),
@@ -83,7 +87,8 @@ fn passes(filter : @style.Expr?, feature : FeatureRef, zoom : Double) -> Bool {
 /// half widths, so layers that differ only in paint (like a road and its
 /// casing) share one.
 fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
-  !(a.kind is Symbol) &&
+  // Extrusions carry their heights in their vertices.
+  !(a.kind is (Symbol | FillExtrusion)) &&
   a.kind == b.kind &&
   a.source == b.source &&
   a.source_layer == b.source_layer &&
@@ -168,6 +173,7 @@ pub fn TileProcessor::process(
     let entries = self.out.layer_count()
     let ok = match sl.kind {
       Fill => self.fill_layer(index, sl, layer, zoom, groups)
+      FillExtrusion => self.extrusion_layer(index, sl, layer, zoom, groups)
       Circle => self.circle_layer(index, sl, layer, zoom, groups)
       Symbol => self.symbol_layer(index, sl, layer, zoom, groups)
       _ => self.line_layer(index, sl, layer, zoom, groups)
@@ -253,6 +259,78 @@ fn TileProcessor::fill_layer(
     let b = self.fill_buffers(g)
     if b.num_vertices() > 0 {
       if !self.out.add_fill(index, b, extent=layer.extent()) {
+        return false
+      }
+      if groups.active {
+        self.out.set_props(groups.props(g))
+      }
+    }
+  }
+  true
+}
+
+///|
+fn TileProcessor::extrusion_buffers(
+  self : TileProcessor,
+  g : Int32,
+) -> @tess.ExtrusionBuffers {
+  while self.extrusion_pool.length() <= g {
+    self.extrusion_pool.push(@tess.ExtrusionBuffers::new())
+  }
+  self.extrusion_pool[g]
+}
+
+///|
+/// A number from `e` for `feature`, or 0.
+fn number_at(e : @style.Expr, zoom : Double, feature : FeatureRef) -> Double {
+  match e.eval(zoom, feature) {
+    Num(n) => n
+    _ => 0.0
+  }
+}
+
+///|
+/// Extrudes a fill-extrusion layer's polygons. Each feature's base and height
+/// are taken at the tile's zoom and one deeper, which the renderer
+/// interpolates between as MapLibre does for zoom-and-feature expressions.
+fn TileProcessor::extrusion_layer(
+  self : TileProcessor,
+  index : Int32,
+  sl : @style.StyleLayer,
+  layer : Features,
+  zoom : Double,
+  groups : Groups,
+) -> Bool {
+  guard sl.extrusion is Some(e) else { return true }
+  for b in self.extrusion_pool {
+    b.clear()
+  }
+  let feature = FeatureRef::new(layer)
+  let heights = FixedArray::make(@tess.EXTRUSION_HEIGHTS, 0.0)
+  for i in 0..<layer.length() {
+    feature.index = i
+    if layer.geom_type(i) is Polygon && passes(sl.filter, feature, zoom) {
+      if !self.decode(layer, i) {
+        return false
+      }
+      heights[0] = number_at(e.base, zoom, feature)
+      heights[1] = number_at(e.base, zoom + 1.0, feature)
+      heights[2] = number_at(e.height, zoom, feature)
+      heights[3] = number_at(e.height, zoom + 1.0, feature)
+      let g = self.geometry
+      self.extrusion.add_polygons(
+        g.coords[:],
+        g.ring_ends[:],
+        heights,
+        self.extrusion_buffers(groups.of(feature)),
+        extent=layer.extent(),
+      )
+    }
+  }
+  for g in 0..<groups.count() {
+    let b = self.extrusion_buffers(g)
+    if b.num_vertices() > 0 {
+      if !self.out.add_extrusion(index, b, extent=layer.extent()) {
         return false
       }
       if groups.active {

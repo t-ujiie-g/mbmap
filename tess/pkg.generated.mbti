@@ -8,6 +8,10 @@ import {
 // Values
 pub const EXTRUDE_SCALE : Int32 = 63
 
+pub const EXTRUSION_HEIGHTS : Int32 = 4
+
+pub const EXTRUSION_VERTEX_STRIDE : Int32 = 7
+
 pub const LINE_VERTEX_STRIDE : Int32 = 6
 
 pub const MAX_MITER_LIMIT : Double = 2.0
@@ -28,6 +32,21 @@ pub struct Earcut {
 }
 pub fn Earcut::new() -> Self
 pub fn Earcut::triangulate(Self, ArrayView[Int32], ArrayView[Int32], Array[Int32]) -> Unit
+
+pub struct ExtrusionBuffers {
+  vertices : Array[Int32]
+  heights : Array[Double]
+  indices : Array[Int32]
+}
+pub fn ExtrusionBuffers::clear(Self) -> Unit
+pub fn ExtrusionBuffers::new() -> Self
+pub fn ExtrusionBuffers::num_vertices(Self) -> Int32
+
+pub struct ExtrusionTessellator {
+  // private fields
+}
+pub fn ExtrusionTessellator::add_polygons(Self, ArrayView[Int32], ArrayView[Int32], FixedArray[Double], ExtrusionBuffers, extent? : Int32) -> Unit
+pub fn ExtrusionTessellator::new() -> Self
 
 pub struct FillBuffers {
   vertices : Array[Int32]

@@ -57,6 +57,23 @@ license and source.
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+- Code following MapLibre GL JS 6.16.0 (https://github.com/maplibre/maplibre-gl-js),
+  BSD 3-Clause License, Copyright (c) 2020, MapLibre contributors (the license
+  text above):
+  - raster/dem.mbt: hillshade_prepare.fragment.glsl (slopes) and the border
+    backfill of src/data/dem_data.ts
+  - render_webgl2/gl.mbt shaders: hillshade.fragment.glsl (`standard`),
+    sky.fragment.glsl, terrain.fragment.glsl (fog), `calculate_visibility` of
+    _prelude.vertex.glsl and the perspective ratio of symbol_sdf.vertex.glsl,
+    fill_extrusion.vertex.glsl
+  - tess/extrusion.mbt: `_generateSideFaces` and `addVertex` of
+    src/data/bucket/fill_extrusion_bucket.ts, `isBoundaryEdge` of
+    src/data/extent_bounds.ts
+  - core/transform.mbt and map/sky.mbt: `getMercatorHorizon`, the fog matrix's
+    range and `calculateFogBlendOpacity`
+  - worker/js/text.mjs: the vertical punctuation forms of
+    src/util/verticalize_punctuation.ts
+
 Test / benchmark data:
 - bench/fixtures/gsi-bvmap/ (downloaded, not committed):
   国土地理院ベクトルタイル提供実験 (GSI Japan, experimental_bvmap)

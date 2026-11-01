@@ -16,7 +16,16 @@ priv struct LayerMesh {
   props : JsProps?
   mut paint : (Double, Paint)?
   labels : LabelSet?
+  ground : ExtrusionGround?
   dem : DemTile?
+}
+
+///|
+/// An extrusion mesh's features (`@render_webgl2.extrusion_runs`) and the DEM
+/// version its ground heights were last looked up at.
+priv struct ExtrusionGround {
+  runs : FixedArray[Int32]
+  mut at : Int32
 }
 
 ///|

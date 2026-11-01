@@ -73,10 +73,11 @@ fn Map::render(self : Map) -> Unit {
     self.renderer.reset_depth()
   }
   let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
+  let light = self.extrusion_light()
   for index, layer in self.style.layers {
-    // With terrain, all but symbols are drawn onto it.
+    // With terrain, all but symbols and extrusions are drawn onto it.
     if layer.kind is Background ||
-      (terrain is Some(_) && !(layer.kind is Symbol)) ||
+      (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion))) ||
       zoom < layer.min_zoom ||
       zoom >= layer.max_zoom {
       continue
@@ -84,7 +85,30 @@ fn Map::render(self : Map) -> Unit {
     // Paint that does not read feature data is the same for every mesh.
     let shared = paint_of(layer, zoom, JsProps::none())
     for d in draws_of.get(layer.source).unwrap_or([]) {
-      self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
+      if layer.extrusion is Some(e) {
+        if terrain is Some(src) {
+          self.ground_extrusions(src, d)
+        }
+        self.draw_extrusions(
+          index,
+          layer,
+          e,
+          shared,
+          d,
+          light,
+          terrain is Some(_),
+        )
+      } else {
+        self.draw_layer(
+          index,
+          layer,
+          shared,
+          d.at,
+          d.meshes,
+          dpr,
+          height_scale~,
+        )
+      }
     }
   }
   if settled {
@@ -96,6 +120,65 @@ fn Map::render(self : Map) -> Unit {
     }
   } else {
     self.idle_fired = false
+  }
+}
+
+///|
+/// `m`'s paint at `zoom`: `shared` unless its features carry their own inputs.
+fn mesh_paint(
+  m : LayerMesh,
+  layer : @style.StyleLayer,
+  shared : Paint,
+  zoom : Double,
+) -> Paint {
+  match (m.props, m.paint) {
+    (None, _) => shared
+    (Some(_), Some((z, p))) if z == zoom => p
+    (Some(props), _) => {
+      let p = paint_of(layer, zoom, props)
+      m.paint = Some((zoom, p))
+      p
+    }
+  }
+}
+
+///|
+/// Draws `index`'s extrusion meshes of one tile, raised onto terrain if any.
+fn Map::draw_extrusions(
+  self : Map,
+  index : Int32,
+  layer : @style.StyleLayer,
+  e : @style.ExtrusionPaint,
+  shared : Paint,
+  d : Draw,
+  light : @render_webgl2.ExtrusionLight,
+  on_terrain : Bool,
+) -> Unit {
+  let t = self.transform
+  let zoom = t.camera.zoom
+  // Heights were taken at the tile's zoom and one deeper.
+  let mix = @cmp.maximum(0.0, @cmp.minimum(1.0, zoom - d.id.z.to_double()))
+  let exaggeration = if on_terrain {
+    self.style.terrain.map(t => t.exaggeration).unwrap_or(1.0)
+  } else {
+    0.0
+  }
+  for m in d.meshes {
+    if m.layer != index || m.ground is None {
+      continue
+    }
+    let p = mesh_paint(m, layer, shared, zoom)
+    self.renderer.draw_extrusion(
+      m.mesh,
+      d.at,
+      (p.r, p.g, p.b),
+      p.a,
+      light,
+      e.vertical_gradient,
+      mix,
+      t.pixels_per_meter(),
+      exaggeration,
+    )
   }
 }
 
@@ -138,15 +221,7 @@ fn Map::draw_layer(
     if m.layer != index {
       continue
     }
-    let p = match (m.props, m.paint) {
-      (None, _) => shared
-      (Some(_), Some((z, p))) if z == zoom => p
-      (Some(props), _) => {
-        let p = paint_of(layer, zoom, props)
-        m.paint = Some((zoom, p))
-        p
-      }
-    }
+    let p = mesh_paint(m, layer, shared, zoom)
     if m.labels is Some(s) {
       // An ancestor standing in for several tiles is drawn once.
       if s.drawn != self.frame_count {

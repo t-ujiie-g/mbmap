@@ -78,6 +78,8 @@ blocks.dispose();
 
 background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`。クラスタリングは未対応）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
 
+fill-extrusion レイヤー（`fill-extrusion-color`、`fill-extrusion-opacity`、`fill-extrusion-height`、`fill-extrusion-base`、`fill-extrusion-vertical-gradient`）とスタイルの `light`（`anchor`、`color`、`intensity`、`position`）に対応している。高さと基部は地物ごとに Worker で頂点に入れ、ズームの式はタイルのズームとその 1 段下の値の間を補間する（MapLibre と同じ）。高さは 0〜6553.5m（0.1m 単位）。地形があるときは、建物を重心の地面の高さに置く。`fill-extrusion-pattern` と `fill-extrusion-translate` は未対応。
+
 hillshade レイヤー（MapLibre の `standard` 方式。`hillshade-illumination-direction`、`hillshade-illumination-anchor`、`hillshade-exaggeration`、`hillshade-shadow-color`、`hillshade-highlight-color`、`hillshade-accent-color`）と `raster-dem` ソース（`tiles`、`tileSize`、`encoding` は `mapbox`・`terrarium`・`custom`、それに国土地理院の標高タイル用の拡張 `gsi`）にも対応している。
 
 スタイルの `terrain`（`source` に `raster-dem` ソース、`exaggeration`）で、地図を地形の起伏の上に貼って描く。カメラの中心は地面の高さに合わせて持ち上がる。symbol レイヤーのラベルは地形の高さに置き、地形に隠れるものは消す（MapLibre と同じく、地形の深度と比べる）。

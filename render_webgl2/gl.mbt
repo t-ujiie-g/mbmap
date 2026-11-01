@@ -39,6 +39,8 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 2, "a_tex");
   #|    gl.bindAttribLocation(p, 3, "a_size");
   #|    gl.bindAttribLocation(p, 4, "a_ele");
+  #|    gl.bindAttribLocation(p, 1, "a_normal");
+  #|    gl.bindAttribLocation(p, 3, "a_heights");
   #|    gl.linkProgram(p);
   #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   #|    const u = { program: p };
@@ -114,6 +116,35 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  o = u_color * v_alpha * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
   #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_glyphs", "u_color",
   #|     "u_halo"]);
+  #|  // MapLibre's fill_extrusion shaders: a_normal is the normal times 2^14 with
+  #|  // the top-edge flag in x's lowest bit, a_heights the base and height in
+  #|  // decimeters at the tile's zoom and one deeper (mixed by u_t), a_ele the
+  #|  // ground in meters under the feature's centroid, times u_ground (0
+  #|  // without terrain, which also drops ground-level floors 10 m into a
+  #|  // basement); u_scale is world pixels per meter.
+  #|  const extrusion = program(
+  #|    "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele; uniform mat4 u_matrix;" +
+  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos;" +
+  #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
+  #|    "uniform float u_opacity; uniform vec3 u_color; out vec4 v_color; out vec2 v_pos;" +
+  #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
+  #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal);" +
+  #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
+  #|    "  float top = a_ele * u_ground, bottom = u_ground > 0.0 ? top - (base > 0.0 ? 0.0 : 10.0) : 0.0;" +
+  #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
+  #|    "  float t = float(a_normal.x & 1); v_pos = a_pos;" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, (t > 0.0 ? height : base) * u_scale, 1.0);" +
+  #|    "  vec3 color = u_color; float colorvalue = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;" +
+  #|    "  v_color = vec4(0.0, 0.0, 0.0, 1.0); color += vec3(0.03);" +
+  #|    "  float directional = clamp(dot(normal / 16384.0, u_lightpos), 0.0, 1.0);" +
+  #|    "  directional = mix(1.0 - u_lightintensity, max(1.0 - colorvalue + u_lightintensity, 1.0), directional);" +
+  #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
+  #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
+  #|    "  v_color.rgb += clamp(color * directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));" +
+  #|    "  v_color *= u_opacity; }",
+  #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
+  #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|     "u_vertical_gradient", "u_opacity", "u_color"]);
   #|  // MapLibre's hillshade.fragment.glsl, `standard` method, over the tile's
   #|  // quad: v_pos runs 0-1 across the slopes texture, u_lat is the tile's north
   #|  // and south latitude, u_light its azimuth (radians) and exaggeration.
@@ -210,7 +241,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, symbol, hillshade, terrain, sky, empty, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, line, circle, symbol, hillshade, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -224,7 +255,7 @@ extern "js" fn gl_viewport(gl : Gl, width : Int32, height : Int32) -> Unit =
 
 ///|
 extern "js" fn gl_clear(gl : Gl, r : Double, g : Double, b : Double) -> Unit =
-  #|(c, r, g, b) => { c.gl.clearColor(r, g, b, 1); c.gl.clear(c.gl.COLOR_BUFFER_BIT); }
+  #|(c, r, g, b) => { c.gl.clearColor(r, g, b, 1); c.gl.clear(c.gl.COLOR_BUFFER_BIT | c.gl.DEPTH_BUFFER_BIT); }
 
 ///|
 extern "js" fn gl_upload(
@@ -768,4 +799,117 @@ extern "js" fn gl_set_heights(
   #|  }
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
   #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|}
+
+///|
+/// Uploads a fill-extrusion entry (`@worker.EXTRUSION_VERTEX_BYTES` per
+/// vertex), with a ground height of 0 m under every vertex.
+extern "js" fn gl_upload_extrusion(
+  gl : Gl,
+  vertices : JsBuffer,
+  indices : JsBuffer,
+  count : Int32,
+  index_bytes : Int32,
+) -> Mesh =
+  #|(c, vertices, indices, count, indexBytes) => {
+  #|  const gl = c.gl, n = vertices.byteLength / 24;
+  #|  const vao = gl.createVertexArray();
+  #|  gl.bindVertexArray(vao);
+  #|  const vbo = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(0);
+  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 24, 0);
+  #|  gl.enableVertexAttribArray(1);
+  #|  gl.vertexAttribIPointer(1, 3, gl.SHORT, 24, 4);
+  #|  gl.enableVertexAttribArray(3);
+  #|  gl.vertexAttribPointer(3, 4, gl.UNSIGNED_SHORT, false, 24, 16);
+  #|  const ele = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, n * 4, gl.DYNAMIC_DRAW);
+  #|  gl.enableVertexAttribArray(4);
+  #|  gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 4, 0);
+  #|  const ibo = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  #|  gl.bindVertexArray(null);
+  #|  const type = indexBytes === 2 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT;
+  #|  return { vao, vbo, ibo, ele, vertices: n, count, type, bytes: vertices.byteLength + indices.byteLength };
+  #|}
+
+///|
+/// Where an extrusion entry's features start and their centroids: vertex index,
+/// centroid x, y for each run of vertices sharing a centroid.
+extern "js" fn extrusion_runs_of(vertices : JsBuffer) -> FixedArray[Int32] =
+  #|(vertices) => {
+  #|  const v = new Int16Array(vertices), out = [];
+  #|  for (let i = 0, n = v.length / 12; i < n; i++) {
+  #|    const x = v[i * 12 + 6], y = v[i * 12 + 7];
+  #|    if (i === 0 || x !== v[i * 12 - 6] || y !== v[i * 12 - 5]) out.push(i, x, y);
+  #|  }
+  #|  return out;
+  #|}
+
+///|
+/// Sets the ground (meters) under each run of `runs` (as `extrusion_runs`
+/// lists them) to the matching value of `heights`.
+extern "js" fn gl_set_ground(
+  gl : Gl,
+  mesh : Mesh,
+  runs : FixedArray[Int32],
+  heights : FixedArray[Double],
+) -> Unit =
+  #|(c, m, runs, heights) => {
+  #|  const gl = c.gl, out = new Float32Array(m.vertices);
+  #|  for (let r = 0; r < heights.length; r++) {
+  #|    const end = r + 1 < heights.length ? runs[(r + 1) * 3] : m.vertices;
+  #|    out.fill(heights[r], runs[r * 3], end);
+  #|  }
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|}
+
+///|
+/// Draws an extrusion mesh with depth testing (twice when translucent: depth
+/// first, then the nearest surface's color). `light` is the light's direction
+/// (x, y, z), intensity and color (r, g, b); `heights` is the zoom mix,
+/// world pixels per meter and the terrain exaggeration (0 without terrain).
+extern "js" fn gl_draw_extrusion(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  color : FixedArray[Double],
+  opacity : Double,
+  light : FixedArray[Double],
+  gradient : Bool,
+  heights : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip, color, opacity, light, gradient, heights) => {
+  #|  const gl = c.gl, p = c.extrusion;
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform3f(p.u_color, color[0], color[1], color[2]);
+  #|  gl.uniform1f(p.u_opacity, opacity);
+  #|  gl.uniform3f(p.u_lightpos, light[0], light[1], light[2]);
+  #|  gl.uniform1f(p.u_lightintensity, light[3]);
+  #|  gl.uniform3f(p.u_lightcolor, light[4], light[5], light[6]);
+  #|  gl.uniform1f(p.u_vertical_gradient, gradient ? 1 : 0);
+  #|  gl.uniform1f(p.u_t, heights[0]);
+  #|  gl.uniform1f(p.u_scale, heights[1]);
+  #|  gl.uniform1f(p.u_ground, heights[2]);
+  #|  gl.bindVertexArray(m.vao);
+  #|  gl.enable(gl.DEPTH_TEST);
+  #|  gl.depthFunc(gl.LEQUAL);
+  #|  if (opacity < 1) {
+  #|    gl.colorMask(false, false, false, false);
+  #|    gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|    gl.colorMask(true, true, true, true);
+  #|    gl.depthMask(false);
+  #|  }
+  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.depthMask(true);
+  #|  gl.disable(gl.DEPTH_TEST);
   #|}

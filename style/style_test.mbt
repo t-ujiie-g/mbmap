@@ -511,3 +511,57 @@ test "sky takes the spec's defaults and zoom expressions" {
     }
   }
 }
+
+///|
+test "fill-extrusion layers read heights, the gradient and the light" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [{"id": "b", "type": "fill-extrusion", "source": "v", "source-layer": "building",
+      #|  "paint": {"fill-extrusion-color": "#ff0000", "fill-extrusion-opacity": 0.5,
+      #|   "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 30, 8],
+      #|   "fill-extrusion-vertical-gradient": false}}],
+      #| "light": {"anchor": "map", "intensity": 0.3, "position": [1.5, 90, 80]}}
+    ),
+  )
+  let l = s.layers[0]
+  assert_eq(l.kind, FillExtrusion)
+  assert_eq(constant(l.opacity), Num(0.5))
+  let e = l.extrusion.unwrap()
+  assert_eq(constant(e.base), Num(0.0))
+  assert_eq(constant(e.height), Num(8.0))
+  assert_true(!e.vertical_gradient)
+  assert_eq(
+    (s.light.viewport, constant(s.light.intensity), s.light.position),
+    (false, Num(0.3), (1.5, 90.0, 80.0)),
+  )
+  let plain = @style.Style::parse("{\"layers\": []}").light
+  assert_eq((plain.viewport, plain.position), (true, (1.15, 210.0, 30.0)))
+  assert_eq(constant(plain.intensity), Num(0.5))
+  for
+    c in [
+      (
+        "\"paint\": {\"fill-extrusion-pattern\": \"x\"}}]}", "Unsupported", "layers[0].paint.fill-extrusion-pattern",
+      ),
+      (
+        "\"paint\": {\"fill-extrusion-translate\": [1, 0]}}]}", "Unsupported", "layers[0].paint.fill-extrusion-translate",
+      ),
+      (
+        "\"paint\": {\"fill-extrusion-vertical-gradient\": 1}}]}", "Invalid", "layers[0].paint.fill-extrusion-vertical-gradient",
+      ),
+      (
+        "\"paint\": {}}], \"light\": {\"anchor\": \"up\"}}", "Invalid", "light.anchor",
+      ),
+      (
+        "\"paint\": {}}], \"light\": {\"position\": [1, 2]}}", "Invalid", "light.position",
+      ),
+    ] {
+    let text = "{\"layers\": [{\"id\": \"b\", \"type\": \"fill-extrusion\", " +
+      c.0
+    try @style.Style::parse(text) catch {
+      Invalid(path~, _) => assert_eq(("Invalid", path), (c.1, c.2))
+      Unsupported(path~, _) => assert_eq(("Unsupported", path), (c.1, c.2))
+    } noraise {
+      _ => fail("expected \{text} to be refused")
+    }
+  }
+}
