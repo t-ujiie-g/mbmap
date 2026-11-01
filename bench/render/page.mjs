@@ -46,7 +46,7 @@ async function createMaplibre() {
   const style = JSON.parse(styleText);
   // The templates are absolute already ({origin} above); new URL() would
   // percent-encode their braces and every tile would 404.
-  const map = new maplibregl.Map({ container: div, style, center: [START.lng, START.lat], zoom: START.zoom, pitch, attributionControl: false, pixelRatio: dpr, fadeDuration: 0 });
+  const map = new maplibregl.Map({ container: div, style, center: [START.lng, START.lat], zoom: START.zoom, pitch, maxPitch: 85, attributionControl: false, pixelRatio: dpr, fadeDuration: 0 });
   return {
     nextIdle: () => new Promise((r) => map.once("idle", r)),
     set: (c) => map.jumpTo({ center: [c.lng, c.lat], zoom: c.zoom, pitch }),

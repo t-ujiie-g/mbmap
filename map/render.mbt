@@ -64,6 +64,7 @@ fn Map::render(self : Map) -> Unit {
   }
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
+  self.draw_sky(dpr)
   let zoom = t.camera.zoom
   if terrain is Some(src) {
     self.render_terrain(src, draws_of, dpr)

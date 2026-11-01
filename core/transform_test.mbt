@@ -14,13 +14,15 @@ fn close(a : Double, b : Double) -> Bool {
 }
 
 ///|
-/// Cameras every view test runs with: flat, rotated, pitched, both.
+/// Cameras every view test runs with: flat, rotated, pitched, both, and one
+/// that sees the horizon.
 fn views() -> Array[@core.Camera] {
   [
     tokyo(),
     { ..tokyo(), bearing: 30.0, },
     { ..tokyo(), pitch: 45.0, },
     { ..tokyo(), bearing: -120.0, pitch: 60.0, },
+    { ..tokyo(), bearing: 10.0, pitch: 85.0, },
   ]
 }
 
@@ -103,7 +105,7 @@ test "zoom, latitude and pitch are clamped, longitude and bearing wrap" {
       center: { lng: 190.0, lat: 89.0, },
       zoom: 30.0,
       bearing: 270.0,
-      pitch: 80.0,
+      pitch: 89.0,
     },
     100.0,
     100.0,
@@ -208,6 +210,31 @@ test "a pitched view uses lower zooms in the distance" {
 }
 
 ///|
+test "the horizon comes on screen above 70 degrees and bounds the ground" {
+  let at = (pitch : Double) => {
+    @core.Transform::new({ ..tokyo(), pitch, }, 800.0, 600.0)
+  }
+  assert_true(at(60.0).horizon() > 300.0 && at(75.0).horizon() < 300.0)
+  let t = at(85.0)
+  let line = 300.0 - t.horizon()
+  // Above the line is sky: its points take the ground at the line.
+  let sky = t.screen_to_mercator(200.0, 10.0)
+  assert_eq(sky, t.screen_to_mercator(200.0, line))
+  let (x, y) = t.mercator_to_screen(sky)
+  assert_true((x - 200.0).abs() < 1.0e-6 && (y - line).abs() < 1.0e-6)
+  // The ground ends about 6.6 camera distances ahead (LOD_DISTANCE 1.5 doubled
+  // twice): 2 zoom levels below the center's. A source that starts at the
+  // center's zoom leaves the last stretch to the fog.
+  let tiles = t.covering_tiles(4, 14)
+  assert_eq(tiles.fold(init=14, (z, tile) => @cmp.minimum(z, tile.z)), 12)
+  assert_true(tiles.length() < 60)
+  let tiles = t.covering_tiles(14, 14)
+  assert_true(tiles.length() > 0 && tiles.iter().all(tile => tile.z == 14))
+  let distant = @core.tile_containing(sky, 14).unwrap()
+  assert_true(!tiles.contains(distant))
+}
+
+///|
 test "tile_matrix maps the tile's corners to their screen positions" {
   for camera in views() {
     let t = @core.Transform::new(camera, 800.0, 600.0)
@@ -306,4 +333,24 @@ test "with_elevation keeps the lifted center at the middle of the screen" {
   // Moving the camera keeps the elevation; NaN is ignored.
   assert_eq(lifted.with_camera({ ..tokyo(), zoom: 13.0, }).elevation, 1000.0)
   assert_eq(lifted.with_elevation(@double.not_a_number).elevation, 1000.0)
+}
+
+///|
+test "fog_range runs from sea level under the camera to the far plane" {
+  let t = @core.Transform::new({ ..tokyo(), pitch: 80.0, }, 800.0, 600.0)
+  let d = t.center_depth()
+  let (near, far) = t.fog_range()
+  assert_eq(near, d)
+  // The far plane is past the horizon's ground: the horizon line's depth.
+  let m = t.screen_to_mercator(400.0, 300.0 - t.horizon())
+  let tile = @core.tile_containing(tokyo().center.to_mercator(), 14).unwrap()
+  let b = tile.mercator_bounds()
+  let unit = (b.max_x - b.min_x) / 4096.0
+  let (_, _, _, w) = t
+    .tile_matrix(tile, 4096)
+    .apply((m.x - b.min_x) / unit, (m.y - b.min_y) / unit, 0.0, 1.0)
+  assert_true(w > d * 3.0 && w < far && far < w * 1.02)
+  // A camera lifted onto terrain is farther from sea level.
+  let (lifted, _) = t.with_elevation(1000.0).fog_range()
+  assert_true(lifted > d * 1.1)
 }

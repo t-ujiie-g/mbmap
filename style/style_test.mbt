@@ -470,3 +470,44 @@ test "terrain names a raster-dem source and an exaggeration" {
     }
   }
 }
+
+///|
+test "sky takes the spec's defaults and zoom expressions" {
+  assert_true(@style.Style::parse("{\"layers\": []}").sky is None)
+  let plain = @style.Style::parse("{\"layers\": [], \"sky\": {}}").sky.unwrap()
+  assert_true(
+    constant(plain.sky) is Color({ r, g, b, a: 1.0, }) &&
+    r == 136.0 / 255.0 &&
+    g == 198.0 / 255.0 &&
+    b == 252.0 / 255.0,
+  )
+  assert_eq(constant(plain.horizon), constant(plain.fog))
+  assert_eq(
+    (
+      constant(plain.fog_ground_blend),
+      constant(plain.horizon_fog_blend),
+      constant(plain.sky_horizon_blend),
+    ),
+    (Num(0.5), Num(0.8), Num(0.8)),
+  )
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [], "sky": {"fog-color": "#000000", "atmosphere-blend": 1,
+      #| "fog-ground-blend": ["interpolate", ["linear"], ["zoom"], 10, 0, 20, 1]}}
+    ),
+  ).sky.unwrap()
+  assert_eq(constant(s.fog), Color({ r: 0.0, g: 0.0, b: 0.0, a: 1.0, }))
+  assert_eq(s.fog_ground_blend.eval(15.0, @style.NoFeature::{ }), Num(0.5))
+  for
+    c in [
+      ("{\"layers\": [], \"sky\": 1}", "sky"),
+      ("{\"layers\": [], \"sky\": {\"sky-color\": \"nope\"}}", "sky.sky-color"),
+    ] {
+    try @style.Style::parse(c.0) catch {
+      Invalid(path~, _) => assert_eq(path, c.1)
+      e => fail("unexpected \{Repr(e)}")
+    } noraise {
+      _ => fail("expected \{c.0} to be invalid")
+    }
+  }
+}

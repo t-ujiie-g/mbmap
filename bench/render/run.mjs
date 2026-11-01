@@ -1,6 +1,6 @@
 // mbmap vs MapLibre with the same style, tiles and camera script, in Chromium
-// with the Metal GPU. Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--terrain]
-// Writes bench/results/render-chromium[-labels][-terrain][-uncapped].json.
+// with the Metal GPU. Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--terrain] [--pitch=N]
+// Writes bench/results/render-chromium[-labels][-terrain][-pitchN][-uncapped].json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 import path from "node:path";
@@ -16,13 +16,16 @@ const uncapped = process.argv.includes("--uncapped");
 // --labels adds the label layers of examples/basic, drawn from local fonts by both engines.
 const labels = process.argv.includes("--labels");
 // --terrain drapes the map on the gsi-dem fixtures (as Terrarium PNGs, which
-// both engines read) and pitches the camera 45 degrees (at 60, MapLibre leaves
-// distant terrain tiles blank: they are below the vector source's minzoom).
+// both engines read), adds a sky (fog shows from 60 degrees) and pitches the
+// camera 45 degrees by default (at 60, MapLibre leaves distant terrain tiles
+// blank: they are below the vector source's minzoom).
 const terrain = process.argv.includes("--terrain");
-const variant = `${labels ? "-labels" : ""}${terrain ? "-terrain" : ""}`;
-const style = variant ? `bench/dist/style${variant}.json` : "bench/maplibre/style.json";
-const pitch = terrain ? 45 : 0;
-if (variant) {
+const pitchArg = arg("pitch", null);
+const pitch = Number(pitchArg ?? (terrain ? 45 : 0));
+const styleVariant = `${labels ? "-labels" : ""}${terrain ? "-terrain" : ""}`;
+const variant = `${styleVariant}${pitchArg !== null ? `-pitch${pitch}` : ""}`;
+const style = styleVariant ? `bench/dist/style${styleVariant}.json` : "bench/maplibre/style.json";
+if (styleVariant) {
   const base = JSON.parse(await readFile(path.join(ROOT, "bench/maplibre/style.json"), "utf8"));
   if (labels) {
     const basic = JSON.parse(await readFile(path.join(ROOT, "examples/basic/style.json"), "utf8"));
@@ -64,6 +67,7 @@ if (variant) {
       }
     base.sources.dem = { type: "raster-dem", tiles: ["{origin}/bench/dist/dem-terrarium/{z}/{x}/{y}.png"], tileSize: 256, minzoom: 12, maxzoom: 14, encoding: "terrarium" };
     base.terrain = { source: "dem", exaggeration: 1 };
+    base.sky = { "sky-color": "#88C6FC", "horizon-color": "#ffffff", "fog-color": "#ffffff" };
   }
   await mkdir(path.join(ROOT, "bench/dist"), { recursive: true });
   await writeFile(path.join(ROOT, style), JSON.stringify(base));
@@ -115,7 +119,7 @@ for (const [engine, rs] of Object.entries(results)) {
   };
 }
 const out = {
-  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + examples/basic labels" : "bench/maplibre/style.json", ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it"] : [])].join(", ") },
+  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + examples/basic labels" : "bench/maplibre/style.json", ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : [])].join(", ") },
   params: { runs, statistic: "median of runs" }, sizes, summary, runs: results,
 };
 await writeFile(path.join(ROOT, `bench/results/render-chromium${variant}${uncapped ? "-uncapped" : ""}.json`), JSON.stringify(out, null, 2) + "\n");

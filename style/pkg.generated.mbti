@@ -140,6 +140,15 @@ pub fn NoFeature::geometry_type(Self) -> String
 pub fn NoFeature::property(Self, String) -> Value?
 pub impl FeatureContext for NoFeature
 
+pub struct Sky {
+  sky : Expr
+  horizon : Expr
+  fog : Expr
+  fog_ground_blend : Expr
+  horizon_fog_blend : Expr
+  sky_horizon_blend : Expr
+}
+
 pub struct Source {
   id : String
   kind : SourceKind
@@ -165,6 +174,7 @@ pub struct Style {
   sources : Array[Source]
   layers : Array[StyleLayer]
   terrain : Terrain?
+  sky : Sky?
 }
 pub fn Style::from_json(Json) -> Self raise StyleError
 pub fn Style::parse(StringView) -> Self raise StyleError

@@ -33,6 +33,7 @@
       }
     }
   ],
+  "sky": {"sky-color": "#88C6FC", "horizon-color": "#ffffff", "fog-color": "#ffffff"},
   "terrain": {
     "source": "dem",
     "exaggeration": 1.5

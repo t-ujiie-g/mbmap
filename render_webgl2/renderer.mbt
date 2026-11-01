@@ -295,8 +295,8 @@ pub fn Renderer::clear_depth(self : Renderer) -> Unit {
 ///|
 /// Draws a terrain tile: `mesh`'s elevations (the part at `dem`: offset x, y and
 /// scale in the DEM tile) lift the tile's grid by `scale` world pixels per
-/// meter, skirts hang `skirt` world pixels below its edges, and `target` holds
-/// what is drawn on it.
+/// meter, skirts hang `skirt` world pixels below its edges, `target` holds
+/// what is drawn on it, and `fog` fades it out in the distance.
 pub fn Renderer::draw_terrain(
   self : Renderer,
   mesh : Mesh,
@@ -305,6 +305,48 @@ pub fn Renderer::draw_terrain(
   scale : Double,
   skirt : Double,
   dem : FixedArray[Double],
+  fog : Fog,
 ) -> Unit {
-  gl_draw_terrain(self.gl, mesh, target, at.matrix.m, scale, skirt, dem)
+  gl_draw_terrain(
+    self.gl,
+    mesh,
+    target,
+    at.matrix.m,
+    scale,
+    skirt,
+    dem,
+    [fog.near, fog.far, fog.ground_blend, fog.opacity, fog.horizon_blend],
+    fog.color,
+    fog.horizon,
+  )
+}
+
+///|
+/// Terrain fog as MapLibre draws it: fragments past `ground_blend` of the way
+/// from depth `near` to `far` (`@core.Transform::fog_range`, in the depth
+/// buffer's nonlinear scale) blend into `color`, which turns towards
+/// `horizon` past `horizon_blend`, at most `opacity` of the way. Colors are
+/// premultiplied RGBA.
+pub(all) struct Fog {
+  near : Double
+  far : Double
+  ground_blend : Double
+  opacity : Double
+  horizon_blend : Double
+  color : FixedArray[Double]
+  horizon : FixedArray[Double]
+}
+
+///|
+/// Draws the sky above the horizon line `horizon_y` (device pixels from the
+/// bottom): `sky` blending into `horizon` over the `blend` pixels above the
+/// line. Colors are premultiplied RGBA.
+pub fn Renderer::draw_sky(
+  self : Renderer,
+  horizon_y : Double,
+  blend : Double,
+  sky : FixedArray[Double],
+  horizon : FixedArray[Double],
+) -> Unit {
+  gl_draw_sky(self.gl, horizon_y, blend, sky, horizon)
 }

@@ -32,5 +32,5 @@ test("bearing is any decimal; pitch is a decimal from 0 to MAX_PITCH", () => {
   assert.equal(parsePitch("30"), 30);
   assert.equal(parsePitch(String(MAX_PITCH)), MAX_PITCH);
   for (const bad of ["", "1e1", "NaN", "Infinity", "10deg"]) assert.equal(parseBearing(bad), null, bad);
-  for (const bad of ["", "-1", "61", "1e1", "NaN"]) assert.equal(parsePitch(bad), null, bad);
+  for (const bad of ["", "-1", "86", "1e1", "NaN"]) assert.equal(parsePitch(bad), null, bad);
 });

@@ -5,7 +5,7 @@
 export const MAX_ZOOM = 22;
 
 /** Highest pitch in degrees; mirrors `MAX_PITCH` in core/transform.mbt. */
-export const MAX_PITCH = 60;
+export const MAX_PITCH = 85;
 
 /** Most tile workers; mirrors `MAX_WORKERS` in map/map.mbt (0 picks automatically). */
 export const MAX_WORKERS = 4;

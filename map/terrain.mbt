@@ -144,6 +144,7 @@ fn Map::render_terrain(
     tile_size=src.source.tile_size,
   )
   let z = @cmp.maximum(t.tile_zoom(0, 24), dem_z)
+  let fog = self.fog()
   self.renderer.clear_depth()
   for id in t.covering_tiles(src.source.min_zoom, z) {
     guard dem_under(src, id) is Some((mesh, part)) else { continue }
@@ -180,6 +181,7 @@ fn Map::render_terrain(
       scale,
       SKIRT_METERS * t.pixels_per_meter(),
       part,
+      fog,
     )
   }
   self.prune_targets()

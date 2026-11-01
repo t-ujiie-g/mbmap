@@ -12,7 +12,7 @@ pub const GEOMETRY_TYPE_KEY : String = "$type"
 
 pub const MAX_LATITUDE : Double = 85.051128779806604
 
-pub const MAX_PITCH : Double = 60.0
+pub const MAX_PITCH : Double = 85.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
@@ -163,6 +163,8 @@ pub struct Transform {
 }
 pub fn Transform::center_depth(Self) -> Double
 pub fn Transform::covering_tiles(Self, Int32, Int32) -> Array[TileId]
+pub fn Transform::fog_range(Self) -> (Double, Double)
+pub fn Transform::horizon(Self) -> Double
 pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
 pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
 pub fn Transform::new(Camera, Double, Double, min_zoom? : Double, max_zoom? : Double) -> Self
