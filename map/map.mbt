@@ -16,6 +16,7 @@ priv struct LayerMesh {
   props : JsProps?
   mut paint : (Double, Paint)?
   labels : LabelSet?
+  dem : DemTile?
 }
 
 ///|

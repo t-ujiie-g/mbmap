@@ -13,4 +13,5 @@ import {
 import {
   "t-ujiie-g/mbmap/geom",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/math",
 } for "test"

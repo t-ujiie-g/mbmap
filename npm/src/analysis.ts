@@ -141,6 +141,87 @@ export class Dataset {
   }
 }
 
+/** How a DEM's RGB holds elevations: MapLibre's encodings, GSI's, or custom factors. */
+export type DemEncoding = "mapbox" | "terrarium" | "gsi" | { redFactor: number; greenFactor: number; blueFactor: number; baseShift?: number };
+
+export interface DemOptions extends AnalysisOptions {
+  /** Tile zoom to read; the grid's cells are its pixels. */
+  zoom: number;
+  /** The area to cover; the grid snaps outward to whole tiles. */
+  bounds: BBox;
+  encoding?: DemEncoding;
+}
+
+// Mirrors `load_dem`'s encodings in analysis_worker/dem.mbt.
+function encodingArgs(e: DemEncoding = "mapbox"): number[] {
+  if (e === "mapbox") return [0, 0, 0, 0, 0];
+  if (e === "terrarium") return [1, 0, 0, 0, 0];
+  if (e === "gsi") return [2, 0, 0, 0, 0];
+  return [3, e.redFactor, e.greenFactor, e.blueFactor, e.baseShift ?? 0];
+}
+
+/** An elevation grid in the analysis worker, row by row from the north. */
+export class DemGrid {
+  #id: number;
+  #disposed = false;
+  readonly width: number;
+  readonly height: number;
+  /** `[west, south, east, north]` of the whole tiles it covers. */
+  readonly bounds: BBox;
+
+  /** @internal */
+  constructor(id: number, width: number, height: number, bounds: BBox) {
+    this.#id = id;
+    this.width = width;
+    this.height = height;
+    this.bounds = bounds;
+  }
+
+  #call<T>(op: string, args: object = {}): Promise<T> {
+    if (this.#disposed) return Promise.reject(new Error("mbmap: analysis: the grid was disposed"));
+    return call<T>(op, { grid: this.#id, ...args });
+  }
+
+  /** Elevations in meters; NaN where the DEM has no data. */
+  elevations(): Promise<Float64Array> {
+    return this.#call("gridValues", { kind: 0 });
+  }
+
+  /** Slopes in degrees (gdaldem's Horn method). */
+  slope(): Promise<Float64Array> {
+    return this.#call("gridValues", { kind: 1 });
+  }
+
+  /** Aspects in degrees clockwise from north, facing downhill; NaN where flat. */
+  aspect(): Promise<Float64Array> {
+    return this.#call("gridValues", { kind: 2 });
+  }
+
+  /** Shades from 1 to 255 under light from `azimuth` degrees at `altitude` degrees (gdaldem's hillshade). */
+  hillshade({ azimuth = 315, altitude = 45, zFactor = 1 }: { azimuth?: number; altitude?: number; zFactor?: number } = {}): Promise<Uint8Array> {
+    return this.#call("gridHillshade", { azimuth, altitude, zFactor });
+  }
+
+  dispose(): void {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    call("dispose", { dataset: this.#id }).catch(() => {});
+  }
+}
+
+/** Mosaics the DEM tiles of `tiles` (a `{z}/{x}/{y}` http(s) template) covering `bounds` into a grid. */
+export async function loadDem(tiles: string, options: DemOptions): Promise<DemGrid> {
+  start(options);
+  const url = new URL(tiles, document.baseURI);
+  if (!/^https?:$/.test(url.protocol)) throw new Error(`mbmap: analysis: DEM tiles must be an http(s) URL: ${url.href}`);
+  // new URL() percent-encodes the placeholders' braces.
+  const template = url.href.replace(/%7B([zxy])%7D/g, "{$1}");
+  const r = await call<{ grid: number; width: number; height: number; bounds: BBox }>("loadDem", {
+    url: template, z: options.zoom, bounds: options.bounds, encoding: encodingArgs(options.encoding),
+  });
+  return new DemGrid(r.grid, r.width, r.height, r.bounds);
+}
+
 /**
  * Reads GeoJSON into the analysis worker: an object, its UTF-8 bytes, or an
  * http(s) URL (resolved against the page, fetched without credentials).

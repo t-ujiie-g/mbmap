@@ -76,8 +76,9 @@ extern "js" fn post_tile(
   url : String,
   source : Int32,
   z : Int32,
+  dem : Bool,
 ) -> Unit =
-  #|(w, id, url, source, z) => w.postMessage({ type: "tile", id, url, source, z })
+  #|(w, id, url, source, z, dem) => w.postMessage({ type: "tile", id, url, source, z, dem })
 
 ///|
 extern "js" fn post_cancel(w : Worker, id : Int32) -> Unit =

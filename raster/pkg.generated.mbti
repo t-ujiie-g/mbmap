@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/raster"
+
+// Values
+pub const WORLD_WIDTH : Double = 40075016.6855785
+
+pub fn dem_edges(FixedArray[Double], Int32) -> FixedArray[Double]
+
+pub fn edge_slopes(FixedArray[Double], FixedArray[Double], Int32, Int32, Int32) -> Bytes
+
+pub fn elevations(BytesView, Unpack) -> FixedArray[Double]
+
+pub fn hillshade_slopes(FixedArray[Double], Int32, Int32) -> Bytes
+
+// Errors
+
+// Types and methods
+pub(all) struct Unpack {
+  r : Double
+  g : Double
+  b : Double
+  base : Double
+  gsi : Bool
+}
+pub fn Unpack::gsi() -> Self
+pub fn Unpack::mapbox() -> Self
+pub fn Unpack::terrarium() -> Self
+
+// Type aliases
+
+// Traits

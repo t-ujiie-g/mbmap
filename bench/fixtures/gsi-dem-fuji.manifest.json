@@ -1,0 +1,72 @@
+{
+  "source": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+  "attribution": "国土地理院 標高タイル (GSI Japan)",
+  "fetched": "2026-11-01",
+  "totalBytes": 1819400,
+  "tiles": {
+    "12/3625/1616": {
+      "bytes": 109841,
+      "sha256": "d58a00ba15b14f755943b56a83aeaf17aabd723271dc3d0cbc248b8b9d311663"
+    },
+    "12/3625/1617": {
+      "bytes": 114896,
+      "sha256": "49a7ede24547b3c3e73a1bf667c8cafe540d45008e66c7861a823610e8752866"
+    },
+    "12/3625/1618": {
+      "bytes": 110859,
+      "sha256": "583e1a8c182ff8cfcf61d7432a7575b0a64eff621fb784474827c6cf6679e009"
+    },
+    "12/3625/1619": {
+      "bytes": 105982,
+      "sha256": "10cbc4b0eace88f7ed809c5424c4da7abfebd28a57a67b503943fee4a145c1e7"
+    },
+    "12/3626/1616": {
+      "bytes": 114817,
+      "sha256": "b616a1c546134e06da58085082b997f4c72f1869f67cd058652e8e53ec3a2d95"
+    },
+    "12/3626/1617": {
+      "bytes": 127126,
+      "sha256": "0ef68d900af0a8f92df3d1cd79f065ffe922b06188e44c411197c843fcfb9e2e"
+    },
+    "12/3626/1618": {
+      "bytes": 112882,
+      "sha256": "bacde6843a87f7c47977887bfa2ac41093819baee7ad96f99184685f2e19d4c2"
+    },
+    "12/3626/1619": {
+      "bytes": 118599,
+      "sha256": "9429edcf01449d2f52405a0ef3b5a8d1ccc17878dfc11739b5331b8d3402c8c4"
+    },
+    "12/3627/1616": {
+      "bytes": 103032,
+      "sha256": "49f6cba18278e025ec36ab6d22ffc52509002e322893a3d84a41c2c2a93ae661"
+    },
+    "12/3627/1617": {
+      "bytes": 111938,
+      "sha256": "fa1c44682ee52bfba0cd9213db058e9537dd9ea74f377bd9c46e72c45a4ed076"
+    },
+    "12/3627/1618": {
+      "bytes": 109412,
+      "sha256": "4448c8b15a704e51129bdabc79eae607d502c6b919d33c4337e07e9a1a593fcd"
+    },
+    "12/3627/1619": {
+      "bytes": 130820,
+      "sha256": "6439d1dffec57492b2369da57b5d64e5fb94638387f81c051268613c97b3616a"
+    },
+    "12/3628/1616": {
+      "bytes": 117689,
+      "sha256": "287596740b3a111ab3e8f56a4fa086ce87fabcd76ac598e8cc34c40df3e08fe2"
+    },
+    "12/3628/1617": {
+      "bytes": 111345,
+      "sha256": "7d0a71518f4b5275eab32f5599942f3bc76c972bfe7fada4683f3b02b3659ee4"
+    },
+    "12/3628/1618": {
+      "bytes": 104370,
+      "sha256": "1a7a5d0c8a87c23558cc0c5f536fe5d105df949b168b69ea26c88849a2e4870d"
+    },
+    "12/3628/1619": {
+      "bytes": 115792,
+      "sha256": "aee938310c0d148b1fac0b519ed76850497c6e50eaf2dd3bfd3283327e637d57"
+    }
+  }
+}

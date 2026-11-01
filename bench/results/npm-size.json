@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 32351,
+      "bytes": 35442,
       "budget": 50000
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 83629,
+      "bytes": 86409,
       "budget": 100000
     },
     {
@@ -31,12 +31,12 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 1414,
+      "bytes": 1763,
       "budget": 5000
     },
     {
       "name": "analysis worker",
-      "bytes": 22333,
+      "bytes": 25102,
       "budget": 30000
     }
   ]

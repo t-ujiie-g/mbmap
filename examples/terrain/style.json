@@ -1,0 +1,18 @@
+{
+  "version": 8,
+  "name": "mbmap terrain example",
+  "sources": {
+    "dem": {
+      "type": "raster-dem", "tiles": ["/bench/fixtures/gsi-dem-fuji/{z}/{x}/{y}.png"],
+      "tileSize": 256, "minzoom": 12, "maxzoom": 12, "encoding": "gsi",
+      "attribution": "国土地理院 標高タイル"
+    }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#f2efe6" } },
+    {
+      "id": "hillshade", "type": "hillshade", "source": "dem",
+      "paint": { "hillshade-exaggeration": 0.6, "hillshade-shadow-color": "#473b24", "hillshade-accent-color": "#5a4a2f" }
+    }
+  ]
+}

@@ -26,8 +26,9 @@ fn Map::render(self : Map) -> Unit {
   ] = @hashmap.HashMap([])
   for src in self.sources {
     let s = src.source
-    let z = t.tile_zoom(s.min_zoom, s.max_zoom)
-    let cover = if t.camera.zoom < s.min_zoom.to_double() {
+    let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
+    let cover = if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
+      s.min_zoom.to_double() {
       []
     } else {
       t.covering_tiles(s.min_zoom, z)
@@ -110,6 +111,10 @@ fn Map::draw_layer(
 ) -> Unit {
   let zoom = self.transform.camera.zoom
   for m in meshes {
+    if m.kind == KIND_HILLSHADE && layer.hillshade is Some(h) {
+      self.draw_hillshade(h, m.mesh, at)
+      continue
+    }
     if m.layer != index {
       continue
     }
@@ -153,6 +158,34 @@ fn Map::draw_layer(
 }
 
 ///|
+/// Draws a tile's hillshade with a layer's paint at the current zoom (MapLibre's
+/// `standard` method); a light anchored to the viewport turns with the map.
+fn Map::draw_hillshade(
+  self : Map,
+  h : @style.HillshadePaint,
+  mesh : @render_webgl2.Mesh,
+  at : @render_webgl2.Placement,
+) -> Unit {
+  let zoom = self.transform.camera.zoom
+  let ctx = JsProps::none()
+  let direction = number_or(h.direction.eval(zoom, ctx), 335.0) +
+    (if h.viewport { self.transform.camera.bearing } else { 0.0 })
+  fn rgba(e : @style.Expr) -> FixedArray[Double] {
+    let c = color_of(e, zoom, ctx)
+    [c.r, c.g, c.b, c.a]
+  }
+  self.renderer.draw_hillshade(
+    mesh,
+    at,
+    direction * @math.PI / 180.0,
+    number_or(h.exaggeration.eval(zoom, ctx), 0.5),
+    rgba(h.shadow),
+    rgba(h.highlight),
+    rgba(h.accent),
+  )
+}
+
+///|
 /// Where `id`'s meshes are drawn: only the part over the tile itself, or with
 /// `clip` over that descendant tile (an ancestor standing in for it).
 fn Map::placement(
@@ -180,5 +213,6 @@ fn Map::placement(
     units_per_pixel: 1.0 / (t.tile_scale(id, extent) * dpr),
     center_depth: t.center_depth(),
     clip: rect,
+    latitudes: (id.lnglat_bounds().max_y, id.lnglat_bounds().min_y),
   }
 }

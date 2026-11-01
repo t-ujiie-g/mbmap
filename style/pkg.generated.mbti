@@ -54,6 +54,16 @@ pub fn Color::equal(Self, Self) -> Bool
 pub fn Color::not_equal(Self, Self) -> Bool
 pub fn Color::to_repr(Self) -> @debug.Repr
 
+pub(all) enum DemEncoding {
+  Mapbox
+  Terrarium
+  Gsi
+  Custom(Double, Double, Double, Double)
+} derive(Eq, @debug.Debug)
+pub fn DemEncoding::equal(Self, Self) -> Bool
+pub fn DemEncoding::not_equal(Self, Self) -> Bool
+pub fn DemEncoding::to_repr(Self) -> @debug.Repr
+
 pub(all) enum Expected {
   AnyType
   ColorType
@@ -87,6 +97,15 @@ pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
+pub struct HillshadePaint {
+  direction : Expr
+  viewport : Bool
+  exaggeration : Expr
+  shadow : Expr
+  highlight : Expr
+  accent : Expr
+}
+
 pub(all) enum Interpolation {
   Exponential(Double)
 } derive(Eq, @debug.Debug)
@@ -109,6 +128,7 @@ pub(all) enum LayerKind {
   Line
   Circle
   Symbol
+  Hillshade
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
@@ -126,6 +146,8 @@ pub struct Source {
   tiles : Array[String]
   min_zoom : Int32
   max_zoom : Int32
+  tile_size : Int32
+  encoding : DemEncoding
   buffer : Int32
   tolerance : Double
 }
@@ -133,6 +155,7 @@ pub struct Source {
 pub(all) enum SourceKind {
   Vector
   GeoJSON
+  RasterDem
 } derive(Eq, @debug.Debug)
 pub fn SourceKind::equal(Self, Self) -> Bool
 pub fn SourceKind::not_equal(Self, Self) -> Bool
@@ -165,6 +188,7 @@ pub struct StyleLayer {
   halo_color : Expr
   halo_width : Expr
   text : TextLayout?
+  hillshade : HillshadePaint?
   join : Join
   cap : Cap
   miter_limit : Double

@@ -555,3 +555,33 @@ test "vertical writing and sort keys reach the labels" {
   assert_eq(r.u32(), 1)
   assert_eq((r.i16(), r.i16(), r.f64(), r.f64()), (2048, 2048, 16.0, 1.0))
 }
+
+///|
+test "dem_tile reads a raster-dem source's tiles and refuses others" {
+  let style =
+    #|{"sources": {"v": {"type": "vector", "tiles": ["t"]},
+    #|             "d": {"type": "raster-dem", "tiles": ["t"], "encoding": "gsi", "tileSize": 256}},
+    #| "layers": [{"id": "h", "type": "hillshade", "source": "d"}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let d = p.style.sources.search_by(s => s.id == "d").unwrap()
+  let v = p.style.sources.search_by(s => s.id == "v").unwrap()
+  // A flat 2 x 2 tile, 10 m everywhere in GSI's encoding.
+  let rgba = Bytes::makei(16, i => {
+    match i % 4 {
+      1 => b'\x03'
+      2 => b'\xe8'
+      3 => b'\xff'
+      _ => b'\x00'
+    }
+  })
+  let out = p.dem_tile(d, rgba[:], 2, 14).unwrap()
+  // 8 slope bytes, then 8 runs of 2 border elevations.
+  assert_eq(out.length(), 8 + 16 * 8)
+  assert_eq(out[:8].to_owned().to_array(), Array::make(8, b'\x80'))
+  let r = @core.ByteReader::new(out[8:])
+  assert_eq((r.f64(), r.f64()), (10.0, 10.0))
+  assert_eq(p.dem_tile(v, rgba[:], 2, 14), None)
+  assert_eq(p.error(), "no DEM source \{v}")
+  assert_eq(p.dem_tile(d, rgba[:4], 2, 14), None)
+  assert_eq(p.error(), "DEM tile is not 2 x 2 RGBA")
+}

@@ -282,14 +282,27 @@ pub fn Transform::zoomed_around(
 }
 
 ///|
-/// Integer tile zoom for a source with tiles of `TILE_SIZE` pixels, limited
-/// to the source's zoom range (higher camera zooms overzoom `max_tile_zoom`).
+/// How many zoom levels deeper tiles of `tile_size` pixels (a power of two up to
+/// `TILE_SIZE`) are than `TILE_SIZE` ones at the same camera zoom.
+pub fn zoom_shift(tile_size : Int32) -> Int32 {
+  let mut shift = 0
+  while shift < 8 && tile_size << shift < TILE_SIZE.to_int() {
+    shift += 1
+  }
+  shift
+}
+
+///|
+/// Integer tile zoom for a source with tiles of `tile_size` pixels (a power of
+/// two up to `TILE_SIZE`: 256-pixel tiles take one zoom more), limited to the
+/// source's zoom range (higher camera zooms overzoom `max_tile_zoom`).
 pub fn Transform::tile_zoom(
   self : Transform,
   min_tile_zoom : Int32,
   max_tile_zoom : Int32,
+  tile_size~ : Int32 = 512,
 ) -> Int32 {
-  let z = self.camera.zoom.floor().to_int()
+  let z = self.camera.zoom.floor().to_int() + zoom_shift(tile_size)
   @cmp.maximum(min_tile_zoom, @cmp.minimum(max_tile_zoom, z))
 }
 

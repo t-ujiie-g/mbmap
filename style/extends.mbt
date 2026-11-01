@@ -72,3 +72,9 @@ pub extend TextAnchor with @debug.Debug::{to_repr}
 
 ///|
 pub extend TextAnchor with Eq::{not_equal, equal}
+
+///|
+pub extend DemEncoding with @debug.Debug::{to_repr}
+
+///|
+pub extend DemEncoding with Eq::{not_equal, equal}

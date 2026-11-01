@@ -53,6 +53,7 @@ blocks.dispose();
 - 初めての `load` で、専用の Worker と wasm を読み込む。データと空間索引は Worker の中に置いたままにし、各メソッドは結果だけを型付き配列で返す（Promise）。
 - `Dataset`：`length`（地物数）、`areas()`、`lengths()`（m）、`centroids()`、`bboxes()`、`search(bbox)`、`nearest(x, y, { k, maxDistance })`、`pointsWithin(polygons)`、`collect(points, property)`、`grid(bbox, cols, rows)`、`dispose()`。
 - 計測と点の内外判定は Turf.js 7.4.0 と同じ値になり、索引の検索は flatbush 4.6.2 と同じ順になる（黄金テストで確かめている）。境界上の点は内側として扱う。`nearest` の距離は経緯度の箱の距離（度）。
+- `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。
 
@@ -76,6 +77,8 @@ blocks.dispose();
 ## 対応するスタイル
 
 background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`。クラスタリングは未対応）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きのエラーになり、黙って無視はしない。
+
+hillshade レイヤー（MapLibre の `standard` 方式。`hillshade-illumination-direction`、`hillshade-illumination-anchor`、`hillshade-exaggeration`、`hillshade-shadow-color`、`hillshade-highlight-color`、`hillshade-accent-color`）と `raster-dem` ソース（`tiles`、`tileSize`、`encoding` は `mapbox`・`terrarium`・`custom`、それに国土地理院の標高タイル用の拡張 `gsi`）にも対応している。
 
 symbol レイヤーは、点に置く文字のラベルに対応している（`text-field`（`{key}` の書き方、`get`、`concat`、`to-string`）、`text-size`、`text-anchor`、`text-offset`、`text-max-width`、`text-line-height`、`text-padding`、`text-allow-overlap`、`text-ignore-placement`、`text-writing-mode`（最初の値。縦書きでは、漢字・かなは立て、ラテン文字は横倒し、括弧と句読点は縦書き用の字形にする）、`symbol-sort-key`、`text-color`、`text-opacity`、`text-halo-color`、`text-halo-width`）。文字はブラウザにあるフォントで描く（グリフ PBF は使わない）ので、`text-font` は読まない。線に沿ったラベル、アイコン、`format` はまだない。
 

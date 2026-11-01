@@ -28,7 +28,8 @@
     "geojson:browser": "npm run build:moon && node geojson/browser.mjs",
     "analysis:golden": "npm run build:moon && node --max-old-space-size=8192 analysis/golden.mjs",
     "analysis:node": "npm run build:moon && node --max-old-space-size=8192 analysis/node.mjs",
-    "analysis:browser": "npm run build:moon && node analysis/browser.mjs"
+    "analysis:browser": "npm run build:moon && node analysis/browser.mjs",
+    "terrain:golden": "npm run build:moon && node terrain/golden.mjs"
   },
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",

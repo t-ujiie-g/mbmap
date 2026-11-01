@@ -64,13 +64,15 @@ pub fn Mesh::byte_size(self : Mesh) -> Int32 {
 
 ///|
 /// Where a mesh is drawn: `matrix` maps tile units to clip space,
-/// `units_per_pixel` holds at `center_depth` (the center's clip w), and only
-/// the part within `clip` (min x, min y, max x, max y in tile units) shows.
+/// `units_per_pixel` holds at `center_depth` (the center's clip w), only the part
+/// within `clip` (min x, min y, max x, max y in tile units) shows, and
+/// `latitudes` are the tile's north and south edges in degrees.
 pub(all) struct Placement {
   matrix : @core.Mat4
   units_per_pixel : Double
   center_depth : Double
   clip : FixedArray[Double]
+  latitudes : (Double, Double)
 }
 
 ///|
@@ -135,6 +137,54 @@ pub fn Renderer::draw_circle(
     stroke,
     radius,
     stroke_width,
+  )
+}
+
+///|
+/// Uploads a `raster-dem` tile's slopes (`@raster.hillshade_slopes`, two bytes
+/// per pixel of a `size` x `size` tile) as a texture.
+pub fn Renderer::upload_slopes(
+  self : Renderer,
+  slopes : JsBuffer,
+  size : Int32,
+) -> Mesh {
+  gl_upload_slopes(self.gl, slopes, size)
+}
+
+///|
+/// Replaces one side's row or column of a slopes texture (0 top, 1 bottom,
+/// 2 left, 3 right) with `slopes`, two bytes per pixel along it.
+pub fn Renderer::update_slopes(
+  self : Renderer,
+  mesh : Mesh,
+  side : Int32,
+  slopes : Bytes,
+) -> Unit {
+  gl_slopes_side(self.gl, mesh, side, slopes)
+}
+
+///|
+/// Draws a tile's hillshade (MapLibre's `standard` method): light from
+/// `azimuth` radians clockwise from north, colors straight RGBA.
+pub fn Renderer::draw_hillshade(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  azimuth : Double,
+  exaggeration : Double,
+  shadow : FixedArray[Double],
+  highlight : FixedArray[Double],
+  accent : FixedArray[Double],
+) -> Unit {
+  gl_draw_hillshade(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    [at.latitudes.0, at.latitudes.1, azimuth, exaggeration],
+    shadow,
+    highlight,
+    accent,
   )
 }
 

@@ -100,8 +100,36 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "void main() { float d = (0.75 - texture(u_glyphs, v_tex).r) * 16.0 * v_scale;" +
   #|    "  o = u_color * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
   #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_glyphs", "u_color", "u_halo"]);
+  #|  // MapLibre's hillshade.fragment.glsl, `standard` method, over the tile's
+  #|  // quad: v_pos runs 0-1 across the slopes texture, u_lat is the tile's north
+  #|  // and south latitude, u_light its azimuth (radians) and exaggeration.
+  #|  const hillshade = program(
+  #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_tex;" +
+  #|    "void main() { v_pos = a_pos; v_tex = a_pos / 4096.0; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    clip + "uniform sampler2D u_image; uniform vec2 u_lat; uniform vec2 u_light; uniform vec4 u_shadow;" +
+  #|    "uniform vec4 u_highlight; uniform vec4 u_accent; in vec2 v_tex; out vec4 o; const float PI = 3.141592653589793;" +
+  #|    "void main() { if (outside()) discard;" +
+  #|    "  float scale = cos(radians((u_lat.x - u_lat.y) * (1.0 - v_tex.y) + u_lat.y));" +
+  #|    "  vec2 deriv = (texture(u_image, v_tex).rg - 128.0 / 255.0) * 8.0 / scale;" +
+  #|    "  float azimuth = u_light.x + PI; float slope = atan(0.625 * length(deriv));" +
+  #|    "  float aspect = deriv.x != 0.0 ? atan(deriv.y, -deriv.x) : PI / 2.0 * (deriv.y > 0.0 ? 1.0 : -1.0);" +
+  #|    "  float intensity = u_light.y; float base = 1.875 - intensity * 1.75; float maxValue = 0.5 * PI;" +
+  #|    "  float scaled = intensity != 0.5 ? ((pow(base, slope) - 1.0) / (pow(base, maxValue) - 1.0)) * maxValue : slope;" +
+  #|    "  float k = clamp(intensity * 2.0, 0.0, 1.0); vec4 accent = (1.0 - cos(scaled)) * u_accent * k;" +
+  #|    "  float shade = abs(mod((aspect + azimuth) / PI + 0.5, 2.0) - 1.0);" +
+  #|    "  vec4 color = mix(u_shadow, u_highlight, shade) * sin(scaled) * k;" +
+  #|    "  o = accent * (1.0 - color.a) + color; }",
+  #|    ["u_matrix", "u_clip", "u_image", "u_lat", "u_light", "u_shadow", "u_highlight", "u_accent"]);
+  #|  // One quad over a tile, for raster layers.
+  #|  const quad = gl.createVertexArray();
+  #|  gl.bindVertexArray(quad);
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  #|  gl.bufferData(gl.ARRAY_BUFFER, new Int16Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]), gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(0);
+  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
+  #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, symbol, atlas: null, mat: new Float32Array(16), px: [0, 0] };
+  #|  return { gl, fill, line, circle, symbol, hillshade, quad, atlas: null, mat: new Float32Array(16), px: [0, 0] };
   #|}
 
 ///|
@@ -148,7 +176,10 @@ extern "js" fn gl_upload(
 
 ///|
 extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
-  #|(c, m) => { c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo); }
+  #|(c, m) => {
+  #|  if (m.texture) { c.gl.deleteTexture(m.texture); return; }
+  #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
+  #|}
 
 ///|
 /// `clip` is (min x, min y, max x, max y) in tile units.
@@ -366,4 +397,71 @@ extern "js" fn gl_draw_symbols(
   #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
   #|  gl.uniform1f(p.u_halo, 0);
   #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|}
+
+///|
+/// A tile's slopes as a two-channel byte texture, filtered linearly.
+extern "js" fn gl_upload_slopes(
+  gl : Gl,
+  slopes : JsBuffer,
+  size : Int32,
+) -> Mesh =
+  #|(c, slopes, size) => {
+  #|  const gl = c.gl;
+  #|  const texture = gl.createTexture();
+  #|  gl.bindTexture(gl.TEXTURE_2D, texture);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, size, size, 0, gl.RG, gl.UNSIGNED_BYTE, new Uint8Array(slopes));
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|  return { texture, size, bytes: size * size * 2 };
+  #|}
+
+///|
+extern "js" fn gl_slopes_side(
+  gl : Gl,
+  mesh : Mesh,
+  side : Int32,
+  slopes : Bytes,
+) -> Unit =
+  #|(c, m, side, slopes) => {
+  #|  const gl = c.gl, n = m.size;
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.texture);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  #|  const [x, y, w, h] = [[0, 0, n, 1], [0, n - 1, n, 1], [0, 0, 1, n], [n - 1, 0, 1, n]][side];
+  #|  gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.RG, gl.UNSIGNED_BYTE, slopes);
+  #|}
+
+///|
+/// `lat_light` is the tile's north and south latitude, then the light's azimuth
+/// and exaggeration; colors are straight RGBA.
+extern "js" fn gl_draw_hillshade(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  lat_light : FixedArray[Double],
+  shadow : FixedArray[Double],
+  highlight : FixedArray[Double],
+  accent : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip, ll, shadow, highlight, accent) => {
+  #|  const gl = c.gl, p = c.hillshade;
+  #|  const pre = (loc, v) => gl.uniform4f(loc, v[0] * v[3], v[1] * v[3], v[2] * v[3], v[3]);
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform2f(p.u_lat, ll[0], ll[1]);
+  #|  gl.uniform2f(p.u_light, ll[2], ll[3]);
+  #|  pre(p.u_shadow, shadow);
+  #|  pre(p.u_highlight, highlight);
+  #|  pre(p.u_accent, accent);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.texture);
+  #|  gl.uniform1i(p.u_image, 0);
+  #|  gl.bindVertexArray(c.quad);
+  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   #|}

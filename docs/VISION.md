@@ -63,6 +63,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `analysis/` … 空間索引（flatbush の移植）、計測・点の内外判定（Turf.js と同じ値）、空間クエリ、集計
 - `analysis_worker/` … `mbmap/analysis` の Worker のエントリ（`formats` と `analysis`）。データセットをハンドルで保持する
 - `wasmio/` … wasm-gc 専用。`geojson_worker` と `analysis_worker` が JS とやりとりする線形メモリの入出力
+- `raster/` … 標高タイルの読み込みと、hillshade レイヤー用の勾配（地形解析は `analysis/` の `Grid`）
 - `label/` … ラベルの配置。グリフのアトラスの詰め込み、重なりを判定する画面のグリッド
 - `render_webgl2/` … js ターゲット。WebGL2 への FFI、シェーダ、描画パス
 - `map/` … カメラ、入力（パン/ピンチ/ホイール）、タイル選択とキャッシュ、フレームループ。**公開 MoonBit API の本体**
@@ -94,7 +95,7 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 - `formats/` の拡張 … FlatGeobuf、CSV など
 - `analysis/` の拡張 … ジオメトリ演算（Clipper2 などの移植を前提に、黄金テストで検証）
 - `proj/` … 座標系変換（まず平面直角座標系と JGD2011）
-- `raster/` … DEM などのラスタと、その解析（傾斜、陰影、可視域）
+- `raster/` の拡張 … 3D 地形、可視域などのラスタ解析
 - 3D … カメラは `core` の `Transform` を一般化する。地形メッシュ、建物の押し出し、glTF / 3D Tiles の展開（Draco、meshopt）は `mbmap/3d` の入口に分ける
 
 `map/` は解析系のパッケージに依存しない。解析系は表示に依存せず、表示とは列指向のバッファだけでつながる。
