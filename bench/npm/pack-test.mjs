@@ -44,9 +44,9 @@ const checks = {
       } catch (e) {
         workerRefused = e.message;
       }
+      // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        // A style without GeoJSON sources never loads their module.
         lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("proj")),
         styleError,
         thrown,
@@ -104,6 +104,7 @@ const checks = {
       const freed = el.map === null && map.getCanvas().isConnected === false;
       document.body.append(el);
       await new Promise((r) => el.addEventListener("mb-load", r, { once: true }));
+      // `attributionBox`: the attribution is one line in the bottom corner, not an overlay.
       return {
         after,
         camera,
@@ -113,7 +114,6 @@ const checks = {
         recreated: el.map !== null && el.map !== map && el.zoom === 15 && el.pitch === 45,
         shadow: el.shadowRoot.querySelectorAll("canvas").length,
         attribution: el.shadowRoot.querySelector("div > div")?.textContent,
-        // The attribution is one line in the bottom corner, not an overlay.
         attributionBox: (({ height, bottom }) => ({ height, bottom }))(
           el.shadowRoot.querySelector("div > div").getBoundingClientRect(),
         ),

@@ -298,12 +298,12 @@ test "decode_geometry replaces the buffer contents on reuse" {
 
 ///|
 test "invalid command streams fail without runaway loops" {
+  // Parameters cut short fail the count bound before any read runs past the end.
   let cases : Array[(String, Array[Int32])] = [
     ("unknown command", [cmd(3, 0)]),
     ("LineTo before MoveTo", [cmd(2, 1), 1, 1]),
     ("ClosePath count > 1", [cmd(1, 1), 0, 0, cmd(7, 100000000)]),
     ("count larger than the remaining bytes", [cmd(1, 0x1fffffff), 1, 1]),
-    // Parameters cut short fail the count bound before any read runs past the end.
     ("truncated parameters", [cmd(1, 1), 3]),
   ]
   let g = @mvt.Geometry::new()

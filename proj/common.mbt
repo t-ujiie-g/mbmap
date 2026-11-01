@@ -134,6 +134,10 @@ fn clens_cmplx(
 }
 
 ///|
+/// What a projection gives for a point beyond its reach.
+let nan2 : (Double, Double) = (@double.not_a_number, @double.not_a_number)
+
+///|
 const HALF_PI : Double = 1.5707963267948966
 
 ///|

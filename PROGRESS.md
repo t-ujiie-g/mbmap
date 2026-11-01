@@ -1,5 +1,48 @@
 # PROGRESS
 
+## Phase 11 の後のリファクタリングとセキュリティチェック（2026-11-02）
+
+### ユーザー判断（2026-11-02）
+
+- enum・struct・TS の interface・配列やオブジェクトのリテラルなど、列挙の途中の行にはコメントを入れない（MoonBit・TS・JS とも）。AGENTS.md §7.7 に書いた。
+
+### リファクタリング（AGENTS.md §7 の順）
+
+- 列挙の途中のコメント：`proj` の `DatumKind` の各値、TS の interface 8 つ（`MapOptions`、`AnalysisOptions`、`BufferOptions` など）、bench とテストのリテラル 9 か所。説明は、型やリテラルの上のコメントにまとめた。そのとき `MapOptions.pitch` の説明が「0〜60」のまま古かったので「0〜85」に直した。
+- 定数：`MAX_INPUT_BYTES`（3 つの wasm で同じ値）を `@wasmio` に一つにした。CRS 定義のスロット数（34）は、JS 側で名前を付けて proj/encoding.mbt を指すようにした。
+- 重複と不要なコード：
+  - f64 の入力の読み方（proj_worker と analysis_worker）を `@wasmio.input_f64s`（線形メモリから f64 のまま読む）にまとめた。
+  - 解析 Worker の `input` と `inputTo` を一つにした。
+  - `nan2` を common.mbt に移した。`DatumKind` の手書きの `Eq` を `derive(Eq)` にした。
+  - `Crs::new` で楕円体の短半径を二度求めていたのをやめた。`Lcc::new` の不要な偽原点の補正を消した。
+  - `@overlay.DEGREE_SCALE` を非公開にした。
+- ファイルの分割：proj/azimuthal.mbt（956 行）を azimuthal（aeqd、laea、ortho、gnom）、stereographic（stere、sterea）、vincenty に分けた。cylindrical.mbt（582 行）から pseudocylindrical（sinu、eck6、moll、robin、eqearth）を分けた。Clipper2 と earcut の移植は、元のファイル構成に合わせたまま残した。
+- 書き方：laea の形を整数の定数から enum（`LaeaMode`）にした。datum の C 形式の for を範囲の for にした。
+- テスト：投影が届かない点の扱い（正射図法の裏側、laea の対蹠点と範囲外の逆変換）、Bonne の標準緯線が赤道のときの拒否、`input_f64s` のテストを足した。
+- 性能：`npm run proj:node`（`bench/proj/node.mjs`、`bench/results/proj-node.json`）を足した。proj.wasm を、解析 Worker が呼ぶのと同じ形（f64 の組を入れて出す）で動かし、proj4js の 1 点ずつの変換と比べる。Node 22、100 万点の中央値：
+
+| 変換（WGS84 から） | 改善前 | 改善後 | proj4js |
+|---|---|---|---|
+| 平面直角 IX 系（6677） | 231 ms | 219 ms | 393 ms（1.79×） |
+| Web メルカトル（3857） | 87 ms | 69 ms | 200 ms（2.89×） |
+| 日本測地系の IX 系（30169、3 パラメータ） | 378 ms | 376 ms | 528 ms（1.40×） |
+| lcc、7 パラメータ（PROJ 文字列） | 384 ms | 382 ms | 516 ms（1.35×） |
+
+  - 効いたのは 2 つ：入力を f64 のまま読む（バイトを組み立てない）こと、変換の途中で `Option` を作らず最後に一度だけ確かめること。datum を経由する変換は地心座標の反復が大半で、差は誤差の範囲だった。
+  - 試してやめたもの：MoonBit の `@math` で計算すると、ホストの `Math` より遅かった（IX 系 256 ms、3857 88 ms、30169 424 ms）。ホストの `Math` のままにする。
+- 変えなかったもの：wasm-gc の入口（geometry_worker、proj_worker、analysis_worker）の export は単体テストがなく、pack test で確かめている（これまでと同じ）。flatbush 4.7.0 は出ているが、黄金テストの基準（4.6.2）なので上げない。clipper の公開 API は、Clipper2 の API に合わせた移植の面なので、外から使っていないものも残す。
+
+### セキュリティチェック（AGENTS.md §8）
+
+- 依存関係：`npm audit` は npm/ と bench/ で 0 件。Dependabot のアラートも 0 件。直接の依存の GitHub Security Advisories を調べ、esbuild（0.28.1 で修正）、maplibre-gl（6.4.1）、playwright（1.55.1）の既知の問題は、どれも固定している版（0.28.2、6.16.0、1.64.1）で直っている。moon は 0.1.20261028。
+- 信頼できない入力：
+  - CRS の定義は、ちょうど 34 スロット、投影の番号と `towgs84` の個数を確かめる。`Crs::new` は軸の長さ・単位・本初子午線を確かめる。定義の数は 1024 までにしている。
+  - 投影と datum の反復は、どれも回数に上限がある（proj4js では上限のない Mollweide の反復にも上限を付けた）。
+  - `with_coords` は座標の数がデータセットと合うかを確かめる。
+  - PROJ 文字列のパーサは `Map` と `Object.hasOwn` で表を引くので、`__proto__` などのキーでプロトタイプは汚染されない。
+- Web：配布物に `innerHTML`・`eval`・`new Function` はない。データ・スタイル・タイルの fetch は `credentials: "omit"`。postMessage のハンドラは、メッセージの形と型を確かめている。秘密情報や個人情報はない。
+- 重大な問題は見つからなかった。
+
 ## Phase 11.3：PROJ 文字列、投影の追加、7 パラメータの測地系変換（2026-11-02）
 
 状態：**完了**。Phase 11（ジオメトリ演算と座標系）はこれで終わり。

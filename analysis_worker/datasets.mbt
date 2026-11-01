@@ -251,23 +251,16 @@ pub fn coords_out(id : Int32) -> Int32 {
 #export_name("with_coords")
 pub fn with_coords(id : Int32) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }
-  let input = @wasmio.input_bytes()
-  guard input.length() == d.table.coords.length() * 8 else {
+  let coords = @wasmio.input_f64s()
+  guard coords.length() == d.table.coords.length() else {
     return @wasmio.fail_with("coordinates do not match the dataset")
   }
   let at = Ref(0)
-  let f64 = () => {
-    let mut bits = 0UL
-    for k in 0..<8 {
-      bits = bits | (input[at.val + k].to_uint64() << (k * 8))
-    }
-    at.val += 8
-    bits.reinterpret_as_double()
-  }
   // map_coords visits the pairs in order.
   let table = d.table.map_coords((_, _) => {
-    let x = f64()
-    let y = f64()
+    let x = coords[at.val]
+    let y = coords[at.val + 1]
+    at.val += 2
     if x.is_nan() || y.is_nan() {
       None
     } else {

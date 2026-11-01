@@ -18,3 +18,14 @@ test "input is read back four bytes at a time, output follows it aligned" {
   clear_input()
   assert_eq(output_addr(), PAGE)
 }
+
+///|
+test "input_f64s reads whole f64s and leaves out a trailing part" {
+  assert_eq(prepare_input(20, MAX_INPUT_BYTES), PAGE)
+  store_f64(PAGE, 1.5)
+  store_f64(PAGE + 8, -2.0)
+  let v = input_f64s()
+  assert_eq((v.length(), v[0], v[1]), (2, 1.5, -2.0))
+  clear_input()
+  assert_eq(input_f64s().length(), 0)
+}

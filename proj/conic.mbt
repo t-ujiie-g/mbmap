@@ -18,7 +18,6 @@ fn Lcc::new(p : Base, d : Definition) -> Lcc {
   let m = p.m
   let lat1 = d.lat1
   let lat2 = or(d.lat2, lat1)
-  let p = { ..p, x0: or(d.x0, 0.0), y0: or(d.y0, 0.0), }
   let temp = p.b / p.a
   let e = (1.0 - temp * temp).sqrt()
   let sin1 = m.sin(lat1)

@@ -7,6 +7,10 @@ extern "wasm" fn load_i32(addr : Int32) -> Int32 =
   #|(func (param i32) (result i32) (i32.load align=1 (local.get 0)))
 
 ///|
+extern "wasm" fn load_f64(addr : Int32) -> Double =
+  #|(func (param i32) (result f64) (f64.load align=1 (local.get 0)))
+
+///|
 extern "wasm" fn store_u8(addr : Int32, v : Int32) =
   #|(func (param i32) (param i32) (i32.store8 (local.get 0) (local.get 1)))
 
@@ -29,6 +33,11 @@ extern "wasm" fn memory_grow(pages : Int32) -> Int32 =
 ///|
 /// Where input starts: one 64KiB page in.
 pub const PAGE : Int32 = 65536
+
+///|
+/// Largest input the entries accept (AGENTS.md §8.2: limit the size before
+/// reading).
+pub const MAX_INPUT_BYTES : Int32 = 256 * 1024 * 1024
 
 ///|
 /// Largest output written; results are a few numbers per feature at most.
@@ -85,6 +94,12 @@ pub fn input_bytes() -> Bytes {
   }
   // Nothing else holds `arr`, so the reinterpretation cannot be observed mutating.
   arr.unsafe_reinterpret_as_bytes()
+}
+
+///|
+/// The input read as f64s (a trailing part of one is left out).
+pub fn input_f64s() -> FixedArray[Double] {
+  FixedArray::makei(input_len.val / 8, i => load_f64(PAGE + i * 8))
 }
 
 ///|

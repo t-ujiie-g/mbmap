@@ -9,6 +9,9 @@ fn epsg(code : Int32) -> @proj.Crs {
 }
 
 ///|
+const D2R : Double = 0.017453292519943295
+
+///|
 let tokyo_station : (Double, Double) = (139.7671, 35.6812)
 
 ///|
@@ -70,10 +73,10 @@ test "Tokyo Station in plane rectangular IX, UTM 54, Web Mercator and the Tokyo 
 test "definitions from PROJ strings: Lambert 93 and the British National Grid's 7-parameter shift" {
   let wgs = epsg(4326)
   let l93 = @proj.Definition::new(Lcc, 6378137.0, 6356752.314140356)
-  l93.lat0 = 46.5 * 0.017453292519943295
-  l93.long0 = 3.0 * 0.017453292519943295
-  l93.lat1 = 49.0 * 0.017453292519943295
-  l93.lat2 = 44.0 * 0.017453292519943295
+  l93.lat0 = 46.5 * D2R
+  l93.long0 = 3.0 * D2R
+  l93.lat1 = 49.0 * D2R
+  l93.lat2 = 44.0 * D2R
   l93.x0 = 700000.0
   l93.y0 = 6600000.0
   l93.towgs84 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -86,8 +89,8 @@ test "definitions from PROJ strings: Lambert 93 and the British National Grid's 
     ),
   )
   let osgb = @proj.Definition::new(Tmerc, 6377563.396, 6356256.91)
-  osgb.lat0 = 49.0 * 0.017453292519943295
-  osgb.long0 = -2.0 * 0.017453292519943295
+  osgb.lat0 = 49.0 * D2R
+  osgb.long0 = -2.0 * D2R
   osgb.k0 = 0.9996012717
   osgb.x0 = 400000.0
   osgb.y0 = -100000.0
@@ -156,10 +159,10 @@ test "decode reads the slots docs/FORMATS.md lays out and refuses others" {
   }
   s[12] = 0.0
   s[14] = 0.0
-  s[16] = 46.5 * 0.017453292519943295
-  s[17] = 49.0 * 0.017453292519943295
-  s[18] = 44.0 * 0.017453292519943295
-  s[20] = 3.0 * 0.017453292519943295
+  s[16] = 46.5 * D2R
+  s[17] = 49.0 * D2R
+  s[18] = 44.0 * D2R
+  s[20] = 3.0 * D2R
   s[26] = 700000.0
   s[27] = 6600000.0
   for i in 30..<34 {
@@ -212,4 +215,30 @@ test "Trig::moonbit is what a CRS computes with by default" {
     @proj.transform(wgs, ix, x, y),
     @proj.transform(epsg(4326), epsg(6677), x, y),
   )
+}
+
+///|
+test "projections refuse what they cannot reach" {
+  let wgs = epsg(4326)
+  let sphere = (proj : @proj.Method) => {
+    let d = @proj.Definition::new(proj, 6371000.0, 6371000.0)
+    d.lat0 = 35.0 * D2R
+    d.long0 = 135.0 * D2R
+    d
+  }
+  // The far side of the globe is hidden in an orthographic view; its center's
+  // antipode has no place in Lambert's azimuthal equal area.
+  let ortho = @proj.Crs::new(sphere(Ortho)).unwrap()
+  assert_true(@proj.transform(wgs, ortho, 135.0, 35.0) is Some(_))
+  assert_eq(@proj.transform(wgs, ortho, -45.0, -35.0), None)
+  let laea = @proj.Crs::new(sphere(Laea)).unwrap()
+  assert_eq(@proj.transform(wgs, laea, -45.0, -35.0), None)
+  assert_eq(@proj.transform(laea, wgs, 1.0e8, 0.0), None)
+  // Bonne needs a standard parallel off the equator (lat_1, else lat_0).
+  let bonne = sphere(Bonne)
+  bonne.lat0 = 0.0
+  bonne.lat1 = 0.0
+  assert_true(@proj.Crs::new(bonne) is None)
+  bonne.lat1 = 45.0 * D2R
+  assert_true(@proj.Crs::new(bonne) is Some(_))
 }

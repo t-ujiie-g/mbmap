@@ -1,0 +1,31 @@
+{
+  "node": "v22.23.4",
+  "points": 1000000,
+  "runs": 7,
+  "rows": [
+    {
+      "name": "plane IX (EPSG:6677)",
+      "mbmapMs": 219.03545899999995,
+      "proj4jsMs": 392.9697500000002,
+      "maxDiffM": 3.2567186281085014e-8
+    },
+    {
+      "name": "Web Mercator (EPSG:3857)",
+      "mbmapMs": 69.16175000000021,
+      "proj4jsMs": 199.85524999999961,
+      "maxDiffM": 0
+    },
+    {
+      "name": "plane IX on the Tokyo datum (EPSG:30169, 3 parameters)",
+      "mbmapMs": 376.44587499999943,
+      "proj4jsMs": 528.0419999999995,
+      "maxDiffM": 3.4844561014324427e-8
+    },
+    {
+      "name": "Lambert conformal conic, 7 parameters (PROJ string)",
+      "mbmapMs": 382.057417,
+      "proj4jsMs": 516.4836670000004,
+      "maxDiffM": 3.725290298461914e-9
+    }
+  ]
+}

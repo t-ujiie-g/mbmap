@@ -49,7 +49,9 @@ for (let zone = 51; zone <= 55; zone++) {
   epsg(3092 + zone - 51, `+proj=utm +zone=${zone} ${TOKYO}`, area);
 }
 
-// PROJ strings, one or more per projection (mostly EPSG's own).
+// PROJ strings, one or more per projection (mostly EPSG's own). proj4js keeps
+// a's length under +R_A (54003's Miller), so that case is a unit test against
+// PROJ instead.
 const strings = [
   ["World Mercator (3395)", "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", [-180, -80, 180, 84]],
   ["Mercator true at 35°", "+proj=merc +lat_ts=35 +lon_0=135 +datum=WGS84", [100, -60, 170, 80]],
@@ -79,7 +81,6 @@ const strings = [
   ["Mollweide (54009)", "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", [-180, -85, 180, 85]],
   ["Robinson (54030)", "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", [-180, -85, 180, 85]],
   ["EASE-Grid 2.0 global (6933)", "+proj=cea +lat_ts=30 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", [-180, -85, 180, 85]],
-  // proj4js keeps a's length under +R_A (54003's Miller), so that case is a unit test against PROJ.
   ["Miller", "+proj=mill +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", [-180, -85, 180, 85]],
   ["SAD69 Brazil polyconic (29101)", "+proj=poly +lat_0=0 +lon_0=-54 +x_0=5000000 +y_0=10000000 +ellps=aust_SA +towgs84=-67.35,3.88,-38.22,0,0,0,0 +units=m +no_defs", [-74, -33, -35, 5]],
   ["Alaska zone 1, oblique Mercator (26931)", "+proj=omerc +lat_0=57 +lonc=-133.666666666667 +alpha=323.130102361111 +k=0.9999 +x_0=5000000 +y_0=-5000000 +no_uoff +gamma=323.130102361111 +datum=NAD83 +units=m +no_defs", [-141, 54, -129, 60]],

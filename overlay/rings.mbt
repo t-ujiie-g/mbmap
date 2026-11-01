@@ -1,6 +1,6 @@
 ///|
 /// Degrees to Clipper's integers: 1e-7 degree (about 1 cm) steps.
-pub const DEGREE_SCALE : Double = 10000000.0
+const DEGREE_SCALE : Double = 10000000.0
 
 ///|
 /// Meters to Clipper's integers in the planes buffers are made in: 1 mm steps.

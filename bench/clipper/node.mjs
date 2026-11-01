@@ -96,6 +96,7 @@ const total = (fn) => {
 };
 const med = (xs) => [...xs].sort((p, q) => p - q)[xs.length >> 1];
 
+// Turf's clip meets each building with only the water polygons near it, as mbmap does.
 const cases = {
   dissolve: {
     mbmap: (t, d) => geometry([d.buildings], () => g.dissolve()),
@@ -110,7 +111,6 @@ const cases = {
   clipByWater: {
     mbmap: (t, d) => geometry([d.buildings, d.water], (lenA) => g.overlay(lenA, 0)),
     mbmapGeoJSON: (t, d) => geometry([d.buildings, d.water], (lenA) => g.overlay(lenA, 0), true),
-    // Like mbmap, each building meets only the water polygons near it.
     turf: (t) => t.buildings.features.map((b) => {
       const box = bboxOf(b);
       const near = t.water.features.filter((w) => overlaps(box, bboxOf(w)));

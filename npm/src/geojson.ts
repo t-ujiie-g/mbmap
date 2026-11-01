@@ -2,18 +2,17 @@
 // for styles that have one.
 import { workerScriptUrl, wasmUrl } from "./urls";
 
-/** A GeoJSON source of the style, by id. */
+/** A GeoJSON source of the style, by id: `data` is the GeoJSON itself, or a URL to fetch it from (without credentials). */
 export interface GeoJSONSource {
   id: string;
-  /** The GeoJSON itself, or a URL to fetch it from (without credentials). */
   data: unknown;
   maxzoom: number;
   buffer: number;
   tolerance: number;
 }
 
+/** `tile` gives a source's tile as an encoded columnar tile, or null where it has nothing. */
 export interface GeoJSONTiles {
-  /** A source's tile as an encoded columnar tile, or null where it has nothing. */
   tile(source: string, z: number, x: number, y: number): Promise<ArrayBuffer | null>;
   terminate(): void;
 }

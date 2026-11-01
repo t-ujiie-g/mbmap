@@ -18,31 +18,31 @@ export interface StyleSpecification {
   [key: string]: unknown;
 }
 
+/**
+ * - `container`: the element (or its id) the map fills. It needs a size of its own.
+ * - `style`: a style object, or the URL of one (fetched without credentials).
+ * - `bearing`: degrees clockwise from north that point up (default 0).
+ * - `pitch`: degrees of tilt from looking straight down, 0 to 85 (default 0).
+ * - `workerCount`: tile workers; 0 (the default) picks half the hardware threads, 1 to 4.
+ * - `workerUrl`, `wasmUrl`: where the worker (same-origin http(s)) and its wasm
+ *   (http(s)) are served; by default next to this module, via `new URL(..., import.meta.url)`.
+ * - `geojsonWorkerUrl`, `geojsonWasmUrl`: the same for the worker of GeoJSON sources.
+ * - `fontFamily`: the CSS font family labels are drawn in, from the fonts the browser has (default "sans-serif").
+ * - `attributionControl`: shows the sources' `attribution` text in a corner (default true).
+ */
 export interface MapOptions {
-  /** The element (or its id) the map fills. It needs a size of its own. */
   container: HTMLElement | string;
-  /** A style object, or the URL of one (fetched without credentials). */
   style: StyleSpecification | string;
   center?: LngLatLike;
   zoom?: number;
-  /** Degrees clockwise from north that point up (default 0). */
   bearing?: number;
-  /** Degrees of tilt from looking straight down, 0 to 60 (default 0). */
   pitch?: number;
-  /** Tile workers; 0 (the default) picks half the hardware threads, 1 to 4. */
   workerCount?: number;
-  /**
-   * Where the worker (same-origin http(s)) and its wasm (http(s)) are served;
-   * by default next to this module, via `new URL(..., import.meta.url)`.
-   */
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
-  /** Like `workerUrl` and `wasmUrl`, for the worker of GeoJSON sources. */
   geojsonWorkerUrl?: string | URL;
   geojsonWasmUrl?: string | URL;
-  /** The CSS font family labels are drawn in, from the fonts the browser has (default "sans-serif"). */
   fontFamily?: string;
-  /** Shows the sources' `attribution` text in a corner (default true). */
   attributionControl?: boolean;
 }
 

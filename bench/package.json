@@ -32,6 +32,7 @@
     "terrain:golden": "npm run build:moon && node terrain/golden.mjs",
     "clipper:golden": "npm run build:moon && node clipper/golden.mjs && node clipper/offset-golden.mjs",
     "proj:golden": "npm run build:moon && node proj/golden.mjs",
+    "proj:node": "npm run build:moon && node proj/node.mjs",
     "buffer:check": "npm run build:moon && node clipper/buffer-check.mjs",
     "geometry:node": "npm run build:moon && node clipper/node.mjs"
   },

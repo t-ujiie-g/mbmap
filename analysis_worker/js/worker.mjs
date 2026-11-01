@@ -15,11 +15,19 @@ const modules = { geometry: { url: null, exports: null, imports: {} }, proj: { u
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
 
-function input(bytes) {
-  const addr = wasm.prepare_input(bytes.length);
-  if (addr < 0) throw new Error(`input too large (${bytes.length} bytes)`);
-  new Uint8Array(wasm.memory.buffer, addr, bytes.length).set(bytes);
+// Copies `bytes` (one after another) into `exports`' input area.
+function inputTo(exports, bytes) {
+  const len = bytes.reduce((s, b) => s + b.length, 0);
+  const addr = exports.prepare_input(len);
+  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
+  let at = addr;
+  for (const b of bytes) {
+    new Uint8Array(exports.memory.buffer, at, b.length).set(b);
+    at += b.length;
+  }
 }
+
+const input = (bytes) => inputTo(wasm, [bytes]);
 
 // The result of an export that returns a count, or -1 / -2 / minus a message length.
 function counted(n) {
@@ -39,8 +47,10 @@ const i32s = (n) => {
 };
 
 const isId = (v) => Number.isInteger(v) && v >= 0;
+// `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
+const DEFINITION_SLOTS = 34;
 // An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it.
-const isCrs = (c) => (Number.isInteger(c) && c > 0) || (c instanceof Float64Array && c.length === 34);
+const isCrs = (c) => (Number.isInteger(c) && c > 0) || (c instanceof Float64Array && c.length === DEFINITION_SLOTS);
 const isLonLat = (c) => c === undefined || c === 4326;
 const isBox = (b) => Array.isArray(b) && b.length === 4 && b.every(Number.isFinite);
 function check(ok) {
@@ -122,18 +132,6 @@ function module(name) {
     m.exports = WebAssembly.instantiateStreaming(fetch(m.url), m.imports).then(({ instance }) => instance.exports);
   }
   return m.exports;
-}
-
-// Copies `bytes` (one after another) into `exports`' input area.
-function inputTo(exports, bytes) {
-  const len = bytes.reduce((s, b) => s + b.length, 0);
-  const addr = exports.prepare_input(len);
-  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
-  let at = addr;
-  for (const b of bytes) {
-    new Uint8Array(exports.memory.buffer, at, b.length).set(b);
-    at += b.length;
-  }
 }
 
 function checked(exports, n) {
