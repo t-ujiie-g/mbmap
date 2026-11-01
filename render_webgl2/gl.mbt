@@ -38,6 +38,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 1, "a_data");
   #|    gl.bindAttribLocation(p, 2, "a_tex");
   #|    gl.bindAttribLocation(p, 3, "a_size");
+  #|    gl.bindAttribLocation(p, 4, "a_ele");
   #|    gl.linkProgram(p);
   #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   #|    const u = { program: p };
@@ -87,19 +88,32 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  float t = smoothstep(u_inner - aa, u_inner, d);" +
   #|    "  o = mix(u_color, u_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
   #|    ["u_matrix", "u_px", "u_size", "u_depth", "u_clip", "u_color", "u_stroke", "u_inner"]);
-  #|  // Glyph quads face the viewer at a constant size: a_data is the corner's
-  #|  // offset from the anchor in quarter CSS pixels (y down), a_size the text
-  #|  // size in 1/16 px. The SDF edge is at 0.75 and falls by 1/16 per glyph
-  #|  // pixel (TinySDF radius 16, glyphs drawn at 48 px); u_halo widens it.
+  #|  // Glyph quads face the viewer: a_data is the corner's offset from the
+  #|  // anchor in quarter CSS pixels (y down), a_size the text size in 1/16 px,
+  #|  // both scaled by MapLibre's perspective ratio (smaller in the distance).
+  #|  // On terrain the anchor rises by a_ele meters times u_scale and fades
+  #|  // behind the terrain (MapLibre's calculate_visibility against u_depth).
+  #|  // The SDF edge is at 0.75 and falls by 1/16 per glyph pixel (TinySDF
+  #|  // radius 16, glyphs drawn at 48 px); u_halo widens it.
   #|  const symbol = program(
-  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; uniform mat4 u_matrix; uniform vec2 u_px;" +
-  #|    "uniform float u_dpr; uniform vec2 u_atlas; out vec2 v_tex; out float v_scale;" +
-  #|    "void main() { vec4 c = u_matrix * vec4(a_pos, 0.0, 1.0); vec2 off = a_data * 0.25 * u_dpr * u_px * vec2(1.0, -1.0);" +
-  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_tex = a_tex / u_atlas; v_scale = a_size / 16.0 * u_dpr / 48.0; }",
-  #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale; out vec4 o;" +
+  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; uniform mat4 u_matrix;" +
+  #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
+  #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha;" +
+  #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
+  #|    "  return 1.0 - clamp(-d * 500.0, 0.0, 1.0); }" +
+  #|    "void main() { vec4 c = u_matrix * vec4(a_pos, a_ele * u_scale, 1.0); v_alpha = 1.0;" +
+  #|    "  if (u_occlude) { vec3 f = c.xyz / c.w; v_alpha = visible(f);" +
+  #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
+  #|    "  if (v_alpha < 0.1) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
+  #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
+  #|    "  vec2 off = a_data * 0.25 * r * u_dpr * u_px * vec2(1.0, -1.0);" +
+  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_tex = a_tex / u_atlas; v_scale = a_size / 16.0 * r * u_dpr / 48.0; }",
+  #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale;" +
+  #|    "in float v_alpha; out vec4 o;" +
   #|    "void main() { float d = (0.75 - texture(u_glyphs, v_tex).r) * 16.0 * v_scale;" +
-  #|    "  o = u_color * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
-  #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_glyphs", "u_color", "u_halo"]);
+  #|    "  o = u_color * v_alpha * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
+  #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_glyphs", "u_color",
+  #|     "u_halo"]);
   #|  // MapLibre's hillshade.fragment.glsl, `standard` method, over the tile's
   #|  // quad: v_pos runs 0-1 across the slopes texture, u_lat is the tile's north
   #|  // and south latitude, u_light its azimuth (radians) and exaggeration.
@@ -248,6 +262,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.elev) c.gl.deleteTexture(m.elev);
   #|  if (m.texture) { c.gl.deleteTexture(m.texture); return; }
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
+  #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|}
 
 ///|
@@ -399,12 +414,19 @@ extern "js" fn gl_upload_symbols(
   #|  gl.vertexAttribPointer(2, 2, gl.UNSIGNED_SHORT, false, 16, 8);
   #|  gl.enableVertexAttribArray(3);
   #|  gl.vertexAttribPointer(3, 1, gl.UNSIGNED_SHORT, false, 16, 12);
+  #|  // Each vertex's anchor elevation in meters, set by gl_set_heights.
+  #|  const ele = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength / 16 * 4, gl.DYNAMIC_DRAW);
+  #|  gl.enableVertexAttribArray(4);
+  #|  gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 4, 0);
   #|  const ibo = gl.createBuffer();
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
   #|  gl.bindVertexArray(null);
   #|  const all = indexBytes === 2 ? new Uint16Array(indices) : new Uint32Array(indices);
   #|  const type = indexBytes === 2 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT;
-  #|  return { vao, vbo, ibo, all, count: 0, type, bytes: vertices.byteLength + indices.byteLength };
+  #|  return { vao, vbo, ibo, ele, vertices: vertices.byteLength / 16, all, count: 0, type,
+  #|    bytes: vertices.byteLength + indices.byteLength };
   #|}
 
 ///|
@@ -434,7 +456,9 @@ extern "js" fn gl_show(
   #|}
 
 ///|
-/// `color` and `halo` are straight RGBA; `halo_width` is in device pixels.
+/// `color` and `halo` are straight RGBA; `halo_width` is in device pixels;
+/// `center` is the screen center's clip w; `scale` turns the anchors'
+/// elevations (meters) into world pixels.
 extern "js" fn gl_draw_symbols(
   gl : Gl,
   mesh : Mesh,
@@ -443,8 +467,10 @@ extern "js" fn gl_draw_symbols(
   color : FixedArray[Double],
   halo : FixedArray[Double],
   halo_width : Double,
+  center : Double,
+  scale : Double,
 ) -> Unit =
-  #|(c, m, matrix, dpr, color, halo, haloWidth) => {
+  #|(c, m, matrix, dpr, color, halo, haloWidth, center, scale) => {
   #|  if (m.count === 0 || !c.atlas) return;
   #|  const gl = c.gl, p = c.symbol;
   #|  gl.useProgram(p.program);
@@ -452,6 +478,13 @@ extern "js" fn gl_draw_symbols(
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
   #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform1f(p.u_center, center);
+  #|  gl.uniform1f(p.u_scale, scale);
+  #|  const occlude = !!c.depth?.ready;
+  #|  gl.uniform1i(p.u_occlude, occlude ? 1 : 0);
+  #|  gl.activeTexture(gl.TEXTURE2);
+  #|  gl.bindTexture(gl.TEXTURE_2D, occlude ? c.depth.texture : null);
+  #|  gl.uniform1i(p.u_depth, 2);
   #|  gl.uniform2f(p.u_atlas, c.atlasSize[0], c.atlasSize[1]);
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, c.atlas);
@@ -680,4 +713,59 @@ extern "js" fn gl_draw_sky(
   #|  gl.uniform4f(p.u_horizon_color, horizon[0], horizon[1], horizon[2], horizon[3]);
   #|  gl.bindVertexArray(c.empty);
   #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|}
+
+///|
+/// Draws into the terrain depth target (the canvas's size, depth only) from now
+/// on, cleared, or back into the canvas; symbols drawn after `end` fade behind
+/// what was drawn into it, until `gl_depth_reset`.
+extern "js" fn gl_depth_begin(gl : Gl) -> Unit =
+  #|(c) => {
+  #|  const gl = c.gl, [w, h] = c.size;
+  #|  let d = c.depth;
+  #|  if (!d || d.w !== w || d.h !== h) {
+  #|    if (d) { gl.deleteFramebuffer(d.fb); gl.deleteTexture(d.texture); }
+  #|    const texture = gl.createTexture();
+  #|    gl.bindTexture(gl.TEXTURE_2D, texture);
+  #|    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, w, h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|    const fb = gl.createFramebuffer();
+  #|    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  #|    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, texture, 0);
+  #|    d = c.depth = { fb, texture, w, h, ready: false };
+  #|  }
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, d.fb);
+  #|  gl.clear(gl.DEPTH_BUFFER_BIT);
+  #|  d.ready = true;
+  #|}
+
+///|
+extern "js" fn gl_depth_end(gl : Gl) -> Unit =
+  #|(c) => { c.gl.bindFramebuffer(c.gl.FRAMEBUFFER, null); }
+
+///|
+extern "js" fn gl_depth_reset(gl : Gl) -> Unit =
+  #|(c) => { if (c.depth) c.depth.ready = false; }
+
+///|
+/// Sets the anchor elevation (meters) of every vertex of each label: `heights`
+/// has one per label, whose indices are at `labels` (as for `gl_show`).
+extern "js" fn gl_set_heights(
+  gl : Gl,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  heights : FixedArray[Double],
+) -> Unit =
+  #|(c, m, labels, stride, heights) => {
+  #|  const gl = c.gl, out = new Float32Array(m.vertices);
+  #|  for (let i = 0; i < heights.length; i++) {
+  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
+  #|    for (let k = first; k < first + count; k++) out[m.all[k]] = heights[i];
+  #|  }
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
   #|}

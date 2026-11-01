@@ -86,6 +86,7 @@ pub struct Map {
   priv atlas : @label.Atlas
   priv mut atlas_full : Bool
   priv mut labels_dirty : Bool
+  priv mut dem_version : Int32
   priv mut placed_camera : @core.Camera?
   priv mut placed_at : Double
   priv mut placement_round : Int32
@@ -155,6 +156,7 @@ pub fn Map::new(
     ),
     atlas_full: false,
     labels_dirty: false,
+    dem_version: 0,
     placed_camera: None,
     placed_at: 0.0,
     placement_round: 0,
