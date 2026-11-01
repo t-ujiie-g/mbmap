@@ -31,18 +31,28 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 2442,
+      "bytes": 2553,
+      "budget": 5000
+    },
+    {
+      "name": "PROJ strings (loaded by mbmap/analysis on the first one)",
+      "bytes": 2723,
       "budget": 5000
     },
     {
       "name": "analysis worker",
-      "bytes": 27761,
+      "bytes": 28906,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 44204,
+      "bytes": 38188,
       "budget": 50000
+    },
+    {
+      "name": "coordinate systems (loaded by the analysis worker on first use)",
+      "bytes": 21797,
+      "budget": 25000
     }
   ]
 }

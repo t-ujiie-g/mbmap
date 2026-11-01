@@ -93,8 +93,8 @@ ArcGIS Maps SDK for JavaScript のような機能群を視野に入れるが、�
 
 - `geom/` の拡張 … 空間インデックス（R-tree）、計測
 - `formats/` の拡張 … FlatGeobuf、CSV など
-- `analysis/` の拡張 … ジオメトリ演算（Clipper2 などの移植を前提に、黄金テストで検証）
-- `proj/` … 座標系変換（まず平面直角座標系と JGD2011）
+- `analysis/` の拡張 … ジオメトリ演算（Phase 11 で作った：`clipper/`・`overlay/`、`geometry.wasm`）
+- `proj/` … 座標系変換（Phase 11 で作った：proj4js の移植。解析の Worker が `proj.wasm` を初回に読み込む）
 - `raster/` の拡張 … 3D 地形、可視域などのラスタ解析
 - 3D … カメラは `core` の `Transform` を一般化する。地形メッシュ、建物の押し出し、glTF / 3D Tiles の展開（Draco、meshopt）は `mbmap/3d` の入口に分ける
 

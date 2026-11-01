@@ -16,6 +16,7 @@ run("moon", ["build", "worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geojson_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "analysis_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geometry_worker", "--target", "wasm-gc", "--release"], ROOT);
+run("moon", ["build", "proj_worker", "--target", "wasm-gc", "--release"], ROOT);
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 
@@ -32,7 +33,10 @@ await build({
 await build({ ...common, entryPoints: [path.join(PKG, "src/geojson.ts")], outfile: path.join(DIST, "geojson.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geojson_worker/js/worker.mjs")], outfile: path.join(DIST, "geojson-worker.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js") });
-await build({ ...common, entryPoints: [path.join(PKG, "src/analysis.ts")], outfile: path.join(DIST, "analysis.js") });
+// The PROJ string parser stays a file of its own, loaded on the first PROJ string.
+const projstringEntry = { name: "projstring-entry", setup: (b) => b.onResolve({ filter: /^\.\/projstring\.js$/ }, () => ({ path: "./projstring.js", external: true })) };
+await build({ ...common, entryPoints: [path.join(PKG, "src/analysis.ts")], outfile: path.join(DIST, "analysis.js"), plugins: [projstringEntry] });
+await build({ ...common, entryPoints: [path.join(PKG, "src/projstring.ts")], outfile: path.join(DIST, "projstring.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "analysis_worker/js/worker.mjs")], outfile: path.join(DIST, "analysis-worker.js") });
 // The element imports the main entry rather than bundling a second copy of it.
 const mainEntry = { name: "main-entry", setup: (b) => b.onResolve({ filter: /^mbmap$/ }, () => ({ path: "./index.js", external: true })) };
@@ -42,6 +46,7 @@ await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/worker/worker.wasm"
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geojson_worker/geojson_worker.wasm"), path.join(DIST, "geojson.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/analysis_worker/analysis_worker.wasm"), path.join(DIST, "analysis.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geometry_worker/geometry_worker.wasm"), path.join(DIST, "geometry.wasm"));
+await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"), path.join(DIST, "proj.wasm"));
 const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
 run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
 run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);

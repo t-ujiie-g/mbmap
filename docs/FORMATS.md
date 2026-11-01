@@ -141,13 +141,15 @@ Out:
 
 In:
 
-- `{type: "init", wasm, geometry}`: the analysis and geometry wasm URLs (the
-  geometry module is fetched on the first geometry call).
+- `{type: "init", wasm, geometry, proj}`: the analysis, geometry and
+  coordinate system wasm URLs (the last two are fetched on their first use;
+  proj.wasm is instantiated with `{ Math }`).
 - `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments
   (no argument may be named `op`):
   - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8),
-    and `crs` (EPSG code of its coordinates; anything but 4326 is transformed to
-    4326 by the geometry module, which every other call then assumes);
+    and `crs` (of its coordinates; anything but 4326 is transformed to 4326 by
+    the coordinate system module, which every other call then assumes). A
+    `crs` is an EPSG code or a Float64Array "CRS definition";
   - `dispose`, `measure` (`kind`: 0 area, 1 length, 2 centroid, 3 bbox), `search`
     (`bbox`), `nearest` (`x`, `y`, `k`, `maxDistance`), `grid` (`bbox`, `cols`,
     `rows`), all with `dataset`;
@@ -158,14 +160,43 @@ In:
     `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`);
   - geometry, each giving a new dataset: `buffer` (`dataset`, `meters`, `mode` 0
     geodesic or 1 planar, `join` 0 round, 1 miter, 2 square, 3 bevel, `cap` 0
-    round, 1 butt, 2 square, `arcTolerance` in meters, `crs` the projected EPSG
-    code a planar buffer is measured in), `dissolve` (`dataset`) and
+    round, 1 butt, 2 square, `arcTolerance` in meters, `crs` the projected CRS
+    a planar buffer is measured in), `dissolve` (`dataset`) and
     `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect); the datasets go to
     the geometry module and back as Table bytes;
   - `toGeoJSON` (`dataset`, `crs`): its Table bytes, transformed to `crs` when
     given, decoded into a FeatureCollection (`analysis_worker/js/table.mjs`);
-  - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to` EPSG
-    codes): the pairs in `to`, NaN where a point is out of the projection's reach.
+  - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to`): the
+    pairs in `to`, NaN where a point is out of the projection's reach.
+
+Datasets cross to the coordinate system module (proj_worker) as their
+coordinates only: `coords_out(dataset)` writes them as f64 x, y pairs,
+proj.wasm's `transform_coords(from, to)` maps them, and `with_coords(dataset)`
+makes a new dataset from the result (a feature with a NaN keeps its row with no
+geometry). proj.wasm names a CRS by EPSG code, or by -1 - the handle
+`define_crs` returns for a definition; `crs_kind(id)` is 1 for a geographic CRS,
+0 for a projected one.
+
+## CRS definition (`proj/encoding.mbt`, written by `npm/src/projstring.ts`)
+
+A parsed PROJ string as 34 f64s; angles in radians, NaN where a parameter was
+not given.
+
+| slot | value |
+|---|---|
+| 0 | projection: index into longlat, merc, tmerc, utm, lcc, aea, aeqd, stere, sterea, cass, laea, eqc, eqdc, sinu, eck6, moll, robin, cea, mill, poly, omerc, somerc, krovak, ortho, gnom, eqearth, bonne |
+| 1, 2 | semi-major and semi-minor axes (m) |
+| 3 | `+R_A` (1 or 0) |
+| 4 | how many `towgs84` values follow: 0 (no datum shift), 3 or 7 |
+| 5–11 | `towgs84`: dx, dy, dz (m), rx, ry, rz (arc seconds), scale (ppm) |
+| 12 | `+datum=WGS84` spelled so (proj4js's shortcut) |
+| 13 | `to_meter` (NaN: meters) |
+| 14 | prime meridian east of Greenwich |
+| 15 | `lon_wrap` |
+| 16–25 | `lat_0`, `lat_1`, `lat_2`, `lat_ts`, `lon_0`, `lon_1`, `lon_2`, `alpha`, `gamma`, `lonc` |
+| 26–28 | `x_0`, `y_0`, `k_0` (or `k`) |
+| 29 | `zone` |
+| 30–33 | `south`, `no_uoff` (or `no_off`), `no_rot`, `czech` (1 or 0) |
 
 Out:
 

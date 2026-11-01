@@ -32,7 +32,8 @@ moon fmt && moon info
 | `analysis_worker/` | 解析の Worker（データセットをハンドルで保持） | wasm-gc |
 | `clipper/` | Clipper2 2.0.1 の移植（ブール演算、オフセット。C++ 版と同じ結果） | 全 |
 | `overlay/` | 地物の表に対する buffer（測地線・平面）、dissolve、clip、erase、intersect | 全 |
-| `proj/` | 座標系の変換（EPSG コード：平面直角座標系、UTM、Web メルカトル。proj4js と同じ値） | 全 |
+| `proj/` | 座標系の変換（proj4js の移植：27 の投影、3・7 パラメータの測地系変換、EPSG コードと PROJ 文字列） | 全 |
+| `proj_worker/` | 座標系の wasm（解析の Worker が初回に読み込む） | wasm-gc |
 | `geometry_worker/` | ジオメトリ演算の wasm（解析の Worker が初回に読み込む） | wasm-gc |
 | `wasmio/` | wasm-gc の Worker が JS とやりとりする線形メモリの入出力 | wasm-gc |
 | `raster/` | 標高タイルの読み込み（RGB から標高）、hillshade 用の勾配 | 全 |

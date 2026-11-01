@@ -2,28 +2,95 @@
 package "t-ujiie-g/mbmap/proj"
 
 // Values
-pub let grs80 : Ellipsoid
+pub const DEFINITION_SLOTS : Int32 = 34
 
 pub fn transform(Crs, Crs, Double, Double) -> (Double, Double)?
-
-pub let wgs84 : Ellipsoid
 
 // Errors
 
 // Types and methods
 pub struct Crs {
-  code : Int32
   // private fields
 }
-pub fn Crs::forward(Self, Double, Double) -> (Double, Double)?
-pub fn Crs::from_epsg(Int32) -> Self?
-pub fn Crs::inverse(Self, Double, Double) -> (Double, Double)?
+pub fn Crs::from_epsg(Int32, trig? : Trig) -> Self?
 pub fn Crs::is_geographic(Self) -> Bool
+pub fn Crs::new(Definition, trig? : Trig) -> Self?
 
-pub(all) struct Ellipsoid {
-  a : Double
-  rf : Double
+pub(all) struct Definition {
+  mut proj : Method
+  mut a : Double
+  mut b : Double
+  mut r_a : Bool
+  mut towgs84 : Array[Double]
+  mut datum_wgs84 : Bool
+  mut to_meter : Double
+  mut from_greenwich : Double
+  mut long_wrap : Double
+  mut lat0 : Double
+  mut lat1 : Double
+  mut lat2 : Double
+  mut lat_ts : Double
+  mut long0 : Double
+  mut long1 : Double
+  mut long2 : Double
+  mut alpha : Double
+  mut gamma : Double
+  mut longc : Double
+  mut x0 : Double
+  mut y0 : Double
+  mut k0 : Double
+  mut zone : Int32
+  mut south : Bool
+  mut no_uoff : Bool
+  mut no_rot : Bool
+  mut czech : Bool
 }
+pub fn Definition::decode(ArrayView[Double]) -> Self?
+pub fn Definition::new(Method, Double, Double) -> Self
+
+pub(all) enum Method {
+  LongLat
+  Merc
+  Tmerc
+  Utm
+  Lcc
+  Aea
+  Aeqd
+  Stere
+  Sterea
+  Cass
+  Laea
+  Eqc
+  Eqdc
+  Sinu
+  Eck6
+  Moll
+  Robin
+  Cea
+  Mill
+  Poly
+  Omerc
+  Somerc
+  Krovak
+  Ortho
+  Gnom
+  Eqearth
+  Bonne
+}
+
+pub(all) struct Trig {
+  sin : (Double) -> Double
+  cos : (Double) -> Double
+  tan : (Double) -> Double
+  asin : (Double) -> Double
+  acos : (Double) -> Double
+  atan : (Double) -> Double
+  atan2 : (Double, Double) -> Double
+  exp : (Double) -> Double
+  ln : (Double) -> Double
+  pow : (Double, Double) -> Double
+}
+pub fn Trig::moonbit() -> Self
 
 // Type aliases
 
