@@ -36,17 +36,22 @@ pub fn LngLatBounds::including(self : LngLatBounds, p : LngLat) -> LngLatBounds 
 }
 
 ///|
-/// Screen point (CSS pixels) of `p` on the ground at sea level. A point
-/// behind the camera goes to the edge of the viewport grown by its size on
-/// each side, in its direction from the center (MapLibre's `project`).
-pub fn Transform::project(self : Transform, p : LngLat) -> (Double, Double) {
+/// Screen point (CSS pixels) of `p` at `elevation` meters (sea level by
+/// default). A point behind the camera goes to the edge of the viewport grown
+/// by its size on each side, in its direction from the center (MapLibre's
+/// `project`).
+pub fn Transform::project(
+  self : Transform,
+  p : LngLat,
+  elevation~ : Double = 0.0,
+) -> (Double, Double) {
   let c = self.camera.center.to_mercator()
   let m = p.to_mercator()
   let ws = self.world_size()
   let (x, y, _, w) = self.view.apply(
     (m.x - c.x) * ws,
     (m.y - c.y) * ws,
-    0.0,
+    elevation * self.pixels_per_meter(),
     1.0,
   )
   let cx = self.width / 2.0

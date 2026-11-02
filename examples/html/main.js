@@ -1,6 +1,7 @@
 // The showcase with the npm package's `Map` and the DOM.
 import { Map } from "mbmap";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
+import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
@@ -21,6 +22,7 @@ window.__map = map;
 // The topmost feature under a click, from the workers that hold the geometry.
 map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
 hoverPlaces(map);
+pinDestinations(map, document.body);
 
 function showPicked(features) {
   const rows = describeFeature(features) ?? [["—", "何もありません"]];
@@ -104,5 +106,6 @@ document.getElementById("layers").replaceChildren(
   }),
 );
 document.getElementById("marker").addEventListener("click", addMarker);
+document.getElementById("save").addEventListener("click", () => saveImage(map));
 showButtons();
 showCamera();

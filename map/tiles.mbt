@@ -219,10 +219,14 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
             None
           },
           dem: if kind == KIND_HILLSHADE {
+            let heights = buffer_of(l, "elevations")
+            let range = height_range(heights)
             Some({
               edges: f64_array(buffer_of(l, "edges")),
-              heights: buffer_of(l, "elevations"),
+              heights,
               size: get_int(l, "size"),
+              lowest: range[0],
+              highest: range[1],
             })
           } else {
             None

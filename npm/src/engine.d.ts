@@ -25,6 +25,7 @@ declare module "mbmap-engine" {
   export function map_set_camera(map: EngineMap, lng: number, lat: number, zoom: number, bearing: number, pitch: number): void;
   export function map_on_move(map: EngineMap, f: () => void): number;
   export function map_on_idle(map: EngineMap, f: () => void): number;
+  export function map_on_render(map: EngineMap, f: () => void): number;
   export function map_off(map: EngineMap, id: number): void;
   export function map_destroy(map: EngineMap): void;
   export function map_set_limits(map: EngineMap, limits: number[]): void;
@@ -34,6 +35,10 @@ declare module "mbmap-engine" {
   export function map_motion(map: EngineMap): number;
   export function map_project(map: EngineMap, lng: number, lat: number): number[];
   export function map_unproject(map: EngineMap, x: number, y: number): number[];
+  export function map_locate(map: EngineMap, points: number[]): number[];
+  export function map_is_idle(map: EngineMap): boolean;
+  export function map_max_region(map: EngineMap): number;
+  export function map_render_region(map: EngineMap, ratio: number, x: number, y: number, width: number, height: number): Uint8ClampedArray<ArrayBuffer>;
   export function map_bounds(map: EngineMap): number[];
   export function map_camera_for_bounds(map: EngineMap, input: number[]): number[];
   export function map_set_handler(map: EngineMap, handler: number, enabled: boolean): void;

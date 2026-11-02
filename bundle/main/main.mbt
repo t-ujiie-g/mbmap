@@ -85,6 +85,12 @@ pub fn map_on_move(map : @map.Map, f : () -> Unit) -> Int32 {
 }
 
 ///|
+#export_name("map_on_render")
+pub fn map_on_render(map : @map.Map, f : () -> Unit) -> Int32 {
+  map.on_render(f)
+}
+
+///|
 #export_name("map_on_idle")
 pub fn map_on_idle(map : @map.Map, f : () -> Unit) -> Int32 {
   map.on_idle(f)
@@ -209,26 +215,48 @@ pub fn map_motion(map : @map.Map) -> Int32 {
 }
 
 ///|
-/// Screen x and y of (lng, lat).
+/// Screen x and y of (lng, lat), on the terrain if any.
 #export_name("map_project")
 pub fn map_project(
   map : @map.Map,
   lng : Double,
   lat : Double,
 ) -> FixedArray[Double] {
-  let (x, y) = map.transform().project({ lng, lat, })
+  let (x, y, _) = map.locate({ lng, lat, })
   [x, y]
 }
 
 ///|
-/// Lng and lat on the ground under screen point (x, y).
+/// For each (lng, lat) pair of `points`: its screen x and y on the terrain if
+/// any, and 1 where the terrain hides it (0 otherwise).
+#export_name("map_locate")
+pub fn map_locate(
+  map : @map.Map,
+  points : FixedArray[Double],
+) -> FixedArray[Double] {
+  let n = points.length() / 2
+  let out = FixedArray::make(n * 3, 0.0)
+  for i in 0..<n {
+    let (x, y, covered) = map.locate({
+      lng: points[2 * i],
+      lat: points[2 * i + 1],
+    })
+    out[3 * i] = x
+    out[3 * i + 1] = y
+    out[3 * i + 2] = if covered { 1.0 } else { 0.0 }
+  }
+  out
+}
+
+///|
+/// Lng and lat under screen point (x, y), on the terrain if any.
 #export_name("map_unproject")
 pub fn map_unproject(
   map : @map.Map,
   x : Double,
   y : Double,
 ) -> FixedArray[Double] {
-  let p = map.transform().unproject(x, y)
+  let p = map.point_location(x, y)
   [p.lng, p.lat]
 }
 
@@ -406,4 +434,31 @@ pub fn map_set_transform_request(
   f : @map.RequestTransform,
 ) -> Unit {
   map.set_transform_request(f)
+}
+
+///|
+#export_name("map_is_idle")
+pub fn map_is_idle(map : @map.Map) -> Bool {
+  map.is_idle()
+}
+
+///|
+#export_name("map_max_region")
+pub fn map_max_region(map : @map.Map) -> Int32 {
+  map.max_region()
+}
+
+///|
+/// RGBA pixels, top row first, of a part of the view drawn at `ratio`
+/// (`@map.Map::render_region`).
+#export_name("map_render_region")
+pub fn map_render_region(
+  map : @map.Map,
+  ratio : Double,
+  x : Int32,
+  y : Int32,
+  width : Int32,
+  height : Int32,
+) -> @render_webgl2.JsBuffer {
+  map.render_region(ratio, x, y, width, height)
 }

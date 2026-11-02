@@ -27,8 +27,9 @@ fn Map::draw_sky(self : Map, dpr : Double) -> Unit {
     return
   }
   let zoom = t.camera.zoom
+  let bottom = self.window.map(w => w.bottom).unwrap_or(0.0)
   self.renderer.draw_sky(
-    (t.height / 2.0 + t.horizon()) * dpr,
+    (t.height / 2.0 + t.horizon()) * dpr - bottom,
     blend_of(sky.sky_horizon_blend, zoom, 0.8) * t.height / 2.0 * dpr,
     premultiplied(color_of(sky.sky, zoom, JsProps::none())),
     premultiplied(color_of(sky.horizon, zoom, JsProps::none())),

@@ -91,6 +91,12 @@ license and source.
     of src/source/load_tilejson.ts takes
   - map/input.mbt: the keyboard, double click and box zoom handlers of
     src/ui/handler/ and the inertia of src/ui/handler_inertia.ts
+  - core/occlusion.mbt: `isLocationOccluded`, `_raycastTerrain` and the
+    terrain pick of `pointLocation` of mercator_transform.ts, `sampleAt` and
+    `bisect` of src/render/terrain_coverage.ts; core/transform.mbt: the far
+    plane of `_calculateNearFarZ` and the `earthCircumference` heights are
+    measured in; map/dem.mbt: heights at tile borders as `DEMData.sampleBilinear`
+    reads the backfilled border
 
 - core/camera.mbt `Bezier`: follows @mapbox/unitbezier 1.0.0 (ported from WebKit)
   https://github.com/mapbox/unitbezier — BSD 2-Clause License:

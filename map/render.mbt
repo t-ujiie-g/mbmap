@@ -24,98 +24,25 @@ fn Map::render(self : Map) -> Unit {
     self.transform = resized
   }
   self.step_animation()
-  let terrain = self.terrain_source()
-  if terrain is Some(src) &&
-    elevation_at(src, self.transform.camera.center.to_mercator()) is Some(e) {
-    self.transform = self.transform.with_elevation(e * self.exaggeration())
+  // The center stands on the terrain, at 0 m where no DEM tile has loaded.
+  let elevation = match self.terrain_source() {
+    Some(src) =>
+      elevation_at(src, self.transform.camera.center.to_mercator()).unwrap_or(
+        0.0,
+      ) *
+      self.exaggeration()
+    None => 0.0
   }
-  let t = self.transform
-  // Per source: its covering tiles, and where their meshes go this frame
-  // (computed once for all of the source's layers).
-  let mut settled = true
-  let draws_of : @hashmap.HashMap[String, Array[Draw]] = @hashmap.HashMap([])
-  for src in self.sources {
-    let s = src.source
-    let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
-    let cover = if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
-      s.min_zoom.to_double() {
-      []
-    } else {
-      // Tiles outside the source's bounds are never asked for.
-      t.covering_tiles(s.min_zoom, z).filter(id => s.covers(id.z, id.x, id.y))
-    }
-    self.update_tiles(src, cover)
-    let draws = []
-    for id in cover {
-      match src.fallback(id) {
-        Own(id, meshes) =>
-          draws.push({ id, at: self.placement(id, None, dpr), meshes, })
-        Ancestor(id, meshes, clip~) =>
-          draws.push({ id, at: self.placement(id, Some(clip), dpr), meshes, })
-        Children(kids) =>
-          for kid in kids {
-            draws.push({
-              id: kid.0,
-              at: self.placement(kid.0, None, dpr),
-              meshes: kid.1,
-            })
-          }
-        Nothing => ()
-      }
-      settled = settled && src.settled(id)
-    }
-    draws_of.set(s.id, draws)
-  }
+  self.transform = self.transform.with_elevation(elevation)
+  let (draws_of, settled) = self.draws(dpr, load=true)
   self.drawn = draws_of
   if self.placement_due() {
     self.place_labels(draws_of)
   }
-  let (r, g, b) = self.background()
-  self.renderer.clear(r, g, b)
-  self.draw_sky(dpr)
-  let zoom = t.camera.zoom
-  if terrain is Some(src) {
-    self.render_terrain(src, draws_of, dpr)
-  } else {
-    self.renderer.reset_depth()
-  }
-  let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
-  let light = self.extrusion_light()
-  for index, layer in self.style.layers {
-    // With terrain, all but symbols and extrusions are drawn onto it.
-    if layer.kind is Background ||
-      (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion))) ||
-      zoom < layer.min_zoom ||
-      zoom >= layer.max_zoom {
-      continue
-    }
-    // Paint that does not read feature data is the same for every mesh.
-    let shared = paint_of(layer, zoom, JsProps::none())
-    for d in draws_of.get(layer.source).unwrap_or([]) {
-      if layer.extrusion is Some(e) {
-        if terrain is Some(src) {
-          self.ground_extrusions(src, d)
-        }
-        self.draw_extrusions(
-          index,
-          layer,
-          e,
-          shared,
-          d,
-          light,
-          terrain is Some(_),
-        )
-      } else {
-        self.draw_layer(
-          index,
-          layer,
-          shared,
-          d.at,
-          d.meshes,
-          dpr,
-          height_scale~,
-        )
-      }
+  self.draw_frame(draws_of, dpr)
+  for _, l in self.listeners {
+    if l is Render(f) {
+      f()
     }
   }
   // Feature states still being placed by the workers.
@@ -334,13 +261,132 @@ fn Map::placement(
       [x0, y0, x0 + size, y0 + size]
     }
   }
+  let matrix = t.tile_matrix(id, extent)
+  // Raster tiles at rest sit on the pixel grid, as MapLibre draws them.
+  let raster_matrix = t.tile_matrix(id, extent, aligned=!self.is_moving())
+  let (matrix, raster_matrix) = match self.window {
+    None => (matrix, raster_matrix)
+    Some(w) => (w.matrix.mul(matrix), w.matrix.mul(raster_matrix))
+  }
   {
-    matrix: t.tile_matrix(id, extent),
-    // Raster tiles at rest sit on the pixel grid, as MapLibre draws them.
-    raster_matrix: t.tile_matrix(id, extent, aligned=!self.is_moving()),
+    matrix,
+    raster_matrix,
     units_per_pixel: 1.0 / (t.tile_scale(id, extent) * dpr),
     center_depth: t.center_depth(),
     clip: rect,
     latitudes: (id.lnglat_bounds().max_y, id.lnglat_bounds().min_y),
+  }
+}
+
+///|
+/// Per source: where its covering tiles' meshes go this frame (once for all
+/// of the source's layers), and whether every covering tile has settled.
+/// `load` asks for the tiles missing.
+fn Map::draws(
+  self : Map,
+  dpr : Double,
+  load~ : Bool,
+) -> (@hashmap.HashMap[String, Array[Draw]], Bool) {
+  let t = self.transform
+  let mut settled = true
+  let draws_of : @hashmap.HashMap[String, Array[Draw]] = @hashmap.HashMap([])
+  for src in self.sources {
+    let s = src.source
+    let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
+    let cover = if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
+      s.min_zoom.to_double() {
+      []
+    } else {
+      // Tiles outside the source's bounds are never asked for.
+      t.covering_tiles(s.min_zoom, z).filter(id => s.covers(id.z, id.x, id.y))
+    }
+    if load {
+      self.update_tiles(src, cover)
+    }
+    let draws = []
+    for id in cover {
+      match src.fallback(id) {
+        Own(id, meshes) =>
+          draws.push({ id, at: self.placement(id, None, dpr), meshes, })
+        Ancestor(id, meshes, clip~) =>
+          draws.push({ id, at: self.placement(id, Some(clip), dpr), meshes, })
+        Children(kids) =>
+          for kid in kids {
+            draws.push({
+              id: kid.0,
+              at: self.placement(kid.0, None, dpr),
+              meshes: kid.1,
+            })
+          }
+        Nothing => ()
+      }
+      settled = settled && src.settled(id)
+    }
+    draws_of.set(s.id, draws)
+  }
+  (draws_of, settled)
+}
+
+///|
+/// Draws every layer of the frame into the current viewport.
+fn Map::draw_frame(
+  self : Map,
+  draws_of : @hashmap.HashMap[String, Array[Draw]],
+  dpr : Double,
+) -> Unit {
+  let t = self.transform
+  let terrain = self.terrain_source()
+  let (r, g, b) = self.background()
+  self.renderer.clear(r, g, b)
+  self.draw_sky(dpr)
+  let zoom = t.camera.zoom
+  if terrain is Some(src) {
+    self.render_terrain(src, draws_of, dpr)
+  } else {
+    self.renderer.reset_depth()
+  }
+  let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
+  let light = self.extrusion_light()
+  for index, layer in self.style.layers {
+    // With terrain, all but symbols and extrusions are drawn onto it.
+    if layer.kind is Background ||
+      (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion))) ||
+      zoom < layer.min_zoom ||
+      zoom >= layer.max_zoom {
+      continue
+    }
+    // Paint that does not read feature data is the same for every mesh.
+    let shared = paint_of(layer, zoom, JsProps::none())
+    for d in draws_of.get(layer.source).unwrap_or([]) {
+      if layer.extrusion is Some(e) {
+        if terrain is Some(src) {
+          self.ground_extrusions(src, d)
+        }
+        self.draw_extrusions(
+          index,
+          layer,
+          e,
+          shared,
+          d,
+          light,
+          terrain is Some(_),
+        )
+      } else {
+        self.draw_layer(
+          index,
+          layer,
+          shared,
+          d.at,
+          d.meshes,
+          dpr,
+          height_scale~,
+        )
+      }
+    }
+  }
+  for _, l in self.listeners {
+    if l is Render(f) {
+      f()
+    }
   }
 }

@@ -33,7 +33,7 @@ extern "js" fn gl_target_new(gl : Gl, size : Int32) -> Target =
   #|  const fb = gl.createFramebuffer();
   #|  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   #|  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, c.out ?? null);
   #|  return { fb, texture, size };
   #|}
 
@@ -66,7 +66,7 @@ extern "js" fn gl_target_end(gl : Gl) -> Unit =
   #|(c) => {
   #|  const gl = c.gl, [w, h] = c.saved ?? c.size;
   #|  c.saved = null;
-  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, c.out ?? null);
   #|  gl.viewport(0, 0, w, h);
   #|  c.px = [2 / w, 2 / h];
   #|}
@@ -169,7 +169,7 @@ extern "js" fn gl_depth_begin(gl : Gl) -> Unit =
 
 ///|
 extern "js" fn gl_depth_end(gl : Gl) -> Unit =
-  #|(c) => { c.gl.bindFramebuffer(c.gl.FRAMEBUFFER, null); }
+  #|(c) => { c.gl.bindFramebuffer(c.gl.FRAMEBUFFER, c.out ?? null); }
 
 ///|
 extern "js" fn gl_depth_reset(gl : Gl) -> Unit =

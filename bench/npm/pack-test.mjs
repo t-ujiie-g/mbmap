@@ -94,9 +94,10 @@ const checks = {
     const query = await queryChecks(page);
     const state = await stateChecks(page);
     const tiles = await tileSourceChecks(page);
+    const exported = await trackExportChecks(page);
     const style = await styleChecks(page, requests);
     const camera = await cameraChecks(page);
-    return [ok && query.ok && state.ok && tiles.ok && style.ok && camera.ok, { ...r, query, state, tiles, style, camera }];
+    return [ok && query.ok && state.ok && tiles.ok && exported.ok && style.ok && camera.ok, { ...r, query, state, tiles, exported, style, camera }];
   },
 
   async element(page) {
@@ -309,10 +310,13 @@ const checks = {
 // The showcase, the same in all three examples: at Tokyo Station the panel
 // lists it within 5 km and gives plane IX's coordinates (proj4js: X -35367.230,
 // Y -5995.185); 3D tilts to 60° on terrain; a destination button flies there,
-// and the panel follows the camera.
+// and the panel follows the camera; the destinations' pins follow their places,
+// and the view saves as a PNG.
 async function showcase(page) {
   await page.waitForFunction(() => window.__described);
   const first = await page.evaluate(() => window.__described);
+  const pin = (name) => page.evaluate((n) => [...window.__pins.children].find((p) => p.textContent === n)?.style.transform, name);
+  const tokyoPin = await pin("東京駅");
   const panel = () => page.evaluate(() => document.getElementById("camera").textContent);
   // A click at Tokyo Station, at the center, shows the place on top.
   await page.mouse.click(400, 300);
@@ -331,6 +335,10 @@ async function showcase(page) {
   await page.waitForFunction(() => window.__described.near.includes("大阪駅"));
   const osaka = await page.evaluate(() => window.__described);
   const shown = await panel();
+  const osakaPin = await pin("大阪駅");
+  await page.click("#save");
+  await page.waitForFunction(() => window.__saved, null, { timeout: 30000 });
+  const saved = await page.evaluate(() => window.__saved);
   // The 3D switch went through setStyle; layer groups hide through setLayoutProperty and markers go in with setData.
   const styled = await page.evaluate(async () => {
     const map = window.__map;
@@ -353,8 +361,10 @@ async function showcase(page) {
     Math.abs(first.plane.x - -5995.185) < 0.01 && Math.abs(first.plane.y - -35367.23) < 0.01 &&
     tilted.pitch === 60 && tilted.bearing === -20 &&
     osaka.plane.zone === "第VI系" &&
-    shown.includes("135.49590") && shown.includes("第VI系");
-  return [ok, { first, picked, hovered, tilted, osaka: osaka.near, shown, styled }];
+    shown.includes("135.49590") && shown.includes("第VI系") &&
+    atCentre(tokyoPin) && atCentre(osakaPin) &&
+    saved.type === "image/png" && saved.size > 0;
+  return [ok, { first, picked, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved }];
 }
 
 // Queries and mouse events on the npm example's map (Tokyo Station, 800 x 600),
@@ -573,6 +583,69 @@ async function tileSourceChecks(page) {
     near(blue, [0, 0, 255]) &&
     near(transformed, [0, 255, 0]) && JSON.stringify(types) === JSON.stringify(["Tile"]);
   return { ok, red, half, green, attribution, blue, transformed, types };
+}
+
+// Screen tracking and image export on the npm example's map over a red raster
+// tile (bench/dist/pack/red.png from tileSourceChecks): a tracked place follows
+// the camera after each frame and stops once removed; an image drawn at 2x in
+// parts equals the one drawn whole; bad sizes are refused
+// (bench/track/golden.mjs and bench/export/golden.mjs compare with MapLibre).
+async function trackExportChecks(page) {
+  const r = await page.evaluate(async () => {
+    const map = window.__map;
+    map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
+    let idle = map.once("idle");
+    map.addSource("e", { type: "raster", tiles: ["/bench/dist/pack/red.png"], tileSize: 256 });
+    map.addLayer({ id: "e", type: "raster", source: "e" });
+    await idle;
+    const seen = [];
+    const t = map.track([139.7671, 35.6812], (p) => seen.push(p));
+    const atOnce = seen.length;
+    let renders = 0;
+    const counted = () => renders++;
+    map.on("render", counted);
+    idle = map.once("idle");
+    map.panBy([100, 50], { duration: 0 });
+    await idle;
+    map.off("render", counted);
+    const moved = seen.at(-1);
+    t.setLngLat([139.7, 35.6]);
+    const set = { at: t.getLngLat(), last: seen.at(-1) };
+    t.remove();
+    const before = seen.length;
+    idle = map.once("idle");
+    map.jumpTo({ center: [139.7671, 35.6812] });
+    await idle;
+    const pixels = async (blob) => {
+      const bitmap = await createImageBitmap(blob);
+      const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext("2d");
+      ctx.drawImage(bitmap, 0, 0);
+      return { width: bitmap.width, height: bitmap.height, data: ctx.getImageData(0, 0, bitmap.width, bitmap.height).data };
+    };
+    const whole = await pixels(await map.toBlob({ pixelRatio: 2 }));
+    const parts = await pixels(await map.toBlob({ pixelRatio: 2, maxSize: 300 }));
+    const same = whole.data.every((v, i) => v === parts.data[i]);
+    const centre = [...whole.data.slice((600 * 1600 + 800) * 4, (600 * 1600 + 800) * 4 + 3)];
+    const refused = [];
+    for (const o of [{ pixelRatio: 0 }, { pixelRatio: 100 }]) await map.toBlob(o).catch((e) => refused.push(e.message));
+    map.removeLayer("e");
+    map.removeSource("e");
+    return { first: seen[0], atOnce, moved, renders, set, after: seen.length - before, size: [whole.width, whole.height], same, centre, refused };
+  });
+  const ok =
+    r.atOnce === 1 && Math.abs(r.first.x - 400) < 1e-6 && Math.abs(r.first.y - 300) < 1e-6 && r.first.covered === false &&
+    Math.abs(r.moved.x - 300) < 1e-6 && Math.abs(r.moved.y - 250) < 1e-6 && r.renders > 0 &&
+    r.set.at.lng === 139.7 && r.set.last.x < 0 &&
+    r.after === 0 &&
+    JSON.stringify(r.size) === "[1600,1200]" && r.same && near(r.centre, [255, 0, 0]) &&
+    r.refused[0] === "mbmap: pixelRatio must be a positive number: 0" && r.refused[1] === "mbmap: cannot make a 80000 x 60000 image";
+  return { ok, ...r };
+}
+
+// Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.
+function atCentre(transform) {
+  const m = /^translate\(([-\d.e]+)px, ([-\d.e]+)px\)$/.exec(transform ?? "");
+  return !!m && Math.abs(Number(m[1]) - 400) < 0.01 && Math.abs(Number(m[2]) - 300) < 0.01;
 }
 
 // The colour of screen pixel (x, y), read from a screenshot.

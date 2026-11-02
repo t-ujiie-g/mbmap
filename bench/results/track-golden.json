@@ -1,0 +1,58 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600",
+    "dem": "bench/fixtures/gsi-dem-fuji as Terrarium, exaggeration 1.5"
+  },
+  "limits": {
+    "px": 0.000001,
+    "meters": 0.001
+  },
+  "results": [
+    {
+      "view": "top",
+      "ok": true,
+      "places": 301,
+      "skipped": 41,
+      "screenPoints": 221,
+      "coveredByMapLibre": 0,
+      "coveredAgree": 301,
+      "projectMaxPx": 6.04e-10,
+      "unprojectMaxM": 1.94e-7
+    },
+    {
+      "view": "tilted",
+      "ok": true,
+      "places": 228,
+      "skipped": 114,
+      "screenPoints": 139,
+      "coveredByMapLibre": 17,
+      "coveredAgree": 228,
+      "projectMaxPx": 8.08e-10,
+      "unprojectMaxM": 9.69e-7
+    },
+    {
+      "view": "flank",
+      "ok": true,
+      "places": 255,
+      "skipped": 87,
+      "screenPoints": 171,
+      "coveredByMapLibre": 43,
+      "coveredAgree": 255,
+      "projectMaxPx": 8.07e-10,
+      "unprojectMaxM": 6.15e-7
+    },
+    {
+      "view": "low",
+      "ok": true,
+      "places": 298,
+      "skipped": 44,
+      "screenPoints": 201,
+      "coveredByMapLibre": 62,
+      "coveredAgree": 298,
+      "projectMaxPx": 3.13e-9,
+      "unprojectMaxM": 0.00000109
+    }
+  ]
+}

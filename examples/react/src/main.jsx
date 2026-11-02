@@ -5,6 +5,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "r
 import { createRoot } from "react-dom/client";
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../../shared/analysis.js";
+import { pinDestinations, saveImage } from "../../shared/overlay.js";
 import { describeFeature, hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
@@ -67,6 +68,7 @@ function App() {
       window.__picked = rows;
     }));
     hoverPlaces(map);
+    pinDestinations(map, document.body);
     update(e.detail.center);
   };
   const go = (d) => ref.current.map?.flyTo({ center: d.center, zoom: d.zoom, ...modeCamera(mode) });
@@ -107,6 +109,7 @@ function App() {
           ))}
         </div>
         <button id="marker" onClick={addMarker}>中心に印を置く</button>
+        <button id="save" onClick={() => ref.current.map && saveImage(ref.current.map)}>画像を保存</button>
         <h2>クリックした地物</h2>
         <dl id="picked">
           {(picked ?? [["—", "地図をクリック"]]).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}

@@ -224,6 +224,12 @@ pub fn Padding::not_equal(Self, Self) -> Bool
 pub fn Padding::to_repr(Self) -> @debug.Repr
 pub fn Padding::uniform(Double) -> Self
 
+pub(all) struct Terrain {
+  height : (Double, Double) -> Double?
+  lowest : Double
+  highest : Double
+}
+
 pub struct TileId {
   z : Int32
   x : Int32
@@ -262,15 +268,17 @@ pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
 pub fn Transform::max_pitch_scale_factor(Self) -> Double
 pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
 pub fn Transform::new(Camera, Double, Double, limits? : Limits) -> Self
+pub fn Transform::occluded(Self, LngLat, Double, Terrain) -> Bool
 pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera
 pub fn Transform::pixels_per_meter(Self) -> Double
-pub fn Transform::project(Self, LngLat) -> (Double, Double)
+pub fn Transform::project(Self, LngLat, elevation? : Double) -> (Double, Double)
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
 pub fn Transform::tile_matrix(Self, TileId, Int32, aligned? : Bool) -> Mat4
 pub fn Transform::tile_scale(Self, TileId, Int32) -> Double
 pub fn Transform::tile_zoom(Self, Int32, Int32, tile_size? : Int32) -> Int32
 pub fn Transform::unproject(Self, Double, Double) -> LngLat
+pub fn Transform::unproject_on(Self, Double, Double, Terrain) -> LngLat
 pub fn Transform::with_camera(Self, Camera) -> Self
 pub fn Transform::with_elevation(Self, Double) -> Self
 pub fn Transform::with_limits(Self, Limits) -> Self

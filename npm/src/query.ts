@@ -62,7 +62,9 @@ export function orderRendered(tiles: TileResult[], layers: { id: string; type: s
     if (!is3D(layers[l].id)) continue;
     for (const h of byLayer.get(layers[l].id) ?? []) features3D.push({ layer: layers[l].id, distance: h.distance, feature: h.feature });
   }
-  features3D.sort((a, b) => b.distance - a.distance);
+  // Faces at one depth computed from different vertices (a building and its outline) differ by
+  // rounding: they count as exact ties, which the sort keeps in order.
+  features3D.sort((a, b) => (Math.abs(a.distance - b.distance) <= 1e-9 * Math.abs(a.distance) ? 0 : b.distance - a.distance));
   const out: { layer: string; feature: GeoJSONFeature }[] = [];
   for (let l = layers.length - 1; l >= 0; l--) {
     const id = layers[l].id;
