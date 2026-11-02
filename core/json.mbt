@@ -7,11 +7,9 @@ let exact_powers : FixedArray[Double] = [
 ]
 
 ///|
-/// The JSON number at `start` of `b`: its value and the position after it,
-/// or NaN and `start` if there is none. Up to 15 digits with an exponent
-/// within ±22 take Clinger's exact fast path; anything else goes to
-/// `slow_number` with the number's range (which a wasm host can parse with
-/// its `Number()`, keeping core `strconv` out of a module).
+/// The JSON number at `start` of `b` and the position after it (NaN and `start`
+/// if none). Clinger's exact fast path takes up to 15 digits and exponents within
+/// ±22; the rest goes to `slow_number` (a wasm host's `Number()`, say).
 pub fn read_json_number(
   b : BytesView,
   start : Int32,
@@ -101,7 +99,7 @@ pub fn read_json_number(
 /// A JSON number's text parsed with core `strconv` (NaN if it is not one):
 /// the slow path where a host's `Number()` is not at hand.
 pub fn strconv_number(text : BytesView) -> Double {
-  @string.parse_double(@utf8.decode_lossy(text)) catch {
+  @string.parse_double(utf8_lossy(text)) catch {
     _ => @double.not_a_number
   }
 }
@@ -121,7 +119,7 @@ fn hex(c : Byte) -> Int32 {
 /// resolved and invalid UTF-8 replaced.
 pub fn json_string_text(s : BytesView) -> String {
   if !s.iter().any(c => c == b'\\') {
-    return @utf8.decode_lossy(s)
+    return utf8_lossy(s)
   }
   let sb = StringBuilder()
   let mut i = 0
@@ -132,7 +130,7 @@ pub fn json_string_text(s : BytesView) -> String {
       i += 1
       continue
     }
-    sb.write_string(@utf8.decode_lossy(s[run:i]))
+    sb.write_string(utf8_lossy(s[run:i]))
     let c = if i + 1 < end { s[i + 1] } else { b' ' }
     i += 2
     match c {
@@ -158,7 +156,7 @@ pub fn json_string_text(s : BytesView) -> String {
     }
     run = i
   }
-  sb.write_string(@utf8.decode_lossy(s[run:end]))
+  sb.write_string(utf8_lossy(s[run:end]))
   sb.to_string()
 }
 

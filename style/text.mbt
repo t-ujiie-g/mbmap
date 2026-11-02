@@ -13,10 +13,9 @@ pub(all) enum TextAnchor {
 } derive(Debug, Eq)
 
 ///|
-/// A symbol layer's text layout: `field` is `text-field` as parts to join
-/// (strings, or numbers and booleans the worker glue writes out), sizes in
-/// CSS pixels, `offset`, `max_width` and `line_height` in ems. `vertical` is
-/// the first `text-writing-mode`; `sort_key` is `symbol-sort-key`.
+/// A symbol layer's text layout: `field` is `text-field` as parts to join; sizes
+/// in CSS pixels, `offset`, `max_width` and `line_height` in ems; `vertical` the
+/// first `text-writing-mode`, `sort_key` the `symbol-sort-key`.
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr

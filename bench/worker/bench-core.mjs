@@ -6,7 +6,7 @@ import { runRows } from "../lib/rows.mjs";
 export async function loadWorker(fetchBytes) {
   let e = null;
   const host = { number: hostNumber(() => e.memory) };
-  const { instance } = await WebAssembly.instantiate(await fetchBytes("_build/wasm-gc/release/build/worker/worker.wasm"), { host });
+  const { instance } = await WebAssembly.instantiate(await fetchBytes("_build/wasm-gc/release/build/worker/worker.wasm"), { host, Math });
   e = instance.exports;
   const put = (bytes) => {
     const addr = e.prepare_input(bytes.length);

@@ -60,11 +60,9 @@ pub fn Limits::default() -> Limits {
 }
 
 ///|
-/// A camera on a `width` x `height` CSS-pixel viewport, kept to `limits` and to
-/// the world between `MAX_LATITUDE` north and south as MapLibre keeps it;
-/// non-finite cameras are ignored. Positions are world pixels relative to the
-/// center, so precision holds. `elevation` (meters) lifts the center onto
-/// terrain; the camera orbits it.
+/// A camera on a `width` x `height` CSS-pixel viewport, kept to `limits` and the
+/// latitude limits as MapLibre keeps it, in world pixels relative to the center;
+/// `elevation` (meters) lifts the center onto terrain.
 pub struct Transform {
   camera : Camera
   width : Double
@@ -123,10 +121,8 @@ fn center_distance(height : Double) -> Double {
 }
 
 ///|
-/// World pixels relative to the center (y south, z up) to clip space, as
-/// MapLibre builds it: perspective, y flipped, pulled back by the camera
-/// distance, pitched, rotated by the bearing, and lowered by `lift` world
-/// pixels so the center sits on the terrain.
+/// World pixels relative to the center (y south, z up) to clip space, as MapLibre
+/// builds it; `lift` world pixels lower the world so the center sits on terrain.
 fn view_projection(
   camera : Camera,
   width : Double,
@@ -144,10 +140,9 @@ fn view_projection(
 }
 
 ///|
-/// Depth (CSS pixels along the view axis) of the farthest ground drawn: the
-/// top edge of the screen or the horizon line, whichever is nearer, on the
-/// plane through sea level, or through the center when terrain below sea level
-/// lifts it (`lift` world pixels; MapLibre's `_calculateNearFarZ`).
+/// Depth (CSS pixels along the view axis) of the farthest ground drawn, as
+/// MapLibre's `_calculateNearFarZ`: the screen's top or the horizon line on the
+/// sea-level plane (the center's, when `lift` is below sea level).
 fn far_distance(pitch : Double, height : Double, lift : Double) -> Double {
   let d = center_distance(height)
   let limited = radians(@cmp.minimum(pitch, MAX_HORIZON_ANGLE))
@@ -237,181 +232,6 @@ pub fn Transform::with_elevation(
 }
 
 ///|
-/// `camera` kept to `limits` on a `width` x `height` viewport: zoom and pitch
-/// clamped, bearing and longitude wrapped to (-180, 180], and the center moved
-/// (or the zoom raised) so the view stays between the latitude limits and
-/// inside `bounds` (MapLibre's `defaultConstrain`, map padding left out).
-fn constrain(
-  camera : Camera,
-  limits : Limits,
-  width : Double,
-  height : Double,
-) -> Camera {
-  let zoom = @cmp.maximum(
-    limits.min_zoom,
-    @cmp.minimum(limits.max_zoom, camera.zoom),
-  )
-  let camera = {
-    ..camera,
-    zoom,
-    bearing: wrap180(camera.bearing),
-    pitch: @cmp.maximum(
-      limits.min_pitch,
-      @cmp.minimum(limits.max_pitch, camera.pitch),
-    ),
-  }
-  // MapLibre sets the zoom before the center and constrains each time: the
-  // zoom rises until the ranges fill the view, then the center is kept in.
-  let clamp = (z : Double) => {
-    @cmp.maximum(limits.min_zoom, @cmp.minimum(limits.max_zoom, z))
-  }
-  let mut zoom = zoom
-  for _ in 0..<3 {
-    let (_, z) = constrain_center(camera.center, zoom, limits, width, height)
-    if clamp(z) == zoom {
-      break
-    }
-    zoom = clamp(z)
-  }
-  let (center, _) = constrain_center(camera.center, zoom, limits, width, height)
-  { ..camera, center: { lng: wrap180(center.lng), lat: center.lat, }, zoom, }
-}
-
-///|
-/// `camera` after one pass of MapLibre's constraint (`applyConstrain`), as
-/// its moves take their end point: a zoom raised to fit a range centers that
-/// range and leaves the other axis alone.
-fn constrain_once(
-  camera : Camera,
-  limits : Limits,
-  width : Double,
-  height : Double,
-) -> Camera {
-  let zoom = @cmp.maximum(
-    limits.min_zoom,
-    @cmp.minimum(limits.max_zoom, camera.zoom),
-  )
-  let (center, zoom) = constrain_center(
-    camera.center,
-    zoom,
-    limits,
-    width,
-    height,
-  )
-  { ..camera, center: { lng: wrap180(center.lng), lat: center.lat, }, zoom, }
-}
-
-///|
-/// The latitude limit MapLibre keeps the view to (`MAX_VALID_LATITUDE`,
-/// `MAX_LATITUDE` rounded).
-const MAX_VALID_LATITUDE : Double = 85.051129
-
-///|
-fn constrain_center(
-  center : LngLat,
-  zoom : Double,
-  limits : Limits,
-  width : Double,
-  height : Double,
-) -> (LngLat, Double) {
-  let world = TILE_SIZE * @math.pow(2.0, zoom)
-  let (south, north, lng_range) = match limits.bounds {
-    Some(b) => (b.south, b.north, Some((b.west, b.east)))
-    None => (-MAX_VALID_LATITUDE, MAX_VALID_LATITUDE, None)
-  }
-  let min_y = mercator_y_from_lat(north) * world
-  let max_y = mercator_y_from_lat(south) * world
-  let scale_y = if max_y - min_y < height {
-    height / (max_y - min_y)
-  } else {
-    0.0
-  }
-  let (min_x, max_x, scale_x) = match lng_range {
-    Some((west, east)) => {
-      let min_x = wrap_range(mercator_x_from_lng(west) * world, 0.0, world)
-      let max_x = wrap_range(mercator_x_from_lng(east) * world, 0.0, world)
-      let max_x = if max_x < min_x { max_x + world } else { max_x }
-      (
-        min_x,
-        max_x,
-        if max_x - min_x < width {
-          width / (max_x - min_x)
-        } else {
-          0.0
-        },
-      )
-    }
-    None => (0.0, world, 0.0)
-  }
-  let x = mercator_x_from_lng(center.lng) * world
-  let y = mercator_y_from_lat(center.lat) * world
-  let scale = @cmp.maximum(scale_x, scale_y)
-  if scale > 0.0 {
-    let m : MercatorCoord = {
-      x: (if scale_x > 0.0 { (max_x + min_x) / 2.0 } else { x }) / world,
-      y: (if scale_y > 0.0 { (max_y + min_y) / 2.0 } else { y }) / world,
-    }
-    let c = m.to_lnglat()
-    return ({ lng: wrap180(c.lng), lat: c.lat, }, zoom + @math.log2(scale))
-  }
-  let mut new_y = y
-  if y - height / 2.0 < min_y {
-    new_y = min_y + height / 2.0
-  }
-  if y + height / 2.0 > max_y {
-    new_y = max_y - height / 2.0
-  }
-  let mut new_x = x
-  if lng_range is Some(_) {
-    let mid = (min_x + max_x) / 2.0
-    let wrapped = wrap_range(x, mid - world / 2.0, mid + world / 2.0)
-    if wrapped - width / 2.0 < min_x {
-      new_x = min_x + width / 2.0
-    }
-    if wrapped + width / 2.0 > max_x {
-      new_x = max_x - width / 2.0
-    }
-  }
-  if new_x == x && new_y == y {
-    return (center, zoom)
-  }
-  let c = ({ x: new_x / world, y: new_y / world, } : MercatorCoord).to_lnglat()
-  ({ lng: wrap180(c.lng), lat: c.lat, }, zoom)
-}
-
-///|
-/// `v` in (`min`, `max`] (MapLibre's `wrap`).
-fn wrap_range(v : Double, min : Double, max : Double) -> Double {
-  // Values already in range stay exact (the modulo below would round them).
-  if v > min && v <= max {
-    return v
-  }
-  let d = max - min
-  let w = ((v - min) % d + d) % d + min
-  if w == min {
-    max
-  } else {
-    w
-  }
-}
-
-///|
-/// `v` in (-180, 180], so longitudes and bearings stay bounded.
-fn wrap180(v : Double) -> Double {
-  wrap_range(v, -180.0, 180.0)
-}
-
-///|
-fn finite(camera : Camera) -> Bool {
-  let ok = (x : Double) => !x.is_nan() && !x.is_inf()
-  ok(camera.zoom) &&
-  ok(camera.center.lng) &&
-  ok(camera.center.lat) &&
-  ok(camera.bearing) &&
-  ok(camera.pitch)
-}
-
-///|
 /// The same viewport looking through another camera.
 pub fn Transform::with_camera(self : Transform, camera : Camera) -> Transform {
   if !finite(camera) {
@@ -439,6 +259,7 @@ pub fn Transform::with_limits(self : Transform, limits : Limits) -> Transform {
 }
 
 ///|
+/// The same camera on a `width` x `height` viewport, moved if the limits ask.
 pub fn Transform::resize(
   self : Transform,
   width : Double,
@@ -575,156 +396,6 @@ pub fn Transform::zoomed_around(
 }
 
 ///|
-/// How many zoom levels deeper tiles of `tile_size` pixels (a power of two up to
-/// `TILE_SIZE`) are than `TILE_SIZE` ones at the same camera zoom.
-pub fn zoom_shift(tile_size : Int32) -> Int32 {
-  let mut shift = 0
-  while shift < 8 && tile_size << shift < TILE_SIZE.to_int() {
-    shift += 1
-  }
-  shift
-}
-
-///|
-/// Integer tile zoom for a source with tiles of `tile_size` pixels (a power of
-/// two up to `TILE_SIZE`: 256-pixel tiles take one zoom more), limited to the
-/// source's zoom range (higher camera zooms overzoom `max_tile_zoom`).
-pub fn Transform::tile_zoom(
-  self : Transform,
-  min_tile_zoom : Int32,
-  max_tile_zoom : Int32,
-  tile_size~ : Int32 = 512,
-) -> Int32 {
-  let z = self.camera.zoom.floor().to_int() + zoom_shift(tile_size)
-  @cmp.maximum(min_tile_zoom, @cmp.minimum(max_tile_zoom, z))
-}
-
-///|
-/// How far from the camera tiles stay at the full tile zoom, in camera
-/// distances; each doubling beyond it drops one zoom level. 1.5 keeps every
-/// tile of an unpitched view with an aspect ratio up to about 3 at full zoom.
-const LOD_DISTANCE : Double = 1.5
-
-///|
-/// Zoom levels below a source's `min_z` that distant ground may want and still
-/// be drawn from `min_z` tiles; farther ground is left to the fog.
-const MIN_ZOOM_SLACK : Int32 = 2
-
-///|
-/// Tiles that intersect the view, from `max_z` near the camera down to
-/// `min_z` far from it (with pitch, distant ground is drawn from lower
-/// zooms), nearest to the center first. The tiles never overlap. Ground that
-/// wants a zoom more than `MIN_ZOOM_SLACK` below `min_z` gets no tiles, as in
-/// MapLibre (which drops anything below `min_z`).
-pub fn Transform::covering_tiles(
-  self : Transform,
-  min_z : Int32,
-  max_z : Int32,
-) -> Array[TileId] {
-  let ws = self.world_size()
-  let c = self.camera.center.to_mercator()
-  // The view's footprint on the ground, in mercator units.
-  let footprint = [
-    self.screen_to_mercator(0.0, 0.0),
-    self.screen_to_mercator(self.width, 0.0),
-    self.screen_to_mercator(self.width, self.height),
-    self.screen_to_mercator(0.0, self.height),
-  ]
-  // The camera's ground position and height, in world pixels from the center.
-  let d = center_distance(self.height)
-  let pitch = radians(self.camera.pitch)
-  let bearing = radians(self.camera.bearing)
-  let behind = d * @math.sin(pitch)
-  let cam_x = -@math.sin(bearing) * behind
-  let cam_y = @math.cos(bearing) * behind
-  let cam_z = d * @math.cos(pitch)
-  let tiles : Array[(Double, TileId)] = []
-  let stack : Array[TileId] = [{ z: 0, x: 0, y: 0, }]
-  while stack.pop() is Some(tile) {
-    let b = tile.mercator_bounds()
-    if !overlaps(footprint, b) {
-      continue
-    }
-    // Distance from the camera to the tile's nearest ground point.
-    let nx = (
-        @cmp.maximum(b.min_x, @cmp.minimum(b.max_x, c.x + cam_x / ws)) - c.x
-      ) *
-      ws -
-      cam_x
-    let ny = (
-        @cmp.maximum(b.min_y, @cmp.minimum(b.max_y, c.y + cam_y / ws)) - c.y
-      ) *
-      ws -
-      cam_y
-    let dist = (nx * nx + ny * ny + cam_z * cam_z).sqrt()
-    let near = (levels : Int32) => {
-      dist < LOD_DISTANCE * d * @math.pow(2.0, levels.to_double())
-    }
-    let split = if tile.z < min_z {
-      if !near(max_z - min_z + MIN_ZOOM_SLACK) {
-        continue
-      }
-      true
-    } else {
-      tile.z < max_z && near(max_z - tile.z - 1)
-    }
-    if split && tile.children() is Some(kids) {
-      for k in kids {
-        stack.push(k)
-      }
-    } else {
-      let dx = (b.min_x + b.max_x) / 2.0 - c.x
-      let dy = (b.min_y + b.max_y) / 2.0 - c.y
-      tiles.push((dx * dx + dy * dy, tile))
-    }
-  }
-  tiles.sort_by((a, b) => a.0.compare(b.0))
-  tiles.map(t => t.1)
-}
-
-///|
-/// Whether the convex polygon `poly` and the box `b` intersect: no separating
-/// axis among the box's axes and the polygon's edge normals.
-fn overlaps(poly : Array[MercatorCoord], b : BBox) -> Bool {
-  let n = poly.length()
-  // Box axes: the polygon's extent against the box's.
-  let mut x0 = poly[0].x
-  let mut x1 = x0
-  let mut y0 = poly[0].y
-  let mut y1 = y0
-  for p in poly {
-    x0 = @cmp.minimum(x0, p.x)
-    x1 = @cmp.maximum(x1, p.x)
-    y0 = @cmp.minimum(y0, p.y)
-    y1 = @cmp.maximum(y1, p.y)
-  }
-  if x1 < b.min_x || x0 > b.max_x || y1 < b.min_y || y0 > b.max_y {
-    return false
-  }
-  // Edge normals: the box lies wholly outside an edge if even its corner
-  // farthest along the inward normal is outside. `poly` turns one way, so
-  // the sign of `turn` says which side is inside.
-  let turn = (poly[1].x - poly[0].x) * (poly[2].y - poly[1].y) -
-    (poly[1].y - poly[0].y) * (poly[2].x - poly[1].x)
-  for i in 0..<n {
-    let p = poly[i]
-    let q = poly[(i + 1) % n]
-    // Inward normal of edge p -> q.
-    let (nx, ny) = if turn > 0.0 {
-      (p.y - q.y, q.x - p.x)
-    } else {
-      (q.y - p.y, p.x - q.x)
-    }
-    let cx = if nx > 0.0 { b.max_x } else { b.min_x }
-    let cy = if ny > 0.0 { b.max_y } else { b.min_y }
-    if (cx - p.x) * nx + (cy - p.y) * ny < 0.0 {
-      return false
-    }
-  }
-  true
-}
-
-///|
 /// Clip-space w of the screen center: points at other depths have w in
 /// proportion to their distance from the camera.
 pub fn Transform::center_depth(self : Transform) -> Double {
@@ -732,10 +403,8 @@ pub fn Transform::center_depth(self : Transform) -> Double {
 }
 
 ///|
-/// Maps tile units (`extent` per tile edge) of `tile` to clip space.
-/// `aligned` puts it on the pixel grid as MapLibre draws raster tiles at rest
-/// (its `alignedProjMatrix`): the center's fractional world pixel, and half a
-/// pixel for an odd viewport size, turned with the bearing, are taken out.
+/// Maps tile units (`extent` per edge) of `tile` to clip space; `aligned` puts it
+/// on the pixel grid as MapLibre draws raster tiles at rest (`alignedProjMatrix`).
 pub fn Transform::tile_matrix(
   self : Transform,
   tile : TileId,

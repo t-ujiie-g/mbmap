@@ -3,11 +3,11 @@
 
 import {
   "t-ujiie-g/mbmap/analysis",
+  "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/raster",
   "t-ujiie-g/mbmap/wasmio",
-  "moonbitlang/core/encoding/utf8",
 }
 
 supported_targets = "+wasm-gc"

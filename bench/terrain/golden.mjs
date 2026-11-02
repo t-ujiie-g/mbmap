@@ -1,7 +1,5 @@
-// Golden test: slope, aspect and hillshade of the analysis wasm against GDAL's
-// gdaldem (Horn's method) on the Mt Fuji DEM fixtures, mosaicked into one grid.
-// gdaldem leaves border cells without data, so the interior is compared. Needs
-// gdaldem on PATH. Usage: node terrain/golden.mjs
+// Slope, aspect and hillshade of the analysis wasm vs gdaldem (Horn) on the Mt Fuji DEM, interior
+// cells only (gdaldem leaves borders empty). Needs gdaldem on PATH. Usage: node terrain/golden.mjs
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";

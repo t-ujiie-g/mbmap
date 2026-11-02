@@ -1,7 +1,6 @@
 // Port of earcut 3.2.4 (https://github.com/mapbox/earcut), ISC License,
-// Copyright (c) 2026, Mapbox. See NOTICE for the full license text.
-// Operations follow src/earcut.js in order so the triangles match it exactly
-// (`refine` is not ported). Nodes are parallel arrays by id, -1 for null.
+// Copyright (c) 2026 Mapbox; see NOTICE. Operations follow src/earcut.js in
+// order so triangles match exactly (no `refine`); nodes are parallel arrays.
 
 ///|
 /// Polygon triangulator. Reuse one instance: its node pool and scratch

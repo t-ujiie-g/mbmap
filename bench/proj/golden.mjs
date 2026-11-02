@@ -1,9 +1,5 @@
-// Golden test: proj must transform as proj4js 2.22.0 does: every EPSG code
-// `@proj.Crs::from_epsg` knows, and PROJ strings for each projection it ports
-// (parsed by npm/src/projstring.ts, as the analysis module does), with 3- and
-// 7-parameter datum shifts. Random points in each CRS's area, forward from and
-// inverse to WGS 84, then CRS to CRS; js build and wasm-gc. Points proj4js
-// cannot project are left out. Fails beyond 1 mm or 1e-8°.
+// proj vs proj4js 2.22.0: every EPSG code `Crs::from_epsg` knows and PROJ strings per projection,
+// forward, inverse and CRS to CRS, js and wasm-gc; fails beyond 1 mm or 1e-8°.
 // Usage: node proj/golden.mjs [--points=N]; writes bench/results/proj-golden.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";

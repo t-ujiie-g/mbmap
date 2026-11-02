@@ -1,8 +1,7 @@
 ///|
-/// A camera move in progress: `at` gives the camera at an eased fraction,
-/// `easing` maps elapsed time (0 to 1 of `duration` ms) to that fraction.
-/// `id` lets a move of the same kind replace it without ending the movement
-/// (MapLibre's `easeId`).
+/// A camera move in progress: `at` gives the camera at an eased fraction, `easing`
+/// maps elapsed time (of `duration` ms) to it; a move with the same `id` replaces
+/// it without ending the movement (MapLibre's `easeId`).
 priv struct Animation {
   at : (Double) -> @core.Camera
   start : Double

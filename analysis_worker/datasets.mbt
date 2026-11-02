@@ -1,20 +1,11 @@
 ///|
-fn host_sin(x : Double) -> Double = "Math" "sin"
-
-///|
-fn host_cos(x : Double) -> Double = "Math" "cos"
-
-///|
-fn host_atan2(y : Double, x : Double) -> Double = "Math" "atan2"
-
-///|
 /// The JSON number at `[addr, addr + len)` of linear memory, by the host's
 /// `Number()` (correctly rounded, as strconv is, and far smaller).
 fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
 
 ///|
 /// The host's `Math`, so measures match Turf bit for bit.
-let trig : @analysis.Trig = { sin: host_sin, cos: host_cos, atan2: host_atan2, }
+let trig : @analysis.Trig = @wasmio.host_trig()
 
 ///|
 priv struct Dataset {
@@ -184,7 +175,7 @@ pub fn collect(polygons : Int32, points : Int32) -> Int32 {
   guard datasets.get(polygons) is Some(q) && datasets.get(points) is Some(p) else {
     return -1
   }
-  let column = @utf8.decode_lossy(@wasmio.input_bytes())
+  let column = @core.utf8_lossy(@wasmio.input_bytes())
   @wasmio.clear_input()
   @wasmio.write_f64s(@analysis.collect(q.table, p.table, p.index(), column))
 }
@@ -244,10 +235,9 @@ pub fn coords_out(id : Int32) -> Int32 {
 }
 
 ///|
-/// A new dataset of dataset `id` with the coordinates placed as input (f64
-/// x, y pairs, as many as `coords_out` gives); a feature with a NaN keeps its
-/// row with no geometry. Returns its handle, -1 for an unknown dataset, or
-/// minus the length of an error message.
+/// A new dataset of dataset `id` with the input's coordinates (f64 pairs, as
+/// `coords_out` gave them; a NaN leaves its row without geometry). Returns its
+/// handle, -1 for an unknown dataset, or minus an error message's length.
 #export_name("with_coords")
 pub fn with_coords(id : Int32) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }

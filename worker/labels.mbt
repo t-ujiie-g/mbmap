@@ -97,7 +97,7 @@ fn TileProcessor::symbol_layer(
     l.w.clear()
     l.count = 0
   }
-  let feature = FeatureRef::new(layer)
+  let feature = self.feature_ref(layer)
   let extent = layer.extent()
   let parts = []
   for i in 0..<layer.length() {

@@ -17,49 +17,8 @@ pub fn output_addr() -> Int32 {
 }
 
 ///|
-fn host_sin(x : Double) -> Double = "Math" "sin"
-
-///|
-fn host_cos(x : Double) -> Double = "Math" "cos"
-
-///|
-fn host_tan(x : Double) -> Double = "Math" "tan"
-
-///|
-fn host_asin(x : Double) -> Double = "Math" "asin"
-
-///|
-fn host_acos(x : Double) -> Double = "Math" "acos"
-
-///|
-fn host_atan(x : Double) -> Double = "Math" "atan"
-
-///|
-fn host_atan2(y : Double, x : Double) -> Double = "Math" "atan2"
-
-///|
-fn host_exp(x : Double) -> Double = "Math" "exp"
-
-///|
-fn host_log(x : Double) -> Double = "Math" "log"
-
-///|
-fn host_pow(x : Double, y : Double) -> Double = "Math" "pow"
-
-///|
 /// The host's `Math` (js/worker.mjs passes it), as proj4js computes with.
-let trig : @proj.Trig = {
-  sin: host_sin,
-  cos: host_cos,
-  tan: host_tan,
-  asin: host_asin,
-  acos: host_acos,
-  atan: host_atan,
-  atan2: host_atan2,
-  exp: host_exp,
-  ln: host_log,
-  pow: host_pow,
-}
+let trig : @proj.Trig = @wasmio.host_trig()
 
 ///|
 let nan2 : (Double, Double) = (@double.not_a_number, @double.not_a_number)

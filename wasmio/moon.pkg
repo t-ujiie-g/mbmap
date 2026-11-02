@@ -3,6 +3,7 @@
 // an imported package are not exported, so each entry wraps these.
 
 import {
+  "t-ujiie-g/mbmap/core",
   "moonbitlang/core/encoding/utf8",
 }
 

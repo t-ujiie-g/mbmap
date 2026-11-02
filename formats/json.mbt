@@ -159,7 +159,7 @@ fn Parser::text(
   if escaped {
     @core.json_string_text(self.b[start:end])
   } else {
-    @utf8.decode_lossy(self.b[start:end])
+    @core.utf8_lossy(self.b[start:end])
   }
 }
 
@@ -257,5 +257,5 @@ fn Parser::compact(self : Parser, start : Int32, end : Int32) -> String {
     }
     i += 1
   }
-  @utf8.decode_lossy(Bytes::from_array(out))
+  @core.utf8_lossy(Bytes::from_array(out))
 }

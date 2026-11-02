@@ -59,7 +59,7 @@ pub extend Expected with @debug.Debug::{to_repr}
 pub extend Expected with Eq::{not_equal, equal}
 
 ///|
-pub extend NoFeature with FeatureContext::{geometry_type, property, state}
+pub extend NoFeature with FeatureContext::{geometry_type, property, state, pow}
 
 ///|
 pub extend SourceKind with @debug.Debug::{to_repr}

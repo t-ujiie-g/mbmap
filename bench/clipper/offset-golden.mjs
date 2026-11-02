@@ -1,8 +1,5 @@
-// Golden test: the clipper package's offsetting must give exactly the paths
-// Clipper2 2.0.1's InflatePaths gives (clipper2-wasm 0.4.0): random and grid
-// polygons, polylines and single points, every join and end type clipper2-wasm
-// exposes (no Bevel), growing and shrinking, with default and set miter limits
-// and arc tolerances (js build in full, wasm-gc by hash).
+// clipper's offsetting vs Clipper2 2.0.1's InflatePaths (clipper2-wasm 0.4.0): every join and
+// end type it exposes, growing and shrinking, miter limits and arc tolerances; must be identical.
 // Usage: node clipper/offset-golden.mjs [--cases=N]
 import Clipper2Z from "clipper2-wasm/dist/es/clipper2z.js";
 import { loadEntry } from "../lib/entry.mjs";

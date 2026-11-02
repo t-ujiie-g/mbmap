@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/proj"
 
+import {
+  "t-ujiie-g/mbmap/core",
+}
+
 // Values
 pub const DEFINITION_SLOTS : Int32 = 34
 
@@ -12,9 +16,9 @@ pub fn transform(Crs, Crs, Double, Double) -> (Double, Double)?
 pub struct Crs {
   // private fields
 }
-pub fn Crs::from_epsg(Int32, trig? : Trig) -> Self?
+pub fn Crs::from_epsg(Int32, trig? : @core.Trig) -> Self?
 pub fn Crs::is_geographic(Self) -> Bool
-pub fn Crs::new(Definition, trig? : Trig) -> Self?
+pub fn Crs::new(Definition, trig? : @core.Trig) -> Self?
 
 pub(all) struct Definition {
   mut proj : Method
@@ -78,20 +82,7 @@ pub(all) enum Method {
   Bonne
 }
 
-pub(all) struct Trig {
-  sin : (Double) -> Double
-  cos : (Double) -> Double
-  tan : (Double) -> Double
-  asin : (Double) -> Double
-  acos : (Double) -> Double
-  atan : (Double) -> Double
-  atan2 : (Double, Double) -> Double
-  exp : (Double) -> Double
-  ln : (Double) -> Double
-  pow : (Double, Double) -> Double
-}
-pub fn Trig::moonbit() -> Self
-
 // Type aliases
+pub using @core {type Trig}
 
 // Traits

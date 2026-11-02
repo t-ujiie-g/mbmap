@@ -1,9 +1,5 @@
-// PMTiles: archives written from the bench fixtures (a root directory only,
-// leaf directories, gzip-compressed tiles, raster tiles) are read back in Node
-// by the official pmtiles 4.5.0 reader and by mbmap's (worker/js/pmtiles.mjs),
-// which must both give every tile's bytes; then in Chromium mbmap draws from
-// the archives what MapLibre draws from the files (bench/query's page): the
-// same query results and the same raster pixels.
+// PMTiles archives written from the fixtures, read by pmtiles 4.5.0 and worker/js/pmtiles.mjs (every
+// tile's bytes), then drawn by mbmap in Chromium vs MapLibre from the files (queries, raster pixels).
 // Writes bench/results/pmtiles-golden.json. Needs `npm --prefix npm run build`.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";

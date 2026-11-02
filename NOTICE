@@ -73,7 +73,7 @@ license and source.
     range and `calculateFogBlendOpacity`
   - worker/js/text.mjs: the vertical punctuation forms of
     src/util/verticalize_punctuation.ts
-  - core/camera.mbt and core/transform.mbt: easeTo, flyTo, cameraForBounds,
+  - core/camera.mbt, core/animation.mbt and core/constrain.mbt: easeTo, flyTo, cameraForBounds,
     setLocationAtPoint, getBounds and the default constrain of src/ui/camera.ts
     and src/geo/projection/ (mercator_camera_helper.ts, camera_helper.ts,
     mercator_transform.ts)
@@ -86,7 +86,7 @@ license and source.
   - render_webgl2/gl.mbt and render_webgl2/renderer.mbt: raster.fragment.glsl
     and the raster uniforms of src/webgl/program/raster_program.ts;
     core/transform.mbt: the pixel-aligned projection (`alignedProjMatrix`) of
-    mercator_transform.ts; style/style.mbt: `TileBounds.contains` of
+    mercator_transform.ts; style/source.mbt: `TileBounds.contains` of
     src/source/tile_bounds.ts; npm/src/tilejson.ts: the keys `loadTileJson`
     of src/source/load_tilejson.ts takes
   - map/input.mbt: the keyboard, double click and box zoom handlers of
@@ -98,7 +98,7 @@ license and source.
     measured in; map/dem.mbt: heights at tile borders as `DEMData.sampleBilinear`
     reads the backfilled border
 
-- core/camera.mbt `Bezier`: follows @mapbox/unitbezier 1.0.0 (ported from WebKit)
+- core/animation.mbt `Bezier`: follows @mapbox/unitbezier 1.0.0 (ported from WebKit)
   https://github.com/mapbox/unitbezier — BSD 2-Clause License:
 
     Copyright (C) 2008 Apple Inc. All Rights Reserved.

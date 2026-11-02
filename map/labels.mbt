@@ -8,10 +8,9 @@ const KIND_SYMBOL : Int32 = 4
 const LABEL_FLOATS : Int32 = 9
 
 ///|
-/// Labels whose perspective ratio (MapLibre's: 0.5 + 0.5 x the center's
-/// distance over the anchor's, the factor their size is scaled by) falls below
-/// this are not placed: those beyond 5 camera distances (MapLibre's
-/// `perspectiveRatioCutoff`).
+/// Labels below this perspective ratio (MapLibre's: 0.5 + 0.5 x the center's
+/// distance over the anchor's), beyond 5 camera distances, are not placed
+/// (MapLibre's `perspectiveRatioCutoff`).
 const MIN_PERSPECTIVE_RATIO : Double = 0.6
 
 ///|
@@ -19,10 +18,9 @@ const MIN_PERSPECTIVE_RATIO : Double = 0.6
 const PLACEMENT_INTERVAL : Double = 100.0
 
 ///|
-/// A symbol mesh's labels as the worker sent them, which of them show (and
-/// where on screen, as `boxes` of min x, min y, max x, max y in CSS pixels, as
-/// of placement round `round`), and their anchors' terrain heights in meters
-/// as of DEM version `heights_at`.
+/// A symbol mesh's labels as the worker sent them, which show (`boxes`: min x,
+/// min y, max x, max y in CSS pixels, as of placement `round`), and their anchors'
+/// terrain heights in meters as of DEM version `heights_at`.
 priv struct LabelSet {
   labels : @render_webgl2.JsBuffer
   count : Int32

@@ -63,11 +63,9 @@ pub fn Mesh::byte_size(self : Mesh) -> Int32 {
 }
 
 ///|
-/// Where a mesh is drawn: `matrix` maps tile units to clip space
-/// (`raster_matrix` too, on the pixel grid for raster tiles at rest),
-/// `units_per_pixel` holds at `center_depth` (the center's clip w), only the part
-/// within `clip` (min x, min y, max x, max y in tile units) shows, and
-/// `latitudes` are the tile's north and south edges in degrees.
+/// Where a mesh is drawn: `matrix` (and `raster_matrix`, on the pixel grid at
+/// rest) maps tile units to clip space; `units_per_pixel` at `center_depth`; only
+/// `clip` (tile units) shows; `latitudes` are the tile's north and south edges.
 pub(all) struct Placement {
   matrix : @core.Mat4
   raster_matrix : @core.Mat4

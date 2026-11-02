@@ -64,10 +64,9 @@ pub fn Renderer::clear_depth(self : Renderer) -> Unit {
 }
 
 ///|
-/// Draws a terrain tile: `mesh`'s elevations (the part at `dem`: offset x, y and
-/// scale in the DEM tile) lift the tile's grid by `scale` world pixels per
-/// meter, skirts hang `skirt` world pixels below its edges, `target` holds
-/// what is drawn on it, and `fog` fades it out in the distance.
+/// Draws a terrain tile: `mesh`'s elevations (`dem`: offset x, y and scale in
+/// the DEM tile) lift its grid by `scale` world pixels per meter, with skirts
+/// `skirt` deep, `target` on it and `fog` in the distance.
 pub fn Renderer::draw_terrain(
   self : Renderer,
   mesh : Mesh,
@@ -93,11 +92,9 @@ pub fn Renderer::draw_terrain(
 }
 
 ///|
-/// Terrain fog as MapLibre draws it: fragments past `ground_blend` of the way
-/// from depth `near` to `far` (`@core.Transform::fog_range`, in the depth
-/// buffer's nonlinear scale) blend into `color`, which turns towards
-/// `horizon` past `horizon_blend`, at most `opacity` of the way. Colors are
-/// premultiplied RGBA.
+/// MapLibre's terrain fog (premultiplied colors): past `ground_blend` of the depth
+/// from `near` to `far` (`@core.Transform::fog_range`), terrain blends into
+/// `color`, turning to `horizon` past `horizon_blend`, at most `opacity`.
 pub(all) struct Fog {
   near : Double
   far : Double
@@ -162,10 +159,9 @@ pub(all) struct ExtrusionLight {
 }
 
 ///|
-/// Draws an extrusion mesh, `color` (straight RGB) lit by `light` at `opacity`;
-/// `t` mixes its heights from the tile's zoom (0) to one deeper (1), `scale`
-/// is world pixels per meter and `ground` the terrain exaggeration (0 without
-/// terrain).
+/// Draws an extrusion mesh, `color` (straight RGB) lit by `light`; `t` mixes its
+/// heights from the tile's zoom to one deeper, `scale` is world pixels per meter
+/// and `ground` the terrain exaggeration (0 without terrain).
 pub fn Renderer::draw_extrusion(
   self : Renderer,
   mesh : Mesh,

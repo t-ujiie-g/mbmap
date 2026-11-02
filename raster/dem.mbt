@@ -57,14 +57,21 @@ pub fn elevations(rgba : BytesView, unpack : Unpack) -> FixedArray[Double] {
 pub const WORLD_WIDTH : Double = 40075016.6855785
 
 ///|
+/// `@math.log2(WORLD_WIDTH)`, written out so no log is computed.
+const LOG2_WORLD_WIDTH : Double = 25.256199785269995
+
+///|
 /// MapLibre's slope scale (hillshade_prepare.fragment.glsl) for a tile of
 /// `size` pixels at zoom `z`, exaggerated below zoom 15.
-fn slope_scale(size : Int32, z : Int32) -> Double {
+fn slope_scale(
+  size : Int32,
+  z : Int32,
+  pow : (Double, Double) -> Double,
+) -> Double {
   let zoom = z.to_double()
   let factor = if zoom < 2.0 { 0.4 } else if zoom < 4.5 { 0.35 } else { 0.3 }
   let exaggeration = if zoom < 15.0 { (zoom - 15.0) * factor } else { 0.0 }
-  size.to_double() /
-  @math.pow(2.0, exaggeration + (3.0 + @math.log2(WORLD_WIDTH) - zoom))
+  size.to_double() / pow(2.0, exaggeration + (3.0 + LOG2_WORLD_WIDTH - zoom))
 }
 
 ///|
@@ -99,14 +106,14 @@ fn ground(v : Double) -> Double {
 }
 
 ///|
-/// MapLibre's hillshade preparation (hillshade_prepare.fragment.glsl) of a
-/// `size` x `size` tile at zoom `z`: per pixel, the slopes east and south as two
-/// bytes around 128. Edge pixels repeat their neighbors until `edge_slopes`
-/// redoes them with the next tile's; no data counts as 0 m.
+/// MapLibre's hillshade_prepare of a `size` x `size` tile at zoom `z`: slopes east
+/// and south per pixel, two bytes around 128. Edge pixels repeat neighbors until
+/// `edge_slopes` redoes them; no data counts as 0 m.
 pub fn hillshade_slopes(
   elev : FixedArray[Double],
   size : Int32,
   z : Int32,
+  pow~ : (Double, Double) -> Double = @math.pow,
 ) -> Bytes {
   let at = (x : Int32, y : Int32) => {
     ground(
@@ -114,7 +121,7 @@ pub fn hillshade_slopes(
       @cmp.maximum(0, @cmp.minimum(size - 1, x))],
     )
   }
-  let scale = slope_scale(size, z)
+  let scale = slope_scale(size, z, pow)
   let out = FixedArray::make(size * size * 2, b'\x00')
   for y in 0..<size {
     for x in 0..<size {
@@ -176,7 +183,7 @@ pub fn edge_slopes(
     2 => ((next, 7), (own, 4), (own, 5))
     _ => ((own, 6), (own, 7), (next, 4))
   }
-  let scale = slope_scale(size, z)
+  let scale = slope_scale(size, z, @math.pow)
   let out = FixedArray::make(size * 2, b'\x00')
   for i in 0..<size {
     let p = (e : (FixedArray[Double], Int32), k : Int32) => run(e.0, e.1, k)

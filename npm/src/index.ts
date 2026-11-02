@@ -173,10 +173,9 @@ export type MapEventType =
   | "pitchend";
 
 /**
- * `load` fires once, at the first drawn view; `render` after each frame; `idle` when the map settles. Camera changes fire
- * `movestart`, `move` (and `zoom`, `rotate`, `pitch` with their own start and end) and `moveend`,
- * as in MapLibre; `originalEvent` is the DOM event of a user's gesture. Mouse events carry the
- * `point` (CSS pixels from the canvas's corner) and its `lngLat`; for a layer, its `features` there.
+ * `load` fires at the first drawn view, `render` after each frame, `idle` when the map settles;
+ * camera events as MapLibre's (`originalEvent`: a gesture's DOM event). Mouse events carry the
+ * `point` (CSS pixels), its `lngLat` and, for a layer, its `features` there.
  */
 export interface MapEvent {
   type: MapEventType;
@@ -777,10 +776,9 @@ export class Map {
   }
 
   /**
-   * A DOM mouse event on the canvas: the map's own event (a click only if the mouse moved
-   * less than 3 px since it went down, as MapLibre), then the layers' listeners with the
-   * features under the mouse, once a query finds them (`mouseenter` and `mouseleave` follow
-   * `mousemove` and `mouseout`, as in MapLibre).
+   * A DOM mouse event on the canvas: the map's own (a click only after less than 3 px of movement),
+   * then the layers' listeners once a query finds their features (`mouseenter` and `mouseleave`
+   * follow `mousemove` and `mouseout`), as in MapLibre.
    */
   #mouse(type: Exclude<MapMouseEventType, "mouseenter" | "mouseleave">, e: MouseEvent, p: { x: number; y: number }): void {
     if (type === "mousedown") this.#mouseDown = p;
@@ -1259,10 +1257,9 @@ export class Map {
   }
 
   /**
-   * Follows `lnglat` on screen for an element drawn over the map (a marker, a popup): `callback` gets
-   * its position after every frame (and at once, once the map has started), on the terrain if any,
-   * with whether the terrain hides it, as MapLibre's `Marker` places itself. All tracked places are
-   * located in one call per frame.
+   * Follows `lnglat` on screen for an element drawn over the map: `callback` gets its position on
+   * the terrain, and whether the terrain hides it, after every frame (and at once if the map has
+   * started), as MapLibre's `Marker` places itself; one engine call per frame for all.
    */
   track(lnglat: LngLatLike, callback: (position: ScreenPosition) => void): Tracker {
     const t: Tracked = { lnglat: toLngLat(lnglat), f: callback };

@@ -275,7 +275,7 @@ onmessage = (e) => {
     modules.geometry.url = typeof msg.geometry === "string" ? msg.geometry : null;
     modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
-    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 }, host })
+    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })
       .then(({ instance }) => { wasm = instance.exports; });
   } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op)) {
     queue = queue.then(() => run(msg)).catch((err) => {

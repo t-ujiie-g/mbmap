@@ -3,6 +3,7 @@ package "t-ujiie-g/mbmap/tess"
 
 import {
   "moonbitlang/core/debug",
+  "t-ujiie-g/mbmap/core",
 }
 
 // Values
@@ -92,7 +93,7 @@ pub struct LineTessellator {
   // private fields
 }
 pub fn LineTessellator::add_line(Self, ArrayView[Int32], Int32, Int32, LineBuffers, join? : LineJoin, cap? : LineCap, miter_limit? : Double, round_limit? : Double) -> Unit
-pub fn LineTessellator::new() -> Self
+pub fn LineTessellator::new(trig? : @core.Trig) -> Self
 
 // Type aliases
 

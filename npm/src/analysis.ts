@@ -7,10 +7,9 @@ import { wasmUrl, workerScriptUrl } from "./urls";
 export type BBox = [number, number, number, number];
 
 /**
- * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the
- * geometry module of buffers and overlays (`geometryWasmUrl`) and the
- * coordinate system module (`projWasmUrl`) are served; by default next to
- * this module.
+ * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the geometry module
+ * (`geometryWasmUrl`) and the coordinate system module (`projWasmUrl`) are served; by default
+ * next to this module.
  */
 export interface AnalysisOptions {
   workerUrl?: string | URL;
@@ -20,10 +19,9 @@ export interface AnalysisOptions {
 }
 
 /**
- * A coordinate reference system: an EPSG code (a number, `"EPSG:6677"`,
- * `"urn:ogc:def:crs:EPSG::6677"`), `"CRS84"` (= 4326), a PROJ string
- * (`"+proj=lcc +lat_1=49 ..."`), or a name given to one with `defineCrs`. The
- * EPSG codes known without a definition are listed in the package README.
+ * A coordinate reference system: an EPSG code (`6677`, `"EPSG:6677"`, `"urn:ogc:def:crs:EPSG::6677"`),
+ * `"CRS84"` (= 4326), a PROJ string, or a name given with `defineCrs`. EPSG codes known without a
+ * definition are listed in the package README.
  */
 export type Crs = string | number;
 
@@ -63,10 +61,9 @@ async function crsArg(crs: Crs): Promise<CrsArg> {
 export type BufferMode = "geodesic" | "planar";
 
 /**
- * - `mode`: default `"geodesic"`.
- * - `join`: how corners turn (default `"round"`); `cap`: how lines end (default `"round"`).
- * - `arcTolerance`: how far round edges may stray from true arcs, in meters (default: distance / 500).
- * - `crs`: the projected CRS a planar buffer is measured in (default EPSG:3857).
+ * `mode` (default `"geodesic"`); `join` and `cap` (default `"round"`); `arcTolerance`: how far round
+ * edges may stray from true arcs in meters (default distance / 500); `crs`: the projected CRS a
+ * planar buffer is measured in (default EPSG:3857).
  */
 export interface BufferOptions {
   mode?: BufferMode;

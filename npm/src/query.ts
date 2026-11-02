@@ -1,7 +1,6 @@
-// Rendered-feature query results put in MapLibre's order (src/source/query_features.ts
-// `mergeRenderedFeatureLayers`, src/style/style.ts `_flattenAndSortRenderedFeatures`
-// of MapLibre GL JS 6.16.0, BSD-3-Clause, Copyright (c) 2020, MapLibre contributors;
-// see NOTICE). Import-free, so that `npm test` can load it.
+// Rendered-feature query results in MapLibre GL JS 6.16.0's order (query_features.ts,
+// style.ts), BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
+// Import-free, so that `npm test` can load it.
 
 /** A GeoJSON feature as a query returns it. */
 export interface GeoJSONFeature {
@@ -28,9 +27,8 @@ export function queryPoints(geometry: [number, number] | [[number, number], [num
 }
 
 /**
- * The hits of `tiles` as MapLibre orders them: layers from the top of `layers` (bottom first,
- * as in the style) down, each layer's features tile by tile (by zoom, then row, then column) and
- * last drawn first, a feature once per tile; extrusions, which hide one another, nearest first
+ * The hits of `tiles` in MapLibre's order: top layer first, each layer's features by tile (zoom,
+ * row, column), last drawn first, once per tile; extrusions, which hide one another, nearest first
  * wherever the first of their layers stands.
  */
 export function orderRendered(tiles: TileResult[], layers: { id: string; type: string }[]): { layer: string; feature: GeoJSONFeature }[] {

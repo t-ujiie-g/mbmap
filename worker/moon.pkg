@@ -19,6 +19,7 @@ options(
   targets: {
     "linear_memory.mbt": [ "wasm-gc" ],
     "store_memory.mbt": [ "wasm-gc" ],
+    "host_math.mbt": [ "wasm-gc" ],
     "store_array.mbt": [ "not", "wasm-gc" ],
   },
   link: { "wasm-gc": { "export-memory-name": "memory" } },

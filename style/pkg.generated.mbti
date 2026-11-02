@@ -158,6 +158,7 @@ pub struct Light {
 pub(all) struct NoFeature {
 }
 pub fn NoFeature::geometry_type(Self) -> String
+pub fn NoFeature::pow(Self, Double, Double) -> Double
 pub fn NoFeature::property(Self, String) -> Value?
 pub fn NoFeature::state(Self, String) -> Value?
 pub impl FeatureContext for NoFeature
@@ -316,4 +317,5 @@ pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
   fn geometry_type(Self) -> String
   fn state(Self, String) -> Value? = _
+  fn pow(Self, Double, Double) -> Double = _
 }

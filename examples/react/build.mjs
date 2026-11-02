@@ -1,7 +1,6 @@
-// Bundles the app with esbuild, which leaves `new URL("./worker.js",
-// import.meta.url)` alone: the URL then points next to the bundle, so the
-// workers and their wasm are copied there. The shared modules import `mbmap`
-// too, so they resolve it from this example's node_modules.
+// Bundles the app with esbuild, which leaves `new URL("./worker.js", import.meta.url)` alone,
+// so the workers and wasm are copied next to the bundle; the shared modules resolve `mbmap`
+// from this example's node_modules.
 import { copyFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

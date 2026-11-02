@@ -1,7 +1,6 @@
-// Terrain picks as MapLibre GL JS 6.16.0 makes them on the CPU
-// (src/geo/projection/mercator_transform.ts `isLocationOccluded`,
-// `_raycastTerrain`; src/render/terrain_coverage.ts), BSD-3-Clause,
-// Copyright (c) 2020, MapLibre contributors. See NOTICE.
+// Terrain picks as MapLibre GL JS 6.16.0 makes them on the CPU (mercator_
+// transform.ts, terrain_coverage.ts), BSD-3-Clause, Copyright (c) 2020
+// MapLibre contributors; see NOTICE.
 
 ///|
 /// World pixels between samples along a ray, and the most samples taken.

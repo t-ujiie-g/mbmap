@@ -8,10 +8,9 @@ let grids : Map[Int32, @analysis.Grid] = Map([])
 pub const MAX_GRID_SIDE : Int32 = 4096
 
 ///|
-/// Reads the RGBA input, `width` x `height` pixels of mosaicked DEM tiles, into a
-/// new grid of `res_x` x `res_y` m cells. `encoding` is 0 Mapbox, 1 Terrarium,
-/// 2 GSI or 3 custom with factors `r`, `g`, `b` and `base`. Returns the grid's
-/// handle, or -1 for a bad size or encoding.
+/// Reads the RGBA input (`width` x `height` pixels of DEM tiles) into a grid of
+/// `res_x` x `res_y` m cells; `encoding` 0 Mapbox, 1 Terrarium, 2 GSI, 3 custom
+/// (`r`, `g`, `b`, `base`). Returns the grid's handle, or -1 if invalid.
 #export_name("load_dem")
 pub fn load_dem(
   width : Int32,

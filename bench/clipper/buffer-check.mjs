@@ -1,8 +1,5 @@
-// Checks that geodesic buffers lie at their distance on the ground: every
-// vertex of each buffer's outer boundary is measured, with GeographicLib's
-// geodesics on WGS84, to the input geometry (its edges sampled densely). Points,
-// lines and polygons at several latitudes and distances go through the
-// analysis and geometry wasm modules as the analysis worker uses them.
+// Geodesic buffers through the analysis and geometry wasm, every outer vertex measured to the
+// input with GeographicLib on WGS84, at several latitudes and distances.
 // Usage: node clipper/buffer-check.mjs; writes bench/results/buffer-geodesic.json.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -14,7 +11,7 @@ const WGS84 = geodesic.Geodesic.WGS84;
 let a;
 const { instance: ai } = await WebAssembly.instantiate(
   await readFile(path.join(ROOT, "_build/wasm-gc/release/build/analysis_worker/analysis_worker.wasm")),
-  { Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 }, host: { number: hostNumber(() => a.memory) } },
+  { Math, host: { number: hostNumber(() => a.memory) } },
 );
 a = ai.exports;
 const { instance: gi } = await WebAssembly.instantiate(await readFile(path.join(ROOT, "_build/wasm-gc/release/build/geometry_worker/geometry_worker.wasm")), {});

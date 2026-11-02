@@ -1,12 +1,4 @@
 ///|
-/// The host's `Math.sin` and `Math.log`: projections then match geojson-vt
-/// bit for bit (see `@tiler.Trig`). js/worker.mjs passes `{ Math }`.
-fn host_sin(x : Double) -> Double = "Math" "sin"
-
-///|
-fn host_log(x : Double) -> Double = "Math" "log"
-
-///|
 /// The JSON number at `[addr, addr + len)` of linear memory, by the host's
 /// `Number()`: correctly rounded like strconv, which it keeps out of the module.
 fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
@@ -41,8 +33,11 @@ pub fn load(
     buffer: (buffer * units_per_pixel).round().to_int(),
     tolerance: tolerance * units_per_pixel,
   }
-  let trig : @tiler.Trig = { sin: host_sin, ln: host_log, }
-  sources[source] = (table, @tiler.Tiler::new(table, options~, trig~))
+  // The host's `Math`: projections then match geojson-vt bit for bit.
+  sources[source] = (
+    table,
+    @tiler.Tiler::new(table, options~, trig=@wasmio.host_trig()),
+  )
   table.length()
 }
 

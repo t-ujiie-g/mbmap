@@ -2,6 +2,7 @@
 package "t-ujiie-g/mbmap/tiler"
 
 import {
+  "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/geom",
 }
 
@@ -22,7 +23,7 @@ pub struct TileData {
 pub struct Tiler {
   // private fields
 }
-pub fn Tiler::new(@geom.Table, options? : TilerOptions, trig? : Trig) -> Self
+pub fn Tiler::new(@geom.Table, options? : TilerOptions, trig? : @core.Trig) -> Self
 pub fn Tiler::tile(Self, Int32, Int32, Int32) -> TileData?
 
 pub(all) struct TilerOptions {
@@ -36,12 +37,7 @@ pub(all) struct TilerOptions {
 }
 pub fn TilerOptions::default() -> Self
 
-pub(all) struct Trig {
-  sin : (Double) -> Double
-  ln : (Double) -> Double
-}
-pub fn Trig::moonbit() -> Self
-
 // Type aliases
+pub using @core {type Trig}
 
 // Traits

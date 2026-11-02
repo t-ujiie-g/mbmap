@@ -1,9 +1,5 @@
-// Golden test: core's camera math (bench/entry/camera.mbt, js build) against
-// MapLibre GL JS 6.16.0's Camera and MercatorTransform run in Node with frozen
-// time: constraints (zoom, pitch, latitude, maxBounds), project / unproject,
-// getBounds, cameraForBounds, easeTo and flyTo at sampled fractions, and the
-// default easing. Fails beyond 1e-6 px, 1e-7° (1 cm), 1e-8 zoom levels or
-// 1e-5 ms (MapLibre's matrices round differently from core's).
+// core's camera math (bench/entry/camera.mbt) vs MapLibre GL JS 6.16.0's Camera in Node with
+// frozen time; fails beyond 1e-6 px, 1e-7°, 1e-8 zoom or 1e-5 ms.
 // Usage: node lib/run-bundled.mjs bench/camera/golden.mjs; writes bench/results/camera-golden.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";

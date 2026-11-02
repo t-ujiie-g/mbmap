@@ -9,4 +9,10 @@ import {
 
 import {
   "moonbitlang/core/double",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/math",
 } for "test"
+
+options(
+  targets: { "utf8_js.mbt": [ "js" ], "utf8_nonjs.mbt": [ "not", "js" ] },
+)

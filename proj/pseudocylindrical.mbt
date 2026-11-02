@@ -1,9 +1,6 @@
-// Follows proj4js 2.22.0's pseudocylindrical projections (lib/projections/
-// sinu.js, eck6.js, moll.js, robin.js, eqearth.js), MIT License, Copyright (c) 2014, Mike Adair,
-// Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral, Calvin
-// Metcalf. See NOTICE.
-// Equal Earth follows eqearth.js, Copyright 2018 Bernie Jenny, Monash
-// University, Apache License 2.0. See NOTICE.
+// Port of proj4js 2.22.0's pseudocylindrical projections (sinu.js, eck6.js,
+// moll.js, robin.js; MIT, Copyright (c) 2014 Mike Adair et al.) and Equal Earth
+// (eqearth.js, Apache 2.0, Copyright 2018 Bernie Jenny); see NOTICE.
 
 ///|
 /// Sinusoidal, and Eckert VI on a sphere (`m`, `n`, `c_x`, `c_y` of the

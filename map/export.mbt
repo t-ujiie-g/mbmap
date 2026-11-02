@@ -21,10 +21,9 @@ pub fn Map::max_region(self : Map) -> Int32 {
 }
 
 ///|
-/// Pixels (a Uint8ClampedArray, RGBA, top row first) of the `width` x `height`
-/// device-pixel part at (`x`, `y`) of the current view drawn `ratio` device
-/// pixels to the CSS pixel, with the tiles loaded now. The canvas is left as
-/// it is.
+/// RGBA pixels (top row first) of the `width` x `height` device-pixel part at
+/// (`x`, `y`) of the view drawn at `ratio`, with the tiles loaded now; the canvas
+/// is left as it is.
 pub fn Map::render_region(
   self : Map,
   ratio : Double,

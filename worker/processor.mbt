@@ -1,12 +1,10 @@
 ///|
-/// Turns one style's tiles into `PackedTile`s, one entry per group of features
-/// sharing the inputs their paint reads. Reuse one per worker: its buffers keep
-/// their capacity. `number` parses the JSON numbers past
-/// `@core.read_json_number`'s fast path (in a style or a query's filter).
-/// For layers whose paint reads the feature state, `ranges` collects each
-/// entry's features' index ranges (`feature_ranges`).
+/// Turns one style's tiles into `PackedTile`s (an entry per group of features
+/// sharing their paint's inputs); reuse one per worker. `number` parses long JSON
+/// numbers; `ranges` holds feature-state layers' ranges (`feature_ranges`).
 pub struct TileProcessor {
   style : @style.Style
+  priv trig : @core.Trig
   out : PackedTile
   priv fill : @tess.FillTessellator
   priv line : @tess.LineTessellator
@@ -29,12 +27,14 @@ pub struct TileProcessor {
 pub fn TileProcessor::new(
   style : @style.Style,
   number~ : (BytesView) -> Double = @core.strconv_number,
+  trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> TileProcessor {
   {
     style,
+    trig,
     out: PackedTile::new(),
     fill: @tess.FillTessellator::new(),
-    line: @tess.LineTessellator::new(),
+    line: @tess.LineTessellator::new(trig~),
     extrusion: @tess.ExtrusionTessellator::new(),
     fill_pool: [],
     extrusion_pool: [],
@@ -56,11 +56,12 @@ pub fn TileProcessor::new(
 pub fn TileProcessor::from_utf8(
   bytes : BytesView,
   number~ : (BytesView) -> Double = @core.strconv_number,
+  trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> TileProcessor raise @style.StyleError {
   let json = parse_json(bytes, number) catch {
     e => raise Invalid(path="", "not JSON: \{e.message()}")
   }
-  TileProcessor::new(@style.Style::from_json(json), number~)
+  TileProcessor::new(@style.Style::from_json(json), number~, trig~)
 }
 
 ///|
@@ -289,7 +290,7 @@ fn TileProcessor::fill_layer(
   for b in self.fill_pool {
     b.clear()
   }
-  let feature = FeatureRef::new(layer)
+  let feature = self.feature_ref(layer)
   for i in 0..<layer.length() {
     feature.index = i
     // As MapLibre's fill bucket: lines are filled as rings too.
@@ -358,7 +359,7 @@ fn TileProcessor::extrusion_layer(
   for b in self.extrusion_pool {
     b.clear()
   }
-  let feature = FeatureRef::new(layer)
+  let feature = self.feature_ref(layer)
   let heights = FixedArray::make(@tess.EXTRUSION_HEIGHTS, 0.0)
   for i in 0..<layer.length() {
     feature.index = i
@@ -413,7 +414,7 @@ fn TileProcessor::line_layer(
   for b in self.line_pool {
     b.clear()
   }
-  let feature = FeatureRef::new(layer)
+  let feature = self.feature_ref(layer)
   let join = join_of(sl.join)
   let cap = cap_of(sl.cap)
   for i in 0..<layer.length() {
@@ -470,7 +471,7 @@ fn TileProcessor::circle_layer(
   for b in self.line_pool {
     b.clear()
   }
-  let feature = FeatureRef::new(layer)
+  let feature = self.feature_ref(layer)
   for i in 0..<layer.length() {
     feature.index = i
     // As MapLibre's circle bucket: a circle at every vertex of any geometry.
@@ -504,117 +505,4 @@ fn TileProcessor::circle_layer(
     }
   }
   true
-}
-
-///|
-/// The RGB unpacking of a `raster-dem` source's encoding.
-fn unpack_of(e : @style.DemEncoding) -> @raster.Unpack {
-  match e {
-    Mapbox => @raster.Unpack::mapbox()
-    Terrarium => @raster.Unpack::terrarium()
-    Gsi => @raster.Unpack::gsi()
-    Custom(r, g, b, base) => { r, g, b, base, gsi: false, }
-  }
-}
-
-///|
-/// A `size` x `size` RGBA tile `rgba` of the `raster-dem` source with index
-/// `source` at zoom `z`, for its hillshade layers: the slopes
-/// (`@raster.hillshade_slopes`), the border elevations (`@raster.dem_edges`) as
-/// f64s, then every elevation as an f32 (no data as 0 m), for terrain. None (see
-/// `error`) for another source or a malformed tile.
-pub fn TileProcessor::dem_tile(
-  self : TileProcessor,
-  source : Int32,
-  rgba : BytesView,
-  size : Int32,
-  z : Int32,
-) -> Bytes? {
-  guard source >= 0 &&
-    source < self.style.sources.length() &&
-    self.style.sources[source] is { kind: RasterDem, encoding, .. } else {
-    self.error = "no DEM source \{source}"
-    return None
-  }
-  if size <= 0 || size > 1024 || rgba.length() != size * size * 4 {
-    self.error = "DEM tile is not \{size} x \{size} RGBA"
-    return None
-  }
-  let elev = @raster.elevations(rgba, unpack_of(encoding))
-  let w = @core.ByteWriter::new()
-  for b in @raster.hillshade_slopes(elev, size, z) {
-    w.u8(b.to_int())
-  }
-  for v in @raster.dem_edges(elev, size) {
-    w.f64(v)
-  }
-  for v in elev {
-    w.f32(if v.is_nan() { 0.0 } else { v })
-  }
-  Some(w.to_bytes())
-}
-
-///|
-/// Notes that feature `i` of style layer `index` took indices `first..<end`
-/// of group `group`'s buffers, if the layer is drawn feature by feature.
-fn TileProcessor::track(
-  self : TileProcessor,
-  index : Int32,
-  group : Int32,
-  i : Int32,
-  first : Int32,
-  end : Int32,
-) -> Unit {
-  guard self.state_layers[index] && end > first else { return }
-  while self.range_pool.length() <= group {
-    self.range_pool.push([])
-  }
-  let r = self.range_pool[group]
-  r.push(i)
-  r.push(first)
-  r.push(end - first)
-}
-
-///|
-/// Writes the ranges of group `group` as those of packed entry `entry`
-/// (docs/FORMATS.md, "Feature ranges") and empties the group's list.
-fn TileProcessor::flush_ranges(
-  self : TileProcessor,
-  index : Int32,
-  entry : Int32,
-  group : Int32,
-  layer : Features,
-) -> Unit {
-  guard self.state_layers[index] && group < self.range_pool.length() else {
-    return
-  }
-  let sl = self.style.layers[index]
-  let promoted = match self.style.source(sl.source) {
-    Some(s) => s.promote_id.property(sl.source_layer)
-    None => None
-  }
-  let r = self.range_pool[group]
-  let w = self.ranges
-  w.u32(entry)
-  w.u32(r.length() / 3)
-  for k = 0; k < r.length(); k = k + 3 {
-    write_value(w, layer.id(r[k], promoted))
-    w.u32(r[k + 1])
-    w.u32(r[k + 2])
-  }
-  self.range_entries += 1
-  r.clear()
-}
-
-///|
-/// The feature ranges of the last tile processed (docs/FORMATS.md, "Feature
-/// ranges"): where each feature's indices lie in the entries of layers whose
-/// paint reads the feature state.
-pub fn TileProcessor::feature_ranges(self : TileProcessor) -> Bytes {
-  let w = @core.ByteWriter::new()
-  w.u32(self.range_entries)
-  for b in self.ranges.to_bytes() {
-    w.u8(b.to_int())
-  }
-  w.to_bytes()
 }

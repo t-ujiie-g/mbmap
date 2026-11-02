@@ -1,7 +1,5 @@
-// Follows proj4js 2.22.0's azimuthal projections (lib/projections/aeqd.js,
-// laea.js, ortho.js, gnom.js), MIT License, Copyright (c) 2014, Mike Adair,
-// Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral, Calvin
-// Metcalf. See NOTICE.
+// Port of proj4js 2.22.0's azimuthal projections (lib/projections/aeqd.js,
+// laea.js, ortho.js, gnom.js), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE.
 
 ///|
 /// Azimuthal equidistant: by Vincenty's formulas on the ellipsoid, except

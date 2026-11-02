@@ -1,8 +1,7 @@
 ///|
-/// A `raster-dem` tile's border elevations (`@raster.dem_edges`), kept so its
-/// neighbors' edge slopes can be redone when either arrives, and its heights
-/// (a Float32Array, row by row) for looking terrain up, `lowest` and
-/// `highest` among them.
+/// A `raster-dem` tile's border elevations (`@raster.dem_edges`, to redo its
+/// neighbors' edge slopes), its heights (a Float32Array, row by row) for terrain
+/// lookups, and the `lowest` and `highest` of them.
 priv struct DemTile {
   edges : FixedArray[Double]
   heights : @render_webgl2.JsBuffer
@@ -67,10 +66,9 @@ fn Map::stitch_dem(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
 }
 
 ///|
-/// The height in meters at (`x`, `y`), fractions of the tile from its top-left
-/// corner, interpolated between pixel centers. Past the outer centers it
-/// reads the pixels of `neighbor(dx, dy)` (the tile beside it, if loaded at
-/// the same size) or else repeats the edge ones, as MapLibre backfills borders.
+/// The height in meters at (`x`, `y`), tile fractions, between pixel centers.
+/// Past the outer centers it reads `neighbor(dx, dy)` (a same-size tile beside
+/// it) or repeats the edge pixels, as MapLibre backfills borders.
 fn DemTile::height_at(
   self : DemTile,
   x : Double,

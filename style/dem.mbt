@@ -1,8 +1,7 @@
 ///|
-/// How a `raster-dem` source packs elevations into RGB. `Custom` holds
-/// MapLibre's `redFactor`, `greenFactor`, `blueFactor` and `baseShift`. `Gsi`
-/// (an mbmap extension, `"encoding": "gsi"`) is GSI's: 0.01 m steps from the
-/// 24-bit value, negative past 2^23, and no data at 2^23.
+/// How a `raster-dem` source packs elevations into RGB. `Custom` holds MapLibre's
+/// factors and `baseShift`; `Gsi` (an mbmap extension) is GSI's: 0.01 m steps of
+/// the 24-bit value, negative past 2^23, no data at 2^23.
 pub(all) enum DemEncoding {
   Mapbox
   Terrarium

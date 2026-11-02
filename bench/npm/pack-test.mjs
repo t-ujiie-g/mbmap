@@ -307,11 +307,9 @@ const checks = {
   },
 };
 
-// The showcase, the same in all three examples: at Tokyo Station the panel
-// lists it within 5 km and gives plane IX's coordinates (proj4js: X -35367.230,
-// Y -5995.185); 3D tilts to 60° on terrain; a destination button flies there,
-// and the panel follows the camera; the destinations' pins follow their places,
-// and the view saves as a PNG.
+// The showcase, alike in all three examples: Tokyo Station within 5 km and in plane IX (proj4js:
+// X -35367.230, Y -5995.185), 3D on terrain, a flight to a destination, the panel following the
+// camera, the destinations' pins on their places, and the view saved as a PNG.
 async function showcase(page) {
   await page.waitForFunction(() => window.__described);
   const first = await page.evaluate(() => window.__described);
@@ -367,10 +365,8 @@ async function showcase(page) {
   return [ok, { first, picked, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved }];
 }
 
-// Queries and mouse events on the npm example's map (Tokyo Station, 800 x 600),
-// on a GeoJSON source added for them (CI has no tile fixtures): what is under a
-// point, layers and filters, a source's features, a layer's click and hover
-// events, and the error paths (bench/query/golden.mjs compares results with MapLibre).
+// Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile
+// fixtures): points, layers, filters, source features, layer events and error paths.
 async function queryChecks(page) {
   const found = await page.evaluate(async () => {
     const map = window.__map;
@@ -585,11 +581,8 @@ async function tileSourceChecks(page) {
   return { ok, red, half, green, attribution, blue, transformed, types };
 }
 
-// Screen tracking and image export on the npm example's map over a red raster
-// tile (bench/dist/pack/red.png from tileSourceChecks): a tracked place follows
-// the camera after each frame and stops once removed; an image drawn at 2x in
-// parts equals the one drawn whole; bad sizes are refused
-// (bench/track/golden.mjs and bench/export/golden.mjs compare with MapLibre).
+// Tracking and export over a red raster tile (tileSourceChecks' red.png): a tracked place follows
+// each frame and stops once removed; parts at 2x equal the whole image; bad sizes are refused.
 async function trackExportChecks(page) {
   const r = await page.evaluate(async () => {
     const map = window.__map;

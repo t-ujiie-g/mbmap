@@ -1,6 +1,5 @@
-// mbmap vs MapLibre with the same style, tiles and camera script, in Chromium
-// with the Metal GPU. Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--terrain]
-// [--extrusion] [--pitch=N]
+// mbmap vs MapLibre, same style, tiles and camera script, in Chromium with the Metal GPU.
+// Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--terrain] [--extrusion] [--pitch=N]
 // Writes bench/results/render-chromium[-labels][-terrain][-extrusion][-pitchN][-uncapped].json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
@@ -16,10 +15,8 @@ const runs = Number(arg("runs", 11));
 const uncapped = process.argv.includes("--uncapped");
 // --labels adds the label layers of bench/pages/basic, drawn from local fonts by both engines.
 const labels = process.argv.includes("--labels");
-// --terrain drapes the map on the gsi-dem fixtures (as Terrarium PNGs, which
-// both engines read), adds a sky (fog shows from 60 degrees) and pitches the
-// camera 45 degrees by default (at 60, MapLibre leaves distant terrain tiles
-// blank: they are below the vector source's minzoom).
+// --terrain drapes the map on the gsi-dem fixtures as Terrarium, with a sky, pitched 45 degrees
+// (at 60 MapLibre leaves distant terrain blank: below the vector source's minzoom).
 const terrain = process.argv.includes("--terrain");
 // --extrusion draws the buildings as fill-extrusion (GSI tiles have no heights:
 // 30 m for sturdy buildings, 8 m for others), pitched 45 degrees by default.

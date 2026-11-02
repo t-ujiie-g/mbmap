@@ -274,7 +274,7 @@ pub fn Reader::read_bytes(self : Reader) -> BytesView {
 ///|
 /// Reads a UTF-8 string; invalid sequences become U+FFFD, like `TextDecoder`.
 pub fn Reader::read_string(self : Reader) -> String {
-  @utf8.decode_lossy(self.read_bytes())
+  @core.utf8_lossy(self.read_bytes())
 }
 
 ///|

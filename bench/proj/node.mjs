@@ -1,7 +1,5 @@
-// Speed of proj.wasm (proj_worker, as the analysis worker calls it: f64 pairs
-// in, f64 pairs out, the host's Math) against proj4js 2.22.0 converting the
-// same points one by one. Median of --runs over --points random points around
-// Tokyo, WGS 84 to each CRS.
+// proj.wasm (f64 pairs in and out, the host's Math) vs proj4js 2.22.0 point by point, WGS 84 to
+// each CRS around Tokyo, median of runs.
 // Usage: node proj/node.mjs [--points=N] [--runs=N]; writes bench/results/proj-node.json.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";

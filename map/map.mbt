@@ -5,11 +5,9 @@ pub(all) suberror MapError {
 } derive(Debug)
 
 ///|
-/// `owned` is false when the mesh belongs to an earlier layer of the tile;
-/// `paint` caches the group's paint at the zoom it was evaluated for; `entry`
-/// is its index in the worker's packed tile, and `states` the index ranges
-/// of its features that have a feature state, with the state (first index,
-/// count, state object), in index order.
+/// `entry` is the mesh's index in the worker's packed tile; `owned` false when an
+/// earlier layer's; `paint` the group's paint at the zoom it was evaluated for;
+/// `states` (first index, count, state) the ranges of features with a state.
 priv struct LayerMesh {
   entry : Int32
   mut states : Array[(Int32, Int32, JsValue)]
