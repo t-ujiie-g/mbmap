@@ -345,23 +345,38 @@ async function showcase(page) {
   return [ok, { first, picked, tilted, osaka: osaka.near, shown, styled }];
 }
 
-// Queries and mouse events on the npm example's map (Tokyo Station, 800 x 600):
-// what is under a point, a layer's click and hover events, a source's features,
-// and the error paths (bench/query/golden.mjs compares the results with MapLibre).
+// Queries and mouse events on the npm example's map (Tokyo Station, 800 x 600),
+// on a GeoJSON source added for them (CI has no tile fixtures): what is under a
+// point, layers and filters, a source's features, a layer's click and hover
+// events, and the error paths (bench/query/golden.mjs compares results with MapLibre).
 async function queryChecks(page) {
   const found = await page.evaluate(async () => {
     const map = window.__map;
     map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
     await map.once("idle");
-    // A screen point with a building on top, and one with nothing of the layer.
-    let building = null;
-    for (let y = 100; y < 500 && !building; y += 20)
-      for (let x = 100; x < 700 && !building; x += 20) {
-        const fs = await map.queryRenderedFeatures([x, y], { layers: ["building"] });
-        if (fs.length > 0) building = [x, y];
-      }
-    const center = (await map.queryRenderedFeatures([400, 300])).map((x) => x.layer.id);
-    const at = building ? await map.queryRenderedFeatures(building) : [];
+    // A square west of the center, a line across it and a point on it.
+    const [w, s] = [map.unproject([200, 400]), map.unproject([300, 200])];
+    const square = [[w.lng, w.lat], [s.lng, w.lat], [s.lng, s.lat], [w.lng, s.lat], [w.lng, w.lat]];
+    const mid = map.unproject([250, 300]);
+    const data = {
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", properties: { kind: "area", n: 1 }, geometry: { type: "Polygon", coordinates: [square] } },
+        { type: "Feature", properties: { kind: "road", n: 2 }, geometry: { type: "LineString", coordinates: [[w.lng, mid.lat], [s.lng, mid.lat]] } },
+        { type: "Feature", properties: { kind: "spot", n: 3 }, geometry: { type: "Point", coordinates: [mid.lng, mid.lat] } },
+      ],
+    };
+    const idle = map.once("idle");
+    map.addSource("q", { type: "geojson", data });
+    map.addLayer({ id: "q-area", type: "fill", source: "q", filter: ["==", ["get", "kind"], "area"] });
+    map.addLayer({ id: "q-road", type: "line", source: "q", filter: ["==", ["get", "kind"], "road"], paint: { "line-width": 6 } });
+    map.addLayer({ id: "q-spot", type: "circle", source: "q", filter: ["==", ["get", "kind"], "spot"], paint: { "circle-radius": 8 } });
+    await idle;
+    const ids = (fs) => fs.map((f) => f.layer.id);
+    const atSpot = await map.queryRenderedFeatures([250, 300], { layers: ["q-area", "q-road", "q-spot"] });
+    const inArea = await map.queryRenderedFeatures([220, 380], { layers: ["q-area", "q-road", "q-spot"] });
+    const outside = await map.queryRenderedFeatures([600, 300], { layers: ["q-area", "q-road", "q-spot"] });
+    const box = await map.queryRenderedFeatures([[190, 190], [310, 410]], { filter: [">=", ["get", "n"], 2] });
     const errors = [];
     const f = (e) => errors.push(e.error.message);
     map.on("error", f);
@@ -369,46 +384,52 @@ async function queryChecks(page) {
     map.off("error", f);
     let refused = "";
     await map.queryRenderedFeatures({ filter: ["sqrt", 2] }).catch((e) => (refused = e.message));
-    const roads = await map.querySourceFeatures("gsi", { sourceLayer: "road" });
-    const box = await map.queryRenderedFeatures([[0, 0], [800, 600]], { layers: ["road"], filter: ["==", ["get", "rdCtg"], 0] });
+    const source = await map.querySourceFeatures("q");
     window.__events = [];
     map.on("click", (e) => window.__events.push(["click", Math.round(e.point.x), Math.round(e.point.y), e.lngLat.lng > 139]));
-    map.on("click", "building", (e) => window.__events.push(["click-building", e.features[0].layer.id, e.features[0].sourceLayer]));
-    map.on("mouseenter", "building", () => window.__events.push(["enter"]));
-    map.on("mouseleave", "building", () => window.__events.push(["leave"]));
+    map.on("click", "q-area", (e) => window.__events.push(["click-area", e.features[0].layer.id, e.features[0].properties.n]));
+    map.on("mouseenter", "q-area", () => window.__events.push(["enter"]));
+    map.on("mouseleave", "q-area", () => window.__events.push(["leave"]));
     const r = map.getCanvas().getBoundingClientRect();
     return {
-      building, center, workers: globalThis.__workers.map((w) => ({ ...w, queries: [...new Set(w.queries)] })), wlog: { ...globalThis.__wlog, errors: [...(globalThis.__wlog.errors ?? [])], tileIds: [...(globalThis.__wlog.tileIds ?? [])], queried: [...(globalThis.__wlog.queried ?? [])] }, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
-      geometry: at.find((x) => x.layer.id === "building")?.geometry.type, errors, unknown: unknown.length, refused,
-      roads: roads.length, roadTypes: [...new Set(roads.map((x) => x.geometry.type))], box: box.length,
-      boxAll: box.every((x) => x.layer.id === "road" && x.properties.rdCtg === 0),
+      origin: [r.left, r.top],
+      atSpot: ids(atSpot), spot: atSpot[0] && { source: atSpot[0].source, state: atSpot[0].state, geometry: atSpot[0].geometry.type, n: atSpot[0].properties.n },
+      inArea: ids(inArea), outside: outside.length, box: ids(box).filter((id) => id.startsWith("q-")),
+      errors, unknown: unknown.length, refused,
+      source: source.map((x) => x.properties.n).sort(),
     };
   });
-  if (!found.building) return { ok: false, ...found };
-  const [x, y] = [found.origin[0] + found.building[0], found.origin[1] + found.building[1]];
-  await page.mouse.move(found.origin[0] + 5, found.origin[1] + 5);
+  const [x, y] = [found.origin[0] + 220, found.origin[1] + 380];
+  await page.mouse.move(found.origin[0] + 600, found.origin[1] + 500);
   await page.mouse.move(x, y, { steps: 4 });
   await page.waitForTimeout(300);
   await page.mouse.click(x, y);
   // A drag is not a click.
-  await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 30, y, { steps: 3 });
   await page.mouse.up();
-  await page.mouse.move(x + 400, y + 400, { steps: 2 });
+  await page.mouse.move(found.origin[0] + 600, found.origin[1] + 500, { steps: 2 });
   await page.waitForTimeout(300);
-  const events = await page.evaluate(() => window.__events);
+  const events = await page.evaluate(async () => {
+    const map = window.__map;
+    for (const id of ["q-spot", "q-road", "q-area"]) map.removeLayer(id);
+    map.removeSource("q");
+    map.jumpTo({ center: [139.7671, 35.6812], zoom: 15 });
+    return window.__events;
+  });
   const clicks = events.filter((e) => e[0] === "click");
   const ok =
-    found.building !== null &&
-    found.source === "gsi" && JSON.stringify(found.state) === "{}" &&
-    ["Polygon", "LineString", "MultiPolygon"].includes(found.geometry) &&
+    JSON.stringify(found.atSpot) === JSON.stringify(["q-spot", "q-road", "q-area"]) &&
+    found.spot?.source === "q" && JSON.stringify(found.spot.state) === "{}" && found.spot.geometry === "Point" && found.spot.n === 3 &&
+    JSON.stringify(found.inArea) === JSON.stringify(["q-area"]) &&
+    found.outside === 0 &&
+    JSON.stringify(found.box) === JSON.stringify(["q-spot", "q-road"]) &&
     found.unknown === 0 && /'nope' does not exist/.test(found.errors[0] ?? "") &&
     /unsupported: expression sqrt/.test(found.refused) &&
-    found.roads > 1000 && found.roadTypes.every((t) => t === "LineString" || t === "MultiLineString") &&
-    found.box > 0 && found.boxAll &&
-    clicks.length === 1 && clicks[0][1] === found.building[0] && clicks[0][2] === found.building[1] && clicks[0][3] &&
-    events.some((e) => e[0] === "click-building" && e[1] === "building" && e[2] === "building") &&
+    // The square spans two tiles, and each gives its part, as MapLibre's do.
+    JSON.stringify([...new Set(found.source)]) === JSON.stringify([1, 2, 3]) &&
+    clicks.length === 1 && clicks[0][1] === 220 && clicks[0][2] === 380 && clicks[0][3] &&
+    events.some((e) => e[0] === "click-area" && e[1] === "q-area" && e[2] === 1) &&
     events.filter((e) => e[0] === "enter").length >= 1 &&
     events.at(-1)[0] === "leave";
   return { ok, ...found, events };
@@ -606,33 +627,6 @@ try {
     const requests = [];
     page.on("request", (r) => requests.push(r.url()));
     page.on("pageerror", (e) => errors.push(e.message));
-    // Diagnostics: query messages sent to workers and their answers.
-    await page.addInitScript(() => {
-      const W = globalThis.Worker;
-      globalThis.__wlog = { sent: 0, answered: 0, hits: 0, tiles: 0, drops: 0 };
-      let n = 0;
-      globalThis.__workers = [];
-      globalThis.Worker = class extends W {
-        constructor(...a) {
-          super(...a);
-          const me = { n: n++, url: String(a[0]).split("/").slice(-2).join("/"), tiles: [], queries: [] };
-          __workers.push(me);
-          this.__me = me;
-          this.addEventListener("message", (e) => {
-            if (e.data?.type === "tile") me.tiles.push(e.data.id);
-            if (e.data?.type === "query") { __wlog.answered++; __wlog.hits += e.data.hits?.length ?? 0; __wlog.debug ??= e.data.debug; }
-            if (e.data?.type === "tile") { __wlog.tiles++; (__wlog.tileIds ??= new Set()).add(e.data.id); }
-            if (e.data?.type === "error") (__wlog.errors ??= new Set()).add(String(e.data.message).slice(0, 200));
-          });
-        }
-        postMessage(m, t) {
-          if (m?.type === "query") this.__me.queries.push(m.tile);
-          if (m?.type === "query") { __wlog.sent++; __wlog.lastQuery = { tile: m.tile, kind: m.kind, source: m.source, z: m.z, request: Object.prototype.toString.call(m.request), len: m.request?.length }; (__wlog.queried ??= new Set()).add(m.tile); }
-          if (m?.type === "drop") __wlog.drops++;
-          return super.postMessage(m, t);
-        }
-      };
-    });
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
     const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt|'nope' does not exist/;

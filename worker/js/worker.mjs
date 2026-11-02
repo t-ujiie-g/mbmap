@@ -161,7 +161,7 @@ function query({ id, kind, tile, source, z, x, y, request }) {
       postMessage({ type: "error", message: String(err?.message ?? err) });
     }
   }
-  postMessage({ type: "query", id, hits, debug: { kept: !!bytes, keys: [...kept.keys()].slice(0, 40), view: ArrayBuffer.isView(request), len: bytes?.length } });
+  postMessage({ type: "query", id, hits });
 }
 
 onmessage = (e) => {
