@@ -1,6 +1,8 @@
 // URL handling of the facade, kept free of imports so tests can run it as is.
 
 export function resolveTemplate(template: string, base: URL): string {
+  // A PMTiles template names its archive by an absolute URL already.
+  if (template.startsWith("pmtiles://")) return template;
   // URL() percent-encodes the placeholders' braces.
   return new URL(template, base).href.replace(/%7B([zxy])%7D/g, "{$1}");
 }

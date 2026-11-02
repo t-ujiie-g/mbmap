@@ -109,12 +109,11 @@ fn Map::ask_ranges(self : Map, src : SourceTiles, e : TileEntry) -> Unit {
   guard worker >= 0 else { return }
   let part = self.next_query
   self.next_query += 1
-  self.range_parts.set(part, {
-    source: src.source.id,
-    key: e.id.key(),
-    request,
-    ids,
-  })
+  self.waiting.set(
+    part,
+    Ranges({ source: src.source.id, key: e.id.key(), request, ids, }),
+  )
+  self.ranges_waiting += 1
   post_ranges(self.workers[worker], part, request, FixedArray::from_array(ids))
 }
 
@@ -128,8 +127,9 @@ fn Map::state_layer(self : Map, index : Int32) -> Bool {
 /// (first index, count, index in the ids) triples.
 fn Map::on_ranges(self : Map, msg : JsValue) -> Unit {
   let part = get_int(msg, "id")
-  guard self.range_parts.get(part) is Some(p) else { return }
-  self.range_parts.remove(part)
+  guard self.waiting.get(part) is Some(Ranges(p)) else { return }
+  self.waiting.remove(part)
+  self.ranges_waiting -= 1
   guard self.sources.search_by(s => s.source.id == p.source) is Some(at) &&
     self.sources[at].tiles.get(p.key) is Some(e) &&
     e.kept.1 == p.request &&

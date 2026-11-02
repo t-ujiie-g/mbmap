@@ -718,17 +718,32 @@ pub fn Transform::center_depth(self : Transform) -> Double {
 
 ///|
 /// Maps tile units (`extent` per tile edge) of `tile` to clip space.
+/// `aligned` puts it on the pixel grid as MapLibre draws raster tiles at rest
+/// (its `alignedProjMatrix`): the center's fractional world pixel, and half a
+/// pixel for an odd viewport size, turned with the bearing, are taken out.
 pub fn Transform::tile_matrix(
   self : Transform,
   tile : TileId,
   extent : Int32,
+  aligned~ : Bool = false,
 ) -> Mat4 {
   let ws = self.world_size()
   let tiles = (1 << tile.z).to_double()
   let c = self.camera.center.to_mercator()
   let units = self.tile_scale(tile, extent)
-  let tx = (tile.x.to_double() / tiles - c.x) * ws
-  let ty = (tile.y.to_double() / tiles - c.y) * ws
+  let mut tx = (tile.x.to_double() / tiles - c.x) * ws
+  let mut ty = (tile.y.to_double() / tiles - c.y) * ws
+  if aligned {
+    let (x, y) = (c.x * ws, c.y * ws)
+    let x_shift = (self.width.to_int() % 2).to_double() / 2.0
+    let y_shift = (self.height.to_int() % 2).to_double() / 2.0
+    let b = self.camera.bearing * @math.PI / 180.0
+    let (cos, sin) = (@math.cos(b), @math.sin(-b))
+    let dx = x - x.round() + cos * x_shift + sin * y_shift
+    let dy = y - y.round() + cos * y_shift + sin * x_shift
+    tx += if dx > 0.5 { dx - 1.0 } else { dx }
+    ty += if dy > 0.5 { dy - 1.0 } else { dy }
+  }
   // view * translate(tx, ty, 0) * scale(units, units, 1), column by column.
   let v = self.view.m
   let m = FixedArray::make(16, 0.0)

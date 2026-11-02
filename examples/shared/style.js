@@ -20,8 +20,9 @@ const BUILDINGS_3D = {
   },
 };
 
-/** Layers the panel shows and hides together, by the name of each group. */
+/** Layers the panel shows and hides together, by the name of each group; `DEFAULT_HIDDEN` start hidden. */
 export const LAYER_GROUPS = [
+  { name: "航空写真", ids: ["photo"] },
   { name: "陰影", ids: ["hillshade"] },
   { name: "等高線", ids: ["contour", "elevation"] },
   { name: "建物", ids: ["building", "building-outline", "building-3d"] },
@@ -29,6 +30,8 @@ export const LAYER_GROUPS = [
   { name: "注記", ids: ["symbol", "label", "label-vertical"] },
   { name: "地点", ids: ["places", "places-label"] },
 ];
+
+export const DEFAULT_HIDDEN = ["航空写真"];
 
 /** The ids of the layers in the groups named in `hidden`. */
 export function hiddenLayers(hidden) {
@@ -51,11 +54,17 @@ export function createStyle(mode, hidden = new Set(), places = PLACES) {
       ? { type: "raster-dem", tiles: [`${fixtures}gsi-dem/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
       : { type: "raster-dem", tiles: [`${GSI}/dem_png/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
     places: { type: "geojson", data: places, promoteId: "name" },
+    // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
+    photo: local
+      ? { type: "raster", tiles: [`${fixtures}gsi-std/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14 }
+      : { type: "raster", tiles: [`${GSI}/seamlessphoto/{z}/{x}/{y}.jpg`], tileSize: 256, minzoom: 2, maxzoom: 18 },
   };
+  sources.photo.attribution = "国土地理院 全国最新写真（シームレス）";
   sources.gsi.attribution = "国土地理院ベクトルタイル提供実験";
   sources.dem.attribution = "国土地理院 標高タイル";
   const layers = [
     { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
+    { id: "photo", type: "raster", source: "photo" },
     { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#5a4a35" } },
     ...GSI_LAYERS.flatMap((l) => {
       if (mode !== "3d") return [l];

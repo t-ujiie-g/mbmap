@@ -11,7 +11,7 @@
 ## 入っている機能
 
 - 2D と 3D の切り替え（`setStyle`。地図は作り直さず、変わらないソースのタイルは残す）：3D では、国土地理院の標高タイルで地形に貼り、建物を押し出し、空を描き、傾ける。
-- レイヤーの表示切り替え（`setLayoutProperty` の `visibility`）：陰影、等高線、建物、道路・鉄道、注記、地点。
+- レイヤーの表示切り替え（`setLayoutProperty` の `visibility`）：航空写真（国土地理院のシームレス空中写真、ラスタのソースとレイヤー。最初は非表示）、陰影、等高線、建物、道路・鉄道、注記、地点。
 - 中心に印を置く（GeoJSON ソースの `setData`）。
 - クリックした地物の表示（`queryRenderedFeatures`。いちばん上の地物のレイヤーと名前など）と、地点の上での強調（`setFeatureState` の `hover` を paint の `feature-state` で読む。id は `promoteId` で地点名）とカーソル変更（レイヤーの `mousemove`・`mouseleave`）。
 - 地点への移動（`flyTo`）：東京駅、富士山、大阪駅、京都、札幌駅。

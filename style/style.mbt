@@ -15,6 +15,7 @@ pub(all) enum LayerKind {
   Symbol
   Hillshade
   FillExtrusion
+  Raster
 } derive(Debug, Eq)
 
 ///|
@@ -56,6 +57,7 @@ pub struct StyleLayer {
   text : TextLayout?
   hillshade : HillshadePaint?
   extrusion : ExtrusionPaint?
+  raster : RasterPaint?
   join : Join
   cap : Cap
   miter_limit : Double
@@ -63,13 +65,14 @@ pub struct StyleLayer {
 }
 
 ///|
-/// What a source draws from: vector tiles or elevation (`raster-dem`) tiles at
-/// URLs, or GeoJSON the map cuts into tiles itself (its data is handled
-/// outside the style, by the JS facade).
+/// What a source draws from: vector, image (`raster`) or elevation
+/// (`raster-dem`) tiles at URLs, or GeoJSON the map cuts into tiles itself
+/// (its data is handled outside the style, by the JS facade).
 pub(all) enum SourceKind {
   Vector
   GeoJSON
   RasterDem
+  Raster
 } derive(Debug, Eq)
 
 ///|
@@ -97,7 +100,8 @@ pub fn PromoteId::property(self : PromoteId, source_layer : String) -> String? {
 /// A source layers draw from: URL templates of tiles `tile_size` pixels wide
 /// (with a `raster-dem` source's `encoding`), or a GeoJSON source's `buffer`
 /// and `tolerance` (MapLibre's options, in pixels); `promote_id` names its
-/// features' ids.
+/// features' ids; `bounds` (west, south, east, north) limit which tiles are
+/// asked for, and `tms` flips the y of tile URLs (`scheme: "tms"`).
 pub struct Source {
   id : String
   kind : SourceKind
@@ -109,6 +113,52 @@ pub struct Source {
   buffer : Int32
   tolerance : Double
   promote_id : PromoteId
+  bounds : (Double, Double, Double, Double)?
+  tms : Bool
+}
+
+///|
+/// Whether tile z/x/y overlaps the source's `bounds` (MapLibre's
+/// `TileBounds.contains`).
+pub fn Source::covers(self : Source, z : Int32, x : Int32, y : Int32) -> Bool {
+  guard self.bounds is Some((w, s, e, n)) else { return true }
+  let size = (1 << z).to_double()
+  let mx = (lng : Double) => (180.0 + lng) / 360.0 * size
+  let my = (lat : Double) => {
+    let l = @cmp.maximum(-85.051129, @cmp.minimum(85.051129, lat))
+    (
+      180.0 -
+      180.0 /
+      @math.PI *
+      @math.ln(@math.tan(@math.PI / 4.0 + l * @math.PI / 360.0))
+    ) /
+    360.0 *
+    size
+  }
+  x.to_double() >= mx(w).floor() &&
+  x.to_double() < mx(e).ceil() &&
+  y.to_double() >= my(n).floor() &&
+  y.to_double() < my(s).ceil()
+}
+
+///|
+/// A source's `bounds`: four numbers clamped to the world, as MapLibre takes
+/// them; None for none or for malformed ones (MapLibre then uses the world).
+fn parse_bounds(s : Map[String, Json]) -> (Double, Double, Double, Double)? {
+  guard s.get("bounds")
+    is Some(
+      Array([Number(w, ..), Number(so, ..), Number(e, ..), Number(n, ..)])
+    ) else {
+    return None
+  }
+  Some(
+    (
+      @cmp.maximum(-180.0, w),
+      @cmp.maximum(-90.0, so),
+      @cmp.minimum(180.0, e),
+      @cmp.minimum(90.0, n),
+    ),
+  )
 }
 
 ///|
@@ -263,11 +313,14 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       buffer: buffer.to_int(),
       tolerance,
       promote_id: parse_promote_id(s, path),
+      bounds: None,
+      tms: false,
     })
   }
   let kind = match s.get("type") {
     Some(String("vector")) => Vector
     Some(String("raster-dem")) => RasterDem
+    Some(String("raster")) => Raster
     _ => return None
   }
   guard s.get("tiles") is Some(Array(urls)) else {
@@ -302,13 +355,24 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
     buffer: 0,
     tolerance: 0.0,
     promote_id: parse_promote_id(s, path),
+    bounds: parse_bounds(s),
+    tms: match string_or(s, "scheme", path, "xyz") {
+      "xyz" => false
+      "tms" => true
+      x => raise Invalid(path="\{path}.scheme", "unknown scheme \{x}")
+    },
   })
 }
 
 ///|
-/// Whether a tile URL template is relative or http(s): other schemes
-/// (`javascript:`, `data:`, `file:`, ...) are refused (AGENTS.md §8.3).
+/// Whether a tile URL template is relative or http(s), or an http(s) PMTiles
+/// archive (`pmtiles://https://...`): other schemes (`javascript:`, `data:`,
+/// `file:`, ...) are refused (AGENTS.md §8.3).
 fn fetchable(url : String) -> Bool {
+  if url.has_prefix("pmtiles://") {
+    let rest = url[10:].to_lower()
+    return rest.has_prefix("http://") || rest.has_prefix("https://")
+  }
   for i, c in url {
     match c {
       'a'..<='z' | 'A'..<='Z' => ()
@@ -381,6 +445,7 @@ fn parse_layer(
     "symbol" => Symbol
     "hillshade" => Hillshade
     "fill-extrusion" => FillExtrusion
+    "raster" => Raster
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -399,6 +464,7 @@ fn parse_layer(
     Symbol => "text"
     Hillshade => "hillshade"
     FillExtrusion => "fill-extrusion"
+    Raster => "raster"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter
@@ -502,6 +568,11 @@ fn parse_layer(
     },
     extrusion: if kind is FillExtrusion {
       Some(parse_extrusion(paint, ppath))
+    } else {
+      None
+    },
+    raster: if kind is Raster {
+      Some(parse_raster(paint, ppath))
     } else {
       None
     },

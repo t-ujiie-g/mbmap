@@ -8,7 +8,7 @@ import { describe, RADIUS_METERS } from "../../shared/analysis.js";
 import { describeFeature, hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
-import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../../shared/style.js";
+import { DEFAULT_HIDDEN, LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../../shared/style.js";
 
 const fixed = (v, n) => v.toFixed(n);
 
@@ -17,7 +17,7 @@ function App() {
   const [mode, setMode] = useState("2d");
   const [camera, setCamera] = useState({ center: { lng: 139.7671, lat: 35.6812 }, zoom: 15, bearing: 0, pitch: 0 });
   const [described, setDescribed] = useState(null);
-  const [hidden, setHidden] = useState(() => new Set());
+  const [hidden, setHidden] = useState(() => new Set(DEFAULT_HIDDEN));
   const [picked, setPicked] = useState(null);
   const places = useRef(PLACES);
   const pending = useRef(0);

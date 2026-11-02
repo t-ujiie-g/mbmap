@@ -80,6 +80,7 @@ fn texture_placement(
     .scale(unit, -unit, 1.0)
   {
     matrix,
+    raster_matrix: matrix,
     units_per_pixel: @core.TILE_EXTENT.to_double() / (size.to_double() * k),
     center_depth: 1.0,
     clip: d.at.clip,

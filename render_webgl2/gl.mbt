@@ -154,6 +154,21 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  vec4 color = mix(u_shadow, u_highlight, shade) * sin(scaled) * k;" +
   #|    "  o = accent * (1.0 - color.a) + color; }",
   #|    ["u_matrix", "u_clip", "u_image", "u_lat", "u_light", "u_shadow", "u_highlight", "u_accent"]);
+  #|  // MapLibre's raster.fragment.glsl without the parent cross-fade: the
+  #|  // premultiplied image unpremultiplied, hue spun, saturated, contrasted and
+  #|  // mapped between the brightness bounds (u_bright).
+  #|  const raster = program(
+  #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_tex;" +
+  #|    "void main() { v_pos = a_pos; v_tex = a_pos / 4096.0; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    clip + "uniform sampler2D u_image; uniform float u_opacity; uniform vec2 u_bright; uniform float u_saturation;" +
+  #|    "uniform float u_contrast; uniform vec3 u_spin; in vec2 v_tex; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; vec4 color = texture(u_image, v_tex);" +
+  #|    "  if (color.a > 0.0) color.rgb /= color.a; color.a *= u_opacity; vec3 rgb = color.rgb;" +
+  #|    "  rgb = vec3(dot(rgb, u_spin.xyz), dot(rgb, u_spin.zxy), dot(rgb, u_spin.yzx));" +
+  #|    "  float average = (color.r + color.g + color.b) / 3.0; rgb += (average - rgb) * u_saturation;" +
+  #|    "  rgb = (rgb - 0.5) * u_contrast + 0.5;" +
+  #|    "  o = vec4(mix(vec3(u_bright.x), vec3(u_bright.y), rgb) * color.a, color.a); }",
+  #|    ["u_matrix", "u_clip", "u_image", "u_opacity", "u_bright", "u_saturation", "u_contrast", "u_spin"]);
   #|  // One quad over a tile, for raster layers.
   #|  const quad = gl.createVertexArray();
   #|  gl.bindVertexArray(quad);
@@ -228,7 +243,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, symbol, hillshade, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, line, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -609,4 +624,51 @@ extern "js" fn gl_set_heights(
   #|  }
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
   #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|}
+
+///|
+/// A raster tile's image (an ImageBitmap) as a mipmapped texture.
+extern "js" fn gl_upload_raster(gl : Gl, image : JsBuffer) -> Mesh =
+  #|(c, image) => {
+  #|  const gl = c.gl;
+  #|  const texture = gl.createTexture();
+  #|  gl.bindTexture(gl.TEXTURE_2D, texture);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  #|  gl.generateMipmap(gl.TEXTURE_2D);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|  const bytes = image.width * image.height * 4 * 4 / 3;
+  #|  image.close?.();
+  #|  return { texture, bytes };
+  #|}
+
+///|
+/// `colors` is opacity, brightness min and max, saturation and contrast
+/// factors and the hue spin weights (MapLibre's raster uniforms).
+extern "js" fn gl_draw_raster(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  colors : FixedArray[Double],
+  nearest : Bool,
+) -> Unit =
+  #|(c, m, matrix, clip, k, nearest) => {
+  #|  const gl = c.gl, p = c.raster;
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform1f(p.u_opacity, k[0]);
+  #|  gl.uniform2f(p.u_bright, k[1], k[2]);
+  #|  gl.uniform1f(p.u_saturation, k[3]);
+  #|  gl.uniform1f(p.u_contrast, k[4]);
+  #|  gl.uniform3f(p.u_spin, k[5], k[6], k[7]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.texture);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, nearest ? gl.NEAREST : gl.LINEAR_MIPMAP_NEAREST);
+  #|  gl.uniform1i(p.u_image, 0);
+  #|  gl.bindVertexArray(c.quad);
+  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   #|}

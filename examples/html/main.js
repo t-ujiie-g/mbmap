@@ -4,13 +4,13 @@ import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
-import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
+import { DEFAULT_HIDDEN, LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
 
 let mode = "2d";
-const hidden = new Set();
+const hidden = new Set(DEFAULT_HIDDEN);
 let places = PLACES;
 
-const map = new Map({ container: "map", style: createStyle(mode), center: DESTINATIONS[0].center, zoom: 15 });
+const map = new Map({ container: "map", style: createStyle(mode, hidden), center: DESTINATIONS[0].center, zoom: 15 });
 map.on("move", showCamera);
 map.on("moveend", update);
 map.once("load").then(() => {

@@ -31,7 +31,7 @@ let sample : String =
   #|  "version": 8,
   #|  "sources": {
   #|    "gsi": { "type": "vector", "tiles": ["https://x/{z}/{x}/{y}.pbf"], "minzoom": 4, "maxzoom": 16 },
-  #|    "photo": { "type": "raster", "url": "x" }
+  #|    "photo": { "type": "image", "url": "x" }
   #|  },
   #|  "layers": [
   #|    { "id": "bg", "type": "background", "paint": { "background-color": "#f5f3ee" } },

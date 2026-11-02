@@ -142,6 +142,7 @@ pub(all) enum LayerKind {
   Symbol
   Hillshade
   FillExtrusion
+  Raster
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
@@ -171,6 +172,18 @@ pub fn PromoteId::not_equal(Self, Self) -> Bool
 pub fn PromoteId::property(Self, String) -> String?
 pub fn PromoteId::to_repr(Self) -> @debug.Repr
 
+pub struct RasterPaint {
+  opacity : Expr
+  hue_rotate : Expr
+  brightness_min : Expr
+  brightness_max : Expr
+  saturation : Expr
+  contrast : Expr
+  nearest : Bool
+} derive(Eq)
+pub fn RasterPaint::equal(Self, Self) -> Bool
+pub fn RasterPaint::not_equal(Self, Self) -> Bool
+
 pub struct Sky {
   sky : Expr
   horizon : Expr
@@ -191,13 +204,17 @@ pub struct Source {
   buffer : Int32
   tolerance : Double
   promote_id : PromoteId
+  bounds : (Double, Double, Double, Double)?
+  tms : Bool
 }
+pub fn Source::covers(Self, Int32, Int32, Int32) -> Bool
 pub fn Source::same(Self, Self) -> Bool
 
 pub(all) enum SourceKind {
   Vector
   GeoJSON
   RasterDem
+  Raster
 } derive(Eq, @debug.Debug)
 pub fn SourceKind::equal(Self, Self) -> Bool
 pub fn SourceKind::not_equal(Self, Self) -> Bool
@@ -235,6 +252,7 @@ pub struct StyleLayer {
   text : TextLayout?
   hillshade : HillshadePaint?
   extrusion : ExtrusionPaint?
+  raster : RasterPaint?
   join : Join
   cap : Cap
   miter_limit : Double

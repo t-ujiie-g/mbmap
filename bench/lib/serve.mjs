@@ -28,6 +28,17 @@ export function resolveRequestPath(pathname) {
   return file;
 }
 
+// The byte range a `Range: bytes=a-b` header asks of a file `size` bytes long:
+// [start, end] inclusive, null for none, or "bad" for one it cannot serve.
+export function byteRange(header, size) {
+  if (!header) return null;
+  const m = /^bytes=(\d+)-(\d*)$/.exec(header);
+  if (!m) return "bad";
+  const start = Number(m[1]);
+  const end = m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
+  return start <= end ? [start, end] : "bad";
+}
+
 export function serve(port = 0) {
   const server = http.createServer(async (req, res) => {
     let file = resolveRequestPath(new URL(req.url, "http://x").pathname);
@@ -38,14 +49,25 @@ export function serve(port = 0) {
       const body = await readFile(file);
       // The cross-origin isolation headers enable high-resolution timers
       // (performance.now) in browsers.
-      res.writeHead(200, {
+      const headers = {
         "content-type": TYPES[path.extname(file)] ?? "application/octet-stream",
         "cache-control": "no-store",
         "x-content-type-options": "nosniff",
         "cross-origin-opener-policy": "same-origin",
         "cross-origin-embedder-policy": "require-corp",
-      });
-      res.end(body);
+        "accept-ranges": "bytes",
+      };
+      // Single ranges, for PMTiles archives.
+      const range = byteRange(req.headers.range, body.length);
+      if (range === "bad") {
+        res.writeHead(416, { "content-range": `bytes */${body.length}` }).end();
+      } else if (range) {
+        res.writeHead(206, { ...headers, "content-range": `bytes ${range[0]}-${range[1]}/${body.length}` });
+        res.end(body.subarray(range[0], range[1] + 1));
+      } else {
+        res.writeHead(200, headers);
+        res.end(body);
+      }
     } catch {
       res.writeHead(404).end();
     }

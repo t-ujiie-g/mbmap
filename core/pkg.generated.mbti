@@ -267,7 +267,7 @@ pub fn Transform::pixels_per_meter(Self) -> Double
 pub fn Transform::project(Self, LngLat) -> (Double, Double)
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
-pub fn Transform::tile_matrix(Self, TileId, Int32) -> Mat4
+pub fn Transform::tile_matrix(Self, TileId, Int32, aligned? : Bool) -> Mat4
 pub fn Transform::tile_scale(Self, TileId, Int32) -> Double
 pub fn Transform::tile_zoom(Self, Int32, Int32, tile_size? : Int32) -> Int32
 pub fn Transform::unproject(Self, Double, Double) -> LngLat

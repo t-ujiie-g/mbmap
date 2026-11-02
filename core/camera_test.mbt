@@ -158,3 +158,26 @@ test "max_pitch_scale_factor is 1 looking down and grows with the pitch" {
   let tilted = view(60.0, 0.0).max_pitch_scale_factor()
   assert_true(tilted > 1.5 && tilted < 10.0)
 }
+
+///|
+test "an aligned tile matrix puts tile corners on whole pixels at whole zooms" {
+  let v = @core.Transform::new(
+    {
+      center: { lng: 139.76713, lat: 35.68123, },
+      zoom: 14.0,
+      bearing: 0.0,
+      pitch: 0.0,
+    },
+    800.0,
+    600.0,
+  )
+  let id = @core.TileId::new(14, 14552, 6451).unwrap()
+  let screen = (m : @core.Mat4) => {
+    let (x, y, _, w) = m.apply(0.0, 0.0, 0.0, 1.0)
+    ((x / w + 1.0) * 400.0, (1.0 - y / w) * 300.0)
+  }
+  let (ax, ay) = screen(v.tile_matrix(id, 4096, aligned=true))
+  let (px, py) = screen(v.tile_matrix(id, 4096))
+  assert_true(within(ax, ax.round(), 1.0e-6) && within(ay, ay.round(), 1.0e-6))
+  assert_true((ax - px).abs() <= 0.5 && (ay - py).abs() <= 0.5)
+}
