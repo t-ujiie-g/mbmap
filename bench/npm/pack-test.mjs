@@ -378,7 +378,7 @@ async function queryChecks(page) {
     map.on("mouseleave", "building", () => window.__events.push(["leave"]));
     const r = map.getCanvas().getBoundingClientRect();
     return {
-      building, center, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
+      building, center, wlog: { ...globalThis.__wlog }, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
       geometry: at.find((x) => x.layer.id === "building")?.geometry.type, errors, unknown: unknown.length, refused,
       roads: roads.length, roadTypes: [...new Set(roads.map((x) => x.geometry.type))], box: box.length,
       boxAll: box.every((x) => x.layer.id === "road" && x.properties.rdCtg === 0),
@@ -606,6 +606,25 @@ try {
     const requests = [];
     page.on("request", (r) => requests.push(r.url()));
     page.on("pageerror", (e) => errors.push(e.message));
+    // Diagnostics: query messages sent to workers and their answers.
+    await page.addInitScript(() => {
+      const W = globalThis.Worker;
+      globalThis.__wlog = { sent: 0, answered: 0, hits: 0, tiles: 0, drops: 0 };
+      globalThis.Worker = class extends W {
+        constructor(...a) {
+          super(...a);
+          this.addEventListener("message", (e) => {
+            if (e.data?.type === "query") { __wlog.answered++; __wlog.hits += e.data.hits?.length ?? 0; }
+            if (e.data?.type === "tile") __wlog.tiles++;
+          });
+        }
+        postMessage(m, t) {
+          if (m?.type === "query") __wlog.sent++;
+          if (m?.type === "drop") __wlog.drops++;
+          return super.postMessage(m, t);
+        }
+      };
+    });
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
     const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt|'nope' does not exist/;
