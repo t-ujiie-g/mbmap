@@ -121,6 +121,15 @@ pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
   for w in self.workers {
     post_style(w, style_json)
   }
+  // Which layers draw by state may have changed.
+  for src in self.sources {
+    if self.feature_states.get(src.source.id) is Some(states) &&
+      states.length() > 0 {
+      for _, e in src.tiles {
+        self.ask_ranges(src, e)
+      }
+    }
+  }
   self.request_render()
 }
 

@@ -1,7 +1,7 @@
 // The showcase with <mb-map>: attributes and properties in, CustomEvents out.
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
-import { describeFeature } from "../shared/pick.js";
+import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
 import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
@@ -73,8 +73,7 @@ el.addEventListener("mb-load", () => {
   const map = el.map;
   // The topmost feature under a click, from the workers that hold the geometry.
   map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
-  map.on("mouseenter", "places", () => (map.getCanvas().style.cursor = "pointer"));
-  map.on("mouseleave", "places", () => (map.getCanvas().style.cursor = ""));
+  hoverPlaces(map);
   update();
 });
 

@@ -200,3 +200,86 @@ test "source_features gives a source layer's features that pass the filter, laye
   )
   assert_eq(p.source_features("a", tile[:], 14, "pts", "[\"sqrt\"]"), None)
 }
+
+///|
+/// Feature ranges (docs/FORMATS.md, "Feature ranges") as (entry, id, first,
+/// count) records.
+fn ranges_of(b : Bytes) -> Array[(Int32, @style.Value, Int32, Int32)] {
+  let r = @core.ByteReader::new(b[:])
+  let out = []
+  for _ in 0..<r.u32() {
+    let entry = r.u32()
+    for _ in 0..<r.u32() {
+      let id : @style.Value = match r.u8() {
+        3 => Num(r.f64())
+        4 => Str(r.utf8())
+        _ => Null
+      }
+      let first = r.u32()
+      out.push((entry, id, first, r.u32()))
+    }
+  }
+  out
+}
+
+///|
+test "feature_ranges lists each feature's indices in layers whose paint reads the state" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"], "promoteId": {"pts": "k"}}},
+    #| "layers": [
+    #|  {"id": "plain", "type": "line", "source": "a", "source-layer": "line"},
+    #|  {"id": "lit", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-color": ["case", ["boolean", ["feature-state", "on"], false], "#f00", "#00f"]}},
+    #|  {"id": "dots", "type": "circle", "source": "a", "source-layer": "pts",
+    #|   "paint": {"circle-radius": ["number", ["feature-state", "r"], 3]}}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", query_tile()[:], 14))
+  // "lit" keeps its own buffers (no alias of "plain"); the line has no id
+  // (Null), the points take "k", which they lack (Null).
+  assert_eq(p.out.layer_count(), 3)
+  let ranges = ranges_of(p.feature_ranges())
+  assert_eq(ranges.map(r => r.0), [1, 2])
+  assert_eq(ranges.map(r => (r.1, r.2)), [(Null, 0), (Null, 0)])
+  assert_true(ranges.iter().all(r => r.3 > 0 && r.3 % 3 == 0))
+  // A style without state layers has none.
+  let q = @worker.TileProcessor::from_utf8(@utf8.encode(query_style)[:])
+  assert_true(q.process("a", query_tile()[:], 14))
+  assert_eq(ranges_of(q.feature_ranges()), [])
+}
+
+///|
+test "query results carry promoted ids" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"], "promoteId": "n"}},
+    #| "layers": [{"id": "area", "type": "fill", "source": "a", "source-layer": "poly"}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let out = p.query("a", query_tile()[:], 14, query_request([(50.0, 50.0)])[:])
+  let r = @core.ByteReader::new(out.unwrap()[:])
+  assert_eq((r.u32(), r.u32(), r.u32()), (1, 0, 0))
+  r.f64() |> ignore
+  // No property "n": the id is null.
+  assert_eq(r.u8(), @core.PROP_NULL)
+}
+
+///|
+test "GeoJSON features' ranges take their ids, or the promoted property" {
+  let style = (promote : String) => {
+    "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": \"x\"\{promote}}}, \"layers\": [{\"id\": \"c\", \"type\": \"circle\", \"source\": \"g\", \"paint\": {\"circle-radius\": [\"number\", [\"feature-state\", \"r\"], 3]}}, {\"id\": \"f\", \"type\": \"fill\", \"source\": \"g\", \"paint\": {\"fill-opacity\": [\"number\", [\"feature-state\", \"o\"], 1]}}]}"
+  }
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style(""))[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let ids = ranges_of(p.feature_ranges()).map(r => (r.0, r.1))
+  // Circles go on every vertex: the square's corners too; only the square has an id.
+  assert_eq(ids, [(0, Null), (0, Null), (0, Str("square")), (1, Str("square"))])
+  let q = @worker.TileProcessor::from_utf8(
+    @utf8.encode(style(", \"promoteId\": \"k\""))[:],
+  )
+  assert_true(q.process("g", geojson_tile()[:], 0))
+  assert_eq(ranges_of(q.feature_ranges()).map(r => r.1), [
+    Num(1.0),
+    Null,
+    Null,
+    Null,
+  ])
+}

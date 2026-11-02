@@ -382,3 +382,17 @@ pub fn map_query_source(
 ) -> String {
   map.query_source(source, source_layer, filter, done)
 }
+
+///|
+/// Sets feature `id`'s state (a JS object, or null to remove it) in
+/// `source_layer` ("" for GeoJSON) of `source`.
+#export_name("map_set_feature_state")
+pub fn map_set_feature_state(
+  map : @map.Map,
+  source : String,
+  source_layer : String,
+  id : String,
+  state : @map.FeatureState,
+) -> Unit {
+  map.set_feature_state(source, source_layer, id, state)
+}

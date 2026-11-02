@@ -6,8 +6,13 @@ pub(all) suberror MapError {
 
 ///|
 /// `owned` is false when the mesh belongs to an earlier layer of the tile;
-/// `paint` caches the group's paint at the zoom it was evaluated for.
+/// `paint` caches the group's paint at the zoom it was evaluated for; `entry`
+/// is its index in the worker's packed tile, and `states` the index ranges
+/// of its features that have a feature state, with the state (first index,
+/// count, state object), in index order.
 priv struct LayerMesh {
+  entry : Int32
+  mut states : Array[(Int32, Int32, JsValue)]
   layer : Int32
   kind : Int32
   mesh : @render_webgl2.Mesh
@@ -123,6 +128,11 @@ pub struct Map {
   priv queries : @hashmap.HashMap[Int32, PendingQuery]
   priv query_parts : @hashmap.HashMap[Int32, QueryPart]
   priv mut next_query : Int32
+  priv feature_states : @hashmap.HashMap[
+    String,
+    @hashmap.HashMap[String, JsValue],
+  ]
+  priv range_parts : @hashmap.HashMap[Int32, RangePart]
 }
 
 ///|
@@ -223,6 +233,8 @@ pub fn Map::new(
     queries: @hashmap.HashMap([]),
     query_parts: @hashmap.HashMap([]),
     next_query: 0,
+    feature_states: @hashmap.HashMap([]),
+    range_parts: @hashmap.HashMap([]),
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {

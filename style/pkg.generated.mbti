@@ -69,6 +69,7 @@ pub(all) enum Expected {
   ColorType
   NumberType
   BoolType
+  StringType
 } derive(Eq, @debug.Debug)
 pub fn Expected::equal(Self, Self) -> Bool
 pub fn Expected::not_equal(Self, Self) -> Bool
@@ -90,11 +91,14 @@ pub(all) enum Expr {
   Coalesce(Array[Expr])
   Interpolate(Interpolation, Expr, Array[(Double, Expr)])
   Step(Expr, Expr, Array[(Double, Expr)])
+  FeatureState(String)
+  Assert(Expected, Array[Expr])
 } derive(Eq, @debug.Debug)
 pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
 pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
+pub fn Expr::reads_state(Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
 pub struct ExtrusionPaint {
@@ -154,7 +158,18 @@ pub(all) struct NoFeature {
 }
 pub fn NoFeature::geometry_type(Self) -> String
 pub fn NoFeature::property(Self, String) -> Value?
+pub fn NoFeature::state(Self, String) -> Value?
 pub impl FeatureContext for NoFeature
+
+pub(all) enum PromoteId {
+  FeatureId
+  Property(String)
+  ByLayer(Map[String, String])
+} derive(Eq, @debug.Debug)
+pub fn PromoteId::equal(Self, Self) -> Bool
+pub fn PromoteId::not_equal(Self, Self) -> Bool
+pub fn PromoteId::property(Self, String) -> String?
+pub fn PromoteId::to_repr(Self) -> @debug.Repr
 
 pub struct Sky {
   sky : Expr
@@ -175,6 +190,7 @@ pub struct Source {
   encoding : DemEncoding
   buffer : Int32
   tolerance : Double
+  promote_id : PromoteId
 }
 pub fn Source::same(Self, Self) -> Bool
 
@@ -224,6 +240,7 @@ pub struct StyleLayer {
   miter_limit : Double
   round_limit : Double
 }
+pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
 
 pub struct Terrain {
@@ -280,4 +297,5 @@ pub fn Value::to_repr(Self) -> @debug.Repr
 pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
   fn geometry_type(Self) -> String
+  fn state(Self, String) -> Value? = _
 }

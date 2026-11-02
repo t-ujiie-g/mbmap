@@ -2,7 +2,7 @@
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
 import { hostNumber } from "../../wasmio/js/host.mjs";
-import { readQueryResult } from "./query.mjs";
+import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
 import { readString, readValue } from "./values.mjs";
 
@@ -18,7 +18,8 @@ let glyphs = null;
 const canDrawGlyphs = typeof OffscreenCanvas !== "undefined";
 let warned = false;
 const pending = new Map();
-// The bytes of each tile sent, by request id, for queries until the main thread drops it.
+// Each tile sent, by request id, until the main thread drops it: its bytes for
+// queries, and its feature ranges for layers drawn by feature state.
 const kept = new Map();
 
 function withInput(bytes, run) {
@@ -63,20 +64,21 @@ function unpack(packed) {
       }
       const s = buildSymbols(packed.subarray(e(2), e(2) + e(3)), glyphs);
       if (s.count === 0) continue;
-      layers.push({ layer: e(0), kind: e(1), shared: -1, props, ...s });
+      layers.push({ entry: k, layer: e(0), kind: e(1), shared: -1, props, ...s });
       transfer.push(s.vertices, s.indices, s.labels.buffer, s.codepoints.buffer);
       continue;
     }
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
       const { vertices, indices } = layers[shared];
-      layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props });
+      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props });
       continue;
     }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
     const indices = packed.slice(e(4), e(4) + e(5) * e(6)).buffer;
-    byOffset.set(e(2), k);
-    layers.push({ layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props });
+    // `shared` names a position in `layers` (skipped symbol entries have none).
+    byOffset.set(e(2), layers.length);
+    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };
@@ -138,7 +140,7 @@ async function loadTile({ id, url, bytes: given, source, z, dem }) {
     // New glyphs go with the first tile posted after they were drawn; the main
     // thread takes them even from tiles it no longer wants.
     const fresh = glyphs.take();
-    kept.set(id, bytes);
+    kept.set(id, { bytes, ranges: readFeatureRanges(withInput(new Uint8Array(0), () => wasm.feature_ranges())) });
     postMessage({ type: "tile", id, layers, glyphs: fresh }, [...transfer, ...fresh.map((g) => g.data.buffer)]);
   } catch (err) {
     if (!controller.signal.aborted) postMessage({ type: "tile-error", id, message: String(err?.message ?? err) });
@@ -150,7 +152,7 @@ async function loadTile({ id, url, bytes: given, source, z, dem }) {
 // A query of a kept tile (`features`: of its source layer, else of what is
 // drawn), answered with GeoJSON features; none if the tile is gone.
 function query({ id, kind, tile, source, z, x, y, request }) {
-  const bytes = kept.get(tile);
+  const bytes = kept.get(tile)?.bytes;
   let hits = [];
   if (bytes && ArrayBuffer.isView(request)) {
     const input = new Uint8Array(bytes.length + request.byteLength);
@@ -183,6 +185,12 @@ onmessage = (e) => {
     ready.then(() => loadTile(msg), () => {});
   } else if (msg?.type === "query" && ready && Number.isInteger(msg.id) && Number.isInteger(msg.tile)) {
     ready.then(() => query(msg), () => {});
+  } else if (msg?.type === "ranges" && ready && Number.isInteger(msg.id) && Array.isArray(msg.ids)) {
+    // Where the features with these ids lie in the tile's entries.
+    ready.then(() => {
+      const ranges = kept.get(msg.tile)?.ranges;
+      postMessage({ type: "ranges", id: msg.id, entries: ranges ? rangesOf(ranges, msg.ids.map(String)) : [] });
+    }, () => {});
   } else if (msg?.type === "drop" && ready) {
     // After the queries asked before it.
     ready.then(() => kept.delete(msg.id), () => {});

@@ -30,6 +30,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.cap == other.cap &&
   self.miter_limit == other.miter_limit &&
   self.round_limit == other.round_limit &&
+  self.reads_state() == other.reads_state() &&
   inputs(self) == inputs(other)
 }
 
@@ -44,5 +45,27 @@ pub fn Source::same(self : Source, other : Source) -> Bool {
   self.tile_size == other.tile_size &&
   self.encoding == other.encoding &&
   self.buffer == other.buffer &&
-  self.tolerance == other.tolerance
+  self.tolerance == other.tolerance &&
+  self.promote_id == other.promote_id
+}
+
+///|
+/// Whether the layer's paint reads the feature state, which the map draws
+/// feature by feature (symbol layers' text ignores it for now).
+pub fn StyleLayer::reads_state(self : StyleLayer) -> Bool {
+  let exprs = match self.kind {
+    Fill | FillExtrusion => [self.color, self.opacity]
+    Line => [self.color, self.opacity, self.width]
+    Circle =>
+      [
+        self.color,
+        self.opacity,
+        self.radius,
+        self.stroke_width,
+        self.stroke_color,
+        self.stroke_opacity,
+      ]
+    _ => []
+  }
+  exprs.iter().any(e => e.reads_state())
 }

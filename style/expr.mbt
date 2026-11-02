@@ -44,6 +44,8 @@ pub(all) enum Expr {
   Coalesce(Array[Expr])
   Interpolate(Interpolation, Expr, Array[(Double, Expr)])
   Step(Expr, Expr, Array[(Double, Expr)])
+  FeatureState(String)
+  Assert(Expected, Array[Expr])
 } derive(Debug, Eq)
 
 ///|
@@ -54,6 +56,7 @@ pub(all) enum Expected {
   ColorType
   NumberType
   BoolType
+  StringType
 } derive(Debug, Eq)
 
 ///|
@@ -171,6 +174,21 @@ fn compile_at(
       }
     }
     "geometry-type" => GeometryType
+    "feature-state" => {
+      args_of(items, 1, path)
+      FeatureState(key_of(items[1], "\{path}[1]"))
+    }
+    "boolean" | "number" | "string" => {
+      if items.length() < 2 {
+        raise Invalid(path~, "\{op} needs a value")
+      }
+      let t = match op {
+        "boolean" => BoolType
+        "number" => NumberType
+        _ => StringType
+      }
+      Assert(t, Array::makei(items.length() - 1, i => arg(i + 1, AnyType)))
+    }
     "zoom" => Zoom
     "!" => {
       args_of(items, 1, path)

@@ -76,7 +76,8 @@ A GeoJSON source's tile, from the GeoJSON worker to a display worker:
 - F u32 feature ring ends, R u32 ring point ends (a points feature's points are
   one ring);
 - P x, y pairs as i16 (clamped), padded to 4;
-- K keys (UTF-8), then per key, per feature, a property value.
+- K keys (UTF-8), then per key, per feature, a property value;
+- per feature, its id as a property value (absent without one).
 
 Only keys some feature of the tile has are written.
 
@@ -112,20 +113,26 @@ In:
   bytes until it is dropped): `kind` "rendered" with a "Query" `request`, or
   "features" with a source layer's name and a filter's JSON (each a u32 length
   and UTF-8; "" for none). z/x/y place the result's geometry.
+- `{type: "ranges", id, tile, ids}`: where the features with these ids (strings,
+  as `String(id)`) lie in the entries of the tile sent for request `tile`.
 - `{type: "drop", id}`: forget the bytes of the tile sent for request `id`.
 
 Out:
 
 - `{type: "ready"}`, `{type: "error", message}`.
-- `{type: "tile", id, layers, glyphs}`: per entry `{layer, kind, vertices, indices,
-  count, indexBytes, shared, props}`. Buffers are transferred, never copied;
-  `shared` is the index of an earlier entry whose buffers it reuses (or -1); `props`
+- `{type: "tile", id, layers, glyphs}`: per entry `{entry, layer, kind, vertices,
+  indices, count, indexBytes, shared, props}` (`entry` its index in the packed tile;
+  symbol entries without labels are left out). Buffers are transferred, never copied;
+  `shared` is the position in `layers` of an earlier entry whose buffers it reuses (or -1); `props`
   the group properties (or null). Symbol entries add `labels`, `codepoints`
   (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`. `glyphs` are the
   SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
   byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
   worker, so the main thread takes them even from tiles it no longer wants.
 - `{type: "tile-error", id, message}`.
+- `{type: "ranges", id, entries}`: per packed entry with any of the ids,
+  `{entry, ranges}`, `ranges` holding (first index, index count, position in
+  `ids`) triples; none if the tile is gone.
 - `{type: "query", id, hits}`: the query's records ("Query result") as
   `{layer, index, distance, feature}`, `feature` a GeoJSON feature in
   longitude and latitude (@mapbox/vector-tile's `toGeoJSON`) with prototype-less
@@ -135,6 +142,14 @@ Out:
   bytes per pixel of a `size` x `size` tile), `edges` (Float64Array) its border
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
   height in meters (no data as 0), for its hillshade layers and terrain.
+
+## Feature ranges (`worker/processor.mbt`, read by `worker/js/query.mjs`)
+
+What `feature_ranges` gives after `process_tile`, for the entries of layers whose
+paint reads the feature state (kept by the worker glue, never sent whole): u32
+entry count, then per entry u32 packed entry index, u32 feature count and per
+feature its id as a property value (the source's `promoteId` property, or the
+tile's id; null without one), u32 first index and u32 index count.
 
 ## Query (`map/query.mbt`, read by `worker/query.mbt`)
 

@@ -279,11 +279,11 @@ extern "js" fn gl_draw_extrusion(
   #|  gl.depthFunc(gl.LEQUAL);
   #|  if (opacity < 1) {
   #|    gl.colorMask(false, false, false, false);
-  #|    gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|    gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|    gl.colorMask(true, true, true, true);
   #|    gl.depthMask(false);
   #|  }
-  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|  gl.depthMask(true);
   #|  gl.disable(gl.DEPTH_TEST);
   #|}

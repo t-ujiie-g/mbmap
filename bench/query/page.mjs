@@ -21,9 +21,21 @@ const plain = (f) => ({
   source: f.source,
   sourceLayer: f.sourceLayer,
   id: f.id,
+  state: f.state,
   geometry: f.geometry,
   properties: Object.fromEntries(Object.entries(f.properties).sort(([a], [b]) => (a < b ? -1 : 1))),
 });
+
+// The same feature states on both maps, once both have drawn them.
+window.__setState = async (states) => {
+  const idle = Promise.all([mb.once("idle"), new Promise((r) => ml.once("idle", r))]);
+  for (const [feature, state] of states) {
+    mb.setFeatureState(feature, state);
+    ml.setFeatureState(feature, state);
+  }
+  ml.triggerRepaint();
+  await idle;
+};
 
 window.__query = async (kind, geometry, options) => {
   if (kind === "source") {

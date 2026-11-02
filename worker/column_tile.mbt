@@ -1,5 +1,6 @@
 ///|
-/// A GeoJSON source's tile in columns (docs/FORMATS.md, "Columnar tile").
+/// A GeoJSON source's tile in columns (docs/FORMATS.md, "Columnar tile");
+/// `ids` are the features' GeoJSON ids (None without one).
 priv struct ColumnTile {
   types : FixedArray[Int32]
   ring_ends : FixedArray[Int32]
@@ -7,6 +8,7 @@ priv struct ColumnTile {
   xy : FixedArray[Int32]
   keys : Array[String]
   values : Array[Array[@style.Value?]]
+  ids : Array[@style.Value?]
 }
 
 ///|
@@ -45,8 +47,9 @@ fn ColumnTile::parse(b : BytesView) -> ColumnTile? {
     }
     values.push(Array::makei(f, _ => read_value(r)))
   }
+  let ids = Array::makei(f, _ => read_value(r))
   guard r.done() else { return None }
-  Some({ types, ring_ends, point_ends, xy, keys, values, })
+  Some({ types, ring_ends, point_ends, xy, keys, values, ids, })
 }
 
 ///|
@@ -127,6 +130,28 @@ fn Features::extent(self : Features) -> Int32 {
   match self {
     Mvt(l) => l.extent
     Columns(_) => @core.TILE_EXTENT
+  }
+}
+
+///|
+/// Feature `i`'s id: the property `promoted` names, or the tile's feature id;
+/// Null without one. Booleans count as numbers, as in MapLibre.
+fn Features::id(self : Features, i : Int32, promoted : String?) -> @style.Value {
+  let v = match (self, promoted) {
+    (Mvt(l), Some(p)) =>
+      l.key_index(p).bind(k => l.property(i, k)).map(style_value)
+    (Mvt(l), None) => l.id(i).map(id => @style.Value::Num(id.to_double()))
+    (Columns(c), Some(p)) =>
+      match c.keys.search(p) {
+        Some(k) => c.values[k][i]
+        None => None
+      }
+    (Columns(c), None) => c.ids[i]
+  }
+  match v {
+    Some(Bool(b)) => Num(if b { 1.0 } else { 0.0 })
+    Some(Num(_) as n) | Some(Str(_) as n) => n
+    _ => Null
   }
 }
 

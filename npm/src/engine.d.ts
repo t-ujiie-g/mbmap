@@ -61,5 +61,6 @@ declare module "mbmap-engine" {
     filter: string,
     done: (tiles: TileResult[]) => void,
   ): string;
+  export function map_set_feature_state(map: EngineMap, source: string, sourceLayer: string, id: string, state: Record<string, unknown> | null): void;
   export function map_query_source(map: EngineMap, source: string, sourceLayer: string, filter: string, done: (tiles: TileResult[]) => void): string;
 }

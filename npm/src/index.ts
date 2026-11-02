@@ -50,6 +50,13 @@ export interface MapGeoJSONFeature extends GeoJSONFeature {
   state: Record<string, unknown>;
 }
 
+/** A feature whose state is set: its source, its source layer (vector sources only) and its id (MapLibre's `FeatureIdentifier`). */
+export interface FeatureIdentifier {
+  source: string;
+  sourceLayer?: string;
+  id?: number | string;
+}
+
 /** `layers` to look in (all by default) and a `filter` the features must pass, as in MapLibre. */
 export interface QueryRenderedFeaturesOptions {
   layers?: string[] | Set<string>;
@@ -259,6 +266,7 @@ export class Map {
   #hovering = false;
   #nextHover: { e: MouseEvent; p: { x: number; y: number } } | null = null;
   #dom = new AbortController();
+  #states = new globalThis.Map<string, globalThis.Map<string, globalThis.Map<string, Record<string, unknown>>>>();
   #last: Camera | null = null;
   readonly dragPan: Handler;
   readonly scrollZoom: Handler;
@@ -762,7 +770,7 @@ export class Map {
           f.layer = spec;
           f.source = spec.source ?? "";
           if (spec["source-layer"]) f.sourceLayer = spec["source-layer"];
-          f.state = {};
+          f.state = f.id === undefined ? {} : { ...this.#states.get(f.source)?.get(f.sourceLayer ?? "")?.get(String(f.id)) };
           out.push(f);
         }
         resolve(out);
@@ -805,6 +813,88 @@ export class Map {
       }
     }
     return this.#query(queryPoints(geometry, this.#canvas.clientWidth, this.#canvas.clientHeight), layers, o.filter);
+  }
+
+  /** The source's state map for `sourceLayer`, made on first use. */
+  #stateMap(source: string, sourceLayer: string): globalThis.Map<string, Record<string, unknown>> {
+    let bySource = this.#states.get(source);
+    if (!bySource) this.#states.set(source, (bySource = new globalThis.Map()));
+    let byLayer = bySource.get(sourceLayer);
+    if (!byLayer) bySource.set(sourceLayer, (byLayer = new globalThis.Map()));
+    return byLayer;
+  }
+
+  /** The feature's source layer, checked as MapLibre does: required for vector sources. */
+  #stateLayer(feature: FeatureIdentifier): string | null {
+    const source = this.#style?.sources[feature.source] as { type?: unknown } | undefined;
+    if (!source) {
+      this.#fail(new Error(`mbmap: the source '${feature.source}' does not exist in the map's style`));
+      return null;
+    }
+    if (source.type === "vector" && !feature.sourceLayer) {
+      this.#fail(new Error("mbmap: the sourceLayer parameter must be provided for vector source types"));
+      return null;
+    }
+    return source.type === "vector" ? (feature.sourceLayer as string) : "";
+  }
+
+  #sendState(source: string, sourceLayer: string, id: string, state: Record<string, unknown> | null): void {
+    this.#withEngine((m) => engine.map_set_feature_state(m, source, sourceLayer, id, state));
+  }
+
+  /**
+   * Merges `state` into the feature's state (MapLibre's `setFeatureState`); paint that reads
+   * `["feature-state", key]` draws the feature with it. The feature needs an id: the tile's,
+   * the GeoJSON feature's, or the property the source's `promoteId` names.
+   */
+  setFeatureState(feature: FeatureIdentifier, state: Record<string, unknown>): this {
+    const layer = this.#stateLayer(feature);
+    if (layer === null) return this;
+    if (feature.id === undefined || feature.id === null || feature.id === "") {
+      this.#fail(new Error("mbmap: the feature id parameter must be provided and non-empty"));
+      return this;
+    }
+    const states = this.#stateMap(feature.source, layer);
+    const id = String(feature.id);
+    const next = { ...states.get(id), ...edit.copy(state) };
+    states.set(id, next);
+    this.#sendState(feature.source, layer, id, next);
+    return this;
+  }
+
+  /** A copy of the feature's state (`{}` when it has none). */
+  getFeatureState(feature: FeatureIdentifier): Record<string, unknown> {
+    const layer = this.#stateLayer(feature);
+    if (layer === null || feature.id === undefined) return {};
+    return { ...this.#states.get(feature.source)?.get(layer)?.get(String(feature.id)) };
+  }
+
+  /**
+   * Removes `key` from the feature's state, or its whole state; without an id, the states of
+   * every feature of the source (layer), as MapLibre's `removeFeatureState`.
+   */
+  removeFeatureState(target: FeatureIdentifier, key?: string): this {
+    const layer = this.#stateLayer(target);
+    if (layer === null) return this;
+    if (target.id === undefined && key !== undefined) {
+      this.#fail(new Error("mbmap: a feature id is required to remove its specific state property"));
+      return this;
+    }
+    const states = this.#stateMap(target.source, layer);
+    const ids = target.id === undefined ? [...states.keys()] : [String(target.id)];
+    for (const id of ids) {
+      const old = states.get(id);
+      if (!old) continue;
+      if (key === undefined) {
+        states.delete(id);
+        this.#sendState(target.source, layer, id, null);
+      } else {
+        const { [key]: _, ...rest } = old;
+        states.set(id, rest);
+        this.#sendState(target.source, layer, id, rest);
+      }
+    }
+    return this;
   }
 
   /** The features of a source in the tiles drawn (`sourceLayer` required for vector sources), as MapLibre's `querySourceFeatures`. */

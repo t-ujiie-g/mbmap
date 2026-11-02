@@ -123,14 +123,14 @@ test "simplification drops rings too small to see at a zoom" {
 }
 
 ///|
-test "encode_tile writes the columnar layout with only the tile's keys" {
+test "encode_tile writes the columnar layout with only the tile's keys, then ids" {
   let t = table(b => {
     b.point(-90.0, 45.0)
     b.end_ring()
     b.end_part()
     b.prop("k", Num(1.0))
     b.prop("s", Str("x"))
-    b.end_feature(Point)
+    b.end_feature(Point, id=Some(Str("a")))
     b.point(90.0, -45.0)
     b.end_ring()
     b.end_part()
@@ -149,5 +149,6 @@ test "encode_tile writes the columnar layout with only the tile's keys" {
   assert_eq((r.utf8(), r.utf8()), ("k", "s"))
   assert_eq(@geom.read_prop(r), Some(Num(1.0)))
   assert_eq(@geom.read_prop(r), Some(Str("x")))
+  assert_eq(@geom.read_prop(r), Some(Str("a")))
   assert_true(r.done())
 }

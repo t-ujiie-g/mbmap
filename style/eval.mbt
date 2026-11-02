@@ -1,9 +1,16 @@
 ///|
-/// What an expression can read about the feature being styled.
+/// What an expression can read about the feature being styled: its
+/// properties, its geometry type ("Point", "LineString", "Polygon" or
+/// "Unknown") and its feature state (none by default).
 pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
-  /// "Point", "LineString", "Polygon" or "Unknown".
   fn geometry_type(Self) -> String
+  fn state(Self, String) -> Value? = _
+}
+
+///|
+impl FeatureContext with fn state(_, _) {
+  None
 }
 
 ///|
@@ -159,6 +166,20 @@ pub fn[C : FeatureContext] Expr::eval(
       let (z1, e1) = stops[i]
       blend(go(e0), go(e1), factor(base, x, z0, z1))
     }
+    FeatureState(k) => ctx.state(k).unwrap_or(Null)
+    // The first argument of the type asked for (MapLibre fails over to the
+    // property's default otherwise; Null does the same).
+    Assert(t, es) => {
+      for e in es {
+        let v = go(e)
+        match (t, v) {
+          (BoolType, Bool(_)) | (NumberType, Num(_)) | (StringType, Str(_)) =>
+            return v
+          _ => ()
+        }
+      }
+      Null
+    }
     Step(input, first, stops) => {
       guard go(input) is Num(x) else { return go(first) }
       let mut out = first
@@ -180,7 +201,8 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
   let mut geometry = false
   fn visit(e : Expr) -> Unit {
     match e {
-      Lit(_) | Zoom => ()
+      Lit(_) | Zoom | FeatureState(_) => ()
+      Assert(_, es) => es.each(visit)
       Get(k) | Has(k) => if !keys.contains(k) { keys.push(k) }
       GeometryType => geometry = true
       Not(a) => visit(a)
@@ -214,4 +236,31 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
   }
   visit(self)
   (keys, geometry)
+}
+
+///|
+/// Whether the expression reads the feature state (MapLibre allows it in
+/// paint properties only).
+pub fn Expr::reads_state(self : Expr) -> Bool {
+  match self {
+    FeatureState(_) => true
+    Lit(_) | Get(_) | Has(_) | GeometryType | Zoom => false
+    Not(a) => a.reads_state()
+    All(es) | Any(es) | Coalesce(es) | Assert(_, es) =>
+      es.iter().any(e => e.reads_state())
+    Compare(_, a, b) | In(a, b) => a.reads_state() || b.reads_state()
+    Match(input, cases, fallback) =>
+      input.reads_state() ||
+      cases.iter().any(c => c.1.reads_state()) ||
+      fallback.reads_state()
+    Case(cases, fallback) =>
+      cases.iter().any(c => c.0.reads_state() || c.1.reads_state()) ||
+      fallback.reads_state()
+    Interpolate(_, input, stops) =>
+      input.reads_state() || stops.iter().any(s => s.1.reads_state())
+    Step(input, first, stops) =>
+      input.reads_state() ||
+      first.reads_state() ||
+      stops.iter().any(s => s.1.reads_state())
+  }
 }
