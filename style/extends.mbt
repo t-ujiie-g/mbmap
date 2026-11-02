@@ -78,3 +78,9 @@ pub extend DemEncoding with @debug.Debug::{to_repr}
 
 ///|
 pub extend DemEncoding with Eq::{not_equal, equal}
+
+///|
+pub extend TextLayout with Eq::{not_equal, equal}
+
+///|
+pub extend ExtrusionPaint with Eq::{not_equal, equal}

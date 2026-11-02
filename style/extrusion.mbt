@@ -6,7 +6,7 @@ pub struct ExtrusionPaint {
   height : Expr
   base : Expr
   vertical_gradient : Bool
-}
+} derive(Eq)
 
 ///|
 fn parse_extrusion(

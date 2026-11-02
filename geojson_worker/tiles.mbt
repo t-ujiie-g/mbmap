@@ -16,7 +16,7 @@ fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
 let units_per_pixel : Double = @core.TILE_EXTENT.to_double() / @core.TILE_SIZE
 
 ///|
-/// Each loaded source's table and tiler, by its index in the style.
+/// Each loaded source's table and tiler, by the number the host gave it.
 let sources : Map[Int32, (@geom.Table, @tiler.Tiler)] = Map([])
 
 ///|
@@ -59,4 +59,12 @@ pub fn tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
     Some(d) if d.types.is_empty() => 0
     Some(d) => @wasmio.write_bytes(@tiler.encode_tile(d, table)[:])
   }
+}
+
+///|
+/// Forgets source `source` (it left the style or was loaded again under
+/// another number).
+#export_name("unload")
+pub fn unload(source : Int32) -> Unit {
+  sources.remove(source)
 }

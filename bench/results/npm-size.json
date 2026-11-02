@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 52472,
+      "bytes": 56570,
       "budget": 70000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 761,
+      "bytes": 944,
       "budget": 5000
     },
     {
@@ -21,12 +21,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 89641,
+      "bytes": 89683,
       "budget": 100000
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 22271,
+      "bytes": 22534,
       "budget": 30000
     },
     {

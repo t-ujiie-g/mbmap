@@ -54,10 +54,10 @@ export class MbMapElement extends Base {
     return this.#style;
   }
 
-  /** A style object; takes precedence over `style-url` and recreates the map. */
+  /** A style object; takes precedence over `style-url`. The map swaps it in with `setStyle`. */
   set mapStyle(style: StyleSpecification | null) {
     this.#style = style;
-    this.#recreate();
+    this.#restyle();
   }
 
   get center(): LngLat {
@@ -154,7 +154,7 @@ export class MbMapElement extends Base {
     } else if (name === "worker-count") {
       if (parseWorkerCount(value) === null) this.#reject(name, value);
     } else if (name === "style-url" && !this.#style) {
-      this.#recreate();
+      this.#restyle();
     }
   }
 
@@ -207,9 +207,12 @@ export class MbMapElement extends Base {
     this.#map = null;
   }
 
-  #recreate(): void {
-    this.#destroy();
-    this.#create();
+  /** Draws the current style: in the map there is, or in a new one. */
+  #restyle(): void {
+    const style = this.#style ?? this.getAttribute("style-url");
+    if (!style) this.#destroy();
+    else if (this.#map) this.#map.setStyle(style);
+    else this.#create();
   }
 
   #dispatch(type: string, error?: Error): void {

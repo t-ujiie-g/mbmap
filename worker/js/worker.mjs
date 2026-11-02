@@ -149,6 +149,10 @@ onmessage = (e) => {
       () => postMessage({ type: "ready" }),
       (err) => postMessage({ type: "error", message: String(err?.message ?? err) }),
     );
+  } else if (msg?.type === "style" && ready && typeof msg.style === "string") {
+    // Tiles asked for after this message are made with the new style.
+    const style = encoder.encode(msg.style);
+    ready = ready.then(() => withInput(style, () => wasm.init_style()));
   } else if (msg?.type === "tile" && ready) {
     // Tiles requested before init finished wait for it.
     ready.then(() => loadTile(msg), () => {});

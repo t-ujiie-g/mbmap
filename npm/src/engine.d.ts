@@ -42,4 +42,7 @@ declare module "mbmap-engine" {
   export function map_on_move_end(map: EngineMap, f: (e: Event | null) => void): number;
   export function map_input_event(map: EngineMap): Event | null;
   export function default_easing(t: number): number;
+  /** "" once drawn, or why the style was refused (the current one stays). */
+  export function map_set_style(map: EngineMap, style: string): string;
+  export function map_reload_source(map: EngineMap, id: string): void;
 }

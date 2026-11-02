@@ -101,7 +101,9 @@ pub struct ExtrusionPaint {
   height : Expr
   base : Expr
   vertical_gradient : Bool
-}
+} derive(Eq)
+pub fn ExtrusionPaint::equal(Self, Self) -> Bool
+pub fn ExtrusionPaint::not_equal(Self, Self) -> Bool
 
 pub struct HillshadePaint {
   direction : Expr
@@ -174,6 +176,7 @@ pub struct Source {
   buffer : Int32
   tolerance : Double
 }
+pub fn Source::same(Self, Self) -> Bool
 
 pub(all) enum SourceKind {
   Vector
@@ -221,6 +224,7 @@ pub struct StyleLayer {
   miter_limit : Double
   round_limit : Double
 }
+pub fn StyleLayer::same_tiles(Self, Self) -> Bool
 
 pub struct Terrain {
   source : String
@@ -254,7 +258,9 @@ pub struct TextLayout {
   ignore_placement : Bool
   vertical : Bool
   sort_key : Expr?
-}
+} derive(Eq)
+pub fn TextLayout::equal(Self, Self) -> Bool
+pub fn TextLayout::not_equal(Self, Self) -> Bool
 
 pub(all) enum Value {
   Null

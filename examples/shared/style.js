@@ -20,8 +20,29 @@ const BUILDINGS_3D = {
   },
 };
 
-/** "2d" or "3d" as a MapLibre style object. */
-export function createStyle(mode) {
+/** Layers the panel shows and hides together, by the name of each group. */
+export const LAYER_GROUPS = [
+  { name: "陰影", ids: ["hillshade"] },
+  { name: "等高線", ids: ["contour", "elevation"] },
+  { name: "建物", ids: ["building", "building-outline", "building-3d"] },
+  { name: "道路・鉄道", ids: ["road-casing", "road", "railway"] },
+  { name: "注記", ids: ["symbol", "label", "label-vertical"] },
+  { name: "地点", ids: ["places", "places-label"] },
+];
+
+/** The ids of the layers in the groups named in `hidden`. */
+export function hiddenLayers(hidden) {
+  return new Set(LAYER_GROUPS.filter((g) => hidden.has(g.name)).flatMap((g) => g.ids));
+}
+
+/** `places` with a marker named `name` added at `center`, for `getSource("places").setData`. */
+export function withMarker(places, center, name) {
+  const marker = { type: "Feature", properties: { name }, geometry: { type: "Point", coordinates: [center.lng, center.lat] } };
+  return { ...places, features: [...places.features, marker] };
+}
+
+/** "2d" or "3d" as a MapLibre style object, without the layer groups named in `hidden`. */
+export function createStyle(mode, hidden = new Set(), places = PLACES) {
   const sources = {
     gsi: local
       ? { type: "vector", tiles: [`${fixtures}gsi-bvmap/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 }
@@ -29,7 +50,7 @@ export function createStyle(mode) {
     dem: local
       ? { type: "raster-dem", tiles: [`${fixtures}gsi-dem/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
       : { type: "raster-dem", tiles: [`${GSI}/dem_png/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
-    places: { type: "geojson", data: PLACES },
+    places: { type: "geojson", data: places },
   };
   sources.gsi.attribution = "国土地理院ベクトルタイル提供実験";
   sources.dem.attribution = "国土地理院 標高タイル";
@@ -51,6 +72,10 @@ export function createStyle(mode) {
       paint: { "text-color": "#8c2d1f", "text-halo-color": "#ffffff", "text-halo-width": 2 },
     },
   ];
+  const off = hiddenLayers(hidden);
+  for (const [i, l] of layers.entries()) {
+    if (off.has(l.id)) layers[i] = { ...l, layout: { ...l.layout, visibility: "none" } };
+  }
   const style = { version: 8, name: `mbmap showcase (${mode})`, sources, layers };
   if (mode === "3d") {
     style.terrain = { source: "dem", exaggeration: 1.5 };

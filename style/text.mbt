@@ -29,7 +29,7 @@ pub struct TextLayout {
   ignore_placement : Bool
   vertical : Bool
   sort_key : Expr?
-}
+} derive(Eq)
 
 ///|
 /// `text-field` as parts: a string with `{key}` tokens, `get`, `concat` and
