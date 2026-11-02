@@ -36,3 +36,27 @@ pub extend Mat4 with @debug.Debug::{to_repr}
 
 ///|
 pub extend Mat4 with Eq::{not_equal, equal}
+
+///|
+pub extend LngLatBounds with @debug.Debug::{to_repr}
+
+///|
+pub extend LngLatBounds with Eq::{not_equal, equal}
+
+///|
+pub extend Padding with @debug.Debug::{to_repr}
+
+///|
+pub extend Padding with Eq::{not_equal, equal}
+
+///|
+pub extend CameraTarget with @debug.Debug::{to_repr}
+
+///|
+pub extend CameraTarget with Eq::{not_equal, equal}
+
+///|
+pub extend Limits with @debug.Debug::{to_repr}
+
+///|
+pub extend Limits with Eq::{not_equal, equal}

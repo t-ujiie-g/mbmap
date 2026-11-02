@@ -15,7 +15,15 @@ fn Map::render(self : Map) -> Unit {
   }
   set_canvas_size(self.canvas, pw, ph)
   self.renderer.set_viewport(pw, ph)
-  self.transform = self.transform.resize(w, h)
+  let resized = self.transform.resize(w, h)
+  if resized.camera != self.transform.camera {
+    // The limits moved the camera to fit the new size.
+    self.transform = resized
+    self.fire_move(resized.camera)
+  } else {
+    self.transform = resized
+  }
+  self.step_animation()
   let terrain = self.terrain_source()
   if terrain is Some(src) &&
     elevation_at(src, self.transform.camera.center.to_mercator()) is Some(e) {
@@ -111,8 +119,10 @@ fn Map::render(self : Map) -> Unit {
   if settled {
     if !self.idle_fired {
       self.idle_fired = true
-      for _, f in self.idle_listeners {
-        f()
+      for _, l in self.listeners {
+        if l is Idle(f) {
+          f()
+        }
       }
     }
   } else {

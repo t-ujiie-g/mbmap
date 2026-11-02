@@ -27,7 +27,8 @@ async function createMbmap() {
   canvas.id = "map";
   document.body.append(canvas);
   const map = mbmap.create_map(canvas, styleText, START.lng, START.lat, START.zoom, 0, pitch,
-    "/worker/js/worker.mjs", "/_build/wasm-gc/release/build/worker/worker.wasm", 0, null, "sans-serif");
+    "/worker/js/worker.mjs", "/_build/wasm-gc/release/build/worker/worker.wasm", 0, null, "sans-serif",
+    [0, 22, 0, 85, NaN, 0, 0, 0]);
   let idle = null;
   mbmap.map_on_idle(map, () => idle?.());
   return {

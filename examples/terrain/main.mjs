@@ -19,6 +19,8 @@ const map = mbmap.create_map(
   0,
   null,
   "sans-serif",
+  [0, 22, 0, 85, NaN, 0, 0, 0],
 );
 window.__map = map;
-mbmap.map_on_idle(map, () => { window.__idle = performance.now(); });
+window.__mbmap = mbmap;
+mbmap.map_on_idle(map, () => { window.__idle = window.__loaded = performance.now(); });

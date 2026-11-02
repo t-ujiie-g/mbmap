@@ -38,6 +38,7 @@ pub fn create_map(
   workers : Int32,
   geojson : @map.Provider,
   font : String,
+  limits : FixedArray[Double],
 ) -> @map.Map {
   @map.Map::new(
     canvas,
@@ -48,6 +49,7 @@ pub fn create_map(
     workers~,
     geojson~,
     font~,
+    limits=limits_of(limits),
   ) catch {
     BadStyle(e) => throw_error("mbmap: style: \{e.message()}")
     NoWebGL2 => throw_error("mbmap: WebGL2 is not available")
@@ -112,3 +114,209 @@ pub fn map_gpu_bytes(map : @map.Map) -> Int32 {
 pub fn map_destroy(map : @map.Map) -> Unit {
   map.destroy()
 }
+
+///|
+/// Limits from min zoom, max zoom, min pitch, max pitch and bounds (west,
+/// south, east, north; NaN west for none).
+fn limits_of(a : FixedArray[Double]) -> @core.Limits {
+  {
+    min_zoom: a[0],
+    max_zoom: a[1],
+    min_pitch: a[2],
+    max_pitch: a[3],
+    bounds: if a[4].is_nan() {
+      None
+    } else {
+      Some({ west: a[4], south: a[5], east: a[6], north: a[7], })
+    },
+  }
+}
+
+///|
+#export_name("map_set_limits")
+pub fn map_set_limits(map : @map.Map, limits : FixedArray[Double]) -> Unit {
+  map.set_limits(limits_of(limits))
+}
+
+///|
+/// A move target from center (lng, lat), zoom, bearing, pitch, around (lng,
+/// lat), each NaN for none, and the offset (x, y).
+fn target_of(g : FixedArray[Double]) -> @core.CameraTarget {
+  let some = (v : Double) => if v.is_nan() { None } else { Some(v) }
+  @core.CameraTarget::new(
+    center?=if g[0].is_nan() { None } else { Some({ lng: g[0], lat: g[1], }) },
+    zoom?=some(g[2]),
+    bearing?=some(g[3]),
+    pitch?=some(g[4]),
+    around?=if g[5].is_nan() { None } else { Some({ lng: g[5], lat: g[6], }) },
+    offset=(g[7], g[8]),
+  )
+}
+
+///|
+/// `Map::ease_to` toward `target_of(g)`; `easing` maps 0-1 to 0-1.
+#export_name("map_ease_to")
+pub fn map_ease_to(
+  map : @map.Map,
+  g : FixedArray[Double],
+  duration : Double,
+  easing : (Double) -> Double,
+  id : String,
+) -> Unit {
+  map.ease_to(target_of(g), duration~, easing~, id~)
+}
+
+///|
+/// `Map::fly_to` with `o`: duration, curve, speed, screen speed, max
+/// duration, min zoom (each NaN for the default).
+#export_name("map_fly_to")
+pub fn map_fly_to(
+  map : @map.Map,
+  g : FixedArray[Double],
+  o : FixedArray[Double],
+  easing : (Double) -> Double,
+) -> Unit {
+  let some = (v : Double) => if v.is_nan() { None } else { Some(v) }
+  map.fly_to(
+    target_of(g),
+    duration?=some(o[0]),
+    curve=some(o[1]).unwrap_or(1.42),
+    speed=some(o[2]).unwrap_or(1.2),
+    screen_speed?=some(o[3]),
+    max_duration?=some(o[4]),
+    min_zoom?=some(o[5]),
+    easing~,
+  )
+}
+
+///|
+#export_name("map_stop")
+pub fn map_stop(map : @map.Map) -> Unit {
+  map.stop()
+}
+
+///|
+/// 1 while the camera moves (a gesture, inertia or an animation), 2 while an
+/// animation runs, else 0.
+#export_name("map_motion")
+pub fn map_motion(map : @map.Map) -> Int32 {
+  if map.is_easing() {
+    2
+  } else if map.is_moving() {
+    1
+  } else {
+    0
+  }
+}
+
+///|
+/// Screen x and y of (lng, lat).
+#export_name("map_project")
+pub fn map_project(
+  map : @map.Map,
+  lng : Double,
+  lat : Double,
+) -> FixedArray[Double] {
+  let (x, y) = map.transform().project({ lng, lat, })
+  [x, y]
+}
+
+///|
+/// Lng and lat on the ground under screen point (x, y).
+#export_name("map_unproject")
+pub fn map_unproject(
+  map : @map.Map,
+  x : Double,
+  y : Double,
+) -> FixedArray[Double] {
+  let p = map.transform().unproject(x, y)
+  [p.lng, p.lat]
+}
+
+///|
+/// West, south, east, north of the view.
+#export_name("map_bounds")
+pub fn map_bounds(map : @map.Map) -> FixedArray[Double] {
+  let b = map.transform().bounds()
+  [b.west, b.south, b.east, b.north]
+}
+
+///|
+/// `camera_for_bounds` of `b` (west, south, east, north, bearing, padding
+/// top, right, bottom, left, offset x, y, max zoom or NaN): lng, lat, zoom,
+/// bearing, pitch, or empty when it does not fit.
+#export_name("map_camera_for_bounds")
+pub fn map_camera_for_bounds(
+  map : @map.Map,
+  b : FixedArray[Double],
+) -> FixedArray[Double] {
+  let fit = map
+    .transform()
+    .camera_for_bounds(
+      { west: b[0], south: b[1], east: b[2], north: b[3], },
+      bearing=b[4],
+      padding={ top: b[5], right: b[6], bottom: b[7], left: b[8], },
+      offset=(b[9], b[10]),
+      max_zoom?=if b[11].is_nan() { None } else { Some(b[11]) },
+    )
+  match fit {
+    Some(c) => [c.center.lng, c.center.lat, c.zoom, c.bearing, c.pitch]
+    None => []
+  }
+}
+
+///|
+let handlers : FixedArray[@map.Handler] = [
+  DragPan,
+  ScrollZoom,
+  BoxZoom,
+  DragRotate,
+  Keyboard,
+  DoubleClickZoom,
+  TouchZoomRotate,
+  TouchPitch,
+]
+
+///|
+/// Turns handler `h` (an index into `handlers`) on or off.
+#export_name("map_set_handler")
+pub fn map_set_handler(map : @map.Map, h : Int32, enabled : Bool) -> Unit {
+  if h >= 0 && h < handlers.length() {
+    map.set_handler(handlers[h], enabled)
+  }
+}
+
+///|
+#export_name("map_handler_enabled")
+pub fn map_handler_enabled(map : @map.Map, h : Int32) -> Bool {
+  h >= 0 && h < handlers.length() && map.handler_enabled(handlers[h])
+}
+
+///|
+#export_name("map_on_move_start")
+pub fn map_on_move_start(map : @map.Map, f : (@map.Event) -> Unit) -> Int32 {
+  map.on_move_start(f)
+}
+
+///|
+#export_name("map_on_move_end")
+pub fn map_on_move_end(map : @map.Map, f : (@map.Event) -> Unit) -> Int32 {
+  map.on_move_end(f)
+}
+
+///|
+/// The input event behind the current camera change, or null.
+#export_name("map_input_event")
+pub fn map_input_event(map : @map.Map) -> @map.Event {
+  map.input_event()
+}
+
+///|
+/// MapLibre's default easing (`@core.Bezier::ease`) at `t`.
+#export_name("default_easing")
+pub fn default_easing(t : Double) -> Double {
+  ease_curve.at(t)
+}
+
+///|
+let ease_curve : @core.Bezier = @core.Bezier::ease()

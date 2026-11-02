@@ -1,5 +1,50 @@
 # PROGRESS
 
+## Phase 12.1：カメラの API（easeTo・flyTo・fitBounds、制約、操作、イベント）（2026-11-02）
+
+状態：**完了**。Phase 12 は 12.1 カメラ → 12.2 実行中のスタイル変更 → 12.3 問い合わせと feature-state → 12.4 ラスタタイル・TileJSON・PMTiles → 12.5 画面座標の追跡と画像の書き出し、の順に進める。
+
+### ユーザー判断（2026-11-02）
+
+- Phase 12 の分け方：上の 5 段階。完了条件は MapLibre 6.16 と同じ結果になること（黄金テスト）、example、表示の入口の予算。
+- feature-state は 12.3 で、問い合わせと一緒に作る（頂点に地物の番号を持たせ、状態をテクスチャで引く。作る前に計測して報告する）。
+- 表示の入口（メインスレッド）の予算：50KB → **70KB**（VISION §2）。12.1 で 52.5KB になり、Phase 12 全体で 60〜65KB になる見込みのため。
+
+### できたこと
+
+- **`core`**（全ターゲット）：MapLibre のカメラの計算の移植。
+  - 制約（`Limits`：ズームとピッチの範囲、`maxBounds`）。表示が南北の端（85.051129°）や範囲を出ないように、ズームを上げ、中心を動かす。MapLibre と同じく、ズームを先に、中心を後に制約する。移動の行き先は 1 回だけ制約する（`applyConstrain`）。
+  - `project`（カメラの後ろの点は、ビューを一回り広げた枠の縁へ）、`unproject`、`bounds`（傾けたときは地平線まで）、`at_point`（`setLocationAtPoint`）、`camera_for_bounds`（パディング、オフセット、方位、最大ズーム）。
+  - `ease_to`（中心をズームに合わせて速める）、`fly_to`（van Wijk と Nuij の経路、`curve`・`speed`・`screenSpeed`・`minZoom`）、CSS の `ease` 曲線（`Bezier`、@mapbox/unitbezier の移植）、方位の近い方への回り込み、経度の正規化。
+  - 経度と方位は MapLibre と同じく (-180, 180] に折り返す（これまでは [-180, 180)）。
+- **`map`**：アニメーションをフレームループで進め、`move_start`・`move_end` を、ジェスチャー・慣性・ホイール（最後のイベントから 200ms）・アニメーションの前後で出す。
+  - 操作（`Handler`）：ドラッグ（3px までは動かさない）、慣性（MapLibre の速度の計り方と減速）、ホイール、Shift＋ドラッグのボックスズーム、右ドラッグの回転と傾き、キーボード（矢印、Shift＋矢印、`+`・`-`、300ms の ease-out）、ダブルクリック（Shift で縮小）、2 本指のピンチと回転、2 本指を上下に動かす傾き。1 つずつ有効・無効にできる。
+- **npm**：`easeTo`、`flyTo`、`panBy`、`panTo`、`zoomTo`、`zoomIn`、`zoomOut`、`rotateTo`、`resetNorth`、`resetNorthPitch`、`snapToNorth`、`fitBounds`、`fitScreenCoordinates`、`cameraForBounds`、`stop`、`isMoving`、`isEasing`、`isZooming`、`isRotating`、`project`、`unproject`、`getBounds`（`LngLatBounds`）、ズーム・ピッチの範囲と `maxBounds` の setter・getter、`map.scrollZoom.disable()` などのハンドラ、オプションの `bounds`・`interactive`。
+  - イベント：`movestart`・`move`・`moveend`、`zoom`・`rotate`・`pitch` とそれぞれの start・end（MapLibre と同じ順）。ユーザーの操作では `originalEvent` が入る。
+  - エンジンができる前（スタイルの読み込み中）のカメラの呼び出しは、できてから順に実行する。OS の「視差効果を減らす」では、`essential` でない限りアニメーションしない。
+
+### 黄金テスト（`npm run camera:golden`、`bench/results/camera-golden.json`）
+
+- MapLibre 6.16 の `Camera` を Node で、時刻を止めて（`setNow`）動かし、比べた。対象は 19 の視点（800×600 と 600×900、ズーム 0〜16、ピッチ 0〜80°、方位、日付変更線の近く、南極の近く、`maxBounds`、ズームとピッチの範囲）。
+  - 比べたもの：制約、`project`・`unproject`・`getBounds`（各 19）、`cameraForBounds`（57）、`easeTo`（76）、`flyTo`（57。所要時間を含む）、既定のイージング。比べる点は 0〜1 の 7 か所。
+- 最大の差：6.5e-9 px、3.9e-8°（約 4mm）、1.4e-9 ズーム、4.5e-7 ms。許容は 1e-6 px、1e-7°、1e-8 ズーム、1e-5 ms。差は、行列の作り方の違いによる丸めで生じる。
+
+### 確認（pack test、Chromium）
+
+- `easeTo` が指定どおりに終わること、イベントの順、`flyTo`、`fitBounds` が `cameraForBounds` と同じ結果になること、`project`・`unproject` の往復、`maxBounds` で表示が範囲を出ないこと、`maxZoom`、範囲外の制限値を拒むこと、`scrollZoom.disable()` でホイールが効かないこと。
+- 右矢印でちょうど 100px 動くこと、`+` で 1 段ズームすること、ダブルクリックでクリックした点を動かさずに 1 段ズームすること。
+
+### サイズ
+
+- 表示の入口 43.5 → 52.5KB（エンジン 42.0 → 49.0KB、TS の窓口 2.1 → 4.2KB）。イベントのリスナーを 1 つの表にまとめて 0.4KB 減らした（型ごとに HashMap が作られていたため）。
+
+### 既知の問題・まだのもの
+
+- `create_map` に引数（制限）を足したとき、エンジンを直接呼ぶ `examples/basic`・`examples/terrain`・`bench/render/page.mjs` を直し忘れ、描画されなくなっていた（ユーザーの指摘で修正）。pack test に、この 2 つの example が描画まで進むかの確認を足した。
+- 地図のパディング（`setPadding`）は未対応。
+- ホイールのズームは、MapLibre のように滑らかには動かさず、その場で変える。タッチのダブルタップのズームはまだない。
+- 地形があるとき、`project`・`unproject` は海面の高さで計算する（MapLibre は地形の高さを使う）。
+
 ## 方針の更新（2026-11-02、ユーザー判断）
 
 - VISION.md のゴールは変えない。

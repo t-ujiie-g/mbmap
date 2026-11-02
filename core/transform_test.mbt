@@ -100,6 +100,7 @@ test "zooming around a point keeps that point fixed" {
 
 ///|
 test "zoom, latitude and pitch are clamped, longitude and bearing wrap" {
+  let limits = { ..@core.Limits::default(), min_zoom: 2.0, max_zoom: 20.0, }
   let t = @core.Transform::new(
     {
       center: { lng: 190.0, lat: 89.0, },
@@ -109,11 +110,14 @@ test "zoom, latitude and pitch are clamped, longitude and bearing wrap" {
     },
     100.0,
     100.0,
-    min_zoom=2.0,
-    max_zoom=20.0,
+    limits~,
   )
   assert_eq(t.camera.zoom, 20.0)
-  assert_eq(t.camera.center.lat, @core.MAX_LATITUDE)
+  // Half a view (50 px, pitch aside as in MapLibre) stays south of MapLibre's
+  // latitude limit, 85.051129°.
+  let y = @core.mercator_y_from_lat(t.camera.center.lat) * t.world_size()
+  let top = @core.mercator_y_from_lat(85.051129) * t.world_size()
+  assert_true((y - 50.0 - top).abs() < 1.0e-3)
   assert_true(close(t.camera.center.lng, -170.0))
   assert_eq((t.camera.bearing, t.camera.pitch), (-90.0, @core.MAX_PITCH))
   let low = t.with_camera({
@@ -124,8 +128,37 @@ test "zoom, latitude and pitch are clamped, longitude and bearing wrap" {
   })
   assert_eq(
     (low.camera.zoom, low.camera.pitch, low.camera.bearing),
-    (2.0, 0.0, -180.0),
+    (2.0, 0.0, 180.0),
   )
+}
+
+///|
+test "a view taller than the world zooms in until it fits, as in MapLibre" {
+  let t = @core.Transform::new({ ..tokyo(), zoom: 0.0, }, 800.0, 1024.0)
+  assert_true(close(t.camera.zoom, 1.0) && close(t.camera.center.lat, 0.0))
+}
+
+///|
+test "bounds keep the view inside them" {
+  let bounds : @core.LngLatBounds = {
+    west: 139.0,
+    south: 35.0,
+    east: 140.0,
+    north: 36.0,
+  }
+  let limits = { ..@core.Limits::default(), bounds: Some(bounds), }
+  let t = @core.Transform::new(
+    { ..tokyo(), center: { lng: 150.0, lat: 20.0, }, },
+    800.0,
+    600.0,
+    limits~,
+  )
+  let b = t.bounds()
+  assert_true(b.west >= 139.0 - 1.0e-9 && b.east <= 140.0 + 1.0e-9)
+  assert_true(b.south >= 35.0 - 1.0e-9 && b.north <= 36.0 + 1.0e-9)
+  // Too wide a view zooms in until the bounds fill it.
+  let wide = t.with_camera({ ..t.camera, zoom: 3.0, })
+  assert_true(wide.camera.zoom > 8.0)
 }
 
 ///|

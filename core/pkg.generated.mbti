@@ -40,6 +40,8 @@ pub fn mercator_x_from_lng(Double) -> Double
 
 pub fn mercator_y_from_lat(Double) -> Double
 
+pub fn normalize_bearing(Double, Double) -> Double
+
 pub fn tile_containing(MercatorCoord, Int32) -> TileId?
 
 pub fn zoom_shift(Int32) -> Int32
@@ -61,6 +63,13 @@ pub fn BBox::intersects(Self, Self) -> Bool
 pub fn BBox::is_empty(Self) -> Bool
 pub fn BBox::not_equal(Self, Self) -> Bool
 pub fn BBox::to_repr(Self) -> @debug.Repr
+
+pub struct Bezier {
+  // private fields
+}
+pub fn Bezier::at(Self, Double) -> Double
+pub fn Bezier::ease() -> Self
+pub fn Bezier::new(Double, Double, Double, Double) -> Self
 
 pub struct ByteReader {
   // private fields
@@ -100,6 +109,42 @@ pub fn Camera::equal(Self, Self) -> Bool
 pub fn Camera::not_equal(Self, Self) -> Bool
 pub fn Camera::to_repr(Self) -> @debug.Repr
 
+pub(all) struct CameraTarget {
+  center : LngLat?
+  zoom : Double?
+  bearing : Double?
+  pitch : Double?
+  around : LngLat?
+  offset : (Double, Double)
+} derive(Eq, @debug.Debug)
+pub fn CameraTarget::equal(Self, Self) -> Bool
+pub fn CameraTarget::new(center? : LngLat, zoom? : Double, bearing? : Double, pitch? : Double, around? : LngLat, offset? : (Double, Double)) -> Self
+pub fn CameraTarget::not_equal(Self, Self) -> Bool
+pub fn CameraTarget::to_repr(Self) -> @debug.Repr
+
+pub struct Ease {
+  // private fields
+}
+pub fn Ease::at(Self, Double) -> Camera
+
+pub struct Flight {
+  duration : Double
+  // private fields
+}
+pub fn Flight::at(Self, Double) -> Camera
+
+pub(all) struct Limits {
+  min_zoom : Double
+  max_zoom : Double
+  min_pitch : Double
+  max_pitch : Double
+  bounds : LngLatBounds?
+} derive(Eq, @debug.Debug)
+pub fn Limits::default() -> Self
+pub fn Limits::equal(Self, Self) -> Bool
+pub fn Limits::not_equal(Self, Self) -> Bool
+pub fn Limits::to_repr(Self) -> @debug.Repr
+
 pub(all) struct LngLat {
   lng : Double
   lat : Double
@@ -108,6 +153,18 @@ pub fn LngLat::equal(Self, Self) -> Bool
 pub fn LngLat::not_equal(Self, Self) -> Bool
 pub fn LngLat::to_mercator(Self) -> MercatorCoord
 pub fn LngLat::to_repr(Self) -> @debug.Repr
+
+pub(all) struct LngLatBounds {
+  west : Double
+  south : Double
+  east : Double
+  north : Double
+} derive(Eq, @debug.Debug)
+pub fn LngLatBounds::empty() -> Self
+pub fn LngLatBounds::equal(Self, Self) -> Bool
+pub fn LngLatBounds::including(Self, LngLat) -> Self
+pub fn LngLatBounds::not_equal(Self, Self) -> Bool
+pub fn LngLatBounds::to_repr(Self) -> @debug.Repr
 
 pub struct Mat4 {
   m : FixedArray[Double]
@@ -134,6 +191,17 @@ pub fn MercatorCoord::not_equal(Self, Self) -> Bool
 pub fn MercatorCoord::to_lnglat(Self) -> LngLat
 pub fn MercatorCoord::to_repr(Self) -> @debug.Repr
 
+pub(all) struct Padding {
+  top : Double
+  right : Double
+  bottom : Double
+  left : Double
+} derive(Eq, @debug.Debug)
+pub fn Padding::equal(Self, Self) -> Bool
+pub fn Padding::not_equal(Self, Self) -> Bool
+pub fn Padding::to_repr(Self) -> @debug.Repr
+pub fn Padding::uniform(Double) -> Self
+
 pub struct TileId {
   z : Int32
   x : Int32
@@ -155,27 +223,34 @@ pub struct Transform {
   camera : Camera
   width : Double
   height : Double
-  min_zoom : Double
-  max_zoom : Double
+  limits : Limits
   elevation : Double
   // private fields
 }
+pub fn Transform::at_point(Self, LngLat, Double, Double) -> Camera
+pub fn Transform::bounds(Self) -> LngLatBounds
+pub fn Transform::camera_for_bounds(Self, LngLatBounds, bearing? : Double, padding? : Padding, offset? : (Double, Double), max_zoom? : Double) -> Camera?
 pub fn Transform::center_depth(Self) -> Double
 pub fn Transform::covering_tiles(Self, Int32, Int32) -> Array[TileId]
+pub fn Transform::ease_to(Self, CameraTarget) -> Ease
+pub fn Transform::fly_to(Self, CameraTarget, curve? : Double, speed? : Double, screen_speed? : Double, min_zoom? : Double) -> Flight?
 pub fn Transform::fog_range(Self) -> (Double, Double)
 pub fn Transform::horizon(Self) -> Double
 pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
 pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
-pub fn Transform::new(Camera, Double, Double, min_zoom? : Double, max_zoom? : Double) -> Self
+pub fn Transform::new(Camera, Double, Double, limits? : Limits) -> Self
 pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera
 pub fn Transform::pixels_per_meter(Self) -> Double
+pub fn Transform::project(Self, LngLat) -> (Double, Double)
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
 pub fn Transform::tile_matrix(Self, TileId, Int32) -> Mat4
 pub fn Transform::tile_scale(Self, TileId, Int32) -> Double
 pub fn Transform::tile_zoom(Self, Int32, Int32, tile_size? : Int32) -> Int32
+pub fn Transform::unproject(Self, Double, Double) -> LngLat
 pub fn Transform::with_camera(Self, Camera) -> Self
 pub fn Transform::with_elevation(Self, Double) -> Self
+pub fn Transform::with_limits(Self, Limits) -> Self
 pub fn Transform::world_size(Self) -> Double
 pub fn Transform::zoomed_around(Self, Double, Double, Double) -> Camera
 
