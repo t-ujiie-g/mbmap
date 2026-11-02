@@ -10,7 +10,7 @@ MoonBit で、**軽量かつ既存ライブラリを上回る性能**の Web 向
 | 解析 | 空間インデックス、計測、空間クエリ、集計、ジオメトリ演算（buffer、交差、結合）、ラスタ解析（傾斜、陰影、可視域） | 差別化。Worker 上の Wasm で動かし、メインスレッドを塞がない |
 | ヘッドレス UI | 地図の操作、検索（GeoSearch）、計測、凡例、レイヤー一覧、属性テーブル、作図・編集などを、**見た目を持たない API**（状態・操作・イベント）として提供する | 機能だけを渡し、見た目は作り手が自由に作る。組み立て済みのウィジェットは作らない |
 
-ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入れるが、網羅は目指さない。各柱で、ブラウザ内で完結させる価値が大きいものから順に作る。サーバー側の機能が欠かせないもの（ジオコーディングやルート探索のサービス、印刷サービス、データのホスティングと同期など）は作らない。足りないものの洗い出しと、その扱いは §10 にある。
+ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入れるが、網羅は目指さない。各柱で、ブラウザ内で完結させる価値が大きいものから順に作る。サーバー側の機能が欠かせないもの（ジオコーディングやルート探索のサービス、データのホスティングと同期など）は作らない。印刷は、サーバーの印刷サービスではなくブラウザ内で PDF を作って行う。足りないものの洗い出しと、その扱いは §10 にある。
 
 - 比較対象：MapLibre GL JS、MachGL（Geolonia、gzip 約98KB・WebGL2・Web Worker 構成）。機能の範囲では ArcGIS Maps SDK for JavaScript と CesiumJS
 - **特定の UI フレームワークに依存しない**。地図は「canvas を受け取って描く命令的なエンジン」とし、UI フレームワークとの統合は外側の薄い層で行う
@@ -137,9 +137,10 @@ ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入
 ### やらない（当面）
 - Style Spec の完全互換、プラグイン機構、IE/古い Safari 対応
 - 組み立て済みの UI ウィジェット（見た目を持つ部品）。機能はヘッドレスな API で渡し、見た目は作り手が作る。example では作り方を示す
-- サーバー側の機能が欠かせないもの：タイル配信、データベース、認証、編集結果の保存と同期、ジオコーディングやルート探索・到達圏のサービス、印刷サービス、ジオエンリッチメント、画像サーバーの解析、ストリーミング。ライブラリはブラウザ内で完結させ、保存や共有は利用者のアプリに任せる
+- サーバー側の機能が欠かせないもの：タイル配信、データベース、認証、編集結果の保存と同期、ジオコーディングやルート探索・到達圏のサービス、ジオエンリッチメント、画像サーバーの解析、ストリーミング。ライブラリはブラウザ内で完結させ、保存や共有は利用者のアプリに任せる
   - 外部のサービスにつなぐ部分は、**差し替えられる口**（GeoSearch のプロバイダ、`transformRequest` など）だけを用意する。特定のサービスを既定にはしない
   - 標準の形式のタイルやデータ（XYZ、TileJSON、WMTS、OGC API）を読むのは、データの読み込みとして扱う（どこから配るかは利用者が決める）
+  - 印刷はクライアントで完結させる（Phase 19）。ArcGIS の印刷サービスのようにサーバーで描き直さず、ブラウザで高解像度に描いて PDF にする
 - ArcGIS SDK や CesiumJS の機能の網羅
 
 ## 6. API 方針
@@ -220,14 +221,14 @@ list.onclick = (e) => search.select(Number(e.target.dataset.i)); // 選ぶと、
 | 9 | symbol（日本語ラベル） | — |
 | 10 | 地形（DEM）、`fill-extrusion`、ラスタ解析（傾斜、陰影） | 国土地理院の DEM で地形を表示する example。解析結果を既存実装と比べた |
 | 11 | ジオメトリ演算（buffer、交差、結合）、座標系変換 | Clipper2・proj4js などとの黄金テスト |
-| 12 | 地図の基本 API：実行中のスタイル変更（ソース・レイヤーの追加と削除、paint・layout・filter の変更、GeoJSON の `setData`）、カメラ（`easeTo`・`flyTo`・`fitBounds`、`project`・`unproject`、`getBounds`、表示範囲とズームの制限、操作ごとの有効・無効、キーボード）、地物の問い合わせ（`queryRenderedFeatures`、`querySourceFeatures`、レイヤーごとのイベント、`feature-state`）、画面座標の追跡（マーカーやポップアップを作り手が DOM で描くため）、ラスタタイルのソースとレイヤー、PMTiles、TileJSON、`transformRequest`、画像の書き出し | MapLibre と同じ操作をする example。各 API の黄金テスト（MapLibre と同じ結果）。表示の入口の予算を守る |
+| 12 | 地図の基本 API：実行中のスタイル変更（ソース・レイヤーの追加と削除、paint・layout・filter の変更、GeoJSON の `setData`）、カメラ（`easeTo`・`flyTo`・`fitBounds`、`project`・`unproject`、`getBounds`、表示範囲とズームの制限、操作ごとの有効・無効、キーボード）、地物の問い合わせ（`queryRenderedFeatures`、`querySourceFeatures`、レイヤーごとのイベント、`feature-state`）、画面座標の追跡（マーカーやポップアップを作り手が DOM で描くため）、ラスタタイルのソースとレイヤー、PMTiles、TileJSON、`transformRequest`、画像の書き出し（画面より大きい解像度は、描画先の上限を超える分を分割して描いてつなぐ） | MapLibre と同じ操作をする example。各 API の黄金テスト（MapLibre と同じ結果）。表示の入口の予算を守る |
 | 13 | ヘッドレス UI の土台と GeoSearch：コントローラの共通の形（状態・操作・購読）、ナビゲーション（ズーム、方位、傾き、現在地は Geolocation API）、縮尺、出典、凡例とレイヤー一覧（スタイルから作る）、識別（クリックした地物）、GeoSearch（座標の読み取り、データの属性検索、プロバイダの差し替え） | 素の DOM と React で同じコントローラから別の見た目を作る example。`mbmap/ui` と `mbmap/search` の予算 |
 | 14 | 作図・編集と計測（ヘッドレス）：点・線・多角形・矩形・円・フリーハンドの描画、頂点の編集、スナップ、取り消し・やり直し、分割・結合、属性の編集、距離・面積の計測（測地線）、断面図（標高） | terra-draw などと操作を比べた example。計測は GeographicLib と比べる |
 | 15 | スタイル表現の拡充：式（算術、型変換、文字列、`let` / `var`、`feature-state`）、アイコンとスプライト（`addImage`）、模様、`line-dasharray`・`line-gradient`、線に沿ったラベル、`text-variable-anchor`、heatmap レイヤー、GeoJSON のクラスタリング、画像・動画・canvas のソース | MapLibre と並べた描画の比較（render ベンチ） |
 | 16 | データ形式：CSV、KML / KMZ、GPX、Shapefile（zip）、FlatGeobuf、TopoJSON、WKT / WKB、GeoTIFF / COG の読み込み、GeoJSON・CSV・KML の書き出し、属性テーブルのコントローラ（並べ替え、絞り込み、ページ送り） | 既存の JS 実装（togeojson、shpjs、flatgeobuf、geotiff.js など）との黄金テスト。形式ごとの予算 |
 | 17 | 解析 第2弾：空間関係（DE-9IM：contains、within、intersects、touches など）、単純化、凸包・凹包、ボロノイ・ドロネー、線の分割と線上の最近点、分類（自然分類、等量、等間隔、標準偏差）と統計（凡例とつなぐ）、カーネル密度・六角形の集計、クラスタリング（DBSCAN、k-means）、補間（IDW）、等高線、可視域・見通し、測地線の計測（GeographicLib）、作り手のデータの道路網での経路探索 | Turf.js、GEOS（JSTS）、GDAL、GeographicLib との黄金テストと速度比較 |
 | 18 | 3D 第2弾：地球（globe）表示、3D Tiles 1.1 / PLATEAU（glTF、Draco、meshopt）、glTF モデルの配置、点群（3D Tiles の点群、COPC / LAS）、太陽の位置による光と影、3D の計測と見通し、断面（クリッピング） | PLATEAU の建物を表示する example。CesiumJS と描画・速度を比べる。`mbmap/3d` の予算 |
-| 19 | 時間と比較：時刻つきデータの絞り込み（タイムスライダーのコントローラ）、2 つの地図の比較（スワイプ、並べて同期）、概観図、ブックマーク | — |
+| 19 | 時間・比較・印刷：時刻つきデータの絞り込み（タイムスライダーのコントローラ）、2 つの地図の比較（スワイプ、並べて同期）、概観図、ブックマーク、印刷（ヘッドレスな印刷のコントローラ：用紙・縮尺・解像度を指定し、タイトル・凡例・縮尺・方位記号・出典を配置して、Wasm で PDF を作る。地図は画像で貼るか、線と面をベクトルのまま書く。ベクトルのラベルは使う文字だけのフォントを埋め込む） | A3・300dpi の PDF を作る example。PDF の生成に MoonBit のライブラリを使う場合は、§7 と AGENTS.md §8.1 の確認をしてから |
 | 以降 | UI ライブラリ向けアダプタ（rabbita、Luna 等）、WebGPU、§5 の「後回し」 | 需要を見て判断 |
 
 順番は、上の Phase が下の Phase の土台になるように並べた（ヘッドレス UI は 12 の API が要り、作図は 13 のコントローラの形を使う）。各 Phase の初めに、範囲と完了条件をユーザーと確認する。
@@ -276,6 +277,7 @@ MapLibre GL JS、ArcGIS Maps SDK for JavaScript、CesiumJS と比べて、mbmap 
 | 座標の表示と変換（proj を使う） | 13 |
 | 属性テーブル（並べ替え、絞り込み、地図との選択の連動） | 16 |
 | タイムスライダー、スワイプ・並べての比較、概観図、ブックマーク | 19 |
+| 印刷（レイアウトと PDF の出力。ブラウザ内で作る） | 19 |
 
 ### データ（主に ArcGIS のクライアント側のレイヤーとの差）→ Phase 16
 
@@ -309,5 +311,5 @@ MapLibre GL JS、ArcGIS Maps SDK for JavaScript、CesiumJS と比べて、mbmap 
 
 ### 作らないもの（サーバー側の機能が欠かせない）
 
-ジオコーディング・ルート探索・到達圏・ジオエンリッチメントのサービス、印刷サービス、フィーチャサービスへの編集の保存と同期、ポータル・認証（OAuth）、画像サーバーの解析、ストリームレイヤー、CesiumJS の ion のアセット（World Terrain など）。外部のサービスとつなぐ口（GeoSearch のプロバイダ、`transformRequest`）だけを用意する。
+ジオコーディング・ルート探索・到達圏・ジオエンリッチメントのサービス、フィーチャサービスへの編集の保存と同期、ポータル・認証（OAuth）、画像サーバーの解析、ストリームレイヤー、CesiumJS の ion のアセット（World Terrain など）。外部のサービスとつなぐ口（GeoSearch のプロバイダ、`transformRequest`）だけを用意する。
 
