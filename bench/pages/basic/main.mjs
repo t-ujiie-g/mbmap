@@ -1,4 +1,4 @@
-// `npm --prefix bench run example`, then /examples/basic/: the z14 fixtures, or
+// `npm --prefix bench run example`, then /bench/pages/basic/: the z14 fixtures, or
 // GSI's live tiles with `?remote=1`. `?center=lng,lat`, `?zoom=`, `?bearing=`,
 // `?pitch=` set the camera; `?buildings=1` extrudes buildings (GSI tiles have
 // no heights: 30 m for sturdy buildings, 8 m for others); `?terrain=1` raises it on GSI's DEM (`&exaggeration=`); right-drag

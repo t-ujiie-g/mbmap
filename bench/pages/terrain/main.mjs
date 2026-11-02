@@ -1,4 +1,4 @@
-// `npm --prefix bench run example`, then /examples/terrain/: Mt Fuji in 3D
+// `npm --prefix bench run example`, then /bench/pages/terrain/: Mt Fuji in 3D
 // with its hillshade, from the z12 DEM fixtures or GSI's live DEM tiles
 // (z1-14) with `?remote=1`. `?zoom=`, `?bearing=` and `?pitch=` set the camera.
 import * as mbmap from "/_build/js/release/build/bundle/main/main.js";

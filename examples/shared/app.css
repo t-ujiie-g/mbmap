@@ -1,0 +1,18 @@
+html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; color: #222; }
+#map, mb-map { position: absolute; inset: 0; }
+.panel {
+  position: absolute; top: 12px; left: 12px; width: 280px; max-height: calc(100% - 24px); overflow: auto;
+  padding: 12px 14px; background: rgba(255, 255, 255, 0.94); border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+.panel h1 { margin: 0 0 2px; font-size: 18px; }
+.panel h2 { margin: 12px 0 4px; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
+.panel .variant { margin: 0 0 8px; color: #666; font-size: 12px; }
+.panel button { font: inherit; padding: 3px 9px; margin: 0 4px 4px 0; border: 1px solid #bbb; border-radius: 5px; background: #fff; cursor: pointer; }
+.panel button[aria-pressed="true"] { background: #2b5f8e; border-color: #2b5f8e; color: #fff; }
+.panel dl { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; margin: 0; font-variant-numeric: tabular-nums; }
+.panel dt { color: #666; }
+.panel dd { margin: 0; }
+.panel ul { margin: 0; padding-left: 18px; }
+.panel nav { margin-top: 12px; font-size: 12px; }
+.panel nav a { margin-right: 8px; }
+@media (max-width: 480px) { .panel { width: auto; right: 12px; max-height: 45%; } }

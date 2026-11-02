@@ -51,7 +51,7 @@ npm --prefix bench run fixtures                # 東京駅周辺のタイルを�
 npm --prefix bench run examples                # ビルドして 127.0.0.1:8080 で配信
 ```
 
-http://127.0.0.1:8080/examples/ を開く（basic、npm パッケージ、GeoJSON、解析、`<mb-map>`、React の例）。詳しくは [examples/README.md](examples/README.md)。
+http://127.0.0.1:8080/examples/ を開く。同じ地図アプリ（2D/3D の切り替え、地点への移動、カメラの状態と平面直角座標、解析）を、素の HTML・`<mb-map>`・React の 3 通りで書いている。詳しくは [examples/README.md](examples/README.md)。
 
 ## npm パッケージ
 
@@ -59,7 +59,7 @@ http://127.0.0.1:8080/examples/ を開く（basic、npm パッケージ、GeoJSO
 
 ```sh
 cd npm && npm ci && npm run build && npm run size   # dist/ を作り、gzip サイズを予算と比べる
-npm --prefix bench run npm:pack                     # npm pack した成果物で examples/npm を動かして確かめる
+npm --prefix bench run npm:pack                     # npm pack した成果物で examples と試験用のページを動かして確かめる
 ```
 
 ## ライセンス

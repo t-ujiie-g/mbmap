@@ -1,5 +1,23 @@
 # PROGRESS
 
+## example の整理：1 つのショーケースを 3 通りで（2026-11-02）
+
+### ユーザー判断（2026-11-02）
+
+- examples/ は、同じ地図アプリを素の HTML・Web Component・React の 3 通りで書く形にする。部品ごとに分けず、1 つの画面でいろいろな機能を確かめられるようにする（進捗の確認と、のちの GitHub Pages での公開のため）。
+- 地図データは国土地理院の配信タイルを直接読む。CI とベンチは `?local=1` で手元の fixture を読む。
+- 今の 7 つの example は 3 つに置き換える。開発用のページは `bench/pages/`、試験用のページは `bench/npm/pages/` に移す。
+- 機能は今あるもので始め、Phase が進むたびに足す（各 Phase の完了条件に含める。VISION §8）。
+
+### できたこと
+
+- `examples/{html,element,react}`：2D と 3D（地形・建物の押し出し・空・60° の傾き）の切り替え、地点への移動（`flyTo`：東京駅、富士山、大阪駅、京都、札幌駅）、カメラの状態、最寄りの原点の平面直角座標系での座標（`transform`）、画面の中心から 5 km 以内の地点（`buffer` と `pointsWithin`。移動が終わるたびに計算）、GeoJSON の点とラベル、陰影起伏。
+  - 共通部分（スタイル、地点、解析）は `examples/shared/` にあり、3 つが同じものを使う。
+  - スタイルを変える API（Phase 12.2）がまだないので、2D と 3D を切り替えるたびに地図を作り直している。
+- `<mb-map>` に `mb-movestart`・`mb-moveend` を足した（解析を移動の終わりで行うため）。
+- 移動したもの：`examples/basic`・`terrain` → `bench/pages/`、`examples/npm`・`element`・`geojson`・`analysis` → `bench/npm/pages/`。旧 React の例はショーケースの React 版に置き換えた。
+- pack test：3 つのショーケースで、同じ結果になることを確かめる（東京駅の 5 km 以内の地点、IX 系の座標が proj4js と同じ、3D で 60°、大阪駅へ移動するとパネルが追従し VI 系になる）。
+
 ## Phase 12.1：カメラの API（easeTo・flyTo・fitBounds、制約、操作、イベント）（2026-11-02）
 
 状態：**完了**。Phase 12 は 12.1 カメラ → 12.2 実行中のスタイル変更 → 12.3 問い合わせと feature-state → 12.4 ラスタタイル・TileJSON・PMTiles → 12.5 画面座標の追跡と画像の書き出し、の順に進める。
