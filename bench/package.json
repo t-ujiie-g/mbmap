@@ -34,6 +34,8 @@
     "pmtiles:golden": "npm --prefix ../npm run build && node pmtiles/golden.mjs",
     "raster:golden": "npm --prefix ../npm run build && node raster/golden.mjs",
     "query:golden": "npm --prefix ../npm run build && node query/golden.mjs",
+    "track:golden": "npm --prefix ../npm run build && node track/golden.mjs",
+    "export:golden": "npm --prefix ../npm run build && node export/golden.mjs",
     "camera:golden": "npm run build:moon && node lib/run-bundled.mjs bench/camera/golden.mjs",
     "proj:golden": "npm run build:moon && node proj/golden.mjs",
     "proj:node": "npm run build:moon && node proj/node.mjs",

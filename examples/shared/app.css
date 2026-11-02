@@ -16,3 +16,11 @@ html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; colo
 .panel nav { margin-top: 12px; font-size: 12px; }
 .panel nav a { margin-right: 8px; }
 @media (max-width: 480px) { .panel { width: auto; right: 12px; max-height: 45%; } }
+.panel { z-index: 1; }
+.pins { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.pin {
+  position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 12px; transition: opacity 0.2s;
+  translate: -50% -100%; padding: 1px 6px 3px; background: #2b5f8e; color: #fff; border-radius: 4px;
+}
+.pin::after { content: ""; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: #2b5f8e; }
+.pin.covered { opacity: 0.3; }

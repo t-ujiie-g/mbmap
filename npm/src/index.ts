@@ -156,6 +156,7 @@ export type MapMouseEventType =
 export type MapEventType =
   | MapMouseEventType
   | "load"
+  | "render"
   | "idle"
   | "error"
   | "movestart"
@@ -172,7 +173,7 @@ export type MapEventType =
   | "pitchend";
 
 /**
- * `load` fires once, at the first drawn view; `idle` when the map settles. Camera changes fire
+ * `load` fires once, at the first drawn view; `render` after each frame; `idle` when the map settles. Camera changes fire
  * `movestart`, `move` (and `zoom`, `rotate`, `pitch` with their own start and end) and `moveend`,
  * as in MapLibre; `originalEvent` is the DOM event of a user's gesture. Mouse events carry the
  * `point` (CSS pixels from the canvas's corner) and its `lngLat`; for a layer, its `features` there.
@@ -188,6 +189,41 @@ export interface MapEvent {
 }
 
 export type MapEventListener = (event: MapEvent) => void;
+
+/** Where a tracked place is: CSS pixels from the canvas's top-left corner, and whether the terrain hides it. */
+export interface ScreenPosition {
+  x: number;
+  y: number;
+  covered: boolean;
+}
+
+/**
+ * `pixelRatio`: device pixels per CSS pixel (the screen's by default); `type` and `quality` as
+ * `HTMLCanvasElement.toBlob` takes them (PNG by default); `maxSize`: the largest side drawn at once
+ * (the GPU's limit by default), bigger images are drawn in parts and joined.
+ */
+export interface ToBlobOptions {
+  pixelRatio?: number;
+  type?: string;
+  quality?: number;
+  maxSize?: number;
+}
+
+/** The largest image `toBlob` makes: what Chromium and Safari let a canvas hold. */
+const MAX_IMAGE_SIDE = 32767;
+const MAX_IMAGE_PIXELS = 16384 * 16384;
+
+/** A place followed on screen (`Map.track`). */
+export interface Tracker {
+  getLngLat(): LngLat;
+  setLngLat(lnglat: LngLatLike): this;
+  remove(): void;
+}
+
+interface Tracked {
+  lnglat: LngLat;
+  f: (position: ScreenPosition) => void;
+}
 
 interface Camera {
   lng: number;
@@ -272,6 +308,7 @@ export class Map {
   #transform: RequestTransformFunction | null = null;
   #camera: Camera;
   #listeners = new globalThis.Map<MapEventType, Set<MapEventListener>>();
+  #tracked = new Set<Tracked>();
   #loaded = false;
   #removed = false;
   #options: MapOptions;
@@ -624,6 +661,10 @@ export class Map {
     engine.map_on_move_start(map, (e) => this.#moveStart(e));
     engine.map_on_move(map, () => this.#move(engine.map_input_event(map)));
     engine.map_on_move_end(map, (e) => this.#moveEnd(e));
+    engine.map_on_render(map, () => {
+      this.#locate(this.#tracked);
+      this.#emit("render");
+    });
     engine.map_on_idle(map, () => {
       if (!this.#loaded) {
         this.#loaded = true;
@@ -698,6 +739,22 @@ export class Map {
     if (error) event.error = error;
     if (originalEvent) event.originalEvent = originalEvent;
     this.#fire(event, this.#listeners.get(type) ?? []);
+  }
+
+  /** Tells each of `tracked` where its place is now: one engine call for all of them. */
+  #locate(tracked: Iterable<Tracked>): void {
+    const list = [...tracked];
+    if (!this.#engine || list.length === 0) return;
+    const out = engine.map_locate(this.#engine, list.flatMap((t) => [t.lnglat.lng, t.lnglat.lat]));
+    list.forEach((t, i) => {
+      try {
+        t.f({ x: out[3 * i], y: out[3 * i + 1], covered: out[3 * i + 2] === 1 });
+      } catch (err) {
+        queueMicrotask(() => {
+          throw err;
+        });
+      }
+    });
   }
 
   #fire(event: MapEvent, listeners: Iterable<MapEventListener>): void {
@@ -980,6 +1037,42 @@ export class Map {
     });
   }
 
+  /**
+   * An image of the current view: once its tiles have loaded, drawn at `pixelRatio` offscreen (the
+   * canvas is left as it is) and encoded as `type`. Views larger than the GPU draws at once are
+   * drawn in parts and joined.
+   */
+  async toBlob(options: ToBlobOptions = {}): Promise<Blob> {
+    const ratio = options.pixelRatio ?? globalThis.devicePixelRatio ?? 1;
+    if (!(ratio > 0 && Number.isFinite(ratio))) throw new Error(`mbmap: pixelRatio must be a positive number: ${ratio}`);
+    while (!this.#engine || !engine.map_is_idle(this.#engine)) {
+      if (this.#removed) throw new Error("mbmap: the map was removed");
+      await this.once("idle");
+    }
+    const map = this.#engine;
+    const width = Math.round(this.#canvas.clientWidth * ratio);
+    const height = Math.round(this.#canvas.clientHeight * ratio);
+    if (width < 1 || height < 1 || width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || width * height > MAX_IMAGE_PIXELS) {
+      throw new Error(`mbmap: cannot make a ${width} x ${height} image`);
+    }
+    const side = Math.max(1, Math.min(options.maxSize ?? Infinity, engine.map_max_region(map)));
+    const out = document.createElement("canvas");
+    out.width = width;
+    out.height = height;
+    const ctx = out.getContext("2d");
+    if (!ctx) throw new Error("mbmap: no 2D canvas for the image");
+    for (let y = 0; y < height; y += side) {
+      for (let x = 0; x < width; x += side) {
+        const w = Math.min(side, width - x);
+        const h = Math.min(side, height - y);
+        ctx.putImageData(new ImageData(engine.map_render_region(map, ratio, x, y, w, h), w, h), x, y);
+      }
+    }
+    return new Promise((resolve, reject) => {
+      out.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("mbmap: the image could not be encoded"))), options.type, options.quality);
+    });
+  }
+
   /** Whether the first view has been drawn. */
   loaded(): boolean {
     return this.#loaded;
@@ -1165,7 +1258,31 @@ export class Map {
     return this.#changing.rotate;
   }
 
-  /** The screen point (CSS pixels from the top-left corner) of `lnglat` on the ground. */
+  /**
+   * Follows `lnglat` on screen for an element drawn over the map (a marker, a popup): `callback` gets
+   * its position after every frame (and at once, once the map has started), on the terrain if any,
+   * with whether the terrain hides it, as MapLibre's `Marker` places itself. All tracked places are
+   * located in one call per frame.
+   */
+  track(lnglat: LngLatLike, callback: (position: ScreenPosition) => void): Tracker {
+    const t: Tracked = { lnglat: toLngLat(lnglat), f: callback };
+    this.#tracked.add(t);
+    this.#locate([t]);
+    const map = this;
+    return {
+      getLngLat: () => ({ ...t.lnglat }),
+      setLngLat(lnglat: LngLatLike) {
+        t.lnglat = toLngLat(lnglat);
+        if (map.#tracked.has(t)) map.#locate([t]);
+        return this;
+      },
+      remove: () => {
+        this.#tracked.delete(t);
+      },
+    };
+  }
+
+  /** The screen point (CSS pixels from the top-left corner) of `lnglat`, on the terrain if any. */
   project(lnglat: LngLatLike): { x: number; y: number } {
     const p = toLngLat(lnglat);
     if (!this.#engine) return { x: NaN, y: NaN };
@@ -1173,7 +1290,7 @@ export class Map {
     return { x, y };
   }
 
-  /** The ground point under screen point `point`. */
+  /** The point under screen point `point`, on the terrain if any. */
   unproject(point: PointLike): LngLat {
     const p = toPoint(point);
     if (!this.#engine) return { lng: NaN, lat: NaN };

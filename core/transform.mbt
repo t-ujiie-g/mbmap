@@ -145,17 +145,31 @@ fn view_projection(
 
 ///|
 /// Depth (CSS pixels along the view axis) of the farthest ground drawn: the
-/// top edge of the screen or the horizon line, whichever is lower. Terrain
-/// below the center (`lift` world pixels) reaches beyond it: room is left.
+/// top edge of the screen or the horizon line, whichever is nearer, on the
+/// plane through sea level, or through the center when terrain below sea level
+/// lifts it (`lift` world pixels; MapLibre's `_calculateNearFarZ`).
 fn far_distance(pitch : Double, height : Double, lift : Double) -> Double {
   let d = center_distance(height)
-  let p = radians(pitch)
-  let above = @cmp.minimum(
-    FIELD_OF_VIEW / 2.0,
+  let limited = radians(@cmp.minimum(pitch, MAX_HORIZON_ANGLE))
+  let sea = @cmp.maximum(d / 2.0, d + lift / @math.cos(limited))
+  let lowest = if lift < 0.0 { sea - lift / @math.cos(limited) } else { sea }
+  let ground = @math.PI / 2.0 + radians(pitch)
+  let surface = (angle : Double) => {
+    @math.sin(angle) *
+    lowest /
+    @math.sin(
+      @cmp.maximum(
+        0.01,
+        @cmp.minimum(@math.PI - 0.01, @math.PI - ground - angle),
+      ),
+    )
+  }
+  let to_horizon = @cmp.maximum(
     @math.atan(horizon_distance(pitch, height) / d),
+    radians(90.0 - MAX_HORIZON_ANGLE),
   )
-  let top = @math.sin(above) * d / @math.sin(@math.PI / 2.0 - p - above)
-  (@math.sin(p) * top + d) * 1.01 + lift.abs() * 2.0
+  let top = @cmp.minimum(surface(FIELD_OF_VIEW / 2.0), surface(to_horizon))
+  (@math.sin(limited) * top + lowest) * 1.01
 }
 
 ///|
@@ -191,8 +205,9 @@ pub fn Transform::horizon(self : Transform) -> Double {
 }
 
 ///|
-/// The Earth's equatorial circumference in meters (Web Mercator's world width).
-const EARTH_CIRCUMFERENCE : Double = 40075016.6855785
+/// The circumference MapLibre measures heights in: a sphere of the Earth's
+/// mean radius, 6371008.8 m (its `earthCircumference`).
+const EARTH_CIRCUMFERENCE : Double = 2.0 * @math.PI * 6371008.8
 
 ///|
 /// World pixels per meter of height at `lat`, zoom `zoom` (MapLibre's

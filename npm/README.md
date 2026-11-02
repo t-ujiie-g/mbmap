@@ -37,12 +37,16 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 
 - `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜85 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`fontFamily`（ラベルの CSS フォントファミリー。既定 `sans-serif`）、`attributionControl`（既定 true。ソースの `attribution` を文字列として表示する）。
   - スタイルがオブジェクトで、描けない内容を含むときは、例外を投げる。URL の場合は `error` イベントになる。
-- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
+- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`render`（描画のたび）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
 - `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜85 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
 - カメラの移動（MapLibre と同じ計算。`npm run camera:golden` で MapLibre 6.16 の Camera と比べている）：
   - `easeTo(options)`（既定 500ms）、`flyTo(options)`（ズームアウトして戻る。`curve`、`speed`、`screenSpeed`、`maxDuration`、`minZoom`）、`panBy`、`panTo`、`zoomTo`、`zoomIn`、`zoomOut`、`rotateTo`、`resetNorth`、`resetNorthPitch`、`snapToNorth`、`stop()`。どれも `center`、`zoom`、`bearing`、`pitch`、`around`（その点を動かさない）、`offset`、`duration`、`easing`、`animate`、`essential`（OS の「視差効果を減らす」でもアニメーションする）を受け付ける。
   - `fitBounds(bounds, { padding, maxZoom, bearing, linear })`（既定は flyTo、`linear: true` で easeTo）、`fitScreenCoordinates(p0, p1, bearing)`、`cameraForBounds(bounds, options)`。`bounds` は `[[西, 南], [東, 北]]`、`[西, 南, 東, 北]`、`LngLatBounds`。
-  - `project(lngLat)`（画面の `{ x, y }`）、`unproject(point)`、`getBounds()`（`LngLatBounds`。傾けたときは地平線まで）、`isMoving()`、`isEasing()`、`isZooming()`、`isRotating()`。
+  - `project(lngLat)`（画面の `{ x, y }`）、`unproject(point)`、`getBounds()`（`LngLatBounds`。傾けたときは地平線まで）、`isMoving()`、`isEasing()`、`isZooming()`、`isRotating()`。地形があるときの `project` と `unproject` は地面の高さを入れる（MapLibre と同じ）。
+- 画面座標の追跡（マーカーやポップアップを DOM で描くため。`npm run track:golden` で MapLibre 6.16 と比べている）：
+  - `track(lngLat, (p) => …)` は `{ getLngLat, setLngLat, remove }` を返す。`p` は `{ x, y, covered }`（CSS ピクセルと、地形に隠れているか）。描画のたび（と登録したとき）に、地図と同じフレームで呼ぶ。登録した点はまとめて 1 回で計算する。
+  - 位置は地形の高さを入れたもの、`covered` は MapLibre の Marker が薄くなる判定（`isLocationOccluded`）と同じ。MapLibre は DEM ソースの minzoom より遠くを平らに描くため、そこでは高さが MapLibre と違う。
+- 画像の書き出し：`toBlob({ pixelRatio, type, quality, maxSize })` は今の表示の画像を Promise<Blob> で返す（既定は画面の画素密度の PNG）。タイルが揃うのを待ってから画面外に描くので、画面は変わらない。GPU が一度に描ける大きさ（または `maxSize`）を超える画像は、分割して描いてつなぐ（`npm run export:golden`）。出典表示などの DOM は画像に入らない。
 - 制限：`minZoom`・`maxZoom`（0〜24、既定 0 と 22）、`minPitch`・`maxPitch`（0〜85、既定 0 と 85）、`maxBounds`（表示がその範囲を出ない）。オプションでも、`setMinZoom` などの setter・getter でも変えられる。MapLibre と同じく、表示が南北の端（85.051129°）を越えないようにズームを上げる。
 - 初期表示：`bounds`（と `fitBoundsOptions`）を渡すと、`center`・`zoom` の代わりにその範囲を表示する。
 - 操作：`dragPan`、`scrollZoom`、`boxZoom`（Shift＋ドラッグ）、`dragRotate`、`keyboard`（矢印で 100px 移動、Shift＋矢印で回転・傾き、`+`・`-` でズーム）、`doubleClickZoom`（Shift で縮小）、`touchZoomRotate`、`touchPitch`（2 本指を上下に動かす）。オプションの `interactive: false` ですべて止め、`map.scrollZoom.disable()` のように 1 つずつ切り替えられる。ドラッグを離すと、MapLibre と同じ慣性で少し流れる。

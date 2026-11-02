@@ -1,0 +1,95 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600"
+  },
+  "limits": {
+    "split": {
+      "mean": 0.01,
+      "p99": 0
+    },
+    "maplibre": {
+      "mean": 0.05,
+      "p99": 1
+    }
+  },
+  "results": [
+    {
+      "view": "labels",
+      "ok": true,
+      "size": [
+        1600,
+        1200
+      ],
+      "maxSize": 300,
+      "split": {
+        "differ": 5140,
+        "mean": 0.001,
+        "p99": 0,
+        "max": 15
+      },
+      "screen": {
+        "differ": 0,
+        "mean": 0,
+        "p99": 0,
+        "max": 0
+      }
+    },
+    {
+      "view": "terrain",
+      "ok": true,
+      "size": [
+        1600,
+        1200
+      ],
+      "maxSize": 256,
+      "split": {
+        "differ": 501,
+        "mean": 0,
+        "p99": 0,
+        "max": 34
+      },
+      "screen": {
+        "differ": 0,
+        "mean": 0,
+        "p99": 0,
+        "max": 0
+      }
+    },
+    {
+      "view": "odd",
+      "ok": true,
+      "size": [
+        1200,
+        900
+      ],
+      "maxSize": 333,
+      "split": {
+        "differ": 1400,
+        "mean": 0.001,
+        "p99": 0,
+        "max": 13
+      },
+      "screen": {
+        "differ": 0,
+        "mean": 0,
+        "p99": 0,
+        "max": 0
+      }
+    },
+    {
+      "view": "raster-2x-vs-maplibre",
+      "ok": true,
+      "size": [
+        1600,
+        1200
+      ],
+      "maxSize": 700,
+      "differ": 18390,
+      "mean": 0.005,
+      "p99": 0,
+      "max": 1
+    }
+  ]
+}

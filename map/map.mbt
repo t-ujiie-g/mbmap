@@ -129,6 +129,7 @@ pub struct Map {
   priv mut ranges_waiting : Int32
   priv mut transform_request : RequestTransform
   priv mut next_query : Int32
+  priv mut window : Window?
   priv feature_states : @hashmap.HashMap[
     String,
     @hashmap.HashMap[String, JsValue],
@@ -141,6 +142,7 @@ pub struct Map {
 priv enum Listener {
   Move((@core.Camera) -> Unit)
   Idle(() -> Unit)
+  Render(() -> Unit)
   Start((Event) -> Unit)
   End((Event) -> Unit)
 }
@@ -234,6 +236,7 @@ pub fn Map::new(
     ranges_waiting: 0,
     transform_request: no_transform(),
     next_query: 0,
+    window: None,
     feature_states: @hashmap.HashMap([]),
   }
   let wasm = absolute_url(wasm_url)
@@ -286,6 +289,14 @@ pub fn Map::on_move(self : Map, f : (@core.Camera) -> Unit) -> Int32 {
 pub fn Map::on_idle(self : Map, f : () -> Unit) -> Int32 {
   self.next_listener += 1
   self.listeners.set(self.next_listener, Idle(f))
+  self.next_listener
+}
+
+///|
+/// Calls `f` after each frame is drawn.
+pub fn Map::on_render(self : Map, f : () -> Unit) -> Int32 {
+  self.next_listener += 1
+  self.listeners.set(self.next_listener, Render(f))
   self.next_listener
 }
 

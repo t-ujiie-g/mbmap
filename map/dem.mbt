@@ -1,12 +1,22 @@
 ///|
 /// A `raster-dem` tile's border elevations (`@raster.dem_edges`), kept so its
 /// neighbors' edge slopes can be redone when either arrives, and its heights
-/// (a Float32Array, row by row) for looking terrain up.
+/// (a Float32Array, row by row) for looking terrain up, `lowest` and
+/// `highest` among them.
 priv struct DemTile {
   edges : FixedArray[Double]
   heights : @render_webgl2.JsBuffer
   size : Int32
+  lowest : Double
+  highest : Double
 }
+
+///|
+/// The lowest and highest of `heights`.
+extern "js" fn height_range(
+  heights : @render_webgl2.JsBuffer,
+) -> FixedArray[Double] =
+  #|(h) => { let lo = Infinity, hi = -Infinity; for (const v of h) { if (v < lo) lo = v; if (v > hi) hi = v; } return [lo, hi]; }
 
 ///|
 extern "js" fn f64_array(
@@ -58,15 +68,28 @@ fn Map::stitch_dem(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
 
 ///|
 /// The height in meters at (`x`, `y`), fractions of the tile from its top-left
-/// corner, interpolated between pixel centers as the terrain shader does.
-fn DemTile::height_at(self : DemTile, x : Double, y : Double) -> Double {
+/// corner, interpolated between pixel centers. Past the outer centers it
+/// reads the pixels of `neighbor(dx, dy)` (the tile beside it, if loaded at
+/// the same size) or else repeats the edge ones, as MapLibre backfills borders.
+fn DemTile::height_at(
+  self : DemTile,
+  x : Double,
+  y : Double,
+  neighbor~ : (Int32, Int32) -> DemTile? = (_, _) => None,
+) -> Double {
   let size = self.size
   let fx = x * size.to_double() - 0.5
   let fy = y * size.to_double() - 0.5
+  let side = (v : Int32) => if v < 0 { -1 } else if v >= size { 1 } else { 0 }
   let at = (x : Int32, y : Int32) => {
-    let cx = @cmp.maximum(0, @cmp.minimum(size - 1, x))
-    let cy = @cmp.maximum(0, @cmp.minimum(size - 1, y))
-    f32_at(self.heights, cy * size + cx)
+    let (dx, dy) = (side(x), side(y))
+    if (dx != 0 || dy != 0) && neighbor(dx, dy) is Some(n) && n.size == size {
+      f32_at(n.heights, (y - dy * size) * size + x - dx * size)
+    } else {
+      let cx = @cmp.maximum(0, @cmp.minimum(size - 1, x))
+      let cy = @cmp.maximum(0, @cmp.minimum(size - 1, y))
+      f32_at(self.heights, cy * size + cx)
+    }
   }
   let x0 = fx.floor().to_int()
   let y0 = fy.floor().to_int()

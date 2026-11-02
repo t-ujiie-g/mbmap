@@ -45,3 +45,18 @@ test("orderRendered: extrusions nearest first where the first of their layers st
   // extrusion of a3d or above goes, nearest first.
   assert.deepEqual(names(orderRendered(tiles, layers)), ["mid", "a-near", "b-far", "low"]);
 });
+
+test("orderRendered: extrusions at one depth to rounding come as exact ties do", () => {
+  const layers = [{ id: "e", type: "fill-extrusion" }];
+  const tiles: TileResult[] = [{
+    z: 14, x: 0, y: 0,
+    hits: [
+      { layer: "e", index: 2, distance: 0.7 * (1 + 1e-12), feature: f("roof") },
+      { layer: "e", index: 1, distance: 0.7, feature: f("outline") },
+      { layer: "e", index: 0, distance: 0.5, feature: f("near") },
+    ],
+  }];
+  const exact = tiles.map((t) => ({ ...t, hits: t.hits.map((h) => ({ ...h, distance: Math.round(h.distance * 10) / 10 })) }));
+  assert.deepEqual(names(orderRendered(tiles, layers)), names(orderRendered(exact, layers)));
+  assert.deepEqual(names(orderRendered(tiles, layers)), ["near", "outline", "roof"]);
+});

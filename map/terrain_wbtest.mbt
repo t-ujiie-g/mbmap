@@ -37,6 +37,8 @@ test "height_at interpolates between pixel centers like the terrain shader" {
     edges: [],
     heights: f32_buffer([0.0, 100.0, 200.0, 300.0]),
     size: 2,
+    lowest: 0.0,
+    highest: 300.0,
   }
   // Pixel centers sit at 1/4 and 3/4; the tile's middle is their average.
   assert_eq(d.height_at(0.25, 0.25), 0.0)
@@ -46,4 +48,34 @@ test "height_at interpolates between pixel centers like the terrain shader" {
   // Beyond the outer centers the edge pixels repeat.
   assert_eq(d.height_at(0.0, 0.0), 0.0)
   assert_eq(d.height_at(1.0, 1.0), 300.0)
+}
+
+///|
+test "height_at reads a neighbor's pixels past the outer centers" {
+  let own : DemTile = {
+    edges: [],
+    heights: f32_buffer([0.0, 100.0, 200.0, 300.0]),
+    size: 2,
+    lowest: 0.0,
+    highest: 300.0,
+  }
+  let right : DemTile = {
+    edges: [],
+    heights: f32_buffer([500.0, 0.0, 700.0, 0.0]),
+    size: 2,
+    lowest: 0.0,
+    highest: 700.0,
+  }
+  let neighbor = (dx : Int32, dy : Int32) => {
+    if dx == 1 && dy == 0 {
+      Some(right)
+    } else {
+      None
+    }
+  }
+  // Halfway between this tile's last center and the right tile's first.
+  assert_eq(own.height_at(1.0, 0.25, neighbor~), 300.0)
+  assert_eq(own.height_at(1.0, 0.75, neighbor~), 500.0)
+  // No neighbor below: the edge row repeats.
+  assert_eq(own.height_at(0.75, 1.0, neighbor~), 300.0)
 }

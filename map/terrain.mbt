@@ -50,8 +50,19 @@ fn elevation_at(src : SourceTiles, m : @core.MercatorCoord) -> Double? {
     let n = (1 << z).to_double()
     if @core.tile_containing(m, z) is Some(id) &&
       src.ready(id).bind(dem_of) is Some((_, d)) {
+      let neighbor = (dx : Int32, dy : Int32) => {
+        let k = 1 << z
+        guard @core.TileId::new(z, (id.x + dx + k) % k, id.y + dy) is Some(nid) else {
+          return None
+        }
+        src.ready(nid).bind(dem_of).map(t => t.1)
+      }
       return Some(
-        d.height_at(m.x * n - id.x.to_double(), m.y * n - id.y.to_double()),
+        d.height_at(
+          m.x * n - id.x.to_double(),
+          m.y * n - id.y.to_double(),
+          neighbor~,
+        ),
       )
     }
     z -= 1
@@ -305,4 +316,60 @@ fn Map::is_terrain_source(self : Map, request : Int32) -> Bool {
     return false
   }
   src.source.id == t.source
+}
+
+///|
+/// The loaded terrain as camera picks see it (heights exaggerated), or None
+/// without terrain or before any of its DEM tiles has loaded.
+fn Map::terrain_pick(self : Map) -> @core.Terrain? {
+  guard self.terrain_source() is Some(src) else { return None }
+  let k = self.exaggeration()
+  let mut lowest = 0.0
+  let mut highest = 0.0
+  let mut any = false
+  for _, e in src.tiles {
+    if e.state is (Ready(meshes) | Stale(meshes)) &&
+      dem_of(meshes) is Some((_, d)) {
+      any = true
+      lowest = @cmp.minimum(lowest, d.lowest * k)
+      highest = @cmp.maximum(highest, d.highest * k)
+    }
+  }
+  guard any else { return None }
+  Some({
+    // Ground without DEM data is flat at 0 m, as MapLibre draws and picks it.
+    height: (x, y) => Some(elevation_at(src, { x, y, }).unwrap_or(0.0) * k),
+    lowest,
+    highest,
+  })
+}
+
+///|
+/// Screen point (CSS pixels) of `p` on the terrain if any, and whether the
+/// terrain hides it from the camera (MapLibre's `project` and
+/// `isLocationOccluded`).
+pub fn Map::locate(self : Map, p : @core.LngLat) -> (Double, Double, Bool) {
+  let t = self.transform
+  match self.terrain_pick() {
+    None => {
+      let (x, y) = t.project(p)
+      (x, y, false)
+    }
+    Some(terrain) => {
+      let m = p.to_mercator()
+      let elevation = (terrain.height)(m.x - m.x.floor(), m.y).unwrap_or(0.0)
+      let (x, y) = t.project(p, elevation~)
+      (x, y, t.occluded(p, elevation, terrain))
+    }
+  }
+}
+
+///|
+/// The point under screen point (x, y), on the terrain if any (MapLibre's
+/// `unproject`).
+pub fn Map::point_location(self : Map, x : Double, y : Double) -> @core.LngLat {
+  match self.terrain_pick() {
+    None => self.transform.unproject(x, y)
+    Some(terrain) => self.transform.unproject_on(x, y, terrain)
+  }
 }

@@ -1,5 +1,56 @@
 # PROGRESS
 
+## Phase 12.5：画面座標の追跡と画像の書き出し（2026-11-03）
+
+状態：**完了**。これで Phase 12（地図の基本 API）の各項目がそろった。
+
+### できたこと
+
+- **画面座標の追跡**（決めていただいた形）：`map.track(lngLat, (p) => …)` が `{ getLngLat, setLngLat, remove }` を返す。
+  - `p` は `{ x, y, covered }`。描画のたび（と登録したとき）に、地図と同じフレームで呼ぶ。登録した点はまとめて 1 回のエンジン呼び出し（`map_locate`）で計算する。
+  - 位置は地形の高さを入れたもの。`covered` は MapLibre の Marker が薄くなる判定（`isLocationOccluded`）と同じ。
+  - MapLibre 6.16 は地形の当たり判定を CPU のレイの行進で行っていた（`_raycastTerrain`）。これを `core/occlusion.mbt` に移植し、地形付きの `unproject` もこれで地面を探すようにした。`project` も地面の高さを入れる（MapLibre と同じ）。
+  - `render` イベントを足した。
+- **画像の書き出し**（決めていただいた形）：`map.toBlob({ pixelRatio, type, quality, maxSize })` が Promise<Blob> を返す。
+  - `idle` を待ってから、画面外のフレームバッファに描く（画面は変わらない）。
+  - GPU が一度に描ける大きさ（`MAX_RENDERBUFFER_SIZE` などの最小）か `maxSize` を超えると、部分ごとに描いて 2D canvas でつなぐ。部分は、画像全体のクリップ空間を部分のものに写す行列（`Window`）で描き、空の地平線の位置も部分の分だけずらす。
+- **MapLibre と違っていた所を直した**：
+  - 高さ 1m を画素に直す係数：赤道の周長でなく、MapLibre と同じ平均半径 6,371,008.8m の周長にした（0.11% の差。押し出しの高さにも効く）。
+  - far plane：MapLibre の `_calculateNearFarZ` と同じ式にした。地平線近くのレイが地面に届く前に切れていた。
+  - DEM の高さをタイルの縁で読むとき、隣のタイルの画素を使う（MapLibre の縁の埋め方と同じ）。
+  - DEM のない所の地形は 0m の平面として扱う（MapLibre と同じ）。中心の下に DEM がないとき、カメラの中心の高さが前の場所の値のまま残っていた不具合も直した。
+  - 押し出しの問い合わせで、屋根と輪郭線のように同じ深さを違う頂点から計算した結果を、丸めの範囲で同点として扱う。係数を直したら query:golden の 1 件で順序が入れ替わったため。
+- **example（3 つとも）**：行き先（東京駅、富士山など）の名前を DOM のピンにして `track()` で地図に重ね、地形に隠れると薄くする。「画像を保存」ボタン（`toBlob`、2 倍の解像度の PNG）。
+
+### 黄金テスト
+
+- `npm run track:golden`：富士山の DEM（`gsi-dem-fuji` を Terrarium にして両方に読ませる）で、4 つのカメラ（真上、60°、75°、80°）× 約 340 地点を MapLibre 6.16 と比べた。
+  - **`project` の差は最大 3×10⁻⁹px、`covered` は全点一致（隠れている地点 0〜62）、`unproject` の差は最大 1μm**。
+  - 比べるのは、MapLibre が DEM から高さを取っている地点だけ。MapLibre は遠くを DEM ソースの minzoom より浅いタイルで覆って平らに描くが、mbmap は読み込んだ DEM の高さを使うため。
+- `npm run export:golden`：
+  - 分割して描いた画像と一度に描いた画像：3 つのビュー（ラベル付き 60°、地形と空 75°、1.5 倍で回転）で、平均 0.001、99% 点 0。違う画素は 0.03〜0.3% で、行列を一段かける丸めで線の縁が 1 階調ほど動く。
+  - `pixelRatio: 1` の画像と画面：3 つとも全画素一致。
+  - 2 倍のラスタと、2 倍の画面の MapLibre：平均 0.005、最大 1。
+- `npm run query:golden` は 320 件すべて同じ、`npm run raster:golden` と `npm run camera:golden` も変わらず。
+
+### 確認（pack test、CI でも動く）
+
+- 追跡：登録時と移動後の位置、`setLngLat`、`remove` 後は呼ばれないこと、`render` イベント。
+- 書き出し：2 倍で分割した画像と一度に描いた画像が同じこと、大きさ、拒む入力（`pixelRatio` が 0、大きすぎる画像）。
+- example：ピンが地点の上にあること、「画像を保存」で PNG ができること。
+
+### サイズ
+
+- 表示の入口 67.5 → 70.4KB。`track()` と `toBlob()` で約 1.1KB、地形付きの `project`・`unproject`（レイの行進）と far plane などで約 1.9KB。
+- **予算を 70KB → 80KB に上げた（ユーザー判断）**。式の拡充やアイコン（Phase 15）でも増える見込みのため（VISION §2）。
+- 表示ワーカーは変わらず 75.1KB。
+
+### 既知の問題・まだのもの
+
+- 遠くの地形の描き方が MapLibre と違う：MapLibre は DEM ソースの minzoom より浅いタイルを平らに描き、mbmap は DEM のない所を描かない。
+- 書き出しは今の表示の範囲だけ（幅と高さの指定はない）。出典表示などの DOM は画像に入らない。
+- 地図のパディング（`setPadding`）は未対応のまま。
+
 ## Phase 12.4：ラスタタイル、TileJSON、PMTiles、transformRequest（2026-11-02）
 
 状態：**完了**。
