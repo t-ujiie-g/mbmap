@@ -378,7 +378,7 @@ async function queryChecks(page) {
     map.on("mouseleave", "building", () => window.__events.push(["leave"]));
     const r = map.getCanvas().getBoundingClientRect();
     return {
-      building, center, wlog: { ...globalThis.__wlog }, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
+      building, center, wlog: { ...globalThis.__wlog, errors: [...(globalThis.__wlog.errors ?? [])] }, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
       geometry: at.find((x) => x.layer.id === "building")?.geometry.type, errors, unknown: unknown.length, refused,
       roads: roads.length, roadTypes: [...new Set(roads.map((x) => x.geometry.type))], box: box.length,
       boxAll: box.every((x) => x.layer.id === "road" && x.properties.rdCtg === 0),
@@ -616,6 +616,7 @@ try {
           this.addEventListener("message", (e) => {
             if (e.data?.type === "query") { __wlog.answered++; __wlog.hits += e.data.hits?.length ?? 0; }
             if (e.data?.type === "tile") __wlog.tiles++;
+            if (e.data?.type === "error") (__wlog.errors ??= new Set()).add(String(e.data.message).slice(0, 200));
           });
         }
         postMessage(m, t) {
