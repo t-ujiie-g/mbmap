@@ -11,6 +11,19 @@ await prepareExamples();
 
 const ATTRIBUTION = "国土地理院ベクトルタイル提供実験";
 
+// Where each check's page is.
+const PAGES = {
+  npm: "bench/npm/pages/npm/",
+  element: "bench/npm/pages/element/",
+  geojson: "bench/npm/pages/geojson/",
+  analysis: "bench/npm/pages/analysis/",
+  basic: "bench/pages/basic/",
+  terrain: "bench/pages/terrain/",
+  "showcase-html": "examples/html/?local=1",
+  "showcase-element": "examples/element/?local=1",
+  "showcase-react": "examples/react/?local=1",
+};
+
 // Each check runs in a fresh page and returns [name, ok, details].
 const checks = {
   async npm(page) {
@@ -29,7 +42,7 @@ const checks = {
       const div = document.createElement("div");
       div.style.cssText = "width:10px;height:10px";
       document.body.append(div);
-      const missing = new Map({ container: div, style: "/examples/npm/missing.json" });
+      const missing = new Map({ container: div, style: "/bench/npm/pages/npm/missing.json" });
       const styleError = (await missing.once("error")).error.message;
       missing.remove();
       let thrown = "";
@@ -272,28 +285,44 @@ const checks = {
     return engineStarted(page);
   },
 
-  async react(page) {
-    await page.click("button >> text=+");
-    await page.waitForFunction(() => document.querySelector("output").textContent === "15.50");
-    const read = () =>
-      page.evaluate(() => {
-        const el = document.querySelector("mb-map");
-        return { zoom: el.zoom, output: document.querySelector("output").textContent, maps: document.querySelectorAll("mb-map").length };
-      });
-    const clicked = await read();
-    // A wheel zoom inside the map reaches React only through onmb-move.
-    await page.mouse.move(400, 300);
-    await page.mouse.wheel(0, 200);
-    await page.waitForFunction(() => document.querySelector("output").textContent !== "15.50");
-    const wheeled = await read();
-    const ok =
-      clicked.zoom === 15.5 &&
-      clicked.maps === 1 &&
-      wheeled.zoom < 15.5 &&
-      wheeled.output === wheeled.zoom.toFixed(2);
-    return [ok, { clicked, wheeled }];
+  async "showcase-html"(page) {
+    return showcase(page);
+  },
+
+  async "showcase-element"(page) {
+    return showcase(page);
+  },
+
+  async "showcase-react"(page) {
+    return showcase(page);
   },
 };
+
+// The showcase, the same in all three examples: at Tokyo Station the panel
+// lists it within 5 km and gives plane IX's coordinates (proj4js: X -35367.230,
+// Y -5995.185); 3D tilts to 60° on terrain; a destination button flies there,
+// and the panel follows the camera.
+async function showcase(page) {
+  await page.waitForFunction(() => window.__described);
+  const first = await page.evaluate(() => window.__described);
+  const panel = () => page.evaluate(() => document.getElementById("camera").textContent);
+  await page.click("#modes button >> text=3D");
+  await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
+  const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
+  await page.click("#destinations button >> text=大阪駅");
+  await page.waitForFunction(() => Math.abs(window.__map.getCenter().lng - 135.4959) < 1e-9 && !window.__map.isMoving(), null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__described.near.includes("大阪駅"));
+  const osaka = await page.evaluate(() => window.__described);
+  const shown = await panel();
+  const ok =
+    first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
+    first.plane.zone === "第IX系" &&
+    Math.abs(first.plane.x - -5995.185) < 0.01 && Math.abs(first.plane.y - -35367.23) < 0.01 &&
+    tilted.pitch === 60 && tilted.bearing === -20 &&
+    osaka.plane.zone === "第VI系" &&
+    shown.includes("135.49590") && shown.includes("第VI系");
+  return [ok, { first, tilted, osaka: osaka.near, shown }];
+}
 
 async function engineStarted(page) {
   const r = await page.evaluate(() => ({ frames: window.__mbmap.map_frame_count(window.__map) }));
@@ -413,7 +442,7 @@ try {
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element check provokes.
     page.on("console", (m) => m.type() === "error" && !/404|mb-map: invalid/.test(m.text()) && errors.push(m.text()));
-    await page.goto(`${origin}/examples/${example}/`);
+    await page.goto(`${origin}/${PAGES[example]}`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });
     if (shots) await page.screenshot({ path: path.join(shots, `${example}.png`) });
     const [ok, details] = await check(page, requests);

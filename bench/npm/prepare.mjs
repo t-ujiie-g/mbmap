@@ -1,5 +1,5 @@
-// Builds and packs npm/, installs the tarball into the examples that use it
-// and builds the React one. Usage: node npm/prepare.mjs
+// Builds and packs npm/, installs the tarball into the examples and the test
+// pages that use it and builds the React example. Usage: node npm/prepare.mjs
 import { execFileSync } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -15,19 +15,18 @@ export async function prepareExamples() {
   await mkdir(out, { recursive: true });
   const [{ filename, files }] = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", out], path.join(ROOT, "npm")));
   console.log(`${filename}: ${files.map((f) => f.path).join(", ")}`);
-  const install = async (example) => {
-    const modules = path.join(ROOT, "examples", example, "node_modules/mbmap");
+  const install = async (dir) => {
+    const modules = path.join(ROOT, dir, "node_modules/mbmap");
     await rm(modules, { recursive: true, force: true });
     await mkdir(modules, { recursive: true });
     run("tar", ["xzf", path.join(out, filename), "--strip-components=1", "-C", modules], ROOT);
   };
-  await install("npm");
-  await install("element");
-  await install("geojson");
-  await install("analysis");
+  for (const page of ["npm", "element", "geojson", "analysis"]) await install(`bench/npm/pages/${page}`);
+  await install("examples/html");
+  await install("examples/element");
   // npm ci empties node_modules, so the tarball goes in afterwards.
   run("npm", ["ci", "--no-audit", "--no-fund"], path.join(ROOT, "examples/react"));
-  await install("react");
+  await install("examples/react");
   run("npm", ["run", "-s", "build"], path.join(ROOT, "examples/react"));
 }
 

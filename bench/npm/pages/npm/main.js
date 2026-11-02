@@ -4,7 +4,7 @@ import { Map } from "mbmap";
 
 const map = new Map({
   container: "map",
-  style: "/examples/basic/style.json",
+  style: "/bench/pages/basic/style.json",
   center: [139.7671, 35.6812],
   zoom: 14.5,
 });

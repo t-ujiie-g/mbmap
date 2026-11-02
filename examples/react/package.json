@@ -1,5 +1,5 @@
 {
-  "name": "mbmap-example-react",
+  "name": "mbmap-showcase-react",
   "private": true,
   "type": "module",
   "scripts": { "build": "node build.mjs" },
