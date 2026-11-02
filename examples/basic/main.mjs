@@ -48,7 +48,8 @@ const map = mbmap.create_map(
   0, // tile workers: 0 = half the hardware threads, at most 4
   null, // no GeoJSON sources
   "sans-serif", // labels' font family
+  [0, 22, 0, 85, NaN, 0, 0, 0], // zoom 0-22, pitch 0-85, no bounds (bundle/main limits_of)
 );
 window.__map = map;
 window.__mbmap = mbmap;
-mbmap.map_on_idle(map, () => { window.__idle = performance.now(); });
+mbmap.map_on_idle(map, () => { window.__idle = window.__loaded = performance.now(); });

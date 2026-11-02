@@ -263,6 +263,15 @@ const checks = {
     return [ok, { loaded, ...r }];
   },
 
+  // The examples that call the engine (bundle/main) directly: it starts and draws.
+  async basic(page) {
+    return engineStarted(page);
+  },
+
+  async terrain(page) {
+    return engineStarted(page);
+  },
+
   async react(page) {
     await page.click("button >> text=+");
     await page.waitForFunction(() => document.querySelector("output").textContent === "15.50");
@@ -285,6 +294,11 @@ const checks = {
     return [ok, { clicked, wheeled }];
   },
 };
+
+async function engineStarted(page) {
+  const r = await page.evaluate(() => ({ frames: window.__mbmap.map_frame_count(window.__map) }));
+  return [r.frames > 0, r];
+}
 
 // The camera API on the npm example's map (Tokyo Station, 800 x 600): event
 // order, animations ending where asked, fitting a box, projecting, limits and

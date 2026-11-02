@@ -40,6 +40,7 @@
 
 ### 既知の問題・まだのもの
 
+- `create_map` に引数（制限）を足したとき、エンジンを直接呼ぶ `examples/basic`・`examples/terrain`・`bench/render/page.mjs` を直し忘れ、描画されなくなっていた（ユーザーの指摘で修正）。pack test に、この 2 つの example が描画まで進むかの確認を足した。
 - 地図のパディング（`setPadding`）は未対応。
 - ホイールのズームは、MapLibre のように滑らかには動かさず、その場で変える。タッチのダブルタップのズームはまだない。
 - 地形があるとき、`project`・`unproject` は海面の高さで計算する（MapLibre は地形の高さを使う）。
