@@ -151,3 +151,10 @@ test "with_limits moves the camera inside the new limits" {
   assert_eq((limited.camera.zoom, limited.camera.pitch), (12.0, 40.0))
   assert_eq(limited.limits.max_zoom, 12.0)
 }
+
+///|
+test "max_pitch_scale_factor is 1 looking down and grows with the pitch" {
+  assert_true(within(view(0.0, 0.0).max_pitch_scale_factor(), 1.0, 1.0e-9))
+  let tilted = view(60.0, 0.0).max_pitch_scale_factor()
+  assert_true(tilted > 1.5 && tilted < 10.0)
+}

@@ -59,6 +59,8 @@ pub fn Layer::length(Self) -> Int32
 pub fn Layer::load_geometry(Self, Int32) -> Array[Array[(Int32, Int32)]] raise MvtError
 pub fn Layer::properties(Self, Int32) -> Map[String, Value]
 pub fn Layer::property(Self, Int32, Int32) -> Value?
+pub fn Layer::tag(Self, Int32, Int32) -> (String, Value)
+pub fn Layer::tag_count(Self, Int32) -> Int32
 
 pub struct Tile {
   layers : Array[Layer]

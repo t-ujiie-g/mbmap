@@ -338,3 +338,47 @@ pub fn map_set_style(map : @map.Map, style_json : String) -> String {
 pub fn map_reload_source(map : @map.Map, id : String) -> Unit {
   map.reload_source(id)
 }
+
+///|
+/// The features drawn under `points` (x, y pairs in CSS pixels: one point or
+/// a closed ring) of the layers named in `layers` (all when `all_layers`),
+/// passing `filter` (JSON, or ""); `done` gets each tile's hits
+/// (`@map.TileResults`). Returns "" or why the query cannot run.
+#export_name("map_query_rendered")
+pub fn map_query_rendered(
+  map : @map.Map,
+  points : FixedArray[Double],
+  all_layers : Bool,
+  layers : FixedArray[String],
+  filter : String,
+  done : (@map.TileResults) -> Unit,
+) -> String {
+  let ps = Array::makei(points.length() / 2, i => {
+    (points[i * 2], points[i * 2 + 1])
+  })
+  map.query_rendered(
+    ps,
+    if all_layers {
+      None
+    } else {
+      Some(layers.iter().collect())
+    },
+    filter,
+    done,
+  )
+}
+
+///|
+/// The features of `source_layer` in the drawn tiles of source `source`
+/// passing `filter` (JSON, or ""); `done` gets each tile's. Returns "" or why
+/// the query cannot run.
+#export_name("map_query_source")
+pub fn map_query_source(
+  map : @map.Map,
+  source : String,
+  source_layer : String,
+  filter : String,
+  done : (@map.TileResults) -> Unit,
+) -> String {
+  map.query_source(source, source_layer, filter, done)
+}

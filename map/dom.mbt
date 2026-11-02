@@ -99,6 +99,10 @@ extern "js" fn post_cancel(w : Worker, id : Int32) -> Unit =
   #|(w, id) => w.postMessage({ type: "cancel", id })
 
 ///|
+extern "js" fn post_drop(w : Worker, id : Int32) -> Unit =
+  #|(w, id) => w.postMessage({ type: "drop", id })
+
+///|
 extern "js" fn terminate(w : Worker) -> Unit =
   #|(w) => w.terminate()
 

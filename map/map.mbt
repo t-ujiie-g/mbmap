@@ -39,10 +39,13 @@ priv enum TileState {
 }
 
 ///|
+/// `kept`: the worker keeping the tile's bytes for queries and the request
+/// they came with, or (-1, -1).
 priv struct TileEntry {
   id : @core.TileId
   mut state : TileState
   mut last_used : Int32
+  mut kept : (Int32, Int32)
 }
 
 ///|
@@ -116,6 +119,10 @@ pub struct Map {
   priv mut placed_camera : @core.Camera?
   priv mut placed_at : Double
   priv mut placement_round : Int32
+  priv mut drawn : @hashmap.HashMap[String, Array[Draw]]
+  priv queries : @hashmap.HashMap[Int32, PendingQuery]
+  priv query_parts : @hashmap.HashMap[Int32, QueryPart]
+  priv mut next_query : Int32
 }
 
 ///|
@@ -212,6 +219,10 @@ pub fn Map::new(
     placed_camera: None,
     placed_at: 0.0,
     placement_round: 0,
+    drawn: @hashmap.HashMap([]),
+    queries: @hashmap.HashMap([]),
+    query_parts: @hashmap.HashMap([]),
+    next_query: 0,
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {
@@ -309,6 +320,7 @@ pub fn Map::destroy(self : Map) -> Unit {
     clear_timeout(self.wheel_timer)
   }
   self.animation = None
+  self.end_queries()
   for f in self.cleanups {
     f()
   }
@@ -345,6 +357,7 @@ fn Map::request_render(self : Map) -> Unit {
 ///|
 fn Map::release(self : Map, e : TileEntry) -> Unit {
   self.content_version += 1
+  self.drop_kept(e)
   match e.state {
     Ready(meshes) | Stale(meshes) => self.release_meshes(meshes)
     Loading(request~, worker~, previous~) => {
@@ -356,6 +369,16 @@ fn Map::release(self : Map, e : TileEntry) -> Unit {
     }
     Failed => ()
   }
+}
+
+///|
+/// Lets the worker keeping `e`'s bytes free them.
+fn Map::drop_kept(self : Map, e : TileEntry) -> Unit {
+  let (worker, request) = e.kept
+  if worker >= 0 && !self.destroyed {
+    post_drop(self.workers[worker], request)
+  }
+  e.kept = (-1, -1)
 }
 
 ///|

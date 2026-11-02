@@ -1,6 +1,7 @@
 // Glue around the wasm-gc build of `worker`. Messages and the packed tile are in
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
+import { readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
 import { readString, readValue } from "./values.mjs";
 
@@ -16,6 +17,8 @@ let glyphs = null;
 const canDrawGlyphs = typeof OffscreenCanvas !== "undefined";
 let warned = false;
 const pending = new Map();
+// The bytes of each tile sent, by request id, for queries until the main thread drops it.
+const kept = new Map();
 
 function withInput(bytes, run) {
   const addr = wasm.prepare_input(bytes.length);
@@ -133,12 +136,32 @@ async function loadTile({ id, url, bytes: given, source, z, dem }) {
     // New glyphs go with the first tile posted after they were drawn; the main
     // thread takes them even from tiles it no longer wants.
     const fresh = glyphs.take();
+    kept.set(id, bytes);
     postMessage({ type: "tile", id, layers, glyphs: fresh }, [...transfer, ...fresh.map((g) => g.data.buffer)]);
   } catch (err) {
     if (!controller.signal.aborted) postMessage({ type: "tile-error", id, message: String(err?.message ?? err) });
   } finally {
     pending.delete(id);
   }
+}
+
+// A query of a kept tile (`features`: of its source layer, else of what is
+// drawn), answered with GeoJSON features; none if the tile is gone.
+function query({ id, kind, tile, source, z, x, y, request }) {
+  const bytes = kept.get(tile);
+  let hits = [];
+  if (bytes && ArrayBuffer.isView(request)) {
+    const input = new Uint8Array(bytes.length + request.byteLength);
+    input.set(bytes);
+    input.set(new Uint8Array(request.buffer, request.byteOffset, request.byteLength), bytes.length);
+    const run = kind === "features" ? wasm.source_features : wasm.query_tile;
+    try {
+      hits = readQueryResult(withInput(input, () => run(source, z, bytes.length)), z, x, y);
+    } catch (err) {
+      postMessage({ type: "error", message: String(err?.message ?? err) });
+    }
+  }
+  postMessage({ type: "query", id, hits });
 }
 
 onmessage = (e) => {
@@ -156,6 +179,11 @@ onmessage = (e) => {
   } else if (msg?.type === "tile" && ready) {
     // Tiles requested before init finished wait for it.
     ready.then(() => loadTile(msg), () => {});
+  } else if (msg?.type === "query" && ready && Number.isInteger(msg.id) && Number.isInteger(msg.tile)) {
+    ready.then(() => query(msg), () => {});
+  } else if (msg?.type === "drop" && ready) {
+    // After the queries asked before it.
+    ready.then(() => kept.delete(msg.id), () => {});
   } else if (msg?.type === "cancel") {
     pending.get(msg.id)?.abort();
   }

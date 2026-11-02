@@ -631,3 +631,19 @@ pub fn Flight::at(self : Flight, k : Double) -> Camera {
   }
   tr.at_point(center, self.point.0, self.point.1)
 }
+
+///|
+/// How much farther than the center the screen's top-left corner is
+/// (MapLibre's `maxPitchScaleFactor`): queries grow their padding by it.
+pub fn Transform::max_pitch_scale_factor(self : Transform) -> Double {
+  let m = self.screen_to_mercator(0.0, 0.0)
+  let c = self.camera.center.to_mercator()
+  let ws = self.world_size()
+  let (_, _, _, w) = self.view.apply(
+    (m.x - c.x) * ws,
+    (m.y - c.y) * ws,
+    0.0,
+    1.0,
+  )
+  w / self.center_depth()
+}

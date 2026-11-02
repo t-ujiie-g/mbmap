@@ -9,7 +9,7 @@ const glyphs = {
 };
 
 // A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
-// size, parts, sort key).
+// size, parts, sort key), the n-th label of feature 10 + n.
 function entry(labels, vertical = 0) {
   const bytes = [];
   const u8 = (v) => bytes.push(v & 0xff);
@@ -19,7 +19,8 @@ function entry(labels, vertical = 0) {
   [0, 0, 0, vertical].forEach(u8);
   [0, 0, 10, 1, 2].forEach(f64);
   u32(labels.length);
-  for (const [x, y, size, parts, key = 0] of labels) {
+  for (const [n, [x, y, size, parts, key = 0]] of labels.entries()) {
+    u32(10 + n);
     i16(x);
     i16(y);
     f64(size);
@@ -46,7 +47,7 @@ test("labels become glyph quads with their anchors, offsets, glyph indices and b
   const s = buildSymbols(entry([[100, 200, 10, ["駅", 1]], [5, 6, 10, [null]]]), glyphs);
   // The second label has no text and is left out.
   assert.equal(s.labels.length, LABEL_FLOATS);
-  assert.deepEqual([...s.labels], [100, 200, -10, -5, 10, 5, 0, 12]);
+  assert.deepEqual([...s.labels], [100, 200, -10, -5, 10, 5, 10, 0, 12]);
   assert.deepEqual([...s.codepoints], ["駅".codePointAt(0), "1".codePointAt(0)]);
   assert.equal(s.vertices.byteLength, 2 * 4 * SYMBOL_VERTEX_BYTES);
   assert.equal(s.count, 12);

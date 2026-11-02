@@ -9,7 +9,9 @@ import {
   "t-ujiie-g/mbmap/style",
   "t-ujiie-g/mbmap/tess",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/double",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
 }
 
 pkgtype(kind: "foreign_library")

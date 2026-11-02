@@ -47,7 +47,8 @@ vertex range (no indices):
   `top-right`, `bottom-left`, `bottom-right`), u8 allow overlap, u8 ignore
   placement, u8 vertical writing;
 - f64 offset x, offset y, max width, line height (ems), padding (px); u32 label count;
-- per label: i16 anchor x, y (`TILE_EXTENT` units, inside the tile), f64 text size
+- per label: u32 index of its feature in the source layer, i16 anchor x, y
+  (`TILE_EXTENT` units, inside the tile), f64 text size
   (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
   booleans are written out by the glue).
 
@@ -62,8 +63,9 @@ quad (corners top-left, top-right, bottom-right, bottom-left):
   thread turns into atlas pixel coordinates before upload;
 - u16 text size in 1/16 px, u16 0.
 
-`labels` holds 8 floats per label: anchor x, y, its text box (min x, min y, max x,
-max y in CSS px from the anchor), first index and index count of its quads.
+`labels` holds 9 floats per label: anchor x, y, its text box (min x, min y, max x,
+max y in CSS px from the anchor), its feature's index, first index and index count of
+its quads.
 
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 
@@ -104,6 +106,12 @@ In:
 - `{type: "cancel", id}`.
 - `{type: "style", style}`: the style JSON text tiles asked for from now on are
   made with (`Map::set_style`; requests made before it were cancelled).
+- `{type: "query", id, kind, tile, source, z, x, y, request}`: a query of the
+  tile sent for request `tile` (the worker keeps each vector or GeoJSON tile's
+  bytes until it is dropped): `kind` "rendered" with a "Query" `request`, or
+  "features" with a source layer's name and a filter's JSON (each a u32 length
+  and UTF-8; "" for none). z/x/y place the result's geometry.
+- `{type: "drop", id}`: forget the bytes of the tile sent for request `id`.
 
 Out:
 
@@ -117,11 +125,40 @@ Out:
   byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
   worker, so the main thread takes them even from tiles it no longer wants.
 - `{type: "tile-error", id, message}`.
+- `{type: "query", id, hits}`: the query's records ("Query result") as
+  `{layer, index, distance, feature}`, `feature` a GeoJSON feature in
+  longitude and latitude (@mapbox/vector-tile's `toGeoJSON`) with prototype-less
+  `properties`; no hits if the tile is gone or the request is refused.
 - A `raster-dem` tile's message has one entry `{layer: -1, kind: 5, image, edges,
   elevations, size}`: `image` holds the slopes (`@raster.hillshade_slopes`, two
   bytes per pixel of a `size` x `size` tile), `edges` (Float64Array) its border
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
   height in meters (no data as 0), for its hillshade layers and terrain.
+
+## Query (`map/query.mbt`, read by `worker/query.mbt`)
+
+A rendered-features query of one tile, little-endian:
+
+- f64 camera zoom, `TILE_EXTENT` units per CSS pixel, `max_pitch_scale_factor`,
+  viewport width and height (CSS px), the center's clip w, world pixels per meter;
+- 16 f64: the tile's matrix (`TILE_EXTENT` units to clip space, column-major);
+- u32 n, n f64 pairs: the query (one point, or a closed ring) in `TILE_EXTENT`
+  units; u32 m, m pairs: the same grown to the point under the camera
+  (MapLibre's camera query geometry, used for extrusions);
+- u8 1 for every layer (else 0), u32 count and the style layer indices asked for;
+- u32 count, then (u32 style layer, u32 feature index) per label the main thread
+  found under the query;
+- u32 length and UTF-8: the query's filter as JSON, or "".
+
+## Query result (`worker/query.mbt`, read by `worker/js/query.mjs`)
+
+u32 record count, then per record: u32 style layer index (-1 for a source query),
+u32 feature index, f64 clip depth where an extrusion meets the query (NaN
+otherwise), the feature's id as a property value (null without one), u8
+geometry type (1 point, 2 line, 3 polygon), u32 extent, u32 ring count, a u32
+point count per ring, the points as i32 pairs, then u32 property count and
+per property a key (u32 length, UTF-8) and a property value. A key repeated in
+a vector tile keeps its first place and last value, as a JS object does.
 
 ## GeoJSON worker messages (`geojson_worker/js/worker.mjs`)
 

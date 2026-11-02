@@ -3,9 +3,9 @@
 const KIND_SYMBOL : Int32 = 4
 
 ///|
-/// Floats per label in a symbol entry's `labels`: anchor x, y, box, first index
-/// and index count. Mirrors LABEL_FLOATS in worker/js/symbols.mjs.
-const LABEL_FLOATS : Int32 = 8
+/// Floats per label in a symbol entry's `labels`: anchor x, y, box, feature
+/// index, first index and index count (the renderer reads the last two). Mirrors LABEL_FLOATS in worker/js/symbols.mjs.
+const LABEL_FLOATS : Int32 = 9
 
 ///|
 /// Labels whose perspective ratio (MapLibre's: 0.5 + 0.5 x the center's
@@ -19,8 +19,10 @@ const MIN_PERSPECTIVE_RATIO : Double = 0.6
 const PLACEMENT_INTERVAL : Double = 100.0
 
 ///|
-/// A symbol mesh's labels as the worker sent them, which of them show, and
-/// their anchors' terrain heights in meters as of DEM version `heights_at`.
+/// A symbol mesh's labels as the worker sent them, which of them show (and
+/// where on screen, as `boxes` of min x, min y, max x, max y in CSS pixels, as
+/// of placement round `round`), and their anchors' terrain heights in meters
+/// as of DEM version `heights_at`.
 priv struct LabelSet {
   labels : @render_webgl2.JsBuffer
   count : Int32
@@ -28,6 +30,7 @@ priv struct LabelSet {
   ignore_placement : Bool
   padding : Double
   shown : FixedArray[Bool]
+  boxes : FixedArray[Double]
   heights : FixedArray[Double]
   mut heights_at : Int32
   mut round : Int32
@@ -113,6 +116,7 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
       ignore_placement: get_bool(l, "ignorePlacement"),
       padding: get_double(l, "padding"),
       shown: FixedArray::make(count, false),
+      boxes: FixedArray::make(count * 4, 0.0),
       heights: FixedArray::make(count, 0.0),
       heights_at: 0,
       round: -1,
@@ -205,6 +209,10 @@ fn Map::place_labels(
               y0 < h &&
               (s.allow_overlap || !grid.hits(x0, y0, x1, y1)) {
               show = true
+              s.boxes[i * 4] = x0
+              s.boxes[i * 4 + 1] = y0
+              s.boxes[i * 4 + 2] = x1
+              s.boxes[i * 4 + 3] = y1
               if !s.ignore_placement {
                 grid.insert(x0, y0, x1, y1)
               }

@@ -65,6 +65,7 @@ fn Map::render(self : Map) -> Unit {
     }
     draws_of.set(s.id, draws)
   }
+  self.drawn = draws_of
   if self.placement_due() {
     self.place_labels(draws_of)
   }

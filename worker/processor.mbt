@@ -106,6 +106,41 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
 }
 
 ///|
+/// The features of each source layer (by name) in tile `bytes` of `source` (a
+/// vector tile, or a GeoJSON source's columnar tile, whose one layer all its
+/// style layers use); None, with the error set, if the tile is malformed.
+fn TileProcessor::read_tile(
+  self : TileProcessor,
+  source : String,
+  bytes : BytesView,
+) -> ((String) -> Features?)? {
+  if self.style.source(source) is Some({ kind: GeoJSON, .. }) {
+    guard ColumnTile::parse(bytes) is Some(c) else {
+      self.error = "malformed GeoJSON tile"
+      return None
+    }
+    return Some(_ => Some(Features::Columns(c)))
+  }
+  let tile = @mvt.Tile::parse(bytes) catch {
+    e => {
+      self.error = "malformed tile: \{e.message()}"
+      return None
+    }
+  }
+  Some(name => tile.layer(name).map(l => Features::Mvt(l)))
+}
+
+///|
+/// Whether a tile of `source` at zoom `zoom` has geometry for `sl` (layers out
+/// of their zoom range are skipped, as MapLibre does).
+fn builds(sl : @style.StyleLayer, source : String, zoom : Double) -> Bool {
+  sl.source == source &&
+  !(sl.kind is (Background | Hillshade)) &&
+  zoom >= sl.min_zoom.floor() &&
+  zoom < sl.max_zoom
+}
+
+///|
 /// Packs every layer of the style drawing from tile `bytes` of `source` at zoom
 /// `z` into `out`, in style order (layers out of their zoom range are skipped,
 /// as MapLibre does). False on a malformed tile or an oversized result.
@@ -115,41 +150,11 @@ pub fn TileProcessor::process(
   bytes : BytesView,
   z : Int32,
 ) -> Bool {
-  // A GeoJSON source's columnar tile has one layer, which all its style layers use.
-  let geojson = self.style.source(source) is Some({ kind: GeoJSON, .. })
-  let mut tile = None
-  let mut columns = None
-  if geojson {
-    columns = ColumnTile::parse(bytes)
-    if columns is None {
-      self.error = "malformed GeoJSON tile"
-      return false
-    }
-  } else {
-    tile = Some(
-      @mvt.Tile::parse(bytes) catch {
-        e => {
-          self.error = "malformed tile: \{e.message()}"
-          return false
-        }
-      },
-    )
-  }
-  let features_of = (sl : @style.StyleLayer) => {
-    match (tile, columns) {
-      (Some(t), _) => t.layer(sl.source_layer).map(l => Features::Mvt(l))
-      (_, Some(c)) => Some(Features::Columns(c))
-      _ => None
-    }
-  }
+  guard self.read_tile(source, bytes) is Some(features_of) else { return false }
   let style_layers = self.style.layers
   let zoom = z.to_double()
   let drawn = style_layers.map(sl => {
-    sl.source == source &&
-    !(sl.kind is (Background | Hillshade)) &&
-    zoom >= sl.min_zoom.floor() &&
-    zoom < sl.max_zoom &&
-    features_of(sl) is Some(_)
+    builds(sl, source, zoom) && features_of(sl.source_layer) is Some(_)
   })
   let mut entries = 0
   for i, d in drawn {
@@ -161,7 +166,9 @@ pub fn TileProcessor::process(
   // Ungrouped layers packed so far: (style layer, its single entry or -1).
   let done : Array[(Int32, Int32)] = []
   for index, sl in style_layers {
-    guard drawn[index] && features_of(sl) is Some(layer) else { continue }
+    guard drawn[index] && features_of(sl.source_layer) is Some(layer) else {
+      continue
+    }
     let groups = Groups::new(self.inputs[index])
     if !groups.active &&
       done.search_by(d => same_geometry(style_layers[d.0], sl)) is Some(i) {
@@ -246,7 +253,9 @@ fn TileProcessor::fill_layer(
   let feature = FeatureRef::new(layer)
   for i in 0..<layer.length() {
     feature.index = i
-    if layer.geom_type(i) is Polygon && passes(sl.filter, feature, zoom) {
+    // As MapLibre's fill bucket: lines are filled as rings too.
+    if layer.geom_type(i) is (Polygon | LineString) &&
+      passes(sl.filter, feature, zoom) {
       if !self.decode(layer, i) {
         return false
       }
@@ -309,7 +318,8 @@ fn TileProcessor::extrusion_layer(
   let heights = FixedArray::make(@tess.EXTRUSION_HEIGHTS, 0.0)
   for i in 0..<layer.length() {
     feature.index = i
-    if layer.geom_type(i) is Polygon && passes(sl.filter, feature, zoom) {
+    if layer.geom_type(i) is (Polygon | LineString) &&
+      passes(sl.filter, feature, zoom) {
       if !self.decode(layer, i) {
         return false
       }
@@ -408,7 +418,8 @@ fn TileProcessor::circle_layer(
   let feature = FeatureRef::new(layer)
   for i in 0..<layer.length() {
     feature.index = i
-    if layer.geom_type(i) is Point && passes(sl.filter, feature, zoom) {
+    // As MapLibre's circle bucket: a circle at every vertex of any geometry.
+    if !(layer.geom_type(i) is Unknown) && passes(sl.filter, feature, zoom) {
       if !self.decode(layer, i) {
         return false
       }

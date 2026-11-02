@@ -1,0 +1,3014 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600"
+  },
+  "summary": {
+    "asks": 254,
+    "identical": 254,
+    "features": 22582
+  },
+  "results": [
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 7,
+      "maplibre": 7
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 117,
+      "maplibre": 117
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 72,
+      "maplibre": 72
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 508,
+      "maplibre": 508
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": null,
+      "same": true,
+      "mbmap": 3290,
+      "maplibre": 3290
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        400,
+        300
+      ],
+      "options": {
+        "layers": [
+          "road",
+          "railway",
+          "road-casing"
+        ]
+      },
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "flat",
+      "kind": "rendered",
+      "geometry": [
+        [
+          200,
+          150
+        ],
+        [
+          600,
+          450
+        ]
+      ],
+      "options": {
+        "filter": [
+          "==",
+          [
+            "get",
+            "ftCode"
+          ],
+          3103
+        ]
+      },
+      "same": true,
+      "mbmap": 74,
+      "maplibre": 74
+    },
+    {
+      "view": "flat",
+      "kind": "source",
+      "geometry": [
+        "gsi",
+        {
+          "sourceLayer": "road"
+        }
+      ],
+      "same": true,
+      "mbmap": 5969,
+      "maplibre": 5969
+    },
+    {
+      "view": "flat",
+      "kind": "source",
+      "geometry": [
+        "gsi",
+        {
+          "sourceLayer": "building",
+          "filter": [
+            "==",
+            [
+              "get",
+              "ftCode"
+            ],
+            3103
+          ]
+        }
+      ],
+      "same": true,
+      "mbmap": 344,
+      "maplibre": 344
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 4,
+      "maplibre": 4
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 4,
+      "maplibre": 4
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 6,
+      "maplibre": 6
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 54,
+      "maplibre": 54
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 42,
+      "maplibre": 42
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 299,
+      "maplibre": 299
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": null,
+      "same": true,
+      "mbmap": 1088,
+      "maplibre": 1088
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        400,
+        300
+      ],
+      "options": {
+        "layers": [
+          "road",
+          "railway",
+          "road-casing"
+        ]
+      },
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "turned",
+      "kind": "rendered",
+      "geometry": [
+        [
+          200,
+          150
+        ],
+        [
+          600,
+          450
+        ]
+      ],
+      "options": {
+        "filter": [
+          "==",
+          [
+            "get",
+            "ftCode"
+          ],
+          3103
+        ]
+      },
+      "same": true,
+      "mbmap": 25,
+      "maplibre": 25
+    },
+    {
+      "view": "turned",
+      "kind": "source",
+      "geometry": [
+        "gsi",
+        {
+          "sourceLayer": "road"
+        }
+      ],
+      "same": true,
+      "mbmap": 8960,
+      "maplibre": 8960
+    },
+    {
+      "view": "turned",
+      "kind": "source",
+      "geometry": [
+        "gsi",
+        {
+          "sourceLayer": "building",
+          "filter": [
+            "==",
+            [
+              "get",
+              "ftCode"
+            ],
+            3103
+          ]
+        }
+      ],
+      "same": true,
+      "mbmap": 395,
+      "maplibre": 395
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 130,
+      "maplibre": 130
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 177,
+      "maplibre": 177
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 223,
+      "maplibre": 223
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        400,
+        300
+      ],
+      "options": {
+        "layers": [
+          "road",
+          "railway",
+          "road-casing"
+        ]
+      },
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          200,
+          150
+        ],
+        [
+          600,
+          450
+        ]
+      ],
+      "options": {
+        "filter": [
+          "==",
+          [
+            "get",
+            "ftCode"
+          ],
+          3103
+        ]
+      },
+      "same": true,
+      "mbmap": 78,
+      "maplibre": 78
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 6,
+      "maplibre": 6
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 4,
+      "maplibre": 4
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 3,
+      "maplibre": 3
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 6,
+      "maplibre": 6
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 4,
+      "maplibre": 4
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 3,
+      "maplibre": 3
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 5,
+      "maplibre": 5
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 4,
+      "maplibre": 4
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 3,
+      "maplibre": 3
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 3,
+      "maplibre": 3
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 113,
+      "maplibre": 113
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 254,
+      "maplibre": 254
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 111,
+      "maplibre": 111
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        400,
+        300
+      ],
+      "options": {
+        "layers": [
+          "road",
+          "railway",
+          "road-casing"
+        ]
+      },
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          200,
+          150
+        ],
+        [
+          600,
+          450
+        ]
+      ],
+      "options": {
+        "filter": [
+          "==",
+          [
+            "get",
+            "ftCode"
+          ],
+          3103
+        ]
+      },
+      "same": true,
+      "mbmap": 72,
+      "maplibre": 72
+    }
+  ]
+}

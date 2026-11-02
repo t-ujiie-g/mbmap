@@ -19,6 +19,7 @@ import {
   toPoint,
 } from "./camera";
 import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
+import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
@@ -39,6 +40,27 @@ export type {
 } from "./camera";
 
 export type { LayerSpecification, StyleSpecification } from "./style";
+export type { GeoJSONFeature } from "./query";
+
+/** A rendered feature: the style layer that drew it (as in the style), its source, source layer and state. */
+export interface MapGeoJSONFeature extends GeoJSONFeature {
+  layer: LayerSpecification;
+  source: string;
+  sourceLayer?: string;
+  state: Record<string, unknown>;
+}
+
+/** `layers` to look in (all by default) and a `filter` the features must pass, as in MapLibre. */
+export interface QueryRenderedFeaturesOptions {
+  layers?: string[] | Set<string>;
+  filter?: unknown;
+}
+
+/** The source layer to read (required for vector sources) and a `filter`, as in MapLibre. */
+export interface QuerySourceFeatureOptions {
+  sourceLayer?: string;
+  filter?: unknown;
+}
 
 /** What `getSource` gives: a GeoJSON source also takes new data. */
 export interface Source {
@@ -95,7 +117,21 @@ export interface MapOptions {
   touchPitch?: boolean;
 }
 
+/** Mouse events the map fires, and with a layer id fires for that layer's features (`mouseenter` and `mouseleave` only with one). */
+export type MapMouseEventType =
+  | "mousedown"
+  | "mouseup"
+  | "mouseover"
+  | "mouseout"
+  | "mousemove"
+  | "click"
+  | "dblclick"
+  | "contextmenu"
+  | "mouseenter"
+  | "mouseleave";
+
 export type MapEventType =
+  | MapMouseEventType
   | "load"
   | "idle"
   | "error"
@@ -115,13 +151,17 @@ export type MapEventType =
 /**
  * `load` fires once, at the first drawn view; `idle` when the map settles. Camera changes fire
  * `movestart`, `move` (and `zoom`, `rotate`, `pitch` with their own start and end) and `moveend`,
- * as in MapLibre; `originalEvent` is the DOM event of a user's gesture.
+ * as in MapLibre; `originalEvent` is the DOM event of a user's gesture. Mouse events carry the
+ * `point` (CSS pixels from the canvas's corner) and its `lngLat`; for a layer, its `features` there.
  */
 export interface MapEvent {
   type: MapEventType;
   target: Map;
   error?: Error;
   originalEvent?: Event;
+  point?: { x: number; y: number };
+  lngLat?: LngLat;
+  features?: MapGeoJSONFeature[];
 }
 
 export type MapEventListener = (event: MapEvent) => void;
@@ -214,6 +254,11 @@ export class Map {
   #enabled: Record<HandlerName, boolean>;
   #callsBeforeStart: (() => void)[] = [];
   #changing = { zoom: false, rotate: false, pitch: false };
+  #layerListeners: { type: MapMouseEventType; layers: string[]; listener: MapEventListener; inside: boolean }[] = [];
+  #mouseDown: { x: number; y: number } | null = null;
+  #hovering = false;
+  #nextHover: { e: MouseEvent; p: { x: number; y: number } } | null = null;
+  #dom = new AbortController();
   #last: Camera | null = null;
   readonly dragPan: Handler;
   readonly scrollZoom: Handler;
@@ -483,6 +528,17 @@ export class Map {
     );
     this.#engine = map;
     this.#style = style;
+    const canvas = this.#canvas;
+    for (const type of ["mousedown", "mouseup", "mouseover", "mouseout", "mousemove", "click", "dblclick", "contextmenu"] as const) {
+      canvas.addEventListener(
+        type,
+        (e) => {
+          const r = canvas.getBoundingClientRect();
+          this.#mouse(type, e, { x: e.clientX - r.left - canvas.clientLeft, y: e.clientY - r.top - canvas.clientTop });
+        },
+        { signal: this.#dom.signal },
+      );
+    }
     this.#loadGeoJSON(geojson);
     HANDLERS.forEach((h, i) => engine.map_set_handler(map, i, this.#enabled[h]));
     engine.map_on_move_start(map, (e) => this.#moveStart(e));
@@ -558,11 +614,13 @@ export class Map {
   }
 
   #emit(type: MapEventType, error?: Error, originalEvent?: Event | null): void {
-    const listeners = this.#listeners.get(type);
-    if (!listeners) return;
     const event: MapEvent = { type, target: this };
     if (error) event.error = error;
     if (originalEvent) event.originalEvent = originalEvent;
+    this.#fire(event, this.#listeners.get(type) ?? []);
+  }
+
+  #fire(event: MapEvent, listeners: Iterable<MapEventListener>): void {
     for (const f of [...listeners]) {
       try {
         f(event);
@@ -575,28 +633,189 @@ export class Map {
     }
   }
 
-  on(type: MapEventType, listener: MapEventListener): this {
-    let set = this.#listeners.get(type);
-    if (!set) this.#listeners.set(type, (set = new Set()));
-    set.add(listener);
+  #mouseEvent(type: MapMouseEventType, e: MouseEvent, p: { x: number; y: number }, features?: MapGeoJSONFeature[]): MapEvent {
+    const event: MapEvent = { type, target: this, originalEvent: e, point: p, lngLat: this.unproject(p) };
+    if (features) event.features = features;
+    return event;
+  }
+
+  /**
+   * A DOM mouse event on the canvas: the map's own event (a click only if the mouse moved
+   * less than 3 px since it went down, as MapLibre), then the layers' listeners with the
+   * features under the mouse, once a query finds them (`mouseenter` and `mouseleave` follow
+   * `mousemove` and `mouseout`, as in MapLibre).
+   */
+  #mouse(type: Exclude<MapMouseEventType, "mouseenter" | "mouseleave">, e: MouseEvent, p: { x: number; y: number }): void {
+    if (type === "mousedown") this.#mouseDown = p;
+    if (type === "click" && this.#mouseDown && Math.hypot(p.x - this.#mouseDown.x, p.y - this.#mouseDown.y) >= 3) return;
+    this.#fire(this.#mouseEvent(type, e, p), this.#listeners.get(type) ?? []);
+    const hover = (l: { type: MapMouseEventType }) => l.type === "mouseenter" || l.type === "mouseleave";
+    if (type === "mouseout") {
+      for (const l of this.#layerListeners) {
+        if (!hover(l) || !l.inside) continue;
+        l.inside = false;
+        if (l.type === "mouseleave") this.#fire(this.#mouseEvent("mouseleave", e, p), [l.listener]);
+      }
+    }
+    const asked = this.#layerListeners.filter((l) => l.type === type || (type === "mousemove" && hover(l)));
+    if (asked.length === 0) return;
+    if (type === "mousemove") {
+      // One query at a time; moves in between keep only the latest.
+      if (this.#hovering) {
+        this.#nextHover = { e, p };
+        return;
+      }
+      this.#hovering = true;
+    }
+    const layers = [...new Set(asked.flatMap((l) => l.layers))].filter((id) => this.getLayer(id));
+    const found = layers.length === 0 ? Promise.resolve([]) : this.#query([p.x, p.y], layers, undefined);
+    found
+      .catch(() => [] as MapGeoJSONFeature[])
+      .then((features) => {
+        for (const l of asked) {
+          const mine = features.filter((f) => l.layers.includes(f.layer.id));
+          if (l.type === type) {
+            if (mine.length > 0) this.#fire(this.#mouseEvent(type, e, p, mine), [l.listener]);
+          } else if (mine.length > 0 && !l.inside) {
+            l.inside = true;
+            if (l.type === "mouseenter") this.#fire(this.#mouseEvent("mouseenter", e, p, mine), [l.listener]);
+          } else if (mine.length === 0 && l.inside) {
+            l.inside = false;
+            if (l.type === "mouseleave") this.#fire(this.#mouseEvent("mouseleave", e, p), [l.listener]);
+          }
+        }
+        if (type !== "mousemove") return;
+        this.#hovering = false;
+        const next = this.#nextHover;
+        this.#nextHover = null;
+        if (next && !this.#removed) this.#mouse("mousemove", next.e, next.p);
+      });
+  }
+
+  /** Listens for `type`; with layer ids, for mouse events on those layers' features (`e.features`). */
+  on(type: MapEventType, listener: MapEventListener): this;
+  on(type: MapMouseEventType, layers: string | string[], listener: MapEventListener): this;
+  on(type: MapEventType, a: MapEventListener | string | string[], b?: MapEventListener): this {
+    if (typeof a === "function") {
+      let set = this.#listeners.get(type);
+      if (!set) this.#listeners.set(type, (set = new Set()));
+      set.add(a);
+    } else if (b) {
+      this.#layerListeners.push({ type: type as MapMouseEventType, layers: Array.isArray(a) ? [...a] : [a], listener: b, inside: false });
+    }
     return this;
   }
 
-  off(type: MapEventType, listener: MapEventListener): this {
-    this.#listeners.get(type)?.delete(listener);
+  off(type: MapEventType, listener: MapEventListener): this;
+  off(type: MapMouseEventType, layers: string | string[], listener: MapEventListener): this;
+  off(type: MapEventType, a: MapEventListener | string | string[], b?: MapEventListener): this {
+    if (typeof a === "function") {
+      this.#listeners.get(type)?.delete(a);
+    } else {
+      const ids = Array.isArray(a) ? a : [a];
+      const same = (l: { type: string; layers: string[]; listener: MapEventListener }) =>
+        l.type === type && l.listener === b && l.layers.length === ids.length && l.layers.every((id, i) => id === ids[i]);
+      this.#layerListeners = this.#layerListeners.filter((l) => !same(l));
+    }
     return this;
   }
 
-  /** Listens for the next `type` event; without a listener, resolves with it. */
+  /** Listens for the next `type` event (on `layers`' features, if given); without a listener, resolves with it. */
   once(type: MapEventType): Promise<MapEvent>;
   once(type: MapEventType, listener: MapEventListener): this;
-  once(type: MapEventType, listener?: MapEventListener): this | Promise<MapEvent> {
-    if (!listener) return new Promise((resolve) => this.once(type, resolve));
+  once(type: MapMouseEventType, layers: string | string[]): Promise<MapEvent>;
+  once(type: MapMouseEventType, layers: string | string[], listener: MapEventListener): this;
+  once(type: MapEventType, a?: MapEventListener | string | string[], b?: MapEventListener): this | Promise<MapEvent> {
+    if (a === undefined || typeof a === "function") {
+      if (!a) return new Promise((resolve) => this.once(type, resolve));
+      const listener = a;
+      const wrapped: MapEventListener = (e) => {
+        this.off(type, wrapped);
+        listener(e);
+      };
+      return this.on(type, wrapped);
+    }
+    const layers = a;
+    if (!b) return new Promise((resolve) => this.once(type as MapMouseEventType, layers, resolve));
+    const listener = b;
     const wrapped: MapEventListener = (e) => {
-      this.off(type, wrapped);
+      this.off(type as MapMouseEventType, layers, wrapped);
       listener(e);
     };
-    return this.on(type, wrapped);
+    return this.on(type as MapMouseEventType, layers, wrapped);
+  }
+
+  /** Features drawn under `points` (CSS pixels: a point, or a box's closed ring), in MapLibre's order. */
+  #query(points: number[], layers: string[] | null, filter: unknown): Promise<MapGeoJSONFeature[]> {
+    const map = this.#engine;
+    const style = this.#style;
+    if (!map || !style) return Promise.resolve([]);
+    return new Promise((resolve, reject) => {
+      const refused = engine.map_query_rendered(map, points, layers === null, layers ?? [], filter === undefined ? "" : JSON.stringify(filter), (tiles) => {
+        const specs = new globalThis.Map<string, LayerSpecification | undefined>();
+        const out: MapGeoJSONFeature[] = [];
+        for (const { layer, feature } of orderRendered(tiles, style.layers as LayerSpecification[])) {
+          if (!specs.has(layer)) specs.set(layer, edit.copy(edit.getLayer(style, layer)));
+          const spec = specs.get(layer);
+          if (!spec) continue;
+          const f = feature as MapGeoJSONFeature;
+          f.layer = spec;
+          f.source = spec.source ?? "";
+          if (spec["source-layer"]) f.sourceLayer = spec["source-layer"];
+          f.state = {};
+          out.push(f);
+        }
+        resolve(out);
+      });
+      if (refused) reject(new Error(refused));
+    });
+  }
+
+  /**
+   * The features drawn at a point or in a box (`[[x0, y0], [x1, y1]]`, CSS pixels; the whole map
+   * when left out), topmost first, as MapLibre's `queryRenderedFeatures` finds them. A Promise:
+   * the workers hold the geometry. Rejects on a filter mbmap cannot evaluate.
+   */
+  queryRenderedFeatures(geometryOrOptions?: PointLike | [PointLike, PointLike] | QueryRenderedFeaturesOptions, options?: QueryRenderedFeaturesOptions): Promise<MapGeoJSONFeature[]> {
+    const isPoint = (g: unknown) => (Array.isArray(g) ? typeof g[0] === "number" : typeof (g as { x?: unknown })?.x === "number");
+    let o = options ?? {};
+    let geometry: [number, number] | [[number, number], [number, number]] | null = null;
+    if (geometryOrOptions !== undefined && (Array.isArray(geometryOrOptions) || isPoint(geometryOrOptions))) {
+      const pair = (q: PointLike): [number, number] => {
+        const p = toPoint(q);
+        return [p.x, p.y];
+      };
+      geometry = isPoint(geometryOrOptions)
+        ? pair(geometryOrOptions as PointLike)
+        : [pair((geometryOrOptions as [PointLike, PointLike])[0]), pair((geometryOrOptions as [PointLike, PointLike])[1])];
+    } else if (geometryOrOptions !== undefined) {
+      o = geometryOrOptions as QueryRenderedFeaturesOptions;
+    }
+    let layers: string[] | null = null;
+    if (o.layers !== undefined) {
+      if (!Array.isArray(o.layers) && !(o.layers instanceof Set)) {
+        this.#fail(new Error("mbmap: layers must be an Array or a Set of strings"));
+        return Promise.resolve([]);
+      }
+      layers = [...o.layers];
+      const missing = layers.find((id) => !this.getLayer(id));
+      if (missing !== undefined) {
+        this.#fail(new Error(`mbmap: the layer '${missing}' does not exist in the map's style and cannot be queried for features`));
+        return Promise.resolve([]);
+      }
+    }
+    return this.#query(queryPoints(geometry, this.#canvas.clientWidth, this.#canvas.clientHeight), layers, o.filter);
+  }
+
+  /** The features of a source in the tiles drawn (`sourceLayer` required for vector sources), as MapLibre's `querySourceFeatures`. */
+  querySourceFeatures(sourceId: string, options: QuerySourceFeatureOptions = {}): Promise<GeoJSONFeature[]> {
+    const map = this.#engine;
+    if (!map) return Promise.resolve([]);
+    return new Promise((resolve, reject) => {
+      const filter = options.filter === undefined ? "" : JSON.stringify(options.filter);
+      const refused = engine.map_query_source(map, sourceId, options.sourceLayer ?? "", filter, (tiles) => resolve(tiles.flatMap((t) => t.hits.map((h) => h.feature))));
+      if (refused) reject(new Error(refused));
+    });
   }
 
   /** Whether the first view has been drawn. */
@@ -865,11 +1084,13 @@ export class Map {
   remove(): void {
     if (this.#removed) return;
     this.#removed = true;
+    this.#dom.abort();
     if (this.#engine) engine.map_destroy(this.#engine);
     this.#engine = null;
     this.#geojson?.terminate();
     this.#geojson = null;
     this.#listeners.clear();
+    this.#layerListeners = [];
     this.#canvas.remove();
     this.#attribution?.remove();
   }

@@ -7,7 +7,7 @@ import { readValue } from "./values.mjs";
 // Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
 export const SYMBOL_VERTEX_BYTES = 16;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
-export const LABEL_FLOATS = 8;
+export const LABEL_FLOATS = 9;
 // Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`).
 const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, count: 44, labels: 48 };
 // Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
@@ -97,18 +97,19 @@ export function buildSymbols(bytes, glyphs) {
   let quads = 0;
   let at = HEADER.labels;
   for (let i = 0; i < count; i++) {
-    const x = view.getInt16(at, true);
-    const y = view.getInt16(at + 2, true);
-    const size = view.getFloat64(at + 4, true);
-    const key = view.getFloat64(at + 12, true);
-    const parts = view.getUint32(at + 20, true);
+    const feature = view.getUint32(at, true);
+    const x = view.getInt16(at + 4, true);
+    const y = view.getInt16(at + 6, true);
+    const size = view.getFloat64(at + 8, true);
+    const key = view.getFloat64(at + 16, true);
+    const parts = view.getUint32(at + 24, true);
     let text;
-    [text, at] = readText(view, bytes, at + 24, parts);
+    [text, at] = readText(view, bytes, at + 28, parts);
     const chars = [...text];
     if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
     const shaped = layoutLabel(text, Math.min(size, 256), layout, (cp) => glyphs.metrics(cp));
     if (shaped.quads.length === 0) continue;
-    placed.push({ x, y, size, key, shaped });
+    placed.push({ feature, x, y, size, key, shaped });
   }
   // Lower sort keys are placed (and drawn) first; ties keep their order.
   placed.sort((a, b) => a.key - b.key);
@@ -123,7 +124,7 @@ export function buildSymbols(bytes, glyphs) {
   const indices = wide ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6);
   const labels = new Float32Array(placed.length * LABEL_FLOATS);
   placed.forEach((l, i) => {
-    labels.set([l.x, l.y, ...l.shaped.box, l.first * 6, l.shaped.quads.length * 6], i * LABEL_FLOATS);
+    labels.set([l.x, l.y, ...l.shaped.box, l.feature, l.first * 6, l.shaped.quads.length * 6], i * LABEL_FLOATS);
     l.shaped.quads.forEach((q, k) => {
       const n = l.first + k;
       q.corners.forEach(([cx, cy], c) => {

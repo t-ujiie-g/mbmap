@@ -286,6 +286,20 @@ pub fn Layer::property(self : Layer, i : Int32, key_index : Int32) -> Value? {
 }
 
 ///|
+/// How many tags (key and value pairs) feature `i` has.
+pub fn Layer::tag_count(self : Layer, i : Int32) -> Int32 {
+  (self.tag_offsets[i + 1] - self.tag_offsets[i]) / 2
+}
+
+///|
+/// Feature `i`'s tag `k` (0 <= `k` < `tag_count(i)`) as key and value, in
+/// the order the tile lists them.
+pub fn Layer::tag(self : Layer, i : Int32, k : Int32) -> (String, Value) {
+  let t = self.tag_offsets[i] + k * 2
+  (self.keys[self.tags[t]], self.values[self.tags[t + 1]])
+}
+
+///|
 /// Feature `i`'s tags as a key → value map; a repeated key keeps its last value.
 pub fn Layer::properties(self : Layer, i : Int32) -> Map[String, Value] {
   let start = self.tag_offsets[i]

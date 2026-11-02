@@ -45,6 +45,7 @@ fn Map::request_tile(
     id,
     state: Loading(request~, worker~, previous~),
     last_used: self.frame_count,
+    kept: (-1, -1),
   })
   if src.source.kind is (Vector | RasterDem) {
     let tiles = src.source.tiles
@@ -90,8 +91,14 @@ fn Map::finish(self : Map, request : Int32, meshes : Array[LayerMesh]?) -> Unit 
     return
   }
   self.content_version += 1
-  if entry.state is Loading(previous=Some(old), ..) {
-    self.release_meshes(old)
+  if entry.state is Loading(previous~, worker~, ..) {
+    if previous is Some(old) {
+      self.release_meshes(old)
+    }
+    self.drop_kept(entry)
+    if meshes is Some(_) && !(src.source.kind is RasterDem) {
+      entry.kept = (worker, request)
+    }
   }
   entry.state = match meshes {
     Some(m) => Ready(m)
@@ -211,6 +218,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         self.stitch_dem(src, entry.id)
       }
     }
+    "query" => self.on_query(msg)
     "error" => console_warn("worker: \{get_string(msg, "message")}")
     _ => ()
   }

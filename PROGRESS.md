@@ -1,5 +1,68 @@
 # PROGRESS
 
+## Phase 12.3a：地物の問い合わせとマウスイベント（2026-11-02）
+
+状態：**完了**。feature-state は 12.3b で続けて作る。
+
+### ユーザー判断（2026-11-02）
+
+- feature-state の作り方（作る前に計測した。fixture 35 タイル、basic スタイル、今の出力は 59.4MB、頂点 439 万）：
+  - 頂点ごとに地物番号を持たせる案は +17.6MB（+30%）、地物ごとの範囲表をタイルと一緒に送る案は最大 +11.4MB（+19%）。
+  - **ワーカーが範囲表とタイルのバイト列を持ち、状態を持つ地物の範囲だけを問い合わせる案**に決めた。タイルの出力は増えず、反映は 1 往復遅れる。
+- `queryRenderedFeatures` と `querySourceFeatures` は **Promise を返す**（ジオメトリはワーカーにあり、メインスレッドは持たない。VISION §4-3）。MapLibre は同期。
+
+### できたこと
+
+- **ワーカー**：送ったタイル（ベクタタイルと GeoJSON の列形式タイル）のバイト列を、メインスレッドが `drop` するまで保持する。`query_tile` と `source_features`（`worker/query.mbt`）で問い合わせに答える。
+  - 判定は MapLibre の `FeatureIndex.query` の移植。
+    - インデックスに入る条件：輪の箱がタイルに重なること。
+    - タイルのパディング（線の太さの半分、円の半径と縁取りの最大）に `maxPitchScaleFactor` を掛けて範囲を広げる。
+    - レイヤーごとの判定：fill は多角形との交差、line は太さの半分の幅で、circle は画面上で距離に応じて大きさを変えて（`pitch-alignment: viewport`、`pitch-scale: map`）。
+    - fill-extrusion は 3D に投影して、屋根と壁の面で交差を調べ、深さを返す。カメラ側に広げた問い合わせ範囲（`getCameraQueryGeometry`）で拾う。
+  - 交差判定（`@core.polygon_hits_*`、MapLibre の intersection_tests の移植）は `core` にあり、ワーカーとメインスレッドで共有する。
+- **バケツのジオメトリ種類を MapLibre に揃えた**：fill と fill-extrusion は LineString も輪として塗る（GSI の建物には外形線が LineString で入っている）。circle は線や面の頂点にも円を置く。描画も変わる。
+- **メインスレッド**（`map/query.mbt`）：前のフレームで描いたタイルごとに問い合わせを送り、答えを集める。
+  - ラベルは前回の配置で記録した画面上の箱（`LabelSet.boxes`）で探し、地物番号（ラベルの浮動小数に足した）でワーカーに伝える。
+  - スタイルが途中で変わった答えは捨てる。地図を消すと、待っている問い合わせはそこまでの答えで終わる。
+- **npm**：
+  - `queryRenderedFeatures(geometry?, { layers, filter })`、`querySourceFeatures(sourceId, { sourceLayer, filter })`。並べ方は MapLibre の `mergeRenderedFeatureLayers` と `_flattenAndSortRenderedFeatures`（3D は近い順）を `npm/src/query.ts`（import なし）に移植した。
+  - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（3px 未満の移動）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
+  - レイヤーを指定するイベント：`on(type, layerIds, f)` と `mouseenter`・`mouseleave`。`mousemove` の問い合わせは 1 つずつにまとめる。
+- **example**：クリックした地物（いちばん上の地物のレイヤーと名前など）をパネルに出す。地点の上ではカーソルを変える。3 つとも同じ。
+
+### 黄金テスト（`npm run query:golden`、`bench/results/query-golden.json`）
+
+- MapLibre 6.16 と同じページで、同じスタイル、fixture、カメラで比べた。
+  - ビュー：平面、回転、50° の傾き、建物を押し出して 55° に傾けたもの。
+  - 問い合わせ：点 63、範囲 4、画面全体、レイヤー指定、フィルター、ソースの問い合わせ 2。
+- **254 件すべて同じ**（22,582 地物。順序と GeoJSON のジオメトリ、プロパティまで同じ）。
+- 比べ方で揃えたこと：
+  - MapLibre 6 は既定（`zoomLevelsToOverscale: 4`）で、source の maxzoom より深いズームのタイルを子タイルに切り分ける。そのため問い合わせ結果の切り口と重複が変わる（MapLibre 自身がそう書いている）。mbmap は source のタイルのまま描くので、MapLibre はこれを切って比べた。
+  - 傾けたビューでは、MapLibre は錐台にバウンディングボックスが触れるだけのタイルも持つ。mbmap の被覆は見える地面で決めるので、画面全体とソースの問い合わせはそのタイルの分だけ違う。この 2 種類は比べていない。
+  - 同じ深さで交わる押し出し（同じ建物の面と外形線）の順序は丸め誤差で決まるので、比べる前にそろえた。
+
+### 確認（pack test、Chromium）
+
+- 点の問い合わせ、レイヤーとフィルターの指定、ないレイヤーの `error`、未対応のフィルターでの reject、ソースの問い合わせ。
+- 地図のクリック（ドラッグはクリックにならない）、レイヤーの `click`・`mouseenter`・`mouseleave`。3 つの example で東京駅をクリックすると地点が出ること。
+
+### 計測
+
+- 表示ワーカーの `process_tile`（`npm run worker:browser`、同じセッションで main → ブランチ → ブランチ）：
+  - 中央値：Chromium 6.52 → 6.74 / 6.66ms、Firefox 8.64 → 8.70 / 8.64ms、WebKit 7.02 → 7.22 / 7.62ms。
+  - 実行ごとの揺れの範囲で、出力のバイト数は同じ（basic スタイルは種類をフィルターで絞っている）。
+- サイズ：表示の入口 56.6 → 62.1KB（予算 70KB）。表示ワーカー 89.7 → 95.7KB（予算 100KB）。
+  - ワーカーの増加は問い合わせのコード（約 6.6KB）。プロパティを Map を使わずに書き出して 0.4KB 減らした。
+- ワーカーのメモリ：表示中とキャッシュ中のタイルのバイト列を持つ（fixture で平均 370KB/タイル）。
+
+### 既知の問題・まだのもの
+
+- feature-state（12.3b）。
+- 表示ワーカーの予算の残りは 4.3KB。式を足す Phase 15 の前に、予算か分け方を相談する。
+- タッチのイベント（`touchstart` など）は未対応。`preventDefault` で地図の操作を止めることはできない。
+- 地形の上では、問い合わせは地面の高さを考えない（MapLibre は `getElevation` で考える）。
+- GeoJSON ソースの地物は、geojson-vt の id を持たない。MapLibre の `promoteId` も未対応。
+
 ## Phase 12.2：実行中のスタイル変更（2026-11-02）
 
 状態：**完了**。
