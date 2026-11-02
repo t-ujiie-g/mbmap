@@ -28,7 +28,8 @@ onmessage = (e) => measure(e.data).catch((err) => postMessage({ error: String(er
 
 async function measure({ url, polygons: count }) {
   const t0 = performance.now();
-  const { instance } = await WebAssembly.instantiateStreaming(fetch(url), {});
+  // The display worker parses long JSON numbers with the host's Number() (unused here).
+  const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host: { number: () => NaN } });
   const loadMs = performance.now() - t0;
   const e = instance.exports;
   if (!e.analyze) return postMessage({ loadMs });

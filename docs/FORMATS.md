@@ -96,7 +96,8 @@ A `@geom.Table` without feature ids:
 In:
 
 - `{type: "init", wasm, style, font}`: the wasm URL, the style JSON text and the
-  CSS font family labels are drawn in.
+  CSS font family labels are drawn in. The wasm imports `host.number`
+  (`wasmio/js/host.mjs`) for JSON numbers longer than 15 digits.
 - `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
   the index in the style's sources).
 - `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),

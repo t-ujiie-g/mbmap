@@ -32,6 +32,8 @@ pub const TILE_EXTENT : Int32 = 4096
 
 pub const TILE_SIZE : Double = 512.0
 
+pub fn json_string_text(BytesView) -> String
+
 pub fn lat_from_mercator_y(Double) -> Double
 
 pub fn lng_from_mercator_x(Double) -> Double
@@ -41,6 +43,8 @@ pub fn mercator_x_from_lng(Double) -> Double
 pub fn mercator_y_from_lat(Double) -> Double
 
 pub fn normalize_bearing(Double, Double) -> Double
+
+pub fn parse_json(BytesView, slow_number? : (Int32, Int32) -> Double, max_depth? : Int32) -> Json raise JsonError
 
 pub fn polygon_hits_box(Array[(Double, Double)], Double, Double, Double, Double) -> Bool
 
@@ -52,11 +56,19 @@ pub fn polygon_hits_polygon(Array[(Double, Double)], Array[(Double, Double)]) ->
 
 pub fn polygon_hits_polygons(Array[(Double, Double)], Array[Array[(Double, Double)]]) -> Bool
 
+pub fn read_json_number(BytesView, Int32, (Int32, Int32) -> Double) -> (Double, Int32)
+
+pub fn strconv_number(BytesView) -> Double
+
 pub fn tile_containing(MercatorCoord, Int32) -> TileId?
 
 pub fn zoom_shift(Int32) -> Int32
 
 // Errors
+pub(all) suberror JsonError {
+  JsonError(pos~ : Int32, String)
+}
+pub fn JsonError::message(Self) -> String
 
 // Types and methods
 pub(all) struct BBox {

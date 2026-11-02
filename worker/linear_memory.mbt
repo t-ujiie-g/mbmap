@@ -12,6 +12,25 @@ let input_len : Ref[Int32] = Ref(0)
 let processor : Ref[TileProcessor?] = Ref(None)
 
 ///|
+/// The JSON number (ASCII) at `[addr, addr + len)` of linear memory, by the
+/// host's `Number()` (worker/js/worker.mjs passes `wasmio/js/host.mjs`'s).
+fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
+
+///|
+/// A JSON number's text parsed by the host: placed in the output area first,
+/// which keeps core `strconv` out of the module.
+fn host_number_of(text : BytesView) -> Double {
+  let at = output_start()
+  if !ensure_memory(at + text.length()) {
+    return @double.not_a_number
+  }
+  for i, b in text {
+    store_u8(at + i, b.to_int())
+  }
+  host_number(at, text.length())
+}
+
+///|
 fn output_start() -> Int32 {
   (INPUT_ADDR + input_len.val + 7) / 8 * 8
 }
@@ -91,7 +110,7 @@ fn fail_with(message : Bytes) -> Int32 {
 /// a UTF-8 error message written at `output_addr`.
 #export_name("init_style")
 pub fn init_style() -> Int32 {
-  try TileProcessor::from_utf8(input_bytes()[:]) catch {
+  try TileProcessor::from_utf8(input_bytes()[:], number=host_number_of) catch {
     e => fail_with(@utf8.encode(e.message()))
   } noraise {
     p => {

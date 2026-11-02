@@ -13,8 +13,6 @@ pub const MAX_GEOJSON_KEYS : Int32 = 4096
 
 pub fn read_geojson(BytesView, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise GeoJSONError
 
-pub fn strconv_number(BytesView) -> Double
-
 // Errors
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
