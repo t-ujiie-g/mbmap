@@ -9,15 +9,10 @@
   small { color: #666; }
 </style>
 <h1>mbmap examples</h1>
+<p>同じ地図アプリを 3 通りの書き方で作っています。2D と 3D（地形・建物・空）の切り替え、地点への移動、カメラの状態と平面直角座標、中心から 5 km 以内の地点（<code>mbmap/analysis</code> のバッファと点の判定）を表示します。</p>
 <ul>
-  <li><a href="./basic/">basic</a> — MoonBit のビルドを直接読む最小の例。<a href="./basic/?remote=1">?remote=1</a> で国土地理院の配信タイル（全国・z4〜16）を読む。</li>
-  <li><a href="./npm/">npm</a> — npm パッケージを <code>import { Map } from "mbmap"</code> で使う例（スタイルは URL で渡す）。</li>
-  <li><a href="./geojson/">geojson</a> — スタイルに GeoJSON ソース（URL とインライン）を書く例。属性で塗り分けた面・線・点を、国土地理院のタイルの上に重ねる。</li>
-  <li><a href="./analysis/">analysis</a> — <code>mbmap/analysis</code> で点をブロックごとに数え、その結果で塗り分ける例（解析は専用の Worker で動く）。</li>
-  <li><a href="./terrain/">terrain</a> — 国土地理院の標高タイルから富士山の陰影起伏（hillshade）を立体の地形に貼って描く例。<a href="./terrain/?remote=1">?remote=1</a> で配信中の標高タイルを読む。</li>
-  <li><a href="./element/">element</a> — 素の HTML に <code>&lt;mb-map&gt;</code> を置く例。</li>
-  <li><a href="./react/">react</a> — React 19 から <code>&lt;mb-map&gt;</code> を使う例（左上のボタンでズーム、ホイールで動かすと表示が追従する）。</li>
+  <li><a href="./html/">素の HTML</a> — <code>import { Map } from "mbmap"</code> と DOM で書く。</li>
+  <li><a href="./element/">Web Component</a> — <code>&lt;mb-map&gt;</code> の属性・プロパティ・イベントで書く。</li>
+  <li><a href="./react/">React</a> — React 19 から <code>&lt;mb-map&gt;</code> を JSX で使う。</li>
 </ul>
-<p><small>npm / geojson / analysis / element / react は、<code>npm pack</code> した成果物を各フォルダの <code>node_modules</code> に入れて動かす。
-<code>npm --prefix bench run examples</code> で準備と配信をまとめて行う。タイルは東京駅周辺の z14（<code>bench/fixtures</code>）。
-出典：国土地理院ベクトルタイル提供実験</small></p>
+<p><small>地図は国土地理院の配信タイルを直接読みます（出典：国土地理院ベクトルタイル提供実験、国土地理院 標高タイル）。<code>?local=1</code> を付けると、ベンチ用に取得した東京駅周辺の z14 のタイル（<code>bench/fixtures</code>）を読みます。</small></p>

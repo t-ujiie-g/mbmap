@@ -1,11 +1,30 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mbmap: &lt;mb-map&gt; in plain HTML</title>
-<style>html, body { margin: 0; height: 100%; } mb-map { height: 100%; }</style>
-<!-- `npm --prefix bench run npm:pack` installs the packed tarball into ./node_modules. -->
+<title>mbmap showcase: Web Component</title>
+<link rel="stylesheet" href="../shared/app.css">
+<!-- `npm --prefix bench run examples` installs the packed package into ./node_modules. -->
 <script type="importmap">
-  { "imports": { "mbmap": "./node_modules/mbmap/dist/index.js", "mbmap/element": "./node_modules/mbmap/dist/element.js" } }
+  {
+    "imports": {
+      "mbmap": "./node_modules/mbmap/dist/index.js",
+      "mbmap/element": "./node_modules/mbmap/dist/element.js",
+      "mbmap/analysis": "./node_modules/mbmap/dist/analysis.js"
+    }
+  }
 </script>
-<mb-map style-url="/examples/basic/style.json" center="139.7671,35.6812" zoom="14.5"></mb-map>
+<mb-map center="139.7671,35.6812" zoom="15"></mb-map>
+<aside class="panel">
+  <h1>mbmap</h1>
+  <p class="variant">Web Component（<code>&lt;mb-map&gt;</code>）</p>
+  <h2>表示</h2>
+  <div id="modes"><button data-mode="2d">2D</button><button data-mode="3d">3D</button></div>
+  <h2>移動</h2>
+  <div id="destinations"></div>
+  <h2>カメラ</h2>
+  <dl id="camera"></dl>
+  <h2>中心から 5 km 以内の地点</h2>
+  <ul id="near"></ul>
+  <nav><a href="../html/">HTML</a><a href="../element/">Web Component</a><a href="../react/">React</a></nav>
+</aside>
 <script type="module" src="./main.js"></script>

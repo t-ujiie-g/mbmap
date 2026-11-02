@@ -14,7 +14,7 @@ import { decodePng, encodePng, gsiToTerrarium } from "../lib/png.mjs";
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const runs = Number(arg("runs", 11));
 const uncapped = process.argv.includes("--uncapped");
-// --labels adds the label layers of examples/basic, drawn from local fonts by both engines.
+// --labels adds the label layers of bench/pages/basic, drawn from local fonts by both engines.
 const labels = process.argv.includes("--labels");
 // --terrain drapes the map on the gsi-dem fixtures (as Terrarium PNGs, which
 // both engines read), adds a sky (fog shows from 60 degrees) and pitches the
@@ -32,7 +32,7 @@ const style = styleVariant ? `bench/dist/style${styleVariant}.json` : "bench/map
 if (styleVariant) {
   const base = JSON.parse(await readFile(path.join(ROOT, "bench/maplibre/style.json"), "utf8"));
   if (labels) {
-    const basic = JSON.parse(await readFile(path.join(ROOT, "examples/basic/style.json"), "utf8"));
+    const basic = JSON.parse(await readFile(path.join(ROOT, "bench/pages/basic/style.json"), "utf8"));
     base.layers.push(...basic.layers.filter((l) => l.type === "symbol"));
   }
   if (terrain) {
@@ -133,7 +133,7 @@ for (const [engine, rs] of Object.entries(results)) {
   };
 }
 const out = {
-  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + examples/basic labels" : "bench/maplibre/style.json", ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : []), ...(extrusion ? ["buildings extruded 30 m (ftCode 3103) or 8 m"] : [])].join(", ") },
+  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + bench/pages/basic labels" : "bench/maplibre/style.json", ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : []), ...(extrusion ? ["buildings extruded 30 m (ftCode 3103) or 8 m"] : [])].join(", ") },
   params: { runs, statistic: "median of runs" }, sizes, summary, runs: results,
 };
 await writeFile(path.join(ROOT, `bench/results/render-chromium${variant}${uncapped ? "-uncapped" : ""}.json`), JSON.stringify(out, null, 2) + "\n");

@@ -190,7 +190,9 @@ export class MbMapElement extends Base {
     this.#map = map;
     map.on("load", () => this.#dispatch("mb-load"));
     map.on("idle", () => this.#dispatch("mb-idle"));
+    map.on("movestart", () => this.#dispatch("mb-movestart"));
     map.on("move", () => this.#dispatch("mb-move"));
+    map.on("moveend", () => this.#dispatch("mb-moveend"));
     map.on("error", (e) => this.#dispatch("mb-error", e.error));
   }
 
