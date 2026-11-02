@@ -614,7 +614,7 @@ try {
         constructor(...a) {
           super(...a);
           this.addEventListener("message", (e) => {
-            if (e.data?.type === "query") { __wlog.answered++; __wlog.hits += e.data.hits?.length ?? 0; }
+            if (e.data?.type === "query") { __wlog.answered++; __wlog.hits += e.data.hits?.length ?? 0; __wlog.debug ??= e.data.debug; }
             if (e.data?.type === "tile") { __wlog.tiles++; (__wlog.tileIds ??= new Set()).add(e.data.id); }
             if (e.data?.type === "error") (__wlog.errors ??= new Set()).add(String(e.data.message).slice(0, 200));
           });
