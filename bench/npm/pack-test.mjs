@@ -26,7 +26,7 @@ const PAGES = {
 
 // Each check runs in a fresh page and returns [name, ok, details].
 const checks = {
-  async npm(page) {
+  async npm(page, requests) {
     const r = await page.evaluate(async () => {
       const map = window.__map;
       const moves = [];
@@ -87,8 +87,9 @@ const checks = {
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
+    const style = await styleChecks(page, requests);
     const camera = await cameraChecks(page);
-    return [ok && camera.ok, { ...r, camera }];
+    return [ok && style.ok && camera.ok, { ...r, style, camera }];
   },
 
   async element(page) {
@@ -314,14 +315,105 @@ async function showcase(page) {
   await page.waitForFunction(() => window.__described.near.includes("大阪駅"));
   const osaka = await page.evaluate(() => window.__described);
   const shown = await panel();
+  // The 3D switch went through setStyle; layer groups hide through setLayoutProperty and markers go in with setData.
+  const styled = await page.evaluate(async () => {
+    const map = window.__map;
+    const idle = () => map.once("idle");
+    let wait = idle();
+    document.querySelector("#layers button").click();
+    await wait;
+    const hillshade = map.getLayoutProperty("hillshade", "visibility");
+    wait = idle();
+    document.getElementById("marker").click();
+    await wait;
+    return { same: map === window.__map, terrain: map.getTerrain(), hillshade, markers: map.getStyle().sources.places.data.features.at(-1).properties.name };
+  });
   const ok =
+    styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.markers === "印 1" &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
     first.plane.zone === "第IX系" &&
     Math.abs(first.plane.x - -5995.185) < 0.01 && Math.abs(first.plane.y - -35367.23) < 0.01 &&
     tilted.pitch === 60 && tilted.bearing === -20 &&
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系");
-  return [ok, { first, tilted, osaka: osaka.near, shown }];
+  return [ok, { first, tilted, osaka: osaka.near, shown, styled }];
+}
+
+// The colour of screen pixel (x, y), read from a screenshot.
+async function pixel(page, x, y) {
+  const png = await page.screenshot({ clip: { x, y, width: 1, height: 1 } });
+  return page.evaluate(async (b64) => {
+    const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+    const ctx = new OffscreenCanvas(1, 1).getContext("2d");
+    ctx.drawImage(bitmap, 0, 0);
+    return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+  }, png.toString("base64"));
+}
+
+const near = (rgb, want) => rgb.every((v, i) => Math.abs(v - want[i]) <= 3);
+
+// The style API on the npm example's map: paint changes, hiding, moving and
+// removing layers keep the tiles, showing a layer again loads them, setStyle swaps everything,
+// GeoJSON sources come and go, and refused changes fire `error` and keep the style.
+async function styleChecks(page, requests) {
+  const tiles = () => requests.filter((u) => u.endsWith(".pbf")).length;
+  const step = (f) =>
+    page.evaluate(async (body) => {
+      const map = window.__map;
+      const idle = map.once("idle");
+      const out = new Function("map", body)(map);
+      await idle;
+      return out;
+    }, f);
+  await step("map.jumpTo({ center: [139.7671, 35.6812], zoom: 14.5, bearing: 0, pitch: 0 });");
+  const before = tiles();
+  const original = await step('const s = map.getStyle(); map.setPaintProperty("waterarea", "fill-color", "#00ff00"); map.setPaintProperty("background", "background-color", "#ff0000"); return s;');
+  const painted = tiles();
+  await step('map.setLayoutProperty("waterarea", "visibility", "none"); map.moveLayer("road", "waterarea"); map.removeLayer("railway");');
+  const kept = tiles();
+  await step('map.setLayoutProperty("waterarea", "visibility", "visible");');
+  const relaid = tiles();
+  const errors = await page.evaluate(() => {
+    const map = window.__map;
+    const out = [];
+    const f = (e) => out.push(e.error.message);
+    map.on("error", f);
+    map.setPaintProperty("nope", "fill-color", "#000");
+    map.removeSource("gsi");
+    map.setPaintProperty("road", "line-width", ["sqrt", 2]);
+    map.off("error", f);
+    return { out, width: map.getPaintProperty("road", "line-width"), order: map.getLayersOrder().slice(0, 4) };
+  });
+  await step('map.setStyle({ version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ff0000" } }] });');
+  const red = await pixel(page, 400, 300);
+  const swapped = tiles();
+  const point = (lng, lat) => ({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [lng, lat] } }] });
+  await step(`map.addSource("pts", { type: "geojson", data: ${JSON.stringify(point(139.7671, 35.6812))} }); map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": 30, "circle-color": "#0000ff" } });`);
+  const blue = await pixel(page, 400, 300);
+  await step(`map.getSource("pts").setData(${JSON.stringify(point(139.8, 35.7))});`);
+  const moved = await pixel(page, 400, 300);
+  const order = await step('map.removeLayer("pts"); map.removeSource("pts"); return [map.getLayersOrder(), Object.keys(map.getStyle().sources)];');
+  await step(`map.setStyle(${JSON.stringify(original)});`);
+  const restored = { tiles: tiles(), center: await pixel(page, 400, 300), layers: await page.evaluate(() => window.__map.getLayersOrder().length) };
+  const ok =
+    painted === before &&
+    kept === painted &&
+    relaid > kept &&
+    errors.out.length === 3 &&
+    /no layer "nope"/.test(errors.out[0]) &&
+    /used by layer "road"/.test(errors.out[1]) &&
+    /unsupported: expression sqrt/.test(errors.out[2]) &&
+    errors.width?.[0] === "interpolate" &&
+    JSON.stringify(errors.order) === JSON.stringify(["background", "road", "waterarea", "structurea"]) &&
+    near(red, [255, 0, 0]) &&
+    swapped === relaid &&
+    near(blue, [0, 0, 255]) &&
+    near(moved, [255, 0, 0]) &&
+    JSON.stringify(order) === JSON.stringify([["bg"], []]) &&
+    restored.tiles > swapped &&
+    !near(restored.center, [255, 0, 0]) &&
+    restored.layers === original.layers.length;
+  return { ok, before, painted, kept, relaid, errors, red, swapped, blue, moved, order, restored };
 }
 
 async function engineStarted(page) {
@@ -440,8 +532,9 @@ try {
     page.on("request", (r) => requests.push(r.url()));
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
-    // rejections the element check provokes.
-    page.on("console", (m) => m.type() === "error" && !/404|mb-map: invalid/.test(m.text()) && errors.push(m.text()));
+    // rejections the element and style checks provoke.
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt/;
+    page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.goto(`${origin}/${PAGES[example]}`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });
     if (shots) await page.screenshot({ path: path.join(shots, `${example}.png`) });

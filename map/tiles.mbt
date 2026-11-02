@@ -30,7 +30,12 @@ priv struct SourceTiles {
 ///|
 /// Requests tile `id` of `src`: a vector tile is fetched by a worker, a
 /// GeoJSON tile comes from the provider and is then handed to a worker.
-fn Map::request_tile(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
+fn Map::request_tile(
+  self : Map,
+  src : SourceTiles,
+  id : @core.TileId,
+  previous? : Array[LayerMesh],
+) -> Unit {
   let request = self.next_request
   self.next_request += 1
   let worker = self.next_worker
@@ -38,7 +43,7 @@ fn Map::request_tile(self : Map, src : SourceTiles, id : @core.TileId) -> Unit {
   self.requests.set(request, (src.index, id.key()))
   src.tiles.set(id.key(), {
     id,
-    state: Loading(request~, worker~),
+    state: Loading(request~, worker~, previous~),
     last_used: self.frame_count,
   })
   if src.source.kind is (Vector | RasterDem) {
@@ -85,6 +90,9 @@ fn Map::finish(self : Map, request : Int32, meshes : Array[LayerMesh]?) -> Unit 
     return
   }
   self.content_version += 1
+  if entry.state is Loading(previous=Some(old), ..) {
+    self.release_meshes(old)
+  }
   entry.state = match meshes {
     Some(m) => Ready(m)
     None => Failed
@@ -220,6 +228,8 @@ fn Map::update_tiles(
   for id in cover {
     wanted.add(id.key())
     match src.tiles.get(id.key()) {
+      Some({ state: Stale(meshes), .. }) =>
+        self.request_tile(src, id, previous=meshes)
       Some(e) => e.last_used = self.frame_count
       None => self.request_tile(src, id)
     }
@@ -273,7 +283,8 @@ fn SourceTiles::ready(
   id : @core.TileId,
 ) -> Array[LayerMesh]? {
   match self.tiles.get(id.key()) {
-    Some({ state: Ready(meshes), .. }) => Some(meshes)
+    Some({ state: Ready(meshes) | Stale(meshes), .. }) => Some(meshes)
+    Some({ state: Loading(previous=Some(meshes), ..), .. }) => Some(meshes)
     _ => None
   }
 }

@@ -2,36 +2,47 @@
 import { Map } from "mbmap";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { DESTINATIONS } from "../shared/places.js";
-import { createStyle, modeCamera } from "../shared/style.js";
+import { PLACES } from "../shared/places.js";
+import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
 
 let mode = "2d";
-let map = null;
+const hidden = new Set();
+let places = PLACES;
 
-function start(camera) {
-  map?.remove();
-  map = new Map({ container: "map", style: createStyle(mode), ...camera });
-  map.on("move", showCamera);
-  map.on("moveend", update);
-  map.once("load").then(() => {
-    window.__loaded = performance.now();
-    update();
-  });
-  window.__map = map;
-  showCamera();
-}
+const map = new Map({ container: "map", style: createStyle(mode), center: DESTINATIONS[0].center, zoom: 15 });
+map.on("move", showCamera);
+map.on("moveend", update);
+map.once("load").then(() => {
+  window.__loaded = performance.now();
+  update();
+});
+window.__map = map;
 
+// The style changes in place: tiles of what stays alike are kept.
 function setMode(next) {
   if (next === mode) return;
   mode = next;
-  const c = map.getCenter();
-  // The style changes, so the map starts again where it was (setStyle comes in Phase 12.2).
-  start({ center: [c.lng, c.lat], zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
-  map.once("load").then(() => map.easeTo({ ...modeCamera(mode), duration: 1000 }));
-  showModes();
+  map.setStyle(createStyle(mode, hidden, places));
+  map.easeTo({ ...modeCamera(mode), duration: 1000 });
+  showButtons();
 }
 
-function showModes() {
+function toggle(group) {
+  if (hidden.has(group.name)) hidden.delete(group.name);
+  else hidden.add(group.name);
+  const visibility = hidden.has(group.name) ? "none" : "visible";
+  for (const id of group.ids) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
+  showButtons();
+}
+
+function addMarker() {
+  places = withMarker(places, map.getCenter(), `印 ${places.features.length - PLACES.features.length + 1}`);
+  map.getSource("places").setData(places);
+}
+
+function showButtons() {
   for (const b of document.querySelectorAll("#modes button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+  for (const b of document.querySelectorAll("#layers button")) b.setAttribute("aria-pressed", String(!hidden.has(b.textContent)));
 }
 
 const fixed = (v, n) => v.toFixed(n);
@@ -74,5 +85,14 @@ document.getElementById("destinations").replaceChildren(
     return b;
   }),
 );
-start({ center: DESTINATIONS[0].center, zoom: 15 });
-showModes();
+document.getElementById("layers").replaceChildren(
+  ...LAYER_GROUPS.map((g) => {
+    const b = document.createElement("button");
+    b.textContent = g.name;
+    b.addEventListener("click", () => toggle(g));
+    return b;
+  }),
+);
+document.getElementById("marker").addEventListener("click", addMarker);
+showButtons();
+showCamera();

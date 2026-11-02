@@ -1,5 +1,40 @@
 # PROGRESS
 
+## Phase 12.2：実行中のスタイル変更（2026-11-02）
+
+状態：**完了**。
+
+### できたこと
+
+- **`map`**：`set_style` は新しいスタイルを前のものと比べ、使えるタイルを残す。
+  - タイルを残すソース：`Source::same`（取得と切り方が同じ）で、新しいスタイルでそのソースを使う各レイヤーが、前のスタイルに同じ ID と同じ作り方（`StyleLayer::same_tiles`：種類、ソースレイヤー、ズーム範囲、フィルター、文字と線の layout、押し出しの高さ、paint が読む地物の値）で入っていること。レイヤーの順序は描くときに決まるので見ない。
+  - 残したタイルのメッシュは、レイヤー ID で新しい番号に付け替える。消えたレイヤーのメッシュは捨てる（共有のバッファは、残るレイヤーへ持ち主を移す）。
+  - 残せないソースのタイルは `Stale` にして描き続け、読み直したものと入れ替える（地図が一瞬空になることはない）。読み込み中の要求は取り消して、新しいスタイルで頼み直す。
+  - ワーカーへは `{type: "style"}` を送り、それ以降の要求を新しいスタイルで作らせる。`reload_source` は GeoJSON のデータが変わったソースを読み直す。
+  - スタイルを変えるたびに `idle` を出す（paint だけの変更でも。MapLibre と同じ）。
+- **npm**：`setStyle`（オブジェクトか URL）、`getStyle`、`addLayer`、`removeLayer`、`moveLayer`、`getLayer`、`getLayersOrder`、`setPaintProperty`・`getPaintProperty`、`setLayoutProperty`・`getLayoutProperty`、`setFilter`・`getFilter`、`setLayerZoomRange`、`addSource`、`removeSource`、`getSource(id).setData`、`setTerrain`・`setSky`・`setLight` とその getter。
+  - 編集は `npm/src/style.ts`（import なしの純粋な関数。`npm test` で試す）でスタイルの写しを作り、エンジンの `set_style` に渡す。描けないスタイルになる変更は `error` を出し、元のまま描き続ける。
+  - GeoJSON ソースは、最初に GeoJSON を含むスタイルになったときにモジュールとワーカーを読み込む（地図を作った後に `addSource` しても動く）。データは参照で比べ、`setStyle` で同じ内容のデータは前の参照に揃える（読み直さない）。GeoJSON ワーカーは同じ番号の読み込みを順に処理し、`unload` で消したソースを捨てる。
+  - `<mb-map>` の `mapStyle` と `style-url` の変更は、地図を作り直さず `setStyle` に渡す。
+- **example**：2D と 3D の切り替えを `setStyle` にした（地図を作り直さない）。レイヤーの表示切り替え（陰影、等高線、建物、道路・鉄道、注記、地点。`setLayoutProperty`）と、中心に印を置くボタン（`getSource("places").setData`）を足した。
+
+### MapLibre との違い
+
+- 表示を消したレイヤーは、スタイルを読むときに外すので、消してもタイルは読み直さない（MapLibre は読み直す）。表示し直すと読み直す（MapLibre と同じ）。`moveLayer` と `removeLayer` は MapLibre と同じく読み直さない。
+- `setStyle` の `diff: false` は受け付けない（常に差分で切り替える）。
+- MapLibre の `Style` は Node で動かせない（ワーカーと WebGL を前提にする）ため、黄金テストの代わりに pack test で振る舞いを確かめた。
+
+### 確認（pack test、Chromium）
+
+- paint の変更、表示を消す・`moveLayer`・`removeLayer` ではタイルを取得し直さないこと、表示し直すと取得し直すこと（タイルの要求数で確認）。
+- 描けない変更（ないレイヤー、使われているソースの削除、未対応の式）が `error` を出し、スタイルが元のままであること。
+- `setStyle` で背景だけのスタイルにすると画面が背景色になり、タイルを取得しないこと。GeoJSON ソースを後から足すと点が描かれ、`setData` で動くこと。元のスタイルに戻すと元どおりに描くこと。
+- 3 つのショーケースで、3D への切り替えが同じ地図のまま地形を持つこと、レイヤーの表示切り替えと印の追加。
+
+### サイズ
+
+- 表示の入口 52.5 → 56.6KB（予算 70KB）。GeoJSON の窓口 0.8 → 0.9KB、GeoJSON ワーカー 22.3 → 22.5KB、表示ワーカー 89.6 → 89.7KB。
+
 ## example の整理：1 つのショーケースを 3 通りで（2026-11-02）
 
 ### ユーザー判断（2026-11-02）

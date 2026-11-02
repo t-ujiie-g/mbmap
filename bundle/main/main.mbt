@@ -53,7 +53,6 @@ pub fn create_map(
   ) catch {
     BadStyle(e) => throw_error("mbmap: style: \{e.message()}")
     NoWebGL2 => throw_error("mbmap: WebGL2 is not available")
-    NoSource => throw_error("mbmap: the style draws from no source")
   }
 }
 
@@ -320,3 +319,22 @@ pub fn default_easing(t : Double) -> Double {
 
 ///|
 let ease_curve : @core.Bezier = @core.Bezier::ease()
+
+///|
+/// Draws `style_json` from now on; returns "" or, keeping the current style,
+/// why it cannot be drawn.
+#export_name("map_set_style")
+pub fn map_set_style(map : @map.Map, style_json : String) -> String {
+  map.set_style(style_json) catch {
+    BadStyle(e) => return "mbmap: style: \{e.message()}"
+    NoWebGL2 => return "mbmap: WebGL2 is not available"
+  }
+  ""
+}
+
+///|
+/// Loads the tiles of source `id` again, after its data changed.
+#export_name("map_reload_source")
+pub fn map_reload_source(map : @map.Map, id : String) -> Unit {
+  map.reload_source(id)
+}

@@ -2,7 +2,6 @@
 pub(all) suberror MapError {
   BadStyle(@style.StyleError)
   NoWebGL2
-  NoSource
 } derive(Debug)
 
 ///|
@@ -12,7 +11,7 @@ priv struct LayerMesh {
   layer : Int32
   kind : Int32
   mesh : @render_webgl2.Mesh
-  owned : Bool
+  mut owned : Bool
   props : JsProps?
   mut paint : (Double, Paint)?
   labels : LabelSet?
@@ -29,9 +28,13 @@ priv struct ExtrusionGround {
 }
 
 ///|
+/// A tile's meshes or how far it is: `Stale` meshes were made under an
+/// earlier style and are drawn until the tile is loaded again (`Loading`
+/// keeps them as `previous` meanwhile).
 priv enum TileState {
-  Loading(request~ : Int32, worker~ : Int32)
+  Loading(request~ : Int32, worker~ : Int32, previous~ : Array[LayerMesh]?)
   Ready(Array[LayerMesh])
+  Stale(Array[LayerMesh])
   Failed
 }
 
@@ -72,7 +75,7 @@ const PITCH_RATE : Double = 0.5
 pub struct Map {
   priv canvas : @render_webgl2.Canvas
   priv renderer : @render_webgl2.Renderer
-  priv style : @style.Style
+  priv mut style : @style.Style
   priv sources : Array[SourceTiles]
   priv geojson : Provider
   priv mut transform : @core.Transform
@@ -103,7 +106,7 @@ pub struct Map {
   )?
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
-  priv has_labels : Bool
+  priv mut has_labels : Bool
   priv targets : @hashmap.HashMap[Int64, TerrainTarget]
   priv mut content_version : Int32
   priv atlas : @label.Atlas
@@ -155,13 +158,9 @@ pub fn Map::new(
   // The sources the drawable layers use, in style order.
   let sources : Array[SourceTiles] = []
   for i, s in style.sources {
-    if style.layers.iter().any(l => !(l.kind is Background) && l.source == s.id) ||
-      style.terrain.map(t => t.source) == Some(s.id) {
+    if draws_from(style, s.id) {
       sources.push({ index: i, source: s, tiles: @hashmap.HashMap([]), })
     }
-  }
-  if sources.is_empty() {
-    raise NoSource
   }
   guard @render_webgl2.Renderer::new(canvas) is Some(renderer) else {
     raise NoWebGL2
@@ -347,16 +346,23 @@ fn Map::request_render(self : Map) -> Unit {
 fn Map::release(self : Map, e : TileEntry) -> Unit {
   self.content_version += 1
   match e.state {
-    Ready(meshes) =>
-      for m in meshes {
-        if m.owned {
-          self.renderer.release(m.mesh)
-        }
-      }
-    Loading(request~, worker~) => {
+    Ready(meshes) | Stale(meshes) => self.release_meshes(meshes)
+    Loading(request~, worker~, previous~) => {
       post_cancel(self.workers[worker], request)
       self.requests.remove(request)
+      if previous is Some(meshes) {
+        self.release_meshes(meshes)
+      }
     }
     Failed => ()
+  }
+}
+
+///|
+fn Map::release_meshes(self : Map, meshes : Array[LayerMesh]) -> Unit {
+  for m in meshes {
+    if m.owned {
+      self.renderer.release(m.mesh)
+    }
   }
 }

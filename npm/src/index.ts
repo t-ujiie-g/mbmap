@@ -19,6 +19,8 @@ import {
   toPoint,
 } from "./camera";
 import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
+import * as edit from "./style";
+import type { LayerSpecification, StyleSpecification } from "./style";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
 export { LngLatBounds } from "./camera";
@@ -36,12 +38,13 @@ export type {
   PointLike,
 } from "./camera";
 
-/** A MapLibre style document; anything mbmap cannot draw faithfully is an error. */
-export interface StyleSpecification {
-  version: 8;
-  sources: Record<string, unknown>;
-  layers: unknown[];
-  [key: string]: unknown;
+export type { LayerSpecification, StyleSpecification } from "./style";
+
+/** What `getSource` gives: a GeoJSON source also takes new data. */
+export interface Source {
+  id: string;
+  type: string;
+  setData?(data: unknown): void;
 }
 
 /**
@@ -138,12 +141,12 @@ export interface Handler {
   isEnabled(): boolean;
 }
 
-/** Whether the user asked the system for less motion (MapLibre then skips animations). */
 /** MapLibre's default easing, the CSS `ease` curve (0.25, 0.1, 0.25, 1). */
 function defaultEasing(t: number): number {
   return engine.default_easing(t);
 }
 
+/** Whether the user asked the system for less motion (MapLibre then skips animations). */
 function reducedMotion(): boolean {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -197,6 +200,11 @@ export class Map {
   #attribution: HTMLElement | null = null;
   #engine: engine.EngineMap | null = null;
   #geojson: GeoJSONTiles | null = null;
+  #geojsonLoading: Promise<GeoJSONTiles | null> | null = null;
+  #geojsonSources: GeoJSONSource[] = [];
+  #style: StyleSpecification | null = null;
+  #base = new URL(document.baseURI);
+  #styleRequest = 0;
   #camera: Camera;
   #listeners = new globalThis.Map<MapEventType, Set<MapEventListener>>();
   #loaded = false;
@@ -256,48 +264,205 @@ export class Map {
     this.#canvas.style.cssText = "display:block;width:100%;height:100%";
     container.append(this.#canvas);
 
-    if (typeof options.style === "string") {
-      const url = new URL(options.style, document.baseURI);
+    try {
+      this.setStyle(options.style);
+    } catch (err) {
+      this.#canvas.remove();
+      throw err;
+    }
+  }
+
+  /**
+   * Draws `style` (an object, or a URL fetched without credentials) from now on. Sources
+   * and layers that stay alike keep their tiles; the rest load again while the old ones
+   * are drawn. A style that cannot be drawn fires `error` and the current one stays.
+   */
+  setStyle(style: StyleSpecification | string): this {
+    const request = ++this.#styleRequest;
+    const use = (s: StyleSpecification, base: URL) => {
+      if (request !== this.#styleRequest || this.#removed) return;
+      const next = edit.keepGeoJSONData(this.#style, edit.copy(s));
+      this.#base = base;
+      if (this.#engine) this.#apply(next);
+      else this.#create(next);
+    };
+    if (typeof style === "string") {
+      const url = new URL(style, document.baseURI);
       fetch(url, { credentials: "omit" })
         .then((res) => {
           if (!res.ok) throw new Error(`mbmap: style: HTTP ${res.status}`);
           return res.json() as Promise<StyleSpecification>;
         })
-        .then((style) => this.#start(style, url))
+        .then((s) => use(s, url))
         .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
     } else {
-      try {
-        this.#start(options.style, new URL(document.baseURI));
-      } catch (err) {
-        this.#canvas.remove();
-        throw err;
-      }
+      use(style, new URL(document.baseURI));
     }
+    return this;
   }
 
-  /** Creates the engine, after loading the GeoJSON module if the style needs it. */
-  #start(style: StyleSpecification, base: URL): void {
-    if (this.#removed) return;
-    const [geojson, rest] = splitGeoJSON(resolveTiles(style, base));
-    if (geojson.length === 0) {
-      this.#create(rest, null);
+  /** A copy of the style drawn, GeoJSON data included (null until it has loaded). */
+  getStyle(): StyleSpecification | null {
+    return edit.copy(this.#style);
+  }
+
+  /** Swaps in `next`, an edit of the current style; a style the engine refuses fires `error`. */
+  #apply(next: StyleSpecification): void {
+    if (!this.#engine) return;
+    const [geojson, rest] = splitGeoJSON(resolveTiles(next, this.#base));
+    const refused = engine.map_set_style(this.#engine, JSON.stringify(rest));
+    if (refused) {
+      this.#fail(new Error(refused));
       return;
     }
-    import("./geojson.js")
-      .then(({ createGeoJSONTiles }) => {
-        if (this.#removed) return;
-        const o = this.#options;
-        const tiles = createGeoJSONTiles(geojson, base, (e) => this.#fail(e), {
-          workerUrl: o.geojsonWorkerUrl,
-          wasmUrl: o.geojsonWasmUrl,
-        });
-        this.#geojson = tiles;
-        this.#create(rest, (source, z, x, y) => tiles.tile(source, z, x, y));
-      })
-      .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+    this.#style = next;
+    for (const id of this.#loadGeoJSON(geojson)) engine.map_reload_source(this.#engine, id);
+    this.#showAttribution(attributions(rest));
   }
 
-  #create(resolved: StyleSpecification, geojson: engine.Provider | null): void {
+  /** Runs `f` on the current style and draws what it gives; its errors fire `error`. */
+  #edit(f: (style: StyleSpecification) => StyleSpecification): this {
+    if (!this.#style) throw new Error("mbmap: the style has not loaded yet");
+    let next: StyleSpecification;
+    try {
+      next = f(this.#style);
+    } catch (err) {
+      this.#fail(err instanceof Error ? err : new Error(String(err)));
+      return this;
+    }
+    this.#apply(next);
+    return this;
+  }
+
+  addLayer(layer: LayerSpecification, beforeId?: string): this {
+    return this.#edit((s) => edit.addLayer(s, layer, beforeId));
+  }
+
+  removeLayer(id: string): this {
+    return this.#edit((s) => edit.removeLayer(s, id));
+  }
+
+  /** Moves layer `id` before `beforeId`, or on top. */
+  moveLayer(id: string, beforeId?: string): this {
+    return this.#edit((s) => edit.moveLayer(s, id, beforeId));
+  }
+
+  getLayer(id: string): LayerSpecification | undefined {
+    return this.#style ? edit.copy(edit.getLayer(this.#style, id)) : undefined;
+  }
+
+  /** The layer ids, bottom first. */
+  getLayersOrder(): string[] {
+    return this.#style ? (this.#style.layers as LayerSpecification[]).map((l) => l.id) : [];
+  }
+
+  setPaintProperty(id: string, name: string, value: unknown): this {
+    return this.#edit((s) => edit.setPaintProperty(s, id, name, value));
+  }
+
+  getPaintProperty(id: string, name: string): unknown {
+    return this.#style ? edit.getPaintProperty(this.#style, id, name) : undefined;
+  }
+
+  setLayoutProperty(id: string, name: string, value: unknown): this {
+    return this.#edit((s) => edit.setLayoutProperty(s, id, name, value));
+  }
+
+  getLayoutProperty(id: string, name: string): unknown {
+    return this.#style ? edit.getLayoutProperty(this.#style, id, name) : undefined;
+  }
+
+  /** Sets layer `id`'s filter; null or undefined removes it. */
+  setFilter(id: string, filter?: unknown): this {
+    return this.#edit((s) => edit.setFilter(s, id, filter));
+  }
+
+  getFilter(id: string): unknown {
+    return this.#style ? edit.getFilter(this.#style, id) : undefined;
+  }
+
+  setLayerZoomRange(id: string, minzoom: number, maxzoom: number): this {
+    return this.#edit((s) => edit.setLayerZoomRange(s, id, minzoom, maxzoom));
+  }
+
+  addSource(id: string, source: unknown): this {
+    return this.#edit((s) => edit.addSource(s, id, source));
+  }
+
+  /** Removes source `id`; fires `error` while a layer or the terrain uses it. */
+  removeSource(id: string): this {
+    return this.#edit((s) => edit.removeSource(s, id));
+  }
+
+  /** Source `id`; a GeoJSON one has `setData` to replace its data (an object or a URL). */
+  getSource(id: string): Source | undefined {
+    const s = this.#style?.sources[id] as { type?: unknown } | undefined;
+    if (!s || typeof s.type !== "string") return undefined;
+    const source: Source = { id, type: s.type };
+    if (s.type === "geojson") source.setData = (data) => void this.#edit((st) => edit.setSourceData(st, id, data));
+    return source;
+  }
+
+  /** `{source, exaggeration}` draws the ground raised by a `raster-dem` source; null flattens it. */
+  setTerrain(terrain: { source: string; exaggeration?: number } | null): this {
+    return this.#edit((s) => edit.setRoot(s, "terrain", terrain));
+  }
+
+  getTerrain(): unknown {
+    return edit.copy(this.#style?.terrain ?? null);
+  }
+
+  setSky(sky: Record<string, unknown> | null): this {
+    return this.#edit((s) => edit.setRoot(s, "sky", sky));
+  }
+
+  getSky(): unknown {
+    return edit.copy(this.#style?.sky ?? null);
+  }
+
+  setLight(light: Record<string, unknown> | null): this {
+    return this.#edit((s) => edit.setRoot(s, "light", light));
+  }
+
+  getLight(): unknown {
+    return edit.copy(this.#style?.light ?? null);
+  }
+
+  /**
+   * Hands the GeoJSON sources to their worker, which starts (loading its module) with the
+   * first style that has one; returns the ids of sources it loaded again.
+   */
+  #loadGeoJSON(sources: GeoJSONSource[]): string[] {
+    this.#geojsonSources = sources;
+    if (this.#geojson) return this.#geojson.set(sources, this.#base);
+    if (sources.length > 0 && !this.#geojsonLoading) {
+      this.#geojsonLoading = import("./geojson.js").then(
+        ({ createGeoJSONTiles }) => {
+          if (this.#removed) return null;
+          const o = this.#options;
+          this.#geojson = createGeoJSONTiles(this.#geojsonSources, this.#base, (e) => this.#fail(e), {
+            workerUrl: o.geojsonWorkerUrl,
+            wasmUrl: o.geojsonWasmUrl,
+          });
+          return this.#geojson;
+        },
+        (err: unknown) => {
+          this.#fail(err instanceof Error ? err : new Error(String(err)));
+          return null;
+        },
+      );
+    }
+    return [];
+  }
+
+  /** A GeoJSON tile for the engine, once the GeoJSON worker has started. */
+  #geojsonTile(source: string, z: number, x: number, y: number): Promise<ArrayBuffer | null> {
+    if (this.#geojson) return this.#geojson.tile(source, z, x, y);
+    return this.#geojsonLoading?.then((t) => t?.tile(source, z, x, y) ?? null) ?? Promise.resolve(null);
+  }
+
+  #create(style: StyleSpecification): void {
+    const [geojson, resolved] = splitGeoJSON(resolveTiles(style, this.#base));
     const o = this.#options;
     const c = this.#camera;
     const page = new URL(document.baseURI);
@@ -312,11 +477,13 @@ export class Map {
       workerScriptUrl(o.workerUrl ?? new URL("./worker.js", import.meta.url), page, location.origin),
       wasmUrl(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), page),
       o.workerCount ?? 0,
-      geojson,
+      (source, z, x, y) => this.#geojsonTile(source, z, x, y),
       o.fontFamily ?? "sans-serif",
       limitsArray(this.#limits),
     );
     this.#engine = map;
+    this.#style = style;
+    this.#loadGeoJSON(geojson);
     HANDLERS.forEach((h, i) => engine.map_set_handler(map, i, this.#enabled[h]));
     engine.map_on_move_start(map, (e) => this.#moveStart(e));
     engine.map_on_move(map, () => this.#move(engine.map_input_event(map)));
@@ -328,7 +495,7 @@ export class Map {
       }
       this.#emit("idle");
     });
-    if (o.attributionControl ?? true) this.#showAttribution(attributions(resolved));
+    this.#showAttribution(attributions(resolved));
     if (o.bounds) this.fitBounds(o.bounds, { ...o.fitBoundsOptions, duration: 0 });
     for (const f of this.#callsBeforeStart.splice(0)) f();
   }
@@ -371,7 +538,9 @@ export class Map {
   }
 
   #showAttribution(texts: string[]): void {
-    if (texts.length === 0) return;
+    this.#attribution?.remove();
+    this.#attribution = null;
+    if (texts.length === 0 || !(this.#options.attributionControl ?? true)) return;
     const el = document.createElement("div");
     el.style.cssText =
       "position:absolute;top:auto;left:auto;right:0;bottom:0;padding:0 5px;font:12px/20px sans-serif;" +

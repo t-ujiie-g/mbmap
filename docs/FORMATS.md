@@ -102,6 +102,8 @@ In:
 - `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
+- `{type: "style", style}`: the style JSON text tiles asked for from now on are
+  made with (`Map::set_style`; requests made before it were cancelled).
 
 Out:
 
@@ -129,6 +131,8 @@ In:
 - `{type: "load", source, url | bytes, maxzoom, buffer, tolerance}`: `source` is a
   number naming the source; `url` is fetched without credentials, `bytes` is the
   GeoJSON as UTF-8; the options are MapLibre's GeoJSON source options in pixels.
+  Loading a number again replaces its data once the earlier load has finished.
+- `{type: "unload", source}`: forgets the source.
 - `{type: "tile", id, source, z, x, y}`: waits until the source has loaded.
 
 Out:

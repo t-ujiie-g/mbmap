@@ -47,6 +47,12 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 - 初期表示：`bounds`（と `fitBoundsOptions`）を渡すと、`center`・`zoom` の代わりにその範囲を表示する。
 - 操作：`dragPan`、`scrollZoom`、`boxZoom`（Shift＋ドラッグ）、`dragRotate`、`keyboard`（矢印で 100px 移動、Shift＋矢印で回転・傾き、`+`・`-` でズーム）、`doubleClickZoom`（Shift で縮小）、`touchZoomRotate`、`touchPitch`（2 本指を上下に動かす）。オプションの `interactive: false` ですべて止め、`map.scrollZoom.disable()` のように 1 つずつ切り替えられる。ドラッグを離すと、MapLibre と同じ慣性で少し流れる。
 - イベント：`movestart`・`move`・`moveend`、`zoomstart`・`zoom`・`zoomend`、`rotatestart`・`rotate`・`rotateend`、`pitchstart`・`pitch`・`pitchend`（MapLibre と同じ順）。ユーザーの操作によるものは `originalEvent` に DOM のイベントが入る。地図のパディング（`setPadding`）は未対応。
+- スタイルの変更（MapLibre と同じ名前と引数）：
+  - `setStyle(style)`（オブジェクトか URL）、`getStyle()`。前のスタイルと比べ、タイルの作り方が変わらないソースはタイルを残し、変わったソースは古いタイルを描いたまま読み直す。
+  - `addLayer(layer, beforeId?)`、`removeLayer`、`moveLayer(id, beforeId?)`、`getLayer`、`getLayersOrder()`、`setPaintProperty`・`getPaintProperty`、`setLayoutProperty`・`getLayoutProperty`（`visibility` を含む）、`setFilter`・`getFilter`、`setLayerZoomRange`。
+  - `addSource(id, source)`、`removeSource(id)`（レイヤーや地形が使っている間は `error`）、`getSource(id)`（GeoJSON ソースは `setData(data)` でデータを差し替える）。
+  - `setTerrain`・`getTerrain`、`setSky`・`getSky`、`setLight`・`getLight`（null で外す）。
+  - 描けないスタイルになる変更は `error` イベントを出し、元のスタイルのまま描き続ける。スタイルの読み込み前に呼ぶと例外になる。
 - `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
 
 ## 解析 `mbmap/analysis`
@@ -88,7 +94,7 @@ blocks.dispose();
 ```
 
 - 属性：`style-url`、`center`（`lng,lat`）、`zoom`（0〜22）、`bearing`、`pitch`（0〜85）、`worker-count`（0〜4）、`worker-url`、`wasm-url`。不正な値は受け付けず、`mb-error` を出す。
-- プロパティ：`map`（`Map`。作成前と削除後は null）、`mapStyle`（スタイルのオブジェクト。`style-url` より優先）、`center`、`zoom`、`bearing`、`pitch`。
+- プロパティ：`map`（`Map`。作成前と削除後は null）、`mapStyle`（スタイルのオブジェクト。`style-url` より優先。変えると地図を作り直さず `setStyle` で差し替える）、`center`、`zoom`、`bearing`、`pitch`。
 - イベント：`mb-load`、`mb-movestart`、`mb-move`、`mb-moveend`、`mb-idle`、`mb-error`。`detail` は `{ map, center, zoom, bearing, pitch, error? }` で、Shadow DOM の外まで伝わる。
 - 文書から外すと地図を解放し、戻すと同じカメラで作り直す。同じタスク内での移動では作り直さない。
 - React 19 からは、そのまま `<mb-map zoom={...} onmb-move={...} />` と書ける（`examples/react`、`bench/npm/pages/element`）。

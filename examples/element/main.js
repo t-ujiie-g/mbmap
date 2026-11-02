@@ -2,22 +2,39 @@
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { DESTINATIONS } from "../shared/places.js";
-import { createStyle, modeCamera } from "../shared/style.js";
+import { PLACES } from "../shared/places.js";
+import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
 
 const el = document.querySelector("mb-map");
 let mode = "2d";
+const hidden = new Set();
+let places = PLACES;
 
+// A new style object goes to the map's setStyle: tiles of what stays alike are kept.
 function setMode(next) {
   if (next === mode) return;
   mode = next;
-  // A new style object starts the map again at its camera (setStyle comes in Phase 12.2).
-  el.mapStyle = createStyle(mode);
-  el.addEventListener("mb-load", () => el.map.easeTo({ ...modeCamera(mode), duration: 1000 }), { once: true });
-  showModes();
+  el.mapStyle = createStyle(mode, hidden, places);
+  el.map?.easeTo({ ...modeCamera(mode), duration: 1000 });
+  showButtons();
 }
 
-function showModes() {
+function toggle(group) {
+  if (hidden.has(group.name)) hidden.delete(group.name);
+  else hidden.add(group.name);
+  const visibility = hidden.has(group.name) ? "none" : "visible";
+  for (const id of group.ids) if (el.map?.getLayer(id)) el.map.setLayoutProperty(id, "visibility", visibility);
+  showButtons();
+}
+
+function addMarker() {
+  places = withMarker(places, el.center, `印 ${places.features.length - PLACES.features.length + 1}`);
+  el.map?.getSource("places").setData(places);
+}
+
+function showButtons() {
   for (const b of document.querySelectorAll("#modes button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+  for (const b of document.querySelectorAll("#layers button")) b.setAttribute("aria-pressed", String(!hidden.has(b.textContent)));
 }
 
 const fixed = (v, n) => v.toFixed(n);
@@ -65,6 +82,15 @@ document.getElementById("destinations").replaceChildren(
     return b;
   }),
 );
+document.getElementById("layers").replaceChildren(
+  ...LAYER_GROUPS.map((g) => {
+    const b = document.createElement("button");
+    b.textContent = g.name;
+    b.addEventListener("click", () => toggle(g));
+    return b;
+  }),
+);
+document.getElementById("marker").addEventListener("click", addMarker);
 el.mapStyle = createStyle(mode);
-showModes();
+showButtons();
 showCamera();
