@@ -117,7 +117,8 @@ fn Map::render(self : Map) -> Unit {
       }
     }
   }
-  if settled {
+  // Feature states still being placed by the workers.
+  if settled && self.range_parts.length() == 0 {
     if !self.idle_fired {
       self.idle_fired = true
       for _, l in self.listeners {
@@ -172,17 +173,19 @@ fn Map::draw_extrusions(
       continue
     }
     let p = mesh_paint(m, layer, shared, zoom)
-    self.renderer.draw_extrusion(
-      m.mesh,
-      d.at,
-      (p.r, p.g, p.b),
-      p.a,
-      light,
-      e.vertical_gradient,
-      mix,
-      t.pixels_per_meter(),
-      exaggeration,
-    )
+    self.draw_by_state(m, layer, p, zoom, p => {
+      self.renderer.draw_extrusion(
+        m.mesh,
+        d.at,
+        (p.r, p.g, p.b),
+        p.a,
+        light,
+        e.vertical_gradient,
+        mix,
+        t.pixels_per_meter(),
+        exaggeration,
+      )
+    })
   }
 }
 
@@ -241,18 +244,24 @@ fn Map::draw_layer(
         )
       }
     } else if m.kind == KIND_LINE {
-      self.renderer.draw_line(m.mesh, at, p.r, p.g, p.b, p.a, p.width * dpr)
+      self.draw_by_state(m, layer, p, zoom, p => {
+        self.renderer.draw_line(m.mesh, at, p.r, p.g, p.b, p.a, p.width * dpr)
+      })
     } else if m.kind == KIND_CIRCLE {
-      self.renderer.draw_circle(
-        m.mesh,
-        at,
-        [p.r, p.g, p.b, p.a],
-        p.stroke,
-        p.radius * dpr,
-        p.stroke_width * dpr,
-      )
+      self.draw_by_state(m, layer, p, zoom, p => {
+        self.renderer.draw_circle(
+          m.mesh,
+          at,
+          [p.r, p.g, p.b, p.a],
+          p.stroke,
+          p.radius * dpr,
+          p.stroke_width * dpr,
+        )
+      })
     } else {
-      self.renderer.draw_fill(m.mesh, at, p.r, p.g, p.b, p.a)
+      self.draw_by_state(m, layer, p, zoom, p => {
+        self.renderer.draw_fill(m.mesh, at, p.r, p.g, p.b, p.a)
+      })
     }
   }
 }

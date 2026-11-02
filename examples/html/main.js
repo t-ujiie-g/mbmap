@@ -1,7 +1,7 @@
 // The showcase with the npm package's `Map` and the DOM.
 import { Map } from "mbmap";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
-import { describeFeature } from "../shared/pick.js";
+import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
 import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
@@ -20,8 +20,7 @@ map.once("load").then(() => {
 window.__map = map;
 // The topmost feature under a click, from the workers that hold the geometry.
 map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
-map.on("mouseenter", "places", () => (map.getCanvas().style.cursor = "pointer"));
-map.on("mouseleave", "places", () => (map.getCanvas().style.cursor = ""));
+hoverPlaces(map);
 
 function showPicked(features) {
   const rows = describeFeature(features) ?? [["—", "何もありません"]];

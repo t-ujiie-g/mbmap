@@ -303,7 +303,7 @@ extern "js" fn gl_draw_fill(
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
   #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
   #|  gl.bindVertexArray(m.vao);
-  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|
@@ -331,7 +331,7 @@ extern "js" fn gl_draw_line(
   #|  gl.uniform1f(p.u_half, half);
   #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
   #|  gl.bindVertexArray(m.vao);
-  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|
@@ -364,7 +364,7 @@ extern "js" fn gl_draw_circle(
   #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
   #|  gl.uniform4f(p.u_stroke, s[0] * s[3], s[1] * s[3], s[2] * s[3], s[3]);
   #|  gl.bindVertexArray(m.vao);
-  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|
@@ -516,7 +516,7 @@ extern "js" fn gl_draw_symbols(
   #|  }
   #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
   #|  gl.uniform1f(p.u_halo, 0);
-  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|

@@ -5,9 +5,9 @@
     "viewport": "800x600"
   },
   "summary": {
-    "asks": 254,
-    "identical": 254,
-    "features": 22582
+    "asks": 320,
+    "identical": 320,
+    "features": 32998
   },
   "results": [
     {
@@ -2280,6 +2280,783 @@
       "same": true,
       "mbmap": 78,
       "maplibre": 78
+    },
+    {
+      "view": "state",
+      "kind": "pixels",
+      "same": true,
+      "points": 7
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 7,
+      "maplibre": 7
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 117,
+      "maplibre": 117
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 72,
+      "maplibre": 72
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 508,
+      "maplibre": 508
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": null,
+      "same": true,
+      "mbmap": 3290,
+      "maplibre": 3290
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        400,
+        300
+      ],
+      "options": {
+        "layers": [
+          "road",
+          "railway",
+          "road-casing"
+        ]
+      },
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "state",
+      "kind": "rendered",
+      "geometry": [
+        [
+          200,
+          150
+        ],
+        [
+          600,
+          450
+        ]
+      ],
+      "options": {
+        "filter": [
+          "==",
+          [
+            "get",
+            "ftCode"
+          ],
+          3103
+        ]
+      },
+      "same": true,
+      "mbmap": 74,
+      "maplibre": 74
+    },
+    {
+      "view": "state",
+      "kind": "source",
+      "geometry": [
+        "gsi",
+        {
+          "sourceLayer": "road"
+        }
+      ],
+      "same": true,
+      "mbmap": 5969,
+      "maplibre": 5969
+    },
+    {
+      "view": "state",
+      "kind": "source",
+      "geometry": [
+        "gsi",
+        {
+          "sourceLayer": "building",
+          "filter": [
+            "==",
+            [
+              "get",
+              "ftCode"
+            ],
+            3103
+          ]
+        }
+      ],
+      "same": true,
+      "mbmap": 344,
+      "maplibre": 344
     },
     {
       "view": "extrusion",

@@ -73,9 +73,31 @@ pub(all) enum SourceKind {
 } derive(Debug, Eq)
 
 ///|
+/// Where a feature's id comes from (MapLibre's `promoteId`): the tile's
+/// feature id, one property, or a property per source layer (the feature id
+/// for layers not listed).
+pub(all) enum PromoteId {
+  FeatureId
+  Property(String)
+  ByLayer(Map[String, String])
+} derive(Debug, Eq)
+
+///|
+/// The property that holds the ids of `source_layer`'s features, or None for
+/// the tile's feature ids.
+pub fn PromoteId::property(self : PromoteId, source_layer : String) -> String? {
+  match self {
+    FeatureId => None
+    Property(p) => Some(p)
+    ByLayer(m) => m.get(source_layer)
+  }
+}
+
+///|
 /// A source layers draw from: URL templates of tiles `tile_size` pixels wide
 /// (with a `raster-dem` source's `encoding`), or a GeoJSON source's `buffer`
-/// and `tolerance` (MapLibre's options, in pixels).
+/// and `tolerance` (MapLibre's options, in pixels); `promote_id` names its
+/// features' ids.
 pub struct Source {
   id : String
   kind : SourceKind
@@ -86,6 +108,7 @@ pub struct Source {
   encoding : DemEncoding
   buffer : Int32
   tolerance : Double
+  promote_id : PromoteId
 }
 
 ///|
@@ -189,6 +212,28 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
 }
 
 ///|
+fn parse_promote_id(
+  s : Map[String, Json],
+  path : String,
+) -> PromoteId raise StyleError {
+  match s.get("promoteId") {
+    None | Some(Null) => FeatureId
+    Some(String(p)) => Property(p)
+    Some(Object(o)) => {
+      let m = Map([])
+      for k, v in o {
+        guard v is String(p) else {
+          raise Invalid(path="\{path}.promoteId.\{k}", "not a string")
+        }
+        m[k] = p
+      }
+      ByLayer(m)
+    }
+    _ => raise Invalid(path="\{path}.promoteId", "not a string or an object")
+  }
+}
+
+///|
 fn parse_source(id : String, json : Json) -> Source? raise StyleError {
   let path = "sources.\{id}"
   guard json is Object(s) else { raise Invalid(path~, "not an object") }
@@ -217,6 +262,7 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       encoding: Mapbox,
       buffer: buffer.to_int(),
       tolerance,
+      promote_id: parse_promote_id(s, path),
     })
   }
   let kind = match s.get("type") {
@@ -255,6 +301,7 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
     },
     buffer: 0,
     tolerance: 0.0,
+    promote_id: parse_promote_id(s, path),
   })
 }
 
@@ -374,7 +421,16 @@ fn parse_layer(
     max_zoom: number_or(l, "maxzoom", path, 24.0),
     filter: match l.get("filter") {
       None => None
-      Some(f) => Some(compile(f, expected=BoolType, path="\{path}.filter"))
+      Some(f) => {
+        let e = compile(f, expected=BoolType, path="\{path}.filter")
+        if e.reads_state() {
+          raise Invalid(
+            path="\{path}.filter",
+            "feature-state is only allowed in paint properties",
+          )
+        }
+        Some(e)
+      }
     },
     filter_id,
     color: paint_expr(

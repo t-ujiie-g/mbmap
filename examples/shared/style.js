@@ -50,7 +50,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES) {
     dem: local
       ? { type: "raster-dem", tiles: [`${fixtures}gsi-dem/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
       : { type: "raster-dem", tiles: [`${GSI}/dem_png/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
-    places: { type: "geojson", data: places },
+    places: { type: "geojson", data: places, promoteId: "name" },
   };
   sources.gsi.attribution = "国土地理院ベクトルタイル提供実験";
   sources.dem.attribution = "国土地理院 標高タイル";
@@ -64,7 +64,12 @@ export function createStyle(mode, hidden = new Set(), places = PLACES) {
     }),
     {
       id: "places", type: "circle", source: "places",
-      paint: { "circle-radius": 6, "circle-color": "#d6604d", "circle-stroke-width": 2, "circle-stroke-color": "#ffffff" },
+      paint: {
+        "circle-radius": ["case", ["boolean", ["feature-state", "hover"], false], 10, 6],
+        "circle-color": ["case", ["boolean", ["feature-state", "hover"], false], "#b2182b", "#d6604d"],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff",
+      },
     },
     {
       id: "places-label", type: "symbol", source: "places",

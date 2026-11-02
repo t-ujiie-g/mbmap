@@ -14,6 +14,7 @@ test "paint_of evaluates a group's properties and the zoom" {
   let layer = @style.Style::parse(road_style).layers[0]
   let p = paint_of(layer, 15.0, {
     obj: js_object("{\"rdCtg\": 0, \"$type\": \"Polygon\"}"),
+    state: js_null(),
   })
   assert_eq((p.r, p.b, p.a, p.width), (1.0, 0.0, 0.5, 6.0))
   let q = paint_of(layer, 10.0, JsProps::none())
@@ -24,7 +25,10 @@ test "paint_of evaluates a group's properties and the zoom" {
 test "JsProps reports absent keys as None and other types as Null" {
   let props : JsProps = {
     obj: js_object("{\"b\": true, \"s\": \"x\", \"n\": null}"),
+    state: js_object("{\"hover\": true}"),
   }
+  assert_eq(@style.FeatureContext::state(props, "hover"), Some(Bool(true)))
+  assert_eq(@style.FeatureContext::state(props, "b"), None)
   assert_eq(@style.FeatureContext::property(props, "missing"), None)
   assert_eq(@style.FeatureContext::property(props, "b"), Some(Bool(true)))
   assert_eq(@style.FeatureContext::property(props, "s"), Some(Str("x")))
@@ -43,7 +47,10 @@ test "paint_of evaluates circle radius and stroke; other kinds leave them empty"
       #| {"id": "f", "type": "fill"}]}
     ),
   )
-  let c = paint_of(style.layers[0], 14.0, { obj: js_object("{\"k\": 1}"), })
+  let c = paint_of(style.layers[0], 14.0, {
+    obj: js_object("{\"k\": 1}"),
+    state: js_null(),
+  })
   assert_eq((c.radius, c.stroke_width), (8.0, 2.0))
   assert_eq(
     (c.stroke[0], c.stroke[1], c.stroke[2], c.stroke[3]),

@@ -213,3 +213,14 @@ pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
     None => fail_with(p.error_utf8())
   }
 }
+
+///|
+/// The feature ranges of the tile `process_tile` packed last
+/// (`TileProcessor::feature_ranges`) at `output_addr`; returns their length.
+#export_name("feature_ranges")
+pub fn feature_ranges() -> Int32 {
+  guard processor.val is Some(p) else {
+    return fail_with(@utf8.encode("style not initialized"))
+  }
+  write_output(p.feature_ranges()[:].to_fixedarray()[:])
+}

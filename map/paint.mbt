@@ -1,25 +1,38 @@
 ///|
 /// The properties a data-driven layer's group shares (a JS object from the
-/// worker; null for no feature). The only context type on the main thread, so
-/// `Expr::eval` is compiled into the bundle once.
+/// worker; null for no feature) and a feature's state (a JS object from
+/// `set_feature_state`, or null). The only context type on the main thread,
+/// so `Expr::eval` is compiled into the bundle once.
 priv struct JsProps {
   obj : JsValue
+  state : JsValue
 }
 
 ///|
 fn JsProps::none() -> JsProps {
-  { obj: js_null(), }
+  { obj: js_null(), state: js_null(), }
+}
+
+///|
+/// A JS object's value at `key` as an expression value; None if absent.
+fn js_value(obj : JsValue, key : String) -> @style.Value? {
+  match prop_kind(obj, key) {
+    0 => None
+    2 => Some(Bool(prop_bool(obj, key)))
+    3 => Some(Num(get_double(obj, key)))
+    4 => Some(Str(get_string(obj, key)))
+    _ => Some(Null)
+  }
 }
 
 ///|
 impl @style.FeatureContext for JsProps with fn property(self, key) {
-  match prop_kind(self.obj, key) {
-    0 => None
-    2 => Some(Bool(prop_bool(self.obj, key)))
-    3 => Some(Num(get_double(self.obj, key)))
-    4 => Some(Str(get_string(self.obj, key)))
-    _ => Some(Null)
-  }
+  js_value(self.obj, key)
+}
+
+///|
+impl @style.FeatureContext for JsProps with fn state(self, key) {
+  js_value(self.state, key)
 }
 
 ///|

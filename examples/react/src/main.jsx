@@ -5,7 +5,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "r
 import { createRoot } from "react-dom/client";
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../../shared/analysis.js";
-import { describeFeature } from "../../shared/pick.js";
+import { describeFeature, hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
 import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../../shared/style.js";
@@ -66,8 +66,7 @@ function App() {
       setPicked(rows);
       window.__picked = rows;
     }));
-    map.on("mouseenter", "places", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "places", () => (map.getCanvas().style.cursor = ""));
+    hoverPlaces(map);
     update(e.detail.center);
   };
   const go = (d) => ref.current.map?.flyTo({ center: d.center, zoom: d.zoom, ...modeCamera(mode) });

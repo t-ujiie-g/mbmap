@@ -58,6 +58,10 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - `querySourceFeatures(sourceId, { sourceLayer, filter })`：描画中のタイルにあるソースの地物を返す。
   - ジオメトリはワーカーが持つので、どちらも Promise を返す（MapLibre は同期）。
   - MapLibre 6 は既定で source の maxzoom より深いズームのタイルを切り分けるため（`zoomLevelsToOverscale`）、そこでは同じ地物の切り口と重複が MapLibre と違う。mbmap は source のタイルのまま描き、問い合わせる。
+- 地物の状態（feature-state）：`setFeatureState({ source, sourceLayer, id }, state)`、`getFeatureState`、`removeFeatureState(target, key?)`。
+  - paint で `["feature-state", key]`（`boolean`・`number`・`string` で型をそろえる）を読むと、その地物だけその状態で描く。fill、line、circle、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
+  - 地物の id は、タイルの id、GeoJSON の `id`、または source の `promoteId` が指すプロパティ。同じ id の地物はまとめて同じ状態になる。
+  - ワーカーが地物の位置を持ち、状態のある地物の分だけを問い合わせるので、変更は 1 往復遅れて描かれる。フィルターや layout では使えない（MapLibre と同じ）。
 - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
   - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
 - `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。

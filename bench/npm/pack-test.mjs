@@ -88,9 +88,10 @@ const checks = {
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
     const query = await queryChecks(page);
+    const state = await stateChecks(page);
     const style = await styleChecks(page, requests);
     const camera = await cameraChecks(page);
-    return [ok && query.ok && style.ok && camera.ok, { ...r, query, style, camera }];
+    return [ok && query.ok && state.ok && style.ok && camera.ok, { ...r, query, state, style, camera }];
   },
 
   async element(page) {
@@ -312,6 +313,11 @@ async function showcase(page) {
   await page.mouse.click(400, 300);
   await page.waitForFunction(() => window.__picked);
   const picked = await page.evaluate(() => ({ rows: window.__picked, text: document.getElementById("picked").textContent }));
+  // Hovering the place sets its feature state.
+  await page.mouse.move(420, 320);
+  await page.mouse.move(400, 300, { steps: 3 });
+  await page.waitForFunction(() => window.__hovered);
+  const hovered = await page.evaluate(() => ({ id: window.__hovered, state: window.__map.getFeatureState({ source: "places", id: window.__hovered }) }));
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -335,6 +341,7 @@ async function showcase(page) {
   });
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
+    hovered.id === "東京駅" && hovered.state.hover === true &&
     styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.markers === "印 1" &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
     first.plane.zone === "第IX系" &&
@@ -342,7 +349,7 @@ async function showcase(page) {
     tilted.pitch === 60 && tilted.bearing === -20 &&
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系");
-  return [ok, { first, picked, tilted, osaka: osaka.near, shown, styled }];
+  return [ok, { first, picked, hovered, tilted, osaka: osaka.near, shown, styled }];
 }
 
 // Queries and mouse events on the npm example's map (Tokyo Station, 800 x 600),
@@ -433,6 +440,73 @@ async function queryChecks(page) {
     events.filter((e) => e[0] === "enter").length >= 1 &&
     events.at(-1)[0] === "leave";
   return { ok, ...found, events };
+}
+
+// Feature state on the npm example's map: two squares, one by GeoJSON id and
+// one by a promoted property, are drawn red while their state says `on`.
+async function stateChecks(page) {
+  const step = (body) =>
+    page.evaluate(async (b) => {
+      const map = window.__map;
+      const idle = map.once("idle");
+      const out = new Function("map", b)(map);
+      await idle;
+      return out;
+    }, body);
+  await step(`
+    map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
+    const square = (x0, y0, x1, y1) => {
+      const [a, b] = [map.unproject([x0, y1]), map.unproject([x1, y0])];
+      return { type: "Polygon", coordinates: [[[a.lng, a.lat], [b.lng, a.lat], [b.lng, b.lat], [a.lng, b.lat], [a.lng, a.lat]]] };
+    };
+    const color = ["case", ["boolean", ["feature-state", "on"], false], "#ff0000", "#0000ff"];
+    map.addSource("st", { type: "geojson", data: { type: "FeatureCollection", features: [
+      { type: "Feature", id: 1, properties: {}, geometry: square(100, 100, 200, 200) },
+    ] } });
+    map.addSource("pr", { type: "geojson", promoteId: "key", data: { type: "FeatureCollection", features: [
+      { type: "Feature", properties: { key: "b" }, geometry: square(300, 100, 400, 200) },
+    ] } });
+    map.addLayer({ id: "st", type: "fill", source: "st", paint: { "fill-color": color } });
+    map.addLayer({ id: "pr", type: "fill", source: "pr", paint: { "fill-color": color } });`);
+  const colors = async () => [await pixel(page, 150, 150), await pixel(page, 350, 150)];
+  const before = await colors();
+  const set = await step(`
+    map.setFeatureState({ source: "st", id: 1 }, { on: true });
+    map.setFeatureState({ source: "pr", id: "b" }, { on: true, other: 2 });`);
+  const on = await colors();
+  const read = await page.evaluate(async () => {
+    const map = window.__map;
+    const errors = [];
+    const f = (e) => errors.push(e.error.message);
+    map.on("error", f);
+    map.setFeatureState({ source: "gsi", id: 1 }, { on: true });
+    map.setFeatureState({ source: "nope", id: 1 }, { on: true });
+    map.off("error", f);
+    const [hit] = await map.queryRenderedFeatures([350, 150], { layers: ["pr"] });
+    return { state: map.getFeatureState({ source: "pr", id: "b" }), queried: hit?.state, id: hit?.id, errors };
+  });
+  await step(`map.removeFeatureState({ source: "pr", id: "b" }, "on"); map.removeFeatureState({ source: "st" });`);
+  const off = await colors();
+  const left = await page.evaluate(() => {
+    const map = window.__map;
+    const out = { st: map.getFeatureState({ source: "st", id: 1 }), pr: map.getFeatureState({ source: "pr", id: "b" }) };
+    for (const id of ["st", "pr"]) {
+      map.removeLayer(id);
+      map.removeSource(id);
+    }
+    return out;
+  });
+  const red = (c) => near(c, [255, 0, 0]);
+  const blue = (c) => near(c, [0, 0, 255]);
+  const ok =
+    blue(before[0]) && blue(before[1]) &&
+    red(on[0]) && red(on[1]) &&
+    JSON.stringify(read.state) === JSON.stringify({ on: true, other: 2 }) &&
+    JSON.stringify(read.queried) === JSON.stringify({ on: true, other: 2 }) && read.id === "b" &&
+    /sourceLayer parameter must be provided/.test(read.errors[0] ?? "") && /'nope' does not exist/.test(read.errors[1] ?? "") &&
+    blue(off[0]) && blue(off[1]) &&
+    JSON.stringify(left) === JSON.stringify({ st: {}, pr: { other: 2 } });
+  return { ok, before, on, read, off, left, set };
 }
 
 // The colour of screen pixel (x, y), read from a screenshot.
@@ -629,7 +703,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt|'nope' does not exist/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt|'nope' does not exist|sourceLayer parameter must be provided/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.goto(`${origin}/${PAGES[example]}`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });

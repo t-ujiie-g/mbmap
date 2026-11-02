@@ -270,3 +270,39 @@ pub fn Renderer::set_heights(
 ) -> Unit {
   gl_set_heights(self.gl, mesh, labels, stride, heights)
 }
+
+///|
+extern "js" fn gl_set_range(mesh : Mesh, first : Int32, count : Int32) -> Unit =
+  #|(m, first, count) => {
+  #|  if (count < 0) { delete m.rangeOffset; delete m.rangeCount; return; }
+  #|  m.rangeOffset = first * (m.type === 0x1405 ? 4 : 2);
+  #|  m.rangeCount = count;
+  #|}
+
+///|
+/// Makes fill, line, circle and extrusion draws of `mesh` take only indices
+/// `first..<first + count` (feature by feature drawing), until `whole_mesh`.
+pub fn Renderer::set_range(
+  _self : Renderer,
+  mesh : Mesh,
+  first : Int32,
+  count : Int32,
+) -> Unit {
+  gl_set_range(mesh, first, count)
+}
+
+///|
+/// Draws all of `mesh` again after `set_range`.
+pub fn Renderer::whole_mesh(_self : Renderer, mesh : Mesh) -> Unit {
+  gl_set_range(mesh, 0, -1)
+}
+
+///|
+extern "js" fn gl_index_count(mesh : Mesh) -> Int32 =
+  #|(m) => m.count
+
+///|
+/// How many indices `mesh` holds.
+pub fn Renderer::index_count(_self : Renderer, mesh : Mesh) -> Int32 {
+  gl_index_count(mesh)
+}

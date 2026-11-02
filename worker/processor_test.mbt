@@ -424,7 +424,7 @@ fn geojson_tile() -> Bytes {
   b.end_ring()
   b.end_part()
   b.prop("name", Str("sq"))
-  b.end_feature(Polygon)
+  b.end_feature(Polygon, id=Some(Str("square")))
   let table = b.finish()
   let tiler = @tiler.Tiler::new(table)
   @tiler.encode_tile(tiler.tile(0, 0, 0).unwrap(), table)

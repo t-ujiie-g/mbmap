@@ -422,7 +422,7 @@ pub fn TileProcessor::query(
         continue
       }
       if self.hit(query, pad, sl, layer, feature) is Some(distance) {
-        hits.push((index, feature.index, distance, layer))
+        hits.push((index, feature.index, distance, layer, sl.source_layer))
       }
     }
   }
@@ -438,16 +438,28 @@ pub fn TileProcessor::query(
     let feature = FeatureRef::new(layer)
     feature.index = i
     if passes(query.filter, feature, tile_zoom) {
-      hits.push((index, i, @double.not_a_number, layer))
+      hits.push(
+        (
+          index,
+          i,
+          @double.not_a_number,
+          layer,
+          self.style.layers[index].source_layer,
+        ),
+      )
     }
+  }
+  let promote = match self.style.source(source) {
+    Some(s) => s.promote_id
+    None => FeatureId
   }
   w.u32(hits.length())
   for h in hits {
-    let (index, i, distance, layer) = h
+    let (index, i, distance, layer, source_layer) = h
     w.u32(index)
     w.u32(i)
     w.f64(distance)
-    if !self.write_feature(w, layer, i) {
+    if !self.write_feature(w, layer, i, promote.property(source_layer)) {
       return None
     }
   }
@@ -497,12 +509,16 @@ pub fn TileProcessor::source_features(
       picked.push(i)
     }
   }
+  let promoted = match self.style.source(source) {
+    Some(s) => s.promote_id.property(source_layer)
+    None => None
+  }
   w.u32(picked.length())
   for i in picked {
     w.u32(-1)
     w.u32(i)
     w.f64(@double.not_a_number)
-    if !self.write_feature(w, layer, i) {
+    if !self.write_feature(w, layer, i, promoted) {
       return None
     }
   }
@@ -511,25 +527,19 @@ pub fn TileProcessor::source_features(
 
 ///|
 /// Feature `i` of `layer` as a record (docs/FORMATS.md, "Query result"): its
-/// id, geometry type, extent, rings and properties. False if its geometry is
-/// malformed.
+/// id (the property `promoted` names, if any), geometry type, extent, rings
+/// and properties. False if its geometry is malformed.
 fn TileProcessor::write_feature(
   self : TileProcessor,
   w : @core.ByteWriter,
   layer : Features,
   i : Int32,
+  promoted : String?,
 ) -> Bool {
   if !self.decode(layer, i) {
     return false
   }
-  match layer {
-    Mvt(l) =>
-      match l.id(i) {
-        Some(id) => write_value(w, Num(id.to_double()))
-        None => w.u8(@core.PROP_NULL)
-      }
-    Columns(_) => w.u8(@core.PROP_NULL)
-  }
+  write_value(w, layer.id(i, promoted))
   w.u8(
     match layer.geom_type(i) {
       Point => 1

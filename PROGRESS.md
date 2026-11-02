@@ -1,5 +1,48 @@
 # PROGRESS
 
+## Phase 12.3b：feature-state（2026-11-02）
+
+状態：**完了**。これで Phase 12.3（問い合わせと feature-state）が終わり。
+
+### できたこと
+
+- **式**：`["feature-state", key]` と、型をそろえる `boolean`・`number`・`string` を足した。
+  - `FeatureContext::state` で読み、ワーカーでは常に無い。
+  - フィルターでは MapLibre と同じく拒む。`StyleLayer::reads_state` は、paint が状態を読むかを示す。
+- **地物の id**：タイルの id、GeoJSON の `id`（列形式タイルに id を足した）、または source の `promoteId`（文字列か、ソースレイヤーごとのオブジェクト）。問い合わせ結果の `id` もこれになる。
+- **ワーカー**（決めていただいた方式③）：
+  - 状態を読むレイヤーは、エントリごとに地物の id とインデックス範囲を記録する（`feature_ranges`）。グルーがタイルのバイト列と一緒に保持する。
+  - 範囲を記録するため、そうしたレイヤーは別レイヤーのバッファを共有しない。
+  - メインスレッドから状態を持つ id を受け取ると（`{type: "ranges"}`）、その範囲だけを返す。同じ id の地物が複数あれば、すべてを返す。
+- **メインスレッド**：状態を持つ地物の範囲を、その状態で評価した paint で、インデックス順に描き分ける（`draw_by_state`、`Renderer::set_range`）。
+  - fill、line、circle、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
+  - 新しいタイルとスタイルの変更でも範囲を問い合わせ直す。答えを待つ間は `idle` を出さない。
+- **npm**：`setFeatureState`、`getFeatureState`、`removeFeatureState`（MapLibre と同じ引数とエラー）。問い合わせ結果の `state`。
+- **example**：地点にホバーすると、`feature-state` で強調する（id は `promoteId` で地点名）。3 つとも同じ処理（`examples/shared/pick.js`）。
+- **直した不具合**：ワーカーの `unpack` が空の symbol エントリを飛ばすと、メッセージ内の位置とパックされたエントリ番号がずれていた。共有バッファの参照もずれていた。各レイヤーにエントリ番号 `entry` を持たせて直した。
+
+### 黄金テスト（`npm run query:golden`）
+
+- ビュー「state」を足した。GSI の建物（`ftCode`）と道路（`rdCtg`）に `promoteId` を付け、状態で赤くする。
+- 問い合わせ結果（`state` と `id` を含む）と、状態のある地物が上にある 7 点の画素を MapLibre と比べた。
+- **320 件すべて同じ**。画素は多くの点で値まで一致した。
+
+### 確認（pack test）
+
+- GeoJSON の id と `promoteId` で、状態に応じて色が変わること、`getFeatureState`、問い合わせ結果の `state`、`removeFeatureState`（キーを指定、id なし）、エラー。
+- 3 つの example で、東京駅にホバーすると状態が付くこと。
+
+### 計測
+
+- サイズ：表示の入口 62.1 → 65.4KB（予算 70KB）、表示ワーカー 69.5 → 73.5KB（予算 100KB）。
+- `process_tile`（状態を読むレイヤーのないスタイル）：Chromium 6.63ms、Firefox 8.60ms、WebKit 7.54ms。前回と同じ範囲だった。
+
+### 既知の問題・まだのもの
+
+- symbol レイヤーの文字には状態が効かない。fill-extrusion の高さにも効かない（ワーカーが頂点に焼き込むため）。
+- GeoJSON の `generateId` は未対応。
+- 表示の入口は残り 4.6KB。12.4・12.5 の前に、削れるところを探す。
+
 ## 表示ワーカーを小さくする（2026-11-02）
 
 ### ユーザー判断（2026-11-02）

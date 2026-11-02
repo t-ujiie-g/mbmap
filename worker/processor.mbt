@@ -3,6 +3,8 @@
 /// sharing the inputs their paint reads. Reuse one per worker: its buffers keep
 /// their capacity. `number` parses the JSON numbers past
 /// `@core.read_json_number`'s fast path (in a style or a query's filter).
+/// For layers whose paint reads the feature state, `ranges` collects each
+/// entry's features' index ranges (`feature_ranges`).
 pub struct TileProcessor {
   style : @style.Style
   out : PackedTile
@@ -16,6 +18,10 @@ pub struct TileProcessor {
   priv geometry : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
   priv number : (BytesView) -> Double
+  priv state_layers : Array[Bool]
+  priv range_pool : Array[Array[Int32]]
+  priv ranges : @core.ByteWriter
+  priv mut range_entries : Int32
   priv mut error : String
 }
 
@@ -37,6 +43,10 @@ pub fn TileProcessor::new(
     geometry: @mvt.Geometry::new(),
     inputs: style.layers.map(paint_inputs),
     number,
+    state_layers: style.layers.map(l => l.reads_state()),
+    range_pool: [],
+    ranges: @core.ByteWriter::new(),
+    range_entries: 0,
     error: "",
   }
 }
@@ -182,6 +192,11 @@ pub fn TileProcessor::process(
     }
   }
   self.out.begin(entries)
+  self.ranges.clear()
+  self.range_entries = 0
+  for r in self.range_pool {
+    r.clear()
+  }
   // Ungrouped layers packed so far: (style layer, its single entry or -1).
   let done : Array[(Int32, Int32)] = []
   for index, sl in style_layers {
@@ -189,8 +204,13 @@ pub fn TileProcessor::process(
       continue
     }
     let groups = Groups::new(self.inputs[index])
+    // A layer drawn feature by feature keeps its own buffers and ranges.
     if !groups.active &&
-      done.search_by(d => same_geometry(style_layers[d.0], sl)) is Some(i) {
+      !self.state_layers[index] &&
+      done.search_by(d => {
+        !self.state_layers[d.0] && same_geometry(style_layers[d.0], sl)
+      })
+      is Some(i) {
       if done[i].1 >= 0 {
         self.out.add_alias(index, done[i].1)
       }
@@ -279,16 +299,21 @@ fn TileProcessor::fill_layer(
         return false
       }
       let g = self.geometry
-      let out = self.fill_buffers(groups.of(feature))
+      let group = groups.of(feature)
+      let out = self.fill_buffers(group)
+      let first = out.indices.length()
       self.fill.add_polygons(g.coords[:], g.ring_ends[:], out)
+      self.track(index, group, i, first, out.indices.length())
     }
   }
   for g in 0..<groups.count() {
     let b = self.fill_buffers(g)
     if b.num_vertices() > 0 {
+      let entry = self.out.layer_count()
       if !self.out.add_fill(index, b, extent=layer.extent()) {
         return false
       }
+      self.flush_ranges(index, entry, g, layer)
       if groups.active {
         self.out.set_props(groups.props(g))
       }
@@ -347,21 +372,27 @@ fn TileProcessor::extrusion_layer(
       heights[2] = number_at(e.height, zoom, feature)
       heights[3] = number_at(e.height, zoom + 1.0, feature)
       let g = self.geometry
+      let group = groups.of(feature)
+      let out = self.extrusion_buffers(group)
+      let first = out.indices.length()
       self.extrusion.add_polygons(
         g.coords[:],
         g.ring_ends[:],
         heights,
-        self.extrusion_buffers(groups.of(feature)),
+        out,
         extent=layer.extent(),
       )
+      self.track(index, group, i, first, out.indices.length())
     }
   }
   for g in 0..<groups.count() {
     let b = self.extrusion_buffers(g)
     if b.num_vertices() > 0 {
+      let entry = self.out.layer_count()
       if !self.out.add_extrusion(index, b, extent=layer.extent()) {
         return false
       }
+      self.flush_ranges(index, entry, g, layer)
       if groups.active {
         self.out.set_props(groups.props(g))
       }
@@ -393,7 +424,9 @@ fn TileProcessor::line_layer(
         return false
       }
       let g = self.geometry
-      let out = self.line_buffers(groups.of(feature))
+      let group = groups.of(feature)
+      let out = self.line_buffers(group)
+      let first = out.indices.length()
       for r in 0..<g.num_rings() {
         self.line.add_line(
           g.coords[:],
@@ -406,14 +439,17 @@ fn TileProcessor::line_layer(
           round_limit=sl.round_limit,
         )
       }
+      self.track(index, group, i, first, out.indices.length())
     }
   }
   for g in 0..<groups.count() {
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
+      let entry = self.out.layer_count()
       if !self.out.add_line(index, b, extent=layer.extent()) {
         return false
       }
+      self.flush_ranges(index, entry, g, layer)
       if groups.active {
         self.out.set_props(groups.props(g))
       }
@@ -443,19 +479,25 @@ fn TileProcessor::circle_layer(
         return false
       }
       let g = self.geometry
+      let group = groups.of(feature)
+      let out = self.line_buffers(group)
+      let first = out.indices.length()
       @tess.add_points(
         g.coords[:g.num_points() * 2],
-        self.line_buffers(groups.of(feature)),
+        out,
         extent=layer.extent(),
       )
+      self.track(index, group, i, first, out.indices.length())
     }
   }
   for g in 0..<groups.count() {
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
+      let entry = self.out.layer_count()
       if !self.out.add_circles(index, b, extent=layer.extent()) {
         return false
       }
+      self.flush_ranges(index, entry, g, layer)
       if groups.active {
         self.out.set_props(groups.props(g))
       }
@@ -510,4 +552,69 @@ pub fn TileProcessor::dem_tile(
     w.f32(if v.is_nan() { 0.0 } else { v })
   }
   Some(w.to_bytes())
+}
+
+///|
+/// Notes that feature `i` of style layer `index` took indices `first..<end`
+/// of group `group`'s buffers, if the layer is drawn feature by feature.
+fn TileProcessor::track(
+  self : TileProcessor,
+  index : Int32,
+  group : Int32,
+  i : Int32,
+  first : Int32,
+  end : Int32,
+) -> Unit {
+  guard self.state_layers[index] && end > first else { return }
+  while self.range_pool.length() <= group {
+    self.range_pool.push([])
+  }
+  let r = self.range_pool[group]
+  r.push(i)
+  r.push(first)
+  r.push(end - first)
+}
+
+///|
+/// Writes the ranges of group `group` as those of packed entry `entry`
+/// (docs/FORMATS.md, "Feature ranges") and empties the group's list.
+fn TileProcessor::flush_ranges(
+  self : TileProcessor,
+  index : Int32,
+  entry : Int32,
+  group : Int32,
+  layer : Features,
+) -> Unit {
+  guard self.state_layers[index] && group < self.range_pool.length() else {
+    return
+  }
+  let sl = self.style.layers[index]
+  let promoted = match self.style.source(sl.source) {
+    Some(s) => s.promote_id.property(sl.source_layer)
+    None => None
+  }
+  let r = self.range_pool[group]
+  let w = self.ranges
+  w.u32(entry)
+  w.u32(r.length() / 3)
+  for k = 0; k < r.length(); k = k + 3 {
+    write_value(w, layer.id(r[k], promoted))
+    w.u32(r[k + 1])
+    w.u32(r[k + 2])
+  }
+  self.range_entries += 1
+  r.clear()
+}
+
+///|
+/// The feature ranges of the last tile processed (docs/FORMATS.md, "Feature
+/// ranges"): where each feature's indices lie in the entries of layers whose
+/// paint reads the feature state.
+pub fn TileProcessor::feature_ranges(self : TileProcessor) -> Bytes {
+  let w = @core.ByteWriter::new()
+  w.u32(self.range_entries)
+  for b in self.ranges.to_bytes() {
+    w.u8(b.to_int())
+  }
+  w.to_bytes()
 }

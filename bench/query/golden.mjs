@@ -24,6 +24,15 @@ extruded.layers.splice(at, 2, {
 });
 await mkdir(path.join(ROOT, "bench/dist"), { recursive: true });
 await writeFile(path.join(ROOT, "bench/dist/query-flat.json"), JSON.stringify(base));
+// Buildings and roads with ids promoted from properties, red while their state says `on`.
+const stated = structuredClone(base);
+stated.sources.gsi.promoteId = { building: "ftCode", road: "rdCtg" };
+const onRed = (otherwise) => ["case", ["boolean", ["feature-state", "on"], false], "#ff0000", otherwise];
+for (const l of stated.layers) {
+  if (l.id === "building") l.paint["fill-color"] = onRed(l.paint["fill-color"]);
+  if (l.id === "road") l.paint["line-color"] = onRed(l.paint["line-color"]);
+}
+await writeFile(path.join(ROOT, "bench/dist/query-state.json"), JSON.stringify(stated));
 await writeFile(path.join(ROOT, "bench/dist/query-extrusion.json"), JSON.stringify(extruded));
 
 const tokyo = [139.7671, 35.6812];
@@ -31,6 +40,10 @@ const views = [
   { name: "flat", style: "query-flat", camera: { center: tokyo, zoom: 15, bearing: 0, pitch: 0 } },
   { name: "turned", style: "query-flat", camera: { center: [139.7645, 35.6795], zoom: 15.6, bearing: 30, pitch: 0 } },
   { name: "tilted", style: "query-flat", camera: { center: tokyo, zoom: 15.3, bearing: -25, pitch: 50 }, tilted: true },
+  {
+    name: "state", style: "query-state", camera: { center: tokyo, zoom: 15, bearing: 0, pitch: 0 },
+    states: [[{ source: "gsi", sourceLayer: "building", id: 3103 }, { on: true }], [{ source: "gsi", sourceLayer: "road", id: 0 }, { on: true, n: 1 }]],
+  },
   { name: "extrusion", style: "query-extrusion", camera: { center: tokyo, zoom: 15.5, bearing: -20, pitch: 55 }, tilted: true },
 ];
 const points = [];
@@ -45,6 +58,17 @@ const asks = [
   ["source", ["gsi", { sourceLayer: "road" }]],
   ["source", ["gsi", { sourceLayer: "building", filter: ["==", ["get", "ftCode"], 3103] }]],
 ];
+
+// The colour of screen pixel (x, y) of the page, from a screenshot.
+async function pixel(page, x, y) {
+  const png = await page.screenshot({ clip: { x, y, width: 1, height: 1 } });
+  return page.evaluate(async (b64) => {
+    const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+    const ctx = new OffscreenCanvas(1, 1).getContext("2d");
+    ctx.drawImage(bitmap, 0, 0);
+    return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+  }, png.toString("base64"));
+}
 
 // Neighbouring extrusions with the same vertices (a building and its outline) in one order.
 function sameDepthInOrder(features) {
@@ -71,6 +95,22 @@ try {
     page.on("pageerror", (e) => console.log(v.name, "pageerror", e.message));
     await page.goto(`${origin}/bench/query/index.html?style=/bench/dist/${v.style}.json&camera=${encodeURIComponent(JSON.stringify(v.camera))}`);
     await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
+    if (v.states) {
+      await page.evaluate((states) => window.__setState(states), v.states);
+      // Where a stated building or road is on top, both maps draw it red alike.
+      const drawn = [];
+      for (const [x, y] of points) {
+        const top = (await page.evaluate(([px, py]) => window.__query("rendered", [px, py]), [x, y])).maplibre[0];
+        if (!top || !Object.keys(top.state ?? {}).length || !["building", "road"].includes(top.layer)) continue;
+        drawn.push([x, y, await pixel(page, x, y), await pixel(page, x, y + 600)]);
+      }
+      // Red over the layer's own color (fills are translucent), and the same on both within antialiasing.
+      const red = (c) => c[0] > c[1] + 80 && c[0] > c[2] + 80;
+      const close = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 16);
+      const same = drawn.length > 0 && drawn.every((d) => red(d[2]) && red(d[3]) && close(d[2], d[3]));
+      if (!same) failed++;
+      results.push({ view: v.name, kind: "pixels", same, points: drawn.length, ...(same ? {} : { drawn }) });
+    }
     for (const [kind, geometry, options] of asks) {
       if (v.tilted && (kind === "source" || geometry === null)) continue;
       const r = await page.evaluate(([k, g, o]) => window.__query(k, g, o), [kind, geometry, options]);
@@ -93,7 +133,7 @@ try {
   await browser.close();
   server.close();
 }
-const summary = { asks: results.length, identical: results.length - failed, features: results.reduce((n, r) => n + r.maplibre, 0) };
+const summary = { asks: results.length, identical: results.length - failed, features: results.reduce((n, r) => n + (r.maplibre ?? 0), 0) };
 await writeFile(path.join(ROOT, "bench/results/query-golden.json"), JSON.stringify({ env: { maplibre: "6.16.0", browser: "chromium", viewport: "800x600" }, summary, results }, null, 2) + "\n");
 console.log(JSON.stringify(summary));
 for (const r of results.filter((r) => !r.same)) console.log(JSON.stringify(r));

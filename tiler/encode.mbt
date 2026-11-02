@@ -1,6 +1,6 @@
 ///|
 /// The tile as bytes for the display worker (docs/FORMATS.md, "Columnar
-/// tile"), with properties from `table`'s rows.
+/// tile"), with properties and ids from `table`'s rows.
 pub fn encode_tile(d : TileData, table : @geom.Table) -> Bytes {
   let w = @core.ByteWriter::new()
   let columns = table.columns.filter(c => {
@@ -31,6 +31,9 @@ pub fn encode_tile(d : TileData, table : @geom.Table) -> Bytes {
     for row in d.rows {
       @geom.write_prop(w, c.values[row])
     }
+  }
+  for row in d.rows {
+    @geom.write_prop(w, table.ids[row])
   }
   w.to_bytes()
 }

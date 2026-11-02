@@ -179,6 +179,8 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         }
         let props = props_or_null(l)
         meshes.push({
+          entry: get_int(l, "entry"),
+          states: [],
           layer: get_int(l, "layer"),
           kind,
           mesh,
@@ -186,7 +188,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           props: if is_null_value(props) {
             None
           } else {
-            Some({ obj: props, })
+            Some({ obj: props, state: js_null(), })
           },
           paint: None,
           labels,
@@ -211,6 +213,14 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
       }
       let at = self.requests.get(request)
       self.finish(request, Some(meshes))
+      // Stated features of the new tile, drawn by state once the worker says where.
+      if at is Some((source, key)) &&
+        self.source_tiles(source) is Some(src) &&
+        src.tiles.get(key) is Some(entry) &&
+        self.feature_states.get(src.source.id) is Some(states) &&
+        states.length() > 0 {
+        self.ask_ranges(src, entry)
+      }
       if at is Some((source, key)) &&
         self.source_tiles(source) is Some(src) &&
         src.tiles.get(key) is Some(entry) &&
@@ -219,6 +229,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
       }
     }
     "query" => self.on_query(msg)
+    "ranges" => self.on_ranges(msg)
     "error" => console_warn("worker: \{get_string(msg, "message")}")
     _ => ()
   }
