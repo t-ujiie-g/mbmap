@@ -37,16 +37,39 @@ pub(all) struct Camera {
 } derive(Debug, Eq)
 
 ///|
-/// A camera on a `width` x `height` CSS-pixel viewport, clamped to the zoom,
-/// `MAX_LATITUDE` and `MAX_PITCH` limits; non-finite cameras are ignored.
-/// Positions are world pixels relative to the center, so precision holds.
-/// `elevation` (meters) lifts the center onto terrain; the camera orbits it.
+/// What a camera may do: zoom and pitch ranges and, if set, `bounds` the
+/// view may not leave (MapLibre's `maxBounds`).
+pub(all) struct Limits {
+  min_zoom : Double
+  max_zoom : Double
+  min_pitch : Double
+  max_pitch : Double
+  bounds : LngLatBounds?
+} derive(Debug, Eq)
+
+///|
+/// Zoom 0 to 22, pitch 0 to `MAX_PITCH`, no bounds.
+pub fn Limits::default() -> Limits {
+  {
+    min_zoom: 0.0,
+    max_zoom: 22.0,
+    min_pitch: 0.0,
+    max_pitch: MAX_PITCH,
+    bounds: None,
+  }
+}
+
+///|
+/// A camera on a `width` x `height` CSS-pixel viewport, kept to `limits` and to
+/// the world between `MAX_LATITUDE` north and south as MapLibre keeps it;
+/// non-finite cameras are ignored. Positions are world pixels relative to the
+/// center, so precision holds. `elevation` (meters) lifts the center onto
+/// terrain; the camera orbits it.
 pub struct Transform {
   camera : Camera
   width : Double
   height : Double
-  min_zoom : Double
-  max_zoom : Double
+  limits : Limits
   elevation : Double
   priv view : Mat4
   priv inverse : Mat4
@@ -57,22 +80,14 @@ pub fn Transform::new(
   camera : Camera,
   width : Double,
   height : Double,
-  min_zoom~ : Double = 0.0,
-  max_zoom~ : Double = 22.0,
+  limits~ : Limits = Limits::default(),
 ) -> Transform {
   let camera = if finite(camera) {
     camera
   } else {
     { center: { lng: 0.0, lat: 0.0, }, zoom: 0.0, bearing: 0.0, pitch: 0.0, }
   }
-  make(
-    constrain(camera, min_zoom, max_zoom),
-    width,
-    height,
-    min_zoom,
-    max_zoom,
-    0.0,
-  )
+  make(constrain(camera, limits, width, height), width, height, limits, 0.0)
 }
 
 ///|
@@ -80,8 +95,7 @@ fn make(
   camera : Camera,
   width : Double,
   height : Double,
-  min_zoom : Double,
-  max_zoom : Double,
+  limits : Limits,
   elevation : Double,
 ) -> Transform {
   let lift = elevation * pixels_per_meter(camera.zoom, camera.center.lat)
@@ -90,8 +104,7 @@ fn make(
     camera,
     width,
     height,
-    min_zoom,
-    max_zoom,
+    limits,
     elevation,
     view,
     inverse: view.invert().unwrap_or(Mat4::identity()),
@@ -205,35 +218,172 @@ pub fn Transform::with_elevation(
   if elevation == self.elevation || elevation.is_nan() || elevation.is_inf() {
     return self
   }
-  make(
-    self.camera,
-    self.width,
-    self.height,
-    self.min_zoom,
-    self.max_zoom,
-    elevation,
-  )
+  make(self.camera, self.width, self.height, self.limits, elevation)
 }
 
 ///|
-fn constrain(camera : Camera, min_zoom : Double, max_zoom : Double) -> Camera {
-  let zoom = @cmp.maximum(min_zoom, @cmp.minimum(max_zoom, camera.zoom))
-  let lat = @cmp.maximum(
-    -MAX_LATITUDE,
-    @cmp.minimum(MAX_LATITUDE, camera.center.lat),
+/// `camera` kept to `limits` on a `width` x `height` viewport: zoom and pitch
+/// clamped, bearing and longitude wrapped to (-180, 180], and the center moved
+/// (or the zoom raised) so the view stays between the latitude limits and
+/// inside `bounds` (MapLibre's `defaultConstrain`, map padding left out).
+fn constrain(
+  camera : Camera,
+  limits : Limits,
+  width : Double,
+  height : Double,
+) -> Camera {
+  let zoom = @cmp.maximum(
+    limits.min_zoom,
+    @cmp.minimum(limits.max_zoom, camera.zoom),
   )
-  {
-    center: { lng: wrap180(camera.center.lng), lat, },
+  let camera = {
+    ..camera,
     zoom,
     bearing: wrap180(camera.bearing),
-    pitch: @cmp.maximum(0.0, @cmp.minimum(MAX_PITCH, camera.pitch)),
+    pitch: @cmp.maximum(
+      limits.min_pitch,
+      @cmp.minimum(limits.max_pitch, camera.pitch),
+    ),
+  }
+  // MapLibre sets the zoom before the center and constrains each time: the
+  // zoom rises until the ranges fill the view, then the center is kept in.
+  let clamp = (z : Double) => {
+    @cmp.maximum(limits.min_zoom, @cmp.minimum(limits.max_zoom, z))
+  }
+  let mut zoom = zoom
+  for _ in 0..<3 {
+    let (_, z) = constrain_center(camera.center, zoom, limits, width, height)
+    if clamp(z) == zoom {
+      break
+    }
+    zoom = clamp(z)
+  }
+  let (center, _) = constrain_center(camera.center, zoom, limits, width, height)
+  { ..camera, center: { lng: wrap180(center.lng), lat: center.lat, }, zoom, }
+}
+
+///|
+/// `camera` after one pass of MapLibre's constraint (`applyConstrain`), as
+/// its moves take their end point: a zoom raised to fit a range centers that
+/// range and leaves the other axis alone.
+fn constrain_once(
+  camera : Camera,
+  limits : Limits,
+  width : Double,
+  height : Double,
+) -> Camera {
+  let zoom = @cmp.maximum(
+    limits.min_zoom,
+    @cmp.minimum(limits.max_zoom, camera.zoom),
+  )
+  let (center, zoom) = constrain_center(
+    camera.center,
+    zoom,
+    limits,
+    width,
+    height,
+  )
+  { ..camera, center: { lng: wrap180(center.lng), lat: center.lat, }, zoom, }
+}
+
+///|
+/// The latitude limit MapLibre keeps the view to (`MAX_VALID_LATITUDE`,
+/// `MAX_LATITUDE` rounded).
+const MAX_VALID_LATITUDE : Double = 85.051129
+
+///|
+fn constrain_center(
+  center : LngLat,
+  zoom : Double,
+  limits : Limits,
+  width : Double,
+  height : Double,
+) -> (LngLat, Double) {
+  let world = TILE_SIZE * @math.pow(2.0, zoom)
+  let (south, north, lng_range) = match limits.bounds {
+    Some(b) => (b.south, b.north, Some((b.west, b.east)))
+    None => (-MAX_VALID_LATITUDE, MAX_VALID_LATITUDE, None)
+  }
+  let min_y = mercator_y_from_lat(north) * world
+  let max_y = mercator_y_from_lat(south) * world
+  let scale_y = if max_y - min_y < height {
+    height / (max_y - min_y)
+  } else {
+    0.0
+  }
+  let (min_x, max_x, scale_x) = match lng_range {
+    Some((west, east)) => {
+      let min_x = wrap_range(mercator_x_from_lng(west) * world, 0.0, world)
+      let max_x = wrap_range(mercator_x_from_lng(east) * world, 0.0, world)
+      let max_x = if max_x < min_x { max_x + world } else { max_x }
+      (
+        min_x,
+        max_x,
+        if max_x - min_x < width {
+          width / (max_x - min_x)
+        } else {
+          0.0
+        },
+      )
+    }
+    None => (0.0, world, 0.0)
+  }
+  let x = mercator_x_from_lng(center.lng) * world
+  let y = mercator_y_from_lat(center.lat) * world
+  let scale = @cmp.maximum(scale_x, scale_y)
+  if scale > 0.0 {
+    let m : MercatorCoord = {
+      x: (if scale_x > 0.0 { (max_x + min_x) / 2.0 } else { x }) / world,
+      y: (if scale_y > 0.0 { (max_y + min_y) / 2.0 } else { y }) / world,
+    }
+    let c = m.to_lnglat()
+    return ({ lng: wrap180(c.lng), lat: c.lat, }, zoom + @math.log2(scale))
+  }
+  let mut new_y = y
+  if y - height / 2.0 < min_y {
+    new_y = min_y + height / 2.0
+  }
+  if y + height / 2.0 > max_y {
+    new_y = max_y - height / 2.0
+  }
+  let mut new_x = x
+  if lng_range is Some(_) {
+    let mid = (min_x + max_x) / 2.0
+    let wrapped = wrap_range(x, mid - world / 2.0, mid + world / 2.0)
+    if wrapped - width / 2.0 < min_x {
+      new_x = min_x + width / 2.0
+    }
+    if wrapped + width / 2.0 > max_x {
+      new_x = max_x - width / 2.0
+    }
+  }
+  if new_x == x && new_y == y {
+    return (center, zoom)
+  }
+  let c = ({ x: new_x / world, y: new_y / world, } : MercatorCoord).to_lnglat()
+  ({ lng: wrap180(c.lng), lat: c.lat, }, zoom)
+}
+
+///|
+/// `v` in (`min`, `max`] (MapLibre's `wrap`).
+fn wrap_range(v : Double, min : Double, max : Double) -> Double {
+  // Values already in range stay exact (the modulo below would round them).
+  if v > min && v <= max {
+    return v
+  }
+  let d = max - min
+  let w = ((v - min) % d + d) % d + min
+  if w == min {
+    max
+  } else {
+    w
   }
 }
 
 ///|
-/// `v` in [-180, 180), so longitudes and bearings stay bounded.
+/// `v` in (-180, 180], so longitudes and bearings stay bounded.
 fn wrap180(v : Double) -> Double {
-  v - 360.0 * ((v + 180.0) / 360.0).floor()
+  wrap_range(v, -180.0, 180.0)
 }
 
 ///|
@@ -253,11 +403,22 @@ pub fn Transform::with_camera(self : Transform, camera : Camera) -> Transform {
     return self
   }
   make(
-    constrain(camera, self.min_zoom, self.max_zoom),
+    constrain(camera, self.limits, self.width, self.height),
     self.width,
     self.height,
-    self.min_zoom,
-    self.max_zoom,
+    self.limits,
+    self.elevation,
+  )
+}
+
+///|
+/// The same view under other `limits` (the camera kept to them).
+pub fn Transform::with_limits(self : Transform, limits : Limits) -> Transform {
+  make(
+    constrain(self.camera, limits, self.width, self.height),
+    self.width,
+    self.height,
+    limits,
     self.elevation,
   )
 }
@@ -271,7 +432,13 @@ pub fn Transform::resize(
   if width == self.width && height == self.height {
     return self
   }
-  make(self.camera, width, height, self.min_zoom, self.max_zoom, self.elevation)
+  make(
+    constrain(self.camera, self.limits, width, height),
+    width,
+    height,
+    self.limits,
+    self.elevation,
+  )
 }
 
 ///|
@@ -350,8 +517,9 @@ pub fn Transform::panned(
   let center : MercatorCoord = { x: c.x + a.x - b.x, y: c.y + a.y - b.y, }
   constrain(
     { ..self.camera, center: center.to_lnglat(), },
-    self.min_zoom,
-    self.max_zoom,
+    self.limits,
+    self.width,
+    self.height,
   )
 }
 
@@ -374,8 +542,9 @@ pub fn Transform::keeping(
   }
   constrain(
     { ..next.camera, center: center.to_lnglat(), },
-    self.min_zoom,
-    self.max_zoom,
+    self.limits,
+    self.width,
+    self.height,
   )
 }
 

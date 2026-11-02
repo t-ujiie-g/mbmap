@@ -39,6 +39,14 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - スタイルがオブジェクトで、描けない内容を含むときは、例外を投げる。URL の場合は `error` イベントになる。
 - `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
 - `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜85 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
+- カメラの移動（MapLibre と同じ計算。`npm run camera:golden` で MapLibre 6.16 の Camera と比べている）：
+  - `easeTo(options)`（既定 500ms）、`flyTo(options)`（ズームアウトして戻る。`curve`、`speed`、`screenSpeed`、`maxDuration`、`minZoom`）、`panBy`、`panTo`、`zoomTo`、`zoomIn`、`zoomOut`、`rotateTo`、`resetNorth`、`resetNorthPitch`、`snapToNorth`、`stop()`。どれも `center`、`zoom`、`bearing`、`pitch`、`around`（その点を動かさない）、`offset`、`duration`、`easing`、`animate`、`essential`（OS の「視差効果を減らす」でもアニメーションする）を受け付ける。
+  - `fitBounds(bounds, { padding, maxZoom, bearing, linear })`（既定は flyTo、`linear: true` で easeTo）、`fitScreenCoordinates(p0, p1, bearing)`、`cameraForBounds(bounds, options)`。`bounds` は `[[西, 南], [東, 北]]`、`[西, 南, 東, 北]`、`LngLatBounds`。
+  - `project(lngLat)`（画面の `{ x, y }`）、`unproject(point)`、`getBounds()`（`LngLatBounds`。傾けたときは地平線まで）、`isMoving()`、`isEasing()`、`isZooming()`、`isRotating()`。
+- 制限：`minZoom`・`maxZoom`（0〜24、既定 0 と 22）、`minPitch`・`maxPitch`（0〜85、既定 0 と 85）、`maxBounds`（表示がその範囲を出ない）。オプションでも、`setMinZoom` などの setter・getter でも変えられる。MapLibre と同じく、表示が南北の端（85.051129°）を越えないようにズームを上げる。
+- 初期表示：`bounds`（と `fitBoundsOptions`）を渡すと、`center`・`zoom` の代わりにその範囲を表示する。
+- 操作：`dragPan`、`scrollZoom`、`boxZoom`（Shift＋ドラッグ）、`dragRotate`、`keyboard`（矢印で 100px 移動、Shift＋矢印で回転・傾き、`+`・`-` でズーム）、`doubleClickZoom`（Shift で縮小）、`touchZoomRotate`、`touchPitch`（2 本指を上下に動かす）。オプションの `interactive: false` ですべて止め、`map.scrollZoom.disable()` のように 1 つずつ切り替えられる。ドラッグを離すと、MapLibre と同じ慣性で少し流れる。
+- イベント：`movestart`・`move`・`moveend`、`zoomstart`・`zoom`・`zoomend`、`rotatestart`・`rotate`・`rotateend`、`pitchstart`・`pitch`・`pitchend`（MapLibre と同じ順）。ユーザーの操作によるものは `originalEvent` に DOM のイベントが入る。地図のパディング（`setPadding`）は未対応。
 - `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
 
 ## 解析 `mbmap/analysis`

@@ -2,6 +2,22 @@
 package "t-ujiie-g/mbmap/bench/entry"
 
 // Values
+pub fn camera_bounds(FixedArray[Double]) -> String
+
+pub fn camera_constrain(FixedArray[Double]) -> String
+
+pub fn camera_ease(FixedArray[Double], FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn camera_easing(FixedArray[Double]) -> String
+
+pub fn camera_fit(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn camera_fly(FixedArray[Double], FixedArray[Double], FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn camera_project(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn camera_unproject(FixedArray[Double], FixedArray[Double]) -> String
+
 pub fn clip_hash_mem(Int32, Int32, Int32, Int32, Int32) -> Int32
 
 pub fn copy_mem(Int32, Int32) -> Int32

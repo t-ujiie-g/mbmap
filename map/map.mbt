@@ -83,11 +83,24 @@ pub struct Map {
   priv mut frame : Int32
   priv mut frame_count : Int32
   priv mut idle_fired : Bool
-  priv move_listeners : @hashmap.HashMap[Int32, (@core.Camera) -> Unit]
-  priv idle_listeners : @hashmap.HashMap[Int32, () -> Unit]
+  priv listeners : @hashmap.HashMap[Int32, Listener]
+  priv mut moving : Bool
+  priv mut animation : Animation?
+  priv mut input_event : Event
+  priv mut handlers : Int32
+  priv mut wheel_timer : Int32
+  priv inertia : Array[Sample]
   priv mut next_listener : Int32
   priv pointers : Array[(Int32, Double, Double)]
   priv mut rotating : Bool
+  priv mut dragging : Bool
+  priv mut press : (Double, Double)
+  priv mut box_start : (
+    Double,
+    Double,
+    (Double, Double, Double, Double) -> Unit,
+    () -> Unit,
+  )?
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
   priv has_labels : Bool
@@ -103,6 +116,25 @@ pub struct Map {
 }
 
 ///|
+/// What a listener (`on_move`, `on_idle`, `on_move_start`, `on_move_end`)
+/// listens for; one map holds them all, so the bundle has one map type.
+priv enum Listener {
+  Move((@core.Camera) -> Unit)
+  Idle(() -> Unit)
+  Start((Event) -> Unit)
+  End((Event) -> Unit)
+}
+
+///|
+fn Map::fire_move(self : Map, c : @core.Camera) -> Unit {
+  for _, l in self.listeners {
+    if l is Move(f) {
+      f(c)
+    }
+  }
+}
+
+///|
 /// Creates a map drawing `style_json` into `canvas` with `workers` tile workers
 /// (0 picks half the hardware threads, up to `MAX_WORKERS`); `geojson` gives
 /// GeoJSON sources' tiles and `font` is the CSS font family labels are drawn in.
@@ -115,6 +147,7 @@ pub fn Map::new(
   workers~ : Int32 = 2,
   geojson~ : Provider = no_provider(),
   font~ : String = "sans-serif",
+  limits~ : @core.Limits = @core.Limits::default(),
 ) -> Map raise MapError {
   let style = @style.Style::from_json(parse_json(style_json)) catch {
     e => raise BadStyle(e)
@@ -143,6 +176,7 @@ pub fn Map::new(
       camera,
       css_width(canvas),
       css_height(canvas),
+      limits~,
     ),
     workers: [],
     next_worker: 0,
@@ -151,11 +185,19 @@ pub fn Map::new(
     frame: -1,
     frame_count: 0,
     idle_fired: false,
-    move_listeners: @hashmap.HashMap([]),
-    idle_listeners: @hashmap.HashMap([]),
+    listeners: @hashmap.HashMap([]),
+    moving: false,
+    animation: None,
+    input_event: no_event(),
+    handlers: ALL_HANDLERS,
+    wheel_timer: -1,
+    inertia: [],
     next_listener: 0,
     pointers: [],
     rotating: false,
+    dragging: false,
+    press: (0.0, 0.0),
+    box_start: None,
     cleanups: [],
     destroyed: false,
     has_labels: style.layers.iter().any(l => l.kind is Symbol),
@@ -195,17 +237,24 @@ pub fn Map::camera(self : Map) -> @core.Camera {
 }
 
 ///|
-/// Moves the camera. Like any camera change it fires `move`, unless the value
-/// is unchanged, so an outside state store can echo cameras back safely.
+/// Moves the camera at once, stopping an animation. Like any camera change it
+/// fires `move` (between `move_start` and `move_end`), unless the value is
+/// unchanged, so an outside state store can echo cameras back safely.
 pub fn Map::set_camera(self : Map, camera : @core.Camera) -> Unit {
+  self.stop()
+  if self.transform.with_camera(camera).camera == self.transform.camera {
+    return
+  }
+  self.begin_move(no_event())
   self.apply_camera(camera)
+  self.end_move(no_event())
 }
 
 ///|
 /// Calls `f` with the new camera whenever it changes; returns an id for `off`.
 pub fn Map::on_move(self : Map, f : (@core.Camera) -> Unit) -> Int32 {
   self.next_listener += 1
-  self.move_listeners.set(self.next_listener, f)
+  self.listeners.set(self.next_listener, Move(f))
   self.next_listener
 }
 
@@ -214,14 +263,13 @@ pub fn Map::on_move(self : Map, f : (@core.Camera) -> Unit) -> Int32 {
 /// settles after a change; returns an id for `off`.
 pub fn Map::on_idle(self : Map, f : () -> Unit) -> Int32 {
   self.next_listener += 1
-  self.idle_listeners.set(self.next_listener, f)
+  self.listeners.set(self.next_listener, Idle(f))
   self.next_listener
 }
 
 ///|
 pub fn Map::off(self : Map, id : Int32) -> Unit {
-  self.move_listeners.remove(id)
-  self.idle_listeners.remove(id)
+  self.listeners.remove(id)
 }
 
 ///|
@@ -258,6 +306,10 @@ pub fn Map::destroy(self : Map) -> Unit {
   if self.frame >= 0 {
     cancel_frame(self.frame)
   }
+  if self.wheel_timer >= 0 {
+    clear_timeout(self.wheel_timer)
+  }
+  self.animation = None
   for f in self.cleanups {
     f()
   }
@@ -280,9 +332,7 @@ fn Map::apply_camera(self : Map, camera : @core.Camera) -> Unit {
   }
   self.transform = next
   self.idle_fired = false
-  for _, f in self.move_listeners {
-    f(next.camera)
-  }
+  self.fire_move(next.camera)
   self.request_render()
 }
 

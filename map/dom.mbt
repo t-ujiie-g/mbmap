@@ -4,6 +4,20 @@
 priv type JsValue
 
 ///|
+/// The DOM event behind a camera change (`Map::on_move_start`,
+/// `Map::input_event`), or JS null when a call moved the camera.
+#external
+pub type Event
+
+///|
+extern "js" fn as_event(v : JsValue) -> Event =
+  #|(v) => v
+
+///|
+extern "js" fn no_event() -> Event =
+  #|() => null
+
+///|
 #external
 priv type Worker
 
@@ -125,7 +139,8 @@ extern "js" fn listen(
 ) -> () -> Unit =
   #|(t, type, f) => {
   #|  const h = (e) => f(e);
-  #|  const opts = { passive: type !== "wheel" };
+  #|  // The handlers that call preventDefault cannot be passive.
+  #|  const opts = { passive: !["wheel", "dblclick", "keydown"].includes(type) };
   #|  t.addEventListener(type, h, opts);
   #|  return () => t.removeEventListener(type, h, opts);
   #|}

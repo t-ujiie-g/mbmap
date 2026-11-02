@@ -1,14 +1,40 @@
 import * as engine from "mbmap-engine";
+import {
+  type EaseToOptions,
+  type FitBoundsOptions,
+  type FlyToOptions,
+  HANDLERS,
+  type HandlerName,
+  type LngLat,
+  LngLatBounds,
+  type LngLatBoundsLike,
+  type LngLatLike,
+  type Limits,
+  type PointLike,
+  fitArray,
+  flyArray,
+  limitsArray,
+  targetArray,
+  toLngLat,
+  toPoint,
+} from "./camera";
 import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
-/** `[lng, lat]` or `{ lng, lat }`, as in MapLibre. */
-export type LngLatLike = [number, number] | { lng: number; lat: number };
-
-export interface LngLat {
-  lng: number;
-  lat: number;
-}
+export { LngLatBounds } from "./camera";
+export type {
+  AnimationOptions,
+  CameraOptions,
+  EaseToOptions,
+  FitBoundsOptions,
+  FlyToOptions,
+  HandlerName,
+  LngLat,
+  LngLatBoundsLike,
+  LngLatLike,
+  PaddingOptions,
+  PointLike,
+} from "./camera";
 
 /** A MapLibre style document; anything mbmap cannot draw faithfully is an error. */
 export interface StyleSpecification {
@@ -29,6 +55,10 @@ export interface StyleSpecification {
  * - `geojsonWorkerUrl`, `geojsonWasmUrl`: the same for the worker of GeoJSON sources.
  * - `fontFamily`: the CSS font family labels are drawn in, from the fonts the browser has (default "sans-serif").
  * - `attributionControl`: shows the sources' `attribution` text in a corner (default true).
+ * - `minZoom`, `maxZoom` (0 and 22), `minPitch`, `maxPitch` (0 and 85), `maxBounds`: what the camera keeps to.
+ * - `bounds`, `fitBoundsOptions`: a box to show at first, in place of `center` and `zoom`.
+ * - `interactive: false` turns every input off; `dragPan`, `scrollZoom`, `boxZoom`, `dragRotate`,
+ *   `keyboard`, `doubleClickZoom`, `touchZoomRotate`, `touchPitch` (all true) one by one.
  */
 export interface MapOptions {
   container: HTMLElement | string;
@@ -44,15 +74,51 @@ export interface MapOptions {
   geojsonWasmUrl?: string | URL;
   fontFamily?: string;
   attributionControl?: boolean;
+  minZoom?: number;
+  maxZoom?: number;
+  minPitch?: number;
+  maxPitch?: number;
+  maxBounds?: LngLatBoundsLike;
+  bounds?: LngLatBoundsLike;
+  fitBoundsOptions?: FitBoundsOptions;
+  interactive?: boolean;
+  dragPan?: boolean;
+  scrollZoom?: boolean;
+  boxZoom?: boolean;
+  dragRotate?: boolean;
+  keyboard?: boolean;
+  doubleClickZoom?: boolean;
+  touchZoomRotate?: boolean;
+  touchPitch?: boolean;
 }
 
-export type MapEventType = "load" | "move" | "idle" | "error";
+export type MapEventType =
+  | "load"
+  | "idle"
+  | "error"
+  | "movestart"
+  | "move"
+  | "moveend"
+  | "zoomstart"
+  | "zoom"
+  | "zoomend"
+  | "rotatestart"
+  | "rotate"
+  | "rotateend"
+  | "pitchstart"
+  | "pitch"
+  | "pitchend";
 
-/** `load` fires once, at the first drawn view; `idle` when the map settles; `move` on camera changes. */
+/**
+ * `load` fires once, at the first drawn view; `idle` when the map settles. Camera changes fire
+ * `movestart`, `move` (and `zoom`, `rotate`, `pitch` with their own start and end) and `moveend`,
+ * as in MapLibre; `originalEvent` is the DOM event of a user's gesture.
+ */
 export interface MapEvent {
   type: MapEventType;
   target: Map;
   error?: Error;
+  originalEvent?: Event;
 }
 
 export type MapEventListener = (event: MapEvent) => void;
@@ -65,8 +131,21 @@ interface Camera {
   pitch: number;
 }
 
-function toLngLat(c: LngLatLike): LngLat {
-  return Array.isArray(c) ? { lng: c[0], lat: c[1] } : { lng: c.lng, lat: c.lat };
+/** One input handler: `enable`, `disable`, `isEnabled`, as MapLibre's `map.scrollZoom` and the like. */
+export interface Handler {
+  enable(): void;
+  disable(): void;
+  isEnabled(): boolean;
+}
+
+/** Whether the user asked the system for less motion (MapLibre then skips animations). */
+/** MapLibre's default easing, the CSS `ease` curve (0.25, 0.1, 0.25, 1). */
+function defaultEasing(t: number): number {
+  return engine.default_easing(t);
+}
+
+function reducedMotion(): boolean {
+  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function checkCamera(c: Camera): Camera {
@@ -123,6 +202,19 @@ export class Map {
   #loaded = false;
   #removed = false;
   #options: MapOptions;
+  #limits: Limits;
+  #enabled: Record<HandlerName, boolean>;
+  #callsBeforeStart: (() => void)[] = [];
+  #changing = { zoom: false, rotate: false, pitch: false };
+  #last: Camera | null = null;
+  readonly dragPan: Handler;
+  readonly scrollZoom: Handler;
+  readonly boxZoom: Handler;
+  readonly dragRotate: Handler;
+  readonly keyboard: Handler;
+  readonly doubleClickZoom: Handler;
+  readonly touchZoomRotate: Handler;
+  readonly touchPitch: Handler;
 
   constructor(options: MapOptions) {
     const container =
@@ -130,6 +222,28 @@ export class Map {
     if (!container) throw new Error(`mbmap: container not found: ${String(options.container)}`);
     this.#container = container;
     this.#options = options;
+    this.#limits = {
+      minZoom: options.minZoom ?? 0,
+      maxZoom: options.maxZoom ?? 22,
+      minPitch: options.minPitch ?? 0,
+      maxPitch: options.maxPitch ?? 85,
+      maxBounds: options.maxBounds ? LngLatBounds.convert(options.maxBounds) : null,
+    };
+    const interactive = options.interactive ?? true;
+    this.#enabled = Object.fromEntries(HANDLERS.map((h) => [h, interactive && (options[h] ?? true)])) as Record<HandlerName, boolean>;
+    const handler = (name: HandlerName): Handler => ({
+      enable: () => this.#setHandler(name, true),
+      disable: () => this.#setHandler(name, false),
+      isEnabled: () => this.#enabled[name],
+    });
+    this.dragPan = handler("dragPan");
+    this.scrollZoom = handler("scrollZoom");
+    this.boxZoom = handler("boxZoom");
+    this.dragRotate = handler("dragRotate");
+    this.keyboard = handler("keyboard");
+    this.doubleClickZoom = handler("doubleClickZoom");
+    this.touchZoomRotate = handler("touchZoomRotate");
+    this.touchPitch = handler("touchPitch");
     const center = toLngLat(options.center ?? [0, 0]);
     this.#camera = checkCamera({
       ...center,
@@ -200,9 +314,13 @@ export class Map {
       o.workerCount ?? 0,
       geojson,
       o.fontFamily ?? "sans-serif",
+      limitsArray(this.#limits),
     );
     this.#engine = map;
-    engine.map_on_move(map, () => this.#emit("move"));
+    HANDLERS.forEach((h, i) => engine.map_set_handler(map, i, this.#enabled[h]));
+    engine.map_on_move_start(map, (e) => this.#moveStart(e));
+    engine.map_on_move(map, () => this.#move(engine.map_input_event(map)));
+    engine.map_on_move_end(map, (e) => this.#moveEnd(e));
     engine.map_on_idle(map, () => {
       if (!this.#loaded) {
         this.#loaded = true;
@@ -211,6 +329,45 @@ export class Map {
       this.#emit("idle");
     });
     if (o.attributionControl ?? true) this.#showAttribution(attributions(resolved));
+    if (o.bounds) this.fitBounds(o.bounds, { ...o.fitBoundsOptions, duration: 0 });
+    for (const f of this.#callsBeforeStart.splice(0)) f();
+  }
+
+  #setHandler(name: HandlerName, on: boolean): void {
+    this.#enabled[name] = on;
+    if (this.#engine) engine.map_set_handler(this.#engine, HANDLERS.indexOf(name), on);
+  }
+
+  #moveStart(e: Event | null): void {
+    this.#last = this.#current();
+    this.#emit("movestart", undefined, e);
+  }
+
+  #move(e: Event | null): void {
+    const c = this.#current();
+    const last = this.#last ?? c;
+    const changed = (["zoom", "rotate", "pitch"] as const).filter((k, i) => [c.zoom !== last.zoom, c.bearing !== last.bearing, c.pitch !== last.pitch][i]);
+    // As MapLibre: starts, then `move`, then what changed.
+    for (const kind of changed) {
+      if (!this.#changing[kind]) {
+        this.#changing[kind] = true;
+        this.#emit(`${kind}start`, undefined, e);
+      }
+    }
+    this.#emit("move", undefined, e);
+    for (const kind of changed) this.#emit(kind, undefined, e);
+    this.#last = c;
+  }
+
+  #moveEnd(e: Event | null): void {
+    for (const kind of ["zoom", "rotate", "pitch"] as const) {
+      if (this.#changing[kind]) {
+        this.#changing[kind] = false;
+        this.#emit(`${kind}end`, undefined, e);
+      }
+    }
+    this.#last = null;
+    this.#emit("moveend", undefined, e);
   }
 
   #showAttribution(texts: string[]): void {
@@ -231,10 +388,12 @@ export class Map {
     this.#emit("error", error);
   }
 
-  #emit(type: MapEventType, error?: Error): void {
+  #emit(type: MapEventType, error?: Error, originalEvent?: Event | null): void {
     const listeners = this.#listeners.get(type);
     if (!listeners) return;
-    const event: MapEvent = error ? { type, target: this, error } : { type, target: this };
+    const event: MapEvent = { type, target: this };
+    if (error) event.error = error;
+    if (originalEvent) event.originalEvent = originalEvent;
     for (const f of [...listeners]) {
       try {
         f(event);
@@ -333,9 +492,204 @@ export class Map {
     return this.jumpTo({ bearing });
   }
 
-  /** Clamped to 0-60 degrees. */
+  /** Clamped to the pitch range (0-85 degrees by default). */
   setPitch(pitch: number): this {
     return this.jumpTo({ pitch });
+  }
+
+  /** Runs `f` on the engine now, or once it exists. */
+  #withEngine(f: (map: engine.EngineMap) => void): this {
+    if (this.#engine) f(this.#engine);
+    else this.#callsBeforeStart.push(() => this.#engine && f(this.#engine));
+    return this;
+  }
+
+  /** Eases to the camera `options` give (MapLibre's `easeTo`: 500 ms by default). */
+  easeTo(options: EaseToOptions): this {
+    const target = targetArray(options);
+    const jump = options.animate === false || (!options.essential && reducedMotion());
+    const duration = jump ? 0 : options.duration ?? 500;
+    return this.#withEngine((m) => engine.map_ease_to(m, target, duration, options.easing ?? defaultEasing, ""));
+  }
+
+  /** Flies to the camera `options` give, zooming out and back in (MapLibre's `flyTo`). */
+  flyTo(options: FlyToOptions): this {
+    if (options.animate === false || (!options.essential && reducedMotion())) return this.easeTo(options);
+    const target = targetArray(options);
+    const fly = flyArray(options);
+    return this.#withEngine((m) => engine.map_fly_to(m, target, fly, options.easing ?? defaultEasing));
+  }
+
+  panBy(offset: PointLike, options: EaseToOptions = {}): this {
+    const p = toPoint(offset);
+    return this.panTo(this.getCenter(), { offset: [-p.x, -p.y], ...options });
+  }
+
+  panTo(center: LngLatLike, options: EaseToOptions = {}): this {
+    return this.easeTo({ ...options, center });
+  }
+
+  zoomTo(zoom: number, options: EaseToOptions = {}): this {
+    return this.easeTo({ ...options, zoom });
+  }
+
+  zoomIn(options: EaseToOptions = {}): this {
+    return this.zoomTo(this.getZoom() + 1, options);
+  }
+
+  zoomOut(options: EaseToOptions = {}): this {
+    return this.zoomTo(this.getZoom() - 1, options);
+  }
+
+  rotateTo(bearing: number, options: EaseToOptions = {}): this {
+    return this.easeTo({ ...options, bearing });
+  }
+
+  resetNorth(options: EaseToOptions = {}): this {
+    return this.rotateTo(0, { duration: 1000, ...options });
+  }
+
+  resetNorthPitch(options: EaseToOptions = {}): this {
+    return this.easeTo({ bearing: 0, pitch: 0, duration: 1000, ...options });
+  }
+
+  /** Resets the bearing to north if it is within 7° of it (MapLibre's `bearingSnap`). */
+  snapToNorth(options: EaseToOptions = {}): this {
+    return Math.abs(this.getBearing()) < 7 ? this.resetNorth(options) : this;
+  }
+
+  /**
+   * The camera that shows `bounds` (MapLibre's `cameraForBounds`), or undefined when the
+   * padding leaves no room or the map has not started.
+   */
+  cameraForBounds(bounds: LngLatBoundsLike, options: FitBoundsOptions = {}): { center: LngLat; zoom: number; bearing: number } | undefined {
+    if (!this.#engine) return undefined;
+    const c = engine.map_camera_for_bounds(this.#engine, fitArray(LngLatBounds.convert(bounds), options));
+    return c.length ? { center: { lng: c[0], lat: c[1] }, zoom: c[2], bearing: c[3] } : undefined;
+  }
+
+  /** Moves to show `bounds`: a flight, or an ease with `linear: true` (MapLibre's `fitBounds`). */
+  fitBounds(bounds: LngLatBoundsLike, options: FitBoundsOptions = {}): this {
+    const b = LngLatBounds.convert(bounds);
+    return this.#withEngine(() => {
+      const c = this.cameraForBounds(b, options);
+      if (!c) return;
+      const { padding: _, maxZoom: __, linear, ...rest } = options;
+      const target = { ...rest, center: c.center, zoom: c.zoom, bearing: c.bearing, offset: undefined };
+      if (linear) this.easeTo(target);
+      else this.flyTo(target);
+    });
+  }
+
+  /** Moves to show the box between two screen points, turned to `bearing` (MapLibre's `fitScreenCoordinates`). */
+  fitScreenCoordinates(p0: PointLike, p1: PointLike, bearing: number, options: FitBoundsOptions = {}): this {
+    return this.#withEngine(() => {
+      const a = this.unproject(p0);
+      const b = this.unproject(p1);
+      const box = new LngLatBounds(Math.min(a.lng, b.lng), Math.min(a.lat, b.lat), Math.max(a.lng, b.lng), Math.max(a.lat, b.lat));
+      this.fitBounds(box, { ...options, bearing });
+    });
+  }
+
+  /** Stops a camera animation. */
+  stop(): this {
+    if (this.#engine) engine.map_stop(this.#engine);
+    return this;
+  }
+
+  /** Whether the camera is moving: a gesture, its inertia or an animation. */
+  isMoving(): boolean {
+    return !!this.#engine && engine.map_motion(this.#engine) > 0;
+  }
+
+  /** Whether a camera animation is running. */
+  isEasing(): boolean {
+    return !!this.#engine && engine.map_motion(this.#engine) === 2;
+  }
+
+  isZooming(): boolean {
+    return this.#changing.zoom;
+  }
+
+  isRotating(): boolean {
+    return this.#changing.rotate;
+  }
+
+  /** The screen point (CSS pixels from the top-left corner) of `lnglat` on the ground. */
+  project(lnglat: LngLatLike): { x: number; y: number } {
+    const p = toLngLat(lnglat);
+    if (!this.#engine) return { x: NaN, y: NaN };
+    const [x, y] = engine.map_project(this.#engine, p.lng, p.lat);
+    return { x, y };
+  }
+
+  /** The ground point under screen point `point`. */
+  unproject(point: PointLike): LngLat {
+    const p = toPoint(point);
+    if (!this.#engine) return { lng: NaN, lat: NaN };
+    const [lng, lat] = engine.map_unproject(this.#engine, p.x, p.y);
+    return { lng, lat };
+  }
+
+  /** The box around what the map shows (up to the horizon when tilted). */
+  getBounds(): LngLatBounds {
+    if (!this.#engine) return new LngLatBounds(NaN, NaN, NaN, NaN);
+    const [w, s, e, n] = engine.map_bounds(this.#engine);
+    return new LngLatBounds(w, s, e, n);
+  }
+
+  #setLimits(change: Partial<Limits>): this {
+    const next = { ...this.#limits, ...change };
+    for (const v of [next.minZoom, next.maxZoom, next.minPitch, next.maxPitch]) {
+      if (!Number.isFinite(v)) throw new TypeError(`mbmap: zoom and pitch limits must be finite numbers: ${String(v)}`);
+    }
+    if (next.minZoom > next.maxZoom || next.minPitch > next.maxPitch || next.minZoom < 0 || next.maxZoom > 24 || next.minPitch < 0 || next.maxPitch > 85) {
+      throw new RangeError("mbmap: zoom limits must lie in 0-24 and pitch limits in 0-85, min not above max");
+    }
+    this.#limits = next;
+    if (this.#engine) engine.map_set_limits(this.#engine, limitsArray(next));
+    return this;
+  }
+
+  setMinZoom(zoom?: number | null): this {
+    return this.#setLimits({ minZoom: zoom ?? 0 });
+  }
+
+  getMinZoom(): number {
+    return this.#limits.minZoom;
+  }
+
+  setMaxZoom(zoom?: number | null): this {
+    return this.#setLimits({ maxZoom: zoom ?? 22 });
+  }
+
+  getMaxZoom(): number {
+    return this.#limits.maxZoom;
+  }
+
+  setMinPitch(pitch?: number | null): this {
+    return this.#setLimits({ minPitch: pitch ?? 0 });
+  }
+
+  getMinPitch(): number {
+    return this.#limits.minPitch;
+  }
+
+  setMaxPitch(pitch?: number | null): this {
+    return this.#setLimits({ maxPitch: pitch ?? 85 });
+  }
+
+  getMaxPitch(): number {
+    return this.#limits.maxPitch;
+  }
+
+  /** Keeps the view inside `bounds` (null lifts it). */
+  setMaxBounds(bounds?: LngLatBoundsLike | null): this {
+    return this.#setLimits({ maxBounds: bounds ? LngLatBounds.convert(bounds) : null });
+  }
+
+  getMaxBounds(): LngLatBounds | null {
+    return this.#limits.maxBounds;
   }
 
   /** Stops the workers, frees GPU memory and removes the map's elements. */
