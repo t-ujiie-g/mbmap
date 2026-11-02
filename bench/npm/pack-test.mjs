@@ -360,7 +360,8 @@ async function queryChecks(page) {
         const fs = await map.queryRenderedFeatures([x, y], { layers: ["building"] });
         if (fs.length > 0) building = [x, y];
       }
-    const at = await map.queryRenderedFeatures(building);
+    const center = (await map.queryRenderedFeatures([400, 300])).map((x) => x.layer.id);
+    const at = building ? await map.queryRenderedFeatures(building) : [];
     const errors = [];
     const f = (e) => errors.push(e.error.message);
     map.on("error", f);
@@ -377,12 +378,13 @@ async function queryChecks(page) {
     map.on("mouseleave", "building", () => window.__events.push(["leave"]));
     const r = map.getCanvas().getBoundingClientRect();
     return {
-      building, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
+      building, center, origin: [r.left, r.top], top: at[0]?.layer.id, source: at[0]?.source, state: at[0]?.state,
       geometry: at.find((x) => x.layer.id === "building")?.geometry.type, errors, unknown: unknown.length, refused,
       roads: roads.length, roadTypes: [...new Set(roads.map((x) => x.geometry.type))], box: box.length,
       boxAll: box.every((x) => x.layer.id === "road" && x.properties.rdCtg === 0),
     };
   });
+  if (!found.building) return { ok: false, ...found };
   const [x, y] = [found.origin[0] + found.building[0], found.origin[1] + found.building[1]];
   await page.mouse.move(found.origin[0] + 5, found.origin[1] + 5);
   await page.mouse.move(x, y, { steps: 4 });
