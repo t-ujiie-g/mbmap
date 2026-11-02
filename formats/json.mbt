@@ -148,16 +148,6 @@ fn Parser::matches(
 }
 
 ///|
-fn hex(c : Byte) -> Int32 {
-  match c {
-    b'0'..<=b'9' => c.to_int() - '0'.to_int()
-    b'a'..<=b'f' => c.to_int() - 'a'.to_int() + 10
-    b'A'..<=b'F' => c.to_int() - 'A'.to_int() + 10
-    _ => -1
-  }
-}
-
-///|
 /// The string `start..<end` as text, with escapes resolved and invalid UTF-8
 /// replaced.
 fn Parser::text(
@@ -166,152 +156,24 @@ fn Parser::text(
   end : Int32,
   escaped : Bool,
 ) -> String {
-  if !escaped {
-    return @utf8.decode_lossy(self.b[start:end])
+  if escaped {
+    @core.json_string_text(self.b[start:end])
+  } else {
+    @utf8.decode_lossy(self.b[start:end])
   }
-  let sb = StringBuilder()
-  let mut i = start
-  let mut run = start
-  while i < end {
-    if self.b[i] != b'\\' {
-      i += 1
-      continue
-    }
-    sb.write_string(@utf8.decode_lossy(self.b[run:i]))
-    let c = if i + 1 < end { self.b[i + 1] } else { b' ' }
-    i += 2
-    match c {
-      b'"' => sb.write_char('"')
-      b'\\' => sb.write_char('\\')
-      b'/' => sb.write_char('/')
-      b'b' => sb.write_char('\b')
-      b'f' => sb.write_char('\u{0C}')
-      b'n' => sb.write_char('\n')
-      b'r' => sb.write_char('\r')
-      b't' => sb.write_char('\t')
-      b'u' if i + 4 <= end => {
-        let mut v = 0
-        for k in 0..<4 {
-          let h = hex(self.b[i + k])
-          v = if h < 0 || v < 0 { -1 } else { v * 16 + h }
-        }
-        i += 4
-        // Surrogates go out as UTF-16 code units, which String holds.
-        sb.write_char(Int32::unsafe_to_char(if v < 0 { 0xFFFD } else { v }))
-      }
-      _ => sb.write_char('\u{FFFD}')
-    }
-    run = i
-  }
-  sb.write_string(@utf8.decode_lossy(self.b[run:end]))
-  sb.to_string()
 }
 
 ///|
-/// Powers of ten that doubles hold exactly.
-let exact_powers : FixedArray[Double] = [
-  1.0e0, 1.0e1, 1.0e2, 1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7, 1.0e8, 1.0e9, 1.0e10, 1.0e11,
-  1.0e12, 1.0e13, 1.0e14, 1.0e15, 1.0e16, 1.0e17, 1.0e18, 1.0e19, 1.0e20, 1.0e21,
-  1.0e22,
-]
-
-///|
-/// A JSON number. Up to 15 digits with an exponent within ±22 take Clinger's
-/// exact fast path; anything else goes to `slow_number`.
+/// A JSON number (`@core.read_json_number`; `slow_number` past its fast path).
 fn Parser::number(self : Parser) -> Double {
   self.peek() |> ignore
-  let b = self.b
-  let start = self.pos
-  let mut i = start
-  let negative = i < b.length() && b[i] == b'-'
-  if negative {
-    i += 1
-  }
-  let mut mantissa = 0L
-  let mut digits = 0
-  let mut exponent = 0
-  let mut any = false
-  while i < b.length() && b[i] >= b'0' && b[i] <= b'9' {
-    if digits < 18 {
-      mantissa = mantissa * 10L + (b[i].to_int() - '0'.to_int()).to_int64()
-      if mantissa > 0L {
-        digits += 1
-      }
-    } else {
-      exponent += 1
-      digits += 1
-    }
-    any = true
-    i += 1
-  }
-  // JSON wants digits on both sides of the point.
-  let int_part = any
-  if i < b.length() && b[i] == b'.' {
-    i += 1
-    any = false
-    while i < b.length() && b[i] >= b'0' && b[i] <= b'9' {
-      if digits < 18 {
-        mantissa = mantissa * 10L + (b[i].to_int() - '0'.to_int()).to_int64()
-        if mantissa > 0L {
-          digits += 1
-        }
-        exponent -= 1
-      } else {
-        digits += 1
-      }
-      any = true
-      i += 1
-    }
-  }
-  if i < b.length() && (b[i] == b'e' || b[i] == b'E') {
-    i += 1
-    let mut sign = 1
-    if i < b.length() && (b[i] == b'+' || b[i] == b'-') {
-      sign = if b[i] == b'-' { -1 } else { 1 }
-      i += 1
-    }
-    let mut e = 0
-    let mut any_e = false
-    while i < b.length() && b[i] >= b'0' && b[i] <= b'9' {
-      e = @cmp.minimum(e * 10 + (b[i].to_int() - '0'.to_int()), 100000)
-      any_e = true
-      i += 1
-    }
-    if !any_e {
-      any = false
-    }
-    exponent += sign * e
-  }
-  if !any || !int_part {
+  let (v, end) = @core.read_json_number(self.b, self.pos, self.slow_number)
+  if end == self.pos {
     self.fail("invalid number")
     return 0.0
   }
-  self.pos = i
-  if digits <= 15 && exponent.abs() <= 22 {
-    let m = mantissa.to_double()
-    let v = if exponent < 0 {
-      m / exact_powers[-exponent]
-    } else {
-      m * exact_powers[exponent]
-    }
-    return if negative { -v } else { v }
-  }
-  let v = (self.slow_number)(start, i)
-  if v.is_nan() {
-    self.pos = start
-    self.fail("invalid number")
-    return 0.0
-  }
+  self.pos = end
   v
-}
-
-///|
-/// A JSON number's text parsed with core `strconv` (NaN if it is not one):
-/// the default slow path of `read_geojson`.
-pub fn strconv_number(text : BytesView) -> Double {
-  @string.parse_double(@utf8.decode_lossy(text)) catch {
-    _ => @double.not_a_number
-  }
 }
 
 ///|

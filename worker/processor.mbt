@@ -1,7 +1,8 @@
 ///|
 /// Turns one style's tiles into `PackedTile`s, one entry per group of features
 /// sharing the inputs their paint reads. Reuse one per worker: its buffers keep
-/// their capacity.
+/// their capacity. `number` parses the JSON numbers past
+/// `@core.read_json_number`'s fast path (in a style or a query's filter).
 pub struct TileProcessor {
   style : @style.Style
   out : PackedTile
@@ -14,11 +15,15 @@ pub struct TileProcessor {
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
+  priv number : (BytesView) -> Double
   priv mut error : String
 }
 
 ///|
-pub fn TileProcessor::new(style : @style.Style) -> TileProcessor {
+pub fn TileProcessor::new(
+  style : @style.Style,
+  number~ : (BytesView) -> Double = @core.strconv_number,
+) -> TileProcessor {
   {
     style,
     out: PackedTile::new(),
@@ -31,6 +36,7 @@ pub fn TileProcessor::new(style : @style.Style) -> TileProcessor {
     label_pool: [],
     geometry: @mvt.Geometry::new(),
     inputs: style.layers.map(paint_inputs),
+    number,
     error: "",
   }
 }
@@ -39,8 +45,21 @@ pub fn TileProcessor::new(style : @style.Style) -> TileProcessor {
 /// A processor for the style whose JSON text is the UTF-8 `bytes`.
 pub fn TileProcessor::from_utf8(
   bytes : BytesView,
+  number~ : (BytesView) -> Double = @core.strconv_number,
 ) -> TileProcessor raise @style.StyleError {
-  TileProcessor::new(@style.Style::parse(@utf8.decode_lossy(bytes)))
+  let json = parse_json(bytes, number) catch {
+    e => raise Invalid(path="", "not JSON: \{e.message()}")
+  }
+  TileProcessor::new(@style.Style::from_json(json), number~)
+}
+
+///|
+/// The JSON text `bytes`, its slow numbers parsed by `number`.
+fn parse_json(
+  bytes : BytesView,
+  number : (BytesView) -> Double,
+) -> Json raise @core.JsonError {
+  @core.parse_json(bytes, slow_number=(s, e) => number(bytes[s:e]))
 }
 
 ///|

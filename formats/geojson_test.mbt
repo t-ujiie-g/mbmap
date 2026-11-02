@@ -184,7 +184,7 @@ test "long numbers go to slow_number with their offsets; NaN rejects them" {
   let seen = []
   let t = @formats.read_geojson(bytes[:], slow_number=(s, e) => {
     seen.push(@utf8.decode_lossy(bytes[s:e]))
-    @formats.strconv_number(bytes[s:e])
+    @core.strconv_number(bytes[s:e])
   })
   assert_eq(seen, ["139.76712345678901"])
   assert_eq(t.coords, [139.76712345678901, 1.5])
@@ -195,14 +195,4 @@ test "long numbers go to slow_number with their offsets; NaN rejects them" {
   } noraise {
     _ => fail("expected NaN to reject the number")
   }
-}
-
-///|
-test "strconv_number parses JSON numbers and gives NaN otherwise" {
-  assert_eq(@formats.strconv_number(b"-1.25e-3"[:]), -0.00125)
-  assert_eq(
-    @formats.strconv_number(b"0.30000000000000004"[:]),
-    0.30000000000000004,
-  )
-  assert_true(@formats.strconv_number(b"x"[:]).is_nan())
 }

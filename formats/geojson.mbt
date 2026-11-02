@@ -27,7 +27,9 @@ pub fn GeoJSONError::message(self : GeoJSONError) -> String {
 /// fast path cannot, from offsets into `bytes`; NaN rejects them.
 pub fn read_geojson(
   bytes : BytesView,
-  slow_number~ : (Int32, Int32) -> Double = (s, e) => strconv_number(bytes[s:e]),
+  slow_number~ : (Int32, Int32) -> Double = (s, e) => {
+    @core.strconv_number(bytes[s:e])
+  },
 ) -> @geom.Table raise GeoJSONError {
   let p : Parser = {
     b: bytes,

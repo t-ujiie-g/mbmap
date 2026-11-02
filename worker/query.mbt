@@ -34,7 +34,7 @@ priv struct Query {
 const MAX_QUERY_ITEMS : Int32 = 65536
 
 ///|
-fn read_query(r : @core.ByteReader) -> Query? {
+fn read_query(r : @core.ByteReader, number : (BytesView) -> Double) -> Query? {
   let zoom = r.f64()
   let pixels = r.f64()
   let pitch_factor = r.f64()
@@ -62,7 +62,11 @@ fn read_query(r : @core.ByteReader) -> Query? {
     None
   } else {
     Some(
-      @style.compile(@json.parse(text), expected=BoolType, path="filter") catch {
+      @style.compile(
+        parse_json(@utf8.encode(text)[:], number),
+        expected=BoolType,
+        path="filter",
+      ) catch {
         _ => return None
       },
     )
@@ -384,7 +388,7 @@ pub fn TileProcessor::query(
   z : Int32,
   request : BytesView,
 ) -> Bytes? {
-  guard read_query(@core.ByteReader::new(request)) is Some(query) else {
+  guard read_query(@core.ByteReader::new(request), self.number) is Some(query) else {
     self.error = "malformed query"
     return None
   }
@@ -467,7 +471,11 @@ pub fn TileProcessor::source_features(
     None
   } else {
     Some(
-      @style.compile(@json.parse(filter), expected=BoolType, path="filter") catch {
+      @style.compile(
+        parse_json(@utf8.encode(filter)[:], self.number),
+        expected=BoolType,
+        path="filter",
+      ) catch {
         _ => {
           self.error = "malformed filter"
           return None

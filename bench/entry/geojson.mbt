@@ -16,7 +16,7 @@ fn build_tiler(
   wrap : Bool,
   trig : @tiler.Trig,
   slow_number~ : (Int32, Int32) -> Double = (s, e) => {
-    @formats.strconv_number(bytes[s:e])
+    @core.strconv_number(bytes[s:e])
   },
 ) -> Int32 {
   let table = @formats.read_geojson(bytes, slow_number~) catch {
@@ -41,7 +41,7 @@ fn build_tiler(
 fn read_only(
   bytes : BytesView,
   slow_number~ : (Int32, Int32) -> Double = (s, e) => {
-    @formats.strconv_number(bytes[s:e])
+    @core.strconv_number(bytes[s:e])
   },
 ) -> Int32 {
   (@formats.read_geojson(bytes, slow_number~) catch { _ => return -1 }).length()
