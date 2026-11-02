@@ -15,6 +15,16 @@ priv struct PendingQuery {
 }
 
 ///|
+/// What a worker's answer is awaited for, by id (one map, so the bundle holds
+/// one map type for them): a query, one tile's part of it, or a tile's
+/// feature ranges.
+priv enum Waiting {
+  Query(PendingQuery)
+  Part(QueryPart)
+  Ranges(RangePart)
+}
+
+///|
 /// One tile's part of a query: the query, the tile, and the style its layer
 /// indices refer to (None for a source query, whose hits name no layer).
 priv struct QueryPart {
@@ -85,14 +95,14 @@ fn Map::start_query(
   let id = self.next_query
   self.next_query += 1
   let q = { left: 0, results: new_results(), done, }
-  self.queries.set(id, q)
+  self.waiting.set(id, Query(q))
   (id, q)
 }
 
 ///|
 fn Map::finish_query(self : Map, id : Int32) -> Unit {
-  guard self.queries.get(id) is Some(q) && q.left == 0 else { return }
-  self.queries.remove(id)
+  guard self.waiting.get(id) is Some(Query(q)) && q.left == 0 else { return }
+  self.waiting.remove(id)
   (q.done)(q.results)
 }
 
@@ -112,7 +122,7 @@ fn Map::send_part(
   guard worker >= 0 else { return false }
   let part = self.next_query
   self.next_query += 1
-  self.query_parts.set(part, { query, tile: entry.id, style, })
+  self.waiting.set(part, Part({ query, tile: entry.id, style, }))
   q.left += 1
   let id = entry.id
   post_query(
@@ -134,9 +144,9 @@ fn Map::send_part(
 /// style changed since (then the tile has none).
 fn Map::on_query(self : Map, msg : JsValue) -> Unit {
   let part = get_int(msg, "id")
-  guard self.query_parts.get(part) is Some(p) else { return }
-  self.query_parts.remove(part)
-  guard self.queries.get(p.query) is Some(q) else { return }
+  guard self.waiting.get(part) is Some(Part(p)) else { return }
+  self.waiting.remove(part)
+  guard self.waiting.get(p.query) is Some(Query(q)) else { return }
   let mut hits = hits_of(msg)
   if p.style is Some(s) {
     if physical_equal(s, self.style) {
@@ -158,9 +168,14 @@ fn Map::on_query(self : Map, msg : JsValue) -> Unit {
 ///|
 /// Ends every query in flight with what it has (the map is going away).
 fn Map::end_queries(self : Map) -> Unit {
-  let pending = self.queries.iter().map(kv => kv.1).to_array()
-  self.queries.clear()
-  self.query_parts.clear()
+  let pending = []
+  for _, w in self.waiting {
+    if w is Query(q) {
+      pending.push(q)
+    }
+  }
+  self.waiting.clear()
+  self.ranges_waiting = 0
   for q in pending {
     (q.done)(q.results)
   }
@@ -253,7 +268,7 @@ pub fn Map::query_rendered(
   let pitch_factor = t.max_pitch_scale_factor()
   let (query, q) = self.start_query(done)
   for src in self.sources {
-    if src.source.kind is RasterDem {
+    if src.source.kind is (RasterDem | Raster) {
       continue
     }
     let indices = []
@@ -261,7 +276,7 @@ pub fn Map::query_rendered(
     for i, l in style.layers {
       if wanted[i] &&
         l.source == src.source.id &&
-        !(l.kind is (Symbol | Background | Hillshade)) {
+        !(l.kind is (Symbol | Background | Hillshade | Raster)) {
         indices.push(i)
         extruded = extruded || l.kind is FillExtrusion
       }
@@ -390,7 +405,7 @@ pub fn Map::query_source(
   }
   let (query, q) = self.start_query(done)
   if self.sources.search_by(s => s.source.id == source) is Some(at) &&
-    !(self.sources[at].source.kind is RasterDem) {
+    !(self.sources[at].source.kind is (RasterDem | Raster)) {
     let src = self.sources[at]
     let w = @core.ByteWriter::new()
     w.utf8(source_layer)

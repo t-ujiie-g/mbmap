@@ -194,6 +194,41 @@ pub fn[C : FeatureContext] Expr::eval(
 }
 
 ///|
+/// Calls `f` with each sub-expression of `self` (not their own).
+fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
+  match self {
+    Lit(_) | Get(_) | Has(_) | GeometryType | Zoom | FeatureState(_) => ()
+    Not(a) => f(a)
+    All(es) | Any(es) | Coalesce(es) | Assert(_, es) => es.each(f)
+    Compare(_, a, b) | In(a, b) => {
+      f(a)
+      f(b)
+    }
+    Match(input, cases, fallback) => {
+      f(input)
+      cases.each(c => f(c.1))
+      f(fallback)
+    }
+    Case(cases, fallback) => {
+      cases.each(c => {
+        f(c.0)
+        f(c.1)
+      })
+      f(fallback)
+    }
+    Interpolate(_, input, stops) => {
+      f(input)
+      stops.each(s => f(s.1))
+    }
+    Step(input, first, stops) => {
+      f(input)
+      f(first)
+      stops.each(s => f(s.1))
+    }
+  }
+}
+
+///|
 /// Property names the expression reads, and whether it reads the geometry
 /// type: the feature data a value depends on.
 pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
@@ -201,37 +236,9 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
   let mut geometry = false
   fn visit(e : Expr) -> Unit {
     match e {
-      Lit(_) | Zoom | FeatureState(_) => ()
-      Assert(_, es) => es.each(visit)
       Get(k) | Has(k) => if !keys.contains(k) { keys.push(k) }
       GeometryType => geometry = true
-      Not(a) => visit(a)
-      All(es) | Any(es) | Coalesce(es) => es.each(visit)
-      Compare(_, a, b) | In(a, b) => {
-        visit(a)
-        visit(b)
-      }
-      Match(input, cases, fallback) => {
-        visit(input)
-        cases.each(c => visit(c.1))
-        visit(fallback)
-      }
-      Case(cases, fallback) => {
-        cases.each(c => {
-          visit(c.0)
-          visit(c.1)
-        })
-        visit(fallback)
-      }
-      Interpolate(_, input, stops) => {
-        visit(input)
-        stops.each(s => visit(s.1))
-      }
-      Step(input, first, stops) => {
-        visit(input)
-        visit(first)
-        stops.each(s => visit(s.1))
-      }
+      _ => e.each_child(visit)
     }
   }
   visit(self)
@@ -242,25 +249,14 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
 /// Whether the expression reads the feature state (MapLibre allows it in
 /// paint properties only).
 pub fn Expr::reads_state(self : Expr) -> Bool {
-  match self {
-    FeatureState(_) => true
-    Lit(_) | Get(_) | Has(_) | GeometryType | Zoom => false
-    Not(a) => a.reads_state()
-    All(es) | Any(es) | Coalesce(es) | Assert(_, es) =>
-      es.iter().any(e => e.reads_state())
-    Compare(_, a, b) | In(a, b) => a.reads_state() || b.reads_state()
-    Match(input, cases, fallback) =>
-      input.reads_state() ||
-      cases.iter().any(c => c.1.reads_state()) ||
-      fallback.reads_state()
-    Case(cases, fallback) =>
-      cases.iter().any(c => c.0.reads_state() || c.1.reads_state()) ||
-      fallback.reads_state()
-    Interpolate(_, input, stops) =>
-      input.reads_state() || stops.iter().any(s => s.1.reads_state())
-    Step(input, first, stops) =>
-      input.reads_state() ||
-      first.reads_state() ||
-      stops.iter().any(s => s.1.reads_state())
+  let mut found = false
+  fn visit(e : Expr) -> Unit {
+    if e is FeatureState(_) {
+      found = true
+    } else if !found {
+      e.each_child(visit)
+    }
   }
+  visit(self)
+  found
 }

@@ -2,6 +2,7 @@
 test "texture_placement maps a tile and its child into the terrain texture" {
   let at : @render_webgl2.Placement = {
     matrix: @core.Mat4::identity(),
+    raster_matrix: @core.Mat4::identity(),
     units_per_pixel: 1.0,
     center_depth: 1.0,
     clip: [0.0, 0.0, 4096.0, 4096.0],

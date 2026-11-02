@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 65409,
+      "bytes": 67477,
       "budget": 70000
     },
     {
@@ -15,13 +15,18 @@
       "budget": 5000
     },
     {
+      "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
+      "bytes": 470,
+      "budget": 2000
+    },
+    {
       "name": "mbmap/element (on top of mbmap)",
       "bytes": 1539,
       "budget": 5000
     },
     {
       "name": "display worker",
-      "bytes": 73501,
+      "bytes": 75078,
       "budget": 100000
     },
     {
@@ -31,7 +36,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 2553,
+      "bytes": 2551,
       "budget": 5000
     },
     {

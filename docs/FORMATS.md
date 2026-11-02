@@ -103,6 +103,12 @@ In:
   the index in the style's sources).
 - `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),
   decode its pixels and send its slopes.
+- `{type: "tile", id, url, source, z, raster: true}`: fetch a raster tile and send
+  it as an ImageBitmap (premultiplied).
+- Any fetched tile may carry `init`, what the map's `transformRequest` gave: string
+  `headers` and a `credentials` mode (else none are sent). A `url` of the form
+  `pmtiles://<archive URL>/z/x/y` is read from that PMTiles archive with range
+  requests (`worker/js/pmtiles.mjs`).
 - `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
@@ -130,6 +136,8 @@ Out:
   byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
   worker, so the main thread takes them even from tiles it no longer wants.
 - `{type: "tile-error", id, message}`.
+- A raster tile's message has one entry `{entry: 0, layer: -1, kind: 7, image}`,
+  `image` an ImageBitmap (transferred) for every raster layer of the source.
 - `{type: "ranges", id, entries}`: per packed entry with any of the ids,
   `{entry, ranges}`, `ranges` holding (first index, index count, position in
   `ids`) triples; none if the tile is gone.

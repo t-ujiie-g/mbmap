@@ -396,3 +396,14 @@ pub fn map_set_feature_state(
 ) -> Unit {
   map.set_feature_state(source, source_layer, id, state)
 }
+
+///|
+/// Sets the map's `transformRequest` for tiles: a function `(url, "Tile")`
+/// giving `{url, headers?, credentials?}`, or null for none.
+#export_name("map_set_transform_request")
+pub fn map_set_transform_request(
+  map : @map.Map,
+  f : @map.RequestTransform,
+) -> Unit {
+  map.set_transform_request(f)
+}

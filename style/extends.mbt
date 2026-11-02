@@ -90,3 +90,6 @@ pub extend PromoteId with @debug.Debug::{to_repr}
 
 ///|
 pub extend PromoteId with Eq::{not_equal, equal}
+
+///|
+pub extend RasterPaint with Eq::{not_equal, equal}

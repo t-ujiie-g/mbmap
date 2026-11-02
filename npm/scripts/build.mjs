@@ -22,7 +22,7 @@ await mkdir(DIST);
 
 const common = { bundle: true, minify: true, format: "esm", target: "es2022", logLevel: "warning", legalComments: "none" };
 // The GeoJSON module stays a file of its own, loaded only by maps that need it.
-const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/geojson\.js$/ }, () => ({ path: "./geojson.js", external: true })) };
+const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/(geojson|pmtiles)\.js$/ }, (a) => ({ path: a.path, external: true })) };
 await build({
   ...common,
   entryPoints: [path.join(PKG, "src/index.ts")],
@@ -31,6 +31,7 @@ await build({
   plugins: [geojsonEntry],
 });
 await build({ ...common, entryPoints: [path.join(PKG, "src/geojson.ts")], outfile: path.join(DIST, "geojson.js") });
+await build({ ...common, entryPoints: [path.join(PKG, "src/pmtiles.ts")], outfile: path.join(DIST, "pmtiles.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geojson_worker/js/worker.mjs")], outfile: path.join(DIST, "geojson-worker.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js") });
 // The PROJ string parser stays a file of its own, loaded on the first PROJ string.

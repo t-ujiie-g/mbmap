@@ -19,6 +19,11 @@ const KIND_EXTRUSION : Int32 = 6
 const KIND_HILLSHADE : Int32 = 5
 
 ///|
+/// A raster tile's image: like a DEM tile's entry, layer -1 serves every
+/// raster layer of the source.
+const KIND_RASTER : Int32 = 7
+
+///|
 /// The tiles of one source the style's layers draw from: `index` is its
 /// position in the style's sources (the worker knows sources by it).
 priv struct SourceTiles {
@@ -47,15 +52,26 @@ fn Map::request_tile(
     last_used: self.frame_count,
     kept: (-1, -1),
   })
-  if src.source.kind is (Vector | RasterDem) {
+  if src.source.kind is (Vector | RasterDem | Raster) {
     let tiles = src.source.tiles
     post_tile(
       self.workers[worker],
       request,
-      tile_url(tiles[request % tiles.length()], id.z, id.x, id.y),
+      tile_url(
+        tiles[request % tiles.length()],
+        id.z,
+        id.x,
+        if src.source.tms {
+          (1 << id.z) - 1 - id.y
+        } else {
+          id.y
+        },
+      ),
       src.index,
       id.z,
       src.source.kind is RasterDem,
+      src.source.kind is Raster,
+      self.transform_request,
     )
     return
   }
@@ -96,7 +112,7 @@ fn Map::finish(self : Map, request : Int32, meshes : Array[LayerMesh]?) -> Unit 
       self.release_meshes(old)
     }
     self.drop_kept(entry)
-    if meshes is Some(_) && !(src.source.kind is RasterDem) {
+    if meshes is Some(_) && !(src.source.kind is (RasterDem | Raster)) {
       entry.kept = (worker, request)
     }
   }
@@ -134,7 +150,9 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
         let l = layer_at(msg, i)
         let shared = get_int(l, "shared")
         let kind = get_int(l, "kind")
-        let (mesh, labels) = if kind == KIND_HILLSHADE {
+        let (mesh, labels) = if kind == KIND_RASTER {
+          (self.renderer.upload_raster(buffer_of(l, "image")), None)
+        } else if kind == KIND_HILLSHADE {
           let mesh = self.renderer.upload_slopes(
             buffer_of(l, "image"),
             get_int(l, "size"),

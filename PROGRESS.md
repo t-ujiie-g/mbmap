@@ -1,5 +1,55 @@
 # PROGRESS
 
+## Phase 12.4：ラスタタイル、TileJSON、PMTiles、transformRequest（2026-11-02）
+
+状態：**完了**。
+
+### できたこと
+
+- **ラスタ**：`raster` のソースとレイヤー。
+  - ワーカーが画像を ImageBitmap にし（premultiplied）、メインスレッドがミップマップ付きのテクスチャにする。
+  - MapLibre の raster シェーダ（色相の回転、彩度、コントラスト、明るさの範囲、不透明度、`raster-resampling`）でタイルの四角形に描く。フェードはない。
+  - 止まっているときは、MapLibre の `alignedProjMatrix` と同じく画素の格子にそろえる（`Transform::tile_matrix(aligned=true)`）。これを入れる前は線形補間で平均 11 の差があった。
+- **TileJSON**：`url` で指すソース（vector、raster、raster-dem）を facade が補う（`npm/src/tilejson.ts`、MapLibre の `loadTileJson` と同じキー、ソースに書いた値が優先）。
+  - 文書は取得してキャッシュする。`addSource` はすぐソースを足し、文書が届くまではエンジンに渡すスタイルから外す。
+  - `bounds` の外のタイルは要求しない（MapLibre の `TileBounds`）。`scheme: "tms"` にも対応した。
+- **PMTiles**：`url: "pmtiles://…"` をプラグインなしで読む。
+  - ヘッダーは遅延読み込みの `pmtiles.js`（0.5KB）が読む。タイルはワーカーが範囲リクエストで読む（`worker/js/pmtiles.mjs`、pmtiles 4.5.0 のリーダーの移植）。
+  - 信頼できない入力として、varint の長さ、エントリ数、展開後のサイズ、リーフの深さに上限を設けた。圧縮は none と gzip に対応する。
+- **`transformRequest`**：オプションと `setTransformRequest`。スタイル、TileJSON、タイルの要求に効き、タイルではワーカーに `init`（URL、文字列のヘッダー、`credentials`）を渡す。既定は資格情報なし。PMTiles の範囲リクエストは対象外。
+- **example**：「航空写真」レイヤー（国土地理院の全国最新写真。`?local=1` では標準地図の fixture）。最初は隠しておき、表示を切り替えられる。
+- **ベンチ**：
+  - fixture に国土地理院の標準地図 `gsi-std`（z14、35 タイル）を足した。
+  - 開発用サーバーが Range に対応した（`byteRange` とテスト）。
+  - PMTiles の書き出し（`bench/lib/pmtiles-writer.mjs`）を足した。
+  - 依存に `pmtiles@4.5.0` を足した（bench の開発用のみ、比較の基準。BSD-3、作者は Protomaps。依存は fflate だけで、インストール時のスクリプトなし。npm audit 0 件）。
+
+### 黄金テスト
+
+- `npm run raster:golden`：標準地図を 4 種類の paint × 2 つのビューで MapLibre 6.16 と比べた。**画素の差は平均 0、99% 点 0〜1**。回転したビューの `nearest` で、テクセルの境目の 1 点だけ違う。
+- `npm run pmtiles:golden`：
+  - fixture から書いた 4 種類のアーカイブ（ルートのみ、リーフあり、タイルを gzip、ラスタ）を、公式の pmtiles 4.5.0 と mbmap のリーダーで読み、全タイルが元と同じだった。
+  - Chromium では、PMTiles から描いた mbmap と、ファイルから描いた MapLibre が一致した（問い合わせ 4,852 地物、ラスタの画素差 0）。
+  - 最初に自作のライターとリーダーで同じ Hilbert の誤り（桁の重みが 4^a でなく 2^a）を共有していて、公式との比較で見つかった。
+- `npm run query:golden` は 320 件すべて同じのまま。
+
+### 確認（pack test、CI でも動く）
+
+- 実行時に書いた PNG、TileJSON、PMTiles の 3 経路でラスタが描かれること、`raster-opacity`、TileJSON の出典の表示、`transformRequest` によるタイル URL の書き換え。
+
+### サイズ
+
+- 表示の入口 65.4 → 67.5KB（予算 70KB）。
+  - 削った分（問い合わせの待ち表を 1 つにまとめた、式をたどる処理を共通化）で −0.5KB。
+  - 足した分（ラスタ、TileJSON、`bounds`、`transformRequest`）で +2.6KB。
+- 表示ワーカー 73.5 → 75.1KB。PMTiles のヘッダー読み込みは 0.5KB（別ファイル）。
+
+### 既知の問題・まだのもの
+
+- ラスタのフェード（`raster-fade-duration`）はない。親タイルとの重ね描きもない。
+- PMTiles は brotli と zstd の圧縮、範囲リクエストへの `transformRequest`、ETag の確認に対応していない。
+- 表示の入口の残りは 2.5KB。12.5 の後に予算を相談する。
+
 ## Phase 12.3b：feature-state（2026-11-02）
 
 状態：**完了**。これで Phase 12.3（問い合わせと feature-state）が終わり。

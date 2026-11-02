@@ -2,6 +2,7 @@
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
 import { hostNumber } from "../../wasmio/js/host.mjs";
+import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
 import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
 import { readString, readValue } from "./values.mjs";
@@ -9,6 +10,7 @@ import { readString, readValue } from "./values.mjs";
 const LAYER_ENTRY_WORDS = 9; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
+const KIND_RASTER = 7; // map/tiles.mbt
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
@@ -21,6 +23,8 @@ const pending = new Map();
 // Each tile sent, by request id, until the main thread drops it: its bytes for
 // queries, and its feature ranges for layers drawn by feature state.
 const kept = new Map();
+// PMTiles archives by URL, their headers and directories cached.
+const archives = new Map();
 
 function withInput(bytes, run) {
   const addr = wasm.prepare_input(bytes.length);
@@ -105,15 +109,37 @@ async function demPixels(bytes) {
   return { size, rgba: new Uint8Array(ctx.getImageData(0, 0, size, size).data.buffer) };
 }
 
-async function loadTile({ id, url, bytes: given, source, z, dem }) {
+// What a `transformRequest` may set on a tile fetch: string headers and a
+// credentials mode; anything else is left out.
+function fetchInit(init, signal) {
+  const out = { signal, credentials: "omit" };
+  if (init && typeof init === "object") {
+    if (["omit", "same-origin", "include"].includes(init.credentials)) out.credentials = init.credentials;
+    if (init.headers && typeof init.headers === "object") {
+      out.headers = Object.fromEntries(Object.entries(init.headers).filter(([, v]) => typeof v === "string"));
+    }
+  }
+  return out;
+}
+
+async function loadTile({ id, url, init, bytes: given, source, z, dem, raster }) {
   const controller = new AbortController();
   pending.set(id, controller);
   try {
     let bytes;
+    const pm = typeof url === "string" ? splitTileUrl(url) : null;
     if (given instanceof ArrayBuffer) {
       bytes = new Uint8Array(given);
+    } else if (pm) {
+      let archive = archives.get(pm.archive);
+      if (!archive) archives.set(pm.archive, (archive = new Archive(pm.archive, (u, o, l) => fetchRange(u, o, l))));
+      bytes = await archive.tile(pm.z, pm.x, pm.y);
+      if (!bytes) {
+        postMessage({ type: "tile", id, layers: [] });
+        return;
+      }
     } else {
-      const res = await fetch(url, { signal: controller.signal, credentials: "omit" });
+      const res = await fetch(url, fetchInit(init, controller.signal));
       if (res.status === 404 || res.status === 204) {
         postMessage({ type: "tile", id, layers: [] });
         return;
@@ -122,6 +148,13 @@ async function loadTile({ id, url, bytes: given, source, z, dem }) {
       bytes = new Uint8Array(await res.arrayBuffer());
     }
     if (controller.signal.aborted) return;
+    if (raster === true) {
+      // Premultiplied, as MapLibre uploads raster tiles (its shader divides it out).
+      const image = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "premultiply" });
+      if (controller.signal.aborted) return image.close();
+      postMessage({ type: "tile", id, layers: [{ entry: 0, layer: -1, kind: KIND_RASTER, image }], glyphs: [] }, [image]);
+      return;
+    }
     if (dem === true) {
       const { size, rgba } = await demPixels(bytes);
       if (controller.signal.aborted) return;

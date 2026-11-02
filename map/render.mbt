@@ -41,7 +41,8 @@ fn Map::render(self : Map) -> Unit {
       s.min_zoom.to_double() {
       []
     } else {
-      t.covering_tiles(s.min_zoom, z)
+      // Tiles outside the source's bounds are never asked for.
+      t.covering_tiles(s.min_zoom, z).filter(id => s.covers(id.z, id.x, id.y))
     }
     self.update_tiles(src, cover)
     let draws = []
@@ -118,7 +119,7 @@ fn Map::render(self : Map) -> Unit {
     }
   }
   // Feature states still being placed by the workers.
-  if settled && self.range_parts.length() == 0 {
+  if settled && self.ranges_waiting == 0 {
     if !self.idle_fired {
       self.idle_fired = true
       for _, l in self.listeners {
@@ -225,6 +226,22 @@ fn Map::draw_layer(
       self.draw_hillshade(h, m.mesh, at)
       continue
     }
+    if m.kind == KIND_RASTER && layer.raster is Some(r) {
+      let ctx = JsProps::none()
+      let n = (e : @style.Expr, d : Double) => number_or(e.eval(zoom, ctx), d)
+      self.renderer.draw_raster(
+        m.mesh,
+        at,
+        opacity=n(r.opacity, 1.0),
+        hue_rotate=n(r.hue_rotate, 0.0),
+        brightness_min=n(r.brightness_min, 0.0),
+        brightness_max=n(r.brightness_max, 1.0),
+        saturation=n(r.saturation, 0.0),
+        contrast=n(r.contrast, 0.0),
+        nearest=r.nearest,
+      )
+      continue
+    }
     if m.layer != index {
       continue
     }
@@ -319,6 +336,8 @@ fn Map::placement(
   }
   {
     matrix: t.tile_matrix(id, extent),
+    // Raster tiles at rest sit on the pixel grid, as MapLibre draws them.
+    raster_matrix: t.tile_matrix(id, extent, aligned=!self.is_moving()),
     units_per_pixel: 1.0 / (t.tile_scale(id, extent) * dpr),
     center_depth: t.center_depth(),
     clip: rect,

@@ -125,14 +125,14 @@ pub struct Map {
   priv mut placed_at : Double
   priv mut placement_round : Int32
   priv mut drawn : @hashmap.HashMap[String, Array[Draw]]
-  priv queries : @hashmap.HashMap[Int32, PendingQuery]
-  priv query_parts : @hashmap.HashMap[Int32, QueryPart]
+  priv waiting : @hashmap.HashMap[Int32, Waiting]
+  priv mut ranges_waiting : Int32
+  priv mut transform_request : RequestTransform
   priv mut next_query : Int32
   priv feature_states : @hashmap.HashMap[
     String,
     @hashmap.HashMap[String, JsValue],
   ]
-  priv range_parts : @hashmap.HashMap[Int32, RangePart]
 }
 
 ///|
@@ -230,11 +230,11 @@ pub fn Map::new(
     placed_at: 0.0,
     placement_round: 0,
     drawn: @hashmap.HashMap([]),
-    queries: @hashmap.HashMap([]),
-    query_parts: @hashmap.HashMap([]),
+    waiting: @hashmap.HashMap([]),
+    ranges_waiting: 0,
+    transform_request: no_transform(),
     next_query: 0,
     feature_states: @hashmap.HashMap([]),
-    range_parts: @hashmap.HashMap([]),
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {
@@ -400,4 +400,11 @@ fn Map::release_meshes(self : Map, meshes : Array[LayerMesh]) -> Unit {
       self.renderer.release(m.mesh)
     }
   }
+}
+
+///|
+/// Sets the function tile requests pass through (`RequestTransform`), or
+/// none with JS null.
+pub fn Map::set_transform_request(self : Map, f : RequestTransform) -> Unit {
+  self.transform_request = f
 }

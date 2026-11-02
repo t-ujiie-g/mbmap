@@ -4,13 +4,16 @@ import { Map as MbMap } from "/npm/dist/index.js";
 import * as maplibregl from "/bench/node_modules/maplibre-gl/dist/maplibre-gl.mjs";
 
 const params = new URLSearchParams(location.search);
-const style = JSON.parse((await (await fetch(params.get("style"))).text()).replaceAll("{origin}", location.origin));
+const load = async (url) => JSON.parse((await (await fetch(url)).text()).replaceAll("{origin}", location.origin));
+const style = await load(params.get("style"));
+// MapLibre may draw the same data from elsewhere (`mlstyle`): files where mbmap reads a PMTiles archive.
+const mlStyle = params.get("mlstyle") ? await load(params.get("mlstyle")) : style;
 const camera = JSON.parse(params.get("camera"));
 
 const mb = new MbMap({ container: "mbmap", style: structuredClone(style), ...camera, maxPitch: 85 });
 // MapLibre 6 splits tiles deeper than a source's maxzoom by default, which changes what
 // queries return (`zoomLevelsToOverscale`); mbmap draws, and queries, the source's own tiles.
-const ml = new maplibregl.Map({ container: "maplibre", style: structuredClone(style), ...camera, maxPitch: 85, attributionControl: false, pixelRatio: 1, fadeDuration: 0, zoomLevelsToOverscale: undefined });
+const ml = new maplibregl.Map({ container: "maplibre", style: structuredClone(mlStyle), ...camera, maxPitch: 85, attributionControl: false, pixelRatio: 1, fadeDuration: 0, zoomLevelsToOverscale: undefined });
 await Promise.all([mb.once("idle"), new Promise((r) => ml.once("idle", r))]);
 // Both have every tile and have placed their labels.
 await new Promise((r) => setTimeout(r, 500));

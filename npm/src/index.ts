@@ -22,6 +22,7 @@ import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
 import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
+import { tileJSONUrls, withTileJSON } from "./tilejson";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
 export { LngLatBounds } from "./camera";
@@ -69,6 +70,19 @@ export interface QuerySourceFeatureOptions {
   filter?: unknown;
 }
 
+/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, or a tile. */
+export type ResourceType = "Style" | "Source" | "Tile";
+
+/**
+ * MapLibre's `transformRequest`: may change a request's `url`, add `headers` or send
+ * `credentials` (none are sent otherwise). Return undefined to leave the request as it is.
+ * PMTiles range requests are not passed through it.
+ */
+export type RequestTransformFunction = (
+  url: string,
+  resourceType: ResourceType,
+) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
+
 /** What `getSource` gives: a GeoJSON source also takes new data. */
 export interface Source {
   id: string;
@@ -89,6 +103,7 @@ export interface Source {
  * - `attributionControl`: shows the sources' `attribution` text in a corner (default true).
  * - `minZoom`, `maxZoom` (0 and 22), `minPitch`, `maxPitch` (0 and 85), `maxBounds`: what the camera keeps to.
  * - `bounds`, `fitBoundsOptions`: a box to show at first, in place of `center` and `zoom`.
+ * - `transformRequest`: changes the requests for the style, TileJSON and tiles (see `RequestTransformFunction`).
  * - `interactive: false` turns every input off; `dragPan`, `scrollZoom`, `boxZoom`, `dragRotate`,
  *   `keyboard`, `doubleClickZoom`, `touchZoomRotate`, `touchPitch` (all true) one by one.
  */
@@ -122,6 +137,7 @@ export interface MapOptions {
   doubleClickZoom?: boolean;
   touchZoomRotate?: boolean;
   touchPitch?: boolean;
+  transformRequest?: RequestTransformFunction;
 }
 
 /** Mouse events the map fires, and with a layer id fires for that layer's features (`mouseenter` and `mouseleave` only with one). */
@@ -252,6 +268,8 @@ export class Map {
   #style: StyleSpecification | null = null;
   #base = new URL(document.baseURI);
   #styleRequest = 0;
+  #tilejson = new globalThis.Map<string, unknown>();
+  #transform: RequestTransformFunction | null = null;
   #camera: Camera;
   #listeners = new globalThis.Map<MapEventType, Set<MapEventListener>>();
   #loaded = false;
@@ -312,6 +330,7 @@ export class Map {
       bearing: options.bearing ?? 0,
       pitch: options.pitch ?? 0,
     });
+    this.#transform = options.transformRequest ?? null;
     if (getComputedStyle(container).position === "static") container.style.position = "relative";
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.cssText = "display:block;width:100%;height:100%";
@@ -339,19 +358,63 @@ export class Map {
       if (this.#engine) this.#apply(next);
       else this.#create(next);
     };
+    // Sources given by TileJSON wait for their documents.
+    const ready = (s: StyleSpecification, base: URL) => {
+      const missing = this.#missingTileJSON(s, base);
+      if (missing.length === 0) return use(s, base);
+      this.#fetchTileJSON(missing)
+        .then(() => use(s, base))
+        .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+    };
     if (typeof style === "string") {
       const url = new URL(style, document.baseURI);
-      fetch(url, { credentials: "omit" })
+      this.#fetch(url.href, "Style")
         .then((res) => {
           if (!res.ok) throw new Error(`mbmap: style: HTTP ${res.status}`);
           return res.json() as Promise<StyleSpecification>;
         })
-        .then((s) => use(s, url))
+        .then((s) => ready(s, url))
         .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
     } else {
-      use(style, new URL(document.baseURI));
+      ready(style, new URL(document.baseURI));
     }
     return this;
+  }
+
+  /** Fetches `url` through the `transformRequest`, without credentials unless it asks for them. */
+  #fetch(url: string, type: ResourceType): Promise<Response> {
+    const r = this.#transform?.(url, type);
+    return r ? fetch(r.url, { headers: r.headers, credentials: r.credentials ?? "omit" }) : fetch(url, { credentials: "omit" });
+  }
+
+  /** Sets the `transformRequest` (null for none); tiles asked for from now on go through it. */
+  setTransformRequest(transform: RequestTransformFunction | null): this {
+    this.#transform = transform;
+    return this.#withEngine((m) => engine.map_set_transform_request(m, transform));
+  }
+
+  /** The TileJSON URLs of `style` not fetched yet. */
+  #missingTileJSON(style: StyleSpecification, base: URL): string[] {
+    return [...tileJSONUrls(style, base).values()].filter((u) => !this.#tilejson.has(u));
+  }
+
+  /** Fetches TileJSON documents (without credentials), or PMTiles headers, into the cache. */
+  async #fetchTileJSON(urls: string[]): Promise<void> {
+    await Promise.all(urls.map(async (url) => {
+      if (url.startsWith("pmtiles://")) {
+        const { pmtilesDocument } = await import("./pmtiles.js");
+        this.#tilejson.set(url, await pmtilesDocument(url.slice(10)));
+        return;
+      }
+      const res = await this.#fetch(url, "Source");
+      if (!res.ok) throw new Error(`mbmap: TileJSON ${url}: HTTP ${res.status}`);
+      this.#tilejson.set(url, await res.json());
+    }));
+  }
+
+  /** The style with its TileJSON sources completed and tile URLs made absolute, as the engine takes it. */
+  #engineStyle(style: StyleSpecification): StyleSpecification {
+    return resolveTiles(withTileJSON(style, this.#base, this.#tilejson, resolveTemplate), this.#base);
   }
 
   /** A copy of the style drawn, GeoJSON data included (null until it has loaded). */
@@ -362,7 +425,7 @@ export class Map {
   /** Swaps in `next`, an edit of the current style; a style the engine refuses fires `error`. */
   #apply(next: StyleSpecification): void {
     if (!this.#engine) return;
-    const [geojson, rest] = splitGeoJSON(resolveTiles(next, this.#base));
+    const [geojson, rest] = splitGeoJSON(this.#engineStyle(next));
     const refused = engine.map_set_style(this.#engine, JSON.stringify(rest));
     if (refused) {
       this.#fail(new Error(refused));
@@ -438,8 +501,16 @@ export class Map {
     return this.#edit((s) => edit.setLayerZoomRange(s, id, minzoom, maxzoom));
   }
 
+  /** Adds a source; one given by `url` (TileJSON) draws once its document has come. */
   addSource(id: string, source: unknown): this {
-    return this.#edit((s) => edit.addSource(s, id, source));
+    this.#edit((s) => edit.addSource(s, id, source));
+    const missing = this.#missingTileJSON({ version: 8, sources: { [id]: source }, layers: [] }, this.#base);
+    if (missing.length > 0) {
+      this.#fetchTileJSON(missing)
+        .then(() => this.#style && this.#apply(this.#style))
+        .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+    }
+    return this;
   }
 
   /** Removes source `id`; fires `error` while a layer or the terrain uses it. */
@@ -515,7 +586,7 @@ export class Map {
   }
 
   #create(style: StyleSpecification): void {
-    const [geojson, resolved] = splitGeoJSON(resolveTiles(style, this.#base));
+    const [geojson, resolved] = splitGeoJSON(this.#engineStyle(style));
     const o = this.#options;
     const c = this.#camera;
     const page = new URL(document.baseURI);
@@ -536,6 +607,7 @@ export class Map {
     );
     this.#engine = map;
     this.#style = style;
+    if (this.#transform) engine.map_set_transform_request(map, this.#transform);
     const canvas = this.#canvas;
     for (const type of ["mousedown", "mouseup", "mouseover", "mouseout", "mousemove", "click", "dblclick", "contextmenu"] as const) {
       canvas.addEventListener(

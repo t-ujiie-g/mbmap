@@ -46,7 +46,9 @@ pub fn Source::same(self : Source, other : Source) -> Bool {
   self.encoding == other.encoding &&
   self.buffer == other.buffer &&
   self.tolerance == other.tolerance &&
-  self.promote_id == other.promote_id
+  self.promote_id == other.promote_id &&
+  self.bounds == other.bounds &&
+  self.tms == other.tms
 }
 
 ///|

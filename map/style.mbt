@@ -16,7 +16,7 @@ fn draws_from(style : @style.Style, id : String) -> Bool {
 /// does not matter (it is applied when drawing) and meshes of removed layers
 /// are dropped. An elevation source's tiles serve every hillshade layer alike.
 fn same_layers(src : @style.Source, a : @style.Style, b : @style.Style) -> Bool {
-  src.kind is RasterDem ||
+  src.kind is (RasterDem | Raster) ||
   b.layers
   .iter()
   .filter(l => l.source == src.id)

@@ -54,14 +54,18 @@ extern "js" fn cancel_frame(id : Int32) -> Unit =
   #|(id) => cancelAnimationFrame(id)
 
 ///|
-/// Absolute URL for a tile; `template` may be relative to the page.
+/// Absolute URL for a tile; `template` may be relative to the page. A
+/// PMTiles template (`pmtiles://` and an absolute URL) is kept as it is.
 extern "js" fn tile_url(
   template : String,
   z : Int32,
   x : Int32,
   y : Int32,
 ) -> String =
-  #|(t, z, x, y) => new URL(t.replace("{z}", z).replace("{x}", x).replace("{y}", y), location.href).href
+  #|(t, z, x, y) => {
+  #|  const u = t.replace("{z}", z).replace("{x}", x).replace("{y}", y);
+  #|  return u.startsWith("pmtiles://") ? u : new URL(u, location.href).href;
+  #|}
 
 ///|
 extern "js" fn absolute_url(url : String) -> String =
@@ -84,6 +88,9 @@ extern "js" fn post_init(
   #|(w, wasm, style, font) => w.postMessage({ type: "init", wasm, style, font })
 
 ///|
+/// Asks worker `w` for a tile at `url`, passed first through `transform` (the
+/// map's `transformRequest`, or null): its answer's `url`, `headers` and
+/// `credentials` are what the worker fetches with.
 extern "js" fn post_tile(
   w : Worker,
   id : Int32,
@@ -91,8 +98,28 @@ extern "js" fn post_tile(
   source : Int32,
   z : Int32,
   dem : Bool,
+  raster : Bool,
+  transform : RequestTransform,
 ) -> Unit =
-  #|(w, id, url, source, z, dem) => w.postMessage({ type: "tile", id, url, source, z, dem })
+  #|(w, id, url, source, z, dem, raster, transform) => {
+  #|  let init;
+  #|  const r = typeof transform === "function" && !url.startsWith("pmtiles://") ? transform(url, "Tile") : null;
+  #|  if (r && typeof r.url === "string") {
+  #|    url = r.url;
+  #|    init = { headers: r.headers, credentials: r.credentials };
+  #|  }
+  #|  w.postMessage({ type: "tile", id, url, init, source, z, dem, raster });
+  #|}
+
+///|
+/// The map's `transformRequest`: a JS function `(url, resourceType)` giving
+/// `{url, headers?, credentials?}`, or null.
+#external
+pub type RequestTransform
+
+///|
+extern "js" fn no_transform() -> RequestTransform =
+  #|() => null
 
 ///|
 extern "js" fn post_cancel(w : Worker, id : Int32) -> Unit =

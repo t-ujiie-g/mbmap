@@ -12,6 +12,14 @@
   非ゼロ終了する（ベンチ結果が比較不能になるため）。意図的に更新するときは
   `node bench/maplibre/fetch-tiles.mjs --update`。
 
+## gsi-std/
+
+国土地理院の標準地図（`std`、256px の PNG）の z14、ベクトルタイルと同じ東京駅周辺 7×5 タイル。ラスタのソースとレイヤーの比較に使う。
+
+- 出典：国土地理院 地理院タイル（標準地図）<https://maps.gsi.go.jp/development/ichiran.html>
+- 利用規約：国土地理院コンテンツ利用規約
+- 取得と照合は gsi-bvmap と同じ（マニフェストは `gsi-std.manifest.json`）。
+
 ## gsi-dem/、gsi-dem-fuji/
 
 国土地理院の標高タイル（`dem_png`）。`gsi-dem/` は z14 の東京駅周辺 7×5 タイル（ベクトルタイルと同じ範囲、約 1.3MB）、

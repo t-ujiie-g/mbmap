@@ -83,6 +83,12 @@ license and source.
     circle and fill-extrusion style layers, `getCameraQueryGeometry`,
     `maxPitchScaleFactor` and the result ordering of src/source/query_features.ts
     and src/style/style.ts
+  - render_webgl2/gl.mbt and render_webgl2/renderer.mbt: raster.fragment.glsl
+    and the raster uniforms of src/webgl/program/raster_program.ts;
+    core/transform.mbt: the pixel-aligned projection (`alignedProjMatrix`) of
+    mercator_transform.ts; style/style.mbt: `TileBounds.contains` of
+    src/source/tile_bounds.ts; npm/src/tilejson.ts: the keys `loadTileJson`
+    of src/source/load_tilejson.ts takes
   - map/input.mbt: the keyboard, double click and box zoom handlers of
     src/ui/handler/ and the inertia of src/ui/handler_inertia.ts
 
@@ -414,8 +420,44 @@ Test / benchmark data:
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+- worker/js/pmtiles.mjs and npm/src/pmtiles.ts: the PMTiles v3 reader of pmtiles
+  4.5.0 (src/index.ts: header, directories, Hilbert tile ids, `findTile`)
+  https://github.com/protomaps/PMTiles — BSD 3-Clause License:
+
+    Copyright 2021 Protomaps LLC
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its
+    contributors may be used to endorse or promote products derived from this
+    software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
 Test / benchmark data (continued):
 - bench/fixtures/gsi-dem/, bench/fixtures/gsi-dem-fuji/ (downloaded, not committed):
   国土地理院 標高タイル (GSI Japan, dem_png)
   https://maps.gsi.go.jp/development/ichiran.html#dem
+  Used under the GSI content terms of use (国土地理院コンテンツ利用規約).
+- bench/fixtures/gsi-std/ (downloaded, not committed):
+  国土地理院 標準地図 (GSI Japan, std)
+  https://maps.gsi.go.jp/development/ichiran.html
   Used under the GSI content terms of use (国土地理院コンテンツ利用規約).

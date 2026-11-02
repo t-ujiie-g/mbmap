@@ -1,0 +1,55 @@
+{
+  "env": {
+    "pmtiles": "4.5.0",
+    "maplibre": "6.16.0",
+    "browser": "chromium"
+  },
+  "results": [
+    {
+      "check": "node",
+      "archive": "vector-root",
+      "bytes": 13275825,
+      "tiles": 37,
+      "same": 37,
+      "ok": true
+    },
+    {
+      "check": "node",
+      "archive": "vector-leaves",
+      "bytes": 13276006,
+      "tiles": 37,
+      "same": 37,
+      "ok": true
+    },
+    {
+      "check": "node",
+      "archive": "vector-gzip",
+      "bytes": 5571916,
+      "tiles": 37,
+      "same": 37,
+      "ok": true
+    },
+    {
+      "check": "node",
+      "archive": "raster",
+      "bytes": 3507476,
+      "tiles": 37,
+      "same": 37,
+      "ok": true
+    },
+    {
+      "check": "chromium",
+      "archive": "vector-gzip",
+      "queries": 4,
+      "features": 4852,
+      "same": 4,
+      "ok": true
+    },
+    {
+      "check": "chromium",
+      "archive": "raster",
+      "maxPixelDifference": 0,
+      "ok": true
+    }
+  ]
+}

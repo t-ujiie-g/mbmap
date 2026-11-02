@@ -7,7 +7,7 @@ import path from "node:path";
 import { ROOT } from "../lib/root.mjs";
 
 export const TILES = { z: 14, x: [14549, 14555], y: [6449, 6453] };
-// The vector tiles and DEM of TILES, and a DEM of Mt Fuji for relief that shows.
+// The vector tiles, standard map images and DEM of TILES, and a DEM of Mt Fuji for relief that shows.
 const SETS = [
   {
     name: "gsi-bvmap", ext: "pbf", ...TILES,
@@ -18,6 +18,11 @@ const SETS = [
     name: "gsi-dem", ext: "png", ...TILES,
     url: "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
     attribution: "国土地理院 標高タイル (GSI Japan)",
+  },
+  {
+    name: "gsi-std", ext: "png", ...TILES,
+    url: "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+    attribution: "国土地理院 標準地図 (GSI Japan)",
   },
   {
     name: "gsi-dem-fuji", ext: "png", z: 12, x: [3625, 3628], y: [1616, 1619],

@@ -4,11 +4,11 @@ import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
-import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
+import { DEFAULT_HIDDEN, LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
 
 const el = document.querySelector("mb-map");
 let mode = "2d";
-const hidden = new Set();
+const hidden = new Set(DEFAULT_HIDDEN);
 let places = PLACES;
 
 // A new style object goes to the map's setStyle: tiles of what stays alike are kept.
@@ -102,6 +102,6 @@ document.getElementById("layers").replaceChildren(
   }),
 );
 document.getElementById("marker").addEventListener("click", addMarker);
-el.mapStyle = createStyle(mode);
+el.mapStyle = createStyle(mode, hidden);
 showButtons();
 showCamera();

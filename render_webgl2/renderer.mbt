@@ -63,12 +63,14 @@ pub fn Mesh::byte_size(self : Mesh) -> Int32 {
 }
 
 ///|
-/// Where a mesh is drawn: `matrix` maps tile units to clip space,
+/// Where a mesh is drawn: `matrix` maps tile units to clip space
+/// (`raster_matrix` too, on the pixel grid for raster tiles at rest),
 /// `units_per_pixel` holds at `center_depth` (the center's clip w), only the part
 /// within `clip` (min x, min y, max x, max y in tile units) shows, and
 /// `latitudes` are the tile's north and south edges in degrees.
 pub(all) struct Placement {
   matrix : @core.Mat4
+  raster_matrix : @core.Mat4
   units_per_pixel : Double
   center_depth : Double
   clip : FixedArray[Double]
@@ -305,4 +307,56 @@ extern "js" fn gl_index_count(mesh : Mesh) -> Int32 =
 /// How many indices `mesh` holds.
 pub fn Renderer::index_count(_self : Renderer, mesh : Mesh) -> Int32 {
   gl_index_count(mesh)
+}
+
+///|
+/// Uploads a raster tile's image (an ImageBitmap, closed after).
+pub fn Renderer::upload_raster(self : Renderer, image : JsBuffer) -> Mesh {
+  gl_upload_raster(self.gl, image)
+}
+
+///|
+/// Draws a raster tile with MapLibre's raster paint: `hue_rotate` in degrees,
+/// the others as the style gives them (see `@style.RasterPaint`).
+pub fn Renderer::draw_raster(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  opacity~ : Double,
+  hue_rotate~ : Double,
+  brightness_min~ : Double,
+  brightness_max~ : Double,
+  saturation~ : Double,
+  contrast~ : Double,
+  nearest~ : Bool,
+) -> Unit {
+  let angle = hue_rotate * @math.PI / 180.0
+  let s = @math.sin(angle)
+  let c = @math.cos(angle)
+  let root3 = 3.0.sqrt()
+  gl_draw_raster(
+    self.gl,
+    mesh,
+    at.raster_matrix.m,
+    at.clip,
+    [
+      opacity,
+      brightness_min,
+      brightness_max,
+      if saturation > 0.0 {
+        1.0 - 1.0 / (1.001 - saturation)
+      } else {
+        -saturation
+      },
+      if contrast > 0.0 {
+        1.0 / (1.0 - contrast)
+      } else {
+        1.0 + contrast
+      },
+      (2.0 * c + 1.0) / 3.0,
+      (-root3 * s - c + 1.0) / 3.0,
+      (root3 * s - c + 1.0) / 3.0,
+    ],
+    nearest,
+  )
 }
