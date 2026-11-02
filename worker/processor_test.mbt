@@ -368,11 +368,11 @@ test "circle layers pack one quad per point and share buffers like other kinds" 
     #|  {"id": "dots", "type": "circle", "source": "a", "source-layer": "pts"},
     #|  {"id": "halo", "type": "circle", "source": "a", "source-layer": "pts",
     #|   "paint": {"circle-radius": 9}},
-    #|  {"id": "ignored", "type": "circle", "source": "a", "source-layer": "line"}
+    #|  {"id": "vertices", "type": "circle", "source": "a", "source-layer": "line"}
     #|]}
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
   // A MultiPoint with three points, one of them outside the tile; and a line,
-  // which a circle layer ignores.
+  // whose vertices get circles as MapLibre draws them.
   let tile = tile_of([
     tile_with("pts", 1, [cmd(1, 3), 10, 20, 5000, 0, -4990, 10]),
     tile_with("line", 2, [cmd(1, 1), 0, 0, cmd(2, 1), 50, 0]),
@@ -382,11 +382,12 @@ test "circle layers pack one quad per point and share buffers like other kinds" 
   let entry = (k : Int32, w : Int32) => {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
-  assert_eq(p.out.layer_count(), 2)
+  assert_eq(p.out.layer_count(), 3)
   assert_eq(
-    (entry(0, 1), entry(1, 1)),
-    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
+    (entry(0, 1), entry(1, 1), entry(2, 1)),
+    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
   )
+  assert_eq(entry(2, 5), 12)
   // Two points inside the tile: 8 vertices, 12 indices; "halo" reuses them.
   assert_eq((entry(0, 3), entry(0, 5)), (8 * @worker.LINE_VERTEX_BYTES, 12))
   assert_eq((entry(1, 0), entry(1, 2)), (1, entry(0, 2)))
@@ -502,8 +503,8 @@ test "symbol layers pack their points' labels with the layer's layout" {
   ])
   assert_eq(r.u32(), 1)
   assert_eq(
-    (r.i16(), r.i16(), r.f64(), r.f64(), r.u32()),
-    (2048, 2048, 10.0, 0.0, 2),
+    (r.u32(), r.i16(), r.i16(), r.f64(), r.f64(), r.u32()),
+    (0, 2048, 2048, 10.0, 0.0, 2),
   )
   assert_eq((r.u8(), r.utf8()), (@core.PROP_STRING, "k="))
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
@@ -513,6 +514,7 @@ test "symbol layers pack their points' labels with the layer's layout" {
     r2.u8() |> ignore
   }
   assert_eq(r2.u32(), 1)
+  r2.u32() |> ignore
   r2.i16() |> ignore
   r2.i16() |> ignore
   r2.f64() |> ignore
@@ -553,7 +555,10 @@ test "vertical writing and sort keys reach the labels" {
     r.f64() |> ignore
   }
   assert_eq(r.u32(), 1)
-  assert_eq((r.i16(), r.i16(), r.f64(), r.f64()), (2048, 2048, 16.0, 1.0))
+  assert_eq(
+    (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
+    (0, 2048, 2048, 16.0, 1.0),
+  )
 }
 
 ///|

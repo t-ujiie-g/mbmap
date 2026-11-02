@@ -53,6 +53,13 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - `addSource(id, source)`、`removeSource(id)`（レイヤーや地形が使っている間は `error`）、`getSource(id)`（GeoJSON ソースは `setData(data)` でデータを差し替える）。
   - `setTerrain`・`getTerrain`、`setSky`・`getSky`、`setLight`・`getLight`（null で外す）。
   - 描けないスタイルになる変更は `error` イベントを出し、元のスタイルのまま描き続ける。スタイルの読み込み前に呼ぶと例外になる。
+- 地物の問い合わせ（結果は MapLibre と同じ。`npm run query:golden` で MapLibre 6.16 と比べている）：
+  - `queryRenderedFeatures(geometry?, { layers, filter })`：点 `[x, y]` か範囲 `[[x0, y0], [x1, y1]]`（CSS ピクセル。省略すると地図全体）に描かれている地物を、上のものから順に返す。各地物には `layer`（スタイルのレイヤー）、`source`、`sourceLayer`、`state` が付く。
+  - `querySourceFeatures(sourceId, { sourceLayer, filter })`：描画中のタイルにあるソースの地物を返す。
+  - ジオメトリはワーカーが持つので、どちらも Promise を返す（MapLibre は同期）。
+  - MapLibre 6 は既定で source の maxzoom より深いズームのタイルを切り分けるため（`zoomLevelsToOverscale`）、そこでは同じ地物の切り口と重複が MapLibre と違う。mbmap は source のタイルのまま描き、問い合わせる。
+- マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
+  - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
 - `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
 
 ## 解析 `mbmap/analysis`

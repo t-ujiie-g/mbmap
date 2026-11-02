@@ -376,3 +376,16 @@ test "MvtError::message names the problem and its position" {
   )
   assert_eq(@mvt.OddTagCount(pos=3).message(), "odd tag count at 3")
 }
+
+///|
+test "tag_count and tag list a feature's tags in order, repeats included" {
+  let l = single_feature(
+    feature_bytes(tags=[1, 0, 0, 1, 1, 1]),
+    keys=["a", "b"],
+    values=[Int(1L), String("x")],
+  )
+  assert_eq(l.tag_count(0), 3)
+  assert_eq(l.tag(0, 0), ("b", Int(1L)))
+  assert_eq(l.tag(0, 1), ("a", String("x")))
+  assert_eq(l.tag(0, 2), ("b", String("x")))
+}

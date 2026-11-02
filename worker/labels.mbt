@@ -45,10 +45,11 @@ fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
 }
 
 ///|
-/// Adds a label at (x, y) in `TILE_EXTENT` units; false (nothing added) when
-/// its text has no part with a value.
+/// Adds a label of feature `feature` at (x, y) in `TILE_EXTENT` units; false
+/// (nothing added) when its text has no part with a value.
 fn Labels::add(
   self : Labels,
+  feature : Int32,
   x : Int32,
   y : Int32,
   size : Double,
@@ -59,6 +60,7 @@ fn Labels::add(
     return false
   }
   let w = self.w
+  w.u32(feature)
   w.i16(x)
   w.i16(y)
   w.f64(size)
@@ -124,7 +126,7 @@ fn TileProcessor::symbol_layer(
       let x = rescale(g.coords[p * 2], extent)
       let y = rescale(g.coords[p * 2 + 1], extent)
       if x >= 0 && y >= 0 && x < @core.TILE_EXTENT && y < @core.TILE_EXTENT {
-        out.add(x, y, size, sort_key, parts) |> ignore
+        out.add(i, x, y, size, sort_key, parts) |> ignore
       }
     }
   }

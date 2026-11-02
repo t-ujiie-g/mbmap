@@ -45,4 +45,21 @@ declare module "mbmap-engine" {
   /** "" once drawn, or why the style was refused (the current one stays). */
   export function map_set_style(map: EngineMap, style: string): string;
   export function map_reload_source(map: EngineMap, id: string): void;
+  /** One tile's hits: their layers' ids (-1 for a source query), feature indices, depths and GeoJSON features. */
+  export interface TileResult {
+    z: number;
+    x: number;
+    y: number;
+    hits: { layer: string | number; index: number; distance: number; feature: import("./query").GeoJSONFeature }[];
+  }
+  /** "" once sent (`done` gets each tile's hits), or why the query cannot run. */
+  export function map_query_rendered(
+    map: EngineMap,
+    points: number[],
+    allLayers: boolean,
+    layers: string[],
+    filter: string,
+    done: (tiles: TileResult[]) => void,
+  ): string;
+  export function map_query_source(map: EngineMap, source: string, sourceLayer: string, filter: string, done: (tiles: TileResult[]) => void): string;
 }

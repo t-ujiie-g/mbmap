@@ -5,6 +5,7 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "r
 import { createRoot } from "react-dom/client";
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../../shared/analysis.js";
+import { describeFeature } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
 import { LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../../shared/style.js";
@@ -17,6 +18,7 @@ function App() {
   const [camera, setCamera] = useState({ center: { lng: 139.7671, lat: 35.6812 }, zoom: 15, bearing: 0, pitch: 0 });
   const [described, setDescribed] = useState(null);
   const [hidden, setHidden] = useState(() => new Set());
+  const [picked, setPicked] = useState(null);
   const places = useRef(PLACES);
   const pending = useRef(0);
   // A new style object goes to the map's setStyle: tiles of what stays alike are kept.
@@ -56,7 +58,16 @@ function App() {
 
   const onLoad = (e) => {
     window.__loaded = performance.now();
-    window.__map = e.detail.map;
+    const map = e.detail.map;
+    window.__map = map;
+    // The topmost feature under a click, from the workers that hold the geometry.
+    map.on("click", (ev) => map.queryRenderedFeatures(ev.point).then((features) => {
+      const rows = describeFeature(features) ?? [["—", "何もありません"]];
+      setPicked(rows);
+      window.__picked = rows;
+    }));
+    map.on("mouseenter", "places", () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", "places", () => (map.getCanvas().style.cursor = ""));
     update(e.detail.center);
   };
   const go = (d) => ref.current.map?.flyTo({ center: d.center, zoom: d.zoom, ...modeCamera(mode) });
@@ -97,6 +108,10 @@ function App() {
           ))}
         </div>
         <button id="marker" onClick={addMarker}>中心に印を置く</button>
+        <h2>クリックした地物</h2>
+        <dl id="picked">
+          {(picked ?? [["—", "地図をクリック"]]).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}
+        </dl>
         <h2>移動</h2>
         <div id="destinations">
           {DESTINATIONS.map((d) => <button key={d.name} onClick={() => go(d)}>{d.name}</button>)}

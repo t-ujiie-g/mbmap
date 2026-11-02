@@ -42,6 +42,16 @@ pub fn mercator_y_from_lat(Double) -> Double
 
 pub fn normalize_bearing(Double, Double) -> Double
 
+pub fn polygon_hits_box(Array[(Double, Double)], Double, Double, Double, Double) -> Bool
+
+pub fn polygon_hits_lines(Array[(Double, Double)], Array[Array[(Double, Double)]], Double) -> Bool
+
+pub fn polygon_hits_point(Array[(Double, Double)], (Double, Double), Double) -> Bool
+
+pub fn polygon_hits_polygon(Array[(Double, Double)], Array[(Double, Double)]) -> Bool
+
+pub fn polygon_hits_polygons(Array[(Double, Double)], Array[Array[(Double, Double)]]) -> Bool
+
 pub fn tile_containing(MercatorCoord, Int32) -> TileId?
 
 pub fn zoom_shift(Int32) -> Int32
@@ -237,6 +247,7 @@ pub fn Transform::fly_to(Self, CameraTarget, curve? : Double, speed? : Double, s
 pub fn Transform::fog_range(Self) -> (Double, Double)
 pub fn Transform::horizon(Self) -> Double
 pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
+pub fn Transform::max_pitch_scale_factor(Self) -> Double
 pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
 pub fn Transform::new(Camera, Double, Double, limits? : Limits) -> Self
 pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera
@@ -255,5 +266,6 @@ pub fn Transform::world_size(Self) -> Double
 pub fn Transform::zoomed_around(Self, Double, Double, Double) -> Camera
 
 // Type aliases
+pub type Line = Array[(Double, Double)]
 
 // Traits

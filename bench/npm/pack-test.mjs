@@ -87,9 +87,10 @@ const checks = {
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
+    const query = await queryChecks(page);
     const style = await styleChecks(page, requests);
     const camera = await cameraChecks(page);
-    return [ok && style.ok && camera.ok, { ...r, style, camera }];
+    return [ok && query.ok && style.ok && camera.ok, { ...r, query, style, camera }];
   },
 
   async element(page) {
@@ -307,6 +308,10 @@ async function showcase(page) {
   await page.waitForFunction(() => window.__described);
   const first = await page.evaluate(() => window.__described);
   const panel = () => page.evaluate(() => document.getElementById("camera").textContent);
+  // A click at Tokyo Station, at the center, shows the place on top.
+  await page.mouse.click(400, 300);
+  await page.waitForFunction(() => window.__picked);
+  const picked = await page.evaluate(() => ({ rows: window.__picked, text: document.getElementById("picked").textContent }));
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -329,6 +334,7 @@ async function showcase(page) {
     return { same: map === window.__map, terrain: map.getTerrain(), hillshade, markers: map.getStyle().sources.places.data.features.at(-1).properties.name };
   });
   const ok =
+    ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
     styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.markers === "印 1" &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
     first.plane.zone === "第IX系" &&
@@ -336,7 +342,97 @@ async function showcase(page) {
     tilted.pitch === 60 && tilted.bearing === -20 &&
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系");
-  return [ok, { first, tilted, osaka: osaka.near, shown, styled }];
+  return [ok, { first, picked, tilted, osaka: osaka.near, shown, styled }];
+}
+
+// Queries and mouse events on the npm example's map (Tokyo Station, 800 x 600),
+// on a GeoJSON source added for them (CI has no tile fixtures): what is under a
+// point, layers and filters, a source's features, a layer's click and hover
+// events, and the error paths (bench/query/golden.mjs compares results with MapLibre).
+async function queryChecks(page) {
+  const found = await page.evaluate(async () => {
+    const map = window.__map;
+    map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
+    await map.once("idle");
+    // A square west of the center, a line across it and a point on it.
+    const [w, s] = [map.unproject([200, 400]), map.unproject([300, 200])];
+    const square = [[w.lng, w.lat], [s.lng, w.lat], [s.lng, s.lat], [w.lng, s.lat], [w.lng, w.lat]];
+    const mid = map.unproject([250, 300]);
+    const data = {
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", properties: { kind: "area", n: 1 }, geometry: { type: "Polygon", coordinates: [square] } },
+        { type: "Feature", properties: { kind: "road", n: 2 }, geometry: { type: "LineString", coordinates: [[w.lng, mid.lat], [s.lng, mid.lat]] } },
+        { type: "Feature", properties: { kind: "spot", n: 3 }, geometry: { type: "Point", coordinates: [mid.lng, mid.lat] } },
+      ],
+    };
+    const idle = map.once("idle");
+    map.addSource("q", { type: "geojson", data });
+    map.addLayer({ id: "q-area", type: "fill", source: "q", filter: ["==", ["get", "kind"], "area"] });
+    map.addLayer({ id: "q-road", type: "line", source: "q", filter: ["==", ["get", "kind"], "road"], paint: { "line-width": 6 } });
+    map.addLayer({ id: "q-spot", type: "circle", source: "q", filter: ["==", ["get", "kind"], "spot"], paint: { "circle-radius": 8 } });
+    await idle;
+    const ids = (fs) => fs.map((f) => f.layer.id);
+    const atSpot = await map.queryRenderedFeatures([250, 300], { layers: ["q-area", "q-road", "q-spot"] });
+    const inArea = await map.queryRenderedFeatures([220, 380], { layers: ["q-area", "q-road", "q-spot"] });
+    const outside = await map.queryRenderedFeatures([600, 300], { layers: ["q-area", "q-road", "q-spot"] });
+    const box = await map.queryRenderedFeatures([[190, 190], [310, 410]], { filter: [">=", ["get", "n"], 2] });
+    const errors = [];
+    const f = (e) => errors.push(e.error.message);
+    map.on("error", f);
+    const unknown = await map.queryRenderedFeatures({ layers: ["nope"] });
+    map.off("error", f);
+    let refused = "";
+    await map.queryRenderedFeatures({ filter: ["sqrt", 2] }).catch((e) => (refused = e.message));
+    const source = await map.querySourceFeatures("q");
+    window.__events = [];
+    map.on("click", (e) => window.__events.push(["click", Math.round(e.point.x), Math.round(e.point.y), e.lngLat.lng > 139]));
+    map.on("click", "q-area", (e) => window.__events.push(["click-area", e.features[0].layer.id, e.features[0].properties.n]));
+    map.on("mouseenter", "q-area", () => window.__events.push(["enter"]));
+    map.on("mouseleave", "q-area", () => window.__events.push(["leave"]));
+    const r = map.getCanvas().getBoundingClientRect();
+    return {
+      origin: [r.left, r.top],
+      atSpot: ids(atSpot), spot: atSpot[0] && { source: atSpot[0].source, state: atSpot[0].state, geometry: atSpot[0].geometry.type, n: atSpot[0].properties.n },
+      inArea: ids(inArea), outside: outside.length, box: ids(box).filter((id) => id.startsWith("q-")),
+      errors, unknown: unknown.length, refused,
+      source: source.map((x) => x.properties.n).sort(),
+    };
+  });
+  const [x, y] = [found.origin[0] + 220, found.origin[1] + 380];
+  await page.mouse.move(found.origin[0] + 600, found.origin[1] + 500);
+  await page.mouse.move(x, y, { steps: 4 });
+  await page.waitForTimeout(300);
+  await page.mouse.click(x, y);
+  // A drag is not a click.
+  await page.mouse.down();
+  await page.mouse.move(x + 30, y, { steps: 3 });
+  await page.mouse.up();
+  await page.mouse.move(found.origin[0] + 600, found.origin[1] + 500, { steps: 2 });
+  await page.waitForTimeout(300);
+  const events = await page.evaluate(async () => {
+    const map = window.__map;
+    for (const id of ["q-spot", "q-road", "q-area"]) map.removeLayer(id);
+    map.removeSource("q");
+    map.jumpTo({ center: [139.7671, 35.6812], zoom: 15 });
+    return window.__events;
+  });
+  const clicks = events.filter((e) => e[0] === "click");
+  const ok =
+    JSON.stringify(found.atSpot) === JSON.stringify(["q-spot", "q-road", "q-area"]) &&
+    found.spot?.source === "q" && JSON.stringify(found.spot.state) === "{}" && found.spot.geometry === "Point" && found.spot.n === 3 &&
+    JSON.stringify(found.inArea) === JSON.stringify(["q-area"]) &&
+    found.outside === 0 &&
+    JSON.stringify(found.box) === JSON.stringify(["q-spot", "q-road"]) &&
+    found.unknown === 0 && /'nope' does not exist/.test(found.errors[0] ?? "") &&
+    /unsupported: expression sqrt/.test(found.refused) &&
+    // The square spans two tiles, and each gives its part, as MapLibre's do.
+    JSON.stringify([...new Set(found.source)]) === JSON.stringify([1, 2, 3]) &&
+    clicks.length === 1 && clicks[0][1] === 220 && clicks[0][2] === 380 && clicks[0][3] &&
+    events.some((e) => e[0] === "click-area" && e[1] === "q-area" && e[2] === 1) &&
+    events.filter((e) => e[0] === "enter").length >= 1 &&
+    events.at(-1)[0] === "leave";
+  return { ok, ...found, events };
 }
 
 // The colour of screen pixel (x, y), read from a screenshot.
@@ -533,7 +629,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt|'nope' does not exist/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.goto(`${origin}/${PAGES[example]}`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });

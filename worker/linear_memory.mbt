@@ -136,3 +136,61 @@ pub fn process_tile(source : Int32, z : Int32) -> Int32 {
     fail_with(p.error_utf8())
   }
 }
+
+///|
+/// Answers a query of a tile: the input holds the tile (`tile_len` bytes) of
+/// the source with index `source` at zoom `z`, then the request
+/// (`TileProcessor::query`). Returns the result's length at `output_addr`, or
+/// minus the length of a UTF-8 error message there.
+#export_name("query_tile")
+pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
+  guard processor.val is Some(p) else {
+    return fail_with(@utf8.encode("style not initialized"))
+  }
+  let input = input_bytes()
+  if source < 0 ||
+    source >= p.style.sources.length() ||
+    tile_len < 0 ||
+    tile_len > input.length() {
+    return fail_with(@utf8.encode("bad query"))
+  }
+  match
+    p.query(p.style.sources[source].id, input[:tile_len], z, input[tile_len:]) {
+    Some(out) => write_output(out[:].to_fixedarray()[:])
+    None => fail_with(p.error_utf8())
+  }
+}
+
+///|
+/// The features of a tile's source layer: the input holds the tile (`tile_len`
+/// bytes) of the source with index `source` at zoom `z`, then the source
+/// layer's name and a filter's JSON, each a u32 length and UTF-8
+/// (`TileProcessor::source_features`). Returns as `query_tile` does.
+#export_name("source_features")
+pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
+  guard processor.val is Some(p) else {
+    return fail_with(@utf8.encode("style not initialized"))
+  }
+  let input = input_bytes()
+  if source < 0 ||
+    source >= p.style.sources.length() ||
+    tile_len < 0 ||
+    tile_len > input.length() {
+    return fail_with(@utf8.encode("bad query"))
+  }
+  let r = @core.ByteReader::new(input[tile_len:])
+  let layer = r.utf8()
+  let filter = r.utf8()
+  guard r.done() else { return fail_with(@utf8.encode("bad query")) }
+  match
+    p.source_features(
+      p.style.sources[source].id,
+      input[:tile_len],
+      z,
+      layer,
+      filter,
+    ) {
+    Some(out) => write_output(out[:].to_fixedarray()[:])
+    None => fail_with(p.error_utf8())
+  }
+}
