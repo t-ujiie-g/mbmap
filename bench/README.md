@@ -21,14 +21,14 @@ npm run tess:node         # デコード＋テッセレーション速度と Map
 npm run tess:browser      # 同（3 ブラウザの module Worker 内）
 npm run worker:browser    # Worker の process_tile（冷えた状態・温まった状態）を 3 ブラウザで
 npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
-npm run example           # examples/ を http://127.0.0.1:8080/examples/basic/ で配信
-npm run examples          # npm パッケージを pack して examples/{npm,element,react} に入れてから配信（一覧は /examples/）
+npm run example           # リポジトリを 127.0.0.1:8080 で配信（開発用の /bench/pages/basic/・/bench/pages/terrain/ はこれだけで動く）
+npm run examples          # npm パッケージを pack して examples/{html,element,react} と bench/npm/pages/ に入れてから配信（一覧は /examples/）
 npm run split             # 2つ目の wasm-gc モジュールのサイズと読み込み時間（入口の分割の判断用）
 npm run geojson:golden    # tiler と @maplibre/geojson-vt の黄金テスト（範囲内の全タイル）
 npm run geojson:node      # GeoJSON の読み込み・索引・タイル切り出しを geojson-vt と比べる（geojson:browser は3ブラウザ）
 npm run analysis:golden   # 解析の wasm と Turf.js / flatbush の黄金テスト（全 fixture）
 npm run analysis:node     # 解析の速度を Turf.js + flatbush と比べる（analysis:browser は3ブラウザ）
-npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm,element,react} に入れて Chromium で確かめる
+npm run npm:pack          # npm/ をビルドして npm pack し、examples と bench/npm/pages/ に入れて Chromium で確かめる
 ```
 
 ## entry/ と lib/
@@ -112,15 +112,18 @@ npm run npm:pack          # npm/ をビルドして npm pack し、examples/{npm
 
 ## npm/ — npm パッケージの確認
 
-`pack-test.mjs` は `npm/` をビルドして `npm pack` し、できた tarball を各 example の `node_modules/mbmap` に展開する（アプリが
-インストールするのと同じ形）。そのうえで Chromium で次を確かめる。
+`pack-test.mjs` は `npm/` をビルドして `npm pack` し、できた tarball を examples と試験用のページ（`bench/npm/pages/`）の
+`node_modules/mbmap` に展開する（アプリがインストールするのと同じ形）。そのうえで Chromium で次を確かめる。
 
-- `examples/npm`（ファサード）：`load`、`jumpTo` で `move` が1回だけ出ること、帰属表示、スタイル URL の取得失敗が `error`
+- `examples/{html,element,react}`（ショーケース。`?local=1` で fixture を読む）：3 つとも同じく、東京駅で 5 km 以内の地点と
+  平面直角座標系 IX 系の座標（proj4js と同じ）が出ること、3D で 60° に傾くこと、大阪駅へ移動するとパネルが追従すること。
+- `bench/pages/{basic,terrain}`（エンジンを直接呼ぶ開発用のページ）：地図ができて描画まで進むこと。
+- `bench/npm/pages/npm`（ファサード）：`load`、`jumpTo` で `move` が1回だけ出ること、帰属表示、スタイル URL の取得失敗が `error`
   イベントになること、描けないスタイルが例外になること。
-- `examples/element`（素の HTML の `<mb-map>`）：属性で `mb-move` が1回だけ出ること、不正な属性が `mb-error` になり値が変わらない
+- `bench/npm/pages/element`（素の HTML の `<mb-map>`）：属性で `mb-move` が1回だけ出ること、不正な属性が `mb-error` になり値が変わらない
   こと、移動では地図を保ち、外すと解放し、戻すと同じカメラで作り直すこと、帰属表示が右下の1行であること。
-- `examples/react`（React 19 から `<mb-map>`）：ボタンで props を変えると地図が動くこと、ホイールでのズームが `onmb-move`
-  経由で React の表示に反映されること。esbuild でバンドルし、`worker.js` と `mbmap.wasm` をバンドルの隣にコピーする。
+- `bench/npm/pages/{geojson,analysis}`：GeoJSON ソースと `mbmap/analysis` の遅延読み込み、結果、エラーの経路。
+- React の例は esbuild でバンドルし、Worker と wasm をバンドルの隣にコピーする。
 fixture がなくてもタイルが 404 になるだけで地図は読み込まれるので、CI でも動く。
 
 ## split/ — 入口の分割のコスト（Phase 6.5）
