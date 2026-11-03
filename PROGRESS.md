@@ -29,7 +29,7 @@
   - `npm run expression:golden`：色の式 3 件（`to-color` の既定に hsla、`match` に名前と空白区切りの rgb、`interpolate` に hsl と名前）を足して差 0 のまま。
   - MoonBit のテスト（`style/color_test.mbt`）：構文ごとと、拒む場合（区切りの混在、単位の混在、壊れた数、余計な文字）。全ターゲット。
   - style:golden は全場面が限度内、npm:pack は通過。
-- **`style:compat`**（16.1 の後の main と合わせて）：拒まれるのは 7 本から 3 本に。OpenMapTiles の 4 本と demotiles は描け、警告は osm-bright 58、positron 49、dark-matter 44、maptiler-basic 21、demotiles 6。多いのは `text-font` 63、`text-halo-blur` 39、`text-transform` 32。新しく見えたもの：`text-anchor` と `symbol-placement` と `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`。OpenFreeMap の 3 本は `line-width` の `unknown interpolation`（不正として拒んでいる）。
+- **`style:compat`**（16.1 の後の main と合わせて）：8 本すべてが拒まれずに描ける（色のほか、`["linear", 1]` のような余分な引数を持つ補間の型を MapLibre と同じく受け付けるようにした。OpenFreeMap の 3 本がこれで拒まれていた）。警告は osm-bright 58、positron 49、dark-matter 44、maptiler-basic 21、ofm-liberty 51、ofm-bright 51、ofm-positron 41、demotiles 6。多いのは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。新しく見えたもの：`symbol-placement`（12）、`text-anchor`（7）、`fill-antialias`（2）の式と、線に沿った `text-pitch-alignment` / `text-rotation-alignment`（6）。
 
 ## 方針の更新：Phase 16（2026-11-04、ユーザー承認）
 

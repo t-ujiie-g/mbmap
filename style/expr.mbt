@@ -509,8 +509,9 @@ fn Compiler::compile_at(
     }
     "interpolate" | "interpolate-hcl" | "interpolate-lab" => {
       let interp = match items[1] {
-        Array([String("linear")]) => Exponential(1.0)
-        Array([String("exponential"), Number(base, ..)]) => Exponential(base)
+        Array([String("linear"), ..]) => Exponential(1.0)
+        Array([String("exponential"), Number(base, ..), ..]) =>
+          Exponential(base)
         Array(
           [
             String("cubic-bezier"),
