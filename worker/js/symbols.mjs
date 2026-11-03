@@ -1,15 +1,19 @@
 // Symbol layer entries: labels from the wasm (docs/FORMATS.md, "Labels") laid
 // out into glyph quads, with SDF glyphs drawn here by TinySDF.
 import TinySDF from "./tiny-sdf.mjs";
-import { layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
+import { JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
 import { readValue } from "./values.mjs";
 
 // Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
 export const SYMBOL_VERTEX_BYTES = 16;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
-export const LABEL_FLOATS = 9;
-// Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`).
-const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, count: 44, labels: 48 };
+export const LABEL_FLOATS = 12;
+// Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`);
+// `anchors` (a count, then per anchor its code and offset) ends the fixed part.
+const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, justify: 44, anchors: 45 };
+const ANCHOR_BYTES = 17;
+// Justifications of a multi-line label with variable anchors and `text-justify: auto`.
+const VARIANTS = ["left", "center", "right"];
 // Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
 export const MAX_LABEL_CHARS = 256;
 // Most glyphs a worker keeps, and draws for one tile; past them characters are
@@ -85,17 +89,27 @@ export function buildSymbols(bytes, glyphs) {
     maxWidth: view.getFloat64(HEADER.maxWidth, true),
     lineHeight: view.getFloat64(HEADER.lineHeight, true),
     vertical: view.getUint8(HEADER.vertical) === 1,
+    justify: JUSTIFY[view.getUint8(HEADER.justify)] ?? "center",
   };
+  const tries = view.getUint8(HEADER.anchors);
+  const anchors = new Float64Array(tries * 3);
+  for (let k = 0; k < tries; k++) {
+    const o = HEADER.anchors + 1 + k * ANCHOR_BYTES;
+    anchors.set([view.getUint8(o), view.getFloat64(o + 1, true), view.getFloat64(o + 9, true)], k * 3);
+  }
   const flags = {
     allowOverlap: view.getUint8(HEADER.allowOverlap) === 1,
     ignorePlacement: view.getUint8(HEADER.ignorePlacement) === 1,
     padding: view.getFloat64(HEADER.padding, true),
+    anchors,
+    justify: view.getUint8(HEADER.justify),
   };
-  const count = view.getUint32(HEADER.count, true);
+  let at = HEADER.anchors + 1 + tries * ANCHOR_BYTES;
+  const count = view.getUint32(at, true);
+  at += 4;
   const placed = [];
   const local = new Map();
   let quads = 0;
-  let at = HEADER.labels;
   for (let i = 0; i < count; i++) {
     const feature = view.getUint32(at, true);
     const x = view.getInt16(at + 4, true);
@@ -107,16 +121,22 @@ export function buildSymbols(bytes, glyphs) {
     [text, at] = readText(view, bytes, at + 28, parts);
     const chars = [...text];
     if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
-    const shaped = layoutLabel(text, Math.min(size, 256), layout, (cp) => glyphs.metrics(cp));
+    const metrics = (cp) => glyphs.metrics(cp);
+    const shaped = layoutLabel(text, Math.min(size, 256), layout, metrics);
     if (shaped.quads.length === 0) continue;
-    placed.push({ feature, x, y, size, key, shaped });
+    // With variable anchors a multi-line label is laid out once per justification
+    // its anchors may take (MapLibre's `getAnchorJustification`), all centered.
+    const variants = tries > 0 && layout.justify === "auto" && !layout.vertical && shaped.lines > 1
+      ? VARIANTS.map((justify) => layoutLabel(text, Math.min(size, 256), { ...layout, justify }, metrics))
+      : [shaped];
+    placed.push({ feature, x, y, size, key, box: shaped.box, variants });
   }
   // Lower sort keys are placed (and drawn) first; ties keep their order.
   placed.sort((a, b) => a.key - b.key);
   for (const l of placed) {
-    for (const q of l.shaped.quads) if (!local.has(q.cp)) local.set(q.cp, local.size);
+    for (const q of l.variants[0].quads) if (!local.has(q.cp)) local.set(q.cp, local.size);
     l.first = quads;
-    quads += l.shaped.quads.length;
+    quads += l.variants[0].quads.length * l.variants.length;
   }
   const vertices = new ArrayBuffer(quads * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
@@ -124,8 +144,9 @@ export function buildSymbols(bytes, glyphs) {
   const indices = wide ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6);
   const labels = new Float32Array(placed.length * LABEL_FLOATS);
   placed.forEach((l, i) => {
-    labels.set([l.x, l.y, ...l.shaped.box, l.feature, l.first * 6, l.shaped.quads.length * 6], i * LABEL_FLOATS);
-    l.shaped.quads.forEach((q, k) => {
+    const per = l.variants[0].quads.length;
+    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, l.variants.length, l.first * 6, per * 6], i * LABEL_FLOATS);
+    l.variants.flatMap((s) => s.quads).forEach((q, k) => {
       const n = l.first + k;
       q.corners.forEach(([cx, cy], c) => {
         const o = (n * 4 + c) * SYMBOL_VERTEX_BYTES;

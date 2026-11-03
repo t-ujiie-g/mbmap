@@ -383,11 +383,23 @@ pub fn TextAnchor::equal(Self, Self) -> Bool
 pub fn TextAnchor::not_equal(Self, Self) -> Bool
 pub fn TextAnchor::to_repr(Self) -> @debug.Repr
 
+pub(all) enum TextJustify {
+  Auto
+  Left
+  Center
+  Right
+} derive(Eq, @debug.Debug)
+pub fn TextJustify::equal(Self, Self) -> Bool
+pub fn TextJustify::not_equal(Self, Self) -> Bool
+pub fn TextJustify::to_repr(Self) -> @debug.Repr
+
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
   anchor : TextAnchor
   offset : (Double, Double)
+  justify : TextJustify
+  variable : Array[(TextAnchor, Double, Double)]
   max_width : Double
   line_height : Double
   padding : Double

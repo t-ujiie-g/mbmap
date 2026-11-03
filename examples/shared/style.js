@@ -152,7 +152,11 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
     },
     {
       id: "places-label", type: "symbol", source: "places", metadata: overlay,
-      layout: { "text-field": "{name}", "text-size": 14, "symbol-sort-key": 0 },
+      // Beside the dot: below it, or else above, right or left, whichever is free.
+      layout: {
+        "text-field": "{name}", "text-size": 14, "symbol-sort-key": 0,
+        "text-variable-anchor": ["top", "bottom", "left", "right"], "text-radial-offset": 0.8, "text-justify": "auto",
+      },
       paint: { "text-color": "#8c2d1f", "text-halo-color": "#ffffff", "text-halo-width": 2 },
     },
   ];

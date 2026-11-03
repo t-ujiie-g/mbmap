@@ -43,6 +43,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 3, "a_heights");
   #|    gl.bindAttribLocation(p, 13, "a_dist");
   #|    gl.bindAttribLocation(p, 14, "a_progress");
+  #|    gl.bindAttribLocation(p, 15, "a_shift");
   #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
@@ -204,11 +205,11 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "uniform sampler2D u_image; uniform sampler2D u_ramp; uniform float u_opacity; in vec2 v_pos; out vec4 o;" +
   #|    "void main() { o = texture(u_ramp, vec2(texture(u_image, v_pos).r, 0.5)) * u_opacity; }",
   #|    ["u_image", "u_ramp", "u_opacity"]);
-  #|  // a_data: corner offset in quarter CSS px (y down); a_size: text size in 1/16 px,
-  #|  // both times MapLibre's perspective ratio; a_ele: anchor height (m). SDF edge at
-  #|  // 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px); see FORMATS.md.
+  #|  // a_data: corner offset in quarter CSS px (y down), a_shift: the label's in CSS px;
+  #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
+  #|  // height (m). SDF edge at 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px).
   #|  const symbol = program(
-  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; uniform mat4 u_matrix;" +
+  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; uniform mat4 u_matrix;" +
   #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
   #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha;" +
   #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
@@ -218,7 +219,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
   #|    "  if (v_alpha < 0.1) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
-  #|    "  vec2 off = a_data * 0.25 * r * u_dpr * u_px * vec2(1.0, -1.0);" +
+  #|    "  vec2 off = (a_data * 0.25 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
   #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_tex = a_tex / u_atlas; v_scale = a_size / 16.0 * r * u_dpr / 48.0; }",
   #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale;" +
   #|    "in float v_alpha; out vec4 o;" +
@@ -443,6 +444,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.dist) c.gl.deleteBuffer(m.dist);
   #|  if (m.progress) c.gl.deleteBuffer(m.progress);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
+  #|  if (m.shift) c.gl.deleteBuffer(m.shift);
   #|}
 
 ///|
@@ -696,8 +698,9 @@ extern "js" fn gl_show(
   labels : JsBuffer,
   stride : Int32,
   shown : FixedArray[Bool],
+  variant : FixedArray[Int32],
 ) -> Unit =
-  #|(c, m, labels, stride, shown) => {
+  #|(c, m, labels, stride, shown, variant) => {
   #|  const gl = c.gl;
   #|  let n = 0;
   #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[(i + 1) * stride - 1];
@@ -705,7 +708,7 @@ extern "js" fn gl_show(
   #|  let at = 0;
   #|  for (let i = 0; i < shown.length; i++) {
   #|    if (!shown[i]) continue;
-  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
+  #|    const count = labels[(i + 1) * stride - 1], first = labels[(i + 1) * stride - 2] + variant[i] * count;
   #|    out.set(m.all.subarray(first, first + count), at);
   #|    at += count;
   #|  }
@@ -750,6 +753,7 @@ extern "js" fn gl_draw_symbols(
   #|  gl.bindTexture(gl.TEXTURE_2D, c.atlas);
   #|  gl.uniform1i(p.u_glyphs, 0);
   #|  gl.bindVertexArray(m.vao);
+  #|  if (!m.shift) gl.vertexAttrib2f(15, 0, 0);
   #|  // The halo goes under the whole layer's text of this tile, then the text.
   #|  if (haloWidth > 0 && halo[3] > 0) {
   #|    gl.uniform4f(p.u_color, halo[0] * halo[3], halo[1] * halo[3], halo[2] * halo[3], halo[3]);
@@ -846,10 +850,41 @@ extern "js" fn gl_set_heights(
   #|(c, m, labels, stride, heights) => {
   #|  const gl = c.gl, out = new Float32Array(m.vertices);
   #|  for (let i = 0; i < heights.length; i++) {
-  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
-  #|    for (let k = first; k < first + count; k++) out[m.all[k]] = heights[i];
+  #|    const first = labels[(i + 1) * stride - 2], end = first + labels[(i + 1) * stride - 1] * labels[(i + 1) * stride - 3];
+  #|    for (let k = first; k < end; k++) out[m.all[k]] = heights[i];
   #|  }
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|}
+
+///|
+/// Sets each label's shift (`shifts`, x and y in CSS px per label of `labels`),
+/// on all its variants' vertices.
+extern "js" fn gl_set_shifts(
+  gl : Gl,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  shifts : FixedArray[Double],
+) -> Unit =
+  #|(c, m, labels, stride, shifts) => {
+  #|  const gl = c.gl, out = new Float32Array(m.vertices * 2);
+  #|  for (let i = 0; i < shifts.length / 2; i++) {
+  #|    const first = labels[(i + 1) * stride - 2], end = first + labels[(i + 1) * stride - 1] * labels[(i + 1) * stride - 3];
+  #|    for (let k = first; k < end; k++) {
+  #|      out[m.all[k] * 2] = shifts[i * 2];
+  #|      out[m.all[k] * 2 + 1] = shifts[i * 2 + 1];
+  #|    }
+  #|  }
+  #|  if (!m.shift) {
+  #|    m.shift = gl.createBuffer();
+  #|    gl.bindVertexArray(m.vao);
+  #|    gl.bindBuffer(gl.ARRAY_BUFFER, m.shift);
+  #|    gl.enableVertexAttribArray(15);
+  #|    gl.vertexAttribPointer(15, 2, gl.FLOAT, false, 8, 0);
+  #|    gl.bindVertexArray(null);
+  #|  }
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.shift);
   #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
   #|}
 

@@ -367,6 +367,88 @@ test "text-writing-mode takes its first mode; symbol-sort-key compiles" {
 }
 
 ///|
+test "variable anchors take MapLibre's offsets in ems, shaped centered" {
+  let b = 7.0 / 24.0
+  let h = 1.0 / 2.0.sqrt()
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "r", "type": "symbol", "layout": {"text-variable-anchor": ["top", "bottom-left", "right", "center"],
+      #|   "text-radial-offset": 1, "text-offset": [5, 5], "text-anchor": "left", "text-justify": "auto"}},
+      #|  {"id": "o", "type": "symbol", "layout": {"text-variable-anchor": ["top-right", "left", "bottom"],
+      #|   "text-offset": [-0.5, -2]}},
+      #|  {"id": "a", "type": "symbol", "layout": {"text-variable-anchor-offset": ["top", [0, 1], "left", [2, 0]],
+      #|   "text-variable-anchor": ["bottom"]}},
+      #|  {"id": "f", "type": "symbol", "layout": {"text-anchor": "bottom-right", "text-radial-offset": 2, "text-justify": "right"}}
+      #|]}
+    ),
+  )
+  let r = s.layers[0].text.unwrap()
+  assert_eq(r.variable, [
+    (Top, 0.0, 1.0 - b),
+    (BottomLeft, h, -h + b),
+    (Right, -1.0, 0.0),
+    (Center, 0.0, 0.0),
+  ])
+  assert_eq((r.anchor, r.offset, r.justify), (Center, (0.0, 0.0), Auto))
+  let o = s.layers[1].text.unwrap()
+  assert_eq(o.variable, [
+    (TopRight, -0.5, 2.0 - b),
+    (Left, 0.5, 0.0),
+    (Bottom, 0.0, -2.0 + b),
+  ])
+  assert_eq(o.justify, Center)
+  let a = s.layers[2].text.unwrap()
+  assert_eq(a.variable, [(Top, 0.0, 1.0 - b), (Left, 2.0, 0.0)])
+  let f = s.layers[3].text.unwrap()
+  assert_eq(f.variable, [])
+  assert_eq(
+    (f.anchor, f.offset, f.justify),
+    (BottomRight, (-2.0 * h, -2.0 * h + b), Right),
+  )
+}
+
+///|
+test "variable anchors as expressions are unsupported, unknown ones invalid" {
+  let cases = [
+    (
+      "{\"text-variable-anchor-offset\": [\"step\", [\"zoom\"], [\"literal\", []]]}",
+      "layers[0].layout.text-variable-anchor-offset", true,
+    ),
+    (
+      "{\"text-variable-anchor-offset\": [\"top\", [0, 1], \"left\"]}", "layers[0].layout.text-variable-anchor-offset",
+      false,
+    ),
+    (
+      "{\"text-variable-anchor\": [\"top\", \"middle\"]}", "layers[0].layout.text-variable-anchor",
+      false,
+    ),
+    (
+      "{\"text-variable-anchor\": \"top\"}", "layers[0].layout.text-variable-anchor",
+      false,
+    ),
+    (
+      "{\"text-anchor\": [\"get\", \"a\"]}", "layers[0].layout.text-anchor", true,
+    ),
+    ("{\"text-justify\": \"middle\"}", "layers[0].layout.text-justify", false),
+    (
+      "{\"text-radial-offset\": [\"get\", \"r\"]}", "layers[0].layout.text-radial-offset",
+      true,
+    ),
+  ]
+  for c in cases {
+    let text = "{\"layers\": [{\"id\": \"a\", \"type\": \"symbol\", \"layout\": \{c.0}}]}"
+    try @style.Style::parse(text) catch {
+      Unsupported(path~, _) if c.2 => assert_eq(path, c.1)
+      Invalid(path~, _) if !c.2 => assert_eq(path, c.1)
+      e => fail("unexpected \{Repr(e)} for \{c.0}")
+    } noraise {
+      _ => fail("expected \{c.0} to fail")
+    }
+  }
+}
+
+///|
 test "symbol placement on lines, icons and format are unsupported" {
   let cases = [
     ("{\"symbol-placement\": \"line\"}", "layers[0].layout.symbol-placement"),

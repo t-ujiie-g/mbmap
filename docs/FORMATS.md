@@ -70,7 +70,10 @@ vertex range (no indices):
 - u8 text anchor (`center`, `left`, `right`, `top`, `bottom`, `top-left`,
   `top-right`, `bottom-left`, `bottom-right`), u8 allow overlap, u8 ignore
   placement, u8 vertical writing;
-- f64 offset x, offset y, max width, line height (ems), padding (px); u32 label count;
+- f64 offset x, offset y, max width, line height (ems), padding (px);
+- u8 text justify (`auto`, `left`, `center`, `right`), u8 variable anchor count, then
+  per variable anchor its u8 code (as the text anchor) and f64 offset x, y (ems,
+  MapLibre's `text-variable-anchor-offset` with its baseline shift); u32 label count;
 - per label: u32 index of its feature in the source layer, i16 anchor x, y
   (`TILE_EXTENT` units, inside the tile), f64 text size
   (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
@@ -87,9 +90,12 @@ quad (corners top-left, top-right, bottom-right, bottom-left):
   thread turns into atlas pixel coordinates before upload;
 - u16 text size in 1/16 px, u16 0.
 
-`labels` holds 9 floats per label: anchor x, y, its text box (min x, min y, max x,
-max y in CSS px from the anchor), its feature's index, first index and index count of
-its quads.
+`labels` holds 12 floats per label: anchor x, y, its text box (min x, min y, max x,
+max y in CSS px from the anchor), its feature's index, text size (px), sort key, its
+layouts V, first index and index count of each layout's quads. A label with variable
+anchors is laid out centered; one of several lines has V = 3 layouts one after the
+other, justified left, center and right, otherwise V = 1. `anchors` holds the
+variable anchors as code, offset x, y.
 
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 

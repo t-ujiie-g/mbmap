@@ -484,6 +484,14 @@ pub fn map_paint_at(
 }
 
 ///|
+/// The labels shown at the last placement (`@map.Map::placed_labels`), for
+/// tests; the facade does not use it.
+#export_name("map_placed_labels")
+pub fn map_placed_labels(map : @map.Map) -> String {
+  map.placed_labels()
+}
+
+///|
 /// Adds or replaces style image `name` (straight RGBA bytes, `width` x
 /// `height`); false when the bytes do not match the size.
 #export_name("map_add_image")
