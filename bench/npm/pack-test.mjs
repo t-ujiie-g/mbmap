@@ -338,6 +338,7 @@ async function showcase(page) {
   const hovered = await page.evaluate(() => ({ id: window.__hovered, state: window.__map.getFeatureState({ source: "places", id: window.__hovered }) }));
   const measured = await measureChecks(page);
   const drew = await drawChecks(page);
+  const edited = await editChecks(page);
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -397,8 +398,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok && edited.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew, edited }];
 }
 
 // Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile
@@ -871,6 +872,79 @@ async function drawChecks(page) {
     undone === 2 && redone === 3 && before === after &&
     handed.mode === null && end.features === 0 && end.dblclick;
   return { ok, polygon: ring.length, lines: lines.features.length, circle: circleRing.length, undone, redone, handed: handed.mode, end };
+}
+
+// Editing with mbmap/draw's select mode: a vertex dragged (the map does not pan), a midpoint
+// dragged into a vertex, one deleted by right click, the shape dragged whole, a vertex snapped
+// onto another shape's, a name set from the panel and undone, the shape deleted with Delete.
+async function editChecks(page) {
+  const clicks = async (points) => {
+    for (const [x, y] of points) {
+      await page.mouse.click(x, y);
+      await page.waitForTimeout(350);
+    }
+  };
+  const drag = async ([x0, y0], [x1, y1]) => {
+    await page.mouse.move(x0, y0);
+    await page.mouse.down();
+    await page.mouse.move(x1, y1, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  };
+  const ring = () => page.evaluate(() => window.__draw.state.features[0]?.geometry.coordinates[0]);
+  const at = (p) => page.evaluate(([lng, lat]) => window.__map.project({ lng, lat }), p);
+  await page.click("#draw-modes button >> text=多角形");
+  await clicks([[440, 180], [640, 180], [640, 380], [440, 380], [443, 183]]);
+  await page.click("#draw-modes button >> text=選択");
+  await clicks([[540, 280]]);
+  const selected = await page.evaluate(() => window.__draw.state.selected);
+  const center = await page.evaluate(() => window.__map.getCenter());
+  // Drag the vertex nearest (640, 380) to (690, 420).
+  const first = await ring();
+  await drag([640, 380], [690, 420]);
+  const moved = await ring();
+  const still = await page.evaluate(() => window.__map.getCenter());
+  // The midpoint of the first edge (the left side: the ring is counter-clockwise), dragged out into a fifth vertex.
+  const [a, b] = [await at(moved[0]), await at(moved[1])];
+  const mid = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+  await drag(mid, [mid[0] - 40, mid[1]]);
+  const inserted = (await ring()).length;
+  // Right click on that vertex deletes it.
+  await page.mouse.click(mid[0] - 40, mid[1], { button: "right" });
+  await page.waitForTimeout(300);
+  const deleted = (await ring()).length;
+  // The body dragged 30 px right moves every vertex.
+  const before = await ring();
+  await drag([520, 300], [550, 300]);
+  const shifted = await ring();
+  const allMoved = shifted.every((p, i) => p[0] > before[i][0] && Math.abs(p[1] - before[i][1]) < 1e-9);
+  // A second shape whose first vertex is clicked 8 px from the first shape's: it snaps onto it.
+  const corner = await at(shifted[0]);
+  await page.click("#draw-modes button >> text=点");
+  await clicks([[corner.x + 6, corner.y + 5]]);
+  const snapped = await page.evaluate(() => window.__draw.state.features[1].geometry.coordinates);
+  // Fields: a name set, then undone; Delete removes the selected shape.
+  await page.click("#draw-modes button >> text=選択");
+  await clicks([[560, 300]]);
+  await page.fill("#draw-fields input[name=name]", "区画A");
+  await page.press("#draw-fields input[name=name]", "Enter");
+  await page.locator("#draw-fields input[name=name]").blur();
+  await page.waitForTimeout(200);
+  const named = await page.evaluate(() => window.__draw.state.features.find((f) => f.id === window.__draw.state.selected)?.properties.name);
+  await page.click("#draw-actions button >> text=一つ戻す");
+  const unnamed = await page.evaluate(() => window.__draw.state.features[0].properties.name ?? null);
+  await clicks([[560, 300]]);
+  await page.keyboard.press("Delete");
+  const left = await page.evaluate(() => window.__draw.state.features.length);
+  await page.evaluate(() => (window.__draw.clear(), window.__draw.setMode(null)));
+  const pan = await page.evaluate(() => window.__map.dragPan.isEnabled());
+  const changed = moved.filter((p, i) => p[0] !== first[i][0] || p[1] !== first[i][1]).length;
+  const ok =
+    selected !== null && changed === 1 && still.lng === center.lng && still.lat === center.lat &&
+    inserted === 6 && deleted === 5 && allMoved &&
+    JSON.stringify(snapped) === JSON.stringify(shifted[0]) &&
+    named === "区画A" && unnamed === null && left === 1 && pan;
+  return { ok, selected, changed, inserted, deleted, allMoved, snapped, corner: shifted[0], named, unnamed, left, pan };
 }
 
 // Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.

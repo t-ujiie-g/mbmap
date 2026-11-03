@@ -194,7 +194,7 @@ import { createDraw } from "mbmap/draw";
 import * as geodesic from "mbmap/geodesic";
 
 const draw = createDraw(map, { geodesic });   // 円を描くときだけ geodesic が要る
-draw.setMode("polygon");                       // point、linestring、polygon、rectangle、circle、freehand、null
+draw.setMode("polygon");                       // point、linestring、polygon、rectangle、circle、freehand、select、null
 draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
 ```
 
@@ -204,8 +204,14 @@ draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
   - 多角形：最初か最後の頂点をクリックで閉じる。
   - 矩形・円：2 回のクリック。円は楕円体の上の円（64 点）。
   - フリーハンド：クリックで始め、動かすと 20px ごとに頂点を足し、クリックで閉じる。
-- 状態は `mode`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
-- 操作は `setMode(mode)`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
+- 編集（`setMode("select")`）：
+  - 形をクリックで選ぶ。
+  - 選んだ形の頂点をドラッグで動かし、中点をドラッグで頂点を足し、頂点を右クリックで消す（線は 2 つ、多角形は 3 つより減らさない）。形の中（線と点は近く）をドラッグで全体を動かす。
+  - ドラッグの間は地図のパンを止める。1 回のドラッグが 1 段の取り消しになる。
+- スナップ（`snapping: true`、または `{ vertices, lines, pixels }`）：描くときと頂点を動かすときに、ほかの形の頂点（なければ辺）へ、40px 以内（terra-draw と同じ）で吸い付く。
+- 属性：`setProperties(id, { name: "区画A" })` で足す・変える（null でそのキーを消す。`mode` は変えない）。取り消せる。
+- 状態は `mode`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
+- 操作は `setMode(mode)`、`select(id)`、`setProperties(id, properties)`、`deleteSelected()`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
 - 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回りにする（RFC 7946）。
 - 描くのは自前の GeoJSON ソース（既定の id は `mbmap-draw`）とレイヤーで、`setData` で更新する。描いている間はダブルクリックのズームを止める。
 

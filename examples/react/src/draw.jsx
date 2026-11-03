@@ -1,7 +1,7 @@
-// Drawing in React: the modes as a segmented toolbar, the shapes drawn as a
-// list with a button to delete each, from the same controller as the plain-DOM examples.
+// Drawing in React: the modes as a segmented toolbar, the shapes drawn as a list
+// (select or delete each) and the selected one's fields, from the plain-DOM examples' controller.
 import { useEffect } from "react";
-import { DRAW_MODES, drawActions, drawnText, onDrawKey } from "../../shared/draw.js";
+import { DRAW_MODES, FIELDS, drawActions, drawnText, fieldValue, onDrawKey } from "../../shared/draw.js";
 import { useController } from "./use-controller.js";
 
 export function Draw({ draw }) {
@@ -25,12 +25,24 @@ export function Draw({ draw }) {
       <p id="drawn" className="react-hint">{t.hint}</p>
       <ol className="react-drawn">
         {s.features.map((f) => (
-          <li key={f.id}>
-            {DRAW_MODES.find(([m]) => m === f.properties.mode)?.[1]} <code>{f.id}</code>
+          <li key={f.id} aria-current={f.id === s.selected}>
+            <button className="react-link" onClick={() => (draw.state.mode !== "select" && draw.setMode("select"), draw.select(f.id))}>
+              {DRAW_MODES.find(([m]) => m === f.properties.mode)?.[1]} {f.properties.name ?? <code>{f.id}</code>}
+            </button>
             <button aria-label={`${f.id} を消す`} onClick={() => draw.remove(f.id)}>×</button>
           </li>
         ))}
       </ol>
+      {s.selected && (
+        <div id="draw-fields" key={s.selected}>
+          {FIELDS.map(([key, label]) => (
+            <label key={key}>
+              {label}
+              <input name={key} defaultValue={fieldValue(s, key)} onBlur={(e) => draw.setProperties(s.selected, { [key]: e.target.value || null })} onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && e.currentTarget.blur()} />
+            </label>
+          ))}
+        </div>
+      )}
     </>
   );
 }

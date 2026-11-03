@@ -4,11 +4,14 @@
 import { createDraw } from "mbmap/draw";
 import * as geodesic from "mbmap/geodesic";
 
-export const DRAW_MODES = [["point", "点"], ["linestring", "線"], ["polygon", "多角形"], ["rectangle", "矩形"], ["circle", "円"], ["freehand", "フリーハンド"]];
+export const DRAW_MODES = [["select", "選択"], ["point", "点"], ["linestring", "線"], ["polygon", "多角形"], ["rectangle", "矩形"], ["circle", "円"], ["freehand", "フリーハンド"]];
+
+/** The properties the panel edits on the selected shape, as [key, label]. */
+export const FIELDS = [["name", "名前"], ["note", "メモ"]];
 
 /** The drawing over `map`; choosing a mode clears `measurement`'s. */
 export function createShowcaseDraw(map, measurement) {
-  const draw = createDraw(map, { geodesic });
+  const draw = createDraw(map, { geodesic, snapping: true });
   const setMode = draw.setMode.bind(draw);
   draw.setMode = (mode) => {
     if (mode) measurement.clear();
@@ -18,11 +21,13 @@ export function createShowcaseDraw(map, measurement) {
   return draw;
 }
 
-/** Enter finishes, Escape cancels, ⌘Z / Ctrl+Z undoes and with Shift redoes. */
+/** Enter finishes, Escape cancels (or deselects), Delete removes the selected shape, ⌘Z / Ctrl+Z undoes and with Shift redoes. */
 export function onDrawKey(draw, e) {
   if (e.isComposing || e.keyCode === 229 || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName ?? "")) return;
   if (e.key === "Enter" && draw.state.mode) draw.finish();
+  else if (e.key === "Escape" && draw.state.mode === "select") draw.select(null);
   else if (e.key === "Escape" && draw.state.mode) draw.cancel();
+  else if ((e.key === "Delete" || e.key === "Backspace") && draw.state.selected) draw.deleteSelected();
   else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
     e.preventDefault();
     if (e.shiftKey) draw.redo();
@@ -37,6 +42,7 @@ export function drawActions(draw, s) {
     ["やり直す", () => draw.redo(), s.canRedo],
     ["確定", () => draw.finish(), s.vertices.length > 0],
     ["やめる", () => draw.setMode(null), Boolean(s.mode)],
+    ["選んだ形を消す", () => draw.deleteSelected(), Boolean(s.selected)],
     ["全部消す", () => draw.clear(), s.features.length > 0],
     ["GeoJSON で保存", () => saveGeoJSON(s.features), s.features.length > 0],
   ];
@@ -46,6 +52,7 @@ export function drawActions(draw, s) {
 export function drawnText(s) {
   const counts = DRAW_MODES.map(([m, label]) => [label, s.features.filter((f) => f.properties.mode === m).length]).filter(([, n]) => n > 0);
   const hint = {
+    select: s.selected ? "頂点や中点をドラッグ、形の中をドラッグで移動、頂点を右クリックで削除" : "形をクリックで選ぶ",
     point: "クリックで点を置く",
     linestring: "クリックで頂点、最後の頂点をもう一度クリックで終わる",
     polygon: "クリックで頂点、最初の頂点をクリックで閉じる",
@@ -63,12 +70,31 @@ function saveGeoJSON(features) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-/** The tool in the panel for the plain-DOM examples: modes in `#draw-modes`, operations in `#draw-actions`, the readout in `#drawn`. */
+/** The selected shape's value of `key` as text. */
+export function fieldValue(s, key) {
+  const f = s.features.find((x) => x.id === s.selected);
+  return f ? String(f.properties[key] ?? "") : "";
+}
+
+/**
+ * The tool in the panel for the plain-DOM examples: modes in `#draw-modes`, operations in `#draw-actions`,
+ * the readout in `#drawn`, the selected shape's fields in `#draw-fields`.
+ */
 export function mountDraw(map, measurement) {
   const draw = createShowcaseDraw(map, measurement);
   const modes = document.getElementById("draw-modes");
   const actions = document.getElementById("draw-actions");
   const readout = document.getElementById("drawn");
+  const fields = document.getElementById("draw-fields");
+  const inputs = FIELDS.map(([key, label]) => {
+    const input = Object.assign(document.createElement("input"), { name: key });
+    // Set on change (blur or Enter), so that each edit is one step to undo.
+    input.addEventListener("change", () => draw.state.selected && draw.setProperties(draw.state.selected, { [key]: input.value || null }));
+    const row = document.createElement("label");
+    row.append(label, input);
+    fields.append(row);
+    return [key, input];
+  });
   const button = (label, f, enabled = true) => {
     const b = Object.assign(document.createElement("button"), { textContent: label, disabled: !enabled });
     b.addEventListener("click", f);
@@ -85,6 +111,8 @@ export function mountDraw(map, measurement) {
     actions.replaceChildren(...drawActions(draw, s).map(([label, f, enabled]) => button(label, f, enabled)));
     const t = drawnText(s);
     readout.textContent = `${t.counts}。${t.hint}`;
+    fields.hidden = !s.selected;
+    for (const [key, input] of inputs) if (document.activeElement !== input) input.value = fieldValue(s, key);
   };
   draw.subscribe(show);
   show(draw.state);
