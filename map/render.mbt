@@ -487,6 +487,7 @@ fn Map::draw_frame(
 ) -> Unit {
   let t = self.transform
   let terrain = self.terrain_source()
+  self.prerender_custom()
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
   self.draw_sky(dpr)
@@ -507,11 +508,15 @@ fn Map::draw_frame(
       self.draw_background_pattern(layer)
       continue
     }
-    // With terrain, all but symbols and extrusions are drawn onto it.
+    // With terrain, all but symbols, extrusions and custom layers are drawn onto it.
     if layer.kind is Background ||
-      (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion))) ||
+      (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion | Custom))) ||
       zoom < layer.min_zoom ||
       zoom >= layer.max_zoom {
+      continue
+    }
+    if layer.kind is Custom {
+      self.draw_custom(layer.id, prerender=false)
       continue
     }
     // Paint that does not read feature data is the same for every mesh.

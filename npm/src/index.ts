@@ -20,6 +20,7 @@ import {
 } from "./camera";
 import type { ClusterQuery, GeoJSONSource, GeoJSONTiles } from "./geojson";
 import type { Media, UpdateImageOptions } from "./media";
+import type { CustomLayerInterface, CustomLayers } from "./custom";
 import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
@@ -64,6 +65,7 @@ export type {
 } from "./camera";
 
 export type { LayerSpecification, StyleSpecification } from "./style";
+export type { CustomLayerInterface, CustomRenderMethodInput, ProjectionData } from "./custom";
 export type { GeoJSONFeature } from "./query";
 export type {
   MapGeoJSONFeature,
@@ -174,6 +176,8 @@ export class Map {
   #geojsonSources: GeoJSONSource[] = [];
   #media: Media | null = null;
   #mediaLoading: Promise<unknown> | null = null;
+  #custom: CustomLayers | null = null;
+  #customLoading: Promise<unknown> | null = null;
   /** Canvas sources given an element, which the style's JSON copies cannot hold. */
   #canvases = new globalThis.Map<string, unknown>();
   #style: StyleSpecification | null = null;
@@ -273,7 +277,7 @@ export class Map {
       let swapped = s;
       if (options.transformStyle) {
         try {
-          swapped = options.transformStyle(edit.copy(this.#style) ?? undefined, edit.copy(s)!);
+          swapped = options.transformStyle(edit.copy(this.#style && edit.withoutCustom(this.#style)) ?? undefined, edit.copy(s)!);
         } catch (err) {
           this.#fail(err instanceof Error ? err : new Error(String(err)));
           return;
@@ -406,7 +410,7 @@ export class Map {
 
   /** A copy of the style drawn, GeoJSON data included (null until it has loaded). */
   getStyle(): StyleSpecification | null {
-    return edit.copy(this.#style);
+    return edit.copy(this.#style && edit.withoutCustom(this.#style));
   }
 
   /** Swaps in `next`, an edit of the current style; a style the engine refuses fires `error`. */
@@ -421,6 +425,8 @@ export class Map {
     this.#style = next;
     this.#syncMedia(next);
     this.#loadSprite(next.sprite);
+    // Custom layers the new style lacks are gone, as MapLibre's `setStyle` removes them.
+    for (const id of this.#custom?.ids() ?? []) if (!edit.getLayer(next, id)) this.#custom!.remove(id);
     for (const id of this.#loadGeoJSON(geojson)) engine.map_reload_source(this.#engine, id);
     this.#drawn = rest;
     this.#showAttribution();
@@ -446,8 +452,38 @@ export class Map {
     return this;
   }
 
-  addLayer(layer: LayerSpecification, beforeId?: string): this {
-    return this.#edit((s) => edit.addLayer(s, layer, beforeId));
+  /** Adds a style layer, or a custom layer (MapLibre's `CustomLayerInterface`; its `onAdd` runs once `custom.js` has loaded). */
+  addLayer(layer: LayerSpecification | CustomLayerInterface, beforeId?: string): this {
+    if (layer?.type !== "custom") return this.#edit((s) => edit.addLayer(s, layer as LayerSpecification, beforeId));
+    const custom = layer as CustomLayerInterface;
+    this.#edit((s) => {
+      const why = edit.invalidCustomLayer(custom);
+      if (why) throw new Error(`mbmap: layers.${String(custom.id)}: ${why}`);
+      return edit.addLayer(s, { id: custom.id, type: "custom" }, beforeId);
+    });
+    // Only while the style still has it: an error or a later removeLayer leaves it out.
+    this.#withCustom((c) => this.#style && edit.getLayer(this.#style, custom.id)?.type === "custom" && !c.get(custom.id) && c.add(custom));
+    return this;
+  }
+
+  /** Draws a frame soon (a custom layer's animation asks for each of its frames). */
+  triggerRepaint(): this {
+    return this.#withEngine((m) => engine.map_trigger_repaint(m));
+  }
+
+  /** Runs `f` on the custom layers, loading `custom.js` and handing its renderer to the engine the first time. */
+  #withCustom(f: (c: CustomLayers) => void): void {
+    if (this.#custom) return f(this.#custom);
+    this.#customLoading ??= import("./custom.js").then(({ CustomLayers }) => {
+      const m = this.#engine;
+      if (!m || this.#removed) return;
+      this.#custom = new CustomLayers(this, engine.map_gl(m));
+      engine.map_set_custom_renderer(m, this.#custom.draw);
+    });
+    this.#customLoading.then(
+      () => this.#custom && f(this.#custom),
+      (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))),
+    );
   }
 
   removeLayer(id: string): this {
@@ -459,7 +495,10 @@ export class Map {
     return this.#edit((s) => edit.moveLayer(s, id, beforeId));
   }
 
-  getLayer(id: string): LayerSpecification | undefined {
+  /** Layer `id` as the style gives it, or a custom layer itself. */
+  getLayer(id: string): LayerSpecification | CustomLayerInterface | undefined {
+    const custom = this.#custom?.get(id);
+    if (custom) return custom;
     return this.#style ? edit.copy(edit.getLayer(this.#style, id)) : undefined;
   }
 
@@ -1475,6 +1514,7 @@ export class Map {
     this.#geojson?.terminate();
     this.#geojson = null;
     this.#media?.destroy();
+    this.#custom?.destroy();
     this.#listeners.clear();
     this.#layerListeners = [];
     this.#canvas.remove();

@@ -79,3 +79,14 @@ test("setRoot sets and removes terrain, sky and light", () => {
   assert.deepEqual(s.sky, { "sky-color": "#88c6fc" });
   assert.equal("sky" in edit.setRoot(s, "sky", null), false);
 });
+
+test("custom layers: placeholders need no source, getStyle leaves them out, MapLibre's validation", () => {
+  const ids = (st: StyleSpecification) => st.layers.map((l) => (l as { id: string }).id);
+  const s = edit.addLayer(style(), { id: "c", type: "custom" }, "a");
+  assert.deepEqual(ids(s).slice(0, 3), ["bg", "c", "a"]);
+  assert.deepEqual(ids(edit.withoutCustom(s)), ids(style()));
+  assert.equal(edit.invalidCustomLayer({ id: "c", render() {} }), "");
+  assert.equal(edit.invalidCustomLayer({ render() {} }), 'missing required property "id"');
+  assert.equal(edit.invalidCustomLayer({ id: "c" }), 'missing required method "render"');
+  assert.equal(edit.invalidCustomLayer({ id: "c", render() {}, renderingMode: "4d" }), 'property "renderingMode" must be either "2d" or "3d"');
+});

@@ -270,6 +270,7 @@ pub fn Transform::occluded(Self, LngLat, Double, Terrain) -> Bool
 pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera
 pub fn Transform::pixels_per_meter(Self) -> Double
 pub fn Transform::project(Self, LngLat, elevation? : Double) -> (Double, Double)
+pub fn Transform::projection(Self) -> (Mat4, Double, Double)
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
 pub fn Transform::tile_matrix(Self, TileId, Int32, aligned? : Bool) -> Mat4
@@ -280,6 +281,7 @@ pub fn Transform::unproject_on(Self, Double, Double, Terrain) -> LngLat
 pub fn Transform::with_camera(Self, Camera) -> Self
 pub fn Transform::with_elevation(Self, Double) -> Self
 pub fn Transform::with_limits(Self, Limits) -> Self
+pub fn Transform::world_matrix(Self) -> Mat4
 pub fn Transform::world_size(Self) -> Double
 pub fn Transform::zoomed_around(Self, Double, Double, Double) -> Camera
 

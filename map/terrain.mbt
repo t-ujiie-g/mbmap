@@ -280,7 +280,7 @@ fn Map::draw_texture(
   let px = size.to_double() /
     (@core.TILE_SIZE * @math.pow(2.0, zoom - id.z.to_double()))
   for index, layer in self.style.layers {
-    if layer.kind is (Background | Symbol | FillExtrusion) ||
+    if layer.kind is (Background | Symbol | FillExtrusion | Custom) ||
       zoom < layer.min_zoom ||
       zoom >= layer.max_zoom {
       continue

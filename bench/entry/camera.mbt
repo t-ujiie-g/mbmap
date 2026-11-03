@@ -42,6 +42,19 @@ fn joined(values : Array[Double]) -> String {
 }
 
 ///|
+/// What custom layers get of `transform_of(a)`: the model-view-projection matrix
+/// (16 numbers), the projection matrix (16), the near and far planes.
+#export_name("camera_custom")
+pub fn camera_custom(a : FixedArray[Double]) -> String {
+  let t = transform_of(a)
+  let (p, near, far) = t.projection()
+  let out = [..t.world_matrix().m, ..p.m]
+  out.push(near)
+  out.push(far)
+  joined(out)
+}
+
+///|
 /// The camera of `transform_of(a)` once kept to its limits.
 #export_name("camera_constrain")
 pub fn camera_constrain(a : FixedArray[Double]) -> String {

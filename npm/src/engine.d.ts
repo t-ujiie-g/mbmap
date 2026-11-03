@@ -56,6 +56,10 @@ declare module "mbmap-engine" {
   export function map_set_media(map: EngineMap, id: string, picture: TexImageSource | null, quad: number[]): void;
   export function map_set_media_quad(map: EngineMap, id: string, quad: number[]): void;
   export function map_set_media_playing(map: EngineMap, id: string, playing: boolean): void;
+  /** Draws the style's custom layers through `f` (npm/src/custom.ts), with `Map::custom_numbers`. */
+  export function map_set_custom_renderer(map: EngineMap, f: (id: string, prerender: boolean, numbers: number[]) => void): void;
+  export function map_gl(map: EngineMap): WebGL2RenderingContext;
+  export function map_trigger_repaint(map: EngineMap): void;
   /** One tile's hits: their layers' ids (-1 for a source query), feature indices, depths and GeoJSON features. */
   export interface PaintValues {
     color: number[];

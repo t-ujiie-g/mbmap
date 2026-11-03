@@ -14,6 +14,7 @@ import { clusterChecks } from "./checks/clusters.mjs";
 import { imageChecks } from "./checks/images.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
 import { mediaChecks } from "./checks/media.mjs";
+import { customChecks } from "./checks/custom.mjs";
 
 const shots = process.argv.find((a) => a.startsWith("--screenshots="))?.split("=")[1];
 await prepareExamples();
@@ -27,6 +28,7 @@ const PAGES = {
   geojson: "bench/npm/pages/geojson/",
   analysis: "bench/npm/pages/analysis/",
   media: "bench/npm/pages/media/",
+  custom: "bench/npm/pages/custom/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
   "showcase-html": "examples/html/?local=1",
@@ -313,6 +315,10 @@ const checks = {
     return mediaChecks(page, requests);
   },
 
+  async custom(page) {
+    return customChecks(page);
+  },
+
   // The examples that call the engine (bundle/main) directly: it starts and draws.
   async basic(page) {
     return engineStarted(page);
@@ -409,6 +415,8 @@ async function showcase(page) {
     return {
       same: map === window.__map, terrain: map.getTerrain(), hillshade, listed, markers: map.getStyle().sources.places.data.features.at(-1).properties.name,
       legend: legend && { title: legend.title, kind: legend.kind, labels: legend.items.map((i) => i.label) }, photo, back: map.getLayer("road") !== undefined,
+      // The custom layer comes back under the places after each new style.
+      ring: map.getLayer("radius-ring")?.type === "custom" && map.getLayersOrder().indexOf("radius-ring") === map.getLayersOrder().indexOf("places") - 1,
     };
   });
   const ok =
@@ -419,7 +427,7 @@ async function showcase(page) {
     hovered.id === "東京駅" && hovered.state.hover === true &&
     styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.listed.visible === false && styled.listed.inRange === true && styled.markers === "印 1" &&
     JSON.stringify(styled.legend) === JSON.stringify({ title: "道路", kind: "match", labels: ["0", "1", "その他"] }) &&
-    styled.photo.layers.includes("photo") && !styled.photo.layers.includes("road") && styled.photo.layers.at(-1) === "places-label" && styled.photo.marker === "印 1" && styled.back &&
+    styled.photo.layers.includes("photo") && !styled.photo.layers.includes("road") && styled.photo.layers.at(-1) === "places-label" && styled.photo.marker === "印 1" && styled.back && styled.ring &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
     first.plane.zone === "第IX系" &&
     Math.abs(first.plane.x - -5995.185) < 0.01 && Math.abs(first.plane.y - -35367.23) < 0.01 &&
@@ -989,7 +997,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|missing required method/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);
