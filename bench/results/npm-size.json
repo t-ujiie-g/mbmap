@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 89285,
+      "bytes": 93819,
       "budget": 100000
     },
     {
@@ -23,6 +23,11 @@
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
       "bytes": 3568,
       "budget": 5000
+    },
+    {
+      "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
+      "bytes": 890,
+      "budget": 2000
     },
     {
       "name": "mbmap/element (on top of mbmap)",
@@ -46,7 +51,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 85067,
+      "bytes": 85369,
       "budget": 100000
     },
     {

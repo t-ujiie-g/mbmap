@@ -90,6 +90,7 @@ fn Map::draw_extrusions(
   d : Draw,
   light : @render_webgl2.ExtrusionLight,
   on_terrain : Bool,
+  pass : Int32,
 ) -> Unit {
   let t = self.transform
   let zoom = t.camera.zoom
@@ -101,28 +102,48 @@ fn Map::draw_extrusions(
       continue
     }
     let p = mesh_paint(m, layer, shared, zoom)
+    // A pattern draws nothing while its image is missing, as in MapLibre.
+    let pattern = match p.pattern {
+      Some(name) =>
+        match self.pattern(name) {
+          Some(pos) => Some(pos)
+          None => continue
+        }
+      None => None
+    }
     self.draw_by_state(m, layer, p, zoom, p => {
       self.renderer.draw_extrusion(
         m.mesh,
         d.at,
         (p.r, p.g, p.b),
-        p.a,
+        if pattern is Some(_) {
+          p.opacity
+        } else {
+          p.a
+        },
         light,
         e.vertical_gradient,
         mix,
         t.pixels_per_meter(),
         exaggeration,
+        pattern~,
+        pass~,
       )
     })
   }
 }
 
 ///|
-/// The first visible background layer's color, premultiplied onto white.
+/// The first visible background layer's color, premultiplied onto white (white
+/// when it is a pattern, drawn over the tiles).
 fn Map::background(self : Map) -> (Double, Double, Double) {
   let zoom = self.transform.camera.zoom
   for l in self.style.layers {
     if l.kind is Background && zoom >= l.min_zoom && zoom < l.max_zoom {
+      // A pattern is drawn over the tiles instead.
+      if l.pattern is Some(_) {
+        return (1.0, 1.0, 1.0)
+      }
       let p = paint_of(l, zoom, JsProps::none())
       return (
         p.r * p.a + 1.0 - p.a,
@@ -154,6 +175,8 @@ fn Map::draw_layer(
     Some(e) => self.dash_of(e, zoom, layer.cap is Round)
     None => None
   }
+  // Fill outlines go after every fill of the tile, as MapLibre draws them.
+  let outlines : Array[() -> Unit] = []
   for m in meshes {
     if m.kind == KIND_HILLSHADE && layer.hillshade is Some(h) {
       self.draw_hillshade(h, m.mesh, at)
@@ -205,6 +228,22 @@ fn Map::draw_layer(
           g,
         )
       })
+    } else if m.kind == KIND_LINE && layer.pattern is Some(_) {
+      guard p.pattern is Some(name) && self.pattern(name) is Some(pos) else {
+        continue
+      }
+      let (floor_width, floor_t) = self.floor_width(index, layer, m, zoom)
+      self.draw_by_state(m, layer, p, zoom, p => {
+        self.renderer.draw_line_pattern(
+          m.mesh,
+          at,
+          self.slots(index, m, p, zoom),
+          dpr,
+          pos,
+          floor_width~,
+          floor_t~,
+        )
+      })
     } else if m.kind == KIND_LINE {
       match dash {
         Some((entry, gamma_width)) => {
@@ -245,20 +284,27 @@ fn Map::draw_layer(
           dpr,
         )
       })
+    } else if layer.pattern is Some(_) {
+      self.draw_fill_pattern(index, layer, m, p, at, outlines)
     } else {
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_fill(m.mesh, at, self.slots(index, m, p, zoom))
       })
       if layer.antialias {
-        self.draw_by_state(m, layer, p, zoom, outline=true, p => {
-          self.renderer.draw_fill_outline(
-            m.mesh,
-            at,
-            self.slots(index, m, p, zoom),
-          )
+        outlines.push(() => {
+          self.draw_by_state(m, layer, p, zoom, outline=true, p => {
+            self.renderer.draw_fill_outline(
+              m.mesh,
+              at,
+              self.slots(index, m, p, zoom),
+            )
+          })
         })
       }
     }
+  }
+  for f in outlines {
+    f()
   }
 }
 
@@ -327,6 +373,25 @@ fn Map::placement(
     center_depth: t.center_depth(),
     clip: rect,
     latitudes: (id.lnglat_bounds().max_y, id.lnglat_bounds().min_y),
+    pattern: pattern_tile(t, id),
+  }
+}
+
+///|
+/// Where patterns start in tile `id` (MapLibre's `patternUniformValues`): its
+/// corner and size in CSS pixels of the world at the integer zoom.
+fn pattern_tile(
+  t : @core.Transform,
+  id : @core.TileId,
+) -> @render_webgl2.PatternTile {
+  let zoom = @cmp.maximum(0.0, t.camera.zoom.floor())
+  let size = @core.TILE_SIZE * @math.pow(2.0, zoom - id.z.to_double())
+  {
+    x: size * id.x.to_double(),
+    y: size * id.y.to_double(),
+    units: size / @core.TILE_EXTENT.to_double(),
+    // MapLibre's -2^z / tileSize / 8 in its 8192-unit tiles, halved.
+    height_factor: -@math.pow(2.0, id.z.to_double()) / 8192.0,
   }
 }
 
@@ -407,6 +472,14 @@ fn Map::draw_frame(
   let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
   let light = self.extrusion_light()
   for index, layer in self.style.layers {
+    if layer.kind is Background &&
+      layer.pattern is Some(_) &&
+      terrain is None &&
+      zoom >= layer.min_zoom &&
+      zoom < layer.max_zoom {
+      self.draw_background_pattern(layer)
+      continue
+    }
     // With terrain, all but symbols and extrusions are drawn onto it.
     if layer.kind is Background ||
       (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion))) ||
@@ -421,31 +494,33 @@ fn Map::draw_frame(
       self.draw_heatmap(index, h, shared, draws, dpr, 0.25)
       continue
     }
-    for d in draws_of.get(layer.source).unwrap_or([]) {
-      if layer.extrusion is Some(e) {
-        if terrain is Some(src) {
+    if layer.extrusion is Some(e) {
+      let draws = draws_of.get(layer.source).unwrap_or([])
+      if terrain is Some(src) {
+        for d in draws {
           self.ground_extrusions(src, d)
         }
-        self.draw_extrusions(
-          index,
-          layer,
-          e,
-          shared,
-          d,
-          light,
-          terrain is Some(_),
-        )
-      } else {
-        self.draw_layer(
-          index,
-          layer,
-          shared,
-          d.at,
-          d.meshes,
-          dpr,
-          height_scale~,
-        )
       }
+      let on_terrain = terrain is Some(_)
+      // MapLibre draws translucent or patterned extrusions in two passes over
+      // all tiles: the nearest surfaces' depth, then their color.
+      if shared.opacity < 1.0 || layer.pattern is Some(_) {
+        for d in draws {
+          self.draw_extrusions(index, layer, e, shared, d, light, on_terrain, 1)
+        }
+        self.renderer.begin_extrusion_color()
+        for d in draws {
+          self.draw_extrusions(index, layer, e, shared, d, light, on_terrain, 2)
+        }
+      } else {
+        for d in draws {
+          self.draw_extrusions(index, layer, e, shared, d, light, on_terrain, 0)
+        }
+      }
+      continue
+    }
+    for d in draws_of.get(layer.source).unwrap_or([]) {
+      self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
     }
   }
   for _, l in self.listeners {

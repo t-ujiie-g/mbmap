@@ -27,6 +27,9 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.extrusion == other.extrusion &&
   self.same_line_layout(other) &&
   self.reads_state() == other.reads_state() &&
+  self.paints_by_group() == other.paints_by_group() &&
+  self.pattern.map(p => p.feature_inputs()) ==
+  other.pattern.map(p => p.feature_inputs()) &&
   inputs(self) == inputs(other) &&
   // Per-vertex paint is computed into the tiles.
   self.baked_paint() == other.baked_paint()
@@ -72,7 +75,7 @@ pub fn StyleLayer::reads_state(self : StyleLayer) -> Bool {
 
 ///|
 /// Whether two layers' lines are extruded alike: the layout tess reads, and
-/// whether distances (dashes) and progress (gradients) are kept.
+/// whether distances (dashes, patterns) and progress (gradients) are kept.
 pub fn StyleLayer::same_line_layout(
   self : StyleLayer,
   other : StyleLayer,
@@ -81,6 +84,13 @@ pub fn StyleLayer::same_line_layout(
   self.cap == other.cap &&
   self.miter_limit == other.miter_limit &&
   self.round_limit == other.round_limit &&
-  (self.dasharray is Some(_)) == (other.dasharray is Some(_)) &&
+  self.line_distances() == other.line_distances() &&
   (self.gradient is Some(_)) == (other.gradient is Some(_))
+}
+
+///|
+/// Whether a line layer's vertices keep their distances along their lines:
+/// for dashes and patterns.
+pub fn StyleLayer::line_distances(self : StyleLayer) -> Bool {
+  self.kind is Line && (self.dasharray is Some(_) || self.pattern is Some(_))
 }

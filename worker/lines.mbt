@@ -41,7 +41,7 @@ fn TileProcessor::line_layer(
           cap~,
           miter_limit=sl.miter_limit,
           round_limit=sl.round_limit,
-          dashed=sl.dasharray is Some(_),
+          dashed=sl.line_distances(),
           progress=gradient,
           extent=layer.extent(),
         )

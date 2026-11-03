@@ -4,6 +4,19 @@ const GSI = { type: "vector", tiles: ["{origin}/bench/fixtures/gsi-bvmap/{z}/{x}
 const TOKYO = { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 };
 const bg = { id: "bg", type: "background", paint: { "background-color": "#f5f3ee" } };
 const style = (layers, sources = { gsi: GSI }) => ({ version: 8, sources, layers: [bg, ...layers] });
+// style/sprite.mjs's sheets: dots 12 px, stripes 16 x 8 (translucent), checker 10, odd 7 x 5.
+const SPRITE = "{origin}/bench/dist/style/sprite";
+const patterned = (layers) => ({
+  ...style(layers),
+  sprite: SPRITE,
+  layers: [{ id: "bg", type: "background", paint: { "background-pattern": "checker" } }, ...layers],
+});
+const PATTERN_LAYERS = [
+  { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-pattern": "dots" } },
+  { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+    paint: { "fill-pattern": ["match", ["get", "ftCode"], 3103, "stripes", "odd"], "fill-opacity": 0.8 } },
+  { id: "structure", type: "fill", source: "gsi", "source-layer": "structurea", paint: { "fill-pattern": "checker", "fill-outline-color": "#333333" } },
+];
 
 // Seeded points around Tokyo, half of them in a few clumps.
 function points(count) {
@@ -177,6 +190,20 @@ export const SCENES = {
     camera: { center: [139.767, 35.678], zoom: 12.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },
+  // Patterns from a sprite (MapLibre's fill_pattern, fill_outline_pattern, background_pattern):
+  // a constant and a per-feature pattern, an outline in the pattern and one in a color, a
+  // translucent background; then the @2x sheet on a 2x screen at a fractional zoom.
+  patterns: {
+    style: patterned(PATTERN_LAYERS),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "patterns-2x": {
+    style: patterned(PATTERN_LAYERS),
+    camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: 0, pitch: 0 },
+    dpr: 2,
+    limits: { mean: 0.05, p99: 1 },
+  },
   // Heatmaps (kernels into a quarter-size float texture, colored by a 256-px ramp of density): the
   // default ramp over GeoJSON points and over a tile's labels, then a step ramp with data-driven
   // radii on a turned and pitched map.
@@ -214,5 +241,45 @@ export const SCENES = {
     ]),
     camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 25, pitch: 50 },
     limits: { mean: 0.05, p99: 1 },
+  },
+  // Line and extrusion patterns (MapLibre's line_pattern and fill_extrusion_pattern): images as
+  // tall as the line, along its distance; walls by their distance and height, roofs by tile units.
+  "line-patterns": {
+    style: {
+      ...style([
+        { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-pattern": "dots", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 4, 17, 12] } },
+        { id: "rail", type: "line", source: "gsi", "source-layer": "railway", paint: { "line-pattern": "stripes", "line-width": 6, "line-opacity": 0.8 } },
+      ]),
+      sprite: SPRITE,
+    },
+    camera: { center: [139.7671, 35.6812], zoom: 16.3, bearing: 0, pitch: 0 },
+    limits: { mean: 0.3, p99: 2 },
+    gap: "pattern edges shift by under a pixel along the line",
+  },
+  "extrusion-patterns": {
+    style: {
+      ...style([
+        { id: "building-3d", type: "fill-extrusion", source: "gsi", "source-layer": "building",
+          paint: {
+            "fill-extrusion-pattern": ["match", ["get", "ftCode"], 3103, "checker", "odd"],
+            "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 40, 12],
+            "fill-extrusion-opacity": 0.9,
+          } },
+      ]),
+      sprite: SPRITE,
+    },
+    camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 },
+    limits: { mean: 0.3, p99: 2 },
+    gap: "pattern edges on walls and roofs shift by under a pixel",
+  },
+
+  // Translucent extrusions: each pixel colored once by its nearest surface, coincident roofs too
+  // (MapLibre's depth pass, then a color pass counted by the stencil).
+  "extrusions-translucent": {
+    style: style([{ id: "building-3d", type: "fill-extrusion", source: "gsi", "source-layer": "building",
+      paint: { "fill-extrusion-color": "#1e8c46", "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 40, 12], "fill-extrusion-opacity": 0.9 } }]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.5, bearing: 30, pitch: 50 },
+    limits: { mean: 0.12, p99: 1 },
   },
 };

@@ -8,12 +8,14 @@ import { decodePng } from "../lib/png.mjs";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
 import { SCENES } from "./scenes.mjs";
+import { writeSprite } from "./sprite.mjs";
 
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 const only = arg("scene");
 const shots = arg("shots");
 await mkdir(path.join(ROOT, "bench/dist/style"), { recursive: true });
 if (shots) await mkdir(shots, { recursive: true });
+await writeSprite();
 const { server, origin } = await serve();
 const gpu = process.platform === "darwin" ? ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] : [];
 const browser = await chromium.launch({ args: gpu });
@@ -23,9 +25,9 @@ try {
     if (only && name !== only) continue;
     const file = `bench/dist/style/${name}.json`;
     await writeFile(path.join(ROOT, file), JSON.stringify(scene.style));
-    const page = await browser.newPage({ viewport: { width: 800, height: 1200 } });
+    const page = await browser.newPage({ viewport: { width: 800, height: 1200 }, deviceScaleFactor: scene.dpr ?? 1 });
     page.on("pageerror", (e) => console.log(name, "pageerror", e.message));
-    await page.goto(`${origin}/bench/query/index.html?style=/${file}&camera=${encodeURIComponent(JSON.stringify(scene.camera))}`);
+    await page.goto(`${origin}/bench/query/index.html?style=/${file}&camera=${encodeURIComponent(JSON.stringify(scene.camera))}&ratio=${scene.dpr ?? 1}`);
     await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
     const shot = (y) => page.screenshot({ clip: { x: 0, y, width: 800, height: 600 } });
     const [pa, pb] = [await shot(0), await shot(600)];

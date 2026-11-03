@@ -45,6 +45,7 @@ import type {
   Handler,
 } from "./types";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
+import { type ImageInput, type StyleImageOptions, canvasPixels, imageOptions, imagePixels } from "./images";
 
 export { LngLatBounds } from "./camera";
 export type {
@@ -180,6 +181,10 @@ export class Map {
   #tracked = new Set<Tracked>();
   #loaded = false;
   #fetching = 0;
+  /** The style images' names (the sprite's and those `addImage` added), and which came from the sprite. */
+  #images = new Set<string>();
+  #spriteImages: string[] = [];
+  #spriteKey = "null";
   #removed = false;
   #options: MapOptions;
   #limits: Limits;
@@ -373,6 +378,7 @@ export class Map {
       return;
     }
     this.#style = next;
+    this.#loadSprite(next.sprite);
     for (const id of this.#loadGeoJSON(geojson)) engine.map_reload_source(this.#engine, id);
     this.#drawn = rest;
     this.#showAttribution();
@@ -591,6 +597,8 @@ export class Map {
       this.#emit("render");
     });
     engine.map_on_idle(map, () => this.#idle());
+    engine.map_on_missing_image(map, (id) => this.#emitMissing(id));
+    this.#loadSprite(style.sprite);
     this.#drawn = resolved;
     this.#showAttribution();
     this.#emit("styledata");
@@ -1078,6 +1086,93 @@ export class Map {
   /** Clamped to the pitch range (0-85 degrees by default). */
   setPitch(pitch: number): this {
     return this.jumpTo({ pitch });
+  }
+
+  /** Loads the images of `sprite` when it changes, replacing the previous sprite's; `idle` waits for them. */
+  #loadSprite(sprite: unknown): void {
+    const key = JSON.stringify(sprite ?? null);
+    if (key === this.#spriteKey) return;
+    this.#spriteKey = key;
+    for (const name of this.#spriteImages.splice(0)) this.removeImage(name);
+    if (sprite == null) return;
+    this.#fetching++;
+    import("./sprite.js")
+      .then((m) => m.loadSprites(sprite, globalThis.devicePixelRatio ?? 1, this.#base, (url, type) => this.#fetch(url, type)))
+      .then((images) => {
+        if (key !== this.#spriteKey || this.#removed) return;
+        for (const { name, pixels, pixelRatio, sdf } of images) {
+          if (this.#images.has(name)) continue;
+          this.#images.add(name);
+          this.#spriteImages.push(name);
+          this.#withEngine((m) => engine.map_add_image(m, name, pixels.width, pixels.height, pixels.data, pixelRatio, sdf));
+        }
+      })
+      .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))))
+      .finally(() => {
+        if (--this.#fetching === 0 && this.#engine && engine.map_is_idle(this.#engine)) this.#idle();
+      });
+  }
+
+  #emitMissing(id: string): void {
+    const event: MapEvent = { type: "styleimagemissing", target: this, id };
+    this.#fire(event, this.#listeners.get("styleimagemissing") ?? []);
+  }
+
+  /**
+   * Adds style image `id` for patterns and icons (MapLibre's `addImage`): ImageData, raw RGBA
+   * (`{width, height, data}`), or an image, bitmap or canvas. An id already used fires `error`.
+   */
+  addImage(id: string, image: ImageInput, options: StyleImageOptions = {}): this {
+    if (this.#images.has(id)) {
+      this.#fail(new Error(`mbmap: an image named "${id}" already exists`));
+      return this;
+    }
+    return this.#setImage(id, image, options);
+  }
+
+  /** Replaces the pixels of style image `id`. */
+  updateImage(id: string, image: ImageInput): this {
+    if (!this.#images.has(id)) {
+      this.#fail(new Error(`mbmap: no image named "${id}"`));
+      return this;
+    }
+    return this.#setImage(id, image, {});
+  }
+
+  #setImage(id: string, image: ImageInput, options: StyleImageOptions): this {
+    let pixels, opts;
+    try {
+      pixels = imagePixels(image, canvasPixels);
+      opts = imageOptions(options);
+    } catch (err) {
+      this.#fail(err instanceof Error ? err : new Error(String(err)));
+      return this;
+    }
+    this.#images.add(id);
+    return this.#withEngine((m) => engine.map_add_image(m, id, pixels.width, pixels.height, pixels.data, opts.pixelRatio, opts.sdf));
+  }
+
+  /** Whether style image `id` exists. */
+  hasImage(id: string): boolean {
+    return this.#images.has(id);
+  }
+
+  /** Removes style image `id`. */
+  removeImage(id: string): this {
+    if (!this.#images.delete(id)) return this;
+    return this.#withEngine((m) => engine.map_remove_image(m, id));
+  }
+
+  /** The style images' names. */
+  listImages(): string[] {
+    return [...this.#images];
+  }
+
+  /** Fetches an image (through `transformRequest`) for `addImage` (MapLibre's `loadImage`). */
+  async loadImage(url: string): Promise<{ data: ImageBitmap }> {
+    const res = await this.#fetch(new URL(url, this.#base).href, "Image");
+    if (!res.ok) throw new Error(`mbmap: image ${url}: HTTP ${res.status}`);
+    return { data: await createImageBitmap(await res.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" }) };
   }
 
   /** Runs `f` on the engine now, or once it exists. */

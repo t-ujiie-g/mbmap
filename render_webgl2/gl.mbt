@@ -21,7 +21,7 @@ type Gl
 /// The WebGL2 context with its two programs; JS null if WebGL2 is unavailable.
 extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|(canvas) => {
-  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: false, premultipliedAlpha: true });
+  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: true, premultipliedAlpha: true });
   #|  if (!gl) return null;
   #|  const compile = (type, src) => {
   #|    const s = gl.createShader(type);
@@ -88,30 +88,79 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // (u_floor.x, or the width slot mixed by u_floor.y when it is negative).
   #|  // Gradients are MapLibre's line_gradient: the color at a_progress (share
   #|  // of the line, row of u_rows) in the ramp u_image, premultiplied.
-  #|  const lineProgram = (dash, grad) => program(
+  #|  // Line patterns are MapLibre's line_pattern: the image as tall as the floor
+  #|  // width across the line, repeating along a_dist (u_size: its CSS size,
+  #|  // u_along: CSS px per tile unit at the integer zoom).
+  #|  const lineProgram = (dash, grad, pat) => program(
   #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
   #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half; out vec4 v_color;" +
   #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
   #|    (grad ? "in vec2 a_progress; uniform float u_rows; out vec2 v_uv; out float v_opacity;" : "") +
+  #|    (pat ? "in float a_dist; uniform vec2 u_floor; out float v_dist; out float v_fw; out float v_opacity;" : "") +
   #|    "void main() { float half_ = at(a_extent, 2) * u_dpr / 2.0 + 0.5;" +
   #|    "  v_pos = a_pos + a_data.xy / 63.0 * half_ * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
   #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" +
   #|      "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
   #|    (grad ? "  v_uv = vec2(a_progress.x, (a_progress.y + 0.5) / u_rows); v_opacity = at(a_opacity, 1);" : "") +
+  #|    (pat ? "  v_dist = a_dist; v_opacity = at(a_opacity, 1);" +
+  #|      "  v_fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
   #|    "  v_half = half_ * u_depth / gl_Position.w; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
   #|    clip + "in vec4 v_color; in vec2 v_edge; in float v_half; out vec4 o;" +
   #|    (dash ? "uniform sampler2D u_image; in vec2 v_tex; in float v_gamma;" : "") +
   #|    (grad ? "uniform sampler2D u_image; in vec2 v_uv; in float v_opacity;" : "") +
+  #|    (pat ? "uniform sampler2D u_image; uniform vec4 u_pattern; uniform vec2 u_texsize; uniform vec2 u_size;" +
+  #|      "uniform float u_along; in float v_dist; in float v_fw; in float v_opacity;" : "") +
   #|    "void main() { if (outside()) discard;" +
-  #|    (grad ? "  vec4 c = texture(u_image, v_uv) * v_opacity;" : "  vec4 c = v_color;") +
+  #|    (grad ? "  vec4 c = texture(u_image, v_uv) * v_opacity;" : pat ?
+  #|      "  float x = mod(v_dist * u_along / u_size.x * u_size.y / v_fw, 1.0); vec2 ts = 1.0 / u_texsize;" +
+  #|      "  vec4 c = texture(u_image, mix(u_pattern.xy * ts - ts, u_pattern.zw * ts + ts, vec2(x, 0.5 - 0.5 * v_edge.x))) * v_opacity;" :
+  #|      "  vec4 c = v_color;") +
   #|    "  o = c * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0);" +
   #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
   #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
-  #|      ...(grad ? ["u_rows", "u_image"] : [])]);
-  #|  const line = lineProgram(false, false), lineDash = lineProgram(true, false), lineGradient = lineProgram(false, true);
+  #|      ...(grad ? ["u_rows", "u_image"] : []), ...(pat ? ["u_floor", "u_image", "u_pattern", "u_texsize", "u_size", "u_along"] : [])]);
+  #|  const line = lineProgram(false, false, false), lineDash = lineProgram(true, false, false);
+  #|  const lineGradient = lineProgram(false, true, false), linePattern = lineProgram(false, false, true);
+  #|  // MapLibre's patterns (fill_pattern, fill_outline_pattern, background_pattern):
+  #|  // tile units in CSS pixels at the integer zoom (u_units), offset by the tile's
+  #|  // pixel position (u_pixel: upper and lower 16 bits) modulo the pattern's size
+  #|  // u_size, so patterns line up across tiles; u_pattern is its atlas rectangle.
+  #|  const patternPos = "uniform vec2 u_size; uniform vec4 u_pixel; uniform float u_units;" +
+  #|    "vec2 patternPos(vec2 pos) { vec2 off = mod(mod(mod(u_pixel.xy, u_size) * 256.0, u_size) * 256.0 + u_pixel.zw, u_size);" +
+  #|    "  return (u_units * pos + off) / u_size; }";
+  #|  // An SDF pattern is the paint color where its alpha passes the edge.
+  #|  const patternColor = "uniform vec4 u_pattern; uniform vec2 u_texsize; uniform sampler2D u_image; uniform bool u_sdf;" +
+  #|    "vec4 patternColor(vec2 v, vec4 color, float opacity) {" +
+  #|    "  vec4 t = texture(u_image, mix(u_pattern.xy / u_texsize, u_pattern.zw / u_texsize, mod(v, 1.0)));" +
+  #|    "  if (!u_sdf) return t * opacity;" +
+  #|    "  float g = max(fwidth(t.a) * 0.5, 1.0 / 255.0 / 16.0); float e = (256.0 - 64.0) / 256.0;" +
+  #|    "  return color * smoothstep(e - g, e + g, t.a); }";
+  #|  const patternUniforms = ["u_size", "u_pixel", "u_units", "u_pattern", "u_texsize", "u_image", "u_sdf"];
+  #|  const fillPattern = program(
+  #|    paint + patternPos + "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_pat; out vec4 v_color; out float v_opacity;" +
+  #|    "void main() { v_pos = a_pos; v_pat = patternPos(a_pos); v_color = color(); v_opacity = at(a_opacity, 1);" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    clip + patternColor + "in vec2 v_pat; in vec4 v_color; in float v_opacity; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; o = patternColor(v_pat, v_color, v_opacity); }",
+  #|    ["u_matrix", "u_clip", "u_t", ...patternUniforms]);
+  #|  const fillOutlinePattern = program(
+  #|    paint + patternPos + "in vec2 a_pos; uniform mat4 u_matrix; uniform vec2 u_world; out vec2 v_pos; out vec2 v_line;" +
+  #|    "out vec2 v_pat; out vec4 v_color; out float v_opacity;" +
+  #|    "void main() { v_pos = a_pos; v_pat = patternPos(a_pos); v_color = color(); v_opacity = at(a_opacity, 1);" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); v_line = (gl_Position.xy / gl_Position.w + 1.0) / 2.0 * u_world; }",
+  #|    clip + patternColor + "in vec2 v_line; in vec2 v_pat; in vec4 v_color; in float v_opacity; out vec4 o;" +
+  #|    "void main() { if (outside()) discard;" +
+  #|    "  o = patternColor(v_pat, v_color, v_opacity) * (1.0 - smoothstep(0.0, 1.0, length(v_line - gl_FragCoord.xy))); }",
+  #|    ["u_matrix", "u_clip", "u_t", "u_world", ...patternUniforms]);
+  #|  const backgroundPattern = program(
+  #|    patternPos + "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pat;" +
+  #|    "void main() { v_pat = patternPos(a_pos); gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    patternColor + "uniform float u_opacity; uniform vec4 u_color; in vec2 v_pat; out vec4 o;" +
+  #|    "void main() { o = patternColor(v_pat, u_color, u_opacity); }",
+  #|    ["u_matrix", "u_opacity", "u_color", ...patternUniforms]);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   #|  // Circles face the viewer and shrink with distance (MapLibre's pitch-alignment
@@ -204,6 +253,32 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
   #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_color"]);
+  #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
+  #|  // walls along their distance (a_normal.w) and height (u_height_factor); its
+  #|  // light differs from the plain one's.
+  #|  const extrusionPattern = program(
+  #|    patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele; uniform mat4 u_matrix;" +
+  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos;" +
+  #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
+  #|    "uniform float u_opacity; uniform float u_height_factor; out vec4 v_light; out vec2 v_pos; out vec2 v_pat;" +
+  #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
+  #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal.xyz);" +
+  #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
+  #|    "  float top = a_ele * u_ground, bottom = u_ground > 0.0 ? top - (base > 0.0 ? 0.0 : 10.0) : 0.0;" +
+  #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
+  #|    "  float t = float(a_normal.x & 1); float elevation = t > 0.0 ? height : base; v_pos = a_pos;" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, elevation * u_scale, 1.0);" +
+  #|    "  bool roof = a_normal.x == 1 && a_normal.y == 0 && a_normal.z == 16384;" +
+  #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w), elevation * u_height_factor));" +
+  #|    "  float directional = clamp(dot(normal / 16383.0, u_lightpos), 0.0, 1.0);" +
+  #|    "  directional = mix(1.0 - u_lightintensity, max(0.5 + u_lightintensity, 1.0), directional);" +
+  #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
+  #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
+  #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity; }",
+  #|    clip + patternColor + "in vec4 v_light; in vec2 v_pat; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; o = patternColor(v_pat, vec4(0.0), 1.0) * v_light; }",
+  #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|     "u_vertical_gradient", "u_opacity", "u_height_factor", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl, `standard` method, over the tile's
   #|  // quad: v_pos runs 0-1 across the slopes texture, u_lat is the tile's north
   #|  // and south latitude, u_light its azimuth (radians) and exaggeration.
@@ -313,7 +388,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, line, lineDash, lineGradient, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -460,12 +535,13 @@ extern "js" fn gl_bind_paint(
 /// `clip` is (min x, min y, max x, max y) in tile units.
 extern "js" fn gl_draw_fill(
   gl : Gl,
+  program : String,
   mesh : Mesh,
   matrix : FixedArray[Double],
   clip : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip) => {
-  #|  const gl = c.gl, p = c.fill;
+  #|(c, name, m, matrix, clip) => {
+  #|  const gl = c.gl, p = c[name];
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
@@ -493,12 +569,13 @@ extern "js" fn gl_upload_outline(
 /// then gives the vertex array back its triangles.
 extern "js" fn gl_draw_outline(
   gl : Gl,
+  program : String,
   mesh : Mesh,
   matrix : FixedArray[Double],
   clip : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip) => {
-  #|  const gl = c.gl, p = c.fillOutline;
+  #|(c, name, m, matrix, clip) => {
+  #|  const gl = c.gl, p = c[name];
   #|  if (!m.outline) return;
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);

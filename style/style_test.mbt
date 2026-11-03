@@ -640,9 +640,6 @@ test "fill-extrusion layers read heights, the gradient and the light" {
   for
     c in [
       (
-        "\"paint\": {\"fill-extrusion-pattern\": \"x\"}}]}", "Unsupported", "layers[0].paint.fill-extrusion-pattern",
-      ),
-      (
         "\"paint\": {\"fill-extrusion-translate\": [1, 0]}}]}", "Unsupported", "layers[0].paint.fill-extrusion-translate",
       ),
       (

@@ -69,6 +69,7 @@ pub struct StyleLayer {
   outline_color : Expr?
   dasharray : Expr?
   gradient : Expr?
+  pattern : Expr?
 }
 
 ///|
@@ -384,6 +385,11 @@ fn parse_layer(
       parse_dasharray(paint, ppath)
     } else {
       None
+    },
+    pattern: match (kind, paint.get("\{prefix}-pattern")) {
+      (Fill | Background | Line | FillExtrusion, Some(p)) =>
+        Some(compile(p, expected=StringType, path="\{ppath}.\{prefix}-pattern"))
+      _ => None
     },
     gradient: match paint.get("line-gradient") {
       Some(g) if kind is Line => {
