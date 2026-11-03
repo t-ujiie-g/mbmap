@@ -66,8 +66,8 @@ export interface Source {
 
 /**
  * Defaults: `center`, `zoom`, `bearing`, `pitch` 0; `workerCount` 0 (half the hardware threads, 1 to 4); `fontFamily` "sans-serif";
- * zoom 0-22 and pitch 0-85; `attributionControl`, `interactive` and each handler true. `workerUrl`, `wasmUrl` and the GeoJSON
- * worker's are files next to this module; `bounds` replaces `center` and `zoom`; the style URL is fetched without credentials.
+ * zoom 0-22, pitch 0-85; `attributionControl`, `interactive`, handlers true; `strict` false (else a `warning` names what is left out).
+ * `workerUrl`, `wasmUrl` and the GeoJSON worker's are next to this module; `bounds` replaces `center` and `zoom` (README: the rest).
  */
 export interface MapOptions {
   container: HTMLElement | string;
@@ -82,6 +82,7 @@ export interface MapOptions {
   geojsonWorkerUrl?: string | URL;
   geojsonWasmUrl?: string | URL;
   fontFamily?: string;
+  strict?: boolean;
   attributionControl?: boolean;
   minZoom?: number;
   maxZoom?: number;
@@ -123,6 +124,7 @@ export type MapEventType =
   | "render"
   | "idle"
   | "error"
+  | "warning"
   | "movestart"
   | "move"
   | "moveend"
@@ -139,7 +141,7 @@ export type MapEventType =
 /**
  * `load` fires at the first drawn view, `render` after each frame, `idle` when the map settles;
  * camera events as MapLibre's (`originalEvent`: a gesture's DOM event). Mouse events carry the `point`
- * (CSS pixels), its `lngLat` and their `features`; `styleimagemissing` the `id` of a missing image.
+ * (CSS pixels), its `lngLat` and their `features`; `styleimagemissing` the `id` of a missing image; `warning` the `warnings`.
  */
 export interface MapEvent {
   type: MapEventType;
@@ -150,6 +152,14 @@ export interface MapEvent {
   lngLat?: LngLat;
   features?: MapGeoJSONFeature[];
   id?: string;
+  warnings?: StyleWarning[];
+}
+
+/** Something the style uses that is not drawn: where (`layers[3].paint.line-blur`), its layer's id, and why. */
+export interface StyleWarning {
+  path: string;
+  layer?: string;
+  message: string;
 }
 
 export type MapEventListener = (event: MapEvent) => void;

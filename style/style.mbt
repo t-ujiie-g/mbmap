@@ -85,6 +85,7 @@ pub struct Style {
   terrain : Terrain?
   sky : Sky?
   light : Light
+  warnings : Array[StyleError]
 }
 
 ///|
@@ -106,24 +107,35 @@ pub fn Style::source(self : Style, id : String) -> Source? {
 }
 
 ///|
-/// Parses a style. Unsupported values (expressions or layer properties
-/// outside the supported subset) are an error rather than being ignored.
-pub fn Style::parse(text : StringView) -> Style raise StyleError {
+/// Parses a style. Strict, anything unsupported raises; otherwise it is left out
+/// (a property defaults, an undrawable layer or source is dropped) and listed in
+/// `warnings`. Invalid values raise either way.
+pub fn Style::parse(
+  text : StringView,
+  strict~ : Bool = true,
+) -> Style raise StyleError {
   let json = @json.parse(text, max_nesting_depth=64) catch {
     e => raise Invalid(path="", "not JSON: \{e}")
   }
-  Style::from_json(json)
+  Style::from_json(json, strict~)
 }
 
 ///|
 /// `Style::parse` for an already parsed document.
-pub fn Style::from_json(json : Json) -> Style raise StyleError {
+pub fn Style::from_json(
+  json : Json,
+  strict~ : Bool = true,
+) -> Style raise StyleError {
   guard json is Object(root) else { raise Invalid(path="", "not an object") }
+  let issues = { strict, warnings: [], }
   let sources = []
+  let dropped = []
   if root.get("sources") is Some(Object(map)) {
     for id, s in map {
-      if parse_source(id, s) is Some(source) {
-        sources.push(source)
+      let before = issues.warnings.length()
+      match leniently(s, "sources.\{id}", issues, s => parse_source(id, s)) {
+        Some(source) => sources.push(source)
+        None => if issues.warnings.length() > before { dropped.push(id) }
       }
     }
   }
@@ -144,7 +156,15 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
         }
       _ => -1
     }
-    if parse_layer("layers[\{i}]", l, filter_id) is Some(layer) {
+    let path = "layers[\{i}]"
+    if l is Object(o) &&
+      o.get("source") is Some(String(source)) &&
+      dropped.contains(source) {
+      issues.report(Unsupported(path~, "its source \{source} is not drawn"))
+      continue
+    }
+    if leniently(l, path, issues, l => parse_layer(path, l, filter_id))
+      is Some(layer) {
       layers.push(layer)
     }
   }
@@ -171,7 +191,14 @@ pub fn Style::from_json(json : Json) -> Style raise StyleError {
     layers,
     terrain,
     sky: parse_sky(root.get("sky")),
-    light: parse_light(root.get("light")),
+    light: parse_light(root.get("light")) catch {
+      Unsupported(_) as e => {
+        issues.report(e)
+        parse_light(None)
+      }
+      e => raise e
+    },
+    warnings: issues.warnings,
   }
 }
 
@@ -237,7 +264,7 @@ fn parse_layer(
     "heatmap" => Heatmap
     "custom" => Custom
     "" => raise Invalid(path="\{path}.type", "missing")
-    _ => return None
+    t => raise Unsupported(path="\{path}.type", "layer type \{t}")
   }
   let paint = object_at(l, "paint", path)
   let layout = object_at(l, "layout", path)

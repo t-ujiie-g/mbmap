@@ -1,0 +1,91 @@
+{
+  "styles": [
+    "osm-bright",
+    "positron",
+    "dark-matter",
+    "maptiler-basic",
+    "ofm-liberty",
+    "ofm-bright",
+    "ofm-positron",
+    "demotiles"
+  ],
+  "rows": [
+    {
+      "kind": "paint.text-halo-blur: not drawn yet",
+      "total": 2,
+      "styles": "demotiles 2"
+    },
+    {
+      "kind": "layout.text-font: not drawn yet",
+      "total": 2,
+      "styles": "demotiles 2"
+    },
+    {
+      "kind": "paint.line-blur: not drawn yet",
+      "total": 1,
+      "styles": "demotiles 1"
+    },
+    {
+      "kind": "layout.text-transform: not drawn yet",
+      "total": 1,
+      "styles": "demotiles 1"
+    }
+  ],
+  "results": {
+    "osm-bright": {
+      "error": "mbmap: style: layers[2].paint.fill-color[4]: not a color: hsla(30, 19%, 90%, 0.4)"
+    },
+    "positron": {
+      "error": "mbmap: style: layers[3].paint.fill-color: not a color: hsl(0,0%,98%)"
+    },
+    "dark-matter": {
+      "error": "mbmap: style: layers[3].paint.fill-color: not a color: hsl(0, 1%, 2%)"
+    },
+    "maptiler-basic": {
+      "error": "mbmap: style: layers[0].paint.background-color: not a color: hsl(47, 26%, 88%)"
+    },
+    "ofm-liberty": {
+      "error": "mbmap: style: layers[4].paint.fill-color[4]: not a color: hsla(0,3%,85%,0.84)"
+    },
+    "ofm-bright": {
+      "error": "mbmap: style: layers[2].paint.fill-color[4]: not a color: hsla(30,19%,90%,0.4)"
+    },
+    "ofm-positron": {
+      "error": "mbmap: style: layers[3].paint.fill-color: not a color: hsl(0,0%,98%)"
+    },
+    "demotiles": {
+      "warnings": [
+        {
+          "path": "layers[1].paint.line-blur",
+          "layer": "coastline",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[5].paint.text-halo-blur",
+          "layer": "geolines-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[5].layout.text-font",
+          "layer": "geolines-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[6].paint.text-halo-blur",
+          "layer": "countries-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[6].layout.text-font",
+          "layer": "countries-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[6].layout.text-transform",
+          "layer": "countries-label",
+          "message": "not drawn yet"
+        }
+      ]
+    }
+  }
+}

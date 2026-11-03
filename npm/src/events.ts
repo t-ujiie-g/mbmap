@@ -1,6 +1,6 @@
 // The map's event listeners: its own events, and mouse events on layers' features.
 import type { Map } from "./index";
-import type { MapEvent, MapEventListener, MapEventType, MapGeoJSONFeature, MapMouseEventType } from "./types";
+import type { MapEvent, MapEventListener, MapEventType, MapGeoJSONFeature, MapMouseEventType, StyleWarning } from "./types";
 
 type Point = { x: number; y: number };
 
@@ -73,6 +73,10 @@ export class Events {
     if (originalEvent) event.originalEvent = originalEvent;
     if (id !== undefined) event.id = id;
     this.#fire(event, this.#listeners.get(type) ?? []);
+  }
+
+  warn(warnings: StyleWarning[]): void {
+    this.#fire({ type: "warning", target: this.#target, warnings }, this.#listeners.get("warning") ?? []);
   }
 
   #fire(event: MapEvent, listeners: Iterable<MapEventListener>): void {

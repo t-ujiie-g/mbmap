@@ -45,6 +45,7 @@
     "geodesic:golden": "npm run build:moon && node geodesic/golden.mjs",
     "draw:setdata": "npm --prefix ../npm run build && node draw/run.mjs",
     "style:golden": "npm --prefix ../npm run build && node style/golden.mjs",
+    "style:compat": "npm --prefix ../npm run build && node style/compat.mjs",
     "labels:golden": "npm --prefix ../npm run build && node labels/golden.mjs",
     "expression:golden": "cd .. && moon build bench/expr --release --target js && cd bench && node style/expressions.mjs",
     "draw:golden": "npm --prefix ../npm run build && node draw/golden.mjs",
