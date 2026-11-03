@@ -114,3 +114,98 @@ fn table_tiler(
   current_tiler.val = Some(@tiler.Tiler::new(table, options~, trig~))
   table.length()
 }
+
+///|
+/// The table and cluster index the geojson_cluster* exports work on.
+let current_clusters : Ref[(@geom.Table, @tiler.ClusterIndex)?] = Ref(None)
+
+///|
+/// Reads GeoJSON and clusters its points with geojson-vt's cluster options
+/// (`radius` in units of an `extent`-wide tile, `wrap_buffer` a share of a
+/// tile); returns the feature count, or -1 if the GeoJSON is malformed.
+fn build_clusters(
+  bytes : BytesView,
+  max_zoom : Int32,
+  min_points : Int32,
+  radius : Double,
+  extent : Int32,
+  wrap_buffer : Double,
+  wrap : Bool,
+  trig : @tiler.Trig,
+  slow_number~ : (Int32, Int32) -> Double = (s, e) => {
+    @core.strconv_number(bytes[s:e])
+  },
+) -> Int32 {
+  let table = @formats.read_geojson(bytes, slow_number~) catch {
+    _ => return -1
+  }
+  let options : @tiler.ClusterOptions = {
+    ..@tiler.ClusterOptions::default(),
+    max_zoom,
+    min_points,
+    radius,
+    extent,
+    wrap,
+  }
+  current_clusters.val = Some(
+    (table, @tiler.ClusterIndex::new(table, options~, wrap_buffer~, trig~)),
+  )
+  table.length()
+}
+
+///|
+/// An answer of the current cluster index, encoded: `op` 0 is tile
+/// (a, b, c) as a columnar tile, 1 the children of cluster a, 2 its leaves
+/// (limit b, offset c) as cluster features. Empty for None.
+#export_name("geojson_cluster")
+pub fn geojson_cluster(op : Int32, a : Int32, b : Int32, c : Int32) -> Bytes {
+  guard current_clusters.val is Some((table, index)) else { return b"" }
+  match op {
+    0 =>
+      match index.tile(a, b, c) {
+        Some(fs) => @tiler.encode_cluster_tile(fs, table)
+        None => b""
+      }
+    1 =>
+      match index.children(a) {
+        Some(fs) => @tiler.encode_cluster_features(fs, table)
+        None => b""
+      }
+    _ =>
+      match index.leaves(a, limit=b, offset=c) {
+        Some(fs) => @tiler.encode_cluster_features(fs, table)
+        None => b""
+      }
+  }
+}
+
+///|
+/// FNV-1a over the bytes of `geojson_cluster(op, a, b, c)` (0 for none).
+#export_name("geojson_cluster_hash")
+pub fn geojson_cluster_hash(
+  op : Int32,
+  a : Int32,
+  b : Int32,
+  c : Int32,
+) -> Int32 {
+  let bytes = geojson_cluster(op, a, b, c)
+  let mut h = 0x811c9dc5
+  for v in bytes {
+    h = (h ^ v.to_int()) * 0x01000193
+  }
+  if bytes.length() == 0 {
+    0
+  } else {
+    h
+  }
+}
+
+///|
+/// The expansion zoom of cluster `id` in the current cluster index.
+#export_name("geojson_cluster_expansion")
+pub fn geojson_cluster_expansion(id : Int32) -> Int32 {
+  match current_clusters.val {
+    Some((_, index)) => index.expansion_zoom(id)
+    None => 0
+  }
+}

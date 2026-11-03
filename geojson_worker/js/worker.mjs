@@ -2,6 +2,7 @@
 // docs/FORMATS.md ("GeoJSON worker messages").
 
 import { hostNumber } from "../../wasmio/js/host.mjs";
+import { readClusterFeatures } from "./features.mjs";
 
 const decoder = new TextDecoder();
 let wasm = null;
@@ -14,10 +15,15 @@ function input(bytes) {
   new Uint8Array(wasm.memory.buffer, addr, bytes.length).set(bytes);
 }
 
-async function load({ source, url, bytes, maxzoom, buffer, tolerance }, previous) {
+const isInt32 = (v) => Number.isInteger(v) && v >= -(2 ** 31) && v < 2 ** 31;
+
+async function load({ source, url, bytes, maxzoom, buffer, tolerance, cluster }, previous) {
   await ready;
   // A source loaded again keeps the order of its loads.
   await previous?.catch(() => {});
+  if (cluster && !(isInt32(cluster.maxZoom) && typeof cluster.radius === "number" && cluster.radius >= 0 && cluster.radius < Infinity && isInt32(cluster.minPoints))) {
+    throw new Error("malformed cluster options");
+  }
   let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
   if (!data) {
     if (typeof url !== "string" || !/^https?:/.test(url)) throw new Error("data must be an http(s) URL");
@@ -26,7 +32,8 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance }, previous
     data = new Uint8Array(await res.arrayBuffer());
   }
   input(data);
-  const n = wasm.load(source, maxzoom, buffer, tolerance);
+  const c = cluster ?? { maxZoom: 0, radius: 0, minPoints: 0 };
+  const n = wasm.load(source, maxzoom, buffer, tolerance, cluster ? 1 : 0, c.maxZoom, c.radius, c.minPoints);
   if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), -n)));
   return n;
 }
@@ -38,6 +45,22 @@ function tile({ id, source, z, x, y }) {
   const bytes = new Uint8Array(wasm.memory.buffer, wasm.output_addr(), n).slice().buffer;
   postMessage({ type: "tile", id, bytes }, [bytes]);
 }
+
+// The answer to a cluster query: null for a source that does not cluster.
+function cluster({ source, op, cluster: id, limit, offset }) {
+  const clustered = wasm.clustered(source);
+  if (clustered < 0) throw new Error("source not loaded");
+  if (clustered === 0) return null;
+  if (op === "expansion") return wasm.cluster_expansion_zoom(source, id);
+  const n = op === "children" ? wasm.cluster_children(source, id) : wasm.cluster_leaves(source, id, limit, offset);
+  if (n === -1) throw new Error(`No cluster with the specified id: ${id}`);
+  if (n < 0) throw new Error("out of memory");
+  return readClusterFeatures(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), n));
+}
+
+const validCluster = (msg) =>
+  Number.isInteger(msg.id) && ["expansion", "children", "leaves"].includes(msg.op) &&
+  isInt32(msg.cluster) && (msg.op !== "leaves" || (isInt32(msg.limit) && isInt32(msg.offset)));
 
 onmessage = (e) => {
   const msg = e.data;
@@ -56,6 +79,12 @@ onmessage = (e) => {
     const done = loads.get(msg.source);
     loads.delete(msg.source);
     done?.catch(() => {}).then(() => wasm.unload(msg.source));
+  } else if (msg?.type === "cluster" && validCluster(msg)) {
+    const done = loads.get(msg.source) ?? Promise.reject(new Error("source not loaded"));
+    done.then(() => cluster(msg)).then(
+      (result) => postMessage({ type: "cluster", id: msg.id, result }),
+      (err) => postMessage({ type: "cluster", id: msg.id, error: String(err?.message ?? err) }),
+    );
   } else if (msg?.type === "tile" && Number.isInteger(msg.id)) {
     const none = () => postMessage({ type: "tile", id: msg.id, bytes: null });
     const done = loads.get(msg.source);

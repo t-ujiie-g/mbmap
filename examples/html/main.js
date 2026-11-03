@@ -9,6 +9,7 @@ import { mountCoordinates } from "../shared/coordinates.js";
 import { mountDraw } from "../shared/draw.js";
 import { identifyWhenIdle, mountMeasurement } from "../shared/measure.js";
 import { hoverPlaces, mountIdentify } from "../shared/pick.js";
+import { zoomIntoClusters } from "../shared/stations.js";
 import { mountProfile } from "../shared/profile.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
@@ -33,6 +34,7 @@ identifyWhenIdle(map, mountIdentify(map), () => measurement.state.mode || draw.s
 mountProfile(map, measurement);
 mountCoordinates(map, document.body);
 hoverPlaces(map);
+zoomIntoClusters(map);
 pinDestinations(map, document.body);
 mountControls(map, document.body);
 const panel = panelControllers(map, () => mode, () => places);

@@ -18,7 +18,7 @@ import {
   toLngLat,
   toPoint,
 } from "./camera";
-import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
+import type { ClusterQuery, GeoJSONSource, GeoJSONTiles } from "./geojson";
 import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
@@ -135,11 +135,10 @@ function splitGeoJSON(style: StyleSpecification): [GeoJSONSource[], StyleSpecifi
   const found: GeoJSONSource[] = [];
   const sources = Object.fromEntries(
     Object.entries(style.sources ?? {}).map(([id, s]) => {
-      const src = s as { type?: unknown; data?: unknown; maxzoom?: unknown; buffer?: unknown; tolerance?: unknown };
-      if (src?.type !== "geojson") return [id, s];
-      const num = (v: unknown, d: number) => (typeof v === "number" ? v : d);
-      found.push({ id, data: src.data, maxzoom: num(src.maxzoom, 18), buffer: num(src.buffer, 128), tolerance: num(src.tolerance, 0.375) });
-      return [id, { ...src, data: null }];
+      const spec = s as Record<string, unknown>;
+      if (spec?.type !== "geojson") return [id, s];
+      found.push({ id, spec });
+      return [id, { ...spec, data: null }];
     }),
   );
   return [found, { ...style, sources }];
@@ -442,12 +441,26 @@ export class Map {
     return this.#edit((s) => edit.removeSource(s, id));
   }
 
-  /** Source `id`; a GeoJSON one has `setData` to replace its data (an object or a URL). */
+  /** Source `id`; a GeoJSON one has `setData` to replace its data (an object or a URL) and the cluster queries. */
   getSource(id: string): Source | undefined {
     const s = this.#style?.sources[id] as { type?: unknown } | undefined;
     if (!s || typeof s.type !== "string") return undefined;
     const source: Source = { id, type: s.type };
-    if (s.type === "geojson") source.setData = (data) => void this.#edit((st) => edit.setSourceData(st, id, data));
+    if (s.type === "geojson") {
+      const ask =
+        (op: ClusterQuery["op"]) =>
+        (cluster: number, limit?: number, offset?: number): Promise<never> =>
+          (this.#geojsonLoading ?? Promise.resolve(null)).then((t) => {
+            if (!t) throw new Error("mbmap: GeoJSON sources did not load");
+            return t.cluster(id, { op, cluster, limit, offset } as ClusterQuery) as Promise<never>;
+          });
+      Object.assign(source, {
+        setData: (data: unknown) => void this.#edit((st) => edit.setSourceData(st, id, data)),
+        getClusterExpansionZoom: ask("expansion"),
+        getClusterChildren: ask("children"),
+        getClusterLeaves: ask("leaves"),
+      });
+    }
     return source;
   }
 

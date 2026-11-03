@@ -7,11 +7,45 @@ import {
 }
 
 // Values
+pub fn abbreviated_count(Int32) -> @geom.Prop
+
+pub fn encode_cluster_features(Array[ClusterFeature], @geom.Table) -> Bytes
+
+pub fn encode_cluster_tile(Array[ClusterFeature], @geom.Table) -> Bytes
+
 pub fn encode_tile(TileData, @geom.Table) -> Bytes
 
 // Errors
 
 // Types and methods
+pub struct ClusterFeature {
+  x : Double
+  y : Double
+  row : Int32
+  cluster_id : Int32
+  count : Int32
+}
+
+pub struct ClusterIndex {
+  // private fields
+}
+pub fn ClusterIndex::children(Self, Int32) -> Array[ClusterFeature]?
+pub fn ClusterIndex::expansion_zoom(Self, Int32) -> Int32
+pub fn ClusterIndex::leaves(Self, Int32, limit? : Int32, offset? : Int32) -> Array[ClusterFeature]?
+pub fn ClusterIndex::new(@geom.Table, options? : ClusterOptions, wrap_buffer? : Double, trig? : @core.Trig) -> Self
+pub fn ClusterIndex::tile(Self, Int32, Int32, Int32) -> Array[ClusterFeature]?
+
+pub(all) struct ClusterOptions {
+  min_zoom : Int32
+  max_zoom : Int32
+  min_points : Int32
+  radius : Double
+  extent : Int32
+  node_size : Int32
+  wrap : Bool
+}
+pub fn ClusterOptions::default() -> Self
+
 pub struct TileData {
   types : Array[Int32]
   rows : Array[Int32]

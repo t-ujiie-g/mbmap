@@ -103,6 +103,32 @@ pub fn geojson_tiler_mem(
 }
 
 ///|
+/// `build_clusters` on GeoJSON at `[addr, addr + len)`; `wrap` is 0 or 1.
+#export_name("geojson_clusters_mem")
+pub fn geojson_clusters_mem(
+  addr : Int32,
+  len : Int32,
+  max_zoom : Int32,
+  min_points : Int32,
+  radius : Double,
+  extent : Int32,
+  wrap_buffer : Double,
+  wrap : Int32,
+) -> Int32 {
+  build_clusters(
+    bytes_from_mem(addr, len)[:],
+    max_zoom,
+    min_points,
+    radius,
+    extent,
+    wrap_buffer,
+    wrap != 0,
+    host_trig(),
+    slow_number=host_slow_number(addr),
+  )
+}
+
+///|
 /// `read_only` on GeoJSON at `[addr, addr + len)`.
 #export_name("geojson_read_mem")
 pub fn geojson_read_mem(addr : Int32, len : Int32) -> Int32 {

@@ -39,6 +39,50 @@
   - tess（閉じた輪、閉じていない輪、穴）、ワーカーのパック（輪郭の索引）。
   - pack test 9/9、`export:golden`、`style:golden` の 7 つの場面。
 
+## Phase 15.10：GeoJSON のクラスタ（2026-11-03）
+
+状態：**完了**（`clusterProperties` を除く）。
+
+### できたこと
+
+- **`tiler` の `ClusterIndex`**：@maplibre/geojson-vt 6.3.0 の `cluster-tile-index.ts`（MapLibre 6.16 が使うもの。supercluster ではない）と、それが使う kdbush 4.1.0 を移植した（`tiler/cluster.mbt`、`tiler/kdbush.mbt`）。
+  - 点の集め方も geojson-vt と同じ：変換と `wrap` を通す（MapLibre の buffer 128px では、経度の端から 1/4 以内の点が反対側にも複製され、クラスタの id の数え方に入る）。MultiPoint は位置ごとに 1 点。
+  - kdbush の選択（Floyd-Rivest）の `log` と `exp`、緯度経度に戻す `atan` と `exp` は `@core.Trig` を通す。wasm-gc ではホストの `Math` を使い、JS とビットまで一致する。
+  - 出力：タイル（列形式のタイル。クラスタの id と `cluster`、`cluster_id`、`point_count`、`point_count_abbreviated`）、`expansion_zoom`、`children`、`leaves`（FORMATS.md の「Cluster features」）。
+- **スタイル**：`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints` を受け付ける（型と負の値を検査）。`clusterProperties` は、式の map/reduce（並列 1 の 15.2）が要るので、`cluster: true` のときは Unsupported のまま（パス付き）。
+- **GeoJSON ワーカー**：`load` にクラスタの設定を足し、`{type: "cluster"}` のメッセージで 3 つの問い合わせに答える。メッセージの形は検査する（id、op、int32 の範囲）。
+- **facade**：`map.getSource(id)` が、MapLibre と同じ `getClusterExpansionZoom`、`getClusterChildren`、`getClusterLeaves` を持つ（Promise）。設定の導き方（`clusterMaxZoom` が 0 か未指定なら `maxzoom - 1`、`clusterMinPoints` は 2 以上、`clusterRadius` の既定 50）も MapLibre と同じ。導出と引数の検査は遅延ロードの `geojson.ts` に置いた。クラスタにしていないソースでは null、知らない id は reject。
+- **example**：3 つとも、山手線の 30 駅をクラスタにしたソースを足した。円の大きさは駅の数、数をラベルにし、まとまりをクリックすると分かれるズームへ移る。
+
+### 確認
+
+- **`npm run cluster:golden`**（新規）：geojson-vt 6.3.0 の `ClusterTileIndex` と比べて **差 0**。
+  - データ：GSI の点（記号・注記・標高点）、世界の MultiPoint、乱数の点 2 万（塊、±180 越え、極の近く、同じ位置）。
+  - 設定：MapLibre の既定、geojson-vt の既定、半径を広げ minPoints 5、wrap なし。
+  - 5280 タイル（16.9 万地物。id と属性を含む）、1.4 万クラスタの展開ズーム・子・葉（既定、`limit` と `offset`、Infinity）と、存在しない id。計 7.3 万の問い合わせ。js は全体を、wasm-gc は js とのハッシュで比べた。
+  - 半径を 1% ずらすと 5.4 万件が食い違うことも確かめた（テストが空振りしていない）。
+- `npm run geojson:golden` は差 0 のまま（5377 タイル）。
+- **`npm run style:golden`**：新しい場面 `clusters`（3000 点、ズーム 11、`point_count` で円の色と大きさを `step`）は平均 0.061、p99 1。目では区別できない（mbmap のタイルは 4096 単位、MapLibre は 8192 単位なので、位置の丸めが 1/8 px ずれる）。ほかの場面は変わらない。
+- MoonBit のテスト：クラスタの id と展開ズーム、子と葉（limit、offset、負の limit）、知らない id、`min_points` と `max_zoom`、MultiPoint、wrap と wrap なし、3000 点で各点がちょうど 1 つに入ること、`point_count_abbreviated`、2 つの符号化。スタイルの検査。
+- pack test：3 つの example で、ズーム 11 のクラスタが 30 駅を持つこと、3 つの問い合わせ、不正な引数の reject、クラスタでないソースの null、クリックで展開ズームへ移ること（`bench/npm/checks/clusters.mjs`）。
+
+### サイズ
+
+| 入口 | main | この段 |
+|---|---|---|
+| 表示（メイン） | 73.5KB（73494 バイト） | 73.7KB（73676 バイト） |
+| `geojson.js` | 0.9KB（944 バイト） | 1.4KB（1427 バイト。ソースの設定の導出を index.ts から移した） |
+| GeoJSON ワーカー | 20.3KB（20303 バイト） | 26.5KB（26537 バイト。予算 30KB） |
+| 表示ワーカー | 69.4KB（69441 バイト） | 69.6KB（69567 バイト。スタイルの検査） |
+
+- GeoJSON ワーカーの +6.2KB（wasm だけなら gzip -9 で 19.3 → 24.7KB）は、ほぼクラスタのコードそのもの。外して測ると、子と葉の問い合わせとその符号化が 0.9KB、`point_count_abbreviated` の文字列化が 0.1KB。残りは木の構築、タイル、kdbush。
+
+### 残したもの
+
+- `clusterProperties`（map/reduce の式。15.2 の式がそろってから）。
+- `setClusterOptions`、`getClusterOptions`、`generateId`（GeoJSON ソースの `generateId` そのものが未対応）。
+- 速さは測っていない（クラスタのベンチはまだない）。
+
 ## Phase 15.1b：データで変わる paint を頂点属性に（2026-11-03）
 
 状態：**完了**。

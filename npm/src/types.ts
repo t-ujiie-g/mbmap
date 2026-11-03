@@ -44,11 +44,18 @@ export type RequestTransformFunction = (
   resourceType: ResourceType,
 ) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
 
-/** What `getSource` gives: a GeoJSON source also takes new data. */
+/**
+ * What `getSource` gives. A GeoJSON source also takes new data and answers about its clusters as MapLibre's does (null
+ * if it does not cluster; children and leaves reject an unknown id): the zoom a cluster breaks apart at, its clusters and points one zoom
+ * down, and its points (`limit` 10 by default, Infinity for all, after `offset`).
+ */
 export interface Source {
   id: string;
   type: string;
   setData?(data: unknown): void;
+  getClusterExpansionZoom?(clusterId: number): Promise<number | null>;
+  getClusterChildren?(clusterId: number): Promise<GeoJSONFeature[] | null>;
+  getClusterLeaves?(clusterId: number, limit?: number, offset?: number): Promise<GeoJSONFeature[] | null>;
 }
 
 /**
