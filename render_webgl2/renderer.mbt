@@ -282,7 +282,7 @@ pub fn Renderer::show(
   stride : Int32,
   shown : FixedArray[Bool],
   variant : FixedArray[Int32],
-  col~ : Int32 = stride - 3,
+  col~ : Int32,
 ) -> Unit {
   gl_show(self.gl, mesh, labels, stride, col, shown, variant)
 }
@@ -296,7 +296,7 @@ pub fn Renderer::set_shifts(
   labels : JsBuffer,
   stride : Int32,
   shifts : FixedArray[Double],
-  col~ : Int32 = stride - 3,
+  col~ : Int32,
 ) -> Unit {
   gl_set_shifts(self.gl, mesh, labels, stride, col, shifts)
 }
@@ -350,7 +350,7 @@ pub fn Renderer::set_heights(
   labels : JsBuffer,
   stride : Int32,
   heights : FixedArray[Double],
-  col~ : Int32 = stride - 3,
+  col~ : Int32,
 ) -> Unit {
   gl_set_heights(self.gl, mesh, labels, stride, col, heights)
 }

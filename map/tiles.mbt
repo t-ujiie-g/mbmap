@@ -43,8 +43,7 @@ fn Map::request_tile(
 ) -> Unit {
   let request = self.next_request
   self.next_request += 1
-  let worker = self.next_worker
-  self.next_worker = (worker + 1) % self.workers.length()
+  let worker = self.pick_worker()
   self.requests.set(request, (src.index, id.key()))
   src.tiles.set(id.key(), {
     id,
@@ -52,6 +51,10 @@ fn Map::request_tile(
     last_used: self.frame_count,
     kept: (-1, -1),
   })
+  guard worker >= 0 else {
+    self.finish(request, None)
+    return
+  }
   if src.source.kind is (Vector | RasterDem | Raster) {
     let tiles = src.source.tiles
     post_tile(
@@ -91,6 +94,62 @@ fn Map::request_tile(
     }
   })
 }
+
+///|
+/// The next worker in turn that has not failed; -1 if all have.
+fn Map::pick_worker(self : Map) -> Int32 {
+  let n = self.workers.length()
+  for _ in 0..<n {
+    let w = self.next_worker
+    self.next_worker = (w + 1) % n
+    if !self.failed_workers[w] {
+      return w
+    }
+  }
+  -1
+}
+
+///|
+/// Worker `w` failed: it gets no more work, and what it was asked and has not
+/// answered fails (tiles, queries, feature ranges), so the map can settle.
+fn Map::worker_failed(self : Map, w : Int32, message : String) -> Unit {
+  if self.destroyed || self.failed_workers[w] {
+    return
+  }
+  self.failed_workers[w] = true
+  terminate(self.workers[w])
+  console_warn("mbmap worker: \{message}")
+  let answers = []
+  for request, at in self.requests {
+    if self.source_tiles(at.0) is Some(src) &&
+      src.tiles.get(at.1) is Some(e) &&
+      e.state is Loading(worker~, ..) &&
+      worker == w {
+      answers.push(failed_answer("tile-error", request, message))
+    }
+  }
+  for part, x in self.waiting {
+    match x {
+      Part(p) if p.worker == w =>
+        answers.push(failed_answer("query", part, message))
+      Ranges(p) if p.worker == w =>
+        answers.push(failed_answer("ranges", part, message))
+      _ => ()
+    }
+  }
+  for a in answers {
+    self.on_message(a)
+  }
+}
+
+///|
+/// An answer of `kind` to request `id` with nothing in it.
+extern "js" fn failed_answer(
+  kind : String,
+  id : Int32,
+  message : String,
+) -> JsValue =
+  #|(type, id, message) => ({ type, id, message, hits: [], entries: [] })
 
 ///|
 fn Map::source_tiles(self : Map, index : Int32) -> SourceTiles? {

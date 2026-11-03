@@ -2,6 +2,7 @@
 // controllers over them), checked alike in all three examples by npm/pack-test.mjs.
 import path from "node:path";
 import { ROOT } from "../../lib/root.mjs";
+import { awaitAfter } from "./step.mjs";
 
 // The showcase's measurement: a line ended by a double click (no zoom, no identify) and an area
 // finished from the panel reach geographiclib-geodesic's numbers to the bit; 「消す」 empties the overlay.
@@ -34,9 +35,8 @@ export async function measureChecks(page) {
   for (const [x, y] of [[420, 160], [620, 200], [520, 380]]) await page.mouse.click(x, y);
   await page.click("#measure button >> text=終える");
   const area = await measured(3, true);
-  await page.click("#measure button >> text=消す");
-  const cleared = await page.evaluate(async () => {
-    await window.__map.once("idle");
+  await awaitAfter(page, "measure: 消す", () => page.click("#measure button >> text=消す"));
+  const cleared = await page.evaluate(() => {
     return { mode: window.__measurement.state.mode, features: window.__map.getStyle().sources["mbmap-measure"].data.features.length, dblclick: window.__map.doubleClickZoom.isEnabled(), profile: window.__profile.state.distances.length };
   });
   const sum = (a) => a.reduce((x, y) => x + y, 0);

@@ -111,7 +111,7 @@ pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
   }
   self.sources.clear()
   self.sources.push_iter(sources.iter())
-  self.prune_media()
+  self.prune_media(next.sources)
   self.style = next
   self.vertex_paint = next.layers.map(l => l.vertex_paint())
   self.prune_ramps()

@@ -1095,16 +1095,19 @@ export class Map {
   }
 
   /**
-   * An image of the current view: once its tiles have loaded, drawn at `pixelRatio` offscreen (the
-   * canvas is left as it is) and encoded as `type`. Views larger than the GPU draws at once are
-   * drawn in parts and joined.
+   * An image of the current view: once its tiles, sprite and TileJSON have loaded, drawn at
+   * `pixelRatio` offscreen (the canvas is left as it is) and encoded as `type`. Views larger than
+   * the GPU draws at once are drawn in parts and joined. Rejects if the map is removed first.
    */
   async toBlob(options: ToBlobOptions = {}): Promise<Blob> {
     const ratio = options.pixelRatio ?? globalThis.devicePixelRatio ?? 1;
     if (!(ratio > 0 && Number.isFinite(ratio))) throw new Error(`mbmap: pixelRatio must be a positive number: ${ratio}`);
-    while (!this.#engine || !engine.map_is_idle(this.#engine)) {
+    while (!this.#engine || !engine.map_is_idle(this.#engine) || this.#fetching > 0) {
       if (this.#removed) throw new Error("mbmap: the map was removed");
-      await this.once("idle");
+      await new Promise<void>((resolve) => {
+        this.once("idle", () => resolve());
+        this.#dom.signal.addEventListener("abort", () => resolve(), { once: true });
+      });
     }
     const map = this.#engine;
     const width = Math.round(this.#canvas.clientWidth * ratio);

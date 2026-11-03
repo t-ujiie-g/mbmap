@@ -238,13 +238,13 @@ fn Map::place_line_label(
   let t = self.transform
   let (w, h) = (t.width, t.height)
   let row = i * LABEL_FLOATS
-  let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + 1))
+  let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
   let z = s.heights[i] * height_scale
   let (_, _, _, cw) = at.matrix.apply(x, y, z, 1.0)
   let ratio = 0.5 + 0.5 * at.center_depth / cw
   let m = i * LINE_FLOATS
   let first = l.meta[m + 4].to_int()
-  let glyphs = (f32_at(s.labels, row + LABEL_FLOATS - 1) / 6.0).to_int()
+  let glyphs = (f32_at(s.labels, row + LABEL_COUNT) / 6.0).to_int()
   let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / 24.0 * tile_px
   let (head, tail) = ([], [])
   let mut collided = false
@@ -331,11 +331,11 @@ fn Map::place_line_symbol(
   unit : Double,
 ) -> Unit {
   let row = i * LABEL_FLOATS
-  let has_text = f32_at(s.labels, row + LABEL_FLOATS - 1) > 0.0
+  let has_text = f32_at(s.labels, row + LABEL_COUNT) > 0.0
   let z = s.heights[i] * height_scale
   let (_, _, _, cw) = at.matrix.apply(
     f32_at(s.labels, row),
-    f32_at(s.labels, row + 1),
+    f32_at(s.labels, row + LABEL_Y),
     z,
     1.0,
   )
@@ -400,7 +400,7 @@ fn Map::fits_on_map(
 ) -> Bool {
   let t = self.transform
   let row = i * LABEL_FLOATS
-  let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + 1))
+  let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
   let (_, _, _, cw) = at.matrix.apply(x, y, z, 1.0)
   // Tile units per CSS px of the box, which grows with distance as the text does.
   let k = @cmp.minimum(@cmp.maximum(0.5 + 0.5 * cw / at.center_depth, 0.0), 4.0) *
@@ -461,14 +461,14 @@ fn Map::lay_line_glyphs(
   for i in 0..<s.count {
     guard s.shown[i] else { continue }
     let row = i * LABEL_FLOATS
-    let q0 = (f32_at(s.labels, row + LABEL_FLOATS - 2) / 6.0).to_int()
-    let n = (f32_at(s.labels, row + LABEL_FLOATS - 1) / 6.0).to_int()
+    let q0 = (f32_at(s.labels, row + LABEL_FIRST) / 6.0).to_int()
+    let n = (f32_at(s.labels, row + LABEL_COUNT) / 6.0).to_int()
     let hide = () => {
       for k in 0..<n {
         l.glyphs[(q0 + k) * 3] = HIDDEN_GLYPH
       }
     }
-    let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + 1))
+    let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
     let z = s.heights[i] * height_scale
     let (cx, cy, _, cw) = at.matrix.apply(x, y, z, 1.0)
     if cw <= 0.0 || (cx / cw).abs() > clip_x || (cy / cw).abs() > clip_y {
@@ -524,11 +524,10 @@ fn Map::lay_line_glyphs(
   // An icon is one glyph at its anchor, turned to its segment.
   for i in 0..<s.count {
     guard ic.shown[i] else { continue }
-    let g = (f32_at(s.labels, i * LABEL_FLOATS + ICON_COLUMN + 5) / 6.0).to_int() *
-      3
+    let g = (f32_at(s.labels, i * LABEL_FLOATS + ICON_FIRST) / 6.0).to_int() * 3
     let (x, y) = (
       f32_at(s.labels, i * LABEL_FLOATS),
-      f32_at(s.labels, i * LABEL_FLOATS + 1),
+      f32_at(s.labels, i * LABEL_FLOATS + LABEL_Y),
     )
     let z = s.heights[i] * height_scale
     let clip = (px : Double, py : Double) => {
