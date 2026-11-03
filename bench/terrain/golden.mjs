@@ -1,6 +1,7 @@
-// Slope, aspect and hillshade of the analysis wasm vs gdaldem (Horn) on the Mt Fuji DEM, interior
-// cells only (gdaldem leaves borders empty). Needs gdaldem on PATH. Usage: node terrain/golden.mjs
-import { execFileSync } from "node:child_process";
+// Slope, aspect and hillshade of the analysis wasm vs gdaldem (Horn) on the Mt Fuji DEM (interior
+// cells: gdaldem leaves borders empty), and sampling vs gdallocationinfo -r bilinear at lng/lat
+// points. Needs GDAL on PATH. Usage: node terrain/golden.mjs
+import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -107,5 +108,47 @@ const aspectTolerance = (k) => {
 const theirAspect = gdal(["aspect"], "aspect.asc");
 compare("aspect (degrees)", aspect, theirAspect, aspectTolerance, (k) => slope[k] < 0.5 || Number.isNaN(aspect[k]), true);
 compare("hillshade (0-255)", shade, gdal(["hillshade"], "hillshade.asc"), 1);
+
+// Sampling: the same grid georeferenced in Web Mercator (EPSG:3857), read as f64 by GDAL, which takes
+// lng/lat to it with PROJ; ours goes through `mercator_cell`. Points inside, on the edges and outside.
+{
+  const WORLD = 2 * Math.PI * 6378137;
+  const cell = WORLD / n / SIZE;
+  const west = -WORLD / 2 + SET.x[0] * (WORLD / n);
+  const north = WORLD / 2 - SET.y[0] * (WORLD / n);
+  const grid = [`ncols ${width}`, `nrows ${height}`, `xllcorner ${west}`, `yllcorner ${north - height * cell}`, `cellsize ${cell}`, "NODATA_value -9999"];
+  for (let y = 0; y < height; y++) grid.push(Array.from(elev.subarray(y * width, (y + 1) * width), (v) => (Number.isNaN(v) ? -9999 : v)).join(" "));
+  await writeFile(path.join(dir, "dem3857.asc"), grid.join("\n") + "\n");
+  const tif = path.join(dir, "dem3857.tif");
+  execFileSync("gdal_translate", ["-q", "-oo", "DATATYPE=Float64", "-a_srs", "EPSG:3857", path.join(dir, "dem3857.asc"), tif]);
+  const lngOf = (px) => (px / (n * SIZE)) * 360 - 180;
+  const latOf = (py) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * py) / (n * SIZE)))) * 180) / Math.PI;
+  const [x0, y0] = [SET.x[0] * SIZE, SET.y[0] * SIZE];
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const points = [];
+  for (let i = 0; i < 2000; i++) points.push([lngOf(x0 + rand() * width), latOf(y0 + rand() * height)]);
+  for (let i = 0; i < 50; i++) points.push([lngOf(x0 + rand() * width), latOf(y0 + 0.2 * rand())], [lngOf(x0 + width - 0.2 * rand()), latOf(y0 + rand() * height)]);
+  for (let i = 0; i < 20; i++) points.push([lngOf(x0 - 1 - 10 * rand()), latOf(y0 + rand() * height)]);
+  // Points off the raster print an empty line and make the exit status 1.
+  const theirs = spawnSync("gdallocationinfo", ["-valonly", "-r", "bilinear", "-wgs84", tif], {
+    input: points.map(([lng, lat]) => `${lng} ${lat}`).join("\n") + "\n",
+  }).stdout.toString().split("\n").slice(0, points.length).map((t) => (t === "" || Number(t) === -9999 ? NaN : Number(t)));
+  const coords = new Float64Array(points.flat());
+  const at = e.prepare_input(coords.byteLength);
+  new Uint8Array(e.memory.buffer, at, coords.byteLength).set(new Uint8Array(coords.buffer));
+  const ours = f64s(e.grid_sample(id, SET.z, SET.x[0], SET.y[0], SIZE));
+  let worst = 0;
+  let over = 0;
+  let missing = 0;
+  ours.forEach((v, i) => {
+    if (Number.isNaN(v) !== Number.isNaN(theirs[i])) missing++;
+    else if (!Number.isNaN(v)) worst = Math.max(worst, Math.abs(v - theirs[i]));
+    if (!Number.isNaN(v) && Math.abs(v - theirs[i]) > 1e-6) over++;
+  });
+  if (over + missing > 0) failures++;
+  const outside = ours.filter(Number.isNaN).length;
+  console.log(`sample (m): ${points.length} points (${outside} without a value in both), max difference ${worst.toPrecision(3)} (tolerance 1e-6), ${over} over, ${missing} with a value in one only`);
+}
 console.log(failures === 0 ? "all within tolerance" : `${failures} comparisons out of tolerance`);
 process.exit(failures === 0 ? 0 : 1);

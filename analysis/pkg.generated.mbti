@@ -27,6 +27,8 @@ pub fn grid_count(@geom.Table, Double, Double, Double, Double, Int32, Int32) -> 
 
 pub fn length(@geom.Table, @core.Trig, Int32) -> Double
 
+pub fn mercator_cell(@core.Trig, Double, Double, Int32, Int32, Int32, Int32) -> (Double, Double)
+
 pub fn points_within(@geom.Table, @geom.Table, Index) -> Array[Int32]
 
 // Errors
@@ -42,6 +44,7 @@ pub struct Grid {
 pub fn Grid::aspect(Self, @core.Trig) -> FixedArray[Double]
 pub fn Grid::hillshade(Self, @core.Trig, azimuth? : Double, altitude? : Double, z? : Double) -> Bytes
 pub fn Grid::new(FixedArray[Double], Int32, Int32, Double, Double) -> Self
+pub fn Grid::sample(Self, Double, Double) -> Double
 pub fn Grid::slope(Self, @core.Trig) -> FixedArray[Double]
 
 pub struct Index {

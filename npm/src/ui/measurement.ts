@@ -1,7 +1,6 @@
-// Measuring a line or an area by clicking on the map: the vertices, the
-// lengths and the area on the ellipsoid, and the path drawn as an overlay that
-// follows the geodesics. The measuring is `mbmap/geodesic`'s `measure`, which
-// the page passes, so `mbmap/ui` loads no geodesic code itself.
+// Measuring a line or an area by clicks: lengths and area on the ellipsoid, the
+// path drawn along the geodesics. The measuring is mbmap/geodesic's `measure`,
+// passed by the page, so `mbmap/ui` loads no geodesic code itself.
 import type { Map } from "../index";
 import { Store, type Controller } from "./controller";
 

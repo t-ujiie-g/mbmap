@@ -605,10 +605,9 @@ fn Geodesic::lambda12(
 }
 
 ///|
-/// The solution of an inverse problem: `s12` the distance in meters, `azi1`
-/// and `azi2` the azimuths in degrees at each end, `a12` the arc length on
-/// the auxiliary sphere in degrees, `area` (S12) the area in square meters
-/// between the geodesic and the equator (NaN unless asked for).
+/// An inverse problem's solution: `s12` meters, `azi1` and `azi2` degrees at
+/// each end, `a12` the arc in degrees, `area` (S12) square meters between the
+/// geodesic and the equator (NaN unless asked for).
 pub(all) struct Inverse {
   s12 : Double
   azi1 : Double

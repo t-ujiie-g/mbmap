@@ -8,6 +8,7 @@ import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { mountCoordinates } from "../shared/coordinates.js";
 import { identifyWhenIdle, mountMeasurement } from "../shared/measure.js";
 import { hoverPlaces, mountIdentify } from "../shared/pick.js";
+import { mountProfile } from "../shared/profile.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
 import { createStyle, modeCamera, withMarker } from "../shared/style.js";
@@ -69,7 +70,9 @@ el.addEventListener("mb-load", () => {
   window.__map = el.map;
   const map = el.map;
   // The features under a click (from the workers that hold the geometry) unless it measures.
-  identifyWhenIdle(map, mountIdentify(map), mountMeasurement(map));
+  const measurement = mountMeasurement(map);
+  identifyWhenIdle(map, mountIdentify(map), measurement);
+  mountProfile(map, measurement);
   mountCoordinates(map, document.body);
   hoverPlaces(map);
   pinDestinations(map, document.body);

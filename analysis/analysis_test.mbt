@@ -263,3 +263,41 @@ test "slope, aspect and hillshade of a plane facing east" {
     (1.0 + 254.0 * @math.sin(@math.PI / 4.0)).round().to_int(),
   )
 }
+
+///|
+test "Grid::sample interpolates between cell centers as GDAL's bilinear" {
+  let g = @analysis.Grid::new([0, 10, 20, 30, 40, 50, 60, 70, 85], 3, 3, 1, 1)
+  assert_eq(g.sample(1, 1), 20)
+  assert_eq(g.sample(1.25, 0.75), 15)
+  assert_eq(g.sample(1.7, 1.2), 33)
+  assert_eq(g.sample(0.3, 0.3), 0)
+  assert_eq(g.sample(2.7, 0.5), 20)
+  assert_eq(g.sample(3, 3), 85)
+  assert_true(g.sample(3.2, 1).is_nan())
+  assert_true(g.sample(-0.1, 1).is_nan())
+  let holed = @analysis.Grid::new(
+    [0, 10, 20, 30, 40, 50, 60, 70, @double.not_a_number],
+    3,
+    3,
+    1,
+    1,
+  )
+  assert_eq(holed.sample(1.25, 0.75), 15)
+  assert_true(holed.sample(1.5, 1.5).is_nan())
+}
+
+///|
+test "mercator_cell places a point in a mosaic of Web Mercator tiles" {
+  let trig = @analysis.Trig::moonbit()
+  let (x, y) = @analysis.mercator_cell(trig, 0, 0, 1, 0, 0, 256)
+  assert_eq(x, 256)
+  assert_eq(y, 256)
+  let (x, y) = @analysis.mercator_cell(trig, -180, 0, 2, 1, 1, 256)
+  assert_eq(x, -256)
+  assert_eq(y, 256)
+  // Tokyo Station at zoom 14 lies in tile (14552, 6451).
+  let (x, y) = @analysis.mercator_cell(
+    trig, 139.7671, 35.6812, 14, 14552, 6451, 256,
+  )
+  assert_true(x >= 0 && x < 256 && y >= 0 && y < 256)
+}

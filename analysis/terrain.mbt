@@ -114,3 +114,52 @@ pub fn Grid::hillshade(
   }
   Bytes::from_array(out[:])
 }
+
+///|
+/// The elevation at (`x`, `y`) cells from the north-west corner, bilinear between
+/// cell centers as GDAL's `-r bilinear` (edge cells reach the border); NaN off
+/// the grid or where a cell of the 2 x 2 window has no data.
+pub fn Grid::sample(self : Grid, x : Double, y : Double) -> Double {
+  if !(x >= 0.0 &&
+    x <= self.width.to_double() &&
+    y >= 0.0 &&
+    y <= self.height.to_double()) {
+    return @double.not_a_number
+  }
+  let fx = x - 0.5
+  let fy = y - 0.5
+  let x0 = fx.floor()
+  let y0 = fy.floor()
+  let dx = fx - x0
+  let dy = fy - y0
+  let cell = (cx : Int32, cy : Int32) => {
+    self.elev[@cmp.maximum(0, @cmp.minimum(self.height - 1, cy)) * self.width +
+    @cmp.maximum(0, @cmp.minimum(self.width - 1, cx))]
+  }
+  let (xa, ya) = (x0.to_int(), y0.to_int())
+  let top = (1.0 - dx) * cell(xa, ya) + dx * cell(xa + 1, ya)
+  let bottom = (1.0 - dx) * cell(xa, ya + 1) + dx * cell(xa + 1, ya + 1)
+  (1.0 - dy) * top + dy * bottom
+}
+
+///|
+/// Where (`lng`, `lat`) falls in a grid of Web Mercator tiles of `tile_size`
+/// pixels at zoom `z` whose north-west tile is (`tile_x`, `tile_y`), in cells.
+pub fn mercator_cell(
+  trig : Trig,
+  lng : Double,
+  lat : Double,
+  z : Int32,
+  tile_x : Int32,
+  tile_y : Int32,
+  tile_size : Int32,
+) -> (Double, Double) {
+  let world = (1 << z).to_double() * tile_size.to_double()
+  let s = trig.sin(lat * @math.PI / 180.0)
+  let x = (lng + 180.0) / 360.0 * world
+  let y = (0.5 - trig.ln((1.0 + s) / (1.0 - s)) / (4.0 * @math.PI)) * world
+  (
+    x - tile_x.to_double() * tile_size.to_double(),
+    y - tile_y.to_double() * tile_size.to_double(),
+  )
+}

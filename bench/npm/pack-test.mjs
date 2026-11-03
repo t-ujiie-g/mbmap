@@ -784,6 +784,7 @@ async function measureChecks(page) {
   const line = await measured(3, false);
   const after = await page.evaluate(() => ({ zoom: window.__map.getZoom(), point: window.__identify.state.point, layers: window.__map.getStyle().layers.filter((l) => l.id.startsWith("mbmap-measure")).map((l) => l.id) }));
   const text = await page.evaluate(() => document.getElementById("measured").textContent);
+  const profiled = await profileChecks(page, line.length);
   await page.click("#measure button >> text=面積");
   for (const [x, y] of [[420, 160], [620, 200], [520, 380]]) await page.mouse.click(x, y);
   await page.click("#measure button >> text=終える");
@@ -791,15 +792,37 @@ async function measureChecks(page) {
   await page.click("#measure button >> text=消す");
   const cleared = await page.evaluate(async () => {
     await window.__map.once("idle");
-    return { mode: window.__measurement.state.mode, features: window.__map.getStyle().sources["mbmap-measure"].data.features.length, dblclick: window.__map.doubleClickZoom.isEnabled() };
+    return { mode: window.__measurement.state.mode, features: window.__map.getStyle().sources["mbmap-measure"].data.features.length, dblclick: window.__map.doubleClickZoom.isEnabled(), profile: window.__profile.state.distances.length };
   });
   const sum = (a) => a.reduce((x, y) => x + y, 0);
   const ok =
     line.mode === "distance" && line.segments.length === 2 && Math.abs(sum(line.segments) - line.length) < 1e-6 &&
     area.mode === "area" && area.segments.length === 3 && area.area > 0 &&
     after.zoom === before.zoom && JSON.stringify(after.point) === JSON.stringify(before.point) && after.layers.length === 3 && text.includes(" m") &&
-    cleared.mode === null && cleared.features === 0 && cleared.dblclick;
-  return { ok, line: { mode: line.mode, length: line.length, segments: line.segments }, area: { mode: area.mode, perimeter: area.length, area: area.area, segments: area.segments }, after, text, cleared };
+    cleared.mode === null && cleared.features === 0 && cleared.dblclick && cleared.profile === 0 && profiled.ok;
+  return { ok, profiled, line: { mode: line.mode, length: line.length, segments: line.segments }, area: { mode: area.mode, perimeter: area.length, area: area.area, segments: area.segments }, after, text, cleared };
+}
+
+// The profile of the measured line (mbmap/ui over mbmap/geodesic and mbmap/analysis's sampleDem):
+// samples along it to its length, heights at each, and the chart's pointer shown as a dot on the map.
+async function profileChecks(page, length) {
+  await page.waitForFunction(() => !window.__profile.state.loading && window.__profile.state.distances.length > 2, null, { timeout: 30000 });
+  const s = await page.evaluate(() => window.__profile.state);
+  const box = await page.locator("#profile svg").boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => window.__profile.state.active >= 0);
+  const pointed = await page.evaluate(() => {
+    const p = window.__profile.state;
+    const at = window.__map.project({ lng: p.path[p.active][0], lat: p.path[p.active][1] });
+    const dot = document.querySelector(".profile-dot");
+    return { active: p.active, hidden: dot.hidden, transform: dot.style.transform, want: `translate(${at.x}px, ${at.y}px)`, caption: document.getElementById("profile").textContent };
+  });
+  const ascending = s.distances.every((d, i) => i === 0 || d > s.distances[i - 1]);
+  const ok =
+    s.distances[0] === 0 && ascending && Math.abs(s.distances.at(-1) - length) < 1e-6 && Math.abs(s.length - length) < 1e-6 &&
+    s.elevations.length === s.path.length && s.elevations.every(Number.isFinite) && s.min <= s.max && s.error === null &&
+    !pointed.hidden && pointed.transform === pointed.want && pointed.caption.includes("登り");
+  return { ok, samples: s.distances.length, min: s.min, max: s.max, gain: s.gain, pointed };
 }
 
 // Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.
