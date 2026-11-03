@@ -31,8 +31,8 @@ export interface QuerySourceFeatureOptions {
   filter?: unknown;
 }
 
-/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, a tile, or an image source's image. */
-export type ResourceType = "Style" | "Source" | "Tile" | "Image";
+/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, a tile, a sprite, or an image source's image. */
+export type ResourceType = "Style" | "Source" | "Tile" | "SpriteJSON" | "SpriteImage" | "Image";
 
 /**
  * MapLibre's `transformRequest`: may change a request's `url`, add `headers` or send
@@ -133,6 +133,7 @@ export type MapEventType =
   | MapMouseEventType
   | "load"
   | "styledata"
+  | "styleimagemissing"
   | "render"
   | "idle"
   | "error"
@@ -151,8 +152,8 @@ export type MapEventType =
 
 /**
  * `load` fires at the first drawn view, `render` after each frame, `idle` when the map settles;
- * camera events as MapLibre's (`originalEvent`: a gesture's DOM event). Mouse events carry the
- * `point` (CSS pixels), its `lngLat` and, for a layer, its `features` there.
+ * camera events as MapLibre's (`originalEvent`: a gesture's DOM event). Mouse events carry the `point`
+ * (CSS pixels), its `lngLat` and their `features`; `styleimagemissing` the `id` of a missing image.
  */
 export interface MapEvent {
   type: MapEventType;
@@ -162,6 +163,7 @@ export interface MapEvent {
   point?: { x: number; y: number };
   lngLat?: LngLat;
   features?: MapGeoJSONFeature[];
+  id?: string;
 }
 
 export type MapEventListener = (event: MapEvent) => void;

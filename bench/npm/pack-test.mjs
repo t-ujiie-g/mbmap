@@ -11,6 +11,7 @@ import { serve } from "../lib/serve.mjs";
 import { prepareExamples } from "./prepare.mjs";
 import { fakeGeolocation } from "../lib/fake-geolocation.mjs";
 import { clusterChecks } from "./checks/clusters.mjs";
+import { imageChecks } from "./checks/images.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
 import { mediaChecks } from "./checks/media.mjs";
 
@@ -102,7 +103,11 @@ const checks = {
     const exported = await trackExportChecks(page);
     const style = await styleChecks(page, requests);
     const camera = await cameraChecks(page);
-    return [ok && query.ok && state.ok && tiles.ok && exported.ok && style.ok && camera.ok, { ...r, query, state, tiles, exported, style, camera }];
+    const images = await imageChecks(page, pixel);
+    return [
+      ok && query.ok && state.ok && tiles.ok && exported.ok && style.ok && camera.ok && images.ok,
+      { ...r, query, state, tiles, exported, style, camera, images },
+    ];
   },
 
   async element(page) {
@@ -984,7 +989,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided|media must be http/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);

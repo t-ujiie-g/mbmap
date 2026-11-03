@@ -84,7 +84,7 @@ fn data_driven(e : Expr) -> Bool {
 /// feature state, given per vertex; empty when there is none (or the layer is
 /// drawn otherwise), so every value is the same for all its features.
 pub fn StyleLayer::vertex_paint(self : StyleLayer) -> Array[VertexPaint] {
-  if self.reads_state() {
+  if self.paints_by_group() {
     return []
   }
   let out = []
@@ -131,7 +131,7 @@ pub fn StyleLayer::vertex_paint(self : StyleLayer) -> Array[VertexPaint] {
 ///|
 /// The expressions `vertex_paint` computes into a layer's tiles, by slot.
 fn StyleLayer::baked_paint(self : StyleLayer) -> Array[(Int32, Expr)] {
-  if self.reads_state() {
+  if self.paints_by_group() {
     return []
   }
   self.slots().filter(s => data_driven(s.1)).map(s => (s.0, s.1))
@@ -222,4 +222,16 @@ fn encode_value(v : Value, color : Bool, default : Double) -> Int32 {
     }
     Float::from_double(n).reinterpret_as_int()
   }
+}
+
+///|
+/// Whether the layer's features are drawn in groups by the values its paint
+/// reads rather than with paint per vertex: it reads the feature state, or
+/// picks a pattern by feature (an image per group).
+pub fn StyleLayer::paints_by_group(self : StyleLayer) -> Bool {
+  self.reads_state() ||
+  (match self.pattern {
+    Some(p) => data_driven(p)
+    None => false
+  })
 }

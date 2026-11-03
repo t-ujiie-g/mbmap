@@ -121,11 +121,16 @@ fn Map::draw_extrusions(
 }
 
 ///|
-/// The first visible background layer's color, premultiplied onto white.
+/// The first visible background layer's color, premultiplied onto white (white
+/// when it is a pattern, drawn over the tiles).
 fn Map::background(self : Map) -> (Double, Double, Double) {
   let zoom = self.transform.camera.zoom
   for l in self.style.layers {
     if l.kind is Background && zoom >= l.min_zoom && zoom < l.max_zoom {
+      // A pattern is drawn over the tiles instead.
+      if l.pattern is Some(_) {
+        return (1.0, 1.0, 1.0)
+      }
       let p = paint_of(l, zoom, JsProps::none())
       return (
         p.r * p.a + 1.0 - p.a,
@@ -157,6 +162,8 @@ fn Map::draw_layer(
     Some(e) => self.dash_of(e, zoom, layer.cap is Round)
     None => None
   }
+  // Fill outlines go after every fill of the tile, as MapLibre draws them.
+  let outlines : Array[() -> Unit] = []
   for m in meshes {
     if m.kind == KIND_HILLSHADE && layer.hillshade is Some(h) {
       self.draw_hillshade(h, m.mesh, at)
@@ -248,20 +255,27 @@ fn Map::draw_layer(
           dpr,
         )
       })
+    } else if layer.pattern is Some(_) {
+      self.draw_fill_pattern(index, layer, m, p, at, outlines)
     } else {
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_fill(m.mesh, at, self.slots(index, m, p, zoom))
       })
       if layer.antialias {
-        self.draw_by_state(m, layer, p, zoom, outline=true, p => {
-          self.renderer.draw_fill_outline(
-            m.mesh,
-            at,
-            self.slots(index, m, p, zoom),
-          )
+        outlines.push(() => {
+          self.draw_by_state(m, layer, p, zoom, outline=true, p => {
+            self.renderer.draw_fill_outline(
+              m.mesh,
+              at,
+              self.slots(index, m, p, zoom),
+            )
+          })
         })
       }
     }
+  }
+  for f in outlines {
+    f()
   }
 }
 
@@ -330,6 +344,23 @@ fn Map::placement(
     center_depth: t.center_depth(),
     clip: rect,
     latitudes: (id.lnglat_bounds().max_y, id.lnglat_bounds().min_y),
+    pattern: pattern_tile(t, id),
+  }
+}
+
+///|
+/// Where patterns start in tile `id` (MapLibre's `patternUniformValues`): its
+/// corner and size in CSS pixels of the world at the integer zoom.
+fn pattern_tile(
+  t : @core.Transform,
+  id : @core.TileId,
+) -> @render_webgl2.PatternTile {
+  let zoom = @cmp.maximum(0.0, t.camera.zoom.floor())
+  let size = @core.TILE_SIZE * @math.pow(2.0, zoom - id.z.to_double())
+  {
+    x: size * id.x.to_double(),
+    y: size * id.y.to_double(),
+    units: size / @core.TILE_EXTENT.to_double(),
   }
 }
 
@@ -430,6 +461,14 @@ fn Map::draw_frame(
   let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
   let light = self.extrusion_light()
   for index, layer in self.style.layers {
+    if layer.kind is Background &&
+      layer.pattern is Some(_) &&
+      terrain is None &&
+      zoom >= layer.min_zoom &&
+      zoom < layer.max_zoom {
+      self.draw_background_pattern(layer)
+      continue
+    }
     // With terrain, all but symbols and extrusions are drawn onto it.
     if layer.kind is Background ||
       (terrain is Some(_) && !(layer.kind is (Symbol | FillExtrusion))) ||

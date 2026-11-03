@@ -3,13 +3,13 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.5（スプライト、`addImage`、模様）。15.1〜15.4、15.2、15.9、15.10、15.11 は完了。その後に、途中のリファクタリングを挟んだ（下の節）。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.5b（線と押し出しの模様）。15.1〜15.4、15.2、15.9、15.10、15.11 は完了。並列で 15.12（カスタムレイヤー）、15.7・15.8（ラベル）をエージェントが進めている。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 88.7KB（画像・動画・canvas のソースは別に `media.js` 2.0KB） | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
-  | 表示ワーカー | 82.9KB | 100KB |
+  | 表示（メイン） | 92.3KB（画像・動画・canvas のソースは別に `media.js` 2.0KB） | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
+  | 表示ワーカー | 83.1KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
@@ -33,12 +33,35 @@
 - **`npm run style:golden`**：新しい場面 `images`（タイルからはみ出す長方形に `raster-opacity`、射影でゆがむ台形に色相・彩度・コントラスト、強く縮む台形を格子で `nearest` と明るさ）と、同じものを回して傾けた `images-turned` は、どちらも平均 0 / p99 0（画素まで一致）。ほかの場面は変わらない。
 - **pack test**：`bench/npm/pages/media/` に画像・動画・canvas を並べ、`bench/npm/checks/media.mjs` で画素を読む。canvas は再生中に描き直され、止めると止めたときの絵のまま。動画は止めて再開できる。画像は `setCoordinates` で動き、`updateImage` で canvas の絵に変わり、`data:` の URL は `error` になる。動画を再生中でも `idle` は来る。動画は自作の 1KB の webm（赤 1 秒、青 1 秒）。
 - example：東京駅の構内の略図（自作の PNG。`examples/shared/station-sketch.png`）を、線路に沿って傾けて重ねた（「駅の略図」グループ）。
-- 大きさ（15.9 の後）：メイン 86.8 → 88.7KB（エンジンの描画と上げ直しで約 1.2KB、ファサードの読み込みと `getSource` で約 0.7KB）、表示ワーカー 82.8 → 82.9KB（スタイルの `Image` の種類）、`media.js` 2.0KB（予算 3KB を新設）。
+- 大きさ（15.5a の後）：メイン 90.2 → 92.3KB（エンジンの描画と上げ直しで約 1.2KB、ファサードの読み込みと `getSource` で約 0.7KB）、表示ワーカー 83.06 → 83.11KB（スタイルの `Image` の種類）、`media.js` 2.0KB（予算 3KB を新設）。
   - 置き方の計算を最初は core（MoonBit）に置いたところ、メインが 3.0KB 増えた。`media.ts` に移し、エンジンのソースの表を `HashMap` から配列にして、+1.9KB まで減らした。
 - MapLibre との違い：
   - 動画の再生中や canvas の `animate` 中も `idle` が来る（MapLibre は来ない）。`load` と `toBlob` が待ち続けないため。
   - 世界の繰り返し（経度の折り返し）は、ほかのタイルと同じく描かない。`setWarp` / `getWarp`（実験的）、動画の `seek`、canvas の大きさの変化の検知（再生していないとき）は移していない。
   - 画像・動画・canvas のレイヤーは `queryRenderedFeatures` に出ない（MapLibre も同じ）。
+## Phase 15.5a：スプライト、`addImage`、塗りと背景の模様（2026-11-03）
+
+状態：**完了**。15.5 は 2 つに分けた（15.5a は塗りと背景、15.5b は線と押し出しの模様）。
+
+- **画像**：facade に `addImage`、`updateImage`、`removeImage`、`hasImage`、`listImages`、`loadImage` と `styleimagemissing` イベントを足した（MapLibre と同じ形）。
+  - 受け付けるのは ImageData、RGBA の生データ（`{width, height, data}`）、または canvas に描けるもの（画像、ImageBitmap、canvas）。同じ id への 2 回目の `addImage` と、大きさが合わないデータは `error` にする。
+  - スタイルの `sprite`（URL 1 つ、または `{id, url}` の並び。2x の画面では @2x を読む）は、遅延ロードの `sprite.js`（0.9KB）が `transformRequest` を通して読む。スプライトを読み終えるまで `idle` を待たせる。
+- **アトラス**：メインスレッドは、模様を初めて描くときに画像をアトラスに詰める（棚詰め。MapLibre の `ImageAtlas` と同じく 1px の折り返しの余白を付ける）。画像が変わると作り直す。画像がない間はそのレイヤーを描かない（MapLibre と同じ）。
+- **描画**：`fill-pattern` と `background-pattern` を、MapLibre の fill_pattern、fill_outline_pattern、background_pattern のシェーダーで描く。
+  - 模様の位置は、整数ズームでのタイルの世界座標の画素で決まる。上位と下位の 16 bit に分けるのは MapLibre と同じ。
+  - 模様は整数ズームで取る（ズームの間のクロスフェードはしない）。SDF の模様も描ける。
+  - 地物ごとに模様を変えるレイヤーは、グループで描く（`StyleLayer::paints_by_group`）。
+  - 塗りの輪郭は、タイルの塗りを全部描いてから描く。MapLibre と同じ順で、グループの塗りが前のグループの輪郭を覆わない。
+  - `line-pattern` と `fill-extrusion-pattern` は、15.5b まで Unsupported のまま。
+- **`npm run style:golden`**：合成のスプライト（`bench/style/sprite.mjs`。1x と 2x）を使う新しい場面 2 つ。
+  - `patterns`（定数と地物ごとの模様、模様の輪郭と色の輪郭、背景）は平均 0.040 / p99 0。
+  - `patterns-2x`（2x の画面、ズーム 15.6）は平均 0.030 / p99 0。
+  - golden は、場面の `dpr` を MapLibre にも `ratio` として渡すようにした（それまで MapLibre は常に 1x だった）。
+  - 半透明の背景の模様は 1 ずれる（MapLibre は透明に clear してページの白と合成するが、mbmap は白で clear する）。そのため場面の背景は不透明にした。
+- **pack test**：`bench/npm/checks/images.mjs` で、画像がないときの `styleimagemissing`、`addImage` で描かれること、`updateImage`、重複と大きさ違いの `error`、`hasImage` / `listImages` / `removeImage` を確かめる。
+- **example**：自前のスプライト（`examples/shared/sprite/`、斜線）で、構造物に斜線を重ねた。
+- 大きさ：メイン 84.6 → 88.1KB（アトラス、シェーダー、画像の API）、表示ワーカー 81.7 → 82.1KB、`sprite.js` 0.9KB（予算 2KB）。15.9 と合わせて、メイン 90.2KB、表示ワーカー 83.1KB。
+
 ## Phase 15.9：heatmap レイヤー（2026-11-03）
 
 状態：**完了**。
