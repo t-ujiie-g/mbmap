@@ -150,7 +150,7 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   a.source == b.source &&
   a.source_layer == b.source_layer &&
   a.filter_id == b.filter_id &&
-  (a.kind is (Fill | Circle) || a.same_line_layout(b))
+  (a.kind is (Fill | Circle | Heatmap) || a.same_line_layout(b))
 }
 
 ///|
@@ -243,7 +243,7 @@ pub fn TileProcessor::process(
     let ok = match sl.kind {
       Fill => self.fill_layer(index, sl, layer, zoom, groups)
       FillExtrusion => self.extrusion_layer(index, sl, layer, zoom, groups)
-      Circle => self.circle_layer(index, sl, layer, zoom, groups)
+      Circle | Heatmap => self.circle_layer(index, sl, layer, zoom, groups)
       Symbol => self.symbol_layer(index, sl, layer, zoom, groups)
       _ => self.line_layer(index, sl, layer, zoom, groups)
     }
@@ -487,9 +487,9 @@ fn TileProcessor::circle_layer(
 
 ///|
 /// Whether `sl`'s data-driven paint goes per vertex rather than by groups:
-/// fills, lines and circles that do not read feature state.
+/// fills, lines, circles and heatmaps that do not read feature state.
 fn per_vertex(sl : @style.StyleLayer) -> Bool {
-  sl.kind is (Fill | Line | Circle) && !sl.reads_state()
+  sl.kind is (Fill | Line | Circle | Heatmap) && !sl.reads_state()
 }
 
 ///|

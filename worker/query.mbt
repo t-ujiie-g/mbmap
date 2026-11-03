@@ -327,6 +327,18 @@ fn TileProcessor::hit(
       }
       None
     }
+    // A heatmap's kernel lies on the map (MapLibre's `pitch-alignment: map`).
+    Heatmap => {
+      let r = number_at(sl.radius, zoom, feature) * query.pixels
+      for ring in rings {
+        for p in ring {
+          if @core.polygon_hits_point(q, p, r) {
+            return Some(@double.not_a_number)
+          }
+        }
+      }
+      None
+    }
     FillExtrusion => {
       guard sl.extrusion is Some(e) else { return None }
       extrusion_hit(
@@ -353,7 +365,7 @@ fn TileProcessor::query_padding(
 ) -> Double {
   let mut pad = 0.0
   for sl in self.style.layers {
-    guard sl.kind is (Line | Circle) &&
+    guard sl.kind is (Line | Circle | Heatmap) &&
       builds(sl, source, tile_zoom) &&
       features_of(sl.source_layer) is Some(layer) else {
       continue
@@ -364,6 +376,7 @@ fn TileProcessor::query_padding(
       if passes(sl.filter, feature, tile_zoom) {
         let reach = match sl.kind {
           Line => number_at(sl.width, zoom, feature) / 2.0
+          Heatmap => number_at(sl.radius, zoom, feature)
           _ =>
             number_at(sl.radius, zoom, feature) +
             number_at(sl.stroke_width, zoom, feature)

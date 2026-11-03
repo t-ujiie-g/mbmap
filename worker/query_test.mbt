@@ -138,6 +138,20 @@ test "query finds what is drawn under a point: fills, lines within half their wi
 }
 
 ///|
+test "query finds heatmap points within their radius on the map" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [{"id": "heat", "type": "heatmap", "source": "a", "source-layer": "pts",
+    #|   "paint": {"heatmap-radius": 10}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let tile = query_tile()
+  let near = p.query("a", tile[:], 14, query_request([(59.5, 52.0)])[:])
+  assert_eq(hits_of(near.unwrap()).0, [(0, 0)])
+  let off = p.query("a", tile[:], 14, query_request([(60.5, 52.0)])[:])
+  assert_eq(hits_of(off.unwrap()).0, [])
+}
+
+///|
 test "query keeps to the layers asked for, passes the filter, and returns the labels named" {
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(query_style)[:])
   let tile = query_tile()
