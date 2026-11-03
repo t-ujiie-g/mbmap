@@ -45,34 +45,10 @@ function webpSize(b) {
   return null;
 }
 
-// The boxes (ISO BMFF) in b[from, to): [type, start of contents, end].
-function boxes(b, from, to) {
-  const out = [];
-  for (let i = from; i + 8 <= to; ) {
-    const size = u32be(b, i);
-    const end = size === 0 ? to : i + size;
-    if (size !== 0 && size < 8) break;
-    out.push([String.fromCharCode(b[i + 4], b[i + 5], b[i + 6], b[i + 7]), i + 8, Math.min(end, to)]);
-    i = end;
-  }
-  return out;
-}
-
-// AVIF: the largest `ispe` (image spatial extents) of meta/iprp/ipco; a grid's is its whole size.
-function avifSize(b) {
-  const meta = boxes(b, 0, b.length).find(([t]) => t === "meta");
-  const iprp = meta && boxes(b, meta[1] + 4, meta[2]).find(([t]) => t === "iprp");
-  const ipco = iprp && boxes(b, iprp[1], iprp[2]).find(([t]) => t === "ipco");
-  let size = null;
-  for (const [t, at, end] of ipco ? boxes(b, ipco[1], ipco[2]) : []) {
-    if (t !== "ispe" || at + 12 > end) continue;
-    const [width, height] = [u32be(b, at + 4), u32be(b, at + 8)];
-    if (!size || width * height > size.width * size.height) size = { width, height };
-  }
-  return size;
-}
-
-/** The width and height a PNG, JPEG, WebP, GIF or AVIF header in `bytes` gives; null for anything else. */
+/**
+ * The width and height a PNG, JPEG or WebP header in `bytes` gives; null for anything else.
+ * GIF and AVIF are left out: their frames or items may decode larger than the header says.
+ */
 export function imageSize(bytes) {
   const b = bytes;
   if (b.length >= 24 && b[0] === 0x89 && ascii(b, 1, "PNG\r\n\x1a\n") && ascii(b, 12, "IHDR")) {
@@ -80,15 +56,13 @@ export function imageSize(bytes) {
   }
   if (b.length >= 4 && b[0] === 0xff && b[1] === 0xd8) return jpegSize(b);
   if (b.length >= 16 && ascii(b, 0, "RIFF") && ascii(b, 8, "WEBP")) return webpSize(b);
-  if (b.length >= 10 && ascii(b, 0, "GIF8")) return { width: u16le(b, 6), height: u16le(b, 8) };
-  if (b.length >= 12 && ascii(b, 4, "ftyp")) return avifSize(b);
   return null;
 }
 
 /** Throws unless `bytes`' header gives both sides up to `max`: an image it cannot size is never decoded. */
 export function checkImageSize(bytes, max, what = "image") {
   const size = imageSize(bytes);
-  if (!size) throw new Error(`${what}: not a PNG, JPEG, WebP, GIF or AVIF whose size can be read`);
+  if (!size) throw new Error(`${what}: not a PNG, JPEG or WebP whose size can be read`);
   if (size.width > max || size.height > max) {
     throw new Error(`${what} is ${size.width} x ${size.height}, over ${max}`);
   }

@@ -39,33 +39,27 @@ test("imageSize reads WebP's VP8, VP8L and VP8X headers", () => {
   assert.equal(imageSize(webp("ALPH", new Array(10).fill(0))), null);
 });
 
-test("imageSize reads GIF and gives null for other or truncated data", () => {
-  assert.deepEqual(imageSize(bytes("GIF89a", le16(320), le16(240))), { width: 320, height: 240 });
+const box = (type, ...contents) => {
+  const body = bytes(...contents);
+  return bytes(be32(8 + body.length), type, body);
+};
+const avif = bytes(box("ftyp", "avifmif1"), box("meta", [0, 0, 0, 0], box("iprp", box("ipco", box("ispe", [0, 0, 0, 0], be32(256), be32(256))))));
+
+test("imageSize gives null for GIF, AVIF, other or truncated data", () => {
+  assert.equal(imageSize(bytes("GIF89a", le16(320), le16(240))), null);
+  assert.equal(imageSize(avif), null);
   assert.equal(imageSize(bytes("BM", new Array(30).fill(0))), null);
   assert.equal(imageSize(png(1, 1).subarray(0, 20)), null);
   assert.equal(imageSize(new Uint8Array(0)), null);
 });
 
-const box = (type, ...contents) => {
-  const body = bytes(...contents);
-  return bytes(be32(8 + body.length), type, body);
-};
-const ispe = (w, h) => box("ispe", [0, 0, 0, 0], be32(w), be32(h));
-const avif = (...props) => bytes(box("ftyp", "avifmif1"), box("meta", [0, 0, 0, 0], box("hdlr", new Array(8).fill(0)), box("iprp", box("ipco", ...props))));
-
-test("imageSize reads AVIF's largest ispe, a grid's whole size", () => {
-  assert.deepEqual(imageSize(avif(ispe(512, 256))), { width: 512, height: 256 });
-  assert.deepEqual(imageSize(avif(box("pixi", [0, 0, 0, 0, 3]), ispe(512, 512), ispe(20000, 20000))), { width: 20000, height: 20000 });
-  assert.equal(imageSize(avif(box("pixi", [0, 0, 0, 0, 3]))), null);
-  assert.equal(imageSize(bytes(box("ftyp", "avifmif1"), [0, 0, 0, 1], "meta")), null);
-});
-
 test("checkImageSize refuses a side over the cap and anything it cannot size", () => {
   checkImageSize(png(4096, 4096), 4096);
-  checkImageSize(avif(ispe(256, 256)), 4096);
   assert.throws(() => checkImageSize(png(4097, 1), 4096, "raster tile"), /raster tile is 4097 x 1, over 4096/);
   assert.throws(() => checkImageSize(jpeg(1, 60000), 8192), /over 8192/);
-  assert.throws(() => checkImageSize(bytes("not an image"), 4096, "raster tile"), /raster tile: not a PNG, JPEG, WebP, GIF or AVIF/);
+  assert.throws(() => checkImageSize(avif, 4096, "raster tile"), /raster tile: not a PNG, JPEG or WebP/);
+  assert.throws(() => checkImageSize(bytes("GIF89a", le16(1), le16(1)), 4096), /not a PNG/);
+  assert.throws(() => checkImageSize(bytes("not an image"), 4096, "raster tile"), /raster tile: not a PNG, JPEG or WebP/);
   assert.throws(() => checkImageSize(new Uint8Array(0), 4096), /not a PNG/);
 });
 
