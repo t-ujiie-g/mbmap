@@ -23,7 +23,7 @@
       "ok": true,
       "mean": 0,
       "p99": 0,
-      "max": 1
+      "max": 0
     },
     {
       "paint": "adjusted",
@@ -39,7 +39,7 @@
       "ok": true,
       "mean": 0,
       "p99": 0,
-      "max": 1
+      "max": 0
     },
     {
       "paint": "nearest",
@@ -55,7 +55,7 @@
       "ok": true,
       "mean": 0,
       "p99": 0,
-      "max": 75
+      "max": 0
     },
     {
       "paint": "zoomed",
@@ -71,7 +71,7 @@
       "ok": true,
       "mean": 0,
       "p99": 0,
-      "max": 1
+      "max": 0
     }
   ]
 }

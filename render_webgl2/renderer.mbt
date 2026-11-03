@@ -446,3 +446,42 @@ pub fn Renderer::draw_raster(
     nearest,
   )
 }
+
+///|
+/// An image, video or canvas element, or an ImageBitmap (a WebGL
+/// `TexImageSource`), drawn by an image, video or canvas source.
+#external
+pub type Picture
+
+///|
+extern "js" fn null_mesh() -> Mesh = "() => null"
+
+///|
+extern "js" fn mesh_is_null(m : Mesh) -> Bool = "(m) => m == null"
+
+///|
+/// Uploads `picture` into `old`'s texture, or a new mesh's; `old` unchanged
+/// while a video has no frame yet or a canvas no pixels.
+pub fn Renderer::upload_picture(
+  self : Renderer,
+  picture : Picture,
+  old : Mesh?,
+) -> Mesh? {
+  let m = gl_upload_picture(self.gl, picture, old.unwrap_or(null_mesh()))
+  if mesh_is_null(m) {
+    None
+  } else {
+    Some(m)
+  }
+}
+
+///|
+/// Places a picture's mesh by `quad` (as `@map.Map::set_media_quad` takes it):
+/// `draw_raster` then draws it with its corners and warp.
+pub fn Renderer::set_quad(
+  _self : Renderer,
+  mesh : Mesh,
+  quad : FixedArray[Double],
+) -> Unit {
+  gl_set_quad(mesh, quad)
+}

@@ -155,6 +155,7 @@ pub struct Map {
   priv mut on_missing_image : (String) -> Unit
   /// Heatmap color ramps by `heatmap-color` expression.
   priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
+  priv media : Array[Media]
 }
 
 ///|
@@ -264,6 +265,7 @@ pub fn Map::new(
     missing_images: @hashset.HashSet([]),
     on_missing_image: _ => (),
     ramps: [],
+    media: [],
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {
@@ -382,6 +384,8 @@ pub fn Map::destroy(self : Map) -> Unit {
     }
     src.tiles.clear()
   }
+  self.sources.clear()
+  self.prune_media()
 }
 
 ///|

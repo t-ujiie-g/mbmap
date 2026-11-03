@@ -31,7 +31,7 @@ export interface QuerySourceFeatureOptions {
   filter?: unknown;
 }
 
-/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, or a tile. */
+/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, a tile, a sprite, or an image source's image. */
 export type ResourceType = "Style" | "Source" | "Tile" | "SpriteJSON" | "SpriteImage" | "Image";
 
 /**
@@ -45,9 +45,11 @@ export type RequestTransformFunction = (
 ) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
 
 /**
- * What `getSource` gives. A GeoJSON source also takes new data and answers about its clusters as MapLibre's does (null
- * if it does not cluster; children and leaves reject an unknown id): the zoom a cluster breaks apart at, its clusters and points one zoom
- * down, and its points (`limit` 10 by default, Infinity for all, after `offset`).
+ * What `getSource` gives, with the members of MapLibre's sources:
+ * - GeoJSON: `setData`, and its clusters (null if it does not cluster; children and leaves reject an unknown id): the zoom a cluster
+ *   breaks apart at, its clusters and points one zoom down, and its points (`limit` 10 by default, Infinity for all, after `offset`).
+ * - image, video and canvas: `setCoordinates` (corners clockwise from the top left); an image's `updateImage` (a `url` or a decoded
+ *   `image`); `play` and `pause` a video, or a canvas drawn every frame while it plays (`animate`, true by default); `getVideo`, `getCanvas`.
  */
 export interface Source {
   id: string;
@@ -56,6 +58,12 @@ export interface Source {
   getClusterExpansionZoom?(clusterId: number): Promise<number | null>;
   getClusterChildren?(clusterId: number): Promise<GeoJSONFeature[] | null>;
   getClusterLeaves?(clusterId: number, limit?: number, offset?: number): Promise<GeoJSONFeature[] | null>;
+  setCoordinates?(coordinates: number[][]): Source;
+  updateImage?(options: { url?: string; image?: TexImageSource; coordinates?: number[][] }): Source;
+  play?(): Source;
+  pause?(): Source;
+  getVideo?(): HTMLVideoElement | undefined;
+  getCanvas?(): HTMLCanvasElement | undefined;
 }
 
 /**
