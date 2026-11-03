@@ -8,13 +8,17 @@ interface StyleLike {
   terrain?: unknown;
 }
 
-/** Whether a layer is drawn at `zoom`, as MapLibre's `isHidden` tells it. */
-function shown(layer: Record<string, unknown>, zoom: number): boolean {
-  const min = Number(layer.minzoom ?? 0);
-  const max = Number(layer.maxzoom ?? 0);
-  if (min && zoom < min) return false;
-  if (max && zoom >= max) return false;
-  return (layer.layout as { visibility?: unknown } | undefined)?.visibility !== "none";
+/** Whether `zoom` lies in a layer's zoom range, as MapLibre's `isHidden` reads `minzoom` and `maxzoom`. */
+export function inZoomRange(layer: object, zoom: number): boolean {
+  const l = layer as { minzoom?: unknown; maxzoom?: unknown };
+  const min = Number(l.minzoom ?? 0);
+  const max = Number(l.maxzoom ?? 0);
+  return !(min && zoom < min) && !(max && zoom >= max);
+}
+
+/** Whether a layer is drawn at `zoom` (MapLibre's `isHidden`, inverted): in range and not `visibility: none`. */
+export function layerShown(layer: object, zoom: number): boolean {
+  return inZoomRange(layer, zoom) && (layer as { layout?: { visibility?: unknown } }).layout?.visibility !== "none";
 }
 
 /**
@@ -25,7 +29,7 @@ export function attributionsOf(style: StyleLike, zoom: number): string[] {
   const used = new Set<string>();
   for (const l of style.layers ?? []) {
     const layer = l as Record<string, unknown>;
-    if (typeof layer.source === "string" && shown(layer, zoom)) used.add(layer.source);
+    if (typeof layer.source === "string" && layerShown(layer, zoom)) used.add(layer.source);
   }
   const terrain = (style.terrain as { source?: unknown } | undefined)?.source;
   if (typeof terrain === "string") used.add(terrain);

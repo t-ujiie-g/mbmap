@@ -1,7 +1,8 @@
 // The search in React: a bar floating over the map with result cards, from
 // the controller the plain-DOM examples draw as a combobox in the panel.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { createShowcaseSearch, onSearchKey, pinSelection } from "../../shared/search.js";
+import { useController } from "./use-controller.js";
 
 export function SearchBar({ map, places }) {
   const [search] = useState(() => {
@@ -10,7 +11,7 @@ export function SearchBar({ map, places }) {
     return s;
   });
   useEffect(() => () => search.destroy(), [search]);
-  const s = useSyncExternalStore(search.subscribe, () => search.state);
+  const s = useController(search);
   // The native event carries `isComposing`, which React's does not.
   const onKeyDown = (e) => onSearchKey(search, e.nativeEvent);
   return (

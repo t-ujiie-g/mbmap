@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 70984,
+      "bytes": 70990,
       "budget": 80000
     },
     {
@@ -26,12 +26,12 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 5227,
+      "bytes": 5287,
       "budget": 10000
     },
     {
       "name": "mbmap/search",
-      "bytes": 2814,
+      "bytes": 2849,
       "budget": 5000
     },
     {
@@ -101,17 +101,17 @@
     },
     {
       "name": "mbmap/ui createLayerList alone",
-      "bytes": 838,
+      "bytes": 849,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createLegend alone",
-      "bytes": 1532,
+      "bytes": 1562,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createCoordinates alone",
-      "bytes": 896,
+      "bytes": 928,
       "budget": 2000
     },
     {

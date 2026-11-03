@@ -1,15 +1,14 @@
 // The features under a click and the pointer's coordinates in React: every
 // feature found listed (click one to select and highlight it) and a table of
 // coordinates, from the controllers the plain-DOM examples draw differently.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { createIdentify } from "mbmap/ui";
 import { createCoordinateReadout } from "../../shared/coordinates.js";
 import { selectedRows } from "../../shared/pick.js";
-
-const use = (c) => useSyncExternalStore(c.subscribe, () => c.state);
+import { useController } from "./use-controller.js";
 
 function Picked({ identify }) {
-  const s = use(identify);
+  const s = useController(identify);
   const rows = selectedRows(s) ?? [["—", s.point ? "何もありません" : "地図をクリック"]];
   useEffect(() => {
     if (s.point && !s.loading) window.__picked = rows;
@@ -34,7 +33,7 @@ function Picked({ identify }) {
 }
 
 function Coordinates({ c }) {
-  const s = use(c);
+  const s = useController(c);
   return (
     <table className="react-coordinates">
       <caption>{s.source === "pointer" ? "ポインタ" : "中心"}の座標</caption>

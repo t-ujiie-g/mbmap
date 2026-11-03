@@ -359,7 +359,9 @@ async function showcase(page) {
     panel.layers.toggle("陰影");
     await wait;
     const hillshade = map.getLayoutProperty("hillshade", "visibility");
-    const listed = panel.layers.state.items.find((i) => i.id === "陰影").visible;
+    const hillshadeItem = panel.layers.state.items.find((i) => i.id === "陰影");
+    // Hidden but within its zoom range: still `inRange`.
+    const listed = { visible: hillshadeItem.visible, inRange: hillshadeItem.inRange };
     wait = idle();
     document.getElementById("marker").click();
     await wait;
@@ -383,7 +385,7 @@ async function showcase(page) {
     coordinates.length === 4 && /^35\.68\d+, 139\.76\d+$/.test(coordinates[0][1]) && /N 139°46′/.test(coordinates[1][1]) &&
     coordinates[2][1].startsWith("第IX系 X -35") && coordinates[3][1].startsWith("54N ") &&
     hovered.id === "東京駅" && hovered.state.hover === true &&
-    styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.listed === false && styled.markers === "印 1" &&
+    styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.listed.visible === false && styled.listed.inRange === true && styled.markers === "印 1" &&
     JSON.stringify(styled.legend) === JSON.stringify({ title: "道路", kind: "match", labels: ["0", "1", "その他"] }) &&
     styled.photo.layers.includes("photo") && !styled.photo.layers.includes("road") && styled.photo.layers.at(-1) === "places-label" && styled.photo.marker === "印 1" && styled.back &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&

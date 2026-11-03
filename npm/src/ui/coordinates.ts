@@ -75,7 +75,8 @@ export function utm(transform: Transform, digits = 0): CoordinateSystem {
 class CoordinatesStore extends Store<CoordinatesState> {
   #map: Map;
   #systems: CoordinateSystem[];
-  #ticket = 0;
+  #next: { lngLat: LngLat; source: "pointer" | "center" } | null = null;
+  #running = false;
 
   constructor(map: Map, options: CoordinatesOptions) {
     super({ lngLat: null, source: "center", values: [] });
@@ -93,19 +94,27 @@ class CoordinatesStore extends Store<CoordinatesState> {
     void this.#show(map.getCenter(), "center");
   }
 
+  /** Shows `lngLat`: one conversion at a time, and only the latest position asked for while it runs. */
   async #show(lngLat: LngLat, source: "pointer" | "center"): Promise<void> {
     if (!Number.isFinite(lngLat.lng) || !Number.isFinite(lngLat.lat)) return;
-    const ticket = ++this.#ticket;
-    const texts = await Promise.all(this.#systems.map(async (s) => {
-      try {
-        return await s.format(lngLat);
-      } catch {
-        return "";
-      }
-    }));
-    // A later position has been asked for: its values win.
-    if (ticket !== this.#ticket) return;
-    this.set({ lngLat, source, values: this.#systems.map((s, i) => ({ id: s.id, title: s.title, text: texts[i] })) });
+    this.#next = { lngLat, source };
+    if (this.#running) return;
+    this.#running = true;
+    while (this.#next) {
+      const at = this.#next;
+      this.#next = null;
+      const texts = await Promise.all(
+        this.#systems.map(async (s) => {
+          try {
+            return await s.format(at.lngLat);
+          } catch {
+            return "";
+          }
+        }),
+      );
+      this.set({ ...at, values: this.#systems.map((s, i) => ({ id: s.id, title: s.title, text: texts[i] })) });
+    }
+    this.#running = false;
   }
 }
 

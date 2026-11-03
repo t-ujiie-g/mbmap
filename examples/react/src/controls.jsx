@@ -1,11 +1,8 @@
 // The map's controls as a React toolbar along the bottom, from the same
 // `mbmap/ui` controllers the plain-DOM examples draw as a column of buttons.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { createAttribution, createFullscreen, createGeolocation, createNavigation, createScale } from "mbmap/ui";
-
-function useController(c) {
-  return useSyncExternalStore(c.subscribe, () => c.state);
-}
+import { useController } from "./use-controller.js";
 
 const LOCATION = { unavailable: "使えません", off: "現在地", waiting: "取得中…", active: "追跡中", "active-error": "取得できません", background: "現在地へ", "background-error": "取得できません" };
 
