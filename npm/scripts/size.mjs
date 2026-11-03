@@ -5,6 +5,7 @@ import { appendFile, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { build } from "esbuild";
 import { referencesOf } from "./references.mjs";
 
 const PKG = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -17,7 +18,7 @@ const ENTRIES = [
   { name: "GeoJSON sources (loaded by mbmap when a style has one)", files: ["geojson.js"], budget: 5_000, references: ["./geojson-worker.js", "./geojson.wasm"] },
   { name: "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)", files: ["pmtiles.js"], budget: 2_000, references: [] },
   { name: "mbmap/element (on top of mbmap)", files: ["element.js"], budget: 5_000, references: ["./index.js"] },
-  { name: "mbmap/ui (every controller)", files: ["ui.js"], budget: 5_000, references: [] },
+  { name: "mbmap/ui (every controller)", files: ["ui.js"], budget: 10_000, references: [] },
   { name: "display worker", files: ["worker.js", "mbmap.wasm"], budget: 100_000, references: [] },
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
   { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./projstring.js", "./analysis-worker.js", "./analysis.wasm", "./geometry.wasm", "./proj.wasm"] },
@@ -46,6 +47,23 @@ for (const e of ENTRIES) {
   }
   if (bytes > e.budget) failures.push(`${e.name}: ${bytes} bytes is over its budget of ${e.budget}`);
   rows.push({ name: e.name, bytes, budget: e.budget });
+}
+
+// A page pays for the `mbmap/ui` controllers it imports: each alone, tree-shaken from dist/ui.js.
+const UI_CONTROLLER_BUDGET = 2_000;
+const uiSource = await readFile(path.join(PKG, "src/ui.ts"), "utf8");
+for (const name of [...new Set(uiSource.match(/\bcreate[A-Z]\w*/g))]) {
+  const out = await build({
+    stdin: { contents: `export { ${name} } from "./ui.js";`, resolveDir: DIST, loader: "js" },
+    bundle: true,
+    minify: true,
+    format: "esm",
+    write: false,
+    logLevel: "silent",
+  });
+  const bytes = gzipSync(out.outputFiles[0].contents, { level: 9 }).length;
+  if (bytes > UI_CONTROLLER_BUDGET) failures.push(`mbmap/ui ${name}: ${bytes} bytes is over its budget of ${UI_CONTROLLER_BUDGET}`);
+  rows.push({ name: `mbmap/ui ${name} alone`, bytes, budget: UI_CONTROLLER_BUDGET });
 }
 
 const kb = (n) => `${(n / 1000).toFixed(1)}KB`;

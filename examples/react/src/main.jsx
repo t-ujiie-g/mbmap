@@ -8,8 +8,9 @@ import { describe, RADIUS_METERS } from "../../shared/analysis.js";
 import { pinDestinations, saveImage } from "../../shared/overlay.js";
 import { panelControllers } from "../../shared/panel.js";
 import { MapControls } from "./controls.jsx";
+import { useIdentify } from "./identify.jsx";
 import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
-import { describeFeature, hoverPlaces } from "../../shared/pick.js";
+import { hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
 import { createStyle, modeCamera, withMarker } from "../../shared/style.js";
@@ -23,8 +24,8 @@ function App() {
   const [described, setDescribed] = useState(null);
   const [panel, setPanel] = useState(null);
   const modeRef = useRef(mode);
-  const [picked, setPicked] = useState(null);
   const [map, setMap] = useState(null);
+  const identify = useIdentify(map);
   const places = useRef(PLACES);
   const pending = useRef(0);
   // A new style object goes to the map's setStyle: tiles of what stays alike are kept.
@@ -58,12 +59,6 @@ function App() {
     window.__loaded = performance.now();
     const map = e.detail.map;
     window.__map = map;
-    // The topmost feature under a click, from the workers that hold the geometry.
-    map.on("click", (ev) => map.queryRenderedFeatures(ev.point).then((features) => {
-      const rows = describeFeature(features) ?? [["—", "何もありません"]];
-      setPicked(rows);
-      window.__picked = rows;
-    }));
     hoverPlaces(map);
     pinDestinations(map, document.body);
     setMap(map);
@@ -111,13 +106,12 @@ function App() {
         <button id="save" onClick={() => ref.current.map && saveImage(ref.current.map)}>画像を保存</button>
         {panel && <Legend c={panel.legend} />}
         <h2>クリックした地物</h2>
-        <dl id="picked">
-          {(picked ?? [["—", "地図をクリック"]]).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}
-        </dl>
+        {identify?.picked}
         <h2>移動</h2>
         <div id="destinations">
           {DESTINATIONS.map((d) => <button key={d.name} onClick={() => go(d)}>{d.name}</button>)}
         </div>
+        {identify?.coordinates}
         <h2>カメラ</h2>
         <dl id="camera">
           {rows.map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}

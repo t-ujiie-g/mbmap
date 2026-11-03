@@ -15,7 +15,7 @@ const ORIGINS = [
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX"];
 
 /** The zone whose origin is nearest (the official zones follow prefecture lines). */
-function nearestZone(lng, lat) {
+export function nearestZone(lng, lat) {
   let best = 0;
   ORIGINS.forEach(([x, y], i) => {
     const [bx, by] = ORIGINS[best];

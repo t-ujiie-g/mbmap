@@ -78,7 +78,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 
 ## UI のコントローラ `mbmap/ui`
 
-見た目を持たないコントローラ。DOM を作らず、状態（`c.state`）、操作（メソッド）、変化の購読（`c.subscribe(f)` が解除の関数を返す）、`c.destroy()` だけを持つ。見た目は作り手が自由に作る（素の DOM でも React でも）。React では `useSyncExternalStore(c.subscribe, () => c.state)` でそのまま読める。import したコントローラだけがバンドルに入る。
+見た目を持たないコントローラ（大きさは 1 つあたり 2KB 以下、全部入りで 10KB 以下）。DOM を作らず、状態（`c.state`）、操作（メソッド）、変化の購読（`c.subscribe(f)` が解除の関数を返す）、`c.destroy()` だけを持つ。見た目は作り手が自由に作る（素の DOM でも React でも）。React では `useSyncExternalStore(c.subscribe, () => c.state)` でそのまま読める。import したコントローラだけがバンドルに入る。
 
 ```js
 import { createNavigation, createScale } from "mbmap/ui";
@@ -107,6 +107,14 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
 - `createBasemaps(map, { basemaps, active, overlay })`：背景地図の切り替え。
   - `basemaps` の各要素は `{ id, title, style }`。`style` はスタイル、URL、または選んだときにスタイルを作る関数。
   - `select(id)` は `setStyle` で差し替え、重ねるレイヤー（既定は `metadata["mbmap:overlay"]` が true のもの）を、そのソースとデータごと残す。
+- `createIdentify(map, { layers, radius, highlight, click })`：クリックした点の周り（既定 3px）の地物。
+  - 状態は `point`、`lngLat`、`features`（上から）、`index`（選んでいるもの）、`loading`。
+  - 操作は `identify(point)`、`select(i)`、`next()`、`previous()`、`clear()`。
+  - 選んだ地物には feature-state（既定のキーは `selected`）を立てるので、paint で `["feature-state", "selected"]` を読めば強調できる。
+- `createCoordinates(map, { systems, follow })`：マウスの位置（地図の外では中心）の座標を、複数の座標系の文字列で返す。
+  - 座標系は `degrees()`、`degreesMinutesSeconds()`、`projected({ transform, crs })`、`utm(transform)`。`format(lngLat)` を持つオブジェクトなら自分で作ってもよい。
+  - 投影座標系は `transform`（`mbmap/analysis` の `transform` など）を渡して使う。そのため `mbmap/ui` は座標系の変換を含まない。遅れて届いた古い結果は捨てる。
+  - `formatDegrees`、`formatDms`、`utmZone` も単体で使える。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 解析 `mbmap/analysis`

@@ -4,7 +4,8 @@ import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { mountControls } from "../shared/controls.js";
 import { mountPanel, panelControllers } from "../shared/panel.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
-import { describeFeature, hoverPlaces } from "../shared/pick.js";
+import { mountCoordinates } from "../shared/coordinates.js";
+import { hoverPlaces, mountIdentify } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
 import { createStyle, modeCamera, withMarker } from "../shared/style.js";
@@ -65,8 +66,9 @@ el.addEventListener("mb-load", () => {
   window.__loaded = performance.now();
   window.__map = el.map;
   const map = el.map;
-  // The topmost feature under a click, from the workers that hold the geometry.
-  map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
+  // The features under a click, from the workers that hold the geometry.
+  mountIdentify(map);
+  mountCoordinates(map, document.body);
   hoverPlaces(map);
   pinDestinations(map, document.body);
   mountControls(map, document.body);
@@ -75,11 +77,6 @@ el.addEventListener("mb-load", () => {
   update();
 });
 
-function showPicked(features) {
-  const rows = describeFeature(features) ?? [["—", "何もありません"]];
-  document.getElementById("picked").replaceChildren(...rows.flatMap(([k, v]) => [Object.assign(document.createElement("dt"), { textContent: k }), Object.assign(document.createElement("dd"), { textContent: v })]));
-  window.__picked = rows;
-}
 document.getElementById("modes").addEventListener("click", (e) => {
   if (e.target instanceof HTMLButtonElement) setMode(e.target.dataset.mode);
 });
