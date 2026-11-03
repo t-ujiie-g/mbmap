@@ -102,8 +102,13 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       id: "places", type: "circle", source: "places", metadata: overlay,
       paint: {
         "circle-radius": ["case", ["boolean", ["feature-state", "hover"], false], 10, 6],
-        "circle-color": ["case", ["boolean", ["feature-state", "hover"], false], "#b2182b", "#d6604d"],
-        "circle-stroke-width": 2,
+        "circle-color": [
+          "case",
+          ["boolean", ["feature-state", "selected"], false], "#2166ac",
+          ["boolean", ["feature-state", "hover"], false], "#b2182b",
+          "#d6604d",
+        ],
+        "circle-stroke-width": ["case", ["boolean", ["feature-state", "selected"], false], 4, 2],
         "circle-stroke-color": "#ffffff",
       },
     },

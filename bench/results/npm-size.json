@@ -26,8 +26,8 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 4067,
-      "budget": 5000
+      "bytes": 5227,
+      "budget": 10000
     },
     {
       "name": "display worker",
@@ -63,6 +63,56 @@
       "name": "coordinate systems (loaded by the analysis worker on first use)",
       "bytes": 21629,
       "budget": 25000
+    },
+    {
+      "name": "mbmap/ui createAttribution alone",
+      "bytes": 483,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createFullscreen alone",
+      "bytes": 516,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createGeolocation alone",
+      "bytes": 1414,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createNavigation alone",
+      "bytes": 539,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createScale alone",
+      "bytes": 889,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createBasemaps alone",
+      "bytes": 707,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createLayerList alone",
+      "bytes": 838,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createLegend alone",
+      "bytes": 1532,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createCoordinates alone",
+      "bytes": 896,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createIdentify alone",
+      "bytes": 813,
+      "budget": 2000
     }
   ]
 }

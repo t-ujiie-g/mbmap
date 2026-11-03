@@ -10,3 +10,6 @@ export { createBasemaps, type Basemap, type Basemaps, type BasemapsOptions, type
 export { createLayerList, type LayerList, type LayerListItem, type LayerListOptions, type LayerListState } from "./ui/layer-list";
 export { createLegend, type LegendEntry, type LegendItem, type LegendOptions, type LegendState } from "./ui/legend";
 export type { LegendCategory } from "./ui/legend-rules";
+export { createCoordinates, degrees, degreesMinutesSeconds, projected, utm, type CoordinateSystem, type CoordinatesOptions, type CoordinatesState, type Transform } from "./ui/coordinates";
+export { formatDegrees, formatDms, utmZone } from "./ui/format";
+export { createIdentify, type Identify, type IdentifyOptions, type IdentifyState } from "./ui/identify";

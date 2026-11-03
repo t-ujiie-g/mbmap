@@ -1,6 +1,7 @@
 // What the panel shows of a clicked feature (its layer, then its name, GSI's
 // `knj` or the places' `name`, or its first properties), and the places'
 // hover highlight.
+import { createIdentify } from "mbmap/ui";
 
 /** Rows of [label, value] for the topmost of `features`, or null when there is none. */
 export function describeFeature(features) {
@@ -33,4 +34,42 @@ export function hoverPlaces(map) {
     window.__hovered = id;
   });
   map.on("mouseleave", "places", leave);
+}
+
+/** The selected feature of an identify controller's state as rows (`describeFeature`). */
+export function selectedRows(state) {
+  const f = state.features[state.index];
+  return f ? describeFeature([f]) : null;
+}
+
+/**
+ * The features under each click from `mbmap/ui`'s identify controller, drawn into `#picked`: the
+ * selected one's rows and buttons to step through the others (the selection is highlighted).
+ */
+export function mountIdentify(map) {
+  const identify = createIdentify(map);
+  const dl = document.getElementById("picked");
+  const nav = document.createElement("div");
+  nav.className = "picked-nav";
+  dl.before(nav);
+  const step = (label, f) => {
+    const b = Object.assign(document.createElement("button"), { textContent: label });
+    b.addEventListener("click", f);
+    return b;
+  };
+  const prev = step("◀", () => identify.previous());
+  const next = step("▶", () => identify.next());
+  const count = document.createElement("span");
+  nav.append(prev, count, next);
+  identify.subscribe((s) => {
+    nav.hidden = s.features.length < 2;
+    count.textContent = `${s.index + 1} / ${s.features.length}`;
+    if (s.loading) return;
+    const rows = selectedRows(s) ?? [["—", "何もありません"]];
+    dl.replaceChildren(...rows.flatMap(([k, v]) => [Object.assign(document.createElement("dt"), { textContent: k }), Object.assign(document.createElement("dd"), { textContent: v })]));
+    window.__picked = rows;
+  });
+  nav.hidden = true;
+  window.__identify = identify;
+  return identify;
 }

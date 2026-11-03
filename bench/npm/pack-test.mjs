@@ -321,6 +321,16 @@ async function showcase(page) {
   await page.mouse.click(400, 300);
   await page.waitForFunction(() => window.__picked);
   const picked = await page.evaluate(() => ({ rows: window.__picked, text: document.getElementById("picked").textContent }));
+  // The identify controller selects the top feature and highlights it through feature state; the
+  // coordinates follow the pointer in four systems (two through mbmap/analysis).
+  const identified = await page.evaluate(() => {
+    const s = window.__identify.state;
+    const top = s.features[0];
+    return { count: s.features.length, index: s.index, top: top.layer.id, selected: window.__map.getFeatureState({ source: top.source, id: top.id }).selected };
+  });
+  await page.mouse.move(420, 320);
+  await page.waitForFunction(() => window.__coordinates.state.source === "pointer" && window.__coordinates.state.values.every((v) => v.text));
+  const coordinates = await page.evaluate(() => window.__coordinates.state.values.map((v) => [v.id, v.text]));
   // Hovering the place sets its feature state.
   await page.mouse.move(420, 320);
   await page.mouse.move(400, 300, { steps: 3 });
@@ -368,6 +378,9 @@ async function showcase(page) {
   });
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
+    identified.count >= 1 && identified.index === 0 && identified.selected === true &&
+    coordinates.length === 4 && /^35\.68\d+, 139\.76\d+$/.test(coordinates[0][1]) && /N 139°46′/.test(coordinates[1][1]) &&
+    coordinates[2][1].startsWith("第IX系 X -35") && coordinates[3][1].startsWith("54N ") &&
     hovered.id === "東京駅" && hovered.state.hover === true &&
     styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.listed === false && styled.markers === "印 1" &&
     JSON.stringify(styled.legend) === JSON.stringify({ title: "道路", kind: "match", labels: ["0", "1", "その他"] }) &&
@@ -380,7 +393,7 @@ async function showcase(page) {
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
     saved.type === "image/png" && saved.size > 0 && controls.ok;
-  return [ok, { first, picked, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls }];
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls }];
 }
 
 // Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile
