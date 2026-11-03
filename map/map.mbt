@@ -150,6 +150,8 @@ pub struct Map {
     String,
     @hashmap.HashMap[String, JsValue],
   ]
+  /// Heatmap color ramps by `heatmap-color` expression.
+  priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
 }
 
 ///|
@@ -255,6 +257,7 @@ pub fn Map::new(
     next_query: 0,
     window: None,
     feature_states: @hashmap.HashMap([]),
+    ramps: [],
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {

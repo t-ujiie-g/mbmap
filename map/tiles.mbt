@@ -245,6 +245,7 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
               obj: props,
               state: js_null(),
               progress: @double.not_a_number,
+              density: @double.not_a_number,
             })
           },
           paint: None,

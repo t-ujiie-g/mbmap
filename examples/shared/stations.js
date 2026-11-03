@@ -23,6 +23,21 @@ export const STATIONS = {
 /** The source: clusters of 50 px up to zoom 14. */
 export const STATIONS_SOURCE = { type: "geojson", data: STATIONS, cluster: true, clusterRadius: 50, clusterMaxZoom: 14 };
 
+/** The stations unclustered, for the heatmap. */
+export const STATIONS_HEAT_SOURCE = { type: "geojson", data: STATIONS };
+
+/** How densely the stations lie (a heatmap, an overlay), fading out as the map zooms in. */
+export function stationHeatLayer(metadata) {
+  return {
+    id: "stations-heat", type: "heatmap", source: "stations-heat", metadata,
+    paint: {
+      "heatmap-radius": ["interpolate", ["exponential", 2], ["zoom"], 10, 12, 16, 400],
+      "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 16, 1.5],
+      "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.7, 17, 0.2],
+    },
+  };
+}
+
 /** The layers (overlays, kept across basemaps): clusters, their counts, and single stations. */
 export function stationLayers(metadata) {
   const clustered = ["has", "point_count"];

@@ -416,6 +416,11 @@ fn Map::draw_frame(
     }
     // Paint that does not read feature data is the same for every mesh.
     let shared = paint_of(layer, zoom, JsProps::none())
+    if layer.heatmap is Some(h) {
+      let draws = draws_of.get(layer.source).unwrap_or([])
+      self.draw_heatmap(index, h, shared, draws, dpr, 0.25)
+      continue
+    }
     for d in draws_of.get(layer.source).unwrap_or([]) {
       if layer.extrusion is Some(e) {
         if terrain is Some(src) {
@@ -465,7 +470,11 @@ fn Map::slots(
     slots.constant(slot, c.r, b=c.g, c=c.b, d=c.a)
   }
   color(@style.SLOT_COLOR, p.color)
-  slots.constant(@style.SLOT_OPACITY, p.opacity)
+  if self.style.layers[index].kind is Heatmap {
+    slots.constant(@style.SLOT_WEIGHT, p.weight)
+  } else {
+    slots.constant(@style.SLOT_OPACITY, p.opacity)
+  }
   slots.constant(
     @style.SLOT_SIZE,
     if m.kind == KIND_CIRCLE {

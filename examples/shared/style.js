@@ -1,9 +1,9 @@
-// The showcase's style: GSI's vector tiles and DEM, the places and clustered stations as
-// GeoJSON, and in 3D terrain, sky and extruded buildings; `?local=1` reads the bench fixtures
+// The showcase's style: GSI's vector tiles and DEM, the places and the stations (clustered and
+// as a heatmap) as GeoJSON, and in 3D terrain, sky and extruded buildings; `?local=1` reads the bench fixtures
 // (z14 around Tokyo Station) instead of GSI's servers.
 import { GSI_LAYERS } from "./layers.js";
 import { PLACES } from "./places.js";
-import { STATIONS_SOURCE, stationLayers } from "./stations.js";
+import { STATIONS_HEAT_SOURCE, STATIONS_SOURCE, stationHeatLayer, stationLayers } from "./stations.js";
 
 // Tokyo Station, Yurakucho, the Imperial Palace, Kanda, Nihonbashi and back.
 const WALK = {
@@ -40,6 +40,7 @@ export const LAYER_GROUPS = [
   { name: "道路・鉄道", ids: ["road-casing", "road", "railway"] },
   { name: "注記", ids: ["symbol", "label", "label-vertical"] },
   { name: "地点", ids: ["places", "places-label"] },
+  { name: "駅の密度", ids: ["stations-heat"] },
   { name: "山手線の駅", ids: ["stations-cluster", "stations", "stations-count"] },
   { name: "散歩道", ids: ["walk"] },
 ];
@@ -55,7 +56,7 @@ export const LAYER_TITLES = {
   waterarea: "水域", structurea: "構造物", building: "建物", "building-3d": "建物（3D）", "building-outline": "建物の輪郭",
   contour: "等高線", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
   elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
-  "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数", walk: "散歩道",
+  "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数", "stations-heat": "駅の密度", walk: "散歩道",
   hillshade: "陰影", photo: "写真",
 };
 
@@ -94,6 +95,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       : { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
     places: { type: "geojson", data: places, promoteId: "name" },
     stations: STATIONS_SOURCE,
+    "stations-heat": STATIONS_HEAT_SOURCE,
     // A walk around Tokyo Station; line metrics give its gradient from start to finish.
     walk: { type: "geojson", lineMetrics: true, data: WALK },
     // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
@@ -120,6 +122,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
   const layers = [
     { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
     ...base,
+    stationHeatLayer(overlay),
     ...stationLayers(overlay),
     {
       id: "walk", type: "line", source: "walk", metadata: overlay,

@@ -23,8 +23,8 @@ payload:
 What the display worker writes for a tile, read by `worker/js/worker.mjs`:
 
 - u32 entry count, then `LAYER_ENTRY_WORDS` u32s per entry: style layer index, kind
-  (`KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3, `KIND_EXTRUSION` 6), vertex byte
-  offset and length,
+  (`KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3 also for heatmaps, `KIND_EXTRUSION` 6),
+  vertex byte offset and length,
   index byte offset, index count, bytes per index (2 up to 65536 vertices, else 4),
   group properties byte offset and length (0 if none), per-vertex paint byte offset
   and length (0 if none; an entry sharing another's geometry has its own), and for
@@ -52,10 +52,10 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
 
 ## Vertex paint (`style/vertex_paint.mbt`, written by `worker/processor.mbt`)
 
-The data-driven paint of fill, line and circle layers that do not read feature state,
-per vertex in the order of the layer's vertices: for each property of
+The data-driven paint of fill, line, circle and heatmap layers that do not read feature
+state, per vertex in the order of the layer's vertices: for each property of
 `@style.StyleLayer::vertex_paint` (slot order: color, opacity, width or radius, stroke
-color, stroke opacity, stroke width), its value at each zoom stop of its top-level zoom
+color, stroke opacity, stroke width; a heatmap's weight takes the opacity slot), its value at each zoom stop of its top-level zoom
 curve (one value when it has none), each a u32 word: a color as RGBA bytes (red in the
 lowest byte, straight alpha), a number as a 32-bit float. Both sides derive the layout
 from the style, so the packed tile carries only the bytes; the renderer points each

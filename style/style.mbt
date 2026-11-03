@@ -16,6 +16,7 @@ pub(all) enum LayerKind {
   Hillshade
   FillExtrusion
   Raster
+  Heatmap
 } derive(Debug, Eq)
 
 ///|
@@ -35,7 +36,8 @@ pub(all) enum Cap {
 ///|
 /// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout;
 /// `filter_id` shared by identically written filters (-1 for none); a fill's
-/// `antialias` draws its outline, `outline_color` (or its color).
+/// `antialias` draws its outline, `outline_color` (or its color); `radius` a
+/// circle's or heatmap's.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -58,6 +60,7 @@ pub struct StyleLayer {
   hillshade : HillshadePaint?
   extrusion : ExtrusionPaint?
   raster : RasterPaint?
+  heatmap : HeatmapPaint?
   join : Join
   cap : Cap
   miter_limit : Double
@@ -227,6 +230,7 @@ fn parse_layer(
     "hillshade" => Hillshade
     "fill-extrusion" => FillExtrusion
     "raster" => Raster
+    "heatmap" => Heatmap
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -246,6 +250,7 @@ fn parse_layer(
     Hillshade => "hillshade"
     FillExtrusion => "fill-extrusion"
     Raster => "raster"
+    Heatmap => "heatmap"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter
@@ -281,7 +286,12 @@ fn parse_layer(
     },
     filter_id,
     color: paint_expr(
-      paint,
+      // A heatmap's color is its ramp (`HeatmapPaint::color`).
+      if kind is Heatmap {
+        Map([])
+      } else {
+        paint
+      },
       "\{prefix}-color",
       ppath,
       ColorType,
@@ -295,13 +305,11 @@ fn parse_layer(
       Json::number(1.0),
     ),
     width: paint_expr(paint, "line-width", ppath, NumberType, Json::number(1.0)),
-    radius: paint_expr(
-      paint,
-      "circle-radius",
-      ppath,
-      NumberType,
-      Json::number(5.0),
-    ),
+    radius: if kind is Heatmap {
+      paint_expr(paint, "heatmap-radius", ppath, NumberType, Json::number(30.0))
+    } else {
+      paint_expr(paint, "circle-radius", ppath, NumberType, Json::number(5.0))
+    },
     stroke_width: paint_expr(
       paint,
       "circle-stroke-width",
@@ -357,6 +365,11 @@ fn parse_layer(
     } else {
       None
     },
+    heatmap: if kind is Heatmap {
+      Some(parse_heatmap(paint, ppath))
+    } else {
+      None
+    },
     join,
     cap,
     miter_limit: number_or(layout, "line-miter-limit", lpath, 2.0),
@@ -400,6 +413,21 @@ fn parse_layer(
     if e is Some(e) {
       others.push(e)
     }
+  }
+  if layer.heatmap is Some(h) {
+    others.push(h.weight)
+    others.push(h.intensity)
+    if layer.radius.reads_state() || h.weight.reads_state() {
+      raise Unsupported(path=ppath, "feature-state in heatmap paint")
+    }
+  }
+  // And `heatmap-density` in `heatmap-color` only.
+  if others.iter().any(e => e.reads_heatmap_density()) ||
+    layer.gradient.map_or(false, e => e.reads_heatmap_density()) {
+    raise Invalid(path~, "heatmap-density is only allowed in heatmap-color")
+  }
+  if layer.heatmap is Some(h) {
+    others.push(h.color)
   }
   if others.iter().any(e => e.reads_line_progress()) {
     raise Invalid(path~, "line-progress is only allowed in line-gradient")

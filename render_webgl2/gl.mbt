@@ -134,6 +134,27 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  float t = smoothstep(v_inner - aa, v_inner, d);" +
   #|    "  o = mix(v_color, v_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
   #|    ["u_matrix", "u_px", "u_dpr", "u_depth", "u_clip", "u_t"]);
+  #|  // MapLibre's heatmap shaders: a Gaussian kernel per point on the map, its quad
+  #|  // grown until the kernel falls to 1/255/16, radius in CSS px times u_extrude (tile
+  #|  // units); weight and radius in the opacity and size slots.
+  #|  const heatmap = program(
+  #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_extrude; uniform float u_intensity;" +
+  #|    "out vec2 v_extrude; out float v_weight;" +
+  #|    "void main() { float w = at(a_opacity, 1); v_weight = w;" +
+  #|    "  float s = sqrt(-2.0 * log(1.0 / 255.0 / 16.0 / w / u_intensity / 0.3989422804014327)) / 3.0;" +
+  #|    "  v_extrude = s * a_data.xy / 63.0;" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos + v_extrude * at(a_extent, 2) * u_extrude, 0.0, 1.0); }",
+  #|    "uniform float u_intensity; in vec2 v_extrude; in float v_weight; out vec4 o;" +
+  #|    "void main() { float d = -0.5 * 3.0 * 3.0 * dot(v_extrude, v_extrude);" +
+  #|    "  o = vec4(v_weight * u_intensity * 0.3989422804014327 * exp(d), 1.0, 1.0, 1.0); }",
+  #|    ["u_matrix", "u_t", "u_extrude", "u_intensity"]);
+  #|  // The density u_image over the viewport (a quad from gl_VertexID), colored by u_ramp.
+  #|  const heatmapTexture = program(
+  #|    "out vec2 v_pos; void main() { v_pos = vec2(gl_VertexID & 1, gl_VertexID >> 1);" +
+  #|    "  gl_Position = vec4(v_pos * 2.0 - 1.0, 0.0, 1.0); }",
+  #|    "uniform sampler2D u_image; uniform sampler2D u_ramp; uniform float u_opacity; in vec2 v_pos; out vec4 o;" +
+  #|    "void main() { o = texture(u_ramp, vec2(texture(u_image, v_pos).r, 0.5)) * u_opacity; }",
+  #|    ["u_image", "u_ramp", "u_opacity"]);
   #|  // a_data: corner offset in quarter CSS px (y down); a_size: text size in 1/16 px,
   #|  // both times MapLibre's perspective ratio; a_ele: anchor height (m). SDF edge at
   #|  // 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px); see FORMATS.md.
@@ -291,7 +312,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, line, lineDash, lineGradient, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, line, lineDash, lineGradient, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 

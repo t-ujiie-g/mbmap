@@ -6,11 +6,17 @@ priv struct JsProps {
   obj : JsValue
   state : JsValue
   progress : Double
+  density : Double
 }
 
 ///|
 fn JsProps::none() -> JsProps {
-  { obj: js_null(), state: js_null(), progress: @double.not_a_number, }
+  {
+    obj: js_null(),
+    state: js_null(),
+    progress: @double.not_a_number,
+    density: @double.not_a_number,
+  }
 }
 
 ///|
@@ -51,6 +57,12 @@ impl @style.FeatureContext for JsProps with fn line_progress(self) {
 }
 
 ///|
+/// The density a heatmap's color ramp is evaluated at (NaN elsewhere).
+impl @style.FeatureContext for JsProps with fn heatmap_density(self) {
+  self.density
+}
+
+///|
 impl @style.FeatureContext for JsProps with fn trig(_) {
   js_trig
 }
@@ -82,8 +94,8 @@ impl @style.FeatureContext for JsProps with fn geometry_type(self) {
 ///|
 /// A layer's paint values for one draw: colors are straight RGBA (`r`, `g`,
 /// `b`, `a` with the opacity in; `color` and `opacity` apart, as the shaders'
-/// slots take them); `width` is the line width, `radius` and the stroke values
-/// those of circles (0 and transparent for other kinds).
+/// slots take them); `width` a line's, `radius` a circle's or heatmap's, `weight`
+/// a heatmap's, the stroke a circle's (0 and transparent for other kinds).
 priv struct Paint {
   r : Double
   g : Double
@@ -95,6 +107,7 @@ priv struct Paint {
   stroke_opacity : Double
   width : Double
   radius : Double
+  weight : Double
   stroke : FixedArray[Double]
   stroke_width : Double
   halo : FixedArray[Double]
@@ -122,6 +135,7 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
   let c = color_of(layer.color, zoom, ctx)
   let opacity = number_or(layer.opacity.eval(zoom, ctx), 1.0)
   let circle = layer.kind is Circle
+  let heatmap = layer.kind is Heatmap
   let symbol = layer.kind is Symbol
   // A fill's stroke is its outline: its own color, or its fill color.
   let stroke_color = match (layer.kind, layer.outline_color) {
@@ -148,8 +162,14 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
     width: number_or(layer.width.eval(zoom, ctx), 1.0),
     radius: if circle {
       number_or(layer.radius.eval(zoom, ctx), 5.0)
+    } else if heatmap {
+      number_or(layer.radius.eval(zoom, ctx), 30.0)
     } else {
       0.0
+    },
+    weight: match layer.heatmap {
+      Some(h) => number_or(h.weight.eval(zoom, ctx), 1.0)
+      None => 1.0
     },
     stroke,
     stroke_width: if circle {
@@ -212,9 +232,8 @@ pub fn Map::paint_at(
     return no_paint()
   }
   let p = paint_of(self.style.layers[i], self.transform.camera.zoom, {
+    ..JsProps::none(),
     obj: properties_value(props),
-    state: js_null(),
-    progress: @double.not_a_number,
   })
   paint_object(
     [p.r, p.g, p.b, p.a],

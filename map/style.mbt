@@ -112,6 +112,7 @@ pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
   self.sources.push_iter(sources.iter())
   self.style = next
   self.vertex_paint = next.layers.map(l => l.vertex_paint())
+  self.prune_ramps()
   self.has_labels = next.layers.iter().any(l => l.kind is Symbol)
   self.content_version += 1
   self.dem_version += 1
