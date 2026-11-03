@@ -299,21 +299,30 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  vec4 color = mix(u_shadow, u_highlight, shade) * sin(scaled) * k;" +
   #|    "  o = accent * (1.0 - color.a) + color; }",
   #|    ["u_matrix", "u_clip", "u_image", "u_lat", "u_light", "u_shadow", "u_highlight", "u_accent"]);
-  #|  // MapLibre's raster.fragment.glsl without the parent cross-fade: the
+  #|  // MapLibre's raster shaders without the parent cross-fade: the quad's corners
+  #|  // (u_top: top left, right; u_bottom: bottom left, right) warped by u_warp, the
   #|  // premultiplied image unpremultiplied, hue spun, saturated, contrasted and
   #|  // mapped between the brightness bounds (u_bright).
   #|  const raster = program(
-  #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_tex;" +
-  #|    "void main() { v_pos = a_pos; v_tex = a_pos / 4096.0; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    "in vec2 a_pos; uniform mat4 u_matrix; uniform vec4 u_top; uniform vec4 u_bottom; uniform vec3 u_warp;" +
+  #|    "out vec2 v_pos; out vec3 v_tex;" +
+  #|    "void main() { vec2 f = a_pos / 4096.0;" +
+  #|    "  vec2 bilinear = mix(mix(u_top.xy, u_top.zw, f.x), mix(u_bottom.xy, u_bottom.zw, f.x), f.y);" +
+  #|    "  float d = dot(u_warp.xy, f) + 1.0;" +
+  #|    "  vec2 across = u_top.zw - u_top.xy + u_warp.x * u_top.zw, down = u_bottom.xy - u_top.xy + u_warp.y * u_bottom.xy;" +
+  #|    "  v_pos = mix((across * f.x + down * f.y + u_top.xy) / d, bilinear, u_warp.z);" +
+  #|    "  float r = mix(1.0 / d, 1.0, u_warp.z); v_tex = vec3(f * r, r);" +
+  #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); }",
   #|    clip + "uniform sampler2D u_image; uniform float u_opacity; uniform vec2 u_bright; uniform float u_saturation;" +
-  #|    "uniform float u_contrast; uniform vec3 u_spin; in vec2 v_tex; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; vec4 color = texture(u_image, v_tex);" +
+  #|    "uniform float u_contrast; uniform vec3 u_spin; in vec3 v_tex; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; vec4 color = texture(u_image, v_tex.xy / v_tex.z);" +
   #|    "  if (color.a > 0.0) color.rgb /= color.a; color.a *= u_opacity; vec3 rgb = color.rgb;" +
   #|    "  rgb = vec3(dot(rgb, u_spin.xyz), dot(rgb, u_spin.zxy), dot(rgb, u_spin.yzx));" +
   #|    "  float average = (color.r + color.g + color.b) / 3.0; rgb += (average - rgb) * u_saturation;" +
   #|    "  rgb = (rgb - 0.5) * u_contrast + 0.5;" +
   #|    "  o = vec4(mix(vec3(u_bright.x), vec3(u_bright.y), rgb) * color.a, color.a); }",
-  #|    ["u_matrix", "u_clip", "u_image", "u_opacity", "u_bright", "u_saturation", "u_contrast", "u_spin"]);
+  #|    ["u_matrix", "u_clip", "u_image", "u_opacity", "u_bright", "u_saturation", "u_contrast", "u_spin",
+  #|     "u_top", "u_bottom", "u_warp"]);
   #|  // One quad over a tile, for raster layers.
   #|  const quad = gl.createVertexArray();
   #|  gl.bindVertexArray(quad);
@@ -321,6 +330,21 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ARRAY_BUFFER, new Int16Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]), gl.STATIC_DRAW);
   #|  gl.enableVertexAttribArray(0);
   #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
+  #|  gl.bindVertexArray(null);
+  #|  // 16 x 16 quads over a tile, for warped pictures (MapLibre's subdivided quad).
+  #|  const imageGrid = gl.createVertexArray(), gv = [], gi = [];
+  #|  for (let y = 0; y <= 16; y++) for (let x = 0; x <= 16; x++) gv.push(x * 256, y * 256);
+  #|  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+  #|    const a = y * 17 + x;
+  #|    gi.push(a, a + 17, a + 1, a + 1, a + 17, a + 18);
+  #|  }
+  #|  gl.bindVertexArray(imageGrid);
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  #|  gl.bufferData(gl.ARRAY_BUFFER, new Int16Array(gv), gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(0);
+  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(gi), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Terrain: a grid raised by R32F elevations, bilinear by hand (float textures
   #|  // do not filter) over the u_dem part (offset, scale); a_data.x = 1 on skirts
@@ -388,7 +412,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -926,11 +950,51 @@ extern "js" fn gl_draw_raster(
   #|  gl.uniform1f(p.u_saturation, k[3]);
   #|  gl.uniform1f(p.u_contrast, k[4]);
   #|  gl.uniform3f(p.u_spin, k[5], k[6], k[7]);
+  #|  const q = m.quad, e = 4096;
+  #|  if (q) gl.uniform4f(p.u_top, q[0], q[1], q[2], q[3]), gl.uniform4f(p.u_bottom, q[6], q[7], q[4], q[5]), gl.uniform3f(p.u_warp, q[8], q[9], q[10]);
+  #|  else gl.uniform4f(p.u_top, 0, 0, e, 0), gl.uniform4f(p.u_bottom, 0, e, e, e), gl.uniform3f(p.u_warp, 0, 0, 1);
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, m.texture);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
-  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, nearest ? gl.NEAREST : gl.LINEAR_MIPMAP_NEAREST);
+  #|  // Pictures have no mipmaps: MapLibre then minifies linearly, even when `nearest`.
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, q ? gl.LINEAR : nearest ? gl.NEAREST : gl.LINEAR_MIPMAP_NEAREST);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.bindVertexArray(c.quad);
-  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  if (q && q[11]) {
+  #|    gl.bindVertexArray(c.imageGrid);
+  #|    gl.drawElements(gl.TRIANGLES, 16 * 16 * 6, gl.UNSIGNED_SHORT, 0);
+  #|  } else {
+  #|    gl.bindVertexArray(c.quad);
+  #|    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  }
   #|}
+
+///|
+/// A picture as a texture without mipmaps, premultiplied as MapLibre uploads it,
+/// into `old`'s texture if given (else a new mesh); `old` while a video has no
+/// frame or a canvas no pixels.
+extern "js" fn gl_upload_picture(
+  gl : Gl,
+  picture : Picture,
+  old : Mesh,
+) -> Mesh =
+  #|(c, image, old) => {
+  #|  const w = image.videoWidth ?? image.width, h = image.videoHeight ?? image.height;
+  #|  if ((image.readyState ?? 4) < 2 || !(w > 0 && h > 0)) return old;
+  #|  const gl = c.gl;
+  #|  const texture = old?.texture ?? gl.createTexture();
+  #|  gl.bindTexture(gl.TEXTURE_2D, texture);
+  #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|  const m = old ?? { texture, quad: null };
+  #|  m.bytes = w * h * 4;
+  #|  return m;
+  #|}
+
+///|
+/// Gives a picture's mesh its corners in tile units (top left, top right, bottom
+/// right, bottom left), its warp and whether it is drawn over a 16 x 16 grid.
+extern "js" fn gl_set_quad(mesh : Mesh, quad : FixedArray[Double]) -> Unit =
+  #|(m, q) => { m.quad = q.slice(3, 15); }

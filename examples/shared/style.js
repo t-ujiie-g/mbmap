@@ -46,6 +46,7 @@ export const LAYER_GROUPS = [
   { name: "駅の密度", ids: ["stations-heat"] },
   { name: "山手線の駅", ids: ["stations-cluster", "stations", "stations-count"] },
   { name: "散歩道", ids: ["walk"] },
+  { name: "駅の略図", ids: ["sketch"] },
 ];
 
 /** The basemaps (`createStyle`'s `basemap`): GSI's vector map, or its aerial photos with labels. */
@@ -60,7 +61,7 @@ export const LAYER_TITLES = {
   contour: "等高線", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
   elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
   "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数", "stations-heat": "駅の密度", walk: "散歩道",
-  hillshade: "陰影", photo: "写真",
+  hillshade: "陰影", photo: "写真", sketch: "駅の略図",
 };
 
 /** A legend item's label: the attribute and its values as GSI codes them, or "その他". */
@@ -101,6 +102,11 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
     "stations-heat": STATIONS_HEAT_SOURCE,
     // A walk around Tokyo Station; line metrics give its gradient from start to finish.
     walk: { type: "geojson", lineMetrics: true, data: WALK },
+    // A self-made sketch of the station yard, an image placed by its corners along the tracks.
+    sketch: {
+      type: "image", url: new URL("../shared/station-sketch.png", location.href).href,
+      coordinates: [[139.76263, 35.67878], [139.76536, 35.6849], [139.77097, 35.68322], [139.76824, 35.6771]],
+    },
     // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
     photo: local
       ? { type: "raster", tiles: [`${fixtures}gsi-std/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14 }
@@ -126,6 +132,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
   const layers = [
     { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
     ...base,
+    { id: "sketch", type: "raster", source: "sketch", metadata: overlay, paint: { "raster-opacity": 0.55 } },
     stationHeatLayer(overlay),
     ...stationLayers(overlay),
     {

@@ -3,18 +3,42 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.6（アイコン）。15.1〜15.5、15.2、15.7、15.9、15.10 は完了。並列で 15.11・15.12（画像・動画・canvas のソース、カスタムレイヤー）、15.8（線に沿ったラベル）をエージェントが進めている。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.6（アイコン）。15.1〜15.5、15.2、15.7、15.9、15.10、15.11 は完了。並列で 15.12（カスタムレイヤー）、15.8（線に沿ったラベル）をエージェントが進めている。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 93.8KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
-  | 表示ワーカー | 85.4KB | 100KB |
+  | 表示（メイン） | 95.9KB（画像・動画・canvas のソースは別に `media.js` 2.0KB） | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
+  | 表示ワーカー | 85.5KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.11：画像・動画・canvas のソース（2026-11-03）
+
+状態：**完了**。
+
+- MapLibre 6.16 の `ImageSource`、`VideoSource`、`CanvasSource` を移した。
+  - **置き方**：画像の 4 隅から、中心のタイル（`getCoordinatesCenterTileID`）、8192 単位で丸めた隅、ゆがめ方（`calculateImageWarp` の auto：射影と、強く縮むときの双一次への混ぜ）を求める。この計算は `media.ts` の `quadOf` に置き、エンジンには数で渡す（下の大きさの節）。
+  - **描画**：既存のラスターのシェーダーに、隅（`u_top`、`u_bottom`）とゆがめ方（`u_warp`）を足した（MapLibre の raster.vertex.glsl と同じ）。ラスタータイルは隅を 0〜4096 で渡すので、出力は変わらない（`raster:golden` は 8 組とも差 0 のまま）。画像はタイルで切らず、MapLibre が分割するとき（混ぜがあり平行四辺形でない）は 16 × 16 の格子で描く。テクスチャはミップマップなしで、乗算済みで上げる。`raster-resampling: nearest` でも縮小は線形（MapLibre と同じ）。
+  - **動画と canvas**：再生中の動画、`animate` の canvas はフレームごとに上げ直し、描画を続ける。`pause` はその場で 1 回上げる（MapLibre の `pause` と同じ）。
+  - **地形**：地形のタイルのテクスチャにも描く（画像の範囲が重なるタイルに）。
+- **ファサード**：画像・動画・canvas のソースがあるスタイルで、`media.js` を読む（`legacy.js`、`pmtiles.js` と同じ。2.0KB）。
+  - 画像は資格情報なしで取り、URL はスタイルの URL を基準に解決し、http(s) だけを受ける。`transformRequest` には `"Image"` として渡る（`ResourceType` に足した）。
+  - 動画は muted・loop の `<video>`（`crossOrigin = "anonymous"`）。canvas は `getElementById` で探す（セレクタは作らない）。`addSource` に要素を渡す形も受ける（スタイルの JSON の複製には入らないので、ファサードが別に持つ）。
+  - `getSource(id)` に `setCoordinates`、`updateImage`（`url` か、デコード済みの `image`）、`play`、`pause`、`getVideo`、`getCanvas`。`getStyle()` の `coordinates` と `url` も変わる。
+  - 隅の形がおかしいとき（4 隅でない、数でない、世界の外）は `error` を出し、何も描かない。
+- **`npm run style:golden`**：新しい場面 `images`（タイルからはみ出す長方形に `raster-opacity`、射影でゆがむ台形に色相・彩度・コントラスト、強く縮む台形を格子で `nearest` と明るさ）と、同じものを回して傾けた `images-turned` は、どちらも平均 0 / p99 0（画素まで一致）。ほかの場面は変わらない。
+- **pack test**：`bench/npm/pages/media/` に画像・動画・canvas を並べ、`bench/npm/checks/media.mjs` で画素を読む。canvas は再生中に描き直され、止めると止めたときの絵のまま。動画は止めて再開できる。画像は `setCoordinates` で動き、`updateImage` で canvas の絵に変わり、`data:` の URL は `error` になる。動画を再生中でも `idle` は来る。動画は自作の 1KB の webm（赤 1 秒、青 1 秒）。
+- example：東京駅の構内の略図（自作の PNG。`examples/shared/station-sketch.png`）を、線路に沿って傾けて重ねた（「駅の略図」グループ）。
+- 大きさ（15.5a の後）：メイン 90.2 → 92.3KB（エンジンの描画と上げ直しで約 1.2KB、ファサードの読み込みと `getSource` で約 0.7KB）、表示ワーカー 83.06 → 83.11KB（スタイルの `Image` の種類）、`media.js` 2.0KB（予算 3KB を新設）。
+  - 置き方の計算を最初は core（MoonBit）に置いたところ、メインが 3.0KB 増えた。`media.ts` に移し、エンジンのソースの表を `HashMap` から配列にして、+1.9KB まで減らした。
+- MapLibre との違い：
+  - 動画の再生中や canvas の `animate` 中も `idle` が来る（MapLibre は来ない）。`load` と `toBlob` が待ち続けないため。
+  - 世界の繰り返し（経度の折り返し）は、ほかのタイルと同じく描かない。`setWarp` / `getWarp`（実験的）、動画の `seek`、canvas の大きさの変化の検知（再生していないとき）は移していない。
+  - 画像・動画・canvas のレイヤーは `queryRenderedFeatures` に出ない（MapLibre も同じ）。
 
 ## Phase 15.5b：線と押し出しの模様、半透明の押し出し（2026-11-03）
 
@@ -396,7 +420,7 @@
   | 本線 | 15.7 | `text-variable-anchor` | 済み（`labels:golden` 10/10） |
   | 本線 | 15.8 | 線に沿ったラベル | 等高線のラベルの位置。フレームの CPU 時間が目標内 |
   | 本線 | 15.9 | heatmap | 済み |
-  | 本線 | 15.11 | 画像・動画・canvas のソース | 画像ソースの場面。動画と canvas は pack test |
+  | 本線 | 15.11 | 画像・動画・canvas のソース | 済み |
   | 本線 | 15.12 | カスタムレイヤー | pack test |
   | 並列 1 | 15.2 | 式（算術、型変換、文字列、`let`/`var`、色、補間）と、旧式のフィルタ・関数の変換 | 済み（#58） |
   | 並列 2 | 15.10 | GeoJSON のクラスタ（geojson-vt 6.3.0 の `cluster-tile-index.ts` を移植） | 済み（#56） |

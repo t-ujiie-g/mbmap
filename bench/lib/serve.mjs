@@ -8,7 +8,7 @@ import { ROOT } from "./root.mjs";
 const TYPES = {
   ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
   ".json": "application/json", ".wasm": "application/wasm", ".css": "text/css",
-  ".pbf": "application/x-protobuf", ".map": "application/json",
+  ".pbf": "application/x-protobuf", ".map": "application/json", ".png": "image/png", ".webm": "video/webm",
 };
 
 // Returns the file under ROOT for a request path, or null if the path escapes

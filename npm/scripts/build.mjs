@@ -23,7 +23,7 @@ await mkdir(DIST);
 
 const common = { bundle: true, minify: true, format: "esm", target: "es2022", logLevel: "warning", legalComments: "none" };
 // The GeoJSON module stays a file of its own, loaded only by maps that need it.
-const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/(geojson|pmtiles|legacy|sprite)\.js$/ }, (a) => ({ path: a.path, external: true })) };
+const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/(geojson|pmtiles|legacy|sprite|media)\.js$/ }, (a) => ({ path: a.path, external: true })) };
 await build({
   ...common,
   entryPoints: [path.join(PKG, "src/index.ts")],
@@ -35,6 +35,7 @@ await build({ ...common, entryPoints: [path.join(PKG, "src/geojson.ts")], outfil
 await build({ ...common, entryPoints: [path.join(PKG, "src/pmtiles.ts")], outfile: path.join(DIST, "pmtiles.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/legacy.ts")], outfile: path.join(DIST, "legacy.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/sprite.ts")], outfile: path.join(DIST, "sprite.js") });
+await build({ ...common, entryPoints: [path.join(PKG, "src/media.ts")], outfile: path.join(DIST, "media.js") });
 // The controllers only take a `Map`: no part of the main entry is bundled into them.
 await build({ ...common, entryPoints: [path.join(PKG, "src/ui.ts")], outfile: path.join(DIST, "ui.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/search.ts")], outfile: path.join(DIST, "search.js") });

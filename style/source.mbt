@@ -1,12 +1,13 @@
 ///|
-/// What a source draws from: vector, image (`raster`) or elevation
-/// (`raster-dem`) tiles at URLs, or GeoJSON the map cuts into tiles itself
-/// (its data is handled outside the style, by the JS facade).
+/// What a source draws from: vector, image (`raster`) or elevation (`raster-dem`)
+/// tiles at URLs, GeoJSON the map cuts into tiles itself, or a picture placed by
+/// its corners (`image`, `video`, `canvas`). The JS facade loads data and pictures.
 pub(all) enum SourceKind {
   Vector
   GeoJSON
   RasterDem
   Raster
+  Image
 } derive(Debug, Eq)
 
 ///|
@@ -161,6 +162,23 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       buffer: buffer.to_int(),
       tolerance,
       promote_id: parse_promote_id(s, path),
+      bounds: None,
+      tms: false,
+    })
+  }
+  // The facade checks their `coordinates` and loads their pictures.
+  if s.get("type") is Some(String("image" | "video" | "canvas")) {
+    return Some({
+      id,
+      kind: Image,
+      tiles: [],
+      min_zoom: 0,
+      max_zoom: 22,
+      tile_size: 512,
+      encoding: Mapbox,
+      buffer: 0,
+      tolerance: 0.0,
+      promote_id: FeatureId,
       bounds: None,
       tms: false,
     })

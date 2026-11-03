@@ -13,6 +13,7 @@ import { fakeGeolocation } from "../lib/fake-geolocation.mjs";
 import { clusterChecks } from "./checks/clusters.mjs";
 import { imageChecks } from "./checks/images.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
+import { mediaChecks } from "./checks/media.mjs";
 
 const shots = process.argv.find((a) => a.startsWith("--screenshots="))?.split("=")[1];
 await prepareExamples();
@@ -25,6 +26,7 @@ const PAGES = {
   element: "bench/npm/pages/element/",
   geojson: "bench/npm/pages/geojson/",
   analysis: "bench/npm/pages/analysis/",
+  media: "bench/npm/pages/media/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
   "showcase-html": "examples/html/?local=1",
@@ -305,6 +307,10 @@ const checks = {
       JSON.stringify(r.geometry.whole) === JSON.stringify(["Polygon", "s"]) &&
       /only features of one kind/.test(r.geometry.mixed) && /too many for one grid/.test(r.geometry.tooMany);
     return [ok, { loaded, ...r }];
+  },
+
+  async media(page, requests) {
+    return mediaChecks(page, requests);
   },
 
   // The examples that call the engine (bundle/main) directly: it starts and draws.
@@ -983,7 +989,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);
