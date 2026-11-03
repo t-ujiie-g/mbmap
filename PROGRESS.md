@@ -3,18 +3,36 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.6（アイコン）。15.1〜15.5、15.2、15.7、15.9、15.10、15.11 は完了。並列で 15.12（カスタムレイヤー）、15.8（線に沿ったラベル）をエージェントが進めている。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.6（アイコン）。15.1〜15.5、15.2、15.7、15.9〜15.12 は完了。15.8（線に沿ったラベル）は PR #67。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 95.9KB（画像・動画・canvas のソースは別に `media.js` 2.0KB） | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
+  | 表示（メイン） | 96.7KB（画像・動画・canvas のソースは別に `media.js` 2.0KB、カスタムレイヤーは `custom.js` 1.8KB） | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
   | 表示ワーカー | 85.5KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.12：カスタムレイヤー（2026-11-03）
+
+状態：**完了**。
+
+- MapLibre 6.16 の `CustomLayerInterface` を移した（`{id, type: "custom", renderingMode, onAdd, prerender, render, onRemove}`）。
+  - **置き場所**：`addLayer` は、スタイルの文書に `{id, type: "custom"}` の置き場所を入れる。順番、`beforeId`、`moveLayer`、`removeLayer` は、ふつうのレイヤーと同じ編集で済む。`getStyle()` からは除く。新しいスタイル（`setStyle`）にないカスタムレイヤーは `onRemove` を呼んで外す（MapLibre と同じ）。
+  - **エンジン**：style のレイヤーの種類 `Custom`（ソースなし）。描画の順番でそのレイヤーに来たら、JS の関数を 1 つ呼ぶ（`map/custom.mbt`）。`prerender` は、フレームを消す前に呼ぶ（MapLibre のオフスクリーンの段）。地形があるときは、記号や押し出しと同じく地形の上に描く（地形のテクスチャには描かない）。
+  - **`custom.js`**（`npm/src/custom.ts`、1.8KB、予算 3KB を新設）：最初のカスタムレイヤーで読む。`onAdd(map, gl)` はそのときに呼ぶ（読み込み済みなら `addLayer` の中で）。`render(gl, options)` の `options` は MapLibre と同じ形：`modelViewProjectionMatrix`（世界のピクセルとメートル）、`projectionMatrix`、`fov`（ラジアン）、`nearZ`、`farZ`、`defaultProjectionData`（`mainMatrix` はメルカトルの 0〜1）、`getProjectionData({tileID})`（タイルの 8192 単位）、`shaderData`（メルカトルの prelude：`projectTile` など）。
+  - **GL の状態**：利用者のコードの前に、使う状態を保存し、MapLibre の `setCustomLayerDefaults`（VAO を外す、カリングなし、`TEXTURE0`、pixelStore の既定）と深度（"3d" は深度テストあり、"2d" はなし）を設定する。後で、ブレンド、深度、カリング、ステンシル、シザー、カラーマスク、フレームバッファ、ビューポート、プログラム、VAO、バッファ、テクスチャ（0〜3）、pixelStore を戻す。
+  - `triggerRepaint()` を足した（アニメーションするカスタムレイヤー用）。`addLayer` の検証は MapLibre の `validateCustomStyleLayer` と同じ（`render` がない、`renderingMode` が 2d・3d でない）。
+- **core**：`Transform::world_matrix`（MapLibre の `modelViewProjectionMatrix`）と `Transform::projection`（`projectionMatrix`、`nearZ`、`farZ`）。`npm run camera:golden` に比較を足した：19 の視点で、画面の位置の差 0 px、射影行列と近・遠の面の相対差 5.6e-8 以下。
+- **pack test**：`bench/npm/pages/custom/` と `checks/custom.mjs`。MapLibre の prelude で描いた青い箱が、`beforeId` で GeoJSON の赤い四角の下に入り、`moveLayer` で上に出る。利用者のコードが壊した状態（カリング、ブレンド、シザー、カラーマスク、pixelStore、アクティブなテクスチャ）は戻り、後のレイヤーは正しく描ける。`options`（中心がクリップ空間の原点、`fov`、`getProjectionData`）、"3d" の深度テスト、`prerender`、`triggerRepaint`、`getLayer`、`getStyle`、`onRemove`、検証のエラーを確かめる。
+- example：東京駅から 5 km（分析の半径）の輪を、カスタムレイヤー（自前の WebGL）で地点の下に描いた（`examples/shared/ring.js`）。スタイルを替える（2D/3D、背景地図）と外れるので、`styledata` で入れ直す。pack test は、背景地図を替えて戻した後も地点の下にあることを確かめる。
+- 大きさ（15.11 の後）：メイン 92.3 → 93.0KB（ファサードの `addLayer` と置き場所、エンジンの呼び出しと行列）、表示ワーカー 83.11 → 83.12KB（レイヤーの種類）、`custom.js` 1.8KB（予算 3KB を新設）。
+- MapLibre との違い：
+  - `onAdd` は `custom.js` を読んだ後（最初の 1 回だけ非同期）。
+  - `renderToTerrainTile` と `renderTerrainHeightMap`（地形のテクスチャへの描画）、`getProjectionData` の `aligned`（ピクセルにそろえた行列）、地球儀の投影はない。行列は Float64Array のまま渡す。
 
 ## Phase 15.11：画像・動画・canvas のソース（2026-11-03）
 
@@ -421,7 +439,7 @@
   | 本線 | 15.8 | 線に沿ったラベル | 等高線のラベルの位置。フレームの CPU 時間が目標内 |
   | 本線 | 15.9 | heatmap | 済み |
   | 本線 | 15.11 | 画像・動画・canvas のソース | 済み |
-  | 本線 | 15.12 | カスタムレイヤー | pack test |
+  | 本線 | 15.12 | カスタムレイヤー | 済み |
   | 並列 1 | 15.2 | 式（算術、型変換、文字列、`let`/`var`、色、補間）と、旧式のフィルタ・関数の変換 | 済み（#58） |
   | 並列 2 | 15.10 | GeoJSON のクラスタ（geojson-vt 6.3.0 の `cluster-tile-index.ts` を移植） | 済み（#56） |
 

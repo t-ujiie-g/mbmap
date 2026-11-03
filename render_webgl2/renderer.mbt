@@ -435,6 +435,19 @@ pub fn Renderer::draw_raster(
 }
 
 ///|
+/// The map's WebGL2RenderingContext, for custom layers.
+#external
+pub type Context
+
+///|
+extern "js" fn gl_context(gl : Gl) -> Context = "(c) => c.gl"
+
+///|
+pub fn Renderer::context(self : Renderer) -> Context {
+  gl_context(self.gl)
+}
+
+///|
 /// An image, video or canvas element, or an ImageBitmap (a WebGL
 /// `TexImageSource`), drawn by an image, video or canvas source.
 #external

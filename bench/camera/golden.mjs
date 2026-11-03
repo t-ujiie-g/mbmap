@@ -1,5 +1,5 @@
 // core's camera math (bench/entry/camera.mbt) vs MapLibre GL JS 6.16.0's Camera in Node with
-// frozen time; fails beyond 1e-6 px, 1e-7°, 1e-8 zoom or 1e-5 ms.
+// frozen time; fails beyond 1e-6 px, 1e-7°, 1e-8 zoom, 1e-5 ms or a 1e-6 relative difference.
 // Usage: node lib/run-bundled.mjs bench/camera/golden.mjs; writes bench/results/camera-golden.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -54,7 +54,7 @@ const ours = (v) => [v.w, v.h, v.center[0], v.center[1], v.zoom, v.bearing, v.pi
 const state = (tr) => [tr.center.lng, tr.center.lat, tr.zoom, tr.bearing, tr.pitch];
 
 const rows = [];
-const worst = { px: 0, deg: 0, zoom: 0, ms: 0 };
+const worst = { px: 0, deg: 0, zoom: 0, ms: 0, rel: 0 };
 // Largest difference of camera tuples (lng, lat in degrees; zoom; bearing, pitch in degrees).
 function cameraDiff(a, b) {
   let deg = 0;
@@ -106,6 +106,29 @@ function runView(v) {
   }
   const ug = nums(mbt.camera_unproject(ours(v), screen));
   record("unproject", v, { deg: Math.max(...un.map((r, i) => Math.abs(r - ug[i]))) });
+
+  // Custom layers' matrices: world pixels and meters (0 and 300 m) through each, in screen pixels.
+  const custom = nums(mbt.camera_custom(ours(v)));
+  const screenOf = (m, [x, y, z]) => {
+    const c = [0, 1, 2, 3].map((r) => m[r] * x + m[4 + r] * y + m[8 + r] * z + m[12 + r]);
+    return [((c[0] / c[3] + 1) / 2) * v.w, ((1 - c[1] / c[3]) / 2) * v.h];
+  };
+  const world = (lng, lat, z) => [
+    ((180 + lng) / 360) * tr.worldSize,
+    ((180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))) / 360) * tr.worldSize,
+    z,
+  ];
+  let px = 0;
+  for (let i = 0; i < lnglats.length; i += 2) {
+    for (const z of [0, 300]) {
+      const pt = world(lnglats[i], lnglats[i + 1], z);
+      const [a, b] = [screenOf(tr.modelViewProjectionMatrix, pt), screenOf(custom, pt)];
+      px = Math.max(px, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
+    }
+  }
+  const proj = Math.max(...[...tr.projectionMatrix].map((r, i) => Math.abs(r - custom[16 + i]) / Math.max(1, Math.abs(r))));
+  const planes = Math.max(Math.abs(tr.nearZ - custom[32]) / tr.nearZ, Math.abs(tr.farZ - custom[33]) / tr.farZ);
+  record("custom layer matrices", v, { px, rel: Math.max(proj, planes) });
 
   const b = tr.getBounds();
   const bg = nums(mbt.camera_bounds(ours(v)));
@@ -173,8 +196,8 @@ const eg = nums(mbt.camera_easing(ts));
 rows.push({ op: "defaultEasing", view: "-", deg: Math.max(...ts.map((t, i) => Math.abs(defaultEasing(t) - eg[i]))) });
 worst.deg = Math.max(worst.deg, rows.at(-1).deg);
 
-console.log(`camera golden: ${views.length} views, ${rows.length} comparisons; largest difference ${worst.px.toExponential(2)} px, ${worst.deg.toExponential(2)}°, ${worst.zoom.toExponential(2)} zoom, ${worst.ms.toExponential(2)} ms`);
+console.log(`camera golden: ${views.length} views, ${rows.length} comparisons; largest difference ${worst.px.toExponential(2)} px, ${worst.deg.toExponential(2)}°, ${worst.zoom.toExponential(2)} zoom, ${worst.ms.toExponential(2)} ms, ${worst.rel.toExponential(2)} relative`);
 await writeFile(path.join(ROOT, "bench/results/camera-golden.json"), JSON.stringify({ reference: "maplibre-gl 6.16.0", worst, rows }, null, 2) + "\n");
-const bad = rows.filter((r) => !((r.px ?? 0) <= 1e-6 && (r.deg ?? 0) <= 1e-7 && (r.zoom ?? 0) <= 1e-8 && (r.ms ?? 0) <= 1e-5));
+const bad = rows.filter((r) => !((r.px ?? 0) <= 1e-6 && (r.deg ?? 0) <= 1e-7 && (r.zoom ?? 0) <= 1e-8 && (r.ms ?? 0) <= 1e-5 && (r.rel ?? 0) <= 1e-6));
 for (const r of bad.slice(0, 30)) console.log("beyond tolerance:", JSON.stringify(r));
 if (bad.length) process.exitCode = 1;

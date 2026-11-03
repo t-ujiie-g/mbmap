@@ -17,6 +17,7 @@ pub(all) enum LayerKind {
   FillExtrusion
   Raster
   Heatmap
+  Custom
 } derive(Debug, Eq)
 
 ///|
@@ -232,6 +233,7 @@ fn parse_layer(
     "fill-extrusion" => FillExtrusion
     "raster" => Raster
     "heatmap" => Heatmap
+    "custom" => Custom
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
   }
@@ -252,6 +254,7 @@ fn parse_layer(
     FillExtrusion => "fill-extrusion"
     Raster => "raster"
     Heatmap => "heatmap"
+    Custom => "custom"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
     "miter" => Join::Miter

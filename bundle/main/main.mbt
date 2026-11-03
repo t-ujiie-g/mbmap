@@ -392,6 +392,27 @@ pub fn map_set_media_quad(
 }
 
 ///|
+/// Draws the style's custom layers through `f` (`@map.CustomRenderer`).
+#export_name("map_set_custom_renderer")
+pub fn map_set_custom_renderer(map : @map.Map, f : @map.CustomRenderer) -> Unit {
+  map.set_custom_renderer(f)
+}
+
+///|
+/// The map's WebGL2RenderingContext.
+#export_name("map_gl")
+pub fn map_gl(map : @map.Map) -> @render_webgl2.Context {
+  map.gl()
+}
+
+///|
+/// Draws a frame soon.
+#export_name("map_trigger_repaint")
+pub fn map_trigger_repaint(map : @map.Map) -> Unit {
+  map.trigger_repaint()
+}
+
+///|
 /// Whether source `id`'s picture changes by itself (drawn every frame).
 #export_name("map_set_media_playing")
 pub fn map_set_media_playing(

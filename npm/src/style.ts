@@ -50,11 +50,26 @@ function withLayer(style: StyleSpecification, id: string, f: (l: LayerSpecificat
   return { ...style, layers: next };
 }
 
+/** The style without its custom layers, which MapLibre's `getStyle` leaves out too (their code is no JSON). */
+export function withoutCustom(style: StyleSpecification): StyleSpecification {
+  return { ...style, layers: layers(style).filter((l) => l.type !== "custom") };
+}
+
+/** Why `layer` is not a custom layer MapLibre would take (its `validateCustomStyleLayer`), or "". */
+export function invalidCustomLayer(layer: { id?: unknown; render?: unknown; renderingMode?: unknown }): string {
+  if (typeof layer.id !== "string") return 'missing required property "id"';
+  if (typeof layer.render !== "function") return 'missing required method "render"';
+  if (layer.renderingMode !== undefined && layer.renderingMode !== "2d" && layer.renderingMode !== "3d") {
+    return 'property "renderingMode" must be either "2d" or "3d"';
+  }
+  return "";
+}
+
 /** Adds `layer` before the layer `beforeId` names, or on top. */
 export function addLayer(style: StyleSpecification, layer: LayerSpecification, beforeId?: string): StyleSpecification {
   if (typeof layer?.id !== "string" || typeof layer.type !== "string") throw new Error("mbmap: a layer needs an id and a type");
   if (getLayer(style, layer.id)) throw new Error(`mbmap: the style already has a layer "${layer.id}"`);
-  if (layer.type !== "background" && !(typeof layer.source === "string" && layer.source in style.sources)) {
+  if (layer.type !== "background" && layer.type !== "custom" && !(typeof layer.source === "string" && layer.source in style.sources)) {
     throw new Error(`mbmap: layer "${layer.id}": the style has no source "${String(layer.source)}"`);
   }
   const next = [...layers(style)];
