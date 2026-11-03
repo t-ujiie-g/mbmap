@@ -129,6 +129,12 @@ pub fn ByteReader::done(self : ByteReader) -> Bool {
 }
 
 ///|
+/// The bytes not read yet.
+pub fn ByteReader::remaining(self : ByteReader) -> Int32 {
+  self.b.length() - self.at
+}
+
+///|
 /// Marks the input bad (for a value the caller finds invalid).
 pub fn ByteReader::fail(self : ByteReader) -> Unit {
   self.failed = true

@@ -35,7 +35,11 @@ pub fn js_number(String) -> Double
 
 pub fn parse_color(String) -> Color?
 
+pub fn read_expr(@core.ByteReader) -> Expr?
+
 pub fn vertex_paint_words(Array[VertexPaint]) -> Int32
+
+pub fn write_expr(@core.ByteWriter, Expr?) -> Unit
 
 // Errors
 pub(all) suberror StyleError {
@@ -379,10 +383,12 @@ pub struct Style {
   light : Light
   warnings : Array[StyleError]
 }
+pub fn Style::from_compiled(BytesView) -> Self raise StyleError
 pub fn Style::from_json(Json, strict? : Bool) -> Self raise StyleError
 pub fn Style::parse(StringView, strict? : Bool) -> Self raise StyleError
 pub fn Style::report_ignored(Self, Json, strict? : Bool) -> Unit raise StyleError
 pub fn Style::source(Self, String) -> Source?
+pub fn Style::to_compiled(Self) -> Bytes
 
 pub struct StyleLayer {
   id : String

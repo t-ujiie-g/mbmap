@@ -1,21 +1,30 @@
 // The wasm-gc worker processing every fixture with bench/maplibre/style.json:
 // "cold" is a fresh instance taking each tile once, "warm" the median after warm-up.
-import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
+import { hostText } from "../../wasmio/js/host.mjs";
 import { runRows } from "../lib/rows.mjs";
 
+const put = (e, bytes) => {
+  const addr = e.prepare_input(bytes.length);
+  new Uint8Array(e.memory.buffer, addr, bytes.length).set(bytes);
+};
+
+// The style as the main thread hands it to display workers (docs/FORMATS.md "Compiled style").
+async function compiledStyle(fetchBytes) {
+  const { instance } = await WebAssembly.instantiate(await fetchBytes("_build/wasm-gc/release/build/bench/worker/compile_entry/compile_entry.wasm"), {});
+  const c = instance.exports;
+  put(c, await fetchBytes("bench/maplibre/style.json"));
+  const n = c.compile_style();
+  if (n < 0) throw new Error("style failed to compile");
+  return new Uint8Array(c.memory.buffer, c.output_addr(), n).slice();
+}
+
 export async function loadWorker(fetchBytes) {
-  let e = null;
-  const host = { number: hostNumber(() => e.memory), ...hostText() };
-  const { instance } = await WebAssembly.instantiate(await fetchBytes("_build/wasm-gc/release/build/worker/worker.wasm"), { host, Math });
-  e = instance.exports;
-  const put = (bytes) => {
-    const addr = e.prepare_input(bytes.length);
-    new Uint8Array(e.memory.buffer, addr, bytes.length).set(bytes);
-  };
-  put(await fetchBytes("bench/maplibre/style.json"));
+  const { instance } = await WebAssembly.instantiate(await fetchBytes("_build/wasm-gc/release/build/worker/worker.wasm"), { host: hostText(), Math });
+  const e = instance.exports;
+  put(e, await compiledStyle(fetchBytes));
   if (e.init_style() !== 0) throw new Error("style failed");
   return (buf) => {
-    put(buf);
+    put(e, buf);
     return e.process_tile(0, 14);
   };
 }

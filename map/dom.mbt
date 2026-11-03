@@ -91,7 +91,7 @@ extern "js" fn spawn_worker(
 extern "js" fn post_init(
   w : Worker,
   wasm : String,
-  style : String,
+  style : Bytes,
   font : String,
 ) -> Unit =
   #|(w, wasm, style, font) => w.postMessage({ type: "init", wasm, style, font })
