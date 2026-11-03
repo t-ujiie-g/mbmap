@@ -77,6 +77,11 @@ declare module "mbmap-engine" {
     filter: string,
     done: (tiles: TileResult[]) => void,
   ): string;
+  export function map_add_image(map: EngineMap, name: string, width: number, height: number, data: Uint8Array, pixelRatio: number, sdf: boolean): boolean;
+  export function map_remove_image(map: EngineMap, name: string): boolean;
+  export function map_has_image(map: EngineMap, name: string): boolean;
+  export function map_image_names(map: EngineMap): string[];
+  export function map_on_missing_image(map: EngineMap, f: (name: string) => void): void;
   export function map_set_feature_state(map: EngineMap, source: string, sourceLayer: string, id: string, state: Record<string, unknown> | null): void;
   export function map_set_transform_request(map: EngineMap, f: ((url: string, resourceType: "Tile") => unknown) | null): void;
   export function map_query_source(map: EngineMap, source: string, sourceLayer: string, filter: string, done: (tiles: TileResult[]) => void): string;

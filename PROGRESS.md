@@ -3,18 +3,41 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.5（スプライト、`addImage`、模様）。15.1〜15.4、15.2、15.10 は完了。その後に、途中のリファクタリングを挟んだ（下の節）。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.5b（線と押し出しの模様）。並列で 15.9（heatmap）、15.11・15.12（画像・動画・canvas のソース、カスタムレイヤー）、15.7・15.8（ラベル）をエージェントが進めている。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 84.6KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
-  | 表示ワーカー | 81.7KB | 100KB |
+  | 表示（メイン） | 88.1KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
+  | 表示ワーカー | 82.1KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.5a：スプライト、`addImage`、塗りと背景の模様（2026-11-03）
+
+状態：**完了**。15.5 は 2 つに分けた（15.5a は塗りと背景、15.5b は線と押し出しの模様）。
+
+- **画像**：facade に `addImage`、`updateImage`、`removeImage`、`hasImage`、`listImages`、`loadImage` と `styleimagemissing` イベントを足した（MapLibre と同じ形）。
+  - 受け付けるのは ImageData、RGBA の生データ（`{width, height, data}`）、または canvas に描けるもの（画像、ImageBitmap、canvas）。同じ id への 2 回目の `addImage` と、大きさが合わないデータは `error` にする。
+  - スタイルの `sprite`（URL 1 つ、または `{id, url}` の並び。2x の画面では @2x を読む）は、遅延ロードの `sprite.js`（0.9KB）が `transformRequest` を通して読む。スプライトを読み終えるまで `idle` を待たせる。
+- **アトラス**：メインスレッドは、模様を初めて描くときに画像をアトラスに詰める（棚詰め。MapLibre の `ImageAtlas` と同じく 1px の折り返しの余白を付ける）。画像が変わると作り直す。画像がない間はそのレイヤーを描かない（MapLibre と同じ）。
+- **描画**：`fill-pattern` と `background-pattern` を、MapLibre の fill_pattern、fill_outline_pattern、background_pattern のシェーダーで描く。
+  - 模様の位置は、整数ズームでのタイルの世界座標の画素で決まる。上位と下位の 16 bit に分けるのは MapLibre と同じ。
+  - 模様は整数ズームで取る（ズームの間のクロスフェードはしない）。SDF の模様も描ける。
+  - 地物ごとに模様を変えるレイヤーは、グループで描く（`StyleLayer::paints_by_group`）。
+  - 塗りの輪郭は、タイルの塗りを全部描いてから描く。MapLibre と同じ順で、グループの塗りが前のグループの輪郭を覆わない。
+  - `line-pattern` と `fill-extrusion-pattern` は、15.5b まで Unsupported のまま。
+- **`npm run style:golden`**：合成のスプライト（`bench/style/sprite.mjs`。1x と 2x）を使う新しい場面 2 つ。
+  - `patterns`（定数と地物ごとの模様、模様の輪郭と色の輪郭、背景）は平均 0.040 / p99 0。
+  - `patterns-2x`（2x の画面、ズーム 15.6）は平均 0.030 / p99 0。
+  - golden は、場面の `dpr` を MapLibre にも `ratio` として渡すようにした（それまで MapLibre は常に 1x だった）。
+  - 半透明の背景の模様は 1 ずれる（MapLibre は透明に clear してページの白と合成するが、mbmap は白で clear する）。そのため場面の背景は不透明にした。
+- **pack test**：`bench/npm/checks/images.mjs` で、画像がないときの `styleimagemissing`、`addImage` で描かれること、`updateImage`、重複と大きさ違いの `error`、`hasImage` / `listImages` / `removeImage` を確かめる。
+- **example**：自前のスプライト（`examples/shared/sprite/`、斜線）で、構造物に斜線を重ねた。
+- 大きさ：メイン 84.6 → 88.1KB（アトラス、シェーダー、画像の API）、表示ワーカー 81.7 → 82.1KB、`sprite.js` 0.9KB（予算 2KB）。
 
 ## リファクタリングとセキュリティチェック：Phase 15 の途中（2026-11-03）
 

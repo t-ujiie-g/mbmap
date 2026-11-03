@@ -96,6 +96,7 @@ fn texture_placement(
     center_depth: 1.0,
     clip: d.at.clip,
     latitudes: d.at.latitudes,
+    pattern: d.at.pattern,
   }
 }
 

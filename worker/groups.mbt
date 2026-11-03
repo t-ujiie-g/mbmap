@@ -24,6 +24,10 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
     // Base and height go into the vertices instead.
     _ => [sl.color, sl.opacity]
   }
+  let exprs = match sl.pattern {
+    Some(p) => [..exprs, p]
+    None => exprs
+  }
   for e in exprs {
     let (ks, g) = e.feature_inputs()
     for k in ks {

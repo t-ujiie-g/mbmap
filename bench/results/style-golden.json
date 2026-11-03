@@ -134,6 +134,26 @@
         "mean": 0.07,
         "p99": 1
       }
+    },
+    {
+      "scene": "patterns",
+      "ok": true,
+      "mean": 0.04,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "patterns-2x",
+      "ok": true,
+      "mean": 0.03,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
     }
   ]
 }

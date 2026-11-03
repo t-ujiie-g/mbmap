@@ -27,6 +27,9 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.extrusion == other.extrusion &&
   self.same_line_layout(other) &&
   self.reads_state() == other.reads_state() &&
+  self.paints_by_group() == other.paints_by_group() &&
+  self.pattern.map(p => p.feature_inputs()) ==
+  other.pattern.map(p => p.feature_inputs()) &&
   inputs(self) == inputs(other) &&
   // Per-vertex paint is computed into the tiles.
   self.baked_paint() == other.baked_paint()

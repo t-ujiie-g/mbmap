@@ -17,6 +17,9 @@ const GSI = "https://cyberjapandata.gsi.go.jp/xyz";
 const local = new URLSearchParams(location.search).get("local") === "1";
 // Relative to the page (examples/<name>/): a bundle's import.meta.url lies elsewhere.
 const fixtures = new URL("../../bench/fixtures/", location.href).href;
+// The showcase's own sprite (a hatch for structures), at 1x and 2x.
+const SPRITE = new URL("../shared/sprite/sprite", location.href).href;
+const HATCH = { id: "structurea-hatch", type: "fill", source: "gsi", "source-layer": "structurea", paint: { "fill-pattern": "hatch" } };
 
 // GSI's buildings have no heights: 30 m for sturdy ones (ftCode 3103), 8 m for others.
 const BUILDINGS_3D = {
@@ -52,7 +55,7 @@ export const BASEMAPS = [
 
 /** What the legend calls each layer. */
 export const LAYER_TITLES = {
-  waterarea: "水域", structurea: "構造物", building: "建物", "building-3d": "建物（3D）", "building-outline": "建物の輪郭",
+  waterarea: "水域", structurea: "構造物", "structurea-hatch": "構造物の斜線", building: "建物", "building-3d": "建物（3D）", "building-outline": "建物の輪郭",
   contour: "等高線", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
   elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
   "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数", walk: "散歩道",
@@ -112,6 +115,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
           { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#5a4a35" } },
           ...GSI_LAYERS.flatMap((l) => {
             if (l.id === "elevation") return [{ ...l, paint: { ...l.paint, "circle-radius": ELEVATION_RADIUS } }];
+            if (l.id === "structurea") return [l, HATCH];
             if (mode !== "3d") return [l];
             if (l.id === "building-outline") return [];
             return l.id === "building" ? [BUILDINGS_3D] : [l];
@@ -153,7 +157,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
   for (const [i, l] of layers.entries()) {
     if (off.has(l.id)) layers[i] = { ...l, layout: { ...l.layout, visibility: "none" } };
   }
-  const style = { version: 8, name: `mbmap showcase (${mode})`, sources, layers };
+  const style = { version: 8, name: `mbmap showcase (${mode})`, sprite: SPRITE, sources, layers };
   if (mode === "3d") {
     style.terrain = { source: "dem", exaggeration: 1.5 };
     style.sky = { "sky-color": "#88C6FC", "horizon-color": "#ffffff", "fog-color": "#ffffff" };

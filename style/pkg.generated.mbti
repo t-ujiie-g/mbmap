@@ -341,7 +341,9 @@ pub struct StyleLayer {
   outline_color : Expr?
   dasharray : Expr?
   gradient : Expr?
+  pattern : Expr?
 }
+pub fn StyleLayer::paints_by_group(Self) -> Bool
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_line_layout(Self, Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
