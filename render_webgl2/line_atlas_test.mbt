@@ -27,6 +27,11 @@ test "LineAtlas writes MapLibre's dash rows" {
   assert_eq(a.dash([2, 1], false).map(e => e.y), Some(0))
   assert_true(!a.take_dirty())
   assert_true(a.dash([], false) is None)
+  let long = Array::make(@render_webgl2.MAX_DASH_PARTS + 1, 1.0)
+  assert_true(a.dash(long, false) is None)
+  assert_true(
+    a.dash(long[:@render_webgl2.MAX_DASH_PARTS].to_owned(), false) is Some(_),
+  )
 }
 
 ///|

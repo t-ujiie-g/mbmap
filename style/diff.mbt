@@ -25,12 +25,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.filter == other.filter &&
   self.text == other.text &&
   self.extrusion == other.extrusion &&
-  self.join == other.join &&
-  self.cap == other.cap &&
-  self.miter_limit == other.miter_limit &&
-  self.round_limit == other.round_limit &&
-  (self.dasharray is Some(_)) == (other.dasharray is Some(_)) &&
-  (self.gradient is Some(_)) == (other.gradient is Some(_)) &&
+  self.same_line_layout(other) &&
   self.reads_state() == other.reads_state() &&
   inputs(self) == inputs(other) &&
   // Per-vertex paint is computed into the tiles.
@@ -73,4 +68,19 @@ pub fn StyleLayer::reads_state(self : StyleLayer) -> Bool {
     _ => []
   }
   exprs.iter().any(e => e.reads_state())
+}
+
+///|
+/// Whether two layers' lines are extruded alike: the layout tess reads, and
+/// whether distances (dashes) and progress (gradients) are kept.
+pub fn StyleLayer::same_line_layout(
+  self : StyleLayer,
+  other : StyleLayer,
+) -> Bool {
+  self.join == other.join &&
+  self.cap == other.cap &&
+  self.miter_limit == other.miter_limit &&
+  self.round_limit == other.round_limit &&
+  (self.dasharray is Some(_)) == (other.dasharray is Some(_)) &&
+  (self.gradient is Some(_)) == (other.gradient is Some(_))
 }

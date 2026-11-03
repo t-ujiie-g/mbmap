@@ -167,8 +167,10 @@ export function isLegacyFilter(filter: Json): boolean {
 }
 
 /** 0 expression, 1 legacy, 2 neutral (MapLibre's `classifyFilter`). */
-function classify(f: Json): number {
+function classify(f: Json, depth = 0): number {
   if (typeof f === "boolean") return 2;
+  // Deeper than the engine takes: left as an expression, which it rejects with its path.
+  if (depth > 32) return 0;
   if (!Array.isArray(f) || f.length === 0) return 1;
   switch (f[0]) {
     case "has":
@@ -191,7 +193,7 @@ function classify(f: Json): number {
     case "all": {
       let legacy = false;
       for (const c of f.slice(1)) {
-        const k = classify(c);
+        const k = classify(c, depth + 1);
         if (k === 0) return 0;
         if (k === 1) legacy = true;
       }

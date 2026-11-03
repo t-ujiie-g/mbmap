@@ -391,11 +391,11 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
 }
 
 ///|
-/// Whether the expression reads `line-progress`.
-pub fn Expr::reads_line_progress(self : Expr) -> Bool {
+/// Whether `self` or an expression within it satisfies `pred`.
+fn Expr::any(self : Expr, pred : (Expr) -> Bool) -> Bool {
   let mut found = false
   fn visit(e : Expr) -> Unit {
-    if e is LineProgress {
+    if pred(e) {
       found = true
     } else if !found {
       e.each_child(visit)
@@ -406,17 +406,14 @@ pub fn Expr::reads_line_progress(self : Expr) -> Bool {
 }
 
 ///|
+/// Whether the expression reads `line-progress`.
+pub fn Expr::reads_line_progress(self : Expr) -> Bool {
+  self.any(e => e is LineProgress)
+}
+
+///|
 /// Whether the expression reads the feature state (MapLibre allows it in
 /// paint properties only).
 pub fn Expr::reads_state(self : Expr) -> Bool {
-  let mut found = false
-  fn visit(e : Expr) -> Unit {
-    if e is FeatureState(_) {
-      found = true
-    } else if !found {
-      e.each_child(visit)
-    }
-  }
-  visit(self)
-  found
+  self.any(e => e is FeatureState(_))
 }

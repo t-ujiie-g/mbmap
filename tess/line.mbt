@@ -37,8 +37,8 @@ const COS_HALF_SHARP_CORNER : Double = 0.7933533402912352
 const SHARP_CORNER_OFFSET : Double = 15.0
 
 ///|
-/// Distances along a line are kept in MapLibre's units, an 8192-unit tile at
-/// half precision (its `LINE_DISTANCE_SCALE`), and start again from 0 past this.
+/// Distances along a line are kept in `@core.TILE_EXTENT` units (MapLibre's
+/// `linesofar` halved, in its 8192-unit tile) and start again from 0 past this.
 pub const MAX_LINE_DISTANCE : Int32 = 8192
 
 ///|
@@ -154,7 +154,7 @@ pub fn LineTessellator::add_line(
     dashed,
     progress,
     total,
-    scale: 4096.0 / extent.to_double(),
+    scale: @core.TILE_EXTENT.to_double() / extent.to_double(),
     along: 0.0,
     whole: 0.0,
     distance: 0,

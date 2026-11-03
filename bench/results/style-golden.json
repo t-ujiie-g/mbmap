@@ -6,16 +6,6 @@
   },
   "results": [
     {
-      "scene": "gradients",
-      "ok": true,
-      "mean": 0.056,
-      "p99": 1,
-      "limits": {
-        "mean": 0.07,
-        "p99": 1
-      }
-    },
-    {
       "scene": "fills",
       "ok": true,
       "mean": 0,
@@ -132,6 +122,16 @@
       "p99": 0,
       "limits": {
         "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "gradients",
+      "ok": true,
+      "mean": 0.056,
+      "p99": 1,
+      "limits": {
+        "mean": 0.07,
         "p99": 1
       }
     }

@@ -8,11 +8,11 @@ pub(all) suberror MapError {
 /// `entry` is the mesh's index in the worker's packed tile; `owned` false when an
 /// earlier layer's; `paint` the group's paint at the zoom it was evaluated for;
 /// `vertex_paint` the layer's own per-vertex paint (also when the geometry is
-/// shared); `states` (first index, count, state) the ranges of features with a state;
+/// shared); `states` the ranges of features with a state, in index order;
 /// `clips` a gradient line's rows and ramp length, `gradient` its ramp and expression.
 priv struct LayerMesh {
   entry : Int32
-  mut states : Array[(Int32, Int32, JsValue)]
+  mut states : Array[StateRange]
   layer : Int32
   kind : Int32
   mesh : @render_webgl2.Mesh
@@ -25,6 +25,17 @@ priv struct LayerMesh {
   dem : DemTile?
   clips : FixedArray[Double]?
   mut gradient : (@style.Expr, @render_webgl2.Gradient)?
+}
+
+///|
+/// A stated feature's indices in a mesh: `first`, `count` of its triangles and
+/// `outline_first`, `outline_count` of its fill outline.
+priv struct StateRange {
+  first : Int32
+  count : Int32
+  outline_first : Int32
+  outline_count : Int32
+  state : JsValue
 }
 
 ///|

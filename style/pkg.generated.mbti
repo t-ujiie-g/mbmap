@@ -343,6 +343,7 @@ pub struct StyleLayer {
   gradient : Expr?
 }
 pub fn StyleLayer::reads_state(Self) -> Bool
+pub fn StyleLayer::same_line_layout(Self, Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
 pub fn StyleLayer::vertex_paint(Self) -> Array[VertexPaint]
 

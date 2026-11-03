@@ -165,8 +165,9 @@ export function keepGeoJSONData(previous: StyleSpecification | null, next: Style
  * Whether `f` may be a legacy filter, which `legacy.ts` converts: MapLibre's `classifyFilter`,
  * except that `all` and `any` mixing legacy filters with expressions count (the converter keeps them).
  */
-export function isLegacyFilter(f: unknown): boolean {
-  if (typeof f === "boolean" || f === undefined) return false;
+export function isLegacyFilter(f: unknown, depth = 0): boolean {
+  // Deeper than the engine takes (MAX_EXPR_DEPTH): it rejects the filter with its path.
+  if (typeof f === "boolean" || f === undefined || depth > 32) return false;
   if (!Array.isArray(f) || f.length === 0) return true;
   switch (f[0]) {
     case "has":
@@ -186,7 +187,7 @@ export function isLegacyFilter(f: unknown): boolean {
       return f.length === 3 && !Array.isArray(f[1]) && !Array.isArray(f[2]);
     case "any":
     case "all":
-      return f.slice(1).some(isLegacyFilter);
+      return f.slice(1).some((g) => isLegacyFilter(g, depth + 1));
     default:
       return false;
   }

@@ -184,7 +184,8 @@ What `feature_ranges` gives after `process_tile`, for the entries of layers whos
 paint reads the feature state (kept by the worker glue, never sent whole): u32
 entry count, then per entry u32 packed entry index, u32 feature count and per
 feature its id as a property value (the source's `promoteId` property, or the
-tile's id; null without one), u32 first index and u32 index count.
+tile's id; null without one), u32 first index and u32 index count, then the same of
+its fill outline's indices (0 and 0 for other kinds).
 
 ## Query (`map/query.mbt`, read by `worker/query.mbt`)
 
