@@ -46,14 +46,35 @@ test("imageSize reads GIF and gives null for other or truncated data", () => {
   assert.equal(imageSize(new Uint8Array(0)), null);
 });
 
-test("checkImageSize refuses a side over the cap and leaves unknown formats to the decoder", () => {
-  checkImageSize(png(4096, 4096), 4096);
-  assert.throws(() => checkImageSize(png(4097, 1), 4096, "raster tile"), /raster tile is 4097 x 1, over 4096/);
-  assert.throws(() => checkImageSize(jpeg(1, 60000), 8192), /over 8192/);
-  checkImageSize(bytes("not an image"), 1);
+const box = (type, ...contents) => {
+  const body = bytes(...contents);
+  return bytes(be32(8 + body.length), type, body);
+};
+const ispe = (w, h) => box("ispe", [0, 0, 0, 0], be32(w), be32(h));
+const avif = (...props) => bytes(box("ftyp", "avifmif1"), box("meta", [0, 0, 0, 0], box("hdlr", new Array(8).fill(0)), box("iprp", box("ipco", ...props))));
+
+test("imageSize reads AVIF's largest ispe, a grid's whole size", () => {
+  assert.deepEqual(imageSize(avif(ispe(512, 256))), { width: 512, height: 256 });
+  assert.deepEqual(imageSize(avif(box("pixi", [0, 0, 0, 0, 3]), ispe(512, 512), ispe(20000, 20000))), { width: 20000, height: 20000 });
+  assert.equal(imageSize(avif(box("pixi", [0, 0, 0, 0, 3]))), null);
+  assert.equal(imageSize(bytes(box("ftyp", "avifmif1"), [0, 0, 0, 1], "meta")), null);
 });
 
-test("checkBlobImageSize reads a Blob's header", async () => {
+test("checkImageSize refuses a side over the cap and anything it cannot size", () => {
+  checkImageSize(png(4096, 4096), 4096);
+  checkImageSize(avif(ispe(256, 256)), 4096);
+  assert.throws(() => checkImageSize(png(4097, 1), 4096, "raster tile"), /raster tile is 4097 x 1, over 4096/);
+  assert.throws(() => checkImageSize(jpeg(1, 60000), 8192), /over 8192/);
+  assert.throws(() => checkImageSize(bytes("not an image"), 4096, "raster tile"), /raster tile: not a PNG, JPEG, WebP, GIF or AVIF/);
+  assert.throws(() => checkImageSize(new Uint8Array(0), 4096), /not a PNG/);
+});
+
+test("checkBlobImageSize reads a Blob's header and refuses a JPEG without a SOF in it", async () => {
   await checkBlobImageSize(new Blob([png(8192, 8192)]), 8192);
   await assert.rejects(checkBlobImageSize(new Blob([png(1, 100000)]), 8192, "sprite"), /sprite is 1 x 100000/);
+  // APP segments of 64 KB each push the SOF past the bytes read.
+  const app = bytes([0xff, 0xe1], be16(0xffff), new Array(0xfffd).fill(0));
+  const late = new Blob([bytes([0xff, 0xd8]), app, app, app, app, app, jpeg(9, 9).subarray(2)]);
+  await assert.rejects(checkBlobImageSize(late, 8192, "image"), /image: not a PNG/);
+  await checkBlobImageSize(new Blob([bytes([0xff, 0xd8]), app, jpeg(9, 9).subarray(2)]), 8192);
 });
