@@ -13,13 +13,16 @@ if (engine === "terradraw") {
   const draw = new td.TerraDraw({
     adapter: new TerraDrawMapLibreGLAdapter({ map }),
     modes: [
-      new td.TerraDrawPointMode(), new td.TerraDrawLineStringMode(), new td.TerraDrawPolygonMode(),
+      new td.TerraDrawPointMode(), new td.TerraDrawLineStringMode(), new td.TerraDrawPolygonMode({ snapping: { toCoordinate: true } }),
+      new td.TerraDrawSelectMode({
+        flags: { polygon: { feature: { draggable: true, coordinates: { midpoints: true, draggable: true, deletable: true } } } },
+      }),
       new td.TerraDrawRectangleMode(), new td.TerraDrawCircleMode({ projection: "globe" }), new td.TerraDrawFreehandMode(),
     ],
   });
   draw.start();
   window.__mode = (m) => draw.setMode(m);
-  window.__features = () => draw.getSnapshot().filter((f) => !f.properties.closingPoint && !f.properties.coordinatePoint);
+  window.__features = () => draw.getSnapshot().filter((f) => !f.properties.closingPoint && !f.properties.coordinatePoint && !f.properties.selectionPoint && !f.properties.midPoint && !f.properties.snappingPoint);
   window.__clear = () => draw.clear();
 } else {
   const { Map } = await import("/npm/dist/index.js");
@@ -27,7 +30,7 @@ if (engine === "terradraw") {
   const geodesic = await import("/npm/dist/geodesic.js");
   const map = new Map({ container: "map", style, center: CENTER, zoom: 15, attributionControl: false });
   await map.once("load");
-  const draw = createDraw(map, { geodesic });
+  const draw = createDraw(map, { geodesic, snapping: { vertices: true, lines: false } });
   window.__mode = (m) => draw.setMode(m);
   window.__features = () => draw.state.features;
   window.__clear = () => draw.clear();

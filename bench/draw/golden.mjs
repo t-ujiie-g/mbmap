@@ -15,6 +15,16 @@ const SCRIPTS = {
   polygon: [["click", 200, 200], ["click", 500, 220], ["click", 450, 450], ["move", 230, 230], ["click", 205, 203]],
   rectangle: [["click", 250, 150], ["move", 400, 300], ["click", 550, 400]],
   circle: [["click", 400, 300], ["move", 450, 320], ["click", 520, 360]],
+  // Editing a square: select it, drag a vertex, drag a midpoint out, right-click that vertex, drag the shape.
+  edit: [
+    ["mode", "polygon"], ["click", 300, 200], ["click", 500, 200], ["click", 500, 400], ["click", 300, 400], ["click", 302, 202],
+    ["mode", "select"], ["click", 400, 300], ["drag", 500, 400, 560, 440], ["drag", 300, 300, 260, 300], ["right", 260, 300], ["drag", 400, 300, 430, 300],
+  ],
+  // A second polygon's vertex clicked 10 px from the first's: it snaps onto it.
+  snap: [
+    ["mode", "polygon"], ["click", 300, 200], ["click", 500, 200], ["click", 400, 350], ["click", 302, 202],
+    ["click", 510, 208], ["click", 650, 250], ["click", 600, 400], ["click", 512, 210],
+  ],
   freehand: [["click", 300, 300], ["move", 340, 300], ["move", 380, 320], ["move", 420, 360], ["move", 430, 420], ["move", 380, 450], ["move", 320, 430], ["move", 290, 380], ["click", 295, 340]],
 };
 
@@ -22,17 +32,28 @@ const { server, origin } = await serve();
 const browser = await chromium.launch({ args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] });
 const drawn = {};
 for (const engine of ["mbmap", "terradraw"]) {
-  const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
-  page.on("pageerror", (e) => console.error(engine, e.message));
-  await page.goto(`${origin}/bench/draw/compare.html?engine=${engine}`);
-  await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
   drawn[engine] = {};
+  // A fresh map per script: terra-draw's drags let MapLibre pan a little before they start.
   for (const [mode, script] of Object.entries(SCRIPTS)) {
-    await page.evaluate((m) => (window.__clear(), window.__mode(m)), mode);
+    const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+    page.on("pageerror", (e) => console.error(engine, e.message));
+    await page.goto(`${origin}/bench/draw/compare.html?engine=${engine}`);
+    await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
+    await page.evaluate((m) => window.__mode(m), SCRIPTS[mode][0][0] === "mode" ? "point" : mode);
     await page.mouse.move(10, 10);
-    for (const [kind, x, y] of script) {
-      if (kind === "move") await page.mouse.move(x, y, { steps: 4 });
-      else {
+    for (const [kind, x, y, x1, y1] of script) {
+      if (kind === "mode") await page.evaluate((m) => window.__mode(m), x);
+      else if (kind === "move") await page.mouse.move(x, y, { steps: 4 });
+      else if (kind === "drag") {
+        await page.mouse.move(x, y, { steps: 4 });
+        await page.mouse.down();
+        await page.mouse.move(x1, y1, { steps: 8 });
+        await page.mouse.up();
+        await page.waitForTimeout(350);
+      } else if (kind === "right") {
+        await page.mouse.click(x, y, { button: "right" });
+        await page.waitForTimeout(350);
+      } else {
         await page.mouse.move(x, y, { steps: 4 });
         await page.mouse.click(x, y);
         // Clicks of a double click come closer than this (MapLibre's click tolerance is about time too).
@@ -41,8 +62,8 @@ for (const engine of ["mbmap", "terradraw"]) {
     }
     await page.waitForFunction(() => window.__features().length > 0, null, { timeout: 5000 }).catch(() => {});
     drawn[engine][mode] = await page.evaluate(() => window.__features().map((f) => f.geometry));
+    await page.close();
   }
-  await page.close();
 }
 await browser.close();
 server.close();
@@ -53,7 +74,7 @@ const corners = (ring) => ring.slice(0, -1).map((p) => p.map((v) => v.toFixed(9)
 const rows = [];
 for (const mode of Object.keys(SCRIPTS)) {
   const [a, b] = [drawn.mbmap[mode], drawn.terradraw[mode]];
-  const row = { mode, mbmap: a.length, terradraw: b.length, ok: a.length === 1 && b.length === 1 && a[0].type === b[0].type };
+  const row = { mode, mbmap: a.length, terradraw: b.length, ok: a.length === b.length && a.length >= 1 && a[0].type === b[0].type };
   if (row.ok) {
     const [pa, pb] = [flat(a[0]), flat(b[0])];
     row.vertices = `${pa.length} / ${pb.length}`;
@@ -68,6 +89,14 @@ for (const mode of Object.keys(SCRIPTS)) {
       const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
       row.radius = `${mean(ra).toFixed(2)} m / ${mean(rb).toFixed(2)} m`;
       row.ok = pa.length === pb.length && Math.abs(mean(ra) - mean(rb)) / mean(rb) < 0.005;
+    } else if (mode === "edit") {
+      // Within 3 px at zoom 15 (terra-draw's drags start a pixel or two late).
+      row.difference = maxDiff(pa, pb);
+      row.ok = row.difference < (3 * 360) / (256 * 2 ** 15);
+    } else if (mode === "snap") {
+      const onFirst = flat(a[0]).some((p) => JSON.stringify(p) === JSON.stringify(flat(a[1])[0]));
+      row.ok = a.length === 2 && b.length === 2 && maxDiff(flat(a[1]), flat(b[1])) < 1e-7 && onFirst;
+      row.difference = maxDiff(flat(a[1]), flat(b[1]));
     } else if (mode === "freehand") {
       row.ok = Math.abs(pa.length - pb.length) <= 1 && maxDiff([pa[0]], [pb[0]]) < 1e-7;
     } else {
