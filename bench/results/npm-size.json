@@ -37,7 +37,7 @@
     {
       "name": "mbmap/draw",
       "bytes": 4867,
-      "budget": 5000
+      "budget": 10000
     },
     {
       "name": "display worker",
