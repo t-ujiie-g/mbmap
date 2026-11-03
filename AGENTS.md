@@ -65,6 +65,7 @@ npm run style:golden      # style rendering vs MapLibre 6.16 pixel by pixel, a s
 npm run style:compat      # public styles (bench/style/public-styles.mjs, pinned by sha256) read with every request refused: what mbmap leaves out of each
 npm run labels:golden     # label placement vs MapLibre 6.16 in Chromium: the labels shown, their anchors (text-variable-anchor), icons and their boxes, and glyphs along lines (GSI contours), same tiles and camera (must stay all identical)
 npm run expression:golden # expressions vs style-spec 26.5.0's createExpression on GSI features, legacy filters/functions vs its convertFilter/convertFunction (must stay 0 problems)
+npm run color:golden      # style's parse_color vs style-spec 26.5.0's parseCssColor: named, hex, rgb() and hsl() in every syntax (must stay 0 differ)
 npm run draw:golden       # mbmap/draw vs terra-draw 1.37 on MapLibre: the same clicks in each mode, shapes compared
 npm run draw:many         # pointer moves while drawing over 2000 shapes with mbmap/draw (frames until on screen)
 npm run draw:setdata      # setData latency (frames until a moved vertex is on screen), mbmap vs MapLibre

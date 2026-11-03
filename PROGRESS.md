@@ -8,13 +8,28 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 108.7KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
-  | 表示ワーカー | 94.0KB | 100KB |
+  | 表示（メイン） | 110.1KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
+  | 表示ワーカー | 95.1KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16：CSS の色（2026-11-04）
+
+状態：**完了**。公開スタイルの色（OSM Bright の `hsla(30, 19%, 90%, 0.4)` など）が読めずにスタイルごと拒まれていたので、`style/color.mbt` の `parse_color` を MapLibre 6.16（style-spec 26.5.0）の `parseCssColor` の移植に置き換えた。
+
+- **読めるもの**：名前付きの色 148 個と `transparent`、16 進の 4 形式、`rgb()` / `rgba()`（数か百分率。混ぜると拒む）、`hsl()` / `hsla()`（色相に `deg` を付けてもよい）。区切りはカンマ（続く不透明度も `, a`）か空白（`/ a`）。不透明度は数か百分率。範囲の外は拒まずに切り詰め、0..255 の整数に丸めない。大文字と前後の空白は JavaScript の `toLowerCase().trim()` と同じ（Kelvin 記号 U+212A は `k`、空白は `\s` の全種）。
+- **数**：MapLibre は `[\de.+-]+` の並びを `+x` で数にする（`1e2`、`+5`、`.5`、`5.` は読め、`1.2.3` は NaN で拒む）。`strconv` を入れずに同じ値を出す小さな読み手 `css_number` を書いた。有効数字 15 桁・10 の ±22 乗までは Clinger の速い道でビットまで一致。その外は最後の数ビットが違うことがある（`1e-23` など。色では実際には出ない）。`1e400` は Infinity で、色相に入れると MapLibre と同じく NaN の色になる。
+- **名前の表**：「名前 空白 16 進 6 桁」を 1 行ずつ並べた 1 本の文字列（2.3KB、gzip 約 1.1KB）。名前の検索は `#`・`rgb`・`hsl` で始まらないときだけ。
+- **大きさ**（gzip -9）：表示（メイン）107,124 → 108,557 バイト（+1,433）、表示ワーカー 93,108 → 94,175 バイト（+1,067。予算 100KB まで残り約 5.8KB）。増えた分のほとんどは名前の表。
+- **確認**：
+  - **`npm run color:golden`**（新規。`bench/style/colors.mjs`、bench/expr の js ビルドの `color_parse` と style-spec の `parseCssColor` をチャンネルごとに比べる）：7351 入力（色になるもの 6831）で **差 0**。名前（大文字、前後の空白、1 文字欠け・余り）、16 進の各長さ、区切りと単位の組み合わせ、数の書き方 50 種（`1e400`、`-0`、`0e999`、20 桁など）× 10 の位置、空白 8 種の組み合わせ、乱数の hsl / rgb 6000。速い道の外の 25 入力は 1e-15 以内（うち 4 つがビットまでは一致しない）として別に数える。
+  - `npm run expression:golden`：色の式 3 件（`to-color` の既定に hsla、`match` に名前と空白区切りの rgb、`interpolate` に hsl と名前）を足して差 0 のまま。
+  - MoonBit のテスト（`style/color_test.mbt`）：構文ごとと、拒む場合（区切りの混在、単位の混在、壊れた数、余計な文字）。全ターゲット。
+  - style:golden は全場面が限度内、npm:pack は通過。
+- **`style:compat`**（16.1 の後の main と合わせて）：8 本すべてが拒まれずに描ける（色のほか、`["linear", 1]` のような余分な引数を持つ補間の型を MapLibre と同じく受け付けるようにした。OpenFreeMap の 3 本がこれで拒まれていた）。警告は osm-bright 58、positron 49、dark-matter 44、maptiler-basic 21、ofm-liberty 51、ofm-bright 51、ofm-positron 41、demotiles 6。多いのは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。新しく見えたもの：`symbol-placement`（12）、`text-anchor`（7）、`fill-antialias`（2）の式と、線に沿った `text-pitch-alignment` / `text-rotation-alignment`（6）。
 
 ## 方針の更新：Phase 16（2026-11-04、ユーザー承認）
 
