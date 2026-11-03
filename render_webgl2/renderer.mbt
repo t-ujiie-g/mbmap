@@ -5,6 +5,7 @@ pub struct Renderer {
   priv gl : Gl
   priv atlas : LineAtlas
   priv patterns : PatternAtlas
+  priv icons : PatternAtlas
 }
 
 ///|
@@ -14,7 +15,12 @@ pub fn Renderer::new(canvas : Canvas) -> Renderer? {
   if is_null(gl) {
     None
   } else {
-    Some({ gl, atlas: LineAtlas::new(), patterns: PatternAtlas::new(), })
+    Some({
+      gl,
+      atlas: LineAtlas::new(),
+      patterns: PatternAtlas::new(),
+      icons: PatternAtlas::new(wrap=false),
+    })
   }
 }
 
@@ -267,8 +273,8 @@ pub fn Renderer::upload_symbols(
 
 ///|
 /// Shows the labels of a symbol mesh whose flag is set, each in its layout
-/// `variant`: label `i` owns as many layouts as `labels[i * stride + stride - 3]`,
-/// each of the index count the last float says, from the index before it.
+/// `variant`: label `i` owns as many layouts as `labels[i * stride + col]`, each
+/// of the index count two floats after, from the index between.
 pub fn Renderer::show(
   self : Renderer,
   mesh : Mesh,
@@ -276,8 +282,9 @@ pub fn Renderer::show(
   stride : Int32,
   shown : FixedArray[Bool],
   variant : FixedArray[Int32],
+  col~ : Int32 = stride - 3,
 ) -> Unit {
-  gl_show(self.gl, mesh, labels, stride, shown, variant)
+  gl_show(self.gl, mesh, labels, stride, col, shown, variant)
 }
 
 ///|
@@ -289,8 +296,9 @@ pub fn Renderer::set_shifts(
   labels : JsBuffer,
   stride : Int32,
   shifts : FixedArray[Double],
+  col~ : Int32 = stride - 3,
 ) -> Unit {
-  gl_set_shifts(self.gl, mesh, labels, stride, shifts)
+  gl_set_shifts(self.gl, mesh, labels, stride, col, shifts)
 }
 
 ///|
@@ -342,8 +350,9 @@ pub fn Renderer::set_heights(
   labels : JsBuffer,
   stride : Int32,
   heights : FixedArray[Double],
+  col~ : Int32 = stride - 3,
 ) -> Unit {
-  gl_set_heights(self.gl, mesh, labels, stride, heights)
+  gl_set_heights(self.gl, mesh, labels, stride, col, heights)
 }
 
 ///|

@@ -28,7 +28,11 @@ fn anchor_code(a : @style.TextAnchor) -> Int32 {
 
 ///|
 /// The entry's bytes: the layer's layout, then the labels.
-fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
+fn Labels::bytes(
+  self : Labels,
+  t : @style.TextLayout,
+  icon : @style.IconLayout?,
+) -> Bytes {
   let h = @core.ByteWriter::new()
   h.u8(anchor_code(t.anchor))
   h.u8(if t.allow_overlap { 1 } else { 0 })
@@ -62,6 +66,36 @@ fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
   h.u8(if t.keep_upright { 1 } else { 0 })
   h.f64(t.spacing)
   h.f64(t.max_angle)
+  let flag = (b : Bool) => h.u8(if b { 1 } else { 0 })
+  flag(icon is Some(_))
+  if icon is Some(i) {
+    h.u8(anchor_code(i.anchor))
+    for
+      b in [
+        i.allow_overlap,
+        i.ignore_placement,
+        i.optional,
+        i.text_optional,
+        i.rotate_with_map,
+        i.pitch_with_map,
+        i.keep_upright,
+      ] {
+      flag(b)
+    }
+    h.u8(
+      match i.text_fit {
+        NoFit => 0
+        Width => 1
+        Height => 2
+        Both => 3
+      },
+    )
+    let (pt, pr, pb, pl) = i.padding
+    let (ft, fr, fb, fl) = i.text_fit_padding
+    for v in [i.offset.0, i.offset.1, pt, pr, pb, pl, ft, fr, fb, fl] {
+      h.f64(v)
+    }
+  }
   h.u32(self.count)
   for b in self.w.to_bytes() {
     h.u8(b.to_int())
@@ -70,8 +104,9 @@ fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
 }
 
 ///|
-/// Adds a label of feature `feature` at (x, y) in `TILE_EXTENT` units; false
-/// (nothing added) when its text has no part with a value.
+/// Adds a label of feature `feature` at (x, y) in `TILE_EXTENT` units, with
+/// its icon's name parts, size and rotation if the layer has an icon; false
+/// (nothing added) when neither its text nor its icon has a part with a value.
 fn Labels::add(
   self : Labels,
   feature : Int32,
@@ -80,8 +115,12 @@ fn Labels::add(
   size : Double,
   sort_key : Double,
   parts : Array[@style.Value],
+  icon : (Array[@style.Value], Double, Double)?,
 ) -> Bool {
-  if parts.iter().all(v => v is (Null | Str(""))) {
+  let empty = (ps : Array[@style.Value]) => {
+    ps.iter().all(v => v is (Null | Str("")))
+  }
+  if empty(parts) && icon.map_or(true, i => empty(i.0)) {
     return false
   }
   let w = self.w
@@ -90,9 +129,17 @@ fn Labels::add(
   w.i16(y)
   w.f64(size)
   w.f64(sort_key)
-  w.u32(parts.length())
-  for v in parts {
-    write_value(w, v)
+  let values = (ps : Array[@style.Value]) => {
+    w.u32(ps.length())
+    for v in ps {
+      write_value(w, v)
+    }
+  }
+  values(parts)
+  if icon is Some((name, size, rotate)) {
+    values(name)
+    w.f64(size)
+    w.f64(rotate)
   }
   self.count += 1
   true
@@ -134,7 +181,9 @@ fn TileProcessor::symbol_layer(
   zoom : Double,
   groups : Groups,
 ) -> Bool {
-  guard sl.text is Some(text) && text.field.length() > 0 else { return true }
+  guard sl.text is Some(text) && (text.field.length() > 0 || sl.icon is Some(_)) else {
+    return true
+  }
   for l in self.label_pool {
     l.w.clear()
     l.count = 0
@@ -142,6 +191,7 @@ fn TileProcessor::symbol_layer(
   let feature = self.feature_ref(layer)
   let extent = layer.extent()
   let parts = []
+  let icon_parts = []
   let on_lines = !(text.placement is Point)
   for i in 0..<layer.length() {
     feature.index = i
@@ -159,11 +209,37 @@ fn TileProcessor::symbol_layer(
     }
     // A failing part fails the whole `text-field`, which then has no text.
     if parts.iter().any(p => p is Failed) {
-      continue
+      parts.clear()
     }
     let size = match text.size.eval(zoom, feature) {
       Num(n) if n > 0.0 => n
-      _ => continue
+      _ => {
+        parts.clear()
+        0.0
+      }
+    }
+    // MapLibre lays icons out at `icon-size` one zoom deeper.
+    let icon = match sl.icon {
+      Some(l) => {
+        icon_parts.clear()
+        for e in l.image {
+          icon_parts.push(e.eval(zoom, feature))
+        }
+        if icon_parts.iter().any(p => p is Failed) {
+          icon_parts.clear()
+        }
+        let n = (e : @style.Expr, z : Double, d : Double) => {
+          match e.eval(z, feature) {
+            Num(n) if n == n => n
+            _ => d
+          }
+        }
+        Some((icon_parts, n(l.size, zoom + 1.0, 1.0), n(l.rotate, zoom, 0.0)))
+      }
+      None => None
+    }
+    if parts.is_empty() && icon is None {
+      continue
     }
     let sort_key = match text.sort_key.map(e => e.eval(zoom, feature)) {
       Some(Num(n)) => n
@@ -176,7 +252,7 @@ fn TileProcessor::symbol_layer(
     let out = self.labels(groups.of(feature))
     // The glue finds the anchors along lines (worker/js/line-labels.mjs).
     if on_lines {
-      if out.add(i, 0, 0, size, sort_key, parts) {
+      if out.add(i, 0, 0, size, sort_key, parts, icon) {
         out.lines(g, extent)
       }
       continue
@@ -185,14 +261,14 @@ fn TileProcessor::symbol_layer(
       let x = rescale(g.coords[p * 2], extent)
       let y = rescale(g.coords[p * 2 + 1], extent)
       if x >= 0 && y >= 0 && x < @core.TILE_EXTENT && y < @core.TILE_EXTENT {
-        out.add(i, x, y, size, sort_key, parts) |> ignore
+        out.add(i, x, y, size, sort_key, parts, icon) |> ignore
       }
     }
   }
   for g in 0..<groups.count() {
     let l = self.labels(g)
     if l.count > 0 {
-      if !self.out.add_labels(index, l.bytes(text)) {
+      if !self.out.add_labels(index, l.bytes(text, sl.icon)) {
         return false
       }
       if groups.active {

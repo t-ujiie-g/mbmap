@@ -587,3 +587,10 @@ pub fn map_image_names(map : @map.Map) -> Array[String] {
 pub fn map_on_missing_image(map : @map.Map, f : (String) -> Unit) -> Unit {
   map.on_missing_image(f)
 }
+
+///|
+/// Holds tiles with icons while a sprite is `loading`.
+#export_name("map_hold_images")
+pub fn map_hold_images(map : @map.Map, loading : Bool) -> Unit {
+  map.hold_images(loading)
+}

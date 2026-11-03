@@ -547,6 +547,8 @@ test "symbol layers pack their points' labels with the layer's layout" {
   // px apart, 45° at most along lines.
   assert_eq((r.u8(), r.u8()), (2, 0))
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
+  // No icon.
+  assert_eq(r.u8(), 0)
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64(), r.u32()),
@@ -556,7 +558,7 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
   // The other point lacks k: its text is "k=" and a null part.
   let r2 = @core.ByteReader::new(b[entry(1, 2):entry(1, 2) + entry(1, 3)])
-  for _ in 0..<64 {
+  for _ in 0..<65 {
     r2.u8() |> ignore
   }
   assert_eq(r2.u32(), 1)
@@ -582,7 +584,7 @@ test "labels whose text has no value are left out" {
   let b = p.out.to_bytes()[:]
   assert_eq(p.out.layer_count(), 1)
   let at = u32_at(b, 4 + 2 * 4)
-  assert_eq(u32_at(b, at + 64), 1)
+  assert_eq(u32_at(b, at + 65), 1)
 }
 
 ///|
@@ -600,6 +602,7 @@ test "labels along lines carry their features' lines" {
     r.u8() |> ignore
   }
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (2, 0, 100.0, 30.0))
+  assert_eq(r.u8(), 0)
   // The square of the tile is its one line feature, a ring of 5 points.
   assert_eq(r.u32(), 1)
   assert_eq((r.u32(), r.i16(), r.i16(), r.f64(), r.f64()), (2, 0, 0, 16.0, 0.0))
@@ -626,6 +629,8 @@ test "variable anchors follow the layout, each with its offset in ems" {
   assert_eq((r.u8(), r.f64(), r.f64()), (1, 2.0, 0.0))
   assert_eq((r.u8(), r.f64(), r.f64()), (3, 0.0, 2.0 - 7.0 / 24.0))
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
+  // No icon.
+  assert_eq(r.u8(), 0)
   assert_eq(r.u32(), 1)
 }
 
@@ -646,6 +651,8 @@ test "vertical writing and sort keys reach the labels" {
   }
   assert_eq((r.u8(), r.u8()), (2, 0))
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
+  // No icon.
+  assert_eq(r.u8(), 0)
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
@@ -833,4 +840,40 @@ test "gradient lines pack their progress, rows and line metrics" {
   assert_true(start > 0.3 && start < 0.5)
   assert_eq(f64(at + n * 8 + 8), 1.0)
   assert_true(f64(at + n * 8 + 16) > 0.0)
+}
+
+///|
+test "icons pack their layout, then each label's image parts, size one zoom deeper and rotation" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "i", "type": "symbol", "source": "g", "filter": ["has", "k"],
+    #|   "layout": {"icon-image": "shop-{k}", "icon-size": ["interpolate", ["linear"], ["zoom"], 0, 1, 2, 3],
+    #|              "icon-rotate": 30, "icon-anchor": "bottom", "icon-offset": [1, 2], "icon-optional": true,
+    #|              "icon-text-fit": "width", "icon-padding": [1, 2, 3, 4]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let r = @core.ByteReader::new(b[u32_at(b, 4 + 2 * 4):])
+  for _ in 0..<64 {
+    r.u8() |> ignore
+  }
+  // Anchor bottom; allow overlap, ignore placement, optional, text optional,
+  // rotate and pitch with the map, keep upright; fit width.
+  assert_eq(r.u8(), 1)
+  assert_eq(r.u8(), 4)
+  assert_eq(Array::makei(7, _ => r.u8()), [0, 0, 1, 0, 0, 0, 0])
+  assert_eq(r.u8(), 1)
+  assert_eq(Array::makei(10, _ => r.f64()), [
+    1.0, 2.0, 1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0,
+  ])
+  assert_eq(r.u32(), 1)
+  // No text, then the image's parts, its size at zoom 1 and its rotation.
+  assert_eq(
+    (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
+    (0, 2048, 2048, 16.0, 0.0),
+  )
+  assert_eq(r.u32(), 0)
+  assert_eq((r.u32(), r.u8(), r.utf8()), (2, @core.PROP_STRING, "shop-"))
+  assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
+  assert_eq((r.f64(), r.f64()), (2.0, 30.0))
 }

@@ -3,18 +3,45 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.6（アイコン）。15.1〜15.5、15.7〜15.12、15.2 は完了。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.6b（線に沿ったアイコン）。15.6a（点のアイコン）までと、15.1〜15.5、15.7〜15.12、15.2 は完了。15.6 の後は、Phase 15 の後のリファクタリングとセキュリティチェック。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 100.7KB（画像・動画・canvas のソースは別に `media.js` 2.0KB、カスタムレイヤーは `custom.js` 1.8KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
-  | 表示ワーカー | 88.4KB | 100KB |
+  | 表示（メイン） | 105.9KB（画像・動画・canvas のソースは別に `media.js` 2.0KB、カスタムレイヤーは `custom.js` 1.8KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
+  | 表示ワーカー | 92.3KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.6a：点のアイコン（2026-11-03）
+
+状態：**完了**。15.6 は 2 つに分けた（15.6a は点のアイコン、15.6b は線に沿ったアイコン）。
+
+- **スタイル**（`style/icon.mbt`）：`icon-image`（`{token}` の文字列、式、`["image", …]`）、`icon-size` と `icon-rotate`（データで変わってよい）、`icon-anchor`、`icon-offset`、`icon-padding`（MapLibre の `Padding`：1〜4 個の数）、`icon-allow-overlap`、`icon-ignore-placement`、`icon-optional`、`text-optional`、`icon-rotation-alignment` / `icon-pitch-alignment`（`auto` は MapLibre と同じく解決）、`icon-keep-upright`、`icon-text-fit`、`icon-text-fit-padding` を読む。paint は `icon-opacity`、`icon-color`、`icon-halo-color`、`icon-halo-width`、`icon-halo-blur`。線に沿うアイコン（`symbol-placement: line`）は 15.6b まで Unsupported。
+- **ワーカー**：wasm は各ラベルに画像名の部品、`icon-size`（MapLibre と同じく 1 段深いズームで）、`icon-rotate` を足す（docs/FORMATS.md「Labels」）。文字のないアイコンだけのラベルも作る。
+  - グルー（`worker/js/symbols.mjs`）が MapLibre の `shapeIcon`、`fitIconToText`、`getIconQuads`（画像の 1 px 外まで）、`CollisionFeature`（パディングと回転の外接矩形）を移植した。アイコンは 1 ラベル 1 四角形で、別のバッファー（`icon`）に入れる。頂点の角は MapLibre と同じく大きさ 1 の 1/32 px、大きさは ×128。
+  - アイコンの大きさを知るために、メインスレッドが画像の名前と大きさをワーカーに送る（`{type: "images"}`。フレームに 1 回、変わったときだけ）。大きさの変わった画像を使ったタイルは読み直す。ワーカーが知らない画像は `missing` で返り、メインスレッドが `styleimagemissing` を 1 度だけ出す。
+  - ファサードがスプライトを読んでいる間（`map_hold_images`）、アイコンのあるスタイルのタイルはワーカーで待つ（MapLibre のタイルがスプライトを待つのと同じ）。待たないと、読み込み前のタイルで `styleimagemissing` が出てしまう。
+- **アトラス**：アイコン用に `PatternAtlas` をもう 1 つ持つ（折り返さない、透明な 1 px の余白。MapLibre の `ImageAtlas` のアイコン）。位置は動かさず、同じ大きさの画像に置き換えたときは画素だけ書き換える（アニメーションする画像でもタイルを読み直さない）。
+- **配置**（`map/labels.mbt`）：MapLibre の `placeLayerBucketPart` と同じく、文字の箱を調べ、アイコンの箱を調べ、`text-optional` / `icon-optional` で組み合わせてから、文字、アイコンの順にグリッドへ入れる。`icon-allow-overlap` の「常に出す」規則も同じ。可変アンカーと `icon-text-fit` では、アイコンも各アンカーで収まる必要があり、文字と一緒に動く（`a_shift`）。問い合わせはアイコンの箱でも当たる。
+- **描画**：MapLibre の symbol_icon と、SDF のアイコンには symbol_sdf（色、ハロー、ぼかし。幅 1 px を超えるハローは別のパス）を移した。レイヤーごとに、全タイルのアイコンを描いてから文字を描く（MapLibre の順）。大きさはデータで変わらなければ uniform（ズームで変わる値を毎フレーム評価）。拡大・回転・傾き・画素比の違いがなければ最近傍で取る（MapLibre の `iconsNeedLinear`）。`icon-rotation-alignment: map` は地図と一緒に回し、`icon-pitch-alignment: map` は地図の面に寝かせる。`icon-offset` があると、MapLibre と同じく遠近で大きさを変えない。
+- **`npm run labels:golden`**：アイコンの場面を 10 個足した（GSI の記号をコードでアイコンに：平面、回転・オフセット・パディング・1.3 倍、傾き 50° と地図に沿う回転・データで変わる大きさ、文字とアイコン、`text-optional`、`icon-optional` と見つからない画像、`icon-ignore-placement` の下層と `icon-allow-overlap`、可変アンカー、`icon-text-fit: both` と可変アンカー、`icon-text-fit: width`）。
+  - **27 場面すべて一致**（アイコン 968 個）。グリッドに入れた箱（文字とアイコン）の位置の差は 0.001px 未満。比較に、文字とアイコンそれぞれが出たかと、グリッドの箱の並びを足した。
+- **`npm run style:golden`**：合成のスプライトにピン（14 × 18）と SDF の輪（20 px）を足し、場面を 3 つ足した。`icons`（ピン、半透明の点、色とハローの SDF の輪）、`icons-turned`（25° 回転、1.4 倍、地図に沿う回転、40° 傾けた地図）、`icons-2x`（2x の画面、地図に沿って回り画面に立つ）。**3 場面とも平均 0 / p99 0（画素まで一致）**。
+  - 合成のスプライトの PNG は RGB で書かれていて、透明が失われていた（`bench/lib/png.mjs` の `encodePng`）。アルファ付きで書けるようにし、アイコンにだけ使う。模様の場面は不透明のまま測ってきたので、そのままにした。アルファを入れると `patterns` は平均 0.074 / p99 2 になる（半透明の模様の差。Phase 15 の後の見直しで調べる）。
+- **example**：山手線の駅（クラスタにならないもの）を、ショーケースのスプライトの駅のアイコンで描いた（ズームで大きさが変わる、`icon-allow-overlap`）。スプライトは斜線とアイコンを、アルファ付きで作り直した（これまでの斜線は RGB の PNG で、斜線の間が黒く塗られていた）。
+- 大きさ：メイン 100.7 → 105.9KB（+5.2KB）、表示ワーカー 88.4 → 92.3KB（+3.9KB：wasm +2.7KB、グルー +1.2KB）。
+  - メインの内訳（概算）：シェーダー 0.6KB、配置の組み合わせと箱 1.2KB、描画（`draw_icons` と GL）1.0KB、スタイルの読み込み 1.0KB、画像の送信と読み直し・アトラス 1.0KB。アイコンの組み方と箱はグルーに置き、メインには入れていない。
+  - `IconLayout` の `derive(Eq)`（0.4KB）は、レイアウトの JSON の比較に置き換えた。
+- MapLibre との違い：
+  - `icon-size` がデータとズームの両方で変わるとき、頂点の大きさはタイルのズーム ＋ 1 の値（MapLibre はズームの間を補間する）。
+  - `icon-offset` の有無は、値が 0 でないかで見る（MapLibre は書いてあるか）。
+  - 引き伸ばし（`stretchX`、`stretchY`、`content`）、`icon-overlap`、`icon-translate`、`symbol-z-order`（重なりを許すときの画面の y 順の描画）、フェードはない。SDF と非 SDF の画像を混ぜたとき、最初のアイコンに合わせる（MapLibre と同じ）。
+  - 重なりを許すアイコンでも、遠すぎる（遠近の比が `MIN_PERSPECTIVE_RATIO` 未満）ものは出さない（文字と同じ）。
+- **本線で測ってほしいもの**：`worker:browser`（記号レイヤーの組み立てにアイコンの読み込みと組み方が加わった）。`render --labels`（配置にアイコンの箱が加わったが、アイコンのないスタイルでは比較が増えるだけ）。
 
 ## Phase 15 の計測：ワーカー、ラベル、線に沿ったラベル（2026-11-03）
 
@@ -481,7 +508,7 @@
   | 本線 | 15.3 | 線の距離、`line-dasharray`、`fill-antialias` と輪郭の色 | 済み（#55、#57） |
   | 本線 | 15.4 | `line-gradient`（tiler の lineMetrics） | 済み（#59） |
   | 本線 | 15.5 | スプライト、`addImage`、模様 4 種 | 合成のスプライト（1x と 2x）で、模様の場面 |
-  | 本線 | 15.6 | アイコン | 置かれた集合と位置が MapLibre と一致 |
+  | 本線 | 15.6 | アイコン | 点は済み（15.6a、`labels:golden` 27/27）。線に沿うアイコンは 15.6b |
   | 本線 | 15.7 | `text-variable-anchor` | 済み（`labels:golden` 10/10） |
   | 本線 | 15.8 | 線に沿ったラベル | 位置は済み（`labels:golden` 17/17）。フレームの CPU 時間は本線で計測 |
   | 本線 | 15.9 | heatmap | 済み |

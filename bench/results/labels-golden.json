@@ -11,6 +11,7 @@
       "maplibre": 87,
       "mbmap": 87,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -19,6 +20,7 @@
       "maplibre": 63,
       "mbmap": 63,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -27,6 +29,7 @@
       "maplibre": 138,
       "mbmap": 138,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -35,6 +38,7 @@
       "maplibre": 117,
       "mbmap": 117,
       "anchored": 31,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -43,6 +47,7 @@
       "maplibre": 84,
       "mbmap": 84,
       "anchored": 23,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -51,6 +56,7 @@
       "maplibre": 186,
       "mbmap": 186,
       "anchored": 61,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -59,6 +65,7 @@
       "maplibre": 112,
       "mbmap": 112,
       "anchored": 110,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -67,6 +74,7 @@
       "maplibre": 62,
       "mbmap": 62,
       "anchored": 10,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -75,6 +83,7 @@
       "maplibre": 185,
       "mbmap": 185,
       "anchored": 74,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -83,6 +92,7 @@
       "maplibre": 86,
       "mbmap": 86,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0
     },
     {
@@ -91,6 +101,7 @@
       "maplibre": 13,
       "mbmap": 13,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 26,
       "glyphDiff": 0,
@@ -102,6 +113,7 @@
       "maplibre": 14,
       "mbmap": 14,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 28,
       "glyphDiff": 0,
@@ -113,6 +125,7 @@
       "maplibre": 31,
       "mbmap": 31,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 64,
       "glyphDiff": 0,
@@ -124,6 +137,7 @@
       "maplibre": 19,
       "mbmap": 19,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 38,
       "glyphDiff": 0,
@@ -135,6 +149,7 @@
       "maplibre": 18,
       "mbmap": 18,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 36,
       "glyphDiff": 0,
@@ -146,6 +161,7 @@
       "maplibre": 8,
       "mbmap": 8,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 16,
       "glyphDiff": 0,
@@ -157,10 +173,101 @@
       "maplibre": 76,
       "mbmap": 76,
       "anchored": 0,
+      "icons": 0,
       "boxDiff": 0,
       "glyphs": 10,
       "glyphDiff": 0,
       "angleDiff": 0
+    },
+    {
+      "scene": "icons",
+      "same": true,
+      "maplibre": 38,
+      "mbmap": 38,
+      "anchored": 0,
+      "icons": 38,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-turned",
+      "same": true,
+      "maplibre": 36,
+      "mbmap": 36,
+      "anchored": 0,
+      "icons": 36,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-tilted",
+      "same": true,
+      "maplibre": 109,
+      "mbmap": 109,
+      "anchored": 0,
+      "icons": 109,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-and-text",
+      "same": true,
+      "maplibre": 72,
+      "mbmap": 72,
+      "anchored": 0,
+      "icons": 72,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-text-optional",
+      "same": true,
+      "maplibre": 137,
+      "mbmap": 137,
+      "anchored": 0,
+      "icons": 137,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-icon-optional",
+      "same": true,
+      "maplibre": 110,
+      "mbmap": 110,
+      "anchored": 0,
+      "icons": 81,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-overlap",
+      "same": true,
+      "maplibre": 250,
+      "mbmap": 250,
+      "anchored": 0,
+      "icons": 250,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-variable",
+      "same": true,
+      "maplibre": 66,
+      "mbmap": 66,
+      "anchored": 13,
+      "icons": 66,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-fit",
+      "same": true,
+      "maplibre": 104,
+      "mbmap": 104,
+      "anchored": 32,
+      "icons": 104,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icons-fit-width",
+      "same": true,
+      "maplibre": 75,
+      "mbmap": 75,
+      "anchored": 0,
+      "icons": 75,
+      "boxDiff": 0
     }
   ]
 }

@@ -47,8 +47,8 @@ export function decodePng(buf) {
   return { width, height, rgba };
 }
 
-// An 8-bit RGB PNG of `rgba` (alpha dropped), every row unfiltered.
-export function encodePng(width, height, rgba) {
+// An 8-bit RGB PNG of `rgba` (alpha dropped unless `alpha`), every row unfiltered.
+export function encodePng(width, height, rgba, { alpha = false } = {}) {
   const chunk = (type, data) => {
     const out = Buffer.alloc(12 + data.length);
     out.writeUInt32BE(data.length, 0);
@@ -60,10 +60,11 @@ export function encodePng(width, height, rgba) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr.set([8, 2, 0, 0, 0], 8);
-  const raw = Buffer.alloc(height * (width * 3 + 1));
+  const n = alpha ? 4 : 3;
+  ihdr.set([8, alpha ? 6 : 2, 0, 0, 0], 8);
+  const raw = Buffer.alloc(height * (width * n + 1));
   for (let y = 0; y < height; y++)
-    for (let x = 0; x < width; x++) raw.set(rgba.subarray((y * width + x) * 4, (y * width + x) * 4 + 3), y * (width * 3 + 1) + 1 + x * 3);
+    for (let x = 0; x < width; x++) raw.set(rgba.subarray((y * width + x) * 4, (y * width + x) * 4 + n), y * (width * n + 1) + 1 + x * n);
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
 }
 

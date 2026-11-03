@@ -34,6 +34,7 @@ fn Map::render(self : Map) -> Unit {
     None => 0.0
   }
   self.transform = self.transform.with_elevation(elevation)
+  self.send_images()
   let (draws_of, settled) = self.draws(dpr, load=true)
   self.drawn = draws_of
   if self.placement_due() {
@@ -551,7 +552,11 @@ fn Map::draw_frame(
       }
       continue
     }
-    for d in draws_of.get(layer.source).unwrap_or([]) {
+    let draws = draws_of.get(layer.source).unwrap_or([])
+    for d in draws {
+      self.draw_icons(index, layer, d, dpr, height_scale)
+    }
+    for d in draws {
       self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
     }
   }

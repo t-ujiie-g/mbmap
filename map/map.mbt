@@ -153,6 +153,12 @@ pub struct Map {
   priv images : @hashmap.HashMap[String, @render_webgl2.StyleImage]
   priv missing_images : @hashset.HashSet[String]
   priv mut on_missing_image : (String) -> Unit
+  /// Images whose size changed since the workers were last told (icons are
+  /// laid out with it), whether a sprite is still loading and whether the
+  /// workers were told to hold tiles for it.
+  priv changed_images : @hashset.HashSet[String]
+  priv mut images_loading : Bool
+  priv mut images_held : Bool
   /// Heatmap color ramps by `heatmap-color` expression.
   priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
   priv media : Array[Media]
@@ -265,6 +271,9 @@ pub fn Map::new(
     images: @hashmap.HashMap([]),
     missing_images: @hashset.HashSet([]),
     on_missing_image: _ => (),
+    changed_images: @hashset.HashSet([]),
+    images_loading: false,
+    images_held: false,
     ramps: [],
     media: [],
     custom: no_custom(),
@@ -442,6 +451,7 @@ fn Map::release_meshes(self : Map, meshes : Array[LayerMesh]) -> Unit {
     if m.owned {
       self.renderer.release(m.mesh)
     }
+    release_icons(self.renderer, m)
     if m.vertex_paint is Some(b) {
       self.renderer.release_paint(b)
     }

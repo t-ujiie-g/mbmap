@@ -1,28 +1,30 @@
 ///|
-/// Uploads the pattern atlas (straight RGBA, premultiplied by the upload as
-/// MapLibre's textures are) as texture unit 0's `c.patterns`, filtered linearly.
+/// Uploads an image atlas (straight RGBA, premultiplied by the upload as
+/// MapLibre's textures are) as texture unit 0's `c[key]` ("patterns" or
+/// "icons"), filtered linearly.
 extern "js" fn gl_pattern_atlas(
   gl : Gl,
+  key : String,
   data : FixedArray[Byte],
   width : Int32,
   height : Int32,
 ) -> Unit =
-  #|(c, data, w, h) => {
+  #|(c, key, data, w, h) => {
   #|  const gl = c.gl;
   #|  gl.activeTexture(gl.TEXTURE0);
-  #|  if (!c.patterns) {
-  #|    c.patterns = gl.createTexture();
-  #|    gl.bindTexture(gl.TEXTURE_2D, c.patterns);
+  #|  if (!c[key]) {
+  #|    c[key] = gl.createTexture();
+  #|    gl.bindTexture(gl.TEXTURE_2D, c[key]);
   #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  #|  } else gl.bindTexture(gl.TEXTURE_2D, c.patterns);
+  #|  } else gl.bindTexture(gl.TEXTURE_2D, c[key]);
   #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
   #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
   #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
   #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-  #|  c.patternSize = [w, h];
+  #|  c[key + "Size"] = [w, h];
   #|}
 
 ///|
@@ -40,7 +42,7 @@ extern "js" fn gl_set_pattern(
   #|  gl.uniform4f(p.u_pixel, u[2], u[3], u[4], u[5]);
   #|  gl.uniform1f(p.u_units, u[6]);
   #|  gl.uniform4f(p.u_pattern, u[7], u[8], u[9], u[10]);
-  #|  gl.uniform2f(p.u_texsize, c.patternSize[0], c.patternSize[1]);
+  #|  gl.uniform2f(p.u_texsize, c.patternsSize[0], c.patternsSize[1]);
   #|  gl.uniform1i(p.u_sdf, u[11]);
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, c.patterns);
@@ -92,7 +94,7 @@ extern "js" fn gl_draw_line_pattern(
   #|  gl.uniform2f(p.u_size, u[4], u[5]);
   #|  gl.uniform1f(p.u_along, u[6]);
   #|  gl.uniform2f(p.u_floor, u[7], u[8]);
-  #|  gl.uniform2f(p.u_texsize, c.patternSize[0], c.patternSize[1]);
+  #|  gl.uniform2f(p.u_texsize, c.patternsSize[0], c.patternsSize[1]);
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, c.patterns);
   #|  gl.uniform1i(p.u_image, 0);

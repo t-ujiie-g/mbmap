@@ -8,7 +8,12 @@ import { readValue } from "./values.mjs";
 // Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
 export const SYMBOL_VERTEX_BYTES = 16;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
-export const LABEL_FLOATS = 12;
+export const LABEL_FLOATS = 19;
+// Where a label's icon columns start in its `labels` row: box (4), 1, first index, index count.
+export const ICON_COLUMN = 9;
+// Icon sizes per vertex are packed as MapLibre's (`SIZE_PACK_FACTOR`), corner offsets in 32nds of a px.
+const SIZE_PACK = 128;
+const OFFSET_PACK = 32;
 // Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`);
 // `anchors` (a count, then per anchor its code and offset) ends the fixed part.
 const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, justify: 44, anchors: 45 };
@@ -32,6 +37,8 @@ export const MAX_LABEL_CHARS = 256;
 // Most glyphs a worker keeps, and draws for one tile; past them characters are
 // left blank, so a tile cannot make it draw without bound.
 export const MAX_GLYPHS = 4096;
+// Most missing image names one entry reports.
+const MAX_MISSING = 64;
 export const MAX_NEW_GLYPHS_PER_TILE = 1024;
 const BLANK = { advance: SDF_SIZE / 2, left: 0, top: 0, width: 0, height: 0 };
 
@@ -79,11 +86,74 @@ export class Glyphs {
 }
 
 // setInt16 wraps around, so offsets past its range are clamped.
-const quarterPixels = (px) => Math.max(-32768, Math.min(32767, Math.round(px * 4)));
+const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
+const quarterPixels = (px) => clamp16(px * 4);
+
+// The shares of a box left of and above an anchor of worker/labels.mbt's code.
+function alignment(code) {
+  const name = ANCHOR_NAMES[code] ?? "center";
+  return [name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5, name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5];
+}
+const ANCHOR_NAMES = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
+
+/**
+ * MapLibre's `shapeIcon` and, with `icon-text-fit` (`fit` 1 width, 2 height, 3 both) around a text
+ * `box` (CSS px), `fitIconToText`: the icon's left, top, right, bottom at size 1. `image` is
+ * [width, height, pixelRatio, sdf].
+ */
+export function shapeIcon(image, icon, box) {
+  const [w, h] = [image[0] / image[2], image[1] / image[2]];
+  const [dx, dy] = icon.offset;
+  const fit = box ? icon.textFit : 0;
+  const [pt, pr, pb, pl] = icon.fitPadding;
+  const [ha, va] = alignment(icon.anchor);
+  let left = dx - w * ha;
+  let top = dy - h * va;
+  if (fit) left = fit & 1 ? dx + box[0] - pl : dx + (box[0] + box[2] - w) / 2;
+  if (fit) top = fit & 2 ? dy + box[1] - pt : dy + (box[1] + box[3] - h) / 2;
+  const right = fit & 1 ? dx + box[2] + pr : left + w;
+  const bottom = fit & 2 ? dy + box[3] + pb : top + h;
+  return [left, top, right, bottom];
+}
+
+const rotation = (degrees) => {
+  const a = (degrees * Math.PI) / 180;
+  return [Math.cos(a), Math.sin(a)];
+};
+
+/**
+ * An icon's collision box in CSS px at `size` (MapLibre's `CollisionFeature`): padded, and the
+ * envelope of its turn by `rotate` degrees.
+ */
+export function iconBox(shaped, size, padding, rotate) {
+  const [pt, pr, pb, pl] = padding;
+  const x1 = shaped[0] * size - pl, y1 = shaped[1] * size - pt, x2 = shaped[2] * size + pr, y2 = shaped[3] * size + pb;
+  if (!rotate) return [x1, y1, x2, y2];
+  const [c, s] = rotation(rotate);
+  const xs = [], ys = [];
+  for (const [x, y] of [[x1, y1], [x2, y1], [x1, y2], [x2, y2]]) {
+    xs.push(c * x - s * y);
+    ys.push(s * x + c * y);
+  }
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
+/**
+ * The corners (top-left, top-right, bottom-right, bottom-left) of an icon's quad at size 1, a pixel
+ * of the image wider on each side (MapLibre's `getIconQuads`), turned by `rotate` degrees.
+ */
+export function iconCorners(shaped, image, rotate) {
+  const [left, top, right, bottom] = shaped;
+  const bx = (right - left) / image[0], by = (bottom - top) / image[1];
+  const [c, s] = rotation(rotate);
+  return [[left - bx, top - by], [right + bx, top - by], [right + bx, bottom + by], [left - bx, bottom + by]]
+    .map(([x, y]) => [c * x - s * y, s * x + c * y]);
+}
 
 // A label's text parts joined: null and absent parts are empty, numbers and
 // booleans as JS writes them.
-function readText(view, bytes, at, parts) {
+function readText(view, bytes, at, parts, skip = 0) {
+  at += skip;
   let text = "";
   for (let p = 0; p < parts; p++) {
     let v;
@@ -93,8 +163,9 @@ function readText(view, bytes, at, parts) {
   return [text, at];
 }
 
-// One symbol entry: `bytes` are its labels; returns the entry's buffers.
-export function buildSymbols(bytes, glyphs) {
+// One symbol entry: `bytes` are its labels, `images` the style's images by name
+// ([width, height, pixelRatio, sdf]); returns the entry's buffers.
+export function buildSymbols(bytes, glyphs, images = new Map()) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const layout = {
     anchor: view.getUint8(HEADER.anchor),
@@ -125,12 +196,24 @@ export function buildSymbols(bytes, glyphs) {
     maxAngle: view.getFloat64(at + 10, true),
   };
   at += 18;
+  let icon = null;
+  if (view.getUint8(at++) === 1) {
+    const flag = (k) => view.getUint8(at + k) === 1;
+    const f64 = (k) => view.getFloat64(at + 9 + k * 8, true);
+    icon = {
+      anchor: view.getUint8(at), allowOverlap: flag(1), ignorePlacement: flag(2), optional: flag(3), textOptional: flag(4),
+      rotateWithMap: flag(5), pitchWithMap: flag(6), keepUpright: flag(7), textFit: view.getUint8(at + 8),
+      offset: [f64(0), f64(1)], padding: [f64(2), f64(3), f64(4), f64(5)], fitPadding: [f64(6), f64(7), f64(8), f64(9)],
+    };
+    at += 89;
+  }
   const onLines = along.placement !== "point";
   // Along lines MapLibre shapes one centered line of text, whatever the layout says.
   const shaping = onLines ? { ...layout, maxWidth: Infinity, justify: "center", offset: [0, 0] } : layout;
   const count = view.getUint32(at, true);
   at += 4;
   let placed = [];
+  const missing = new Set();
   const local = new Map();
   let quads = 0;
   for (let i = 0; i < count; i++) {
@@ -145,10 +228,28 @@ export function buildSymbols(bytes, glyphs) {
     const chars = [...text];
     if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
     const metrics = (cp) => glyphs.metrics(cp);
+    let iconName = "";
+    let iconSize = 1;
+    let rotate = 0;
+    if (icon) {
+      [iconName, at] = readText(view, bytes, at, view.getUint32(at, true), 4);
+      iconSize = view.getFloat64(at, true);
+      rotate = view.getFloat64(at + 8, true);
+      at += 16;
+    }
     let lines = null;
     if (onLines) [lines, at] = readLines(view, at);
     const shaped = layoutLabel(text, Math.min(size, 256), shaping, metrics);
-    if (shaped.quads.length === 0) continue;
+    const image = iconName ? images.get(iconName) : undefined;
+    // Names come from tiles: a few short ones are reported, as MapLibre reports each.
+    if (iconName && !image && iconName.length <= MAX_LABEL_CHARS && missing.size < MAX_MISSING) missing.add(iconName);
+    if (shaped.quads.length === 0 && !image) continue;
+    const shapedIcon = image ? shapeIcon(image, icon, shaped.quads.length > 0 ? shaped.box : null) : null;
+    // Sizes may come from tiles; past 511 they do not fit the vertex's u16.
+    const scale = Math.max(0, Math.min(iconSize, 511));
+    const iconRow = shapedIcon
+      ? { name: iconName, image, size: scale, rotate, shaped: shapedIcon, box: iconBox(shapedIcon, scale, icon.padding, rotate) }
+      : null;
     if (onLines) {
       placed.push({ feature, size, key, text, shaped, lines });
       continue;
@@ -158,7 +259,7 @@ export function buildSymbols(bytes, glyphs) {
     const variants = tries > 0 && layout.justify === "auto" && !layout.vertical && shaped.lines > 1
       ? VARIANTS.map((justify) => layoutLabel(text, Math.min(size, 256), { ...layout, justify }, metrics))
       : [shaped];
-    placed.push({ feature, x, y, size, key, box: shaped.box, variants });
+    placed.push({ feature, x, y, size, key, box: shaped.box, variants, icon: iconRow });
   }
   if (along.placement === "line") placed = mergeLines(placed);
   // Lower sort keys are placed (and drawn) first; ties keep their order.
@@ -175,9 +276,12 @@ export function buildSymbols(bytes, glyphs) {
   const wide = quads * 4 > 65536;
   const indices = wide ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6);
   const labels = new Float32Array(placed.length * LABEL_FLOATS);
+  const iconLabels = placed.filter((l) => l.icon);
+  const icons = iconQuads(iconLabels);
   placed.forEach((l, i) => {
     const per = l.variants[0].quads.length;
-    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, l.variants.length, l.first * 6, per * 6], i * LABEL_FLOATS);
+    const ic = l.icon ? [...l.icon.box, 1, l.icon.index * 6, 6] : [0, 0, 0, 0, 1, 0, 0];
+    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, ...ic, l.variants.length, l.first * 6, per * 6], i * LABEL_FLOATS);
     l.variants.flatMap((s) => s.quads).forEach((q, k) => {
       const n = l.first + k;
       // Along lines a glyph's corners are relative to its own middle.
@@ -203,7 +307,44 @@ export function buildSymbols(bytes, glyphs) {
     labels,
     codepoints: Uint32Array.from(local.keys()),
     ...flags,
+    ...(icon ? { icon: { ...icon, ...icons, hasOffset: icon.offset[0] !== 0 || icon.offset[1] !== 0 }, missing: [...missing] } : {}),
     ...(line ? { lineLabels: line.meta, lines: line.lines, glyphOffsets: line.glyphs, keepUpright: along.keepUpright } : {}),
+  };
+}
+
+// The icons of `labels`, one quad each (docs/FORMATS.md "Symbol vertices": corners in
+// OFFSET_PACK-ths of a px at size 1, sizes times SIZE_PACK); `sdf` as the first icon's (MapLibre's
+// `sdfIcons`), `rotated` if any icon is turned.
+function iconQuads(labels) {
+  const names = new Map();
+  const vertices = new ArrayBuffer(labels.length * 4 * SYMBOL_VERTEX_BYTES);
+  const v = new DataView(vertices);
+  const wide = labels.length * 4 > 65536;
+  const indices = wide ? new Uint32Array(labels.length * 6) : new Uint16Array(labels.length * 6);
+  labels.forEach((l, n) => {
+    const { name, image, size, rotate, shaped } = l.icon;
+    l.icon.index = n;
+    if (!names.has(name)) names.set(name, names.size);
+    iconCorners(shaped, image, rotate).forEach(([cx, cy], c) => {
+      const o = (n * 4 + c) * SYMBOL_VERTEX_BYTES;
+      v.setInt16(o, Math.round(l.x), true);
+      v.setInt16(o + 2, Math.round(l.y), true);
+      v.setInt16(o + 4, clamp16(cx * OFFSET_PACK), true);
+      v.setInt16(o + 6, clamp16(cy * OFFSET_PACK), true);
+      v.setUint16(o + 8, names.get(name), true);
+      v.setUint16(o + 10, c, true);
+      v.setUint16(o + 12, Math.round(size * SIZE_PACK), true);
+    });
+    indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * 6);
+  });
+  return {
+    vertices,
+    indices: indices.buffer,
+    count: indices.length,
+    indexBytes: wide ? 4 : 2,
+    images: [...names.keys()],
+    sdf: labels[0]?.icon.image[3] === true,
+    rotated: labels.some((l) => l.icon.rotate !== 0),
   };
 }
 

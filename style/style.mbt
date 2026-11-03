@@ -35,10 +35,10 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout;
-/// `filter_id` shared by identically written filters (-1 for none); a fill's
-/// `antialias` draws its outline, `outline_color` (or its color); `radius` a
-/// circle's or heatmap's.
+/// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout
+/// (`icon`, `icon_paint` with `icon-image`); `filter_id` shared by identically written
+/// filters (-1 for none); a fill's `antialias` draws its outline, `outline_color` (or
+/// its color); `radius` a circle's or heatmap's.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -58,6 +58,8 @@ pub struct StyleLayer {
   halo_color : Expr
   halo_width : Expr
   text : TextLayout?
+  icon : IconLayout?
+  icon_paint : IconPaint?
   hillshade : HillshadePaint?
   extrusion : ExtrusionPaint?
   raster : RasterPaint?
@@ -268,6 +270,15 @@ fn parse_layer(
     "round" => Round
     c => raise Invalid(path="\{lpath}.line-cap", "unknown cap \{c}")
   }
+  let text = if kind is Symbol { Some(parse_text(layout, lpath)) } else { None }
+  let (icon, icon_paint) = match text {
+    Some(t) =>
+      match parse_icon(layout, paint, lpath, ppath, t.placement) {
+        Some((l, p)) => (Some(l), Some(p))
+        None => (None, None)
+      }
+    None => (None, None)
+  }
   let layer : StyleLayer = {
     id: string_or(l, "id", path, ""),
     kind,
@@ -349,11 +360,9 @@ fn parse_layer(
       NumberType,
       Json::number(0.0),
     ),
-    text: if kind is Symbol {
-      Some(parse_text(layout, lpath))
-    } else {
-      None
-    },
+    text,
+    icon,
+    icon_paint,
     hillshade: if kind is Hillshade {
       Some(parse_hillshade(paint, ppath))
     } else {
@@ -422,6 +431,9 @@ fn parse_layer(
     if e is Some(e) {
       others.push(e)
     }
+  }
+  if layer.icon_paint is Some(p) {
+    others.push_iter(p.exprs().iter())
   }
   if layer.heatmap is Some(h) {
     others.push(h.weight)

@@ -14,6 +14,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
       l.stroke_opacity,
       l.halo_color,
       l.halo_width,
+      ..l.icon_paint.map_or([], p => p.exprs()),
     ].map(e => e.feature_inputs())
   }
   self.id == other.id &&
@@ -24,6 +25,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.max_zoom == other.max_zoom &&
   self.filter == other.filter &&
   self.text == other.text &&
+  self.icon.map(i => i.layout) == other.icon.map(i => i.layout) &&
   self.extrusion == other.extrusion &&
   self.same_line_layout(other) &&
   self.reads_state() == other.reads_state() &&

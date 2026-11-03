@@ -38,7 +38,10 @@ export function stationHeatLayer(metadata) {
   };
 }
 
-/** The layers (overlays, kept across basemaps): clusters, their counts, and single stations. */
+/**
+ * The layers (overlays, kept across basemaps): clusters, their counts, and single stations as the
+ * sprite's icon (their `text-color` only names their color for the legend).
+ */
 export function stationLayers(metadata) {
   const clustered = ["has", "point_count"];
   return [
@@ -53,8 +56,9 @@ export function stationLayers(metadata) {
       },
     },
     {
-      id: "stations", type: "circle", source: "stations", filter: ["!", clustered], metadata,
-      paint: { "circle-color": "#5a9e3a", "circle-radius": 4, "circle-stroke-width": 1, "circle-stroke-color": "#ffffff" },
+      id: "stations", type: "symbol", source: "stations", filter: ["!", clustered], metadata,
+      layout: { "icon-image": "station", "icon-size": ["interpolate", ["linear"], ["zoom"], 11, 0.8, 16, 1.3], "icon-allow-overlap": true },
+      paint: { "text-color": "#5a9e3a" },
     },
     {
       id: "stations-count", type: "symbol", source: "stations", filter: clustered, metadata,

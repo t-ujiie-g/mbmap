@@ -164,6 +164,44 @@ pub struct HillshadePaint {
   accent : Expr
 }
 
+pub struct IconLayout {
+  layout : Json
+  image : Array[Expr]
+  size : Expr
+  rotate : Expr
+  anchor : TextAnchor
+  offset : (Double, Double)
+  padding : (Double, Double, Double, Double)
+  allow_overlap : Bool
+  ignore_placement : Bool
+  optional : Bool
+  text_optional : Bool
+  rotate_with_map : Bool
+  pitch_with_map : Bool
+  keep_upright : Bool
+  text_fit : IconTextFit
+  text_fit_padding : (Double, Double, Double, Double)
+}
+
+pub struct IconPaint {
+  color : Expr
+  opacity : Expr
+  halo_color : Expr
+  halo_width : Expr
+  halo_blur : Expr
+}
+pub fn IconPaint::exprs(Self) -> Array[Expr]
+
+pub(all) enum IconTextFit {
+  NoFit
+  Width
+  Height
+  Both
+} derive(Eq, @debug.Debug)
+pub fn IconTextFit::equal(Self, Self) -> Bool
+pub fn IconTextFit::not_equal(Self, Self) -> Bool
+pub fn IconTextFit::to_repr(Self) -> @debug.Repr
+
 pub(all) enum Interpolation {
   Exponential(Double)
   CubicBezier(Double, Double, Double, Double)
@@ -344,6 +382,8 @@ pub struct StyleLayer {
   halo_color : Expr
   halo_width : Expr
   text : TextLayout?
+  icon : IconLayout?
+  icon_paint : IconPaint?
   hillshade : HillshadePaint?
   extrusion : ExtrusionPaint?
   raster : RasterPaint?

@@ -366,15 +366,23 @@ fn Map::symbols_under(
         }
       }
       for i in 0..<s.count {
-        guard s.shown[i] else { continue }
-        let b = s.boxes
-        if @core.polygon_hits_box(
+        // Its text's box and its icon's, each if shown.
+        let hits = (shown : Bool, k : Int32) => {
+          let b = i * BOX_FLOATS + k
+          shown &&
+          @core.polygon_hits_box(
             points,
-            b[i * 4],
-            b[i * 4 + 1],
-            b[i * 4 + 2],
-            b[i * 4 + 3],
-          ) {
+            s.boxes[b],
+            s.boxes[b + 1],
+            s.boxes[b + 2],
+            s.boxes[b + 3],
+          )
+        }
+        let icon = match s.icon {
+          Some(ic) => ic.shown[i]
+          None => false
+        }
+        if hits(s.shown[i], 0) || hits(icon, 4) {
           let hit = (
             m.layer,
             f32_at(s.labels, i * LABEL_FLOATS + LABEL_FEATURE).to_int(),
