@@ -69,7 +69,7 @@ npm run draw:many         # pointer moves while drawing over 2000 shapes with mb
 npm run draw:setdata      # setData latency (frames until a moved vertex is on screen), mbmap vs MapLibre
 npm run geodesic:golden   # geodesic.wasm vs geographiclib-geodesic 2.2.0: inverse, direct, polygons, densified paths (must stay all identical)
 npm run geometry:node     # dissolve / buffer / clip on GSI buildings vs Turf.js
-npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style); node render/run.mjs --labels adds the label layers
+npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style); node render/run.mjs --labels adds the label layers, --line-labels contour labels along lines
 npm run example           # serve the repo on 127.0.0.1:8080 (the dev pages bench/pages/{basic,terrain} need only this)
 npm run examples          # also pack npm/ into examples/{html,element,react} and bench/npm/pages/ (bench/npm/prepare.mjs), then serve /examples/
 npm run npm:pack          # build + npm pack npm/, install it there, check examples and test pages in Chromium (CI runs this)
