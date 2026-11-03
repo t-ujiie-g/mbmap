@@ -1,6 +1,6 @@
 // mbmap vs MapLibre, same style, tiles and camera script, in Chromium with the Metal GPU.
-// Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--terrain] [--extrusion] [--pitch=N]
-// Writes bench/results/render-chromium[-labels][-terrain][-extrusion][-pitchN][-uncapped].json.
+// Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--line-labels] [--terrain] [--extrusion] [--pitch=N]
+// Writes bench/results/render-chromium[-labels][-line-labels][-terrain][-extrusion][-pitchN][-uncapped].json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 import path from "node:path";
@@ -15,6 +15,8 @@ const runs = Number(arg("runs", 11));
 const uncapped = process.argv.includes("--uncapped");
 // --labels adds the label layers of bench/pages/basic, drawn from local fonts by both engines.
 const labels = process.argv.includes("--labels");
+// --line-labels adds the showcase's contour heights along their lines (symbol-placement: line).
+const lineLabels = process.argv.includes("--line-labels");
 // --terrain drapes the map on the gsi-dem fixtures as Terrarium, with a sky, pitched 45 degrees
 // (at 60 MapLibre leaves distant terrain blank: below the vector source's minzoom).
 const terrain = process.argv.includes("--terrain");
@@ -23,7 +25,7 @@ const terrain = process.argv.includes("--terrain");
 const extrusion = process.argv.includes("--extrusion");
 const pitchArg = arg("pitch", null);
 const pitch = Number(pitchArg ?? (terrain || extrusion ? 45 : 0));
-const styleVariant = `${labels ? "-labels" : ""}${terrain ? "-terrain" : ""}${extrusion ? "-extrusion" : ""}`;
+const styleVariant = `${labels ? "-labels" : ""}${lineLabels ? "-line-labels" : ""}${terrain ? "-terrain" : ""}${extrusion ? "-extrusion" : ""}`;
 const variant = `${styleVariant}${pitchArg !== null ? `-pitch${pitch}` : ""}`;
 const style = styleVariant ? `bench/dist/style${styleVariant}.json` : "bench/maplibre/style.json";
 if (styleVariant) {
@@ -31,6 +33,13 @@ if (styleVariant) {
   if (labels) {
     const basic = JSON.parse(await readFile(path.join(ROOT, "bench/pages/basic/style.json"), "utf8"));
     base.layers.push(...basic.layers.filter((l) => l.type === "symbol"));
+  }
+  if (lineLabels) {
+    base.layers.push({
+      id: "contour-label", type: "symbol", source: "gsi", "source-layer": "contour",
+      layout: { "symbol-placement": "line", "symbol-spacing": 300, "text-field": "{alti}", "text-size": 10 },
+      paint: { "text-color": "#8a6d3b", "text-halo-color": "#ffffff", "text-halo-width": 1 },
+    });
   }
   if (terrain) {
     // Terrarium copies of the z14 fixtures, and z13 and z12 halved from them
@@ -130,7 +139,7 @@ for (const [engine, rs] of Object.entries(results)) {
   };
 }
 const out = {
-  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + bench/pages/basic labels" : "bench/maplibre/style.json", ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : []), ...(extrusion ? ["buildings extruded 30 m (ftCode 3103) or 8 m"] : [])].join(", ") },
+  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + bench/pages/basic labels" : "bench/maplibre/style.json", ...(lineLabels ? ["contour labels along lines"] : []), ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : []), ...(extrusion ? ["buildings extruded 30 m (ftCode 3103) or 8 m"] : [])].join(", ") },
   params: { runs, statistic: "median of runs" }, sizes, summary, runs: results,
 };
 await writeFile(path.join(ROOT, `bench/results/render-chromium${variant}${uncapped ? "-uncapped" : ""}.json`), JSON.stringify(out, null, 2) + "\n");
