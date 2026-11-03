@@ -27,9 +27,14 @@ test "a square building gets four walls facing out and a roof" {
   assert_eq((v(2, 0), v(2, 1)), (100, 100))
   // The last wall closes the ring, from (100, 100) back to (100, 200): +x.
   assert_eq((v(12, 0), v(12, 1), v(12, 2), v(12, 3)), (100, 100, 16384, 0))
-  // Roof vertices point up and sit on the top edge; every vertex knows the
-  // centroid.
-  assert_eq((v(16, 2), v(16, 4), v(16, 5), v(16, 6)), (1, 16384, 150, 150))
+  // Distances along the walls: each wall starts where the last ended.
+  assert_eq((v(0, 5), v(2, 5), v(4, 5), v(14, 5)), (0, 100, 100, 400))
+  // Roof vertices point up and sit on the top edge, at distance 0; every
+  // vertex knows the centroid.
+  assert_eq(
+    (v(16, 2), v(16, 4), v(16, 5), v(16, 6), v(16, 7)),
+    (1, 16384, 0, 150, 150),
+  )
   // Each wall's triangles: 0 2 1 and 1 2 3.
   assert_eq(out.indices[:6].to_owned(), [0, 2, 1, 1, 2, 3])
 }
@@ -64,5 +69,5 @@ test "closed rings add no zero-length wall and count their first point once" {
     out,
   )
   assert_eq(out.indices.length(), 4 * 6 + 2 * 3)
-  assert_eq((out.vertices[5], out.vertices[6]), (150, 150))
+  assert_eq((out.vertices[6], out.vertices[7]), (150, 150))
 }

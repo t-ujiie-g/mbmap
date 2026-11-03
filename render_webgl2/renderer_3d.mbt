@@ -159,9 +159,9 @@ pub(all) struct ExtrusionLight {
 }
 
 ///|
-/// Draws an extrusion mesh, `color` (straight RGB) lit by `light`; `t` mixes its
-/// heights from the tile's zoom to one deeper, `scale` is world pixels per meter
-/// and `ground` the terrain exaggeration (0 without terrain).
+/// Draws an extrusion mesh, `color` (or `pattern`) lit by `light`; `t` mixes its
+/// heights from the tile's zoom to one deeper, `scale` is world px per meter,
+/// `ground` the terrain exaggeration; `pass` 0 at once, else depth (1) then color (2).
 pub fn Renderer::draw_extrusion(
   self : Renderer,
   mesh : Mesh,
@@ -173,9 +173,18 @@ pub fn Renderer::draw_extrusion(
   t : Double,
   scale : Double,
   ground : Double,
+  pattern~ : PatternPosition? = None,
+  pass~ : Int32 = 0,
 ) -> Unit {
   let (lx, ly, lz) = light.direction
   let (lr, lg, lb) = light.color
+  let program = match pattern {
+    Some(pos) => {
+      self.use_pattern("extrusionPattern", pos, at.pattern)
+      "extrusionPattern"
+    }
+    None => "extrusion"
+  }
   gl_draw_extrusion(
     self.gl,
     mesh,
@@ -185,6 +194,15 @@ pub fn Renderer::draw_extrusion(
     opacity,
     [lx, ly, lz, light.intensity, lr, lg, lb],
     gradient,
-    [t, scale, ground],
+    [t, scale, ground, at.pattern.height_factor],
+    program,
+    pass,
   )
+}
+
+///|
+/// Starts the color pass of a translucent extrusion layer: every pixel is then
+/// colored once, by its nearest surface.
+pub fn Renderer::begin_extrusion_color(self : Renderer) -> Unit {
+  gl_clear_stencil(self.gl)
 }
