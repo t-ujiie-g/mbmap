@@ -28,6 +28,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
 | `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読み込む（場所は `projWasmUrl` で変えられる） |
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ読み込む |
+| `dist/geodesic.js`, `dist/geodesic-worker.js`, `dist/geodesic.wasm` | 楕円体の上の計測（`mbmap/geodesic`）の入口、Worker、wasm。初めて呼んだときに Worker を起こす |
 | `dist/worker.js` | タイル Worker（モジュール Worker） |
 | `dist/mbmap.wasm` | Worker が読む wasm-gc |
 
@@ -116,6 +117,12 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
   - 座標系は `degrees()`、`degreesMinutesSeconds()`、`projected({ transform, crs })`、`utm(transform)`。`format(lngLat)` を持つオブジェクトなら自分で作ってもよい。
   - 投影座標系は `transform`（`mbmap/analysis` の `transform` など）を渡して使う。そのため `mbmap/ui` は座標系の変換を含まない。遅れて届いた古い結果は捨てる。
   - `formatDegrees`、`formatDms`、`utmZone` も単体で使える。
+- `createMeasurement(map, { measure, step, id, color })`：地図をクリックして距離や面積を測る。
+  - `measure` には `mbmap/geodesic` の `measure` を渡す。そのため `mbmap/ui` は測地線の計算を含まない。
+  - 状態は `mode`（`"distance"`、`"area"`、測っていないときは null）、`positions`、`pointer`（マウスについてくる仮の頂点）、`length`（m。面積では周囲）、`area`（m²）、`segments`（辺ごとの長さ）、`finished`。
+  - 操作は `start(mode)`、`add(position)`、`undo()`、`finish()`（ダブルクリックでも終わる）、`clear()`。測っている間は、ダブルクリックでのズームを止める。
+  - 線と面は、測地線に沿って `step`（既定 1000m）ごとに点を足して描く。描くのは自前の GeoJSON ソース（既定の id は `mbmap-measure`）とレイヤーで、`mbmap:overlay` の印があるので背景地図を替えても残る。
+  - `formatLength`、`formatArea` は長さと面積を文字列にする。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 検索 `mbmap/search`
@@ -172,6 +179,22 @@ blocks.dispose();
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。
+
+## 楕円体の上の計測 `mbmap/geodesic`
+
+```js
+import { inverse, direct, measure } from "mbmap/geodesic";
+
+const { distance, azimuth1 } = await inverse([139.7671, 35.6812], [135.4959, 34.7025]); // m、北から時計回りの度
+const { position } = await direct([139.7671, 35.6812], 90, 10_000);                     // 東へ 10 km の点
+const { length, area, path } = await measure(ring, { closed: true, step: 1000 });       // 周囲（m）、面積（m²）、描くための点列
+```
+
+- WGS84 の楕円体の上で計算する。GeographicLib（geographiclib-geodesic 2.2.0）の移植で、同じ JavaScript エンジンの上ではビット単位で同じ値になる（黄金テストで確かめている）。
+- `inverse(from, to)`：`distance`、`azimuth1`、`azimuth2`、`arc`、`area`（測地線と赤道の間の面積）。
+- `direct(from, azimuth, distance)`：`position`、`azimuth`、`arc`。
+- `measure(positions, { closed, step })`：線の長さ、または閉じた多角形の周囲と面積（反時計回りが正）、各頂点までの距離（`distances`）。`step` を渡すと、測地線に沿って `step` m ごとに点を足した `path` も返す（経度は ±180 を越えても続けて数える）。
+- 初めて呼んだときに、専用の Worker と wasm（約 12KB）を読み込む。`terminate()` で止める。
 
 ## Web Component `<mb-map>`
 

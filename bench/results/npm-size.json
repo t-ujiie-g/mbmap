@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 70990,
+      "bytes": 71113,
       "budget": 80000
     },
     {
@@ -26,7 +26,7 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 5287,
+      "bytes": 6332,
       "budget": 10000
     },
     {
@@ -36,17 +36,17 @@
     },
     {
       "name": "display worker",
-      "bytes": 67192,
+      "bytes": 67245,
       "budget": 100000
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 20262,
+      "bytes": 20303,
       "budget": 30000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 2551,
+      "bytes": 2655,
       "budget": 5000
     },
     {
@@ -56,27 +56,37 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 26503,
+      "bytes": 26521,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 35504,
+      "bytes": 35500,
       "budget": 50000
     },
     {
       "name": "coordinate systems (loaded by the analysis worker on first use)",
-      "bytes": 21629,
+      "bytes": 21662,
       "budget": 25000
     },
     {
+      "name": "mbmap/geodesic",
+      "bytes": 1012,
+      "budget": 2000
+    },
+    {
+      "name": "geodesic worker",
+      "bytes": 11834,
+      "budget": 15000
+    },
+    {
       "name": "mbmap/ui createAttribution alone",
-      "bytes": 483,
+      "bytes": 482,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createFullscreen alone",
-      "bytes": 516,
+      "bytes": 515,
       "budget": 2000
     },
     {
@@ -91,7 +101,7 @@
     },
     {
       "name": "mbmap/ui createScale alone",
-      "bytes": 889,
+      "bytes": 888,
       "budget": 2000
     },
     {
@@ -101,22 +111,27 @@
     },
     {
       "name": "mbmap/ui createLayerList alone",
-      "bytes": 849,
+      "bytes": 848,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createLegend alone",
-      "bytes": 1562,
+      "bytes": 1563,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createCoordinates alone",
-      "bytes": 928,
+      "bytes": 927,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createIdentify alone",
-      "bytes": 813,
+      "bytes": 812,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createMeasurement alone",
+      "bytes": 1434,
       "budget": 2000
     }
   ]

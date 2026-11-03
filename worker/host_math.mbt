@@ -29,6 +29,12 @@ fn host_log(x : Double) -> Double = "Math" "log"
 fn host_pow(x : Double, y : Double) -> Double = "Math" "pow"
 
 ///|
+fn host_cbrt(x : Double) -> Double = "Math" "cbrt"
+
+///|
+fn host_atanh(x : Double) -> Double = "Math" "atanh"
+
+///|
 /// The host's `Math` (worker/js/worker.mjs passes it), as MapLibre computes
 /// with; keeps `@math` out of the module. `@wasmio.host_trig` is the same for
 /// the wasm-gc-only entries, which this all-targets package cannot import.
@@ -44,5 +50,7 @@ fn host_trig() -> @core.Trig {
     exp: host_exp,
     ln: host_log,
     pow: host_pow,
+    cbrt: host_cbrt,
+    atanh: host_atanh,
   }
 }

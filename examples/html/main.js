@@ -6,6 +6,7 @@ import { mountPanel, panelControllers } from "../shared/panel.js";
 import { mountSearch } from "../shared/search.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { mountCoordinates } from "../shared/coordinates.js";
+import { identifyWhenIdle, mountMeasurement } from "../shared/measure.js";
 import { hoverPlaces, mountIdentify } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
@@ -22,8 +23,8 @@ map.once("load").then(() => {
   update();
 });
 window.__map = map;
-// The features under a click, from the workers that hold the geometry.
-mountIdentify(map);
+// The features under a click (from the workers that hold the geometry) unless it measures.
+identifyWhenIdle(map, mountIdentify(map), mountMeasurement(map));
 mountCoordinates(map, document.body);
 hoverPlaces(map);
 pinDestinations(map, document.body);

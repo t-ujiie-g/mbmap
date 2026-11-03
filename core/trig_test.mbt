@@ -11,6 +11,8 @@ test "Trig's methods call its functions" {
   assert_eq(m.exp(0.5), @math.exp(0.5))
   assert_eq(m.ln(2.0), @math.ln(2.0))
   assert_eq(m.pow(2.0, 0.5), @math.pow(2.0, 0.5))
+  assert_eq(m.cbrt(-8.0), -2.0)
+  assert_eq(m.atanh(0.5), @math.atanh(0.5))
   // A host's functions go where MoonBit's would.
   let half : @core.Trig = { ..m, pow: (x, y) => x * y, }
   assert_eq(half.pow(3.0, 2.0), 6.0)

@@ -44,10 +44,11 @@ export function selectedRows(state) {
 
 /**
  * The features under each click from `mbmap/ui`'s identify controller, drawn into `#picked`: the
- * selected one's rows and buttons to step through the others (the selection is highlighted).
+ * selected one's rows and buttons to step through the others (the selection is highlighted). The
+ * page calls `identify` (it skips clicks that measure).
  */
 export function mountIdentify(map) {
-  const identify = createIdentify(map);
+  const identify = createIdentify(map, { click: false });
   const dl = document.getElementById("picked");
   const nav = document.createElement("div");
   nav.className = "picked-nav";

@@ -72,13 +72,14 @@ ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入
 - `adapters/` … 後回し。rabbita、Luna 等の薄いラッパーを置く場所として予約だけしておく
 - `clipper/`、`overlay/`、`geometry_worker/` … ジオメトリ演算（Clipper2 の移植と、地物の表への適用）。`geometry.wasm`
 - `proj/`、`proj_worker/` … 座標系変換（proj4js の移植）。`proj.wasm`
+- `geodesic/`、`geodesic_worker/` … 楕円体の上の測地線（GeographicLib の移植）。`mbmap/geodesic` の入口と `geodesic.wasm`
 - `bench/`、`examples/`
 
-依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_worker`、`geom ← analysis ← analysis_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
+依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_worker`、`geom ← analysis ← analysis_worker`、`core ← geodesic ← geodesic_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
 
 ### 入口の分割と遅延ロード
 
-- npm パッケージは1つ（`mbmap`）のまま、**subpath exports で入口を分ける**：`mbmap`（表示）、`mbmap/geojson`、`mbmap/analysis`、`mbmap/ui`、`mbmap/search`、`mbmap/draw`、`mbmap/3d` など。`import` しない入口はバンドルに入らない。
+- npm パッケージは1つ（`mbmap`）のまま、**subpath exports で入口を分ける**：`mbmap`（表示）、`mbmap/geojson`、`mbmap/analysis`、`mbmap/ui`、`mbmap/search`、`mbmap/geodesic`、`mbmap/draw`、`mbmap/3d` など。`import` しない入口はバンドルに入らない。
 - データ処理と解析の Wasm は、表示用 Worker とは**別のモジュール**にする。初めて使うときに `import()` で読み込み、専用の Worker で実行する。API は Promise を返す。
 - **分割の粒度（Phase 6.5 で計測して決定）**：入口ごとに Wasm モジュールを1つにすることを基本とする（例：`mbmap/analysis` → `analysis.wasm`）。ある機能群の固有のコードが gzip で約 20KB（モジュールごとに重複する core の約3倍）を超えたら、その機能群を別モジュールに切り出す（Clipper2 の移植や座標系変換が候補）。表示用 Worker に解析を入れる一体型にはしない。
   - 根拠：wasm-gc のモジュールを増やす固定費はほぼ 0（空のモジュールで 0.18KB）。一方で、表示用 Worker と共通の core のコード（三角関数、整数の文字列化など）が、モジュールごとに約 6KB 重複する。読み込みは 1〜2.5ms で、一体型と比べても実行速度は変わらない（PROGRESS.md の Phase 6.5）。
@@ -223,7 +224,7 @@ list.onclick = (e) => search.select(Number(e.target.dataset.i)); // 選ぶと、
 | 11 | ジオメトリ演算（buffer、交差、結合）、座標系変換 | Clipper2・proj4js などとの黄金テスト |
 | 12 | 地図の基本 API：実行中のスタイル変更（ソース・レイヤーの追加と削除、paint・layout・filter の変更、GeoJSON の `setData`）、カメラ（`easeTo`・`flyTo`・`fitBounds`、`project`・`unproject`、`getBounds`、表示範囲とズームの制限、操作ごとの有効・無効、キーボード）、地物の問い合わせ（`queryRenderedFeatures`、`querySourceFeatures`、レイヤーごとのイベント、`feature-state`）、画面座標の追跡（マーカーやポップアップを作り手が DOM で描くため）、ラスタタイルのソースとレイヤー、PMTiles、TileJSON、`transformRequest`、画像の書き出し（画面より大きい解像度は、描画先の上限を超える分を分割して描いてつなぐ） | MapLibre と同じ操作をする example。各 API の黄金テスト（MapLibre と同じ結果）。表示の入口の予算を守る |
 | 13 | ヘッドレス UI の土台と GeoSearch：コントローラの共通の形（状態・操作・購読）、ナビゲーション（ズーム、方位、傾き、現在地は Geolocation API）、縮尺、出典、凡例とレイヤー一覧（スタイルから作る）、識別（クリックした地物）、GeoSearch（座標の読み取り、データの属性検索、プロバイダの差し替え） | 素の DOM と React で同じコントローラから別の見た目を作る example。`mbmap/ui` と `mbmap/search` の予算 |
-| 14 | 作図・編集と計測（ヘッドレス）：点・線・多角形・矩形・円・フリーハンドの描画、頂点の編集、スナップ、取り消し・やり直し、分割・結合、属性の編集、距離・面積の計測（測地線）、断面図（標高） | terra-draw などと操作を比べた example。計測は GeographicLib と比べる |
+| 14 | 作図・編集と計測（ヘッドレス）：距離・面積の計測（測地線、`mbmap/geodesic`）、断面図（標高）、点・線・多角形・矩形・円・フリーハンドの描画、取り消し・やり直し、頂点の編集、スナップ、属性の編集、分割・結合（14.1〜14.5 の順） | terra-draw などと操作を比べた example。計測は GeographicLib と比べる |
 | 15 | スタイル表現の拡充：式（算術、型変換、文字列、`let` / `var`）、アイコンとスプライト（`addImage`）、模様、`line-dasharray`・`line-gradient`、線に沿ったラベル、`text-variable-anchor`、heatmap レイヤー、GeoJSON のクラスタリング、画像・動画・canvas のソース | MapLibre と並べた描画の比較（render ベンチ） |
 | 16 | データ形式：CSV、KML / KMZ、GPX、Shapefile（zip）、FlatGeobuf、TopoJSON、WKT / WKB、GeoTIFF / COG の読み込み、GeoJSON・CSV・KML の書き出し、属性テーブルのコントローラ（並べ替え、絞り込み、ページ送り） | 既存の JS 実装（togeojson、shpjs、flatgeobuf、geotiff.js など）との黄金テスト。形式ごとの予算 |
 | 17 | 解析 第2弾：空間関係（DE-9IM：contains、within、intersects、touches など）、単純化、凸包・凹包、ボロノイ・ドロネー、線の分割と線上の最近点、分類（自然分類、等量、等間隔、標準偏差）と統計（凡例とつなぐ）、カーネル密度・六角形の集計、クラスタリング（DBSCAN、k-means）、補間（IDW）、等高線、可視域・見通し、測地線の計測（GeographicLib）、作り手のデータの道路網での経路探索 | Turf.js、GEOS（JSTS）、GDAL、GeographicLib との黄金テストと速度比較 |

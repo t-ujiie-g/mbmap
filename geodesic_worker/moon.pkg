@@ -1,0 +1,15 @@
+// The geodesic module: `@geodesic` on WGS 84 over coordinate pairs, computing
+// with the host's `Math`.
+
+import {
+  "t-ujiie-g/mbmap/geodesic",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

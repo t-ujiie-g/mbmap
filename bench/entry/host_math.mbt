@@ -32,6 +32,12 @@ fn host_exp(x : Double) -> Double = "Math" "exp"
 fn host_pow(x : Double, y : Double) -> Double = "Math" "pow"
 
 ///|
+fn host_cbrt(x : Double) -> Double = "Math" "cbrt"
+
+///|
+fn host_atanh(x : Double) -> Double = "Math" "atanh"
+
+///|
 /// The host's `Math` as a `@core.Trig`.
 fn host_trig() -> @proj.Trig {
   {
@@ -45,6 +51,8 @@ fn host_trig() -> @proj.Trig {
     exp: host_exp,
     ln: host_log,
     pow: host_pow,
+    cbrt: host_cbrt,
+    atanh: host_atanh,
   }
 }
 

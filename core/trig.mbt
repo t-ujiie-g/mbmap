@@ -13,6 +13,8 @@ pub(all) struct Trig {
   exp : (Double) -> Double
   ln : (Double) -> Double
   pow : (Double, Double) -> Double
+  cbrt : (Double) -> Double
+  atanh : (Double) -> Double
 }
 
 ///|
@@ -28,6 +30,8 @@ pub fn Trig::moonbit() -> Trig {
     exp: @math.exp,
     ln: @math.ln,
     pow: @math.pow,
+    cbrt: @math.cbrt,
+    atanh: @math.atanh,
   }
 }
 
@@ -79,4 +83,14 @@ pub fn Trig::ln(self : Trig, x : Double) -> Double {
 ///|
 pub fn Trig::pow(self : Trig, x : Double, y : Double) -> Double {
   (self.pow)(x, y)
+}
+
+///|
+pub fn Trig::cbrt(self : Trig, x : Double) -> Double {
+  (self.cbrt)(x)
+}
+
+///|
+pub fn Trig::atanh(self : Trig, x : Double) -> Double {
+  (self.atanh)(x)
 }

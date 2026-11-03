@@ -29,6 +29,12 @@ fn host_log(x : Double) -> Double = "Math" "log"
 fn host_pow(x : Double, y : Double) -> Double = "Math" "pow"
 
 ///|
+fn host_cbrt(x : Double) -> Double = "Math" "cbrt"
+
+///|
+fn host_atanh(x : Double) -> Double = "Math" "atanh"
+
+///|
 /// The host's `Math` (the glue passes `{ Math }` as imports).
 pub fn host_trig() -> @core.Trig {
   {
@@ -42,5 +48,7 @@ pub fn host_trig() -> @core.Trig {
     exp: host_exp,
     ln: host_log,
     pow: host_pow,
+    cbrt: host_cbrt,
+    atanh: host_atanh,
   }
 }

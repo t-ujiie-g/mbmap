@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dms, formatDegrees, formatDms, utmZone } from "../src/ui/format.ts";
+import { dms, formatArea, formatDegrees, formatDms, formatLength, utmZone } from "../src/ui/format.ts";
 
 test("dms: degrees, minutes and rounded seconds, carrying 60 seconds over", () => {
   assert.equal(dms(35.6812, "N", "S"), "35°40′52.3″N");
@@ -18,4 +18,21 @@ test("utmZone: six-degree zones from 180°W, north and south", () => {
   assert.deepEqual(utmZone({ lng: -70.6, lat: -33.4 }), { zone: 19, north: false, epsg: 32719 });
   assert.equal(utmZone({ lng: 180, lat: 1 }).zone, 1);
   assert.equal(utmZone({ lng: 179.99, lat: 1 }).zone, 60);
+});
+
+test("formatLength: meters below 1 km, then kilometers with fewer decimals as they grow", () => {
+  assert.equal(formatLength(0), "0.0 m");
+  assert.equal(formatLength(42.26), "42.3 m");
+  assert.equal(formatLength(999.4), "999 m");
+  assert.equal(formatLength(1234.6), "1.235 km");
+  assert.equal(formatLength(12345), "12.35 km");
+  assert.equal(formatLength(8935244.56), "8935.2 km");
+});
+
+test("formatArea: square meters, hectares, then square kilometers", () => {
+  assert.equal(formatArea(12.34), "12.3 m²");
+  assert.equal(formatArea(9999), "9999 m²");
+  assert.equal(formatArea(12_500), "1.25 ha");
+  assert.equal(formatArea(2_345_678), "2.346 km²");
+  assert.equal(formatArea(24_619_419_146), "24619.42 km²");
 });

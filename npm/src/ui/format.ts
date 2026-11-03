@@ -30,3 +30,16 @@ export function utmZone(p: { lng: number; lat: number }): { zone: number; north:
   const north = p.lat >= 0;
   return { zone, north, epsg: (north ? 32600 : 32700) + zone };
 }
+
+/** A length: meters (one decimal below 100 m) below 1 km, then kilometers. */
+export function formatLength(meters: number): string {
+  if (meters < 1000) return `${meters < 100 ? meters.toFixed(1) : Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(meters < 10_000 ? 3 : meters < 100_000 ? 2 : 1)} km`;
+}
+
+/** An area: square meters below 1 ha, hectares below 1 km², then square kilometers. */
+export function formatArea(squareMeters: number): string {
+  if (squareMeters < 10_000) return `${squareMeters.toFixed(squareMeters < 100 ? 1 : 0)} m²`;
+  if (squareMeters < 1_000_000) return `${(squareMeters / 10_000).toFixed(2)} ha`;
+  return `${(squareMeters / 1_000_000).toFixed(squareMeters < 100_000_000 ? 3 : 2)} km²`;
+}

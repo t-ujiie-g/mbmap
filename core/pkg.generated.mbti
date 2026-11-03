@@ -294,11 +294,15 @@ pub(all) struct Trig {
   exp : (Double) -> Double
   ln : (Double) -> Double
   pow : (Double, Double) -> Double
+  cbrt : (Double) -> Double
+  atanh : (Double) -> Double
 }
 pub fn Trig::acos(Self, Double) -> Double
 pub fn Trig::asin(Self, Double) -> Double
 pub fn Trig::atan(Self, Double) -> Double
 pub fn Trig::atan2(Self, Double, Double) -> Double
+pub fn Trig::atanh(Self, Double) -> Double
+pub fn Trig::cbrt(Self, Double) -> Double
 pub fn Trig::cos(Self, Double) -> Double
 pub fn Trig::exp(Self, Double) -> Double
 pub fn Trig::ln(Self, Double) -> Double
