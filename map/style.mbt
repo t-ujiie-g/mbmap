@@ -15,7 +15,7 @@ fn draws_from(style : @style.Style, id : String) -> Bool {
 /// `same_tiles` twin in `a` (order is applied when drawing). DEM and raster
 /// tiles serve any layers.
 fn same_layers(src : @style.Source, a : @style.Style, b : @style.Style) -> Bool {
-  src.kind is (RasterDem | Raster) ||
+  src.kind is (RasterDem | Raster | Image) ||
   b.layers
   .iter()
   .filter(l => l.source == src.id)
@@ -110,6 +110,7 @@ pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
   }
   self.sources.clear()
   self.sources.push_iter(sources.iter())
+  self.prune_media()
   self.style = next
   self.vertex_paint = next.layers.map(l => l.vertex_paint())
   self.prune_ramps()

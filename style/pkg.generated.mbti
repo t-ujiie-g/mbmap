@@ -307,6 +307,7 @@ pub(all) enum SourceKind {
   GeoJSON
   RasterDem
   Raster
+  Image
 } derive(Eq, @debug.Debug)
 pub fn SourceKind::equal(Self, Self) -> Bool
 pub fn SourceKind::not_equal(Self, Self) -> Bool

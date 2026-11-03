@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 86793,
+      "bytes": 88655,
       "budget": 100000
     },
     {
@@ -23,6 +23,11 @@
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
       "bytes": 3568,
       "budget": 5000
+    },
+    {
+      "name": "image, video and canvas sources (loaded by mbmap when a style has one)",
+      "bytes": 1962,
+      "budget": 3000
     },
     {
       "name": "mbmap/element (on top of mbmap)",
@@ -46,7 +51,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 82805,
+      "bytes": 82947,
       "budget": 100000
     },
     {

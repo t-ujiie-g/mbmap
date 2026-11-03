@@ -55,7 +55,7 @@ fn constant(e : @style.Expr) -> @style.Value {
 ///|
 test "a style keeps its vector sources and drawable layers in order" {
   let s = @style.Style::parse(sample)
-  assert_eq(s.sources.length(), 1)
+  assert_eq(s.sources.map(x => x.kind), [Vector, Image])
   let gsi = s.source("gsi").unwrap()
   assert_eq(
     (gsi.tiles, gsi.min_zoom, gsi.max_zoom),
@@ -265,7 +265,7 @@ test "GeoJSON sources keep MapLibre's options; their data stays outside" {
   let inline = s.source("inline").unwrap()
   assert_eq((inline.max_zoom, inline.buffer), (18, 128))
   assert_eq(s.source("clustered").map(x => x.kind), Some(GeoJSON))
-  assert_eq(s.source("img").map(x => x.id), None)
+  assert_eq(s.source("img").map(x => x.kind), Some(Image))
   for
     bad in [
       (

@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mbmap: image, video and canvas sources</title>
+<style>html, body { margin: 0; } #map { width: 600px; height: 300px; } #paint { display: none; }</style>
+<!-- `npm --prefix bench run npm:pack` installs the packed tarball into ./node_modules. -->
+<script type="importmap">{ "imports": { "mbmap": "./node_modules/mbmap/dist/index.js" } }</script>
+<div id="map"></div>
+<canvas id="paint" width="16" height="16"></canvas>
+<script type="module" src="./main.js"></script>

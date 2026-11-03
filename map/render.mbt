@@ -40,6 +40,9 @@ fn Map::render(self : Map) -> Unit {
     self.place_labels(draws_of)
   }
   self.draw_frame(draws_of, dpr)
+  if self.media_playing() {
+    self.request_render()
+  }
   for _, l in self.listeners {
     if l is Render(f) {
       f()
@@ -336,7 +339,9 @@ fn Map::cover(self : Map, src : SourceTiles) -> Array[@core.TileId] {
   let t = self.transform
   let s = src.source
   let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
-  if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
+  if s.kind is Image {
+    []
+  } else if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
     s.min_zoom.to_double() {
     []
   } else {
@@ -366,20 +371,38 @@ fn Map::draws(
     for id in cover {
       match src.fallback(id) {
         Own(id, meshes) =>
-          draws.push({ id, at: self.placement(id, None, dpr), meshes, })
+          draws.push({
+            id,
+            at: self.placement(id, None, dpr),
+            meshes,
+            bounds: None,
+          })
         Ancestor(id, meshes, clip~) =>
-          draws.push({ id, at: self.placement(id, Some(clip), dpr), meshes, })
+          draws.push({
+            id,
+            at: self.placement(id, Some(clip), dpr),
+            meshes,
+            bounds: None,
+          })
         Children(kids) =>
           for kid in kids {
             draws.push({
               id: kid.0,
               at: self.placement(kid.0, None, dpr),
               meshes: kid.1,
+              bounds: None,
             })
           }
         Nothing => ()
       }
       settled = settled && src.settled(id)
+    }
+    if s.kind is Image {
+      let (draw, shown) = self.media_draw(src, dpr)
+      if draw is Some(d) {
+        draws.push(d)
+      }
+      settled = settled && shown
     }
     draws_of.set(s.id, draws)
   }

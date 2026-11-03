@@ -266,7 +266,7 @@ pub fn Map::query_rendered(
   let pitch_factor = t.max_pitch_scale_factor()
   let (query, q) = self.start_query(done)
   for src in self.sources {
-    if src.source.kind is (RasterDem | Raster) {
+    if src.source.kind is (RasterDem | Raster | Image) {
       continue
     }
     let indices = []
@@ -402,7 +402,7 @@ pub fn Map::query_source(
   }
   let (query, q) = self.start_query(done)
   if self.sources.search_by(s => s.source.id == source) is Some(at) &&
-    !(self.sources[at].source.kind is (RasterDem | Raster)) {
+    !(self.sources[at].source.kind is (RasterDem | Raster | Image)) {
     let src = self.sources[at]
     let w = @core.ByteWriter::new()
     w.utf8(source_layer)

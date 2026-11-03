@@ -19,6 +19,7 @@ import {
   toPoint,
 } from "./camera";
 import type { ClusterQuery, GeoJSONSource, GeoJSONTiles } from "./geojson";
+import type { Media, UpdateImageOptions } from "./media";
 import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
@@ -170,6 +171,10 @@ export class Map {
   #geojson: GeoJSONTiles | null = null;
   #geojsonLoading: Promise<GeoJSONTiles | null> | null = null;
   #geojsonSources: GeoJSONSource[] = [];
+  #media: Media | null = null;
+  #mediaLoading: Promise<unknown> | null = null;
+  /** Canvas sources given an element, which the style's JSON copies cannot hold. */
+  #canvases = new globalThis.Map<string, unknown>();
   #style: StyleSpecification | null = null;
   #base = new URL(document.baseURI);
   #styleRequest = 0;
@@ -296,9 +301,45 @@ export class Map {
         .then((s) => ready(s, url))
         .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
     } else {
+      this.#keepCanvases(style.sources);
       ready(style, new URL(document.baseURI));
     }
     return this;
+  }
+
+  #keepCanvases(sources: Record<string, unknown> | undefined): void {
+    for (const [id, s] of Object.entries(sources ?? {})) {
+      const canvas = (s as { canvas?: unknown })?.canvas;
+      if (canvas && typeof canvas === "object") this.#canvases.set(id, canvas);
+    }
+  }
+
+  /** Hands the style's image, video and canvas sources to `media.js`, loaded with the first one. */
+  #syncMedia(style: StyleSpecification): void {
+    const sources = Object.entries(style.sources ?? {})
+      .filter(([, s]) => ["image", "video", "canvas"].includes((s as { type?: string })?.type ?? ""))
+      .map(([id, spec]) => ({ id, spec: spec as Record<string, unknown>, canvas: this.#canvases.get(id) }));
+    if (sources.length > 0 || this.#media) this.#withMedia((m) => m.set(sources, this.#base));
+  }
+
+  #withMedia(f: (m: Media) => void): void {
+    if (this.#media) return f(this.#media);
+    this.#mediaLoading ??=import("./media.js").then(({ Media }) => {
+      const on = (f: (m: engine.EngineMap) => void) => this.#engine && f(this.#engine);
+      this.#media = new Media(
+        {
+          show: (s, p, q) => on((m) => engine.map_set_media(m, s, p, q)),
+          move: (s, q) => on((m) => engine.map_set_media_quad(m, s, q)),
+          playing: (s, playing) => on((m) => engine.map_set_media_playing(m, s, playing)),
+        },
+        (url) => this.#fetch(url, "Image"),
+        (e) => this.#fail(e),
+      );
+    });
+    this.#mediaLoading.then(
+      () => !this.#removed && f(this.#media!),
+      (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))),
+    );
   }
 
   /** Fetches `url` through the `transformRequest`, without credentials unless it asks for them. */
@@ -373,6 +414,7 @@ export class Map {
       return;
     }
     this.#style = next;
+    this.#syncMedia(next);
     for (const id of this.#loadGeoJSON(geojson)) engine.map_reload_source(this.#engine, id);
     this.#drawn = rest;
     this.#showAttribution();
@@ -451,6 +493,7 @@ export class Map {
 
   /** Adds a source; one given by `url` (TileJSON) draws once its document has come. */
   addSource(id: string, source: unknown): this {
+    this.#keepCanvases({ [id]: source });
     this.#edit((s) => edit.addSource(s, id, source));
     const missing = this.#missingTileJSON({ version: 8, sources: { [id]: source }, layers: [] }, this.#base);
     if (missing.length > 0) {
@@ -484,6 +527,32 @@ export class Map {
         getClusterExpansionZoom: ask("expansion"),
         getClusterChildren: ask("children"),
         getClusterLeaves: ask("leaves"),
+      });
+    }
+    if (s.type === "image" || s.type === "video" || s.type === "canvas") {
+      const media = (f: (m: Media) => void) => () => {
+        this.#withMedia(f);
+        return source;
+      };
+      // The style keeps what MapLibre's `serialize` gives.
+      const keep = (key: string, value: unknown) => {
+        const now = this.#style?.sources[id];
+        if (now) this.#style!.sources[id] = { ...now, [key]: value };
+      };
+      Object.assign(source, {
+        setCoordinates: (c: number[][]) => {
+          keep("coordinates", edit.copy(c));
+          return media((m) => m.setCoordinates(id, c))();
+        },
+        updateImage: (o: UpdateImageOptions) => {
+          if (o.url !== undefined) keep("url", o.url);
+          if (o.coordinates) keep("coordinates", edit.copy(o.coordinates));
+          return media((m) => m.updateImage(id, o))();
+        },
+        play: media((m) => m.play(id)),
+        pause: media((m) => m.pause(id)),
+        getVideo: () => this.#media?.video(id),
+        getCanvas: () => this.#media?.canvas(id),
       });
     }
     return source;
@@ -582,6 +651,7 @@ export class Map {
       );
     }
     this.#loadGeoJSON(geojson);
+    this.#syncMedia(style);
     HANDLERS.forEach((h, i) => engine.map_set_handler(map, i, this.#enabled[h]));
     engine.map_on_move_start(map, (e) => this.#moveStart(e));
     engine.map_on_move(map, () => this.#move(engine.map_input_event(map)));
@@ -1309,6 +1379,7 @@ export class Map {
     this.#engine = null;
     this.#geojson?.terminate();
     this.#geojson = null;
+    this.#media?.destroy();
     this.#listeners.clear();
     this.#layerListeners = [];
     this.#canvas.remove();

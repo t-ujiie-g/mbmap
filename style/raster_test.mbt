@@ -63,3 +63,17 @@ test "bounds limit the tiles a source covers; scheme and PMTiles templates are r
     }
   }
 }
+
+///|
+test "image, video and canvas sources are pictures placed by four corners" {
+  let corners = "[[139.7, 35.7], [139.8, 35.7], [139.8, 35.6], [139.7, 35.6]]"
+  for
+    source in [
+      "{\"type\": \"image\", \"url\": \"a.png\", \"coordinates\": \{corners}}",
+      "{\"type\": \"video\", \"urls\": [\"a.mp4\"], \"coordinates\": \{corners}}",
+      "{\"type\": \"canvas\", \"canvas\": \"c\", \"coordinates\": \{corners}}",
+    ] {
+    let s = raster_style(source, "{}").sources[0]
+    assert_eq((s.kind, s.tiles), (Image, []))
+  }
+}

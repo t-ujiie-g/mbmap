@@ -21,11 +21,13 @@ priv struct TerrainTarget {
 }
 
 ///|
-/// One tile's meshes and where they go this frame.
+/// One tile's meshes and where they go this frame; a picture reaching past its
+/// tile has its Mercator `bounds` (min x, min y, max x, max y).
 priv struct Draw {
   id : @core.TileId
   at : @render_webgl2.Placement
   meshes : Array[LayerMesh]
+  bounds : (Double, Double, Double, Double)?
 }
 
 ///|
@@ -33,6 +35,21 @@ priv struct Draw {
 fn overlap(a : @core.TileId, b : @core.TileId) -> Bool {
   let z = @cmp.minimum(a.z, b.z)
   a.x >> (a.z - z) == b.x >> (b.z - z) && a.y >> (a.z - z) == b.y >> (b.z - z)
+}
+
+///|
+/// Whether `d` draws over terrain tile `id`.
+fn Draw::reaches(d : Draw, id : @core.TileId) -> Bool {
+  match d.bounds {
+    None => overlap(d.id, id)
+    Some((x0, y0, x1, y1)) => {
+      let n = (1 << id.z).to_double()
+      x1 * n > id.x.to_double() &&
+      x0 * n < (id.x + 1).to_double() &&
+      y1 * n > id.y.to_double() &&
+      y0 * n < (id.y + 1).to_double()
+    }
+  }
 }
 
 ///|
@@ -234,7 +251,7 @@ fn Map::texture_signature(
   h = mix(h, self.content_version.to_int64())
   for _, draws in draws_of {
     for d in draws {
-      if overlap(d.id, id) {
+      if d.reaches(id) {
         h = mix(h, d.id.key())
         for c in d.at.clip {
           h = mix(h, c.reinterpret_as_int64())
@@ -280,7 +297,7 @@ fn Map::draw_texture(
       continue
     }
     for s in draws_of.get(layer.source).unwrap_or([]) {
-      if overlap(s.id, id) {
+      if s.reaches(id) {
         self.draw_layer(
           index,
           layer,

@@ -52,6 +52,10 @@ declare module "mbmap-engine" {
   /** "" once drawn, or why the style was refused (the current one stays). */
   export function map_set_style(map: EngineMap, style: string): string;
   export function map_reload_source(map: EngineMap, id: string): void;
+  /** Shows `picture` (null for nothing) for image, video or canvas source `id`, placed by `quad` (media.ts `quadOf`). */
+  export function map_set_media(map: EngineMap, id: string, picture: TexImageSource | null, quad: number[]): void;
+  export function map_set_media_quad(map: EngineMap, id: string, quad: number[]): void;
+  export function map_set_media_playing(map: EngineMap, id: string, playing: boolean): void;
   /** One tile's hits: their layers' ids (-1 for a source query), feature indices, depths and GeoJSON features. */
   export interface PaintValues {
     color: number[];

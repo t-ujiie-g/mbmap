@@ -165,6 +165,26 @@
         "mean": 0.05,
         "p99": 1
       }
+    },
+    {
+      "scene": "images",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "images-turned",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
     }
   ]
 }

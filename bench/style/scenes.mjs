@@ -32,6 +32,16 @@ const ROUTES = {
     ] },
   },
 };
+const fixture = (x, y) => `{origin}/bench/fixtures/gsi-std/14/${x}/${y}.png`;
+const IMAGES = style([
+  { id: "flat", type: "raster", source: "flat", paint: { "raster-opacity": 0.85 } },
+  { id: "tilted", type: "raster", source: "tilted", paint: { "raster-hue-rotate": 90, "raster-saturation": 0.4, "raster-contrast": 0.2 } },
+  { id: "steep", type: "raster", source: "steep", paint: { "raster-brightness-min": 0.2, "raster-resampling": "nearest" } },
+], {
+  flat: { type: "image", url: fixture(14552, 6451), coordinates: [[139.755, 35.69], [139.772, 35.69], [139.772, 35.676], [139.755, 35.676]] },
+  tilted: { type: "image", url: fixture(14553, 6450), coordinates: [[139.768, 35.689], [139.785, 35.687], [139.79, 35.672], [139.765, 35.674]] },
+  steep: { type: "image", url: fixture(14552, 6452), coordinates: [[139.758, 35.674], [139.762, 35.674], [139.778, 35.664], [139.744, 35.664]] },
+});
 
 export const SCENES = {
   fills: {
@@ -213,6 +223,18 @@ export const SCENES = {
         } },
     ]),
     camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 25, pitch: 50 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Image sources (MapLibre's ImageSource and raster draw): a rectangle reaching past its tile, a
+  // trapezoid warped projectively and a strongly foreshortened one blended over a grid, with paint.
+  images: {
+    style: IMAGES,
+    camera: { center: [139.767, 35.677], zoom: 13.6, bearing: 0, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "images-turned": {
+    style: IMAGES,
+    camera: { center: [139.767, 35.677], zoom: 13.9, bearing: -25, pitch: 50 },
     limits: { mean: 0.05, p99: 1 },
   },
 };

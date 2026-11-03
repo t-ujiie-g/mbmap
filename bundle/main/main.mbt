@@ -368,6 +368,41 @@ pub fn map_reload_source(map : @map.Map, id : String) -> Unit {
 }
 
 ///|
+/// Shows `picture` (null for nothing) for image, video or canvas source `id`
+/// placed by `quad` (see `@map.Map::set_media_quad`).
+#export_name("map_set_media")
+pub fn map_set_media(
+  map : @map.Map,
+  id : String,
+  picture : @render_webgl2.Picture,
+  quad : FixedArray[Double],
+) -> Unit {
+  map.set_media(id, picture, quad)
+}
+
+///|
+/// Places source `id`'s picture by `quad`.
+#export_name("map_set_media_quad")
+pub fn map_set_media_quad(
+  map : @map.Map,
+  id : String,
+  quad : FixedArray[Double],
+) -> Unit {
+  map.set_media_quad(id, quad)
+}
+
+///|
+/// Whether source `id`'s picture changes by itself (drawn every frame).
+#export_name("map_set_media_playing")
+pub fn map_set_media_playing(
+  map : @map.Map,
+  id : String,
+  playing : Bool,
+) -> Unit {
+  map.set_media_playing(id, playing)
+}
+
+///|
 /// The features under `points` (one point or a closed ring, CSS pixels) of the
 /// layers named (all when `all_layers`) passing `filter` (JSON or ""); `done`
 /// gets each tile's hits. Returns "" or why the query cannot run.
