@@ -60,6 +60,7 @@ npm run proj:golden       # proj vs proj4js 2.22.0: every EPSG code it knows and
 npm run proj:node         # proj.wasm vs proj4js speed, 1M points per CRS
 npm run clipper:golden    # clipper vs Clipper2 (clipper2-wasm 0.4.0): boolean ops, trees, offsets (must stay all identical)
 npm run buffer:check      # geodesic buffers measured on WGS84 with GeographicLib
+npm run style:golden      # style rendering vs MapLibre 6.16 pixel by pixel, a small style per scene (bench/style/scenes.mjs; each scene's limits must hold)
 npm run draw:golden       # mbmap/draw vs terra-draw 1.37 on MapLibre: the same clicks in each mode, shapes compared
 npm run draw:many         # pointer moves while drawing over 2000 shapes with mbmap/draw (frames until on screen)
 npm run draw:setdata      # setData latency (frames until a moved vertex is on screen), mbmap vs MapLibre
