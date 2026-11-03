@@ -2,18 +2,17 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策のうちスタイルのコンパイルを主スレッドだけにしたもの（下の節）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. **大きさの対策**（下の「方針の更新：大きさ（Phase 16）」）。本線で、スタイルのコンパイルを主スレッドだけにし、表示ワーカーへはコンパイル済みの二進形式を送る（docs/FORMATS.md に節を足す）。並行して、表示ワーカーの JS のうちラベル・PMTiles・クエリを使うときだけ読み込む別ファイルに分ける。
-  2. その後に 16.2（線と平行移動）と 16.4（円）を 1 本、16.6（式）を並行で。続いて 16.3、16.5、16.8。
+  1. 16.2（線と平行移動）と 16.4（円）を 1 本、16.6（式）を並行で。続いて 16.3、16.5、16.8。
 - **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。残る警告の多いものは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）は 16.5 に入れる。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 116.2KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 73.4KB | 100KB |
+  | 表示（メイン） | 116.3KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 63.8KB（ラベルは別に `worker-labels.js` 8.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
@@ -46,6 +45,28 @@
   2. ワーカーの JS のラベル・PMTiles・クエリを、使うときだけ動的 import する（size.mjs に行を足す）。
   3. 表示（メイン）の予算を 120KB から 135KB に。
 - **やらないこと**：ワーカーの wasm を機能ごとに分けること（MoonBit は複数モジュールをリンクできず、mvt・評価・core の重複がほうが大きい）。小さな削減（js-string-builtins で −1.9KB、hashmap の統一など）は性能ベンチで確かめられるときに。
+
+## 大きさの対策：表示ワーカーの JS を分ける（2026-11-04）
+
+状態：**完了**（「方針の更新：大きさ（Phase 16）」の 2）。
+
+- 表示ワーカーの JS（`worker/js/worker.mjs`）は、ラベル（`symbols.mjs` と、それが使う `text.mjs`・`line-labels.mjs`・`tiny-sdf.mjs`）、PMTiles のタイル（`pmtiles.mjs`）、クエリの結果（`query.mjs`）を動的 `import()` で使うときだけ読み込む。npm のビルドはそれぞれを `worker.js` の隣の `worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` にする（esbuild のプラグインで外部の import に置き換え）。ソースのまま読む bench のページはそのまま `./symbols.mjs` などを読み、bench/render のように 1 つに束ねると中に入る。
+  - ラベル：記号レイヤーのあるスタイル（`init` と `style` のメッセージの `symbols`。主スレッドの `has_labels`）なら先に読み始め、タイルは自分の出力に記号の項目があれば読み込みを待つ。待つ間はほかのタイルが wasm を使うので、出力と feature ranges を先に写しておく。
+  - PMTiles：最初の `pmtiles://` のタイルで読み、待つ。読み込みの失敗はほかと同じ `tile-error`。
+  - クエリ：最初の `query` で読み、その後のメッセージ（`drop`、新しいスタイル）も `ready` につないで読み込みを待たせる（順序は元のまま）。失敗は `error` と空の結果。毎タイル使う feature ranges の読み取りは `ranges.mjs` に分けて `worker.js` に残した。
+  - 失敗した読み込みは覚えず、次のタイルやクエリで読み直す。
+- **大きさ**（gzip -9、`npm run size`）：
+
+  | ファイル | 前 | 後 | 予算 |
+  |---|---|---|---|
+  | 表示ワーカー（`worker.js` ＋ `mbmap.wasm`） | 96.3KB（`worker.js` 14.0KB） | 86.8KB（`worker.js` 4.4KB） | 100KB |
+  | `worker-labels.js` | — | 8.6KB | 10KB |
+  | `worker-pmtiles.js` | — | 2.0KB | 3KB |
+  | `worker-query.js` | — | 0.9KB | 1.5KB |
+
+  分けた 3 つは `values.mjs`（PMTiles は `body.mjs`）をそれぞれに持つので、合わせると元より 0.4KB ほど大きい。
+- スタイルのコンパイルを主スレッドだけにしたもの（#83）と合わせて、表示ワーカーは 96,333 → 63,773 バイト、表示（メイン）は 114,636 → 116,251 バイト（ラベルを先に読むかを `init` / `style` のメッセージの `symbols` で渡す分を含む）。
+- pack test が、ラベルのあるスタイルでは始めに `worker-labels.js` だけ、クエリの後で `worker-query.js`、PMTiles のソースの後で `worker-pmtiles.js` が読まれることを確かめる。`npm run labels:golden`（33 場面すべて同じ）、`pmtiles:golden`、`query:golden`（320 / 320）は変わらない。
 
 ## Phase 16.7：地形の表現（2026-11-04）
 

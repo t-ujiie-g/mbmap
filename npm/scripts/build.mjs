@@ -44,7 +44,13 @@ await build({ ...common, entryPoints: [path.join(PKG, "src/ui.ts")], outfile: pa
 await build({ ...common, entryPoints: [path.join(PKG, "src/search.ts")], outfile: path.join(DIST, "search.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/draw.ts")], outfile: path.join(DIST, "draw.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geojson_worker/js/worker.mjs")], outfile: path.join(DIST, "geojson-worker.js") });
-await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js") });
+// Labels, PMTiles and queries stay files of their own, imported by the display worker on first use.
+const WORKER_PARTS = { "./symbols.mjs": "worker-labels.js", "./pmtiles.mjs": "worker-pmtiles.js", "./query.mjs": "worker-query.js" };
+const workerParts = { name: "worker-parts", setup: (b) => b.onResolve({ filter: /^\.\/(symbols|pmtiles|query)\.mjs$/ }, (a) => ({ path: `./${WORKER_PARTS[a.path]}`, external: true })) };
+await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js"), plugins: [workerParts] });
+for (const [source, file] of Object.entries(WORKER_PARTS)) {
+  await build({ ...common, entryPoints: [path.join(ROOT, "worker/js", source)], outfile: path.join(DIST, file) });
+}
 // The PROJ string parser stays a file of its own, loaded on the first PROJ string.
 const projstringEntry = { name: "projstring-entry", setup: (b) => b.onResolve({ filter: /^\.\/projstring\.js$/ }, () => ({ path: "./projstring.js", external: true })) };
 await build({ ...common, entryPoints: [path.join(PKG, "src/analysis.ts")], outfile: path.join(DIST, "analysis.js"), plugins: [projstringEntry] });

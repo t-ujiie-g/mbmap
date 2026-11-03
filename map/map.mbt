@@ -304,7 +304,7 @@ pub fn Map::new(
     let w = spawn_worker(absolute_url(worker_url), msg => map.on_message(msg), message => {
       map.worker_failed(i, message)
     })
-    post_init(w, wasm, compiled, font)
+    post_init(w, wasm, compiled, map.has_labels, font)
     map.workers.push(w)
     map.failed_workers.push(false)
   }

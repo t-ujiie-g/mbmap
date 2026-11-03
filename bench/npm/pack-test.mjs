@@ -111,12 +111,27 @@ const checks = {
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
+    // The display worker's parts load on first use: labels with the style's symbol layers,
+    // queries with the first query, PMTiles with the first pmtiles:// tile.
+    const parts = () => [...new Set(requests.map((u) => u.split("/").pop()).filter((n) => /^worker-/.test(n)))].sort();
+    const partsAtStart = parts();
     crumb("queryChecks");
     const query = await queryChecks(page);
+    const partsAfterQueries = parts();
     crumb("stateChecks");
     const state = await stateChecks(page);
     crumb("tileSourceChecks");
     const tiles = await tileSourceChecks(page);
+    const workerParts = {
+      atStart: partsAtStart,
+      afterQueries: partsAfterQueries,
+      afterPmtiles: parts(),
+    };
+    const lazyParts =
+      JSON.stringify(workerParts.atStart) === JSON.stringify(["worker-labels.js"]) &&
+      workerParts.afterQueries.includes("worker-query.js") &&
+      !workerParts.afterQueries.includes("worker-pmtiles.js") &&
+      workerParts.afterPmtiles.includes("worker-pmtiles.js");
     crumb("trackExportChecks");
     const exported = await trackExportChecks(page);
     crumb("styleChecks");
@@ -126,8 +141,8 @@ const checks = {
     crumb("imageChecks");
     const images = await imageChecks(page);
     return [
-      ok && query.ok && state.ok && tiles.ok && exported.ok && style.ok && camera.ok && images.ok,
-      { ...r, query, state, tiles, exported, style, camera, images },
+      ok && lazyParts && query.ok && state.ok && tiles.ok && exported.ok && style.ok && camera.ok && images.ok,
+      { ...r, workerParts, query, state, tiles, exported, style, camera, images },
     ];
   },
 

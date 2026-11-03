@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 116228,
+      "bytes": 116251,
       "budget": 135000
     },
     {
@@ -71,8 +71,23 @@
     },
     {
       "name": "display worker",
-      "bytes": 73371,
+      "bytes": 63773,
       "budget": 100000
+    },
+    {
+      "name": "labels (loaded by the display worker with the first tile that has them)",
+      "bytes": 8570,
+      "budget": 10000
+    },
+    {
+      "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
+      "bytes": 1990,
+      "budget": 3000
+    },
+    {
+      "name": "feature queries (loaded by the display worker with the first query)",
+      "bytes": 905,
+      "budget": 1500
     },
     {
       "name": "GeoJSON worker",

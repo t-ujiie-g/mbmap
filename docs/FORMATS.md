@@ -167,8 +167,9 @@ A `@geom.Table` without feature ids:
 
 In:
 
-- `{type: "init", wasm, style, font}`: the wasm URL, the style ("Compiled style",
-  a Uint8Array) and the CSS font family labels are drawn in. The wasm imports
+- `{type: "init", wasm, style, symbols, font}`: the wasm URL, the style ("Compiled
+  style", a Uint8Array), whether it has symbol layers (the label code is then loaded
+  ahead of the first tile) and the CSS font family labels are drawn in. The wasm imports
   `hostText`'s (`wasmio/js/host.mjs`) `host.text_char`, `text_number`,
   `number_text` and `text_code` for the expressions' `Number(string)` and
   `String(number)`, a UTF-16 code unit per call.
@@ -185,7 +186,7 @@ In:
 - `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
-- `{type: "style", style}`: the compiled style tiles asked for from now on are
+- `{type: "style", style, symbols}`: the compiled style tiles asked for from now on are
   made with (`Map::set_style`; requests made before it were cancelled).
 - `{type: "query", id, kind, tile, source, z, x, y, request}`: a query of the
   tile sent for request `tile` (the worker keeps each vector or GeoJSON tile's
@@ -231,7 +232,7 @@ Out:
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
   height in meters (no data as 0), for its hillshade layers and terrain.
 
-## Feature ranges (`worker/processor.mbt`, read by `worker/js/query.mjs`)
+## Feature ranges (`worker/processor.mbt`, read by `worker/js/ranges.mjs`)
 
 What `feature_ranges` gives after `process_tile`, for the entries of layers whose
 paint reads the feature state (kept by the worker glue, never sent whole): u32
