@@ -1,5 +1,8 @@
 // Host imports shared by the wasm-gc entries that read GeoJSON.
 
+/** Largest input the entries take (wasmio/memory.mbt `MAX_INPUT_BYTES`): URL data is read up to it. */
+export const MAX_INPUT_BYTES = 256 * 1024 * 1024;
+
 // `read_geojson`'s slow_number: the JSON number (ASCII) at `addr` of the
 // instance's memory, by `Number()`. One reader per instance; its view is
 // renewed only when memory grew (a detached view has length 0).

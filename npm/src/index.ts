@@ -46,7 +46,7 @@ import type {
   Tracker,
   Handler,
 } from "./types";
-import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
+import { httpUrl, resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 import { type ImageInput, type StyleImageOptions, canvasPixels, imageOptions, imagePixels } from "./images";
 
 export { LngLatBounds } from "./camera";
@@ -301,7 +301,7 @@ export class Map {
         .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
     };
     if (typeof style === "string") {
-      const url = new URL(style, document.baseURI);
+      const url = new URL(httpUrl(style, document.baseURI, "the style"));
       this.#fetch(url.href, "Style")
         .then((res) => {
           if (!res.ok) throw new Error(`mbmap: style: HTTP ${res.status}`);
@@ -1282,7 +1282,7 @@ export class Map {
 
   /** Fetches an image (through `transformRequest`) for `addImage` (MapLibre's `loadImage`). */
   async loadImage(url: string): Promise<{ data: ImageBitmap }> {
-    const res = await this.#fetch(new URL(url, this.#base).href, "Image");
+    const res = await this.#fetch(httpUrl(url, this.#base, "an image"), "Image");
     if (!res.ok) throw new Error(`mbmap: image ${url}: HTTP ${res.status}`);
     return { data: await createImageBitmap(await res.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" }) };
   }

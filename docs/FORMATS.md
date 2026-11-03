@@ -201,7 +201,9 @@ In:
 
 Out:
 
-- `{type: "ready"}`, `{type: "error", message}`.
+- `{type: "ready"}`, `{type: "error", message}` (also for a style that failed; tiles
+  are then made with the previous one). Messages without an integer `id` are ignored;
+  after a failed init, tiles get `tile-error` and queries and ranges empty answers.
 - `{type: "tile", id, layers, glyphs}`: per entry `{entry, layer, kind, vertices,
   indices, count, indexBytes, shared, props}` (`entry` its index in the packed tile;
   symbol entries without labels are left out). Buffers are transferred, never copied;

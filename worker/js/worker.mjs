@@ -3,6 +3,7 @@
 
 import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
 import { readCapped } from "./body.mjs";
+import { checkImageSize } from "./imagesize.mjs";
 import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
 import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
@@ -126,6 +127,7 @@ async function init({ wasm: url, style, font }) {
 // A DEM tile's pixels exactly as stored: no color management, no premultiplying.
 let demCanvas = null;
 async function demPixels(bytes) {
+  checkImageSize(bytes, MAX_DEM_SIZE, "DEM tile");
   const bitmap = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
   const size = bitmap.width;
   if (bitmap.height !== size || size > MAX_DEM_SIZE) {
@@ -158,6 +160,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
   try {
     let bytes;
     const pm = typeof url === "string" ? splitTileUrl(url) : null;
+    if (!Number.isInteger(source) || !Number.isInteger(z)) throw new Error("malformed tile message");
     if (given instanceof ArrayBuffer) {
       bytes = new Uint8Array(given);
     } else if (pm) {
@@ -172,6 +175,8 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
         return;
       }
     } else {
+      // Never data:, blob: or file: URLs (AGENTS.md §8.3), whatever made the template.
+      if (typeof url !== "string" || !/^https?:\/\//i.test(url)) throw new Error("tile URL must be http(s)");
       const res = await fetch(url, fetchInit(init, controller.signal));
       if (res.status === 404 || res.status === 204) {
         postMessage({ type: "tile", id, layers: [] });
@@ -182,6 +187,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
     }
     if (controller.signal.aborted) return;
     if (raster === true) {
+      checkImageSize(bytes, MAX_RASTER_SIZE, "raster tile");
       // Premultiplied, as MapLibre uploads raster tiles (its shader divides it out).
       const image = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "premultiply" });
       if (controller.signal.aborted) return image.close();
@@ -240,30 +246,45 @@ function query({ id, kind, tile, source, z, x, y, request }) {
   postMessage({ type: "query", id, hits });
 }
 
+const failure = (err) => String(err?.message ?? err);
+
+// Messages are answered even when init failed, so the main thread's waits end:
+// tiles with `tile-error`, queries and ranges with nothing found.
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready) {
     ready = init(msg);
     ready.then(
       () => postMessage({ type: "ready" }),
-      (err) => postMessage({ type: "error", message: String(err?.message ?? err) }),
+      (err) => postMessage({ type: "error", message: failure(err) }),
     );
   } else if (msg?.type === "style" && ready && typeof msg.style === "string") {
-    // Tiles asked for after this message are made with the new style.
+    // Tiles asked for after this message are made with the new style; a style
+    // that fails is reported, and `ready` stays usable (once the wasm runs).
     const style = encoder.encode(msg.style);
-    ready = ready.then(() => withInput(style, () => wasm.init_style()));
-  } else if (msg?.type === "tile" && ready) {
+    const apply = () => {
+      try {
+        withInput(style, () => wasm.init_style());
+      } catch (err) {
+        postMessage({ type: "error", message: failure(err) });
+      }
+    };
+    ready = ready.then(apply, (err) => {
+      if (!wasm) throw err;
+      apply();
+    });
+  } else if (msg?.type === "tile" && ready && Number.isInteger(msg.id)) {
     // Tiles requested before init finished wait for it.
-    ready.then(() => loadTile(msg), () => {});
+    ready.then(() => loadTile(msg), (err) => postMessage({ type: "tile-error", id: msg.id, message: failure(err) }));
   } else if (msg?.type === "query" && ready && Number.isInteger(msg.id) && Number.isInteger(msg.tile)) {
-    ready.then(() => query(msg), () => {});
-  } else if (msg?.type === "ranges" && ready && Number.isInteger(msg.id) && Array.isArray(msg.ids)) {
+    ready.then(() => query(msg), () => postMessage({ type: "query", id: msg.id, hits: [] }));
+  } else if (msg?.type === "ranges" && ready && Number.isInteger(msg.id) && Number.isInteger(msg.tile) && Array.isArray(msg.ids)) {
     // Where the features with these ids lie in the tile's entries.
     ready.then(() => {
       const ranges = kept.get(msg.tile)?.ranges;
       postMessage({ type: "ranges", id: msg.id, entries: ranges ? rangesOf(ranges, msg.ids.map(String)) : [] });
-    }, () => {});
-  } else if (msg?.type === "drop" && ready) {
+    }, () => postMessage({ type: "ranges", id: msg.id, entries: [] }));
+  } else if (msg?.type === "drop" && ready && Number.isInteger(msg.id)) {
     // After the queries asked before it.
     ready.then(() => kept.delete(msg.id), () => {});
   } else if (msg?.type === "images" && Array.isArray(msg.images)) {
@@ -274,7 +295,7 @@ onmessage = (e) => {
       imagesLoaded();
       imagesLoaded = null;
     }
-  } else if (msg?.type === "cancel") {
+  } else if (msg?.type === "cancel" && Number.isInteger(msg.id)) {
     pending.get(msg.id)?.abort();
   }
 };

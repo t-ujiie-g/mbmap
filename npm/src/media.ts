@@ -1,6 +1,10 @@
 // Image, video and canvas sources (MapLibre's ImageSource, VideoSource and CanvasSource):
 // the facade loads this file only for styles with one. It fetches and plays the pictures;
-// the engine draws them. Import-free, so that `npm test` can load it.
+// the engine draws them. It imports only plain JS, so that `npm test` can load it.
+import { checkBlobImageSize } from "../../worker/js/imagesize.mjs";
+
+/** Largest side of an image source's picture, checked before it is decoded. */
+const MAX_MEDIA_SIZE = 8192;
 
 /** The engine's side: show a picture (null for none) placed by a `quadOf`, move it, keep drawing it. */
 export interface MediaEngine {
@@ -148,7 +152,10 @@ export class Media {
         if (!res.ok) throw new Error(`mbmap: image ${url}: HTTP ${res.status}`);
         return res.blob();
       })
-      .then((blob) => createImageBitmap(blob))
+      .then(async (blob) => {
+        await checkBlobImageSize(blob, MAX_MEDIA_SIZE, `mbmap: image ${url}`);
+        return createImageBitmap(blob);
+      })
       .then((bitmap) => {
         if (request === e.request) this.#engine.show(id, bitmap, e.quad);
       })

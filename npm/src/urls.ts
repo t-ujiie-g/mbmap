@@ -1,10 +1,18 @@
 // URL handling of the facade, kept free of imports so tests can run it as is.
 
-export function resolveTemplate(template: string, base: URL): string {
-  // A PMTiles template names its archive by an absolute URL already.
-  if (template.startsWith("pmtiles://")) return template;
+/** `url` resolved against `base`, refused unless http(s), so a style cannot fetch data: or blob: URLs (AGENTS.md §8.3). */
+export function httpUrl(url: string | URL, base: string | URL, what: string): string {
+  const u = new URL(url, base);
+  if (!/^https?:$/.test(u.protocol)) throw new Error(`mbmap: ${what} must be an http(s) URL: ${u.href}`);
+  return u.href;
+}
+
+/** A tile template resolved against `base`, its placeholders kept: http(s), or `pmtiles://` and an http(s) archive. */
+export function resolveTemplate(template: string, base: string | URL, what = "tiles"): string {
+  const pmtiles = template.startsWith("pmtiles://");
   // URL() percent-encodes the placeholders' braces.
-  return new URL(template, base).href.replace(/%7B([zxy])%7D/g, "{$1}");
+  const href = httpUrl(pmtiles ? template.slice(10) : template, base, what).replace(/%7B([zxy])%7D/g, "{$1}");
+  return pmtiles ? `pmtiles://${href}` : href;
 }
 
 /** Same-origin http(s) only, so markup cannot start data:, blob: or foreign workers (AGENTS.md §8.3). */
@@ -17,7 +25,5 @@ export function workerScriptUrl(url: string | URL, base: URL, origin: string): s
 }
 
 export function wasmUrl(url: string | URL, base: URL): string {
-  const u = new URL(url, base);
-  if (!/^https?:$/.test(u.protocol)) throw new Error(`mbmap: the wasm must be an http(s) URL: ${u.href}`);
-  return u.href;
+  return httpUrl(url, base, "the wasm");
 }

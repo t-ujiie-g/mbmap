@@ -1,7 +1,8 @@
 // Glue around the wasm-gc build of `geojson_worker`; messages are in
 // docs/FORMATS.md ("GeoJSON worker messages").
 
-import { hostNumber } from "../../wasmio/js/host.mjs";
+import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { readCapped } from "../../worker/js/body.mjs";
 import { readClusterFeatures } from "./features.mjs";
 
 const decoder = new TextDecoder();
@@ -29,7 +30,7 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetric
     if (typeof url !== "string" || !/^https?:/.test(url)) throw new Error("data must be an http(s) URL");
     const res = await fetch(url, { credentials: "omit" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    data = new Uint8Array(await res.arrayBuffer());
+    data = await readCapped(res, MAX_INPUT_BYTES);
   }
   input(data);
   const c = cluster ?? { maxZoom: 0, radius: 0, minPoints: 0 };
