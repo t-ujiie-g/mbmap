@@ -48,6 +48,11 @@ export function parsePitch(value: string): number | null {
   return DECIMAL.test(value) ? checkPitch(Number(value)) : null;
 }
 
+/** `"true"` or `"false"`, nothing else. */
+export function parseBoolean(value: string): boolean | null {
+  return value === "true" ? true : value === "false" ? false : null;
+}
+
 export function parseWorkerCount(value: string): number | null {
   if (!/^\d$/.test(value)) return null;
   const n = Number(value);

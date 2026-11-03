@@ -7,6 +7,7 @@ import {
   parseBearing,
   parseCenter,
   parsePitch,
+  parseBoolean,
   parseWorkerCount,
   parseZoom,
 } from "./parse";
@@ -23,7 +24,7 @@ export interface MbMapEventDetail {
   error?: Error;
 }
 
-const ATTRIBUTES = ["style-url", "center", "zoom", "bearing", "pitch", "worker-count", "worker-url", "wasm-url"] as const;
+const ATTRIBUTES = ["style-url", "center", "zoom", "bearing", "pitch", "worker-count", "worker-url", "wasm-url", "attribution-control"] as const;
 
 // Lets the module load where HTMLElement does not exist (server rendering);
 // the element is only defined in browsers.
@@ -153,6 +154,8 @@ export class MbMapElement extends Base {
       this.pitch = value;
     } else if (name === "worker-count") {
       if (parseWorkerCount(value) === null) this.#reject(name, value);
+    } else if (name === "attribution-control") {
+      if (parseBoolean(value) === null) this.#reject(name, value);
     } else if (name === "style-url" && !this.#style) {
       this.#restyle();
     }
@@ -174,6 +177,7 @@ export class MbMapElement extends Base {
       workerCount: parseWorkerCount(this.getAttribute("worker-count") ?? "") ?? 0,
       workerUrl: this.getAttribute("worker-url") ?? undefined,
       wasmUrl: this.getAttribute("wasm-url") ?? undefined,
+      attributionControl: parseBoolean(this.getAttribute("attribution-control") ?? "true") ?? true,
     };
   }
 

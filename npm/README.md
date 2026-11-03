@@ -21,6 +21,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/index.js` | メインスレッドの ESM（`Map`） |
 | `dist/index.d.ts` | 型定義 |
 | `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される） |
+| `dist/ui.js` | 見た目を持たない UI のコントローラ（`mbmap/ui`） |
 | `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
 | `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
@@ -35,7 +36,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 
 ## API
 
-- `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜85 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`fontFamily`（ラベルの CSS フォントファミリー。既定 `sans-serif`）、`attributionControl`（既定 true。ソースの `attribution` を文字列として表示する）。
+- `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜85 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`fontFamily`（ラベルの CSS フォントファミリー。既定 `sans-serif`）、`attributionControl`（既定 true。表示中のレイヤーと地形が使うソースの `attribution` を、MapLibre と同じ順で文字列として表示する）。
   - スタイルがオブジェクトで、描けない内容を含むときは、例外を投げる。URL の場合は `error` イベントになる。
 - `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`render`（描画のたび）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`。
 - `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜85 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
@@ -73,7 +74,30 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - ワーカーが地物の位置を持ち、状態のある地物の分だけを問い合わせるので、変更は 1 往復遅れて描かれる。フィルターや layout では使えない（MapLibre と同じ）。
 - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
   - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
-- `loaded()`、`getContainer()`、`getCanvas()`、`remove()`。
+- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。`styledata` イベントは、スタイルの読み込みと変更のたびに出る。
+
+## UI のコントローラ `mbmap/ui`
+
+見た目を持たないコントローラ。DOM を作らず、状態（`c.state`）、操作（メソッド）、変化の購読（`c.subscribe(f)` が解除の関数を返す）、`c.destroy()` だけを持つ。見た目は作り手が自由に作る（素の DOM でも React でも）。React では `useSyncExternalStore(c.subscribe, () => c.state)` でそのまま読める。import したコントローラだけがバンドルに入る。
+
+```js
+import { createNavigation, createScale } from "mbmap/ui";
+const nav = createNavigation(map);
+nav.subscribe((s) => { zoomIn.disabled = !s.canZoomIn; needle.style.rotate = `${-s.bearing}deg`; });
+zoomIn.onclick = () => nav.zoomIn();
+```
+
+MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で MapLibre 6.16 と比べている。
+
+- `createNavigation(map, { home })`：`{ zoom, bearing, pitch, canZoomIn, canZoomOut }`。操作は `zoomIn()`、`zoomOut()`、`resetNorth(pitch?)`（方位記号のクリック）、`home()`。
+  - ズームの限界でボタンを無効にする判定は MapLibre と同じ。ただし制約で決まる最小ズームでは、MapLibre はズームの最後の 1 桁がずれてボタンが有効のままになる。mbmap は無効にする。
+- `createGeolocation(map, { trackUserLocation, positionOptions, fitBoundsOptions, zoomToUserAccuracy })`：Geolocation API で現在地を得て、精度の範囲に地図を合わせる。
+  - 状態は `status`（`off`、`waiting`、`active`、`background`、それぞれの `-error`、`unavailable`）、`position`、`accuracyRadius`（精度の円の半径。画面のピクセル）、`error`。
+  - 操作は `trigger()`（MapLibre のボタンのクリックと同じ）。
+  - 追跡中に地図を動かすと `background` になる（ズームだけなら追跡を続ける）。点と円は `map.track` で作り手が描く。
+- `createFullscreen(map, { container })`：`{ active, pseudo }` と `toggle()`。Fullscreen API がないときは `pseudo` が true になり、作り手が全画面の見た目を作る。
+- `createScale(map, { maxWidth, unit })`：`{ width, distance, unit, label }`。`unit` は `metric`、`imperial`、`nautical`。`setUnit()` で切り替えられる。`measureScale(map, maxWidth, unit)` はその場で一度だけ測る。
+- `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 解析 `mbmap/analysis`
 
@@ -113,7 +137,7 @@ blocks.dispose();
 <mb-map style-url="/style.json" center="139.7671,35.6812" zoom="14" style="height: 400px"></mb-map>
 ```
 
-- 属性：`style-url`、`center`（`lng,lat`）、`zoom`（0〜22）、`bearing`、`pitch`（0〜85）、`worker-count`（0〜4）、`worker-url`、`wasm-url`。不正な値は受け付けず、`mb-error` を出す。
+- 属性：`style-url`、`center`（`lng,lat`）、`zoom`（0〜22）、`bearing`、`pitch`（0〜85）、`worker-count`（0〜4）、`worker-url`、`wasm-url`、`attribution-control`（`true` か `false`。出典を自分で表示するときは `false`）。不正な値は受け付けず、`mb-error` を出す。
 - プロパティ：`map`（`Map`。作成前と削除後は null）、`mapStyle`（スタイルのオブジェクト。`style-url` より優先。変えると地図を作り直さず `setStyle` で差し替える）、`center`、`zoom`、`bearing`、`pitch`。
 - イベント：`mb-load`、`mb-movestart`、`mb-move`、`mb-moveend`、`mb-idle`、`mb-error`。`detail` は `{ map, center, zoom, bearing, pitch, error? }` で、Shadow DOM の外まで伝わる。
 - 文書から外すと地図を解放し、戻すと同じカメラで作り直す。同じタスク内での移動では作り直さない。

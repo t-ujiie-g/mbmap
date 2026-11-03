@@ -6,7 +6,8 @@ import { PLACES } from "./places.js";
 
 const GSI = "https://cyberjapandata.gsi.go.jp/xyz";
 const local = new URLSearchParams(location.search).get("local") === "1";
-const fixtures = new URL("../../bench/fixtures/", import.meta.url).href;
+// Relative to the page (examples/<name>/): a bundle's import.meta.url lies elsewhere.
+const fixtures = new URL("../../bench/fixtures/", location.href).href;
 
 // GSI's buildings have no heights: 30 m for sturdy ones (ftCode 3103), 8 m for others.
 const BUILDINGS_3D = {

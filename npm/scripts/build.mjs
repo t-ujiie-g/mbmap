@@ -32,6 +32,8 @@ await build({
 });
 await build({ ...common, entryPoints: [path.join(PKG, "src/geojson.ts")], outfile: path.join(DIST, "geojson.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/pmtiles.ts")], outfile: path.join(DIST, "pmtiles.js") });
+// The controllers only take a `Map`: no part of the main entry is bundled into them.
+await build({ ...common, entryPoints: [path.join(PKG, "src/ui.ts")], outfile: path.join(DIST, "ui.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geojson_worker/js/worker.mjs")], outfile: path.join(DIST, "geojson-worker.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "worker/js/worker.mjs")], outfile: path.join(DIST, "worker.js") });
 // The PROJ string parser stays a file of its own, loaded on the first PROJ string.

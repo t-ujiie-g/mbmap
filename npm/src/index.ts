@@ -22,6 +22,7 @@ import type { GeoJSONSource, GeoJSONTiles } from "./geojson";
 import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
+import { attributionsOf } from "./attribution";
 import { tileJSONUrls, withTileJSON } from "./tilejson";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
@@ -156,6 +157,7 @@ export type MapMouseEventType =
 export type MapEventType =
   | MapMouseEventType
   | "load"
+  | "styledata"
   | "render"
   | "idle"
   | "error"
@@ -283,19 +285,13 @@ function splitGeoJSON(style: StyleSpecification): [GeoJSONSource[], StyleSpecifi
   return [found, { ...style, sources }];
 }
 
-function attributions(style: StyleSpecification): string[] {
-  const out = new Set<string>();
-  for (const s of Object.values(style.sources ?? {})) {
-    const a = (s as { attribution?: unknown })?.attribution;
-    if (typeof a === "string" && a !== "") out.add(a);
-  }
-  return [...out];
-}
-
 export class Map {
   #container: HTMLElement;
   #canvas: HTMLCanvasElement;
   #attribution: HTMLElement | null = null;
+  #attributions: string[] = [];
+  /** The style as the engine draws it (TileJSON merged), whose sources the attributions come from. */
+  #drawn: StyleSpecification | null = null;
   #engine: engine.EngineMap | null = null;
   #geojson: GeoJSONTiles | null = null;
   #geojsonLoading: Promise<GeoJSONTiles | null> | null = null;
@@ -469,7 +465,9 @@ export class Map {
     }
     this.#style = next;
     for (const id of this.#loadGeoJSON(geojson)) engine.map_reload_source(this.#engine, id);
-    this.#showAttribution(attributions(rest));
+    this.#drawn = rest;
+    this.#showAttribution();
+    this.#emit("styledata");
   }
 
   /** Runs `f` on the current style and draws what it gives; its errors fire `error`. */
@@ -671,7 +669,9 @@ export class Map {
       }
       this.#emit("idle");
     });
-    this.#showAttribution(attributions(resolved));
+    this.#drawn = resolved;
+    this.#showAttribution();
+    this.#emit("styledata");
     if (o.bounds) this.fitBounds(o.bounds, { ...o.fitBoundsOptions, duration: 0 });
     for (const f of this.#callsBeforeStart.splice(0)) f();
   }
@@ -697,6 +697,7 @@ export class Map {
         this.#emit(`${kind}start`, undefined, e);
       }
     }
+    if (changed.includes("zoom")) this.#showAttribution();
     this.#emit("move", undefined, e);
     for (const kind of changed) this.#emit(kind, undefined, e);
     this.#last = c;
@@ -713,7 +714,16 @@ export class Map {
     this.#emit("moveend", undefined, e);
   }
 
-  #showAttribution(texts: string[]): void {
+  /** The attributions MapLibre's AttributionControl would show now: of the sources the layers shown or the terrain use. */
+  getAttributions(): string[] {
+    return [...this.#attributions];
+  }
+
+  /** Shows the attributions if they changed (the style, or a layer's zoom range at this zoom). */
+  #showAttribution(): void {
+    const texts = this.#drawn ? attributionsOf(this.#drawn, this.getZoom()) : [];
+    if (texts.join("\n") === this.#attributions.join("\n") && this.#attribution) return;
+    this.#attributions = texts;
     this.#attribution?.remove();
     this.#attribution = null;
     if (texts.length === 0 || !(this.#options.attributionControl ?? true)) return;
@@ -1319,8 +1329,10 @@ export class Map {
     return this.#setLimits({ minZoom: zoom ?? 0 });
   }
 
-  getMinZoom(): number {
-    return this.#limits.minZoom;
+  /** With `constrained`, the zoom the camera can go down to here (the latitude limits and `maxBounds` raise it). */
+  getMinZoom(constrained = false): number {
+    const min = this.#limits.minZoom;
+    return constrained && this.#engine ? engine.map_constrained_zoom(this.#engine, min) : min;
   }
 
   setMaxZoom(zoom?: number | null): this {

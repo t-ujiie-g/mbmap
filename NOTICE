@@ -97,6 +97,11 @@ license and source.
     plane of `_calculateNearFarZ` and the `earthCircumference` heights are
     measured in; map/dem.mbt: heights at tile borders as `DEMData.sampleBilinear`
     reads the backfilled border
+  - npm/src/attribution.ts and npm/src/ui/: `_updateAttributions` of
+    src/ui/control/attribution_control.ts, `updateScale` and `getRoundNum` of
+    scale_control.ts, the watch states, `_updateCamera` and the accuracy circle
+    of geolocate_control.ts, `_updateZoomButtons` of navigation_control.ts,
+    `LngLat.distanceTo` and `LngLatBounds.fromLngLat` of src/geo/
 
 - core/animation.mbt `Bezier`: follows @mapbox/unitbezier 1.0.0 (ported from WebKit)
   https://github.com/mapbox/unitbezier — BSD 2-Clause License:

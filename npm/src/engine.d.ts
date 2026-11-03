@@ -37,6 +37,7 @@ declare module "mbmap-engine" {
   export function map_unproject(map: EngineMap, x: number, y: number): number[];
   export function map_locate(map: EngineMap, points: number[]): number[];
   export function map_is_idle(map: EngineMap): boolean;
+  export function map_constrained_zoom(map: EngineMap, zoom: number): number;
   export function map_max_region(map: EngineMap): number;
   export function map_render_region(map: EngineMap, ratio: number, x: number, y: number, width: number, height: number): Uint8ClampedArray<ArrayBuffer>;
   export function map_bounds(map: EngineMap): number[];

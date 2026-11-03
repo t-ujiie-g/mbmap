@@ -1,6 +1,7 @@
 // The showcase with the npm package's `Map` and the DOM.
 import { Map } from "mbmap";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
+import { mountControls } from "../shared/controls.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
@@ -11,7 +12,7 @@ let mode = "2d";
 const hidden = new Set(DEFAULT_HIDDEN);
 let places = PLACES;
 
-const map = new Map({ container: "map", style: createStyle(mode, hidden), center: DESTINATIONS[0].center, zoom: 15 });
+const map = new Map({ container: "map", style: createStyle(mode, hidden), center: DESTINATIONS[0].center, zoom: 15, attributionControl: false });
 map.on("move", showCamera);
 map.on("moveend", update);
 map.once("load").then(() => {
@@ -23,6 +24,7 @@ window.__map = map;
 map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
 hoverPlaces(map);
 pinDestinations(map, document.body);
+mountControls(map, document.body);
 
 function showPicked(features) {
   const rows = describeFeature(features) ?? [["—", "何もありません"]];
