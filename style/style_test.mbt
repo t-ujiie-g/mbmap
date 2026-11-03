@@ -446,7 +446,8 @@ test "fill-extrusion layers read heights, the gradient and the light" {
   for
     c in [
       (
-        "\"paint\": {\"fill-extrusion-translate\": [1, 0]}}]}", "Unsupported", "layers[0].paint.fill-extrusion-translate",
+        "\"paint\": {\"fill-extrusion-translate\": [\"literal\", [1, 0]]}}]}", "Unsupported",
+        "layers[0].paint.fill-extrusion-translate",
       ),
       (
         "\"paint\": {\"fill-extrusion-vertical-gradient\": 1}}]}", "Invalid", "layers[0].paint.fill-extrusion-vertical-gradient",
@@ -582,5 +583,89 @@ test "elevation is allowed in color-relief-color only, and zoom is not" {
     } noraise {
       _ => fail("expected \{c.1} to be refused")
     }
+  }
+}
+
+///|
+test "lines read their gap width, offset and blur, circles their blur and pitch" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "l", "type": "line", "paint": {"line-gap-width": 4,
+      #|   "line-offset": ["get", "o"], "line-blur": ["interpolate", ["linear"], ["zoom"], 10, 0, 16, 2]}},
+      #|  {"id": "c", "type": "circle", "paint": {"circle-blur": 0.5,
+      #|   "circle-pitch-scale": "viewport", "circle-pitch-alignment": "map"}},
+      #|  {"id": "d", "type": "circle"}]}
+    ),
+  )
+  let (l, c, d) = (s.layers[0], s.layers[1], s.layers[2])
+  assert_eq(constant(l.gap_width), Num(4.0))
+  assert_eq(l.offset, Assert(NumberType, [Get("o")]))
+  assert_true(l.line_offsets())
+  assert_eq(l.blur.eval(13.0, @style.NoFeature::{ }), Num(1.0))
+  assert_eq(constant(c.blur), Num(0.5))
+  assert_eq((c.scale_with_map, c.pitch_with_map), (false, true))
+  assert_eq(
+    (d.scale_with_map, d.pitch_with_map, d.line_offsets()),
+    (true, false, false),
+  )
+  // The gap and offset slots go per vertex when data-driven.
+  assert_eq(l.vertex_paint().map(v => v.slot), [@style.SLOT_OFFSET])
+}
+
+///|
+test "fills, lines, circles and extrusions read their translation and its anchor" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "f", "type": "fill", "paint": {"fill-translate": [3, -4]}},
+      #|  {"id": "l", "type": "line", "paint": {"line-translate": [1, 2], "line-translate-anchor": "viewport"}},
+      #|  {"id": "c", "type": "circle", "paint": {"circle-translate": [0, 5]}},
+      #|  {"id": "x", "type": "fill-extrusion", "paint": {"fill-extrusion-translate": [6, 7]}},
+      #|  {"id": "b", "type": "background"}]}
+    ),
+  )
+  assert_eq(s.layers.map(l => (l.translate, l.translate_viewport)), [
+    ((3.0, -4.0), false),
+    ((1.0, 2.0), true),
+    ((0.0, 5.0), false),
+    ((6.0, 7.0), false),
+    ((0.0, 0.0), false),
+  ])
+}
+
+///|
+test "translations, anchors, alignments and data-driven blur are checked" {
+  let cases = [
+    (
+      "{\"type\": \"fill\", \"paint\": {\"fill-translate\": 3}}", "Invalid", "layers[0].paint.fill-translate",
+    ),
+    (
+      "{\"type\": \"fill\", \"paint\": {\"fill-translate\": [\"literal\", [1, 2]]}}",
+      "Unsupported", "layers[0].paint.fill-translate",
+    ),
+    (
+      "{\"type\": \"line\", \"paint\": {\"line-translate-anchor\": \"up\"}}", "Invalid",
+      "layers[0].paint.line-translate-anchor",
+    ),
+    (
+      "{\"type\": \"circle\", \"paint\": {\"circle-pitch-scale\": \"x\"}}", "Invalid",
+      "layers[0].paint.circle-pitch-scale",
+    ),
+    (
+      "{\"type\": \"line\", \"paint\": {\"line-blur\": [\"get\", \"b\"]}}", "Unsupported",
+      "layers[0].paint.line-blur",
+    ),
+  ]
+  for c in cases {
+    let (layer, kind, where_) = c
+    let got = try {
+      @style.Style::parse("{\"layers\": [\{layer}]}") |> ignore
+      ("none", "")
+    } catch {
+      Invalid(path~, _) => ("Invalid", path)
+      Unsupported(path~, _) => ("Unsupported", path)
+    }
+    assert_eq(got, (kind, where_))
   }
 }

@@ -36,7 +36,9 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   the byte offset (8-aligned) and row count of their progress: per vertex an f32
   share of its line's length and an f32 row, then per row its line's clip start and
   end (f64s, MapLibre's `lineClips`; 0 and 1 without line metrics), then the
-  longest line in tiles (f64).
+  longest line in tiles (f64), and for offset lines the byte offset and vertex count
+  of their offset normals (two i8 per vertex, `@tess.EXTRUDE_SCALE` per unit:
+  MapLibre's `a_offset_normal`; shared with the geometry).
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
   same data (layers with the same geometry). Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
@@ -213,7 +215,8 @@ Out:
   indices, count, indexBytes, shared, props}` (`entry` its index in the packed tile;
   symbol entries without labels are left out). Buffers are transferred, never copied;
   `shared` is the position in `layers` of an earlier entry whose buffers it reuses (or -1); `props`
-  the group properties (or null). Symbol entries add `labels`, `codepoints`
+  the group properties (or null). Line entries add `distances`, `progress`, `clips`
+  and `offsets` ("Packed tile"; null when absent). Symbol entries add `labels`, `codepoints`
   (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`, and with icons
   `icon` and `missing` ("Symbol vertices"). `glyphs` are the
   SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
@@ -276,7 +279,9 @@ is a u8 0 or 1; an optional item is a flag, then the item if 1.
   layout, icon paint (u32 5 and `IconPaint::exprs`), extrusion (height, base,
   vertical-gradient flag) and heatmap paint (u32 3: weight, intensity, color);
   u8 join and cap, f64 miter and round limits, antialias flag, optional outline
-  color, dash array, gradient and pattern. A text layout is `TextLayout`'s fields
+  color, dash array, gradient and pattern; Exprs gap width, offset and blur, f64 x and
+  y translate (CSS px), flags translate-anchor viewport, circle pitch-scale map and
+  circle pitch-alignment map. A text layout is `TextLayout`'s fields
   in order (Expr arrays and pairs as above, the variable anchors as u32 count and
   (u8 anchor, f64, f64)); an icon layout `IconLayout`'s without `layout`.
   Hillshade, color relief and raster paint, terrain, sky and light are drawn on
@@ -288,7 +293,8 @@ is a u8 0 or 1; an optional item is a flag, then the item if 1.
 A rendered-features query of one tile, little-endian:
 
 - f64 camera zoom, `TILE_EXTENT` units per CSS pixel, `max_pitch_scale_factor`,
-  viewport width and height (CSS px), the center's clip w, world pixels per meter;
+  viewport width and height (CSS px), the center's clip w, world pixels per meter,
+  the camera's bearing in radians;
 - 16 f64: the tile's matrix (`TILE_EXTENT` units to clip space, column-major);
 - u32 n, n f64 pairs: the query (one point, or a closed ring) in `TILE_EXTENT`
   units; u32 m, m pairs: the same grown to the point under the camera

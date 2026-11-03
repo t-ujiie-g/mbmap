@@ -699,3 +699,35 @@ test "gradient lines pack their progress, rows and line metrics" {
   assert_eq(f64(at + n * 8 + 8), 1.0)
   assert_true(f64(at + n * 8 + 16) > 0.0)
 }
+
+///|
+test "offset lines pack their offset normals and share buffers only with offset lines" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "road", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-gap-width": 3}},
+    #|  {"id": "left", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-offset": -2}},
+    #|  {"id": "right", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-offset": ["get", "k"]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", sample_tile()[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 3)
+  assert_eq(entry(0, 18), 0)
+  assert_true(entry(1, 2) != entry(0, 2))
+  assert_eq(entry(2, 2), entry(1, 2))
+  assert_eq((entry(2, 17), entry(2, 18)), (entry(1, 17), entry(1, 18)))
+  // Four vertices of a straight line along +x: every normal is (0, 63).
+  assert_eq(entry(1, 18), 4)
+  let o = entry(1, 17)
+  for i in 0..<4 {
+    assert_eq((b[o + i * 2].to_int(), b[o + i * 2 + 1].to_int()), (0, 63))
+  }
+  // The data-driven offset goes per vertex, with the width and gap as constants.
+  assert_true(entry(2, 10) > 0)
+}

@@ -10,7 +10,7 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
   let keys = []
   let mut geometry = false
   let exprs = match sl.kind {
-    Line => [sl.color, sl.opacity, sl.width]
+    Line => [sl.color, sl.opacity, sl.width, sl.gap_width, sl.offset]
     Circle =>
       [
         sl.color,

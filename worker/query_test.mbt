@@ -8,7 +8,7 @@ fn query_request(
   filter~ : String = "",
 ) -> Bytes {
   let w = @core.ByteWriter::new()
-  for v in [14.0, 1.0, 1.0, 4096.0, 4096.0, 1.0, 1.0] {
+  for v in [14.0, 1.0, 1.0, 4096.0, 4096.0, 1.0, 1.0, 0.0] {
     w.f64(v)
   }
   let m = FixedArray::make(16, 0.0)

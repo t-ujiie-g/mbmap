@@ -140,12 +140,13 @@ pub fn Renderer::draw_line_pattern(
   at : Placement,
   slots : PaintSlots,
   dpr : Double,
+  blur~ : Double = 0.0,
   pos : PatternPosition,
   floor_width~ : Double,
   floor_t~ : Double,
 ) -> Unit {
   self.upload_patterns()
-  self.bind("linePattern", mesh, slots, 3)
+  self.bind("linePattern", mesh, slots, 6)
   let (w, h) = pos.display_size()
   gl_draw_line_pattern(
     self.gl,
@@ -155,6 +156,7 @@ pub fn Renderer::draw_line_pattern(
     at.units_per_pixel,
     at.center_depth,
     dpr,
+    blur * dpr,
     [
       pos.tl.0.to_double(),
       pos.tl.1.to_double(),

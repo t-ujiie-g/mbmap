@@ -6,7 +6,8 @@
 /// A query of one tile (docs/FORMATS.md, "Query"). `zoom` is the camera's, at
 /// which paint is evaluated; `pixels` are `TILE_EXTENT` units per CSS pixel;
 /// `pitch_factor` is `max_pitch_scale_factor`; `matrix` maps `TILE_EXTENT`
-/// units (and heights in world pixels, `meters` per meter) to clip space;
+/// units (and heights in world pixels, `meters` per meter) to clip space, the
+/// camera's `bearing` in radians;
 /// `polygon` is the query in `TILE_EXTENT` units and `camera` the same grown
 /// to the camera (MapLibre's camera query geometry, for extrusions);
 /// `layers` the style layers asked for (all if None); `symbols` the (layer,
@@ -19,6 +20,7 @@ priv struct Query {
   height : Double
   center_depth : Double
   meters : Double
+  bearing : Double
   matrix : FixedArray[Double]
   polygon : @core.Line
   camera : @core.Line
@@ -41,6 +43,7 @@ fn read_query(r : @core.ByteReader) -> Query? {
   let height = r.f64()
   let center_depth = r.f64()
   let meters = r.f64()
+  let bearing = r.f64()
   let matrix = FixedArray::makei(16, _ => r.f64())
   let n = r.u32()
   guard r.ok() && n >= 1 && n <= MAX_QUERY_ITEMS else { return None }
@@ -65,6 +68,7 @@ fn read_query(r : @core.ByteReader) -> Query? {
     height,
     center_depth,
     meters,
+    bearing,
     matrix,
     polygon,
     camera,
@@ -76,6 +80,77 @@ fn read_query(r : @core.ByteReader) -> Query? {
     symbols,
     filter,
   })
+}
+
+///|
+/// The query moved against a layer's `*-translate` (MapLibre's `translate`):
+/// its CSS px in tile units, turned with the camera when anchored to the viewport.
+fn Query::translated(
+  self : Query,
+  sl : @style.StyleLayer,
+  trig : @core.Trig,
+) -> Query {
+  let (x, y) = sl.translate
+  if x == 0.0 && y == 0.0 {
+    return self
+  }
+  let (x, y) = if sl.translate_viewport {
+    let c = trig.cos(self.bearing)
+    let s = trig.sin(self.bearing)
+    (x * c - y * s, x * s + y * c)
+  } else {
+    (x, y)
+  }
+  let dx = x * self.pixels
+  let dy = y * self.pixels
+  let shift = (l : @core.Line) => l.map(p => (p.0 - dx, p.1 - dy))
+  { ..self, polygon: shift(self.polygon), camera: shift(self.camera), }
+}
+
+///|
+/// Lines moved sideways by `offset` tile units (MapLibre's `offsetLine`: each
+/// point along its corner's bisector, scaled to keep the segments parallel).
+fn offset_line(rings : Array[@core.Line], offset : Double) -> Array[@core.Line] {
+  rings.map(raw => {
+    let ring : @core.Line = []
+    for p in raw {
+      if ring.last() is Some(q) && q == p {
+        continue
+      }
+      ring.push(p)
+    }
+    let unit = (a : (Double, Double), b : (Double, Double)) => {
+      let dx = b.0 - a.0
+      let dy = b.1 - a.1
+      let len = (dx * dx + dy * dy).sqrt()
+      (-dy / len, dx / len)
+    }
+    ring.mapi((i, p) => {
+      let ab = if i == 0 { (0.0, 0.0) } else { unit(ring[i - 1], p) }
+      let bc = if i == ring.length() - 1 {
+        (0.0, 0.0)
+      } else {
+        unit(p, ring[i + 1])
+      }
+      let sx = ab.0 + bc.0
+      let sy = ab.1 + bc.1
+      let len = (sx * sx + sy * sy).sqrt()
+      let (ux, uy) = if len > 0.0 { (sx / len, sy / len) } else { (sx, sy) }
+      let cos_half = ux * bc.0 + uy * bc.1
+      let k = if cos_half != 0.0 { offset / cos_half } else { offset }
+      (p.0 + ux * k, p.1 + uy * k)
+    })
+  })
+}
+
+///|
+/// MapLibre's `getLineWidth`: a gapped line is the gap and two widths wide.
+fn line_width(width : Double, gap : Double) -> Double {
+  if gap > 0.0 {
+    gap + 2.0 * width
+  } else {
+    width
+  }
 }
 
 ///|
@@ -272,6 +347,7 @@ fn TileProcessor::hit(
     @core.TILE_EXTENT.to_double() / layer.extent().to_double(),
   )
   let zoom = query.zoom
+  let query = query.translated(sl, self.trig)
   let q = query.polygon
   guard near_query(rings, query, pad, sl.kind is FillExtrusion) else {
     return None
@@ -284,15 +360,27 @@ fn TileProcessor::hit(
         None
       }
     Line => {
-      let half = query.pixels / 2.0 * number_at(sl.width, zoom, feature)
+      let half = query.pixels /
+        2.0 *
+        line_width(
+          number_at(sl.width, zoom, feature),
+          number_at(sl.gap_width, zoom, feature),
+        )
+      let offset = number_at(sl.offset, zoom, feature)
+      let rings = if offset != 0.0 {
+        offset_line(rings, offset * query.pixels)
+      } else {
+        rings
+      }
       if @core.polygon_hits_lines(q, rings, half) {
         Some(@double.not_a_number)
       } else {
         None
       }
     }
-    // `circle-pitch-alignment: viewport`, `circle-pitch-scale: map`: compared
-    // on screen, the size scaled by the point's distance like the circle.
+    // MapLibre's `circleIntersection`: on the map or on screen
+    // (`circle-pitch-alignment`), the size scaled by the point's distance where
+    // the circle keeps its size the other way (`circle-pitch-scale`).
     Circle => {
       let size = number_at(sl.radius, zoom, feature) +
         number_at(sl.stroke_width, zoom, feature)
@@ -303,11 +391,23 @@ fn TileProcessor::hit(
       for ring in rings {
         for p in ring {
           let (x, y, w) = query.screen(p)
-          if @core.polygon_hits_point(
-              screen,
-              (x, y),
-              size * query.center_depth / w,
-            ) {
+          let hit = match (sl.pitch_with_map, sl.scale_with_map) {
+            (true, true) => @core.polygon_hits_point(q, p, size * query.pixels)
+            (true, false) =>
+              @core.polygon_hits_point(
+                q,
+                p,
+                size * query.pixels * w / query.center_depth,
+              )
+            (false, true) =>
+              @core.polygon_hits_point(
+                screen,
+                (x, y),
+                size * query.center_depth / w,
+              )
+            (false, false) => @core.polygon_hits_point(screen, (x, y), size)
+          }
+          if hit {
             return Some(@double.not_a_number)
           }
         }
@@ -340,9 +440,9 @@ fn TileProcessor::hit(
 }
 
 ///|
-/// The tile's query padding in CSS pixels (MapLibre's `Tile.queryPadding`):
-/// the most any feature reaches beyond its geometry, half a line's width or a
-/// circle's radius and stroke, at camera zoom `zoom`.
+/// The tile's query padding in CSS pixels (MapLibre's `Tile.queryPadding`): the
+/// most any feature reaches past its geometry at camera zoom `zoom` (its layers'
+/// `queryRadius`: widths, offsets, radii and translations).
 fn TileProcessor::query_padding(
   self : TileProcessor,
   source : String,
@@ -352,9 +452,15 @@ fn TileProcessor::query_padding(
 ) -> Double {
   let mut pad = 0.0
   for sl in self.style.layers {
-    guard sl.kind is (Line | Circle | Heatmap) &&
+    guard sl.kind is (Fill | FillExtrusion | Line | Circle | Heatmap) &&
       builds(sl, source, tile_zoom) &&
       features_of(sl.source_layer) is Some(layer) else {
+      continue
+    }
+    let (tx, ty) = sl.translate
+    let moved = (tx * tx + ty * ty).sqrt()
+    if sl.kind is (Fill | FillExtrusion) {
+      pad = @cmp.maximum(pad, moved)
       continue
     }
     let feature = self.feature_ref(layer)
@@ -362,13 +468,19 @@ fn TileProcessor::query_padding(
       feature.index = i
       if passes(sl.filter, feature, tile_zoom) {
         let reach = match sl.kind {
-          Line => number_at(sl.width, zoom, feature) / 2.0
+          Line =>
+            line_width(
+              number_at(sl.width, zoom, feature),
+              number_at(sl.gap_width, zoom, feature),
+            ) /
+            2.0 +
+            number_at(sl.offset, zoom, feature).abs()
           Heatmap => number_at(sl.radius, zoom, feature)
           _ =>
             number_at(sl.radius, zoom, feature) +
             number_at(sl.stroke_width, zoom, feature)
         }
-        pad = @cmp.maximum(pad, reach)
+        pad = @cmp.maximum(pad, reach + moved)
       }
     }
   }

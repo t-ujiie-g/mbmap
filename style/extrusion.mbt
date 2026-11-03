@@ -13,11 +13,6 @@ fn parse_extrusion(
   paint : Map[String, Json],
   path : String,
 ) -> ExtrusionPaint raise StyleError {
-  match paint.get("fill-extrusion-translate") {
-    None | Some(Array([Number(0.0, ..), Number(0.0, ..)])) => ()
-    Some(_) =>
-      raise Unsupported(path="\{path}.fill-extrusion-translate", "translate")
-  }
   {
     height: paint_expr(
       paint,

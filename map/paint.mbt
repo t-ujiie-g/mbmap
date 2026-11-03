@@ -122,6 +122,9 @@ priv struct Paint {
   halo : FixedArray[Double]
   halo_width : Double
   pattern : String?
+  gap_width : Double
+  offset : Double
+  blur : Double
 }
 
 ///|
@@ -210,6 +213,9 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
     } else {
       0.0
     },
+    gap_width: number_or(layer.gap_width.eval(zoom, ctx), 0.0),
+    offset: number_or(layer.offset.eval(zoom, ctx), 0.0),
+    blur: number_or(layer.blur.eval(zoom, ctx), 0.0),
     pattern: match layer.pattern {
       Some(e) =>
         match e.eval(@cmp.maximum(0.0, zoom.floor()), ctx) {

@@ -1,14 +1,15 @@
 ///|
-/// Draws a line layer with `slots`' color, opacity and width (CSS pixels,
-/// times `dpr`), plus a pixel of antialiasing.
+/// Draws a line layer with `slots`' color, opacity, width, gap width and offset
+/// (CSS pixels, times `dpr`), edges faded over `blur` (CSS pixels) and a pixel.
 pub fn Renderer::draw_line(
   self : Renderer,
   mesh : Mesh,
   at : Placement,
   slots : PaintSlots,
   dpr : Double,
+  blur~ : Double = 0.0,
 ) -> Unit {
-  self.bind("line", mesh, slots, 3)
+  self.bind("line", mesh, slots, 6)
   gl_draw_line(
     self.gl,
     mesh,
@@ -17,6 +18,7 @@ pub fn Renderer::draw_line(
     at.units_per_pixel,
     at.center_depth,
     dpr,
+    blur * dpr,
   )
 }
 
@@ -29,6 +31,16 @@ pub fn Renderer::upload_distances(
   distances : JsBuffer,
 ) -> Unit {
   gl_upload_distances(self.gl, mesh, distances)
+}
+
+///|
+/// Adds an offset line mesh's offset normals (docs/FORMATS.md, "Packed tile").
+pub fn Renderer::upload_offsets(
+  self : Renderer,
+  mesh : Mesh,
+  offsets : JsBuffer,
+) -> Unit {
+  gl_upload_offsets(self.gl, mesh, offsets)
 }
 
 ///|
@@ -68,9 +80,10 @@ pub fn Renderer::draw_line_gradient(
   at : Placement,
   slots : PaintSlots,
   dpr : Double,
+  blur~ : Double = 0.0,
   g : Gradient,
 ) -> Unit {
-  self.bind("lineGradient", mesh, slots, 3)
+  self.bind("lineGradient", mesh, slots, 6)
   gl_draw_line_gradient(
     self.gl,
     mesh,
@@ -79,6 +92,7 @@ pub fn Renderer::draw_line_gradient(
     at.units_per_pixel,
     at.center_depth,
     dpr,
+    blur * dpr,
     g,
   )
 }
@@ -104,6 +118,7 @@ pub fn Renderer::draw_line_dash(
   at : Placement,
   slots : PaintSlots,
   dpr : Double,
+  blur~ : Double = 0.0,
   entry : DashEntry,
   gamma_width~ : Double,
   px_per_unit~ : Double,
@@ -116,7 +131,7 @@ pub fn Renderer::draw_line_dash(
   if self.atlas.take_dirty() {
     gl_dash_atlas(self.gl, self.atlas.data, LINE_ATLAS_WIDTH, LINE_ATLAS_HEIGHT)
   }
-  self.bind("lineDash", mesh, slots, 3)
+  self.bind("lineDash", mesh, slots, 6)
   let h = LINE_ATLAS_HEIGHT.to_double()
   gl_draw_line_dash(
     self.gl,
@@ -126,6 +141,7 @@ pub fn Renderer::draw_line_dash(
     at.units_per_pixel,
     at.center_depth,
     dpr,
+    blur * dpr,
     [
       px_per_unit / entry.width,
       (entry.y.to_double() + 0.5) / h,

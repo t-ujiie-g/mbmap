@@ -19,7 +19,8 @@ let compiled_style : String =
   #|    "layout": {"line-join": "round", "line-cap": "square", "line-miter-limit": 3, "line-round-limit": 1.5},
   #|    "paint": {"line-color": ["interpolate-hcl", ["linear"], ["zoom"], 5, "red", 10, "blue"],
   #|              "line-width": ["step", ["zoom"], 1, 8, ["coalesce", ["get", "w"], 2], 12, ["case", ["==", ["feature-state", "hover"], true], 4, 3]],
-  #|              "line-dasharray": [2, 1]}},
+  #|              "line-dasharray": [2, 1], "line-gap-width": 2, "line-offset": ["get", "o"],
+  #|              "line-blur": 0.5, "line-translate": [1, -2], "line-translate-anchor": "viewport"}},
   #|   {"id": "grad", "type": "line", "source": "g",
   #|    "paint": {"line-gradient": ["interpolate-lab", ["linear"], ["line-progress"], 0, "red", 1, "blue"]}},
   #|   {"id": "pat", "type": "fill", "source": "v", "source-layer": "water",
@@ -28,7 +29,8 @@ let compiled_style : String =
   #|    "paint": {"circle-radius": ["+", 1, ["*", 2, ["sqrt", ["abs", ["number", ["get", "r"], 4]]]]],
   #|              "circle-color": ["to-color", ["get", "col"], "black"],
   #|              "circle-stroke-width": ["max", 1, ["round", ["/", ["zoom"], 3]]],
-  #|              "circle-stroke-color": ["rgba", 10, 20, 30, 0.5], "circle-stroke-opacity": 0.25}},
+  #|              "circle-stroke-color": ["rgba", 10, 20, 30, 0.5], "circle-stroke-opacity": 0.25,
+  #|              "circle-blur": 0.3, "circle-pitch-scale": "viewport", "circle-pitch-alignment": "map"}},
   #|   {"id": "h", "type": "heatmap", "source": "g",
   #|    "paint": {"heatmap-weight": ["get", "w"], "heatmap-intensity": 2,
   #|              "heatmap-color": ["interpolate", ["exponential", 2], ["heatmap-density"], 0, "transparent", 1, "red"]}},
@@ -116,6 +118,15 @@ test "a compiled style reads back as the layers and sources workers use" {
       a.gradient,
       a.pattern,
     ])
+    assert_eq([b.gap_width, b.offset, b.blur], [a.gap_width, a.offset, a.blur])
+    assert_eq(
+      (b.translate, b.translate_viewport),
+      (a.translate, a.translate_viewport),
+    )
+    assert_eq(
+      (b.scale_with_map, b.pitch_with_map),
+      (a.scale_with_map, a.pitch_with_map),
+    )
     assert_true(b.same_line_layout(a))
     assert_eq(b.reads_state(), a.reads_state())
     assert_eq(b.paints_by_group(), a.paints_by_group())

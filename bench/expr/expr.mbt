@@ -159,10 +159,9 @@ fn result_js(v : @style.Value) -> Js {
 extern "js" fn js_wrap(key : String, v : Js) -> Js = "(k, v) => ({ [k]: v })"
 
 ///|
-/// `expression` (JSON text) compiled for `expected` ("value", "number", "string",
-/// "boolean" or "color") and evaluated at `zoom` for each feature: an array of
-/// results (`{ color }`, `{ error }`, `{ formatted }`, `{ collator }` or plain
-/// values), or the compile error; `global-state` reads `state` (JSON text).
+/// `expression` (JSON text) compiled for `expected` and evaluated at `zoom` for each
+/// feature (`global-state` from `state`, JSON text): an array of results (`{ color }`,
+/// `{ error }`, `{ formatted }`, `{ collator }` or plain values), or the compile error.
 #export_name("expr_eval")
 pub fn expr_eval(
   expression : String,
