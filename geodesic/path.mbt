@@ -1,9 +1,7 @@
 ///|
-/// Measures the path through `coords` (longitude, latitude pairs in degrees):
-/// its length in meters, then the area in square meters of the ring it closes
-/// (counter-clockwise positive; 0 below three vertices, NaN unless `closed`),
-/// then the distance along it to each vertex. A closed path's length includes
-/// the edge back to the first vertex.
+/// The path through `coords` (lng, lat pairs): its length (a ring's includes
+/// the closing edge), the ring's area (counter-clockwise positive, 0 below three
+/// vertices, NaN unless `closed`), then the distance to each vertex; meters.
 pub fn Geodesic::measure_path(
   self : Geodesic,
   coords : ArrayView[Double],
@@ -23,10 +21,9 @@ pub fn Geodesic::measure_path(
 }
 
 ///|
-/// The path through `coords` (longitude, latitude pairs) with points added
-/// along each geodesic edge at most `step` meters apart, as longitude,
-/// latitude pairs whose longitudes run on continuously across ±180; None if
-/// that would take more than `max_points` points or `step` is not positive.
+/// `coords` (lng, lat pairs) with points at most `step` meters apart along each
+/// geodesic edge, longitudes running on across ±180; None past `max_points`
+/// points or for a `step` that is not positive.
 pub fn Geodesic::densify(
   self : Geodesic,
   coords : ArrayView[Double],

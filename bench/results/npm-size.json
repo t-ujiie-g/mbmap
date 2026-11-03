@@ -26,7 +26,7 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 6332,
+      "bytes": 6830,
       "budget": 10000
     },
     {
@@ -46,7 +46,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 2655,
+      "bytes": 3087,
       "budget": 5000
     },
     {
@@ -56,7 +56,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 26521,
+      "bytes": 26999,
       "budget": 30000
     },
     {
@@ -106,7 +106,7 @@
     },
     {
       "name": "mbmap/ui createBasemaps alone",
-      "bytes": 707,
+      "bytes": 706,
       "budget": 2000
     },
     {
@@ -131,7 +131,12 @@
     },
     {
       "name": "mbmap/ui createMeasurement alone",
-      "bytes": 1434,
+      "bytes": 1435,
+      "budget": 2000
+    },
+    {
+      "name": "mbmap/ui createProfile alone",
+      "bytes": 927,
       "budget": 2000
     }
   ]

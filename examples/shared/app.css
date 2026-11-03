@@ -108,3 +108,12 @@ html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; colo
 .react-measure button { margin: 0; border-radius: 0; border-left-width: 0; }
 .react-measure button:first-child { border-left-width: 1px; border-radius: 5px 0 0 5px; }
 .react-measure button:last-child { border-radius: 0 5px 5px 0; }
+#profile { margin: 0; }
+.profile-chart { display: block; width: 100%; height: auto; background: #f6f4ef; border-radius: 4px; touch-action: none; }
+.profile-area { fill: rgba(122, 94, 58, 0.25); }
+.profile-line { fill: none; stroke: #7a5e3a; stroke-width: 1.5; }
+.profile-at { fill: #e4572e; stroke: #fff; stroke-width: 1.5; }
+.profile-label { font-size: 9px; fill: #666; }
+.profile-dot { position: absolute; left: 0; top: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #e4572e; border: 2px solid #fff; box-sizing: border-box; pointer-events: none; z-index: 1; }
+.react-profile { margin: 0; }
+.react-profile figcaption { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }

@@ -75,3 +75,40 @@ pub fn grid_hillshade(
   guard grids.get(id) is Some(g) else { return -1 }
   @wasmio.write_bytes(g.hillshade(trig, azimuth~, altitude~, z~)[:])
 }
+
+///|
+/// Writes `Grid::sample` at each input lng, lat pair, the grid being the
+/// `tile_size` px tiles of zoom `z` from (`tile_x`, `tile_y`). Returns the
+/// count, or -1 for an unknown grid or invalid tiles.
+#export_name("grid_sample")
+pub fn grid_sample(
+  id : Int32,
+  z : Int32,
+  tile_x : Int32,
+  tile_y : Int32,
+  tile_size : Int32,
+) -> Int32 {
+  let coords = @wasmio.input_f64s()
+  guard grids.get(id) is Some(g) &&
+    z >= 0 &&
+    z <= 24 &&
+    tile_x >= 0 &&
+    tile_y >= 0 &&
+    tile_size > 0 &&
+    tile_size <= MAX_GRID_SIDE else {
+    return -1
+  }
+  let out = FixedArray::makei(coords.length() / 2, i => {
+    let (x, y) = @analysis.mercator_cell(
+      trig,
+      coords[i * 2],
+      coords[i * 2 + 1],
+      z,
+      tile_x,
+      tile_y,
+      tile_size,
+    )
+    g.sample(x, y)
+  })
+  @wasmio.write_f64s(out)
+}

@@ -83,11 +83,9 @@ pub fn PolygonArea::add_point(
 }
 
 ///|
-/// The perimeter of the polygon (closed back to its first vertex) or the
-/// length of the polyline in meters, and the polygon's area in square meters
-/// (NaN for a polyline). Counter-clockwise rings count positive unless
-/// `reverse`; with `sign`, a ring the other way gives a negative area instead
-/// of the rest of the earth's.
+/// The polygon's perimeter (closed) or the polyline's length, and the area (NaN
+/// for a polyline). Counter-clockwise is positive unless `reverse`; with `sign`
+/// the other way is negative instead of the rest of the earth's area.
 pub fn PolygonArea::compute(
   self : PolygonArea,
   reverse~ : Bool = false,

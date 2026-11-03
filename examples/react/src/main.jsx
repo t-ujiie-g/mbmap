@@ -109,6 +109,8 @@ function App() {
         {panel && <Legend c={panel.legend} />}
         <h2>計測</h2>
         {identify?.measure}
+        <h2>断面図</h2>
+        {identify?.profile}
         <h2>クリックした地物</h2>
         {identify?.picked}
         <h2>移動</h2>

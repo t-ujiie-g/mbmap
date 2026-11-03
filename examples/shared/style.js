@@ -62,6 +62,9 @@ export function withMarker(places, center, name) {
   return { ...places, features: [...places.features, marker] };
 }
 
+/** The DEM tiles the style draws (GSI's, or the fixtures with `?local=1`): the profile samples them too. */
+export const DEM_TILES = local ? `${fixtures}gsi-dem/{z}/{x}/{y}.png` : `${GSI}/dem_png/{z}/{x}/{y}.png`;
+
 /**
  * "2d" or "3d" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
  * named in `hidden`; the places are overlays, kept when the basemap changes.
@@ -72,8 +75,8 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       ? { type: "vector", tiles: [`${fixtures}gsi-bvmap/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 }
       : { type: "vector", tiles: [`${GSI}/experimental_bvmap/{z}/{x}/{y}.pbf`], minzoom: 4, maxzoom: 16 },
     dem: local
-      ? { type: "raster-dem", tiles: [`${fixtures}gsi-dem/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
-      : { type: "raster-dem", tiles: [`${GSI}/dem_png/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
+      ? { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
+      : { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
     places: { type: "geojson", data: places, promoteId: "name" },
     // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
     photo: local

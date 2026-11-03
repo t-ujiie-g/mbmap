@@ -123,6 +123,10 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
   - 操作は `start(mode)`、`add(position)`、`undo()`、`finish()`（ダブルクリックでも終わる）、`clear()`。測っている間は、ダブルクリックでのズームを止める。
   - 線と面は、測地線に沿って `step`（既定 1000m）ごとに点を足して描く。描くのは自前の GeoJSON ソース（既定の id は `mbmap-measure`）とレイヤーで、`mbmap:overlay` の印があるので背景地図を替えても残る。
   - `formatLength`、`formatArea` は長さと面積を文字列にする。
+- `createProfile({ measure, elevation, samples })`：線の断面図（地図は取らない。線はページが渡す）。
+  - `measure` は `mbmap/geodesic` の `measure`、`elevation` は位置の配列から標高を返す関数（`mbmap/analysis` の `sampleDem` など）。そのため `mbmap/ui` は計算を含まない。
+  - 状態は `positions`、`path`（測地線に沿って約 `samples` 個、既定 200）、`distances`、`elevations`、`length`、`min`、`max`、`gain`（登りの合計）、`loss`、`active`（指している点）、`loading`、`error`。
+  - 操作は `setLine(positions)`、`highlight(distance)`（グラフの上のポインタなど。null で外す）、`clear()`。グラフと地図の上の印は作り手が描く。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 検索 `mbmap/search`
@@ -177,6 +181,8 @@ blocks.dispose();
   - 測地系の変換は `+towgs84`（3 または 7 パラメータ）と `+datum`（`WGS84`、`NAD83`、`potsdam`、`OSGB36`、`ch1903` など proj4js と同じ名前）で、WGS84 を経由して行う。日本測地系は EPSG の 3 パラメータ（-146.414, 507.337, 680.507）。グリッドによる変換（`+nadgrids`、TKY2JGD など）は使えない。JGD2000・JGD2011 と WGS84 は同じものとして扱う。
   - 値は proj4js 2.22.0 と 1mm 未満で一致する（240 の座標系で黄金テストをしている）。proj4js が明らかに誤っているところ（`+R_A` の半径、正弦図法などの偽原点）は PROJ に合わせた。
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
+- `DemGrid.sample(positions)`：`[lng, lat]` ごとの標高（m）。セルの中心の間を双一次で補間する（GDAL の `-r bilinear` と同じ。黄金テストで 1e-8 m の桁まで一致）。格子の外と、データのないセルの隣は NaN。
+- `sampleDem(tiles, positions, { encoding, maxZoom, tileSize })`：`positions` を覆う標高タイルを、1 つの格子に収まるいちばん深いズーム（既定で 14 まで）で読み、標高を返す。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。
 

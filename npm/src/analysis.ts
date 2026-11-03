@@ -1,6 +1,7 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
 // geometry operations are Clipper2's, in a module loaded on their first use.
+import { demZoom } from "./dem-zoom";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -297,6 +298,16 @@ export class DemGrid {
     return this.#call("gridValues", { kind: 2 });
   }
 
+  /**
+   * The elevation in meters at each `[lng, lat]`, interpolated bilinearly between cell centers as
+   * GDAL's `-r bilinear` does; NaN off the grid or next to a cell without data.
+   */
+  sample(positions: ArrayLike<[number, number]>): Promise<Float64Array> {
+    const coords = new Float64Array(positions.length * 2);
+    for (let i = 0; i < positions.length; i++) coords.set(positions[i], i * 2);
+    return this.#call("gridSample", { coords: coords.buffer });
+  }
+
   /** Shades from 1 to 255 under light from `azimuth` degrees at `altitude` degrees (gdaldem's hillshade). */
   hillshade({ azimuth = 315, altitude = 45, zFactor = 1 }: { azimuth?: number; altitude?: number; zFactor?: number } = {}): Promise<Uint8Array> {
     return this.#call("gridHillshade", { azimuth, altitude, zFactor });
@@ -320,6 +331,34 @@ export async function loadDem(tiles: string, options: DemOptions): Promise<DemGr
     url: template, z: options.zoom, bounds: options.bounds, encoding: encodingArgs(options.encoding),
   });
   return new DemGrid(r.grid, r.width, r.height, r.bounds);
+}
+
+/**
+ * The elevations at `positions` from the DEM tiles of `tiles` (`encoding`, up to `maxZoom`, default
+ * 14): the tiles around them at the deepest zoom that fits one grid, sampled as `DemGrid.sample`.
+ */
+export async function sampleDem(
+  tiles: string,
+  positions: ArrayLike<[number, number]>,
+  options: AnalysisOptions & { encoding?: DemEncoding; maxZoom?: number; tileSize?: number } = {},
+): Promise<Float64Array> {
+  if (positions.length === 0) return new Float64Array(0);
+  const bounds: BBox = [Infinity, Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < positions.length; i++) {
+    const [lng, lat] = positions[i];
+    bounds[0] = Math.min(bounds[0], lng);
+    bounds[1] = Math.min(bounds[1], lat);
+    bounds[2] = Math.max(bounds[2], lng);
+    bounds[3] = Math.max(bounds[3], lat);
+  }
+  if (!bounds.every(Number.isFinite)) throw new Error("mbmap: analysis: positions must be finite [lng, lat] pairs");
+  const zoom = demZoom(bounds, options.maxZoom ?? 14, options.tileSize);
+  const grid = await loadDem(tiles, { ...options, zoom, bounds });
+  try {
+    return await grid.sample(positions);
+  } finally {
+    grid.dispose();
+  }
 }
 
 /**

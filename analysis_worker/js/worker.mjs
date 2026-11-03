@@ -81,6 +81,8 @@ async function load({ url, bytes, crs }) {
 // `bounds` [west, south, east, north] and mosaics them; missing tiles are 0 m.
 const WORLD_WIDTH = 40075016.6855785;
 const MAX_GRID_SIDE = 4096; // analysis_worker/dem.mbt
+// Each DEM grid's zoom, north-west tile and tile size, for `gridSample`.
+const demTiles = new Map();
 async function loadDem({ url, z, bounds, encoding }) {
   check(typeof url === "string" && Number.isInteger(z) && z >= 0 && z <= 24 && isBox(bounds));
   check(Array.isArray(encoding) && encoding.length === 5 && encoding.every(Number.isFinite));
@@ -114,6 +116,7 @@ async function loadDem({ url, z, bounds, encoding }) {
   const lat = Math.atan(Math.sinh(Math.PI * (1 - ((y0 + y1 + 1) / 2) * (2 / n))));
   const res = (WORLD_WIDTH / n / size) * Math.cos(lat);
   const grid = counted(wasm.load_dem(width, height, ...encoding, res, res));
+  demTiles.set(grid, [z, x0, y0, size]);
   const lng = (x) => (x / n) * 360 - 180;
   const latOf = (y) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
   return { grid, width, height, bounds: [lng(x0), latOf(y1 + 1), lng(x1 + 1), latOf(y0)] };
@@ -191,7 +194,13 @@ const OPS = {
   dispose({ dataset }) {
     check(isId(dataset));
     wasm.dispose(dataset);
+    demTiles.delete(dataset);
     return null;
+  },
+  gridSample({ grid, coords }) {
+    check(demTiles.has(grid) && coords instanceof ArrayBuffer && coords.byteLength % 16 === 0);
+    input(new Uint8Array(coords));
+    return f64s(wasm.grid_sample(grid, ...demTiles.get(grid)));
   },
   measure({ dataset, kind }) {
     check(isId(dataset) && Number.isInteger(kind));

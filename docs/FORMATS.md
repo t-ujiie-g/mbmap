@@ -221,8 +221,10 @@ In:
   - `within` (`points`, `polygons`) and `collect` (`polygons`, `points`, `property`);
   - `loadDem` (`url` a `{z}/{x}/{y}` template, `z`, `bounds`, `encoding` as
     `[kind, r, g, b, base]` with kind 0 Mapbox, 1 Terrarium, 2 GSI, 3 custom),
-    `gridValues` (`grid`, `kind` 0 elevations, 1 slope, 2 aspect) and
-    `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`);
+    `gridValues` (`grid`, `kind` 0 elevations, 1 slope, 2 aspect),
+    `gridHillshade` (`grid`, `azimuth`, `altitude`, `zFactor`) and `gridSample` (`grid`,
+    `coords` an ArrayBuffer of f64 lng, lat pairs: the elevations there, bilinear as
+    GDAL; the grid's zoom and tiles stay in the worker from `loadDem`);
   - geometry, each giving a new dataset: `buffer` (`dataset`, `meters`, `mode` 0
     geodesic or 1 planar, `join` 0 round, 1 miter, 2 square, 3 bevel, `cap` 0
     round, 1 butt, 2 square, `arcTolerance` in meters, `crs` the projected CRS
