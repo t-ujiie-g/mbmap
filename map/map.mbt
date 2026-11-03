@@ -202,8 +202,13 @@ pub fn Map::new(
   geojson~ : Provider = no_provider(),
   font~ : String = "sans-serif",
   limits~ : @core.Limits = @core.Limits::default(),
+  strict~ : Bool = false,
 ) -> Map raise MapError {
-  let style = @style.Style::from_json(parse_json(style_json)) catch {
+  let json = parse_json(style_json)
+  let style = @style.Style::from_json(json, strict~) catch {
+    e => raise BadStyle(e)
+  }
+  style.report_ignored(json, strict~) catch {
     e => raise BadStyle(e)
   }
   // The sources the drawable layers use, in style order.

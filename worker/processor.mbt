@@ -83,7 +83,7 @@ pub fn TileProcessor::from_utf8(
     e => raise Invalid(path="", "not JSON: \{e.message()}")
   }
   TileProcessor::new(
-    @style.Style::from_json(json),
+    @style.Style::from_json(json, strict=false),
     number~,
     text_number~,
     number_text~,

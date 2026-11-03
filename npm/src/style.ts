@@ -219,3 +219,15 @@ export function setRoot(style: StyleSpecification, key: "terrain" | "sky" | "lig
   const { [key]: _, ...rest } = style;
   return (value === undefined || value === null ? rest : { ...rest, [key]: copy(value) }) as StyleSpecification;
 }
+
+/** The engine's warnings (path, message, path, ...) with the id of the layer each lies in. */
+export function styleWarnings(flat: string[], drawn: StyleSpecification): { path: string; layer?: string; message: string }[] {
+  const out: { path: string; layer?: string; message: string }[] = [];
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const path = flat[i]!;
+    const index = /^layers\[(\d+)\]/.exec(path)?.[1];
+    const layer = index === undefined ? undefined : layers(drawn)[Number(index)]?.id;
+    out.push(layer === undefined ? { path, message: flat[i + 1]! } : { path, layer, message: flat[i + 1]! });
+  }
+  return out;
+}
