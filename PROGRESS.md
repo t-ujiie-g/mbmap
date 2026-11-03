@@ -3,13 +3,13 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.5（スプライト、`addImage`、模様）。15.1〜15.4、15.2、15.9、15.10 は完了。その後に、途中のリファクタリングを挟んだ（下の節）。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.5（スプライト、`addImage`、模様）。15.1〜15.4、15.2、15.7、15.9、15.10 は完了。その後に、途中のリファクタリングを挟んだ（下の節）。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 86.8KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
-  | 表示ワーカー | 82.8KB | 100KB |
+  | 表示（メイン） | 89.3KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
+  | 表示ワーカー | 85.1KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
@@ -44,6 +44,26 @@
 - example：山手線の駅の密度を heatmap で描いた（「駅の密度」グループ。ズームインすると薄くなる）。
 - 大きさ：メイン 84.6 → 86.8KB（86793 バイト）、表示ワーカー 81.7 → 82.8KB（82805 バイト）。
 - 性能は測っていない（並列の作業中のため。ベンチは本線でまとめて走らせる）。heatmap のないスタイルでは、熱い経路に変更はない。
+## Phase 15.7：`text-variable-anchor`（2026-11-03）
+
+状態：**完了**。
+
+- **スタイル**：`text-variable-anchor`、`text-radial-offset`、`text-variable-anchor-offset`、`text-justify`（`auto` を含む）を読む。MapLibre の `getTextVariableAnchorOffset` と `evaluateVariableOffset` と同じく、各アンカーの em 単位のずれにしてから渡す（ベースラインの 7/24 em を含む）。`text-variable-anchor` がなくても `text-radial-offset` は効く。どれもデータで変わる値は Unsupported（パス付き）。`text-justify` の既定は MapLibre と同じ `center` になった（これまでは常にアンカーの側にそろえていた）。
+- **ワーカー**：アンカーの一覧を symbol のエントリーの頭に足した（docs/FORMATS.md「Labels」）。グルーは中央に置いた形で文字を組む。行が 2 つ以上で `text-justify: auto` なら、左・中・右にそろえた 3 通りを並べて持つ（MapLibre が配置の後で使う方を選ぶのと同じ）。ラベルの表は 1 件 9 → 12 個の浮動小数（文字の大きさ、sort key、組み方の数）。
+- **配置**（`map/labels.mbt`）：MapLibre の `Placement` に合わせ直した。可変アンカーだけでなく、点のラベル全体が MapLibre と同じ結果になった。
+  - アンカーを順に試し、前回の配置で使ったアンカーを最初に試す。`text-allow-overlap` なら、重ならない場所を探した後に重なりを許す 2 巡目がある（`attemptAnchorPlacement` の passes）。
+  - ずらし量は、パディング込みの箱の幅と高さから求め、頂点ごとの属性 `a_shift` で描く（遠近の倍率も掛かる）。
+  - 画面の外 100px までを配置の範囲にする（`viewportPadding`）。衝突判定は辺が接しても衝突とし（`GridIndex`）、箱は MapLibre のタイルの整数の単位に切り捨てる（`CollisionBox` が Int16 のため。オーバースケールしたタイルでは単位が粗くなる）。
+  - タイルの順は MapLibre の `Style._updatePlacement`（深いタイル、x、y の順）。これまでの「中心に近い順」と違った。`symbol-sort-key` のあるレイヤーは、タイルをまたいで sort key 順に置く。
+  - パディングにも遠近の倍率を掛ける（MapLibre と同じ）。`text-allow-overlap` のラベルはグリッドの外でも出す（クエリには掛からない）。
+- **文字の組み方**：行の分け方を MapLibre の `determineLineBreaks` に移した（行の長さをそろえる、改行・括弧の重み、`codePointAllowsIdeographicBreaking`）。これまでの貪欲な分け方と禁則処理（行頭の「。」などを避ける）はやめた。MapLibre は禁則処理をしないので、「あい。」は「あい／。」になる。
+- **`npm run labels:golden`**（新規、`bench/results/labels-golden.json`）：MapLibre 6.16 と同じページで、同じスタイル、タイル、カメラで、表示されたラベルの集合と選ばれたアンカーを比べる。mbmap 側は `map_placed_labels`（テスト用のエクスポート。facade は使わないので本体のバンドルには入らない）で読む。
+  - 10 場面すべて一致（1,120 ラベル）。固定アンカー（平面、30° 回転、50° 傾き、縦書きと sort key の例のスタイル）と、可変アンカー（radial、回転、傾き、`text-offset` と複数行と sort key、`text-variable-anchor-offset` と上に別レイヤー、`text-allow-overlap`）。箱の位置の差は 0.001px 未満。
+  - 最初はタイルの順、行の分け方、箱の整数化、`viewportPadding` の 4 つで食い違っていた。いずれも MapLibre に合わせた。
+- example：地点名（`places-label`）を点の横に置く（下・上・右・左の空いている方、`text-radial-offset` 0.8）。
+- `npm run style:golden` と `query:golden`（320/320）は変わらない。
+- 大きさ：メイン 86.8 → 89.3KB（15.9 の後から。スタイルの読み込みと配置で約 1.2KB ずつ）、表示ワーカー 82.8 → 85.1KB（行の分け方の表、スタイルの読み込み）。
+- 未対応：縦書きと可変アンカーの組み合わせ（MapLibre の `placeTextForPlacementModes`）、アイコン（15.6）との `icon-text-fit`、フェード（ラベルは置いた位置にすぐ移る）。タイ文字などの単語境界（`Intl.Segmenter`）での改行はしない。
 
 ## リファクタリングとセキュリティチェック：Phase 15 の途中（2026-11-03）
 
@@ -325,7 +345,7 @@
   | 本線 | 15.4 | `line-gradient`（tiler の lineMetrics） | 済み（#59） |
   | 本線 | 15.5 | スプライト、`addImage`、模様 4 種 | 合成のスプライト（1x と 2x）で、模様の場面 |
   | 本線 | 15.6 | アイコン | 置かれた集合と位置が MapLibre と一致 |
-  | 本線 | 15.7 | `text-variable-anchor` | 選ばれたアンカーが一致 |
+  | 本線 | 15.7 | `text-variable-anchor` | 済み（`labels:golden` 10/10） |
   | 本線 | 15.8 | 線に沿ったラベル | 等高線のラベルの位置。フレームの CPU 時間が目標内 |
   | 本線 | 15.9 | heatmap | 済み |
   | 本線 | 15.11 | 画像・動画・canvas のソース | 画像ソースの場面。動画と canvas は pack test |

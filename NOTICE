@@ -75,7 +75,14 @@ license and source.
   - core/transform.mbt and map/sky.mbt: `getMercatorHorizon`, the fog matrix's
     range and `calculateFogBlendOpacity`
   - worker/js/text.mjs: the vertical punctuation forms of
-    src/util/verticalize_punctuation.ts
+    src/util/verticalize_punctuation.ts, the line breaking of
+    src/symbol/tagged_string.ts and `codePointAllowsIdeographicBreaking` of
+    src/util/unicode_properties.g.ts
+  - style/anchor.mbt and map/labels.mbt: `evaluateVariableOffset` and
+    `getTextVariableAnchorOffset` of src/style/style_layer/variable_text_anchor.ts,
+    the placement of src/symbol/placement.ts (variable anchors, passes) and
+    collision_index.ts, `GridIndex.hitTest` of grid_index.ts and the tile order
+    of `Style._updatePlacement`
   - core/camera.mbt, core/animation.mbt and core/constrain.mbt: easeTo, flyTo, cameraForBounds,
     setLocationAtPoint, getBounds and the default constrain of src/ui/camera.ts
     and src/geo/projection/ (mercator_camera_helper.ts, camera_helper.ts,

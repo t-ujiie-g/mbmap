@@ -482,3 +482,11 @@ pub fn map_paint_at(
 ) -> @map.PaintValues {
   map.paint_at(id, props)
 }
+
+///|
+/// The labels shown at the last placement (`@map.Map::placed_labels`), for
+/// tests; the facade does not use it.
+#export_name("map_placed_labels")
+pub fn map_placed_labels(map : @map.Map) -> String {
+  map.placed_labels()
+}

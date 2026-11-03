@@ -33,7 +33,7 @@ test("anchors and offsets move the box; the anchor side sets the justification",
   assert.equal(Math.round(bounds(quads[3])[2] - bounds(quads[2])[2]), 0);
 });
 
-test("lines break at spaces and between ideographs, not before closing marks", () => {
+test("lines break as MapLibre's: at spaces and between ideographs, as evenly as they can", () => {
   const lines = (text, maxWidth) => {
     const { quads } = layoutLabel(text, 10, { maxWidth, lineHeight: 1 }, metrics);
     const rows = new Map();
@@ -43,7 +43,9 @@ test("lines break at spaces and between ideographs, not before closing marks", (
   assert.deepEqual(lines("aaa bbb", 4), ["aaa", "bbb"]);
   assert.deepEqual(lines("東京都千代田区", 4), ["東京都千", "代田区"]);
   assert.deepEqual(lines("南長崎（四）", 4), ["南長崎（四）"].flatMap((s) => [s.slice(0, 3), s.slice(3)]));
-  assert.deepEqual(lines("あい。", 2), ["あ", "い。"]);
+  // No kinsoku: the shorter last line wins.
+  assert.deepEqual(lines("あい。", 2), ["あい", "。"]);
+  assert.deepEqual(lines("ab\ncd", 10), ["ab", "cd"]);
   assert.deepEqual(lines("abcdef", 2), ["abcdef"]);
 });
 
