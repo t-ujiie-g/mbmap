@@ -5,7 +5,8 @@
 ///|
 /// Ints per extrusion vertex in `ExtrusionBuffers.vertices`: x, y, normal x
 /// (times 2^14, plus 1 on the top edge), normal y and z (times 2^14), the
-/// distance along the ring's walls (for patterns; 0 on roofs), and the
+/// distance along the ring's walls (for patterns, rounded in MapLibre's
+/// 8192-unit tile whatever the source's extent; 0 on roofs), and the
 /// feature's centroid x, y (where terrain lifts it from).
 pub const EXTRUSION_VERTEX_STRIDE : Int32 = 8
 
@@ -58,6 +59,20 @@ pub fn ExtrusionTessellator::new() -> ExtrusionTessellator {
 /// Normal components are scaled by 2^13 and doubled (MapLibre's `FACTOR`), so
 /// the lowest bit of x can say whether the vertex is on the top edge.
 const NORMAL_FACTOR : Double = 8192.0
+
+///|
+/// MapLibre's tile extent, the unit of wall distances.
+const WALL_EXTENT : Double = 8192.0
+
+///|
+/// A wall distance in `WALL_EXTENT` units, rounded as MapLibre's `addVertex`
+/// and kept within Int16.
+fn wall_distance(along : Double, extent : Int32) -> Int32 {
+  @cmp.minimum(
+    (along * WALL_EXTENT / extent.to_double()).round().to_int(),
+    32767,
+  )
+}
 
 ///|
 fn ExtrusionBuffers::vertex(
@@ -196,11 +211,11 @@ pub fn ExtrusionTessellator::add_polygons(
         along = 0.0
       }
       let b = out.num_vertices()
-      let e1 = along.to_int()
+      let e1 = wall_distance(along, extent)
       out.vertex(x1, y1, normal, 0, centroid, heights, edge=e1)
       out.vertex(x1, y1, normal, 1, centroid, heights, edge=e1)
       along += len
-      let e2 = along.to_int()
+      let e2 = wall_distance(along, extent)
       out.vertex(x2, y2, normal, 0, centroid, heights, edge=e2)
       out.vertex(x2, y2, normal, 1, centroid, heights, edge=e2)
       for k in [0, 2, 1, 1, 2, 3] {

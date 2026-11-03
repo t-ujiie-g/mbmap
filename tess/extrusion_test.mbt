@@ -27,8 +27,9 @@ test "a square building gets four walls facing out and a roof" {
   assert_eq((v(2, 0), v(2, 1)), (100, 100))
   // The last wall closes the ring, from (100, 100) back to (100, 200): +x.
   assert_eq((v(12, 0), v(12, 1), v(12, 2), v(12, 3)), (100, 100, 16384, 0))
-  // Distances along the walls: each wall starts where the last ended.
-  assert_eq((v(0, 5), v(2, 5), v(4, 5), v(14, 5)), (0, 100, 100, 400))
+  // Distances along the walls in 8192 units: each wall starts where the last
+  // ended.
+  assert_eq((v(0, 5), v(2, 5), v(4, 5), v(14, 5)), (0, 200, 200, 800))
   // Roof vertices point up and sit on the top edge, at distance 0; every
   // vertex knows the centroid.
   assert_eq(
@@ -70,4 +71,23 @@ test "closed rings add no zero-length wall and count their first point once" {
   )
   assert_eq(out.indices.length(), 4 * 6 + 2 * 3)
   assert_eq((out.vertices[6], out.vertices[7]), (150, 150))
+}
+
+///|
+test "wall distances are rounded in 8192 units whatever the source extent" {
+  // A 1-by-3 triangle in a 512-unit tile: edges of 1, 3 and sqrt(10) units.
+  let out = @tess.ExtrusionBuffers::new()
+  @tess.ExtrusionTessellator::new().add_polygons(
+    [100, 100, 101, 100, 101, 103][:],
+    [3][:],
+    [0.0, 0.0, 10.0, 10.0],
+    out,
+    extent=512,
+  )
+  let s = @tess.EXTRUSION_VERTEX_STRIDE
+  // 16 units per source unit: 16, 64, then round(64 + 16 * sqrt(10)) = 115.
+  assert_eq(
+    (out.vertices[2 * s + 5], out.vertices[6 * s + 5], out.vertices[10 * s + 5]),
+    (16, 64, 115),
+  )
 }

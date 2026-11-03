@@ -253,7 +253,7 @@ fn PackedTile::add_extrusion(
     self.put_i16(at + 4, v[i * s + 2])
     self.put_i16(at + 6, v[i * s + 3])
     self.put_i16(at + 8, v[i * s + 4])
-    self.put_i16(at + 10, rescale(v[i * s + 5], extent))
+    self.put_i16(at + 10, v[i * s + 5])
     self.put_i16(at + 12, rescale(v[i * s + 6], extent))
     self.put_i16(at + 14, rescale(v[i * s + 7], extent))
     for k in 0..<h {

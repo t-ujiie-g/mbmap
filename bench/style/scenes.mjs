@@ -345,8 +345,7 @@ export const SCENES = {
       sprite: SPRITE,
     },
     camera: { center: [139.7671, 35.6812], zoom: 16, bearing: 30, pitch: 50 },
-    limits: { mean: 0.75, p99: 21 },
-    gap: "walls' pattern shifts by up to a pixel: their distance is truncated in 4096 units, MapLibre's rounded in 8192",
+    limits: { mean: 0.2, p99: 1 },
   },
 
   // Translucent extrusions: each pixel colored once by its nearest surface, coincident roofs too
