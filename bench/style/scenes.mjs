@@ -4,8 +4,8 @@ const GSI = { type: "vector", tiles: ["{origin}/bench/fixtures/gsi-bvmap/{z}/{x}
 const TOKYO = { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 };
 const bg = { id: "bg", type: "background", paint: { "background-color": "#f5f3ee" } };
 const style = (layers, sources = { gsi: GSI }) => ({ version: 8, sources, layers: [bg, ...layers] });
-// style/sprite.mjs's sheets: dots 12 px, stripes 16 x 8, checker 10, odd 7 x 5 (all opaque), pin
-// 14 x 18 and an SDF ring 20 px.
+// style/sprite.mjs's sheets: dots 12 px and stripes 16 x 8 (both translucent), checker 10 and odd
+// 7 x 5 (opaque), pin 14 x 18 and an SDF ring 20 px.
 const SPRITE = "{origin}/bench/dist/style/sprite";
 const patterned = (layers) => ({
   ...style(layers),
@@ -257,13 +257,15 @@ export const SCENES = {
   patterns: {
     style: patterned(PATTERN_LAYERS),
     camera: TOKYO,
-    limits: { mean: 0.05, p99: 1 },
+    limits: { mean: 0.08, p99: 2 },
+    gap: "translucent patterns: 1-2 levels of rounding, and edge pixels where antialiased outlines meet",
   },
   "patterns-2x": {
     style: patterned(PATTERN_LAYERS),
     camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: 0, pitch: 0 },
     dpr: 2,
-    limits: { mean: 0.05, p99: 1 },
+    limits: { mean: 0.08, p99: 2 },
+    gap: "translucent patterns: 1-2 levels of rounding, and edge pixels where antialiased outlines meet",
   },
   // Heatmaps (kernels into a quarter-size float texture, colored by a 256-px ramp of density): the
   // default ramp over GeoJSON points and over a tile's labels, then a step ramp with data-driven
@@ -327,7 +329,7 @@ export const SCENES = {
       sprite: SPRITE,
     },
     camera: { center: [139.7671, 35.6812], zoom: 16.3, bearing: 0, pitch: 0 },
-    limits: { mean: 0.3, p99: 2 },
+    limits: { mean: 0.2, p99: 1 },
     gap: "pattern edges shift by under a pixel along the line",
   },
   "extrusion-patterns": {
@@ -342,9 +344,9 @@ export const SCENES = {
       ]),
       sprite: SPRITE,
     },
-    camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 },
-    limits: { mean: 0.3, p99: 2 },
-    gap: "pattern edges on walls and roofs shift by under a pixel",
+    camera: { center: [139.7671, 35.6812], zoom: 16, bearing: 30, pitch: 50 },
+    limits: { mean: 0.75, p99: 21 },
+    gap: "walls' pattern shifts by up to a pixel: their distance is truncated in 4096 units, MapLibre's rounded in 8192",
   },
 
   // Translucent extrusions: each pixel colored once by its nearest surface, coincident roofs too

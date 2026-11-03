@@ -1,7 +1,7 @@
 // Symbol layer entries: labels from the wasm (docs/FORMATS.md, "Labels") laid
 // out into glyph quads, with SDF glyphs drawn here by TinySDF.
 import TinySDF from "./tiny-sdf.mjs";
-import { JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
+import { anchorShares, JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
 import { EXTENT, lineAnchors, mergeLines } from "./line-labels.mjs";
 import { readValue } from "./values.mjs";
 
@@ -10,13 +10,16 @@ export const SYMBOL_VERTEX_BYTES = 16;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
 export const LABEL_FLOATS = 19;
 // Where a label's icon columns start in its `labels` row: box (4), 1, first index, index count.
+// Mirrored as ICON_COLUMN in map/labels.mbt.
 export const ICON_COLUMN = 9;
-// Icon sizes per vertex are packed as MapLibre's (`SIZE_PACK_FACTOR`), corner offsets in 32nds of a px.
+// Icon sizes per vertex are packed as MapLibre's (`SIZE_PACK_FACTOR`), corner offsets in 32nds of
+// a px; the symbol shader in render_webgl2/gl.mbt divides by both (`a_size / 128.0`, `a_data / 32.0`).
 const SIZE_PACK = 128;
 const OFFSET_PACK = 32;
 // Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`);
 // `anchors` (a count, then per anchor its code and offset) ends the fixed part.
 const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, justify: 44, anchors: 45 };
+// A variable anchor in that header: its code and two f64 offsets (worker/labels.mbt `Labels::bytes`).
 const ANCHOR_BYTES = 17;
 // Justifications of a multi-line label with variable anchors and `text-justify: auto`.
 const VARIANTS = ["left", "center", "right"];
@@ -89,13 +92,6 @@ export class Glyphs {
 const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
 const quarterPixels = (px) => clamp16(px * 4);
 
-// The shares of a box left of and above an anchor of worker/labels.mbt's code.
-function alignment(code) {
-  const name = ANCHOR_NAMES[code] ?? "center";
-  return [name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5, name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5];
-}
-const ANCHOR_NAMES = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
-
 /**
  * MapLibre's `shapeIcon` and, with `icon-text-fit` (`fit` 1 width, 2 height, 3 both) around a text
  * `box` (CSS px), `fitIconToText`: the icon's left, top, right, bottom at size 1. `image` is
@@ -106,7 +102,7 @@ export function shapeIcon(image, icon, box) {
   const [dx, dy] = icon.offset;
   const fit = box ? icon.textFit : 0;
   const [pt, pr, pb, pl] = icon.fitPadding;
-  const [ha, va] = alignment(icon.anchor);
+  const [ha, va] = anchorShares(icon.anchor);
   let left = dx - w * ha;
   let top = dy - h * va;
   if (fit) left = fit & 1 ? dx + box[0] - pl : dx + (box[0] + box[2] - w) / 2;

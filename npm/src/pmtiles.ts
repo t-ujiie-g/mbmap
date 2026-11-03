@@ -7,11 +7,10 @@ import { fetchRange } from "../../worker/js/pmtiles.mjs";
 const TYPES: Record<number, string> = { 1: "mvt", 2: "png", 3: "jpeg", 4: "webp", 5: "avif" };
 
 /**
- * The document for `pmtiles://<archive>`: tiles the worker reads from the archive, its zoom range,
- * bounds and tile type. A server that ignores Range is refused, as the worker refuses it.
+ * The document of `archive` from its header `bytes`: tiles the worker reads from the archive,
+ * its zoom range, bounds and tile type. Throws unless they start a PMTiles v3 archive.
  */
-export async function pmtilesDocument(archive: string): Promise<Record<string, unknown>> {
-  const bytes = await fetchRange(archive, 0, 127);
+export function headerDocument(archive: string, bytes: Uint8Array): Record<string, unknown> {
   if (bytes.length < 127 || new TextDecoder().decode(bytes.subarray(0, 7)) !== "PMTiles" || bytes[7] !== 3) {
     throw new Error(`mbmap: ${archive} is not a PMTiles v3 archive`);
   }
@@ -24,4 +23,9 @@ export async function pmtilesDocument(archive: string): Promise<Record<string, u
     bounds: [deg(102), deg(106), deg(110), deg(114)],
     tileType: TYPES[v.getUint8(99)] ?? "unknown",
   };
+}
+
+/** The document for `pmtiles://<archive>`. A server that ignores Range is refused, as the worker refuses it. */
+export async function pmtilesDocument(archive: string): Promise<Record<string, unknown>> {
+  return headerDocument(archive, await fetchRange(archive, 0, 127));
 }

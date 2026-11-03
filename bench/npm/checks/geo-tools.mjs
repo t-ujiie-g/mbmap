@@ -1,4 +1,4 @@
-// The showcases' measuring and drawing tools (Phase 14's mbmap/geodesic, mbmap/draw and the
+// The showcases' measuring and drawing tools (mbmap/geodesic, mbmap/draw and the
 // controllers over them), checked alike in all three examples by npm/pack-test.mjs.
 import path from "node:path";
 import { ROOT } from "../../lib/root.mjs";

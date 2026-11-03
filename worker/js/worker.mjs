@@ -3,7 +3,7 @@
 
 import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
 import { readCapped } from "./body.mjs";
-import { checkImageSize } from "./imagesize.mjs";
+import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
 import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
@@ -13,7 +13,8 @@ const LAYER_ENTRY_WORDS = 17; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
-// Largest DEM tile side (worker/processor.mbt `dem_tile`) and raster tile side.
+// Largest DEM tile side (worker/processor.mbt `dem_tile`) and raster tile side (JS only:
+// raster tiles go to a texture without passing through the wasm).
 const MAX_DEM_SIZE = 1024;
 const MAX_RASTER_SIZE = 4096;
 // PMTiles archives kept open at once.
@@ -124,11 +125,10 @@ async function init({ wasm: url, style, font }) {
   withInput(encoder.encode(style), () => wasm.init_style());
 }
 
-// A DEM tile's pixels exactly as stored: no color management, no premultiplying.
 let demCanvas = null;
 async function demPixels(bytes) {
   checkImageSize(bytes, MAX_DEM_SIZE, "DEM tile");
-  const bitmap = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+  const bitmap = await decodeImage(new Blob([bytes]));
   const size = bitmap.width;
   if (bitmap.height !== size || size > MAX_DEM_SIZE) {
     bitmap.close();

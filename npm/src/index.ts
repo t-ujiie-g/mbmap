@@ -25,7 +25,8 @@ import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
 import { attributionsOf } from "./attribution";
-import { tileJSONUrls, withTileJSON } from "./tilejson";
+import { Events } from "./events";
+import { tileJSONUrls, withoutSources } from "./tilejson";
 import type {
   MapGeoJSONFeature,
   FeatureIdentifier,
@@ -47,7 +48,8 @@ import type {
   Handler,
 } from "./types";
 import { httpUrl, resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
-import { type ImageInput, type StyleImageOptions, canvasPixels, imageOptions, imagePixels } from "./images";
+import type { ImageInput, StyleImageOptions } from "./images";
+import { StyleImages } from "./style-images";
 
 export { LngLatBounds } from "./camera";
 export type {
@@ -87,10 +89,6 @@ export type {
   Tracker,
   Handler,
 } from "./types";
-
-/** The largest image `toBlob` makes: what Chromium and Safari let a canvas hold. */
-const MAX_IMAGE_SIDE = 32767;
-const MAX_IMAGE_PIXELS = 16384 * 16384;
 
 interface Tracked {
   lnglat: LngLat;
@@ -143,6 +141,9 @@ function loadLegacy(): Promise<unknown> {
   return legacyLoading;
 }
 
+/** `tilejson-merge.js` once loaded, with the first TileJSON document or PMTiles header fetched. */
+let tilejson: typeof import("./tilejson-merge") | null = null;
+
 /** A query's filter as the engine takes it: JSON text (empty for none), legacy filters converted. */
 function filterText(filter: unknown): string {
   if (filter === undefined) return "";
@@ -186,24 +187,22 @@ export class Map {
   #tilejson = new globalThis.Map<string, unknown>();
   #transform: RequestTransformFunction | null = null;
   #camera: Camera;
-  #listeners = new globalThis.Map<MapEventType, Set<MapEventListener>>();
+  #events = new Events(this, (p, layers) => this.#query([p.x, p.y], layers, undefined));
   #tracked = new Set<Tracked>();
   #loaded = false;
   #fetching = 0;
-  /** The style images' names (the sprite's and those `addImage` added), and which came from the sprite. */
-  #images = new Set<string>();
-  #spriteImages: string[] = [];
-  #spriteKey = "null";
+  #images = new StyleImages({
+    withEngine: (f) => this.#withEngine(f),
+    fail: (err) => this.#fail(err),
+    fetch: (url, type) => this.#fetch(url, type),
+    waitFor: (p) => this.#waitFor(p),
+  });
   #removed = false;
   #options: MapOptions;
   #limits: Limits;
   #enabled: Record<HandlerName, boolean>;
   #callsBeforeStart: (() => void)[] = [];
   #changing = { zoom: false, rotate: false, pitch: false };
-  #layerListeners: { type: MapMouseEventType; layers: string[]; listener: MapEventListener; inside: boolean }[] = [];
-  #mouseDown: { x: number; y: number } | null = null;
-  #hovering = false;
-  #nextHover: { e: MouseEvent; p: { x: number; y: number } } | null = null;
   #dom = new AbortController();
   #states = new globalThis.Map<string, globalThis.Map<string, globalThis.Map<string, Record<string, unknown>>>>();
   #last: Camera | null = null;
@@ -279,13 +278,13 @@ export class Map {
         try {
           swapped = options.transformStyle(edit.copy(this.#style && edit.withoutCustom(this.#style)) ?? undefined, edit.copy(s)!);
         } catch (err) {
-          this.#fail(err instanceof Error ? err : new Error(String(err)));
+          this.#fail(err);
           return;
         }
       }
       const next = edit.keepGeoJSONData(this.#style, edit.copy(swapped));
       if (!legacy && edit.hasLegacy(next)) {
-        loadLegacy().then(() => use(s, base), (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+        loadLegacy().then(() => use(s, base), (err: unknown) => this.#fail(err));
         return;
       }
       this.#base = base;
@@ -298,7 +297,7 @@ export class Map {
       if (missing.length === 0) return use(s, base);
       this.#fetchTileJSON(missing)
         .then(() => use(s, base))
-        .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+        .catch((err: unknown) => this.#fail(err));
     };
     if (typeof style === "string") {
       const url = new URL(httpUrl(style, document.baseURI, "the style"));
@@ -308,7 +307,7 @@ export class Map {
           return res.json() as Promise<StyleSpecification>;
         })
         .then((s) => ready(s, url))
-        .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+        .catch((err: unknown) => this.#fail(err));
     } else {
       this.#keepCanvases(style.sources);
       ready(style, new URL(document.baseURI));
@@ -347,7 +346,7 @@ export class Map {
     });
     this.#mediaLoading.then(
       () => !this.#removed && f(this.#media!),
-      (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))),
+      (err: unknown) => this.#fail(err),
     );
   }
 
@@ -369,17 +368,20 @@ export class Map {
   }
 
   /** Fetches TileJSON documents (without credentials), or PMTiles headers, into the cache. */
-  async #fetchTileJSON(urls: string[]): Promise<void> {
+  #fetchTileJSON(urls: string[]): Promise<void> {
+    return this.#waitFor(this.#fetchDocuments(urls));
+  }
+
+  /** Holds `load` and `idle` back until `p` settles; they come then if the engine is idle. */
+  #waitFor<T>(p: Promise<T>): Promise<T> {
     this.#fetching++;
-    try {
-      await this.#fetchDocuments(urls);
-    } finally {
-      // `idle` waited for these sources; it comes now if the engine is idle without them.
+    return p.finally(() => {
       if (--this.#fetching === 0 && this.#engine && engine.map_is_idle(this.#engine)) this.#idle();
-    }
+    });
   }
 
   async #fetchDocuments(urls: string[]): Promise<void> {
+    tilejson ??= await import("./tilejson-merge.js");
     await Promise.all(urls.map(async (url) => {
       if (url.startsWith("pmtiles://")) {
         const { pmtilesDocument } = await import("./pmtiles.js");
@@ -397,15 +399,18 @@ export class Map {
     if (this.#fetching > 0) return;
     if (!this.#loaded) {
       this.#loaded = true;
-      this.#emit("load");
+      this.#events.emit("load");
     }
-    this.#emit("idle");
+    this.#events.emit("idle");
   }
 
   /** The style with its TileJSON sources completed and tile URLs made absolute, as the engine takes it. */
   #engineStyle(style: StyleSpecification): StyleSpecification {
     const s = legacy && edit.hasLegacy(style) ? legacy.convertStyle(style) : style;
-    return resolveTiles(withTileJSON(s, this.#base, this.#tilejson, resolveTemplate), this.#base);
+    const urls = tileJSONUrls(s, this.#base);
+    // Without the merger no document has come yet: every `url` source is still loading.
+    const merged = urls.size === 0 ? s : tilejson ? tilejson.withTileJSON(s, urls, this.#tilejson, resolveTemplate) : withoutSources(s, new Set(urls.keys()));
+    return resolveTiles(merged, this.#base);
   }
 
   /** A copy of the style drawn, GeoJSON data included (null until it has loaded). */
@@ -424,13 +429,13 @@ export class Map {
     }
     this.#style = next;
     this.#syncMedia(next);
-    this.#loadSprite(next.sprite);
+    this.#images.loadSprite(next.sprite, this.#base);
     // Custom layers the new style lacks are gone, as MapLibre's `setStyle` removes them.
     for (const id of this.#custom?.ids() ?? []) if (!edit.getLayer(next, id)) this.#custom!.remove(id);
     for (const id of this.#loadGeoJSON(geojson)) engine.map_reload_source(this.#engine, id);
     this.#drawn = rest;
     this.#showAttribution();
-    this.#emit("styledata");
+    this.#events.emit("styledata");
   }
 
   /** Runs `f` on the current style and draws what it gives; its errors fire `error`. */
@@ -440,12 +445,12 @@ export class Map {
     try {
       next = f(this.#style);
     } catch (err) {
-      this.#fail(err instanceof Error ? err : new Error(String(err)));
+      this.#fail(err);
       return this;
     }
     // Run again once the converter has loaded, on the style as it will be then.
     if (!legacy && edit.hasLegacy(next)) {
-      loadLegacy().then(() => this.#edit(f), (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+      loadLegacy().then(() => this.#edit(f), (err: unknown) => this.#fail(err));
       return this;
     }
     this.#apply(next);
@@ -482,7 +487,7 @@ export class Map {
     });
     this.#customLoading.then(
       () => this.#custom && f(this.#custom),
-      (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))),
+      (err: unknown) => this.#fail(err),
     );
   }
 
@@ -544,7 +549,7 @@ export class Map {
     if (missing.length > 0) {
       this.#fetchTileJSON(missing)
         .then(() => this.#style && this.#apply(this.#style))
-        .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+        .catch((err: unknown) => this.#fail(err));
     }
     return this;
   }
@@ -647,7 +652,7 @@ export class Map {
           return this.#geojson;
         },
         (err: unknown) => {
-          this.#fail(err instanceof Error ? err : new Error(String(err)));
+          this.#fail(err);
           return null;
         },
       );
@@ -690,7 +695,7 @@ export class Map {
         type,
         (e) => {
           const r = canvas.getBoundingClientRect();
-          this.#mouse(type, e, { x: e.clientX - r.left - canvas.clientLeft, y: e.clientY - r.top - canvas.clientTop });
+          this.#events.mouse(type, e, { x: e.clientX - r.left - canvas.clientLeft, y: e.clientY - r.top - canvas.clientTop });
         },
         { signal: this.#dom.signal },
       );
@@ -703,14 +708,14 @@ export class Map {
     engine.map_on_move_end(map, (e) => this.#moveEnd(e));
     engine.map_on_render(map, () => {
       this.#locate(this.#tracked);
-      this.#emit("render");
+      this.#events.emit("render");
     });
     engine.map_on_idle(map, () => this.#idle());
-    engine.map_on_missing_image(map, (id) => this.#emitMissing(id));
-    this.#loadSprite(style.sprite);
+    engine.map_on_missing_image(map, (id) => this.#events.emit("styleimagemissing", undefined, null, id));
+    this.#images.loadSprite(style.sprite, this.#base);
     this.#drawn = resolved;
     this.#showAttribution();
-    this.#emit("styledata");
+    this.#events.emit("styledata");
     if (o.bounds) this.fitBounds(o.bounds, { ...o.fitBoundsOptions, duration: 0 });
     for (const f of this.#callsBeforeStart.splice(0)) f();
   }
@@ -722,7 +727,7 @@ export class Map {
 
   #moveStart(e: Event | null): void {
     this.#last = this.#current();
-    this.#emit("movestart", undefined, e);
+    this.#events.emit("movestart", undefined, e);
   }
 
   #move(e: Event | null): void {
@@ -733,12 +738,12 @@ export class Map {
     for (const kind of changed) {
       if (!this.#changing[kind]) {
         this.#changing[kind] = true;
-        this.#emit(`${kind}start`, undefined, e);
+        this.#events.emit(`${kind}start`, undefined, e);
       }
     }
     if (changed.includes("zoom")) this.#showAttribution();
-    this.#emit("move", undefined, e);
-    for (const kind of changed) this.#emit(kind, undefined, e);
+    this.#events.emit("move", undefined, e);
+    for (const kind of changed) this.#events.emit(kind, undefined, e);
     this.#last = c;
   }
 
@@ -746,11 +751,11 @@ export class Map {
     for (const kind of ["zoom", "rotate", "pitch"] as const) {
       if (this.#changing[kind]) {
         this.#changing[kind] = false;
-        this.#emit(`${kind}end`, undefined, e);
+        this.#events.emit(`${kind}end`, undefined, e);
       }
     }
     this.#last = null;
-    this.#emit("moveend", undefined, e);
+    this.#events.emit("moveend", undefined, e);
   }
 
   /**
@@ -785,17 +790,11 @@ export class Map {
     this.#attribution = el;
   }
 
-  #fail(error: Error): void {
+  #fail(err: unknown): void {
     if (this.#removed) return;
-    if (!this.#listeners.get("error")?.size) console.error(error);
-    this.#emit("error", error);
-  }
-
-  #emit(type: MapEventType, error?: Error, originalEvent?: Event | null): void {
-    const event: MapEvent = { type, target: this };
-    if (error) event.error = error;
-    if (originalEvent) event.originalEvent = originalEvent;
-    this.#fire(event, this.#listeners.get(type) ?? []);
+    const error = err instanceof Error ? err : new Error(String(err));
+    if (!this.#events.has("error")) console.error(error);
+    this.#events.emit("error", error);
   }
 
   /** Tells each of `tracked` where its place is now: one engine call for all of them. */
@@ -814,102 +813,18 @@ export class Map {
     });
   }
 
-  #fire(event: MapEvent, listeners: Iterable<MapEventListener>): void {
-    for (const f of [...listeners]) {
-      try {
-        f(event);
-      } catch (err) {
-        // Report without breaking the engine's frame.
-        queueMicrotask(() => {
-          throw err;
-        });
-      }
-    }
-  }
-
-  #mouseEvent(type: MapMouseEventType, e: MouseEvent, p: { x: number; y: number }, features?: MapGeoJSONFeature[]): MapEvent {
-    const event: MapEvent = { type, target: this, originalEvent: e, point: p, lngLat: this.unproject(p) };
-    if (features) event.features = features;
-    return event;
-  }
-
-  /**
-   * A DOM mouse event on the canvas: the map's own (a click only after less than 3 px of movement),
-   * then the layers' listeners once a query finds their features (`mouseenter` and `mouseleave`
-   * follow `mousemove` and `mouseout`), as in MapLibre.
-   */
-  #mouse(type: Exclude<MapMouseEventType, "mouseenter" | "mouseleave">, e: MouseEvent, p: { x: number; y: number }): void {
-    if (type === "mousedown") this.#mouseDown = p;
-    if (type === "click" && this.#mouseDown && Math.hypot(p.x - this.#mouseDown.x, p.y - this.#mouseDown.y) >= 3) return;
-    this.#fire(this.#mouseEvent(type, e, p), this.#listeners.get(type) ?? []);
-    const hover = (l: { type: MapMouseEventType }) => l.type === "mouseenter" || l.type === "mouseleave";
-    if (type === "mouseout") {
-      for (const l of this.#layerListeners) {
-        if (!hover(l) || !l.inside) continue;
-        l.inside = false;
-        if (l.type === "mouseleave") this.#fire(this.#mouseEvent("mouseleave", e, p), [l.listener]);
-      }
-    }
-    const asked = this.#layerListeners.filter((l) => l.type === type || (type === "mousemove" && hover(l)));
-    if (asked.length === 0) return;
-    if (type === "mousemove") {
-      // One query at a time; moves in between keep only the latest.
-      if (this.#hovering) {
-        this.#nextHover = { e, p };
-        return;
-      }
-      this.#hovering = true;
-    }
-    const layers = [...new Set(asked.flatMap((l) => l.layers))].filter((id) => this.getLayer(id));
-    const found = layers.length === 0 ? Promise.resolve([]) : this.#query([p.x, p.y], layers, undefined);
-    found
-      .catch(() => [] as MapGeoJSONFeature[])
-      .then((features) => {
-        for (const l of asked) {
-          const mine = features.filter((f) => l.layers.includes(f.layer.id));
-          if (l.type === type) {
-            if (mine.length > 0) this.#fire(this.#mouseEvent(type, e, p, mine), [l.listener]);
-          } else if (mine.length > 0 && !l.inside) {
-            l.inside = true;
-            if (l.type === "mouseenter") this.#fire(this.#mouseEvent("mouseenter", e, p, mine), [l.listener]);
-          } else if (mine.length === 0 && l.inside) {
-            l.inside = false;
-            if (l.type === "mouseleave") this.#fire(this.#mouseEvent("mouseleave", e, p), [l.listener]);
-          }
-        }
-        if (type !== "mousemove") return;
-        this.#hovering = false;
-        const next = this.#nextHover;
-        this.#nextHover = null;
-        if (next && !this.#removed) this.#mouse("mousemove", next.e, next.p);
-      });
-  }
-
   /** Listens for `type`; with layer ids, for mouse events on those layers' features (`e.features`). */
   on(type: MapEventType, listener: MapEventListener): this;
   on(type: MapMouseEventType, layers: string | string[], listener: MapEventListener): this;
   on(type: MapEventType, a: MapEventListener | string | string[], b?: MapEventListener): this {
-    if (typeof a === "function") {
-      let set = this.#listeners.get(type);
-      if (!set) this.#listeners.set(type, (set = new Set()));
-      set.add(a);
-    } else if (b) {
-      this.#layerListeners.push({ type: type as MapMouseEventType, layers: Array.isArray(a) ? [...a] : [a], listener: b, inside: false });
-    }
+    this.#events.on(type, a, b);
     return this;
   }
 
   off(type: MapEventType, listener: MapEventListener): this;
   off(type: MapMouseEventType, layers: string | string[], listener: MapEventListener): this;
   off(type: MapEventType, a: MapEventListener | string | string[], b?: MapEventListener): this {
-    if (typeof a === "function") {
-      this.#listeners.get(type)?.delete(a);
-    } else {
-      const ids = Array.isArray(a) ? a : [a];
-      const same = (l: { type: string; layers: string[]; listener: MapEventListener }) =>
-        l.type === type && l.listener === b && l.layers.length === ids.length && l.layers.every((id, i) => id === ids[i]);
-      this.#layerListeners = this.#layerListeners.filter((l) => !same(l));
-    }
+    this.#events.off(type, a, b);
     return this;
   }
 
@@ -919,23 +834,7 @@ export class Map {
   once(type: MapMouseEventType, layers: string | string[]): Promise<MapEvent>;
   once(type: MapMouseEventType, layers: string | string[], listener: MapEventListener): this;
   once(type: MapEventType, a?: MapEventListener | string | string[], b?: MapEventListener): this | Promise<MapEvent> {
-    if (a === undefined || typeof a === "function") {
-      if (!a) return new Promise((resolve) => this.once(type, resolve));
-      const listener = a;
-      const wrapped: MapEventListener = (e) => {
-        this.off(type, wrapped);
-        listener(e);
-      };
-      return this.on(type, wrapped);
-    }
-    const layers = a;
-    if (!b) return new Promise((resolve) => this.once(type as MapMouseEventType, layers, resolve));
-    const listener = b;
-    const wrapped: MapEventListener = (e) => {
-      this.off(type as MapMouseEventType, layers, wrapped);
-      listener(e);
-    };
-    return this.on(type as MapMouseEventType, layers, wrapped);
+    return this.#events.once(type, a, b) ?? this;
   }
 
   /** Features drawn under `points` (CSS pixels: a point, or a box's closed ring), in MapLibre's order. */
@@ -1102,6 +1001,7 @@ export class Map {
   async toBlob(options: ToBlobOptions = {}): Promise<Blob> {
     const ratio = options.pixelRatio ?? globalThis.devicePixelRatio ?? 1;
     if (!(ratio > 0 && Number.isFinite(ratio))) throw new Error(`mbmap: pixelRatio must be a positive number: ${ratio}`);
+    const loading = import("./export.js");
     while (!this.#engine || !engine.map_is_idle(this.#engine) || this.#fetching > 0) {
       if (this.#removed) throw new Error("mbmap: the map was removed");
       await new Promise<void>((resolve) => {
@@ -1109,28 +1009,12 @@ export class Map {
         this.#dom.signal.addEventListener("abort", () => resolve(), { once: true });
       });
     }
+    const { encodeImage } = await loading;
     const map = this.#engine;
-    const width = Math.round(this.#canvas.clientWidth * ratio);
-    const height = Math.round(this.#canvas.clientHeight * ratio);
-    if (width < 1 || height < 1 || width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || width * height > MAX_IMAGE_PIXELS) {
-      throw new Error(`mbmap: cannot make a ${width} x ${height} image`);
-    }
+    if (!map) throw new Error("mbmap: the map was removed");
     const side = Math.max(1, Math.min(options.maxSize ?? Infinity, engine.map_max_region(map)));
-    const out = document.createElement("canvas");
-    out.width = width;
-    out.height = height;
-    const ctx = out.getContext("2d");
-    if (!ctx) throw new Error("mbmap: no 2D canvas for the image");
-    for (let y = 0; y < height; y += side) {
-      for (let x = 0; x < width; x += side) {
-        const w = Math.min(side, width - x);
-        const h = Math.min(side, height - y);
-        ctx.putImageData(new ImageData(engine.map_render_region(map, ratio, x, y, w, h), w, h), x, y);
-      }
-    }
-    return new Promise((resolve, reject) => {
-      out.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("mbmap: the image could not be encoded"))), options.type, options.quality);
-    });
+    const region = (x: number, y: number, w: number, h: number) => engine.map_render_region(map, ratio, x, y, w, h);
+    return encodeImage(Math.round(this.#canvas.clientWidth * ratio), Math.round(this.#canvas.clientHeight * ratio), side, region, options.type, options.quality);
   }
 
   /** Whether the first view has been drawn. */
@@ -1200,71 +1084,19 @@ export class Map {
     return this.jumpTo({ pitch });
   }
 
-  /** Loads the images of `sprite` when it changes, replacing the previous sprite's; `idle` waits for them. */
-  #loadSprite(sprite: unknown): void {
-    const key = JSON.stringify(sprite ?? null);
-    if (key === this.#spriteKey) return;
-    this.#spriteKey = key;
-    for (const name of this.#spriteImages.splice(0)) this.removeImage(name);
-    // Tiles with icons wait for the sprite, as MapLibre's do.
-    this.#withEngine((m) => engine.map_hold_images(m, sprite != null));
-    if (sprite == null) return;
-    this.#fetching++;
-    import("./sprite.js")
-      .then((m) => m.loadSprites(sprite, globalThis.devicePixelRatio ?? 1, this.#base, (url, type) => this.#fetch(url, type)))
-      .then((images) => {
-        if (key !== this.#spriteKey || this.#removed) return;
-        for (const { name, pixels, pixelRatio, sdf } of images) {
-          if (this.#images.has(name)) continue;
-          this.#images.add(name);
-          this.#spriteImages.push(name);
-          this.#withEngine((m) => engine.map_add_image(m, name, pixels.width, pixels.height, pixels.data, pixelRatio, sdf));
-        }
-      })
-      .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))))
-      .finally(() => {
-        if (key === this.#spriteKey) this.#withEngine((m) => engine.map_hold_images(m, false));
-        if (--this.#fetching === 0 && this.#engine && engine.map_is_idle(this.#engine)) this.#idle();
-      });
-  }
-
-  #emitMissing(id: string): void {
-    const event: MapEvent = { type: "styleimagemissing", target: this, id };
-    this.#fire(event, this.#listeners.get("styleimagemissing") ?? []);
-  }
-
   /**
    * Adds style image `id` for patterns and icons (MapLibre's `addImage`): ImageData, raw RGBA
    * (`{width, height, data}`), or an image, bitmap or canvas. An id already used fires `error`.
    */
   addImage(id: string, image: ImageInput, options: StyleImageOptions = {}): this {
-    if (this.#images.has(id)) {
-      this.#fail(new Error(`mbmap: an image named "${id}" already exists`));
-      return this;
-    }
-    return this.#setImage(id, image, options);
+    this.#images.set(id, image, options, false);
+    return this;
   }
 
   /** Replaces the pixels of style image `id`. */
   updateImage(id: string, image: ImageInput): this {
-    if (!this.#images.has(id)) {
-      this.#fail(new Error(`mbmap: no image named "${id}"`));
-      return this;
-    }
-    return this.#setImage(id, image, {});
-  }
-
-  #setImage(id: string, image: ImageInput, options: StyleImageOptions): this {
-    let pixels, opts;
-    try {
-      pixels = imagePixels(image, canvasPixels);
-      opts = imageOptions(options);
-    } catch (err) {
-      this.#fail(err instanceof Error ? err : new Error(String(err)));
-      return this;
-    }
-    this.#images.add(id);
-    return this.#withEngine((m) => engine.map_add_image(m, id, pixels.width, pixels.height, pixels.data, opts.pixelRatio, opts.sdf));
+    this.#images.set(id, image, {}, true);
+    return this;
   }
 
   /** Whether style image `id` exists. */
@@ -1274,20 +1106,18 @@ export class Map {
 
   /** Removes style image `id`. */
   removeImage(id: string): this {
-    if (!this.#images.delete(id)) return this;
-    return this.#withEngine((m) => engine.map_remove_image(m, id));
+    this.#images.remove(id);
+    return this;
   }
 
-  /** The style images' names. */
+  /** The style images' names: the sprite's and those `addImage` added. */
   listImages(): string[] {
-    return [...this.#images];
+    return this.#images.list();
   }
 
   /** Fetches an image (through `transformRequest`) for `addImage` (MapLibre's `loadImage`). */
-  async loadImage(url: string): Promise<{ data: ImageBitmap }> {
-    const res = await this.#fetch(httpUrl(url, this.#base, "an image"), "Image");
-    if (!res.ok) throw new Error(`mbmap: image ${url}: HTTP ${res.status}`);
-    return { data: await createImageBitmap(await res.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" }) };
+  loadImage(url: string): Promise<{ data: ImageBitmap }> {
+    return this.#images.load(url, this.#base);
   }
 
   /** Runs `f` on the engine now, or once it exists. */
@@ -1521,8 +1351,8 @@ export class Map {
     this.#geojson = null;
     this.#media?.destroy();
     this.#custom?.destroy();
-    this.#listeners.clear();
-    this.#layerListeners = [];
+    this.#events.clear();
+    this.#images.close();
     this.#canvas.remove();
     this.#attribution?.remove();
   }

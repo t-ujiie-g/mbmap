@@ -45,11 +45,9 @@ export type RequestTransformFunction = (
 ) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
 
 /**
- * What `getSource` gives, with the members of MapLibre's sources:
- * - GeoJSON: `setData`, and its clusters (null if it does not cluster; children and leaves reject an unknown id): the zoom a cluster
- *   breaks apart at, its clusters and points one zoom down, and its points (`limit` 10 by default, Infinity for all, after `offset`).
- * - image, video and canvas: `setCoordinates` (corners clockwise from the top left); an image's `updateImage` (a `url` or a decoded
- *   `image`); `play` and `pause` a video, or a canvas drawn every frame while it plays (`animate`, true by default); `getVideo`, `getCanvas`.
+ * What `getSource` gives, with MapLibre's members for its type: GeoJSON `setData` and cluster queries (null without
+ * clustering; `limit` 10 by default, Infinity for all); image, video and canvas `setCoordinates` (corners clockwise from the
+ * top left), `updateImage`, `play` and `pause` (a playing canvas is redrawn every frame), `getVideo`, `getCanvas`.
  */
 export interface Source {
   id: string;
@@ -67,21 +65,9 @@ export interface Source {
 }
 
 /**
- * - `container`: the element (or its id) the map fills. It needs a size of its own.
- * - `style`: a style object, or the URL of one (fetched without credentials).
- * - `bearing`: degrees clockwise from north that point up (default 0).
- * - `pitch`: degrees of tilt from looking straight down, 0 to 85 (default 0).
- * - `workerCount`: tile workers; 0 (the default) picks half the hardware threads, 1 to 4.
- * - `workerUrl`, `wasmUrl`: where the worker (same-origin http(s)) and its wasm
- *   (http(s)) are served; by default next to this module, via `new URL(..., import.meta.url)`.
- * - `geojsonWorkerUrl`, `geojsonWasmUrl`: the same for the worker of GeoJSON sources.
- * - `fontFamily`: the CSS font family labels are drawn in, from the fonts the browser has (default "sans-serif").
- * - `attributionControl`: shows the sources' `attribution` text in a corner (default true).
- * - `minZoom`, `maxZoom` (0 and 22), `minPitch`, `maxPitch` (0 and 85), `maxBounds`: what the camera keeps to.
- * - `bounds`, `fitBoundsOptions`: a box to show at first, in place of `center` and `zoom`.
- * - `transformRequest`: changes the requests for the style, TileJSON and tiles (see `RequestTransformFunction`).
- * - `interactive: false` turns every input off; `dragPan`, `scrollZoom`, `boxZoom`, `dragRotate`,
- *   `keyboard`, `doubleClickZoom`, `touchZoomRotate`, `touchPitch` (all true) one by one.
+ * Defaults: `center`, `zoom`, `bearing`, `pitch` 0; `workerCount` 0 (half the hardware threads, 1 to 4); `fontFamily` "sans-serif";
+ * zoom 0-22 and pitch 0-85; `attributionControl`, `interactive` and each handler true. `workerUrl`, `wasmUrl` and the GeoJSON
+ * worker's are files next to this module; `bounds` replaces `center` and `zoom`; the style URL is fetched without credentials.
  */
 export interface MapOptions {
   container: HTMLElement | string;

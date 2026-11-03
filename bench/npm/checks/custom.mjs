@@ -1,14 +1,8 @@
 // Custom layers on bench/npm/pages/custom: the box drawn through MapLibre's prelude sits under the
 // square (`beforeId`) and over it once moved, the GL state it breaks is restored, `render` gets
 // MapLibre's options, a "3d" layer has the depth test, and removing calls `onRemove`.
-import { decodePng } from "../../lib/png.mjs";
+import { near, pixel } from "./pixels.mjs";
 
-async function pixel(page, x, y) {
-  const { rgba } = decodePng(await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } }));
-  return [rgba[0], rgba[1], rgba[2]];
-}
-
-const near = (rgb, want) => rgb.every((v, i) => Math.abs(v - want[i]) <= 3);
 const [blue, red, white] = [[0, 0, 255], [255, 0, 0], [255, 255, 255]];
 
 export async function customChecks(page) {

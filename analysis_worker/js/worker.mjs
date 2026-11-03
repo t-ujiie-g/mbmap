@@ -3,7 +3,7 @@
 
 import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
-import { checkImageSize } from "../../worker/js/imagesize.mjs";
+import { checkImageSize, decodeImage } from "../../worker/js/imagesize.mjs";
 import { tableToGeoJSON } from "./table.mjs";
 
 const decoder = new TextDecoder();
@@ -107,7 +107,7 @@ async function loadDem({ url, z, bounds, encoding }) {
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${t.href}`);
     const bytes = await readCapped(res);
     checkImageSize(bytes, MAX_GRID_SIDE, `DEM tile ${t.href}`);
-    return createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    return decodeImage(new Blob([bytes]));
   }));
   const size = images.find((i) => i)?.width ?? 256;
   const [width, height] = [(x1 - x0 + 1) * size, (y1 - y0 + 1) * size];

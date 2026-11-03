@@ -6,38 +6,48 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 107263,
+      "bytes": 107122,
       "budget": 120000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1567,
+      "bytes": 1564,
       "budget": 5000
     },
     {
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
-      "bytes": 742,
+      "bytes": 759,
       "budget": 2000
     },
     {
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
-      "bytes": 3568,
+      "bytes": 3564,
       "budget": 5000
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 1644,
+      "bytes": 1657,
       "budget": 2000
     },
     {
       "name": "image, video and canvas sources (loaded by mbmap when a style has one)",
-      "bytes": 2617,
+      "bytes": 2602,
       "budget": 3000
     },
     {
       "name": "custom layers (loaded by mbmap with the first one)",
       "bytes": 1809,
       "budget": 3000
+    },
+    {
+      "name": "image export (loaded by mbmap with the first toBlob)",
+      "bytes": 368,
+      "budget": 1000
+    },
+    {
+      "name": "TileJSON merging (loaded by mbmap with the first source given by url)",
+      "bytes": 411,
+      "budget": 1000
     },
     {
       "name": "mbmap/element (on top of mbmap)",
@@ -61,7 +71,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 93050,
+      "bytes": 93047,
       "budget": 100000
     },
     {
@@ -81,7 +91,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 27863,
+      "bytes": 27870,
       "budget": 30000
     },
     {

@@ -92,10 +92,10 @@ export class Media {
   #entries = new Map<string, Entry>();
   #engine: MediaEngine;
   #fetch: (url: string) => Promise<Response>;
-  #fail: (e: Error) => void;
+  #fail: (err: unknown) => void;
   #base = new URL("about:blank");
 
-  constructor(engine: MediaEngine, fetchImage: (url: string) => Promise<Response>, fail: (e: Error) => void) {
+  constructor(engine: MediaEngine, fetchImage: (url: string) => Promise<Response>, fail: (err: unknown) => void) {
     this.#engine = engine;
     this.#fetch = fetchImage;
     this.#fail = fail;
@@ -128,7 +128,7 @@ export class Media {
     const e: Entry = { type, key: keyOf(s), quad: this.#quad(s.id, s.spec.coordinates), request: 0 };
     this.#entries.set(s.id, e);
     const failed = (err: unknown) => {
-      this.#fail(err instanceof Error ? err : new Error(String(err)));
+      this.#fail(err);
       this.#engine.show(s.id, null, e.quad);
     };
     try {
@@ -219,7 +219,6 @@ export class Media {
     const e = this.#entries.get(id);
     if (!e) return;
     if (o.coordinates) e.quad = this.#quad(id, o.coordinates);
-    const failed = (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err)));
     if (o.image) {
       e.request++;
       this.#engine.show(id, o.image, e.quad);
@@ -227,9 +226,9 @@ export class Media {
       // The style now names this url: a later style edit keeps the image.
       e.key = keyOf({ id, spec: { type: "image", url: o.url } });
       try {
-        this.#image(id, e, mediaUrl(o.url, this.#base), failed);
+        this.#image(id, e, mediaUrl(o.url, this.#base), this.#fail);
       } catch (err) {
-        failed(err);
+        this.#fail(err);
       }
     } else if (o.coordinates) {
       this.#engine.move(id, e.quad);

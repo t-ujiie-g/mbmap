@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { tileJSONUrls, withTileJSON } from "../src/tilejson.ts";
+import { tileJSONUrls, withoutSources } from "../src/tilejson.ts";
+import { withTileJSON } from "../src/tilejson-merge.ts";
 import { resolveTemplate } from "../src/urls.ts";
 
 const base = new URL("https://example.com/styles/style.json");
@@ -27,9 +28,17 @@ test("withTileJSON merges documents (the source's own keys win) and leaves out s
   const docs = new Map<string, unknown>([
     ["https://example.com/tiles.json", { tiles: ["v/{z}/{x}/{y}.pbf"], minzoom: 2, maxzoom: 14, attribution: "© V", bounds: [1, 2, 3, 4], vector_layers: [] }],
   ]);
-  const out = withTileJSON(style(), base, docs, resolveTemplate);
+  const out = withTileJSON(style(), tileJSONUrls(style(), base), docs, resolveTemplate);
   assert.deepEqual(out.sources.v, { tiles: ["https://example.com/v/{z}/{x}/{y}.pbf"], minzoom: 2, maxzoom: 12, attribution: "© V", bounds: [1, 2, 3, 4], type: "vector" });
   assert.equal("r" in out.sources, false);
   assert.deepEqual(out.layers.map((l) => (l as { id: string }).id), ["a"]);
   assert.deepEqual(out.sources.own, style().sources.own);
+});
+
+test("withoutSources drops the sources and their layers, and keeps the style without any", () => {
+  const out = withoutSources(style(), new Set(["v", "r"]));
+  assert.deepEqual(Object.keys(out.sources), ["own", "g"]);
+  assert.deepEqual(out.layers, []);
+  const same = withoutSources(style(), new Set());
+  assert.deepEqual(same, style());
 });

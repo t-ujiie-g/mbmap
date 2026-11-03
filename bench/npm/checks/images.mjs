@@ -1,9 +1,10 @@
 // Style images on the npm example's map: a fill whose pattern is missing draws nothing and fires
 // `styleimagemissing`; `addImage` draws it, `updateImage` replaces it, an id used twice fires
-// `error`, and `hasImage` / `listImages` / `removeImage` keep track. `pixel` reads the screen.
+// `error`, and `hasImage` / `listImages` / `removeImage` keep track.
+import { pixel } from "./pixels.mjs";
 import { step } from "./step.mjs";
 
-export async function imageChecks(page, pixel) {
+export async function imageChecks(page) {
   await step(page, "images: a missing pattern", `
     map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
     window.__missing = [];
