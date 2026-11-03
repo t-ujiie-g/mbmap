@@ -985,6 +985,8 @@ async function cameraChecks(page) {
 
 const { server, origin } = await serve();
 // Metal only exists on macOS; elsewhere (CI) Chromium falls back to SwiftShader.
+// Each example's checks take well under a minute; one that runs longer has hung.
+const CHECK_TIMEOUT = 180_000;
 const gpu = process.platform === "darwin" ? ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] : [];
 const browser = await chromium.launch({ args: gpu });
 let failed = false;
@@ -1003,7 +1005,13 @@ try {
     await page.goto(`${origin}/${PAGES[example]}`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });
     if (shots) await page.screenshot({ path: path.join(shots, `${example}.png`) });
-    const [ok, details] = await check(page, requests);
+    // A check that hangs (an event that never comes) fails after CHECK_TIMEOUT instead of holding CI.
+    let timer;
+    const late = new Promise((resolve) => {
+      timer = setTimeout(() => resolve([false, { timedOut: `no answer after ${CHECK_TIMEOUT / 1000} s` }]), CHECK_TIMEOUT);
+    });
+    const [ok, details] = await Promise.race([check(page, requests), late]);
+    clearTimeout(timer);
     const pass = ok && errors.length === 0;
     failed ||= !pass;
     console.log(`${pass ? "ok  " : "FAIL"} ${example} ${JSON.stringify({ ...details, errors })}`);
