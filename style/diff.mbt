@@ -29,6 +29,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.cap == other.cap &&
   self.miter_limit == other.miter_limit &&
   self.round_limit == other.round_limit &&
+  (self.dasharray is Some(_)) == (other.dasharray is Some(_)) &&
   self.reads_state() == other.reads_state() &&
   inputs(self) == inputs(other) &&
   // Per-vertex paint is computed into the tiles.

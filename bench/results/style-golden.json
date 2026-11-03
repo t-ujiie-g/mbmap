@@ -74,6 +74,26 @@
         "mean": 0.05,
         "p99": 1
       }
+    },
+    {
+      "scene": "dashes",
+      "ok": true,
+      "mean": 0.034,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "dashes-zoomed",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
     }
   ]
 }

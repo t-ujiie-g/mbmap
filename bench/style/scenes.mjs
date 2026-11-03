@@ -75,4 +75,28 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 16.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
+  // Dashes (MapLibre's line_sdf over the line atlas): a railway's white dashes over its casing, butt
+  // and round dash ends, boundaries; at a fractional zoom the pattern is measured at the integer one.
+  dashes: {
+    style: style([
+      { id: "rail-casing", type: "line", source: "gsi", "source-layer": "railway", paint: { "line-color": "#555555", "line-width": 4 } },
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway", paint: { "line-color": "#ffffff", "line-width": 2.5, "line-dasharray": [3, 3] } },
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#c06030", "line-width": 2, "line-dasharray": [0.5, 2] } },
+      { id: "boundary", type: "line", source: "gsi", "source-layer": "boundary", paint: { "line-color": "#7a4ea3", "line-width": 1.5, "line-dasharray": [4, 1, 1, 1] } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "dashes-zoomed": {
+    style: style([
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway",
+        paint: { "line-color": "#333333", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 2, 17, 6],
+          "line-dasharray": ["step", ["zoom"], ["literal", [2, 2]], 16, ["literal", [5, 1]]] } },
+      { id: "road", type: "line", source: "gsi", "source-layer": "road",
+        paint: { "line-color": ["match", ["get", "rdCtg"], [0, 1], "#e8a33b", "#9aa0a6"], "line-width": 3, "line-dasharray": [1, 1] } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 16.6, bearing: 0, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
 };

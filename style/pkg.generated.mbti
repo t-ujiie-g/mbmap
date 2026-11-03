@@ -274,6 +274,7 @@ pub struct StyleLayer {
   round_limit : Double
   antialias : Bool
   outline_color : Expr?
+  dasharray : Expr?
 }
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool

@@ -140,7 +140,8 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
       a.join == b.join &&
       a.cap == b.cap &&
       a.miter_limit == b.miter_limit &&
-      a.round_limit == b.round_limit
+      a.round_limit == b.round_limit &&
+      (a.dasharray is Some(_)) == (b.dasharray is Some(_))
     )
   )
 }
@@ -455,6 +456,8 @@ fn TileProcessor::line_layer(
           cap~,
           miter_limit=sl.miter_limit,
           round_limit=sl.round_limit,
+          dashed=sl.dasharray is Some(_),
+          extent=layer.extent(),
         )
       }
       self.track(index, group, i, first, out.indices.length())

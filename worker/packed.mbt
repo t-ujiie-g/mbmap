@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 13
+pub const LAYER_ENTRY_WORDS : Int32 = 15
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -322,6 +322,28 @@ fn PackedTile::add_extruded(
     )
   }
   self.put_indices(istart, lines.indices, index_bytes)
+  self.put_distances(lines.distances)
+}
+
+///|
+/// Writes a dashed line's distances along it as Uint16s for the last entry;
+/// false without room.
+fn PackedTile::put_distances(self : PackedTile, d : Array[Int32]) -> Bool {
+  if d.is_empty() {
+    return true
+  }
+  let bytes = (d.length() * 2 + 3) / 4 * 4
+  if !self.reserve(bytes) {
+    return false
+  }
+  let at = self.len
+  for i, v in d {
+    self.store.set_u16(at + i * 2, v)
+  }
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 52, at)
+  self.put_u32(e + 56, d.length())
+  self.len = at + bytes
   true
 }
 
@@ -353,8 +375,8 @@ fn PackedTile::add_alias(
   let src = 4 + of * LAYER_ENTRY_WORDS * 4
   let dst = 4 + self.layers * LAYER_ENTRY_WORDS * 4
   self.put_u32(dst, style_layer)
-  // The geometry, its group's properties and its outline; per-vertex paint is
-  // each layer's own.
+  // The geometry, its group's properties, outline and distances; per-vertex
+  // paint is each layer's own.
   for w in 1..<LAYER_ENTRY_WORDS {
     self.put_u32(dst + w * 4, self.store.get_u32(src + w * 4))
   }

@@ -1,5 +1,5 @@
 // GSI vector tile layers (国土地理院ベクトルタイル提供実験), as bench/pages/basic/style.json
-// draws them: fill, line, circle and horizontal and vertical labels.
+// draws them (but dashed boundaries): fill, line, circle and horizontal and vertical labels.
 export const GSI_LAYERS = [
   {
     "id": "waterarea",
@@ -247,7 +247,8 @@ export const GSI_LAYERS = [
     "source-layer": "boundary",
     "paint": {
       "line-color": "#a07ab0",
-      "line-width": 1
+      "line-width": 1,
+      "line-dasharray": [4, 2]
     }
   },
   {

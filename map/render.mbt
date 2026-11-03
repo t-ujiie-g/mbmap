@@ -135,6 +135,75 @@ fn Map::background(self : Map) -> (Double, Double, Double) {
 }
 
 ///|
+/// A dash pattern: a list of numbers of at least 0.
+fn pattern_of(e : @style.Expr, zoom : Double) -> Array[Double]? {
+  guard e.eval(zoom, JsProps::none()) is List(items) else { return None }
+  let d = []
+  for v in items {
+    guard v is Num(n) && n >= 0.0 else { return None }
+    d.push(n)
+  }
+  Some(d)
+}
+
+///|
+/// The atlas entry of pattern `e` at the integer zoom below `zoom` and the
+/// length its edges are smoothed over (as MapLibre at rest: the shorter of it and
+/// the pattern a zoom away); None draws the line solid.
+fn Map::dash_of(
+  self : Map,
+  e : @style.Expr,
+  zoom : Double,
+  round : Bool,
+) -> (@render_webgl2.DashEntry, Double)? {
+  let z = @cmp.maximum(0.0, zoom.floor())
+  guard pattern_of(e, z) is Some(d) &&
+    self.renderer.dash(d, round) is Some(entry) else {
+    return None
+  }
+  let from = if zoom > z { z - 1.0 } else { z + 1.0 }
+  let gamma = match pattern_of(e, from) {
+    Some(f) => @cmp.minimum(entry.width, f.fold(init=0.0, (a, b) => a + b))
+    None => entry.width
+  }
+  Some((entry, gamma))
+}
+
+///|
+/// MapLibre's `line-floorwidth` (the width at the integer zoom), or -1 and how
+/// far to mix the per-vertex width slot (held within the current zoom's stops).
+fn Map::floor_width(
+  self : Map,
+  index : Int32,
+  layer : @style.StyleLayer,
+  m : LayerMesh,
+  zoom : Double,
+) -> (Double, Double) {
+  let floor_zoom = @cmp.maximum(0.0, zoom.floor())
+  if m.vertex_paint is Some(_) {
+    for vp in self.vertex_paint[index] {
+      if vp.slot == @style.SLOT_SIZE {
+        let (i, _) = vp.position(zoom)
+        let (k, t) = vp.position(floor_zoom)
+        let t = if vp.count() == 1 || k < i {
+          0.0
+        } else if k > i {
+          1.0
+        } else {
+          t
+        }
+        return (-1.0, t)
+      }
+    }
+  }
+  let props = match m.props {
+    Some(p) => p
+    None => JsProps::none()
+  }
+  (number_or(layer.width.eval(floor_zoom, props), 1.0), 0.0)
+}
+
+///|
 /// Draws `index`'s meshes of one tile; `shared` is the layer's paint for
 /// meshes without group properties; `height_scale` raises labels on terrain.
 fn Map::draw_layer(
@@ -148,6 +217,12 @@ fn Map::draw_layer(
   height_scale~ : Double = 0.0,
 ) -> Unit {
   let zoom = self.transform.camera.zoom
+  // Dashes and the width they are measured in are taken at the integer zoom.
+  let floor_zoom = @cmp.maximum(0.0, zoom.floor())
+  let dash = match layer.dasharray {
+    Some(e) => self.dash_of(e, zoom, layer.cap is Round)
+    None => None
+  }
   for m in meshes {
     if m.kind == KIND_HILLSHADE && layer.hillshade is Some(h) {
       self.draw_hillshade(h, m.mesh, at)
@@ -188,9 +263,37 @@ fn Map::draw_layer(
         )
       }
     } else if m.kind == KIND_LINE {
-      self.draw_by_state(m, layer, p, zoom, p => {
-        self.renderer.draw_line(m.mesh, at, self.slots(index, m, p, zoom), dpr)
-      })
+      match dash {
+        Some((entry, gamma_width)) => {
+          let (floor_width, floor_t) = self.floor_width(index, layer, m, zoom)
+          // CSS pixels per 8192 units of the tile at the integer zoom.
+          let tile_ratio = @math.pow(2.0, floor_zoom - zoom) *
+            @core.TILE_EXTENT.to_double() /
+            (8192.0 * at.units_per_pixel * dpr)
+          self.draw_by_state(m, layer, p, zoom, p => {
+            self.renderer.draw_line_dash(
+              m.mesh,
+              at,
+              self.slots(index, m, p, zoom),
+              dpr,
+              entry,
+              gamma_width~,
+              tile_ratio~,
+              floor_width~,
+              floor_t~,
+            )
+          })
+        }
+        None =>
+          self.draw_by_state(m, layer, p, zoom, p => {
+            self.renderer.draw_line(
+              m.mesh,
+              at,
+              self.slots(index, m, p, zoom),
+              dpr,
+            )
+          })
+      }
     } else if m.kind == KIND_CIRCLE {
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_circle(
