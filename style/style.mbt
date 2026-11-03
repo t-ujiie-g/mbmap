@@ -33,9 +33,9 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer with its type's paint (sizes in CSS pixels); `text` is a
-/// symbol layer's layout. `filter_id` is shared by layers whose filters are
-/// written identically (-1 without one), so they compare without walking `Expr`s.
+/// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout;
+/// `filter_id` shared by identically written filters (-1 for none); a fill's
+/// `antialias` draws its outline, `outline_color` (or its color).
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -62,6 +62,8 @@ pub struct StyleLayer {
   cap : Cap
   miter_limit : Double
   round_limit : Double
+  antialias : Bool
+  outline_color : Expr?
 }
 
 ///|
@@ -357,6 +359,12 @@ fn parse_layer(
     cap,
     miter_limit: number_or(layout, "line-miter-limit", lpath, 2.0),
     round_limit: number_or(layout, "line-round-limit", lpath, 1.05),
+    antialias: kind is Fill && bool_or(paint, "fill-antialias", ppath, true),
+    outline_color: match paint.get("fill-outline-color") {
+      Some(c) if kind is Fill =>
+        Some(compile(c, expected=ColorType, path="\{ppath}.fill-outline-color"))
+      _ => None
+    },
   })
 }
 

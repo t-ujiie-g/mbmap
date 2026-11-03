@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 11
+pub const LAYER_ENTRY_WORDS : Int32 = 13
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -199,6 +199,17 @@ fn PackedTile::add_fill(
     self.put_i16(vstart + i * 4 + 2, rescale(v[i * 2 + 1], extent))
   }
   self.put_indices(istart, fills.indices, index_bytes)
+  // The outline's line list, in the same index size.
+  let lines = fills.outline
+  if !self.reserve((lines.length() * index_bytes + 3) / 4 * 4) {
+    return false
+  }
+  let at = self.len
+  self.put_indices(at, lines, index_bytes)
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 44, at)
+  self.put_u32(e + 48, lines.length())
+  self.len = at + (lines.length() * index_bytes + 3) / 4 * 4
   true
 }
 
@@ -342,8 +353,9 @@ fn PackedTile::add_alias(
   let src = 4 + of * LAYER_ENTRY_WORDS * 4
   let dst = 4 + self.layers * LAYER_ENTRY_WORDS * 4
   self.put_u32(dst, style_layer)
-  // The geometry and its group's properties; per-vertex paint is each layer's own.
-  for w in 1..<9 {
+  // The geometry, its group's properties and its outline; per-vertex paint is
+  // each layer's own.
+  for w in 1..<LAYER_ENTRY_WORDS {
     self.put_u32(dst + w * 4, self.store.get_u32(src + w * 4))
   }
   self.put_u32(dst + 36, 0)

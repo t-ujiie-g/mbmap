@@ -8,13 +8,36 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 73.0KB | 80KB |
-  | 表示ワーカー | 69.0KB | 100KB |
+  | 表示（メイン） | 73.5KB | 80KB |
+  | 表示ワーカー | 69.4KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.3a：塗りの輪郭（`fill-antialias`、`fill-outline-color`）（2026-11-03）
+
+状態：**完了**。15.3 は 2 つに分けた（15.3a 輪郭、15.3b 線の距離と破線）。
+
+- MapLibre の塗りの輪郭を移植した。
+  - MapLibre は、塗りの輪の辺を 1px の線（`gl.LINES`）で描く。線の位置と画素の中心の距離で淡くする（fill-outline のシェーダー）。輪郭は塗りの後に描く。
+  - 色は `fill-outline-color`（データで変わってもよい。頂点ごとの値の縁の色のスロットに入れる）、なければ塗りの色。不透明度は `fill-opacity`。
+  - `fill-antialias: false` で描かない。
+- tess は、輪の辺の組（閉じていない輪は閉じる辺も）を作る。パックでは、塗りの三角形の索引の後に置く（`LAYER_ENTRY_WORDS` 11 → 13）。
+- **`npm run style:golden`**：
+  - 塗りの場面が、平均 1.238 / p99 40 から **0 / 0**（MapLibre と完全に一致）になった。15.1a で見つけた差は、これだった。
+  - 新しい場面（データで変わる輪郭の色、`fill-antialias: false` の水域）も 0 / 0。
+  - 傾けた場面も 0.611 → 0.559 になった。
+- **費用**（`worker:browser`、35 タイル）：
+  - 出力は 74.1 → 77.4MB（+4.5%）。MapLibre も同じ線のリストを作る。
+  - process_tile の中央値は、Chromium 7.39 → 7.54ms、Firefox 9.80 → 9.96ms、WebKit 7.84 → 8.06ms。
+  - サイズは、メイン 73.0 → 73.5KB、表示ワーカー 69.0 → 69.4KB。
+- example は、既定で輪郭が出るので、3 つとも建物の境目が MapLibre と同じに見えるようになった（設定は変えていない）。
+- 既知のこと：feature-state を読む塗りのレイヤーでは、輪郭は状態ごとの範囲に分けず、レイヤーの paint で描く。状態の範囲は三角形の索引で数えているため。
+- 確認：
+  - tess（閉じた輪、閉じていない輪、穴）、ワーカーのパック（輪郭の索引）。
+  - pack test 9/9、`export:golden`、`style:golden` の 7 つの場面。
 
 ## Phase 15.1b：データで変わる paint を頂点属性に（2026-11-03）
 

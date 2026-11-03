@@ -15,3 +15,4 @@ examples/react/dist/
 bench/fixtures/gsi-dem/
 bench/fixtures/gsi-dem-fuji/
 bench/fixtures/gsi-std/
+.claude/worktrees/

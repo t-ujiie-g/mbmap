@@ -147,6 +147,30 @@ pub fn Renderer::draw_fill(
 }
 
 ///|
+/// Adds a fill mesh's outline, `count` indices (vertex pairs, one per edge).
+pub fn Renderer::upload_outline(
+  self : Renderer,
+  mesh : Mesh,
+  indices : JsBuffer,
+  count : Int32,
+) -> Unit {
+  gl_upload_outline(self.gl, mesh, indices, count)
+}
+
+///|
+/// Draws a fill mesh's outline (MapLibre's `fill-antialias`) with `slots`'
+/// stroke color (the outline color) and opacity.
+pub fn Renderer::draw_fill_outline(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+) -> Unit {
+  self.bind("fillOutline", mesh, slots, 4)
+  gl_draw_outline(self.gl, mesh, at.matrix.m, at.clip)
+}
+
+///|
 /// Draws a line layer with `slots`' color, opacity and width (CSS pixels,
 /// times `dpr`), plus a pixel of antialiasing.
 pub fn Renderer::draw_line(

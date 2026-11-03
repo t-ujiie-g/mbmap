@@ -86,7 +86,12 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
   let opacity = number_or(layer.opacity.eval(zoom, ctx), 1.0)
   let circle = layer.kind is Circle
   let symbol = layer.kind is Symbol
-  let stroke_color = color_of(layer.stroke_color, zoom, ctx)
+  // A fill's stroke is its outline: its own color, or its fill color.
+  let stroke_color = match (layer.kind, layer.outline_color) {
+    (Fill, Some(e)) => color_of(e, zoom, ctx)
+    (Fill, None) => c
+    _ => color_of(layer.stroke_color, zoom, ctx)
+  }
   let stroke_opacity = number_or(layer.stroke_opacity.eval(zoom, ctx), 1.0)
   let stroke : FixedArray[Double] = if circle {
     let s = stroke_color

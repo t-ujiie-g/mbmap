@@ -85,3 +85,18 @@ test "only the largest holes are kept beyond MAX_POLYGON_RINGS" {
   @tess.FillTessellator::new().add_polygons(coords[:], ring_ends[:], out)
   assert_eq(out.num_vertices(), @tess.MAX_POLYGON_RINGS * 5)
 }
+
+///|
+test "outline lists each ring's edges, closing an open ring" {
+  let out = @tess.FillBuffers::new()
+  let fill = @tess.FillTessellator::new()
+  // A closed square with a closed hole: 4 + 4 edges.
+  let coords = square(0, 0, 100, true) + square(25, 25, 50, false)
+  fill.add_polygons(coords[:], [5, 10][:], out)
+  assert_eq(out.outline, [0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 6, 7, 7, 8, 8, 9])
+  // An open triangle after it: its closing edge is added.
+  fill.add_polygons([0, 0, 10, 0, 0, 10][:], [3][:], out)
+  assert_eq(out.outline[16:].to_owned(), [10, 11, 11, 12, 12, 10])
+  out.clear()
+  assert_eq(out.outline.length(), 0)
+}

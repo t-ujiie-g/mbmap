@@ -8,22 +8,25 @@
 pub const MAX_POLYGON_RINGS : Int32 = 500
 
 ///|
-/// Fill geometry: `vertices` holds x, y pairs in tile units and `indices`
-/// holds triangles as vertex index triples.
+/// Fill geometry: `vertices` holds x, y pairs in tile units, `indices`
+/// triangles as vertex index triples and `outline` the rings' edges as vertex
+/// index pairs (MapLibre's fill outline line list).
 pub struct FillBuffers {
   vertices : Array[Int32]
   indices : Array[Int32]
+  outline : Array[Int32]
 }
 
 ///|
 pub fn FillBuffers::new() -> FillBuffers {
-  { vertices: [], indices: [], }
+  { vertices: [], indices: [], outline: [], }
 }
 
 ///|
 pub fn FillBuffers::clear(self : FillBuffers) -> Unit {
   self.vertices.clear()
   self.indices.clear()
+  self.outline.clear()
 }
 
 ///|
@@ -207,5 +210,25 @@ fn FillTessellator::add_polygon(
   }
   for t in tris {
     out.indices.push(base + t)
+  }
+  // Each ring's edges; an open ring (last point not the first) also gets the
+  // closing one, as MapLibre's outline does.
+  let mut start = base
+  for k in 0..<count {
+    let end = base + (if k + 1 < count { holes[k] } else { flat.length() / 2 })
+    for i in (start + 1)..<end {
+      out.outline.push(i - 1)
+      out.outline.push(i)
+    }
+    let open = end - start >= 2 &&
+      (
+        flat[(start - base) * 2] != flat[(end - 1 - base) * 2] ||
+        flat[(start - base) * 2 + 1] != flat[(end - 1 - base) * 2 + 1]
+      )
+    if open {
+      out.outline.push(end - 1)
+      out.outline.push(start)
+    }
+    start = end
   }
 }
