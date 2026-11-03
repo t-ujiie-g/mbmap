@@ -221,9 +221,9 @@ fn circles_along(
 }
 
 ///|
-/// Places label `i` of `s` along its line as MapLibre's
-/// `placeCollisionCircles`: circles over the path from its first glyph to its
-/// last, which must meet nothing placed unless it may overlap.
+/// Places the text of label `i` of `s` along its line as MapLibre's
+/// `placeCollisionCircles`: `circles` (x, y, radius in grid px) over the path from
+/// its first glyph to its last, which must meet nothing placed unless it may overlap.
 fn Map::place_line_label(
   self : Map,
   grid : @label.Grid,
@@ -233,6 +233,7 @@ fn Map::place_line_label(
   i : Int32,
   height_scale : Double,
   tile_px : Double,
+  circles : Array[Double],
 ) -> Bool {
   let t = self.transform
   let (w, h) = (t.width, t.height)
@@ -246,7 +247,6 @@ fn Map::place_line_label(
   let glyphs = (f32_at(s.labels, row + LABEL_FLOATS - 1) / 6.0).to_int()
   let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / 24.0 * tile_px
   let (head, tail) = ([], [])
-  let circles = []
   let mut collided = false
   let mut in_grid = false
   if cw > 0.0 &&
@@ -313,12 +313,51 @@ fn Map::place_line_label(
   if collided || !in_grid || ratio < MIN_PERSPECTIVE_RATIO {
     circles.clear()
   }
-  let placed = s.allow_overlap || (!circles.is_empty() && !collided)
-  // Queries find the label by its circles' bounds.
+  s.allow_overlap || (!circles.is_empty() && !collided)
+}
+
+///|
+/// Places label `i` of `s` along its line: its text by its circles, then its
+/// icon's box laid on the map (`fits_on_map`), shown jointly as on points.
+fn Map::place_line_symbol(
+  self : Map,
+  grid : @label.Grid,
+  at : @render_webgl2.Placement,
+  s : LabelSet,
+  l : LineSet,
+  i : Int32,
+  height_scale : Double,
+  tile_px : Double,
+  unit : Double,
+) -> Unit {
+  let row = i * LABEL_FLOATS
+  let has_text = f32_at(s.labels, row + LABEL_FLOATS - 1) > 0.0
+  let z = s.heights[i] * height_scale
+  let (_, _, _, cw) = at.matrix.apply(
+    f32_at(s.labels, row),
+    f32_at(s.labels, row + 1),
+    z,
+    1.0,
+  )
+  let visible = cw > 0.0 &&
+    0.5 + 0.5 * at.center_depth / cw >= MIN_PERSPECTIVE_RATIO
+  let circles = []
+  let mut place_text = has_text &&
+    self.place_line_label(grid, at, s, l, i, height_scale, tile_px, circles)
+  let icon = icon_of(s, i)
+  let mut place_icon = false
+  if icon is Some(ic) {
+    place_icon = visible &&
+      self.fits_on_map(grid, at, s, i, z, tile_px, unit, ic.allow_overlap)
+    let (text, icon) = joint(ic, has_text, place_text, place_icon)
+    place_text = text
+    place_icon = icon
+  }
+  // Queries find the text by its circles' bounds.
   let b = s.boxes
   let o = i * BOX_FLOATS
   b[o] = @double.not_a_number
-  if placed && !circles.is_empty() {
+  if place_text && !circles.is_empty() {
     b[o] = @double.infinity
     b[o + 1] = @double.infinity
     b[o + 2] = @double.neg_infinity
@@ -334,13 +373,74 @@ fn Map::place_line_label(
       b[o + 3] = @cmp.maximum(b[o + 3], cy + r - VIEWPORT_PADDING)
     }
   }
-  placed
+  if icon is Some(ic) {
+    self.show_icon(grid, s, ic, i, place_icon, visible)
+  }
+  let show = has_text && place_text
+  if show != s.shown[i] {
+    s.shown[i] = show
+    s.changed = true
+  }
 }
 
 ///|
-/// Lays the glyphs of the shown labels of `s` along their lines for this
-/// frame, as MapLibre's `updateLineLabels` (turned to read upright with
-/// `text-keep-upright`; hidden where the line ends first), and uploads them.
+/// Whether label `i`'s icon box fits the grid laid on the map at its anchor (z
+/// its height) as MapLibre's `_projectCollisionBox` lays boxes of text pitched
+/// and turned with the map; recorded in `s.boxes` if so.
+fn Map::fits_on_map(
+  self : Map,
+  grid : @label.Grid,
+  at : @render_webgl2.Placement,
+  s : LabelSet,
+  i : Int32,
+  z : Double,
+  tile_px : Double,
+  unit : Double,
+  overlap : Bool,
+) -> Bool {
+  let t = self.transform
+  let row = i * LABEL_FLOATS
+  let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + 1))
+  let (_, _, _, cw) = at.matrix.apply(x, y, z, 1.0)
+  // Tile units per CSS px of the box, which grows with distance as the text does.
+  let k = @cmp.minimum(@cmp.maximum(0.5 + 0.5 * cw / at.center_depth, 0.0), 4.0) *
+    tile_px
+  let q = (n : Int32) => {
+    (f32_at(s.labels, row + ICON_COLUMN + n) / unit).to_int().to_double() *
+    unit *
+    k
+  }
+  let xs = [q(0), (q(0) + q(2)) / 2.0, q(2)]
+  let ys = [q(1), (q(1) + q(3)) / 2.0, q(3)]
+  let box = [
+    @double.infinity, @double.infinity, @double.neg_infinity, @double.neg_infinity,
+  ]
+  for a in 0..<3 {
+    for c in 0..<3 {
+      guard a != 1 || c != 1 else { continue }
+      let (px, py, _, pw) = at.matrix.apply(x + xs[a], y + ys[c], z, 1.0)
+      let sx = (px / pw + 1.0) * 0.5 * t.width + VIEWPORT_PADDING
+      let sy = (1.0 - py / pw) * 0.5 * t.height + VIEWPORT_PADDING
+      box[0] = @cmp.minimum(box[0], sx)
+      box[1] = @cmp.minimum(box[1], sy)
+      box[2] = @cmp.maximum(box[2], sx)
+      box[3] = @cmp.maximum(box[3], sy)
+    }
+  }
+  guard grid.inside(box[0], box[1], box[2], box[3]) &&
+    (overlap || !grid.hits(box[0], box[1], box[2], box[3])) else {
+    return false
+  }
+  for n in 0..<4 {
+    s.boxes[i * BOX_FLOATS + 4 + n] = box[n] - VIEWPORT_PADDING
+  }
+  true
+}
+
+///|
+/// Lays the glyphs of the shown labels of `s` along their lines for this frame,
+/// and the icons turned with them, as MapLibre's `updateLineLabels` (turned to
+/// read upright with `*-keep-upright`; hidden where the line ends first).
 fn Map::lay_line_glyphs(
   self : Map,
   mesh : @render_webgl2.Mesh,
@@ -420,4 +520,32 @@ fn Map::lay_line_glyphs(
     }
   }
   self.renderer.set_glyphs(mesh, l.glyphs)
+  guard s.icon is Some(ic) && ic.rotate_with_map else { return }
+  // An icon is one glyph at its anchor, turned to its segment.
+  for i in 0..<s.count {
+    guard ic.shown[i] else { continue }
+    let g = (f32_at(s.labels, i * LABEL_FLOATS + ICON_COLUMN + 5) / 6.0).to_int() *
+      3
+    let (x, y) = (
+      f32_at(s.labels, i * LABEL_FLOATS),
+      f32_at(s.labels, i * LABEL_FLOATS + 1),
+    )
+    let z = s.heights[i] * height_scale
+    let clip = (px : Double, py : Double) => {
+      let (ex, _, _, ew) = at.matrix.apply(px, py, z, 1.0)
+      ex / ew
+    }
+    let v = l.meta[i * LINE_FLOATS + 2].to_int() +
+      l.meta[i * LINE_FLOATS + 1].to_int() +
+      1
+    let flip = ic.keep_upright &&
+      clip(x, y) > clip(l.lines[v * 2], l.lines[v * 2 + 1])
+    ic.glyphs[g] = HIDDEN_GLYPH
+    if l.along(i, x, y, 0.0, flip, None) is Some((gx, gy, angle)) {
+      ic.glyphs[g] = gx
+      ic.glyphs[g + 1] = gy
+      ic.glyphs[g + 2] = angle
+    }
+  }
+  self.renderer.set_glyphs(ic.mesh, ic.glyphs)
 }

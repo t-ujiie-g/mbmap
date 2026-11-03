@@ -78,7 +78,7 @@ priv struct LabelSet {
 ///|
 /// A symbol mesh's icons (a quad per label with one), its images' `names` (those
 /// it lacked too) and layout; `sharp` when no image needs linear filtering
-/// (MapLibre's `iconsNeedLinear`); `shown` as `LabelSet`'s.
+/// (MapLibre's `iconsNeedLinear`); `shown` and `glyphs` (along lines) as text's.
 priv struct IconSet {
   mesh : @render_webgl2.Mesh
   names : Array[String]
@@ -89,6 +89,7 @@ priv struct IconSet {
   text_optional : Bool
   rotate_with_map : Bool
   pitch_with_map : Bool
+  keep_upright : Bool
   text_fit : Bool
   offset : Bool
   sdf : Bool
@@ -96,6 +97,7 @@ priv struct IconSet {
   shown : FixedArray[Bool]
   mut changed : Bool
   mut drawn : Int32
+  glyphs : FixedArray[Double]
 }
 
 ///|
@@ -186,6 +188,7 @@ fn Map::icon_set(self : Map, l : JsValue, count : Int32) -> IconSet? {
     text_optional: get_bool(ic, "textOptional"),
     rotate_with_map: get_bool(ic, "rotateWithMap"),
     pitch_with_map: get_bool(ic, "pitchWithMap"),
+    keep_upright: get_bool(ic, "keepUpright"),
     text_fit: get_int(ic, "textFit") > 0,
     offset: get_bool(ic, "hasOffset"),
     sdf: get_bool(ic, "sdf"),
@@ -193,6 +196,7 @@ fn Map::icon_set(self : Map, l : JsValue, count : Int32) -> IconSet? {
     shown: FixedArray::make(count, false),
     changed: false,
     drawn: -1,
+    glyphs: FixedArray::make(get_int(ic, "count") / 6 * 3, HIDDEN_GLYPH),
   })
 }
 
@@ -359,8 +363,8 @@ fn Map::place_labels(
       if p.set.line is Some(l) {
         let level = @cmp.minimum(deeper, LINE_LEVELS - 1)
         let tile_px = 1.0 / t.tile_scale(p.draw.id, @core.TILE_EXTENT)
-        let show = l.meta[i * LINE_FLOATS].to_int() == level &&
-          self.place_line_label(
+        if l.meta[i * LINE_FLOATS].to_int() == level {
+          self.place_line_symbol(
             grid,
             p.draw.at,
             p.set,
@@ -368,10 +372,10 @@ fn Map::place_labels(
             i,
             height_scale,
             tile_px,
+            unit,
           )
-        if show != p.set.shown[i] {
-          p.set.shown[i] = show
-          p.set.changed = true
+        } else {
+          hide_label(p.set, i)
         }
         continue
       }
@@ -526,10 +530,7 @@ fn Map::place_label(
     )
   }
   let has_text = f32_at(s.labels, row + LABEL_FLOATS - 1) > 0.0
-  let icon = match s.icon {
-    Some(ic) if f32_at(s.labels, row + ICON_COLUMN + 6) > 0.0 => Some(ic)
-    _ => None
-  }
+  let icon = icon_of(s, i)
   // With `icon-text-fit` an icon that may not overlap must fit at each anchor tried.
   let fitted = match icon {
     Some(ic) if ic.text_fit && !ic.allow_overlap => true
@@ -600,32 +601,15 @@ fn Map::place_label(
       (0.0, 0.0)
     }
     place_icon = fits(4, ICON_COLUMN, 0.0, dx, dy, ic.allow_overlap)
-    let icon_alone = ic.text_optional || !has_text
-    if !icon_alone && !ic.optional {
-      place_text = place_text && place_icon
-      place_icon = place_text
-    } else if !ic.optional {
-      place_text = place_text && place_icon
-    } else if !icon_alone {
-      place_icon = place_icon && place_text
-    }
+    let (text, icon) = joint(ic, has_text, place_text, place_icon)
+    place_text = text
+    place_icon = icon
   }
   if place_text && !s.ignore_placement {
     insert(0)
   }
   if icon is Some(ic) {
-    if place_icon && !ic.ignore_placement {
-      insert(4)
-    }
-    // MapLibre shows an icon that may overlap even off the grid, where
-    // queries do not find it.
-    let always = ic.allow_overlap &&
-      (s.allow_overlap || !s.has_text || ic.text_optional)
-    let show = place_icon || (always && visible && nan_box(s, i, 4))
-    if show != ic.shown[i] {
-      ic.shown[i] = show
-      ic.changed = true
-    }
+    self.show_icon(grid, s, ic, i, place_icon, visible)
   }
   let show_text = place_text
   let always = s.allow_overlap &&
@@ -638,6 +622,81 @@ fn Map::place_label(
   if show != s.shown[i] {
     s.shown[i] = show
     s.changed = true
+  }
+}
+
+///|
+/// Label `i`'s icon set if it has an icon.
+fn icon_of(s : LabelSet, i : Int32) -> IconSet? {
+  match s.icon {
+    Some(ic) if f32_at(s.labels, i * LABEL_FLOATS + ICON_COLUMN + 6) > 0.0 =>
+      Some(ic)
+    _ => None
+  }
+}
+
+///|
+/// Whether a label's text and icon show when both were placed as `text` and
+/// `icon`: MapLibre's `text-optional` and `icon-optional` rules.
+fn joint(
+  ic : IconSet,
+  has_text : Bool,
+  text : Bool,
+  icon : Bool,
+) -> (Bool, Bool) {
+  let icon_alone = ic.text_optional || !has_text
+  if !icon_alone && !ic.optional {
+    (text && icon, text && icon)
+  } else if !ic.optional {
+    (text && icon, icon)
+  } else if !icon_alone {
+    (text, icon && text)
+  } else {
+    (text, icon)
+  }
+}
+
+///|
+/// Puts label `i`'s icon box (as recorded) in the grid if `placed` and shows
+/// the icon; MapLibre shows one that may overlap even off the grid, where
+/// queries do not find it.
+fn Map::show_icon(
+  _self : Map,
+  grid : @label.Grid,
+  s : LabelSet,
+  ic : IconSet,
+  i : Int32,
+  placed : Bool,
+  visible : Bool,
+) -> Unit {
+  let b = i * BOX_FLOATS + 4
+  if placed && !ic.ignore_placement {
+    grid.insert(
+      s.boxes[b] + VIEWPORT_PADDING,
+      s.boxes[b + 1] + VIEWPORT_PADDING,
+      s.boxes[b + 2] + VIEWPORT_PADDING,
+      s.boxes[b + 3] + VIEWPORT_PADDING,
+    )
+  }
+  let always = ic.allow_overlap &&
+    (s.allow_overlap || !s.has_text || ic.text_optional)
+  let show = placed || (always && visible && nan_box(s, i, 4))
+  if show != ic.shown[i] {
+    ic.shown[i] = show
+    ic.changed = true
+  }
+}
+
+///|
+/// Hides label `i` of `s`, text and icon.
+fn hide_label(s : LabelSet, i : Int32) -> Unit {
+  if s.shown[i] {
+    s.shown[i] = false
+    s.changed = true
+  }
+  if s.icon is Some(ic) && ic.shown[i] {
+    ic.shown[i] = false
+    ic.changed = true
   }
 }
 

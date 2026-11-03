@@ -127,6 +127,25 @@ function contourScenes() {
       style: style(contours(), label("l", { "text-max-width": 8 })),
       camera: { center: west, zoom: 14.8 }, along: true,
     },
+    // Icons along lines (page.mjs's images): with the heights on them, alone, turned and tilted, upright
+    // to the viewport, and optional text.
+    "contours-icons": { style: style(contours({ "icon-image": "dot", "icon-size": 1.4 })), camera: { center: west, zoom: 14.5 }, along: true },
+    "contours-icons-alone": {
+      style: style({ ...contours({ "icon-image": "box", "symbol-spacing": 120 }), layout: { "symbol-placement": "line", "icon-image": "box", "symbol-spacing": 120 } }),
+      camera: { center: west, zoom: 14.7, bearing: 40 }, along: true,
+    },
+    "contours-icons-tilted": {
+      style: style(contours({ "icon-image": "pin", "icon-keep-upright": true })),
+      camera: { center: west, zoom: 14.6, bearing: -15, pitch: 45 }, along: true,
+    },
+    "contours-icons-viewport": {
+      style: style(contours({ "icon-image": "box", "icon-rotation-alignment": "viewport", "symbol-placement": "line-center" })),
+      camera: { center: west, zoom: 14.5, bearing: 25 }, along: true,
+    },
+    "contours-icons-optional": {
+      style: style(contours({ "icon-image": "ring", "icon-size": 2, "text-optional": true }), label("l", { "text-max-width": 8 })),
+      camera: { center: west, zoom: 14.8 }, along: true,
+    },
   };
 }
 
@@ -155,11 +174,9 @@ try {
     const anchors = both
       .filter((l) => l.anchor !== theirs.get(l.key).anchor || l.text !== theirs.get(l.key).text || l.icon !== theirs.get(l.key).icon)
       .map((l) => `${l.key}: ${l.anchor} ${l.text} ${l.icon} vs ${theirs.get(l.key).anchor} ${theirs.get(l.key).text} ${theirs.get(l.key).icon}`);
-    // How far the boxes the labels both placed put in the grid lie apart, in CSS px.
-    const diff = (l) => Math.max(0, ...l.box.flatMap((b, k) => {
-      const t = theirs.get(l.key).box[k];
-      return t ? b.map((v, i) => Math.abs(v - t[i])) : [];
-    }));
+    // How far the boxes the labels both placed put in the grid lie from MapLibre's nearest of
+    // the same feature (along lines a feature's instances share its boxes' key), in CSS px.
+    const diff = (l) => Math.max(0, ...l.box.map((b) => Math.min(...theirs.get(l.key).box.map((t) => Math.max(...b.map((v, i) => Math.abs(v - t[i])))))));
     const boxDiff = Math.max(0, ...both.map(diff));
     // Along lines: how far each glyph lies from MapLibre's on screen (px) and turns from it (radians).
     const hidden = (g) => !Number.isFinite(g[0]) || Math.abs(g[0]) > 1e6;

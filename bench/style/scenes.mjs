@@ -23,6 +23,16 @@ const ICONS = (layout = {}) => ({
   ]),
   sprite: SPRITE,
 });
+const LINE_ICONS = {
+  ...style([
+    { id: "pins", type: "symbol", source: "gsi", "source-layer": "contour",
+      layout: { "symbol-placement": "line", "symbol-spacing": 140, "icon-image": "pin", "icon-size": 1.2 } },
+    { id: "rings", type: "symbol", source: "gsi", "source-layer": "contour",
+      layout: { "symbol-placement": "line-center", "icon-image": "ring", "icon-rotation-alignment": "viewport" },
+      paint: { "icon-color": "#7a4fb0", "icon-halo-color": "#ffffff", "icon-halo-width": 1.5 } },
+  ]),
+  sprite: SPRITE,
+};
 const PATTERN_LAYERS = [
   { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-pattern": "dots" } },
   { id: "building", type: "fill", source: "gsi", "source-layer": "building",
@@ -222,6 +232,17 @@ export const SCENES = {
   "icons-turned": {
     style: ICONS({ "icon-rotate": 25, "icon-size": 1.4, "icon-rotation-alignment": "map" }),
     camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 30, pitch: 40 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Icons along GSI contours, turned to the line (pins) or upright on it (SDF rings), then tilted.
+  "icons-lines": {
+    style: LINE_ICONS,
+    camera: { center: [139.702, 35.664], zoom: 14.7, bearing: 40, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "icons-lines-tilted": {
+    style: LINE_ICONS,
+    camera: { center: [139.702, 35.664], zoom: 14.6, bearing: -15, pitch: 45 },
     limits: { mean: 0.05, p99: 1 },
   },
   "icons-2x": {

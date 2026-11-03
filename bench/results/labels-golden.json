@@ -180,6 +180,66 @@
       "angleDiff": 0
     },
     {
+      "scene": "contours-icons",
+      "same": true,
+      "maplibre": 13,
+      "mbmap": 13,
+      "anchored": 0,
+      "icons": 13,
+      "boxDiff": 0,
+      "glyphs": 26,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-icons-alone",
+      "same": true,
+      "maplibre": 80,
+      "mbmap": 80,
+      "anchored": 0,
+      "icons": 80,
+      "boxDiff": 0,
+      "glyphs": 0,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-icons-tilted",
+      "same": true,
+      "maplibre": 31,
+      "mbmap": 31,
+      "anchored": 0,
+      "icons": 31,
+      "boxDiff": 0,
+      "glyphs": 64,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-icons-viewport",
+      "same": true,
+      "maplibre": 27,
+      "mbmap": 27,
+      "anchored": 0,
+      "icons": 27,
+      "boxDiff": 0,
+      "glyphs": 54,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-icons-optional",
+      "same": true,
+      "maplibre": 75,
+      "mbmap": 75,
+      "anchored": 0,
+      "icons": 4,
+      "boxDiff": 0,
+      "glyphs": 8,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
       "scene": "icons",
       "same": true,
       "maplibre": 38,

@@ -28,7 +28,7 @@ pub fn Renderer::update_icon(
 ///|
 /// Draws a symbol mesh's shown icons (MapLibre's symbol_icon, or symbol_sdf with
 /// `color` and `halo`, straight RGBA): `size` negative for each vertex's; icons
-/// `pitch` with the map turned by `angle` (radians), or `rotate` with it.
+/// `pitch` with the map turned by `angle` (radians) and, `along` lines, by `set_glyphs`.
 pub fn Renderer::draw_icons(
   self : Renderer,
   mesh : Mesh,
@@ -48,6 +48,7 @@ pub fn Renderer::draw_icons(
   halo_blur~ : Double,
   gamma_scale~ : Double,
   height_scale~ : Double = 0.0,
+  along~ : Bool = false,
 ) -> Unit {
   if self.icons.take_dirty() {
     gl_pattern_atlas(
@@ -79,6 +80,7 @@ pub fn Renderer::draw_icons(
       halo_blur,
       gamma_scale,
       b(linear),
+      b(along),
     ],
     color,
     halo,
