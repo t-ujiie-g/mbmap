@@ -113,6 +113,7 @@ pub(all) enum Expr {
   Id
   GeometryType
   Zoom
+  LineProgress
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -132,6 +133,7 @@ pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
 pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
+pub fn Expr::reads_line_progress(Self) -> Bool
 pub fn Expr::reads_state(Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
@@ -194,6 +196,7 @@ pub(all) struct NoFeature {
 }
 pub fn NoFeature::geometry_type(Self) -> String
 pub fn NoFeature::id(Self) -> Value
+pub fn NoFeature::line_progress(Self) -> Double
 pub fn NoFeature::number_text(Self, Double) -> String
 pub fn NoFeature::property(Self, String) -> Value?
 pub fn NoFeature::state(Self, String) -> Value?
@@ -337,6 +340,7 @@ pub struct StyleLayer {
   antialias : Bool
   outline_color : Expr?
   dasharray : Expr?
+  gradient : Expr?
 }
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
@@ -415,4 +419,5 @@ pub(open) trait FeatureContext {
   fn trig(Self) -> @core.Trig = _
   fn number_text(Self, Double) -> String = _
   fn text_number(Self, String) -> Double = _
+  fn line_progress(Self) -> Double = _
 }

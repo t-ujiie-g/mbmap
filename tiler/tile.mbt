@@ -4,13 +4,15 @@
 ///|
 /// One tile's features in tile units, laid out as docs/FORMATS.md's "Columnar
 /// tile" (`rows` are their table rows). Exteriors wind clockwise with y down and
-/// holes counterclockwise, as MVT wants.
+/// holes counterclockwise, as MVT wants. With line metrics, `clips` holds each
+/// feature's start and end along its line (shares of its length; NaN if none).
 pub struct TileData {
   types : Array[Int32]
   rows : Array[Int32]
   ring_ends : Array[Int32]
   point_ends : Array[Int32]
   xy : Array[Int32]
+  clips : Array[Double]
 }
 
 ///|
@@ -32,6 +34,7 @@ priv struct Tile {
   ring_ends : Array[Int32]
   point_ends : Array[Int32]
   coords : Array[Double]
+  clips : Array[Double]
   mut data : TileData?
 }
 
@@ -64,6 +67,7 @@ fn create_tile(
     ring_ends: [],
     point_ends: [],
     coords: [],
+    clips: [],
     data: None,
   }
   for fr in set {
@@ -98,6 +102,17 @@ fn create_tile(
       tile.types.push(kind)
       tile.rows.push(store.row[f])
       tile.ring_ends.push(tile.point_ends.length())
+      if options.line_metrics {
+        // geojson-vt's clip tags: a line's one slice, as shares of its length.
+        let r = start(store.ring_ends, start(store.part_ends, f))
+        if kind == 2 {
+          tile.clips.push(store.from[r] / store.size[r])
+          tile.clips.push(store.to[r] / store.size[r])
+        } else {
+          tile.clips.push(@double.not_a_number)
+          tile.clips.push(@double.not_a_number)
+        }
+      }
     }
   }
   tile
@@ -193,6 +208,7 @@ fn Tile::transform(self : Tile, extent : Int32) -> TileData {
     ring_ends: self.ring_ends,
     point_ends: self.point_ends,
     xy,
+    clips: self.clips,
   }
   self.data = Some(d)
   d

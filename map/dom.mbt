@@ -163,6 +163,11 @@ extern "js" fn paint_of_layer(v : JsValue) -> JsValue =
   #|(v) => v.paint ?? null
 
 ///|
+/// A packed gradient line layer's progress (an ArrayBuffer), or null.
+extern "js" fn progress_of_layer(v : JsValue) -> JsValue =
+  #|(v) => v.progress ?? null
+
+///|
 /// A packed line layer's distances along its lines (an ArrayBuffer), or null.
 extern "js" fn distances_of_layer(v : JsValue) -> JsValue =
   #|(v) => v.distances ?? null

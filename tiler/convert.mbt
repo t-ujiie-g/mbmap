@@ -28,11 +28,13 @@ fn project_y(trig : Trig, lat : Double) -> Double {
 
 ///|
 /// Projects the table's features into `store` with simplification data
-/// (geojson-vt's `convertToInternal`) and returns their indices.
+/// (geojson-vt's `convertToInternal`) and returns their indices; with line
+/// `metrics`, each line becomes a feature of its own.
 fn convert(
   table : @geom.Table,
   sq_tolerance : Double,
   trig : Trig,
+  metrics~ : Bool = false,
 ) -> Array[FRef] {
   let store = Store::new()
   let out = []
@@ -59,6 +61,16 @@ fn convert(
           continue
         }
         convert_line(store, table.coords, a, b, sq_tolerance, kind == 3, trig)
+        if metrics && kind == 2 {
+          store.end_part()
+          let i = store.end_feature(kind, f)
+          if i >= 0 {
+            out.push({ s: store, i, })
+          }
+        }
+      }
+      if metrics && kind == 2 {
+        continue
       }
       if kind != 1 {
         store.end_part()
@@ -67,6 +79,9 @@ fn convert(
     if kind == 1 {
       store.end_ring(0.0)
       store.end_part()
+    }
+    if metrics && kind == 2 {
+      continue
     }
     let i = store.end_feature(kind, f)
     if i >= 0 {

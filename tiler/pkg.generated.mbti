@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub const CLIP_END : String = "geojsonvt_clip_end"
+
+pub const CLIP_START : String = "geojsonvt_clip_start"
+
 pub fn abbreviated_count(Int32) -> @geom.Prop
 
 pub fn encode_cluster_features(Array[ClusterFeature], @geom.Table) -> Bytes
@@ -52,6 +56,7 @@ pub struct TileData {
   ring_ends : Array[Int32]
   point_ends : Array[Int32]
   xy : Array[Int32]
+  clips : Array[Double]
 }
 
 pub struct Tiler {
@@ -68,6 +73,7 @@ pub(all) struct TilerOptions {
   extent : Int32
   buffer : Int32
   wrap : Bool
+  line_metrics : Bool
 }
 pub fn TilerOptions::default() -> Self
 

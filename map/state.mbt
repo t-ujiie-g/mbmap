@@ -192,7 +192,7 @@ fn Map::draw_by_state(
       draw(p)
     }
     self.renderer.set_range(m.mesh, first, count)
-    draw(paint_of(layer, zoom, { obj, state, }))
+    draw(paint_of(layer, zoom, { ..JsProps::none(), obj, state, }))
     at = first + count
   }
   if at < total {

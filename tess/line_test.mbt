@@ -252,3 +252,30 @@ test "a dashed ring closes into a pair at its full length" {
   let solid = extrude([0, 0, 100, 0, 100, 100, 0, 100, 0, 0], join=Bevel)
   assert_true(near(line_area(out, 4.0), line_area(solid, 4.0)))
 }
+
+///|
+test "progress records each vertex's share of its line's length" {
+  let progress = (points : Array[Int32]) => {
+    let out = @tess.LineBuffers::new()
+    @tess.LineTessellator::new().add_line(
+      points[:],
+      0,
+      points.length() / 2,
+      out,
+      join=Bevel,
+      progress=true,
+    )
+    out
+  }
+  let out = progress([0, 0, 100, 0, 100, 50])
+  assert_valid(out)
+  assert_eq(out.progress.length(), out.num_vertices())
+  assert_eq(out.distances.length(), 0)
+  assert_eq(out.progress[0], 0.0)
+  assert_true(out.progress.contains(100.0 / 150.0))
+  assert_eq(out.progress[out.num_vertices() - 1], 1.0)
+  // A ring ends at the whole of its length.
+  let ring = progress([0, 0, 100, 0, 100, 100, 0, 100, 0, 0])
+  assert_eq(ring.progress.fold(init=0.0, @cmp.maximum), 1.0)
+  assert_eq(extrude([0, 0, 100, 0]).progress.length(), 0)
+}

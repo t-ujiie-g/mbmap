@@ -67,6 +67,7 @@ pub extend NoFeature with FeatureContext::{
   trig,
   number_text,
   text_number,
+  line_progress,
 }
 
 ///|

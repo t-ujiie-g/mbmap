@@ -205,6 +205,58 @@ pub fn Renderer::upload_distances(
 }
 
 ///|
+/// Adds a gradient line mesh's progress (docs/FORMATS.md, "Packed tile").
+pub fn Renderer::upload_progress(
+  self : Renderer,
+  mesh : Mesh,
+  progress : JsBuffer,
+) -> Unit {
+  gl_upload_progress(self.gl, mesh, progress)
+}
+
+///|
+/// Uploads a line gradient's color ramp (`color_ramp`): `width` pixels per row
+/// and a row per line; `nearest` for a step.
+pub fn Renderer::upload_gradient(
+  self : Renderer,
+  pixels : FixedArray[Byte],
+  width : Int32,
+  height : Int32,
+  nearest~ : Bool,
+) -> Gradient {
+  gl_upload_gradient(self.gl, pixels, width, height, nearest)
+}
+
+///|
+pub fn Renderer::release_gradient(self : Renderer, g : Gradient) -> Unit {
+  gl_release_gradient(self.gl, g)
+}
+
+///|
+/// Draws a line as `draw_line`, its color from gradient `g` (MapLibre's
+/// line_gradient) times `slots`' opacity.
+pub fn Renderer::draw_line_gradient(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+  g : Gradient,
+) -> Unit {
+  self.bind("lineGradient", mesh, slots, 3)
+  gl_draw_line_gradient(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+    g,
+  )
+}
+
+///|
 /// Where the dash pattern `dasharray` (in line widths; round ends when `round`)
 /// lies in the dash atlas; None once it is full.
 pub fn Renderer::dash(

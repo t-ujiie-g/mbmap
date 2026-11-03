@@ -15,6 +15,7 @@ test "paint_of evaluates a group's properties and the zoom" {
   let p = paint_of(layer, 15.0, {
     obj: js_object("{\"rdCtg\": 0, \"$type\": \"Polygon\"}"),
     state: js_null(),
+    progress: @double.not_a_number,
   })
   assert_eq((p.r, p.b, p.a, p.width), (1.0, 0.0, 0.5, 6.0))
   let q = paint_of(layer, 10.0, JsProps::none())
@@ -26,6 +27,7 @@ test "JsProps reports absent keys as None and other types as Null" {
   let props : JsProps = {
     obj: js_object("{\"b\": true, \"s\": \"x\", \"n\": null}"),
     state: js_object("{\"hover\": true}"),
+    progress: @double.not_a_number,
   }
   assert_eq(@style.FeatureContext::state(props, "hover"), Some(Bool(true)))
   assert_eq(@style.FeatureContext::state(props, "b"), None)
@@ -39,7 +41,11 @@ test "JsProps reports absent keys as None and other types as Null" {
 
 ///|
 test "JsProps reads the id key and converts with the browser's String and Number" {
-  let props : JsProps = { obj: js_object("{\"$id\": 7}"), state: js_null(), }
+  let props : JsProps = {
+    obj: js_object("{\"$id\": 7}"),
+    state: js_null(),
+    progress: @double.not_a_number,
+  }
   assert_eq(@style.FeatureContext::id(props), Num(7.0))
   assert_eq(@style.FeatureContext::id(JsProps::none()), Null)
   assert_eq(
@@ -65,6 +71,7 @@ test "paint_of evaluates circle radius and stroke; other kinds leave them empty"
   let c = paint_of(style.layers[0], 14.0, {
     obj: js_object("{\"k\": 1}"),
     state: js_null(),
+    progress: @double.not_a_number,
   })
   assert_eq((c.radius, c.stroke_width), (8.0, 2.0))
   assert_eq(

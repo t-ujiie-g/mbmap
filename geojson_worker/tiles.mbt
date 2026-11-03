@@ -19,8 +19,8 @@ priv enum Index {
 let sources : Map[Int32, (@geom.Table, Index)] = Map([])
 
 ///|
-/// Reads the input GeoJSON as source `source` with its options (pixels; `cluster`
-/// 1 clusters its points, docs/FORMATS.md). Returns the feature count, or minus
+/// Reads the input GeoJSON as source `source` with its options (pixels; 1 for
+/// `line_metrics` and `cluster`, docs/FORMATS.md). Returns the feature count, or minus
 /// the length of a UTF-8 error message at `output_addr`.
 #export_name("load")
 pub fn load(
@@ -28,6 +28,7 @@ pub fn load(
   max_zoom : Int32,
   buffer : Double,
   tolerance : Double,
+  line_metrics : Int32,
   cluster : Int32,
   cluster_max_zoom : Int32,
   cluster_radius : Double,
@@ -57,6 +58,7 @@ pub fn load(
       max_zoom,
       buffer,
       tolerance: tolerance * units_per_pixel,
+      line_metrics: line_metrics != 0,
     }
     Tiles(@tiler.Tiler::new(table, options~, trig~))
   }

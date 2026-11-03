@@ -142,6 +142,9 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
         }
       Some(_) => raise Invalid(path="\{path}.cluster", "not a boolean")
     }
+    if s.get("lineMetrics") is Some(v) && !(v is (True | False)) {
+      raise Invalid(path="\{path}.lineMetrics", "not a boolean")
+    }
     for key in ["clusterRadius", "clusterMaxZoom", "clusterMinPoints"] {
       if number_or(s, key, path, 0.0) < 0.0 {
         raise Invalid(path="\{path}.\{key}", "negative")

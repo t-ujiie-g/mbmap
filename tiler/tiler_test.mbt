@@ -152,3 +152,79 @@ test "encode_tile writes the columnar layout with only the tile's keys, then ids
   assert_eq(@geom.read_prop(r), Some(Str("a")))
   assert_true(r.done())
 }
+
+///|
+fn metrics_tiler(t : @geom.Table) -> @tiler.Tiler {
+  @tiler.Tiler::new(t, options={
+    ..@tiler.TilerOptions::default(),
+    line_metrics: true,
+  })
+}
+
+///|
+test "line metrics tell where each tile's slice lies along its line" {
+  // A line from longitude -10 to 10 at latitude 10, cut at x 0.5 plus the buffer.
+  let t = table(b => {
+    b.point(-10.0, 10.0)
+    b.point(10.0, 10.0)
+    b.end_ring()
+    b.end_part()
+    b.end_feature(LineString)
+  })
+  let buffer = 64.0 / 4096.0 / 2.0
+  let left = metrics_tiler(t).tile(1, 0, 0).unwrap()
+  assert_eq(left.clips.length(), 2)
+  assert_eq(left.clips[0], 0.0)
+  assert_true((left.clips[1] - (0.5 + buffer * 18.0)).abs() < 1.0e-9)
+  let right = metrics_tiler(t).tile(1, 1, 0).unwrap()
+  assert_true((right.clips[0] - (0.5 - buffer * 18.0)).abs() < 1.0e-9)
+  assert_eq(right.clips[1], 1.0)
+  // Without line metrics there are none.
+  assert_eq(@tiler.Tiler::new(t).tile(1, 0, 0).unwrap().clips, [])
+}
+
+///|
+test "line metrics split multi-lines into features and reach encode_tile" {
+  let t = table(b => {
+    b.point(-100.0, 10.0)
+    b.point(-80.0, 10.0)
+    b.end_ring()
+    b.end_part()
+    b.point(-100.0, 20.0)
+    b.point(-80.0, 20.0)
+    b.end_ring()
+    b.end_part()
+    b.end_feature(MultiLineString)
+    b.point(-100.0, 30.0)
+    b.point(-90.0, 30.0)
+    b.point(-90.0, 40.0)
+    b.point(-100.0, 30.0)
+    b.end_ring()
+    b.end_part()
+    b.end_feature(Polygon)
+  })
+  let d = metrics_tiler(t).tile(1, 0, 0).unwrap()
+  assert_eq(d.types, [2, 2, 3])
+  assert_eq(d.rows, [0, 0, 1])
+  assert_eq(d.clips[:4].to_owned(), [0.0, 1.0, 0.0, 1.0])
+  assert_true(d.clips[4].is_nan() && d.clips[5].is_nan())
+  let r = @core.ByteReader::new(@tiler.encode_tile(d, t)[:])
+  assert_eq((r.u32(), r.u32(), r.u32(), r.u32()), (3, 3, 8, 2))
+  for _ in 0..<3 {
+    r.u8() |> ignore
+  }
+  r.pad4()
+  for _ in 0..<(3 + 3 + 8) {
+    r.u32() |> ignore
+  }
+  assert_eq((r.utf8(), r.utf8()), (@tiler.CLIP_START, @tiler.CLIP_END))
+  let props = Array::makei(6, _ => @geom.read_prop(r))
+  assert_eq(props, [
+    Some(Num(0.0)),
+    Some(Num(0.0)),
+    None,
+    Some(Num(1.0)),
+    Some(Num(1.0)),
+    None,
+  ])
+}

@@ -33,6 +33,7 @@ pub fn geojson_tiler(
   extent : Int32,
   buffer : Int32,
   wrap : Bool,
+  line_metrics : Bool,
 ) -> Int32 {
   build_tiler(
     bytes[:],
@@ -43,6 +44,7 @@ pub fn geojson_tiler(
     extent,
     buffer,
     wrap,
+    line_metrics,
     @tiler.Trig::moonbit(),
   )
 }
@@ -101,6 +103,7 @@ pub fn geojson_tiler_table(
       extent,
       buffer,
       wrap,
+      line_metrics: false,
     },
     @tiler.Trig::moonbit(),
   )

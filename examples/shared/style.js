@@ -5,6 +5,14 @@ import { GSI_LAYERS } from "./layers.js";
 import { PLACES } from "./places.js";
 import { STATIONS_SOURCE, stationLayers } from "./stations.js";
 
+// Tokyo Station, Yurakucho, the Imperial Palace, Kanda, Nihonbashi and back.
+const WALK = {
+  type: "Feature", properties: {},
+  geometry: { type: "LineString", coordinates: [
+    [139.7671, 35.6812], [139.7631, 35.6751], [139.7528, 35.6852], [139.7708, 35.6918], [139.7745, 35.684], [139.7671, 35.6812],
+  ] },
+};
+
 const GSI = "https://cyberjapandata.gsi.go.jp/xyz";
 const local = new URLSearchParams(location.search).get("local") === "1";
 // Relative to the page (examples/<name>/): a bundle's import.meta.url lies elsewhere.
@@ -33,6 +41,7 @@ export const LAYER_GROUPS = [
   { name: "注記", ids: ["symbol", "label", "label-vertical"] },
   { name: "地点", ids: ["places", "places-label"] },
   { name: "山手線の駅", ids: ["stations-cluster", "stations", "stations-count"] },
+  { name: "散歩道", ids: ["walk"] },
 ];
 
 /** The basemaps (`createStyle`'s `basemap`): GSI's vector map, or its aerial photos with labels. */
@@ -46,7 +55,7 @@ export const LAYER_TITLES = {
   waterarea: "水域", structurea: "構造物", building: "建物", "building-3d": "建物（3D）", "building-outline": "建物の輪郭",
   contour: "等高線", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
   elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
-  "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数",
+  "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数", walk: "散歩道",
   hillshade: "陰影", photo: "写真",
 };
 
@@ -85,6 +94,8 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       : { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
     places: { type: "geojson", data: places, promoteId: "name" },
     stations: STATIONS_SOURCE,
+    // A walk around Tokyo Station; line metrics give its gradient from start to finish.
+    walk: { type: "geojson", lineMetrics: true, data: WALK },
     // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
     photo: local
       ? { type: "raster", tiles: [`${fixtures}gsi-std/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14 }
@@ -110,6 +121,14 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
     { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
     ...base,
     ...stationLayers(overlay),
+    {
+      id: "walk", type: "line", source: "walk", metadata: overlay,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-width": ["interpolate", ["linear"], ["zoom"], 12, 3, 16, 8],
+        "line-gradient": ["interpolate", ["linear"], ["line-progress"], 0, "#1a9850", 0.5, "#fee08b", 1, "#d73027"],
+      },
+    },
     {
       id: "places", type: "circle", source: "places", metadata: overlay,
       paint: {

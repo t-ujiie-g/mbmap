@@ -1,15 +1,19 @@
 ///|
 /// The tile as bytes for the display worker (docs/FORMATS.md, "Columnar
-/// tile"), with properties and ids from `table`'s rows.
+/// tile"), with properties and ids from `table`'s rows, and line metrics as
+/// geojson-vt's `CLIP_START` and `CLIP_END` properties.
 pub fn encode_tile(d : TileData, table : @geom.Table) -> Bytes {
   let w = @core.ByteWriter::new()
   let columns = table.columns.filter(c => {
+    c.name != CLIP_START &&
+    c.name != CLIP_END &&
     d.rows.iter().any(row => c.values[row] is Some(_))
   })
+  let metrics = d.clips.length() > 0
   w.u32(d.types.length())
   w.u32(d.point_ends.length())
   w.u32(d.xy.length() / 2)
-  w.u32(columns.length())
+  w.u32(columns.length() + (if metrics { 2 } else { 0 }))
   for t in d.types {
     w.u8(t)
   }
@@ -27,9 +31,22 @@ pub fn encode_tile(d : TileData, table : @geom.Table) -> Bytes {
   for c in columns {
     w.utf8(c.name)
   }
+  if metrics {
+    w.utf8(CLIP_START)
+    w.utf8(CLIP_END)
+  }
   for c in columns {
     for row in d.rows {
       @geom.write_prop(w, c.values[row])
+    }
+  }
+  if metrics {
+    for k in 0..<2 {
+      for f in 0..<d.rows.length() {
+        let v = d.clips[f * 2 + k]
+        let p : @geom.Prop? = if v.is_nan() { None } else { Some(Num(v)) }
+        @geom.write_prop(w, p)
+      }
     }
   }
   for row in d.rows {
@@ -37,6 +54,14 @@ pub fn encode_tile(d : TileData, table : @geom.Table) -> Bytes {
   }
   w.to_bytes()
 }
+
+///|
+/// The properties line metrics add to a line feature (geojson-vt's names): the
+/// shares of its line's length where the feature starts and ends.
+pub const CLIP_START : String = "geojsonvt_clip_start"
+
+///|
+pub const CLIP_END : String = "geojsonvt_clip_end"
 
 ///|
 /// The keys a cluster has (geojson-vt's `getClusterProperties`).

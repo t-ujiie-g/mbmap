@@ -42,6 +42,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 1, "a_normal");
   #|    gl.bindAttribLocation(p, 3, "a_heights");
   #|    gl.bindAttribLocation(p, 13, "a_dist");
+  #|    gl.bindAttribLocation(p, 14, "a_progress");
   #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
@@ -84,24 +85,32 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // pattern's length u_dash.x, the atlas row u_dash.y spanning u_dash.z
   #|  // across the line, edges smoothed by u_dash.w; all in floor widths
   #|  // (u_floor.x, or the width slot mixed by u_floor.y when it is negative).
-  #|  const lineProgram = (dash) => program(
+  #|  // Gradients are MapLibre's line_gradient: the color at a_progress (share
+  #|  // of the line, row of u_rows) in the ramp u_image, premultiplied.
+  #|  const lineProgram = (dash, grad) => program(
   #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
   #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half; out vec4 v_color;" +
   #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
+  #|    (grad ? "in vec2 a_progress; uniform float u_rows; out vec2 v_uv; out float v_opacity;" : "") +
   #|    "void main() { float half_ = at(a_extent, 2) * u_dpr / 2.0 + 0.5;" +
   #|    "  v_pos = a_pos + a_data.xy / 63.0 * half_ * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
   #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" +
   #|      "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
+  #|    (grad ? "  v_uv = vec2(a_progress.x, (a_progress.y + 0.5) / u_rows); v_opacity = at(a_opacity, 1);" : "") +
   #|    "  v_half = half_ * u_depth / gl_Position.w; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
   #|    clip + "in vec4 v_color; in vec2 v_edge; in float v_half; out vec4 o;" +
   #|    (dash ? "uniform sampler2D u_image; in vec2 v_tex; in float v_gamma;" : "") +
-  #|    "void main() { if (outside()) discard; o = v_color * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0);" +
+  #|    (grad ? "uniform sampler2D u_image; in vec2 v_uv; in float v_opacity;" : "") +
+  #|    "void main() { if (outside()) discard;" +
+  #|    (grad ? "  vec4 c = texture(u_image, v_uv) * v_opacity;" : "  vec4 c = v_color;") +
+  #|    "  o = c * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0);" +
   #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
-  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", ...(dash ? ["u_dash", "u_floor", "u_image"] : [])]);
-  #|  const line = lineProgram(false), lineDash = lineProgram(true);
+  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
+  #|      ...(grad ? ["u_rows", "u_image"] : [])]);
+  #|  const line = lineProgram(false, false), lineDash = lineProgram(true, false), lineGradient = lineProgram(false, true);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   #|  // Circles face the viewer and shrink with distance (MapLibre's pitch-alignment
@@ -282,7 +291,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, line, lineDash, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, line, lineDash, lineGradient, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -336,6 +345,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
   #|  if (m.outline) c.gl.deleteBuffer(m.outline);
   #|  if (m.dist) c.gl.deleteBuffer(m.dist);
+  #|  if (m.progress) c.gl.deleteBuffer(m.progress);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|}
 
@@ -514,6 +524,88 @@ extern "js" fn gl_upload_distances(
   #|  gl.vertexAttribPointer(13, 1, gl.UNSIGNED_SHORT, false, 2, 0);
   #|  gl.bindVertexArray(null);
   #|  m.bytes += data.byteLength;
+  #|}
+
+///|
+/// Adds a line mesh's progress (per vertex, f32 share of its line and f32 row
+/// of its gradient) as `a_progress`.
+extern "js" fn gl_upload_progress(
+  gl : Gl,
+  mesh : Mesh,
+  progress : JsBuffer,
+) -> Unit =
+  #|(c, m, data) => {
+  #|  const gl = c.gl;
+  #|  gl.bindVertexArray(m.vao);
+  #|  m.progress = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.progress);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(14);
+  #|  gl.vertexAttribPointer(14, 2, gl.FLOAT, false, 8, 0);
+  #|  gl.bindVertexArray(null);
+  #|  m.bytes += data.byteLength;
+  #|}
+
+///|
+/// A line gradient's color ramp on the GPU: a row per line of a tile.
+#external
+pub type Gradient
+
+///|
+/// Uploads a color ramp (straight RGBA bytes, `width` x `height`, premultiplied
+/// by the upload as MapLibre's), clamped at its edges and filtered linearly, or
+/// `nearest` for a step ramp.
+extern "js" fn gl_upload_gradient(
+  gl : Gl,
+  pixels : FixedArray[Byte],
+  width : Int32,
+  height : Int32,
+  nearest : Bool,
+) -> Gradient =
+  #|(c, data, w, h, nearest) => {
+  #|  const gl = c.gl, t = gl.createTexture(), f = nearest ? gl.NEAREST : gl.LINEAR;
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, t);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  #|  return { texture: t, rows: h };
+  #|}
+
+///|
+extern "js" fn gl_release_gradient(gl : Gl, g : Gradient) -> Unit =
+  #|(c, g) => c.gl.deleteTexture(g.texture)
+
+///|
+/// Draws a line with gradient `g` (see the `lineGradient` program).
+extern "js" fn gl_draw_line_gradient(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  units : Double,
+  depth : Double,
+  dpr : Double,
+  g : Gradient,
+) -> Unit =
+  #|(c, m, matrix, clip, units, depth, dpr, g) => {
+  #|  const gl = c.gl, p = c.lineGradient;
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform1f(p.u_units, units);
+  #|  gl.uniform1f(p.u_depth, depth);
+  #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform1f(p.u_rows, g.rows);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, g.texture);
+  #|  gl.uniform1i(p.u_image, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|

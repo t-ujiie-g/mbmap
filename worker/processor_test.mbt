@@ -704,3 +704,53 @@ test "expressions read ids, compute and convert through the processor's hooks" {
     3.0,
   )
 }
+
+///|
+test "gradient lines pack their progress, rows and line metrics" {
+  let b = @geom.TableBuilder::new()
+  b.point(-10.0, 10.0)
+  b.point(10.0, 10.0)
+  b.end_ring()
+  b.end_part()
+  b.end_feature(LineString)
+  let table = b.finish()
+  let tiler = @tiler.Tiler::new(table, options={
+    ..@tiler.TilerOptions::default(),
+    line_metrics: true,
+  })
+  let tile = @tiler.encode_tile(tiler.tile(1, 1, 0).unwrap(), table)
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x", "lineMetrics": true}},
+    #| "layers": [
+    #|  {"id": "plain", "type": "line", "source": "g"},
+    #|  {"id": "ramp", "type": "line", "source": "g",
+    #|   "paint": {"line-gradient": ["interpolate", ["linear"], ["line-progress"], 0, "#000", 1, "#fff"]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", tile[:], 1))
+  let bs = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(bs, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  // Its own buffers, not the plain line's; one row.
+  assert_eq(p.out.layer_count(), 2)
+  assert_eq((entry(0, 15), entry(0, 16)), (0, 0))
+  assert_true(entry(1, 2) != entry(0, 2))
+  assert_eq(entry(1, 16), 1)
+  let n = entry(1, 3) / @worker.LINE_VERTEX_BYTES
+  let at = entry(1, 15)
+  let f32 = (o : Int32) => {
+    Float::reinterpret_from_int(u32_at(bs, o)).to_double()
+  }
+  let f64 = (o : Int32) => {
+    let bits = (u32_at(bs, o).to_int64() & 0xffffffffL) |
+      (u32_at(bs, o + 4).to_int64() << 32)
+    bits.reinterpret_as_double()
+  }
+  assert_eq((f32(at), f32(at + 4)), (0.0, 0.0))
+  assert_eq((f32(at + (n - 1) * 8), f32(at + (n - 1) * 8 + 4)), (1.0, 0.0))
+  // The slice right of x 0.5 minus the buffer, to the line's end.
+  let start = f64(at + n * 8)
+  assert_true(start > 0.3 && start < 0.5)
+  assert_eq(f64(at + n * 8 + 8), 1.0)
+  assert_true(f64(at + n * 8 + 16) > 0.0)
+}
