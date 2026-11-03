@@ -8,6 +8,7 @@ mbmap: a MoonBit vector-tile map rendering engine for the Web, aiming to be ligh
 - `docs/VISION.md` is the authoritative spec: goals, perf targets (§2), architecture (§3), design principles (§4), scope (§5), API (§6), work rules (§7), phase plan (§8).
 - `PROGRESS.md` records per-phase results, benchmark numbers, known issues and user decisions. Read both before starting a phase.
 - `docs/FORMATS.md` is the reference for the binary formats and worker messages; code cites its section names instead of restating layouts.
+- `docs/CLOUD.md` is how to set up and use Claude Code on the web (environment, network, setup hook); §9 has what changes there.
 - If a task is not in the current phase of VISION §8, confirm scope with the user before widening it.
 
 MoonBit skills (`moonbit-agent-guide`, `moonbit-orientation`, `moonbit-refactoring`, …) come from the `moonbit-skills` plugin (`/plugin` → marketplace `moonbitlang/skills`). They auto-engage in `.mbt` files.
@@ -83,6 +84,14 @@ Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from ther
 
 ## 2. Workflow
 
+How the user works with agents (standing instructions; they hold in every session, local or on the web):
+
+- Reply to the user in Japanese, short status lines and `AskUserQuestion` dialogs included. Code, identifiers, commit messages and PR descriptions stay in English.
+- Each step ends the same way: validation (below), commit, push, a PR, CI green, then a short Japanese report of what changed, measured results and open questions, and stop. The user merges and answers 「マージしました」 (often with 「続けて下さい」); never start the next step before that. When several PRs are ready, report and get them merged one at a time, merging `main` into the next before reporting it.
+- Phase starts, budget changes and design changes are asked with `AskUserQuestion`, with a recommended option first.
+- Use parallel agents wherever the work splits (see "Parallel work" below): the user prefers starting independent lines at once over proposing them and waiting.
+- Never force-push or amend a pushed commit; to bring a branch up to date, merge `origin/main` into it.
+
 - Never commit to `main` directly: `git switch -c <kind>/<short-description>` (`feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `phaseN/`), then `gh pr create`.
 - Validation loop before reporting complete or committing:
   ```sh
@@ -96,10 +105,10 @@ Results go to `bench/results/*.json`; numbers in PROGRESS.md must come from ther
 - Phases (VISION §8): confirm a phase's scope, steps and completion criteria with the user before starting it, and deliver it in steps (one PR each, e.g. 13.1-13.4). When a phase is complete, run a refactoring and security review (§7, §8) over what it added before starting the next phase. PROGRESS.md opens with where things stand.
 - A change that claims a perf effect reruns the relevant `bench/` script and updates PROGRESS.md with the new numbers.
 - Major design changes (Wasm backend, package split, rendering approach) require presenting measurements and options and getting user confirmation first (VISION §7).
-- Parallel work: at the start of a phase or step, look for work that does not depend on the main line (research for the next phase, leftover known issues, benchmarks) and propose a split; start it once the user agrees.
+- Parallel work: at the start of a phase or step, look for work that does not depend on the main line (research for the next phase, leftover known issues, benchmarks) and start it alongside, saying what was split off.
   - Research runs as a read-only subagent that reports back. The findings go into VISION/PROGRESS when that phase starts, never into a separate planning doc.
   - Code runs in its own git worktree and branch (`Agent` with `isolation: "worktree"`, or `git worktree add ../mbmap-<name> -b <branch>`). Each worktree needs `npm ci` in `bench/`, `npm/` and `examples/react/`, and a copy of `bench/fixtures/` (gitignored). `_build/` is per worktree, and `bench/lib/serve.mjs` picks a free port, so pack tests can run side by side.
-  - Keep apart: work that must wait for a confirmation (a phase's scope, the review after a phase), and work touching the same files as the main line. Files that often conflict: the top of `PROGRESS.md`, `AGENTS.md`, `npm/scripts/size.mjs`, `bench/npm/pack-test.mjs`, `examples/shared/*`, `npm/src/ui.ts`. Rebase on main before opening the PR.
+  - Keep apart: work that must wait for a confirmation (a phase's scope, the review after a phase), and work touching the same files as the main line. Files that often conflict: the top of `PROGRESS.md`, `AGENTS.md`, `npm/scripts/size.mjs`, `bench/npm/pack-test.mjs`, `examples/shared/*`, `npm/src/ui.ts`. Merge `main` into the branch before reporting the PR.
   - Never run performance benchmarks in parallel: they compete for the GPU and CPU.
   - Each line of work is still one PR per step, reported and merged one at a time.
 
@@ -144,7 +153,7 @@ Planned data/analysis/3D packages (VISION §3) ship as separate npm entry points
 - `mbmap/ui` (`npm/src/ui.ts`, built into `dist/ui.js` with no part of the main entry): headless controllers that take a `Map` and use only its public API, each in its own module under `npm/src/ui/` so a bundle keeps only those imported. All share `Store` (`ui/controller.ts`: `state` as a new object per change, `subscribe` returning the unsubscribe, `destroy`); what they compute follows MapLibre's controls (`npm run ui:golden`). Pure parts live in import-free modules (`ui/controller.ts`, `ui/measure.ts`, `attribution.ts`) for `npm test`; the controllers themselves are checked by the golden and the pack test. Things to draw (the location dot) are left to the page, with `map.track`. The legend splits a layer's color by the property a `match` / `step` / `interpolate` / `case` reads (`ui/legend-rules.ts`) and asks the engine for each entry's paint (`Map.evaluatePaint` → `Map::paint_at`, the same `paint_of` that draws); basemaps swap styles with `setStyle`'s `transformStyle`, keeping overlay layers (`ui/overlays.ts`).
 - `mbmap/search` (`npm/src/search.ts`, `dist/search.js`): GeoSearch with `mbmap/ui`'s `Store` (bundled into its own file). The controller debounces `setQuery`, aborts stale searches and drops their results; the bundled providers ask no server (`search/coordinates.ts` reads degrees, DMS, plane rectangular and UTM, the projected ones through a `transform` the page passes; `search/dataset.ts` matches GeoJSON properties folded by NFKC, case and kana). External APIs are providers of the same shape, their terms the page's concern.
 - `element/element.ts` is `<mb-map>` (entry `mbmap/element`, ~1KB on top of the main entry, which it imports as `./index.js` rather than bundling). The map lives in an open shadow root; attributes are parsed strictly (invalid values fire `mb-error` and are kept out); `center`/`zoom` properties also take the attribute strings because React 19 sets props as properties when the element has one. Style the shadow box inline: a `div` rule in the shadow stylesheet also hit the facade's attribution overlay.
-- CI (`.github/workflows/ci.yml`) installs a pinned MoonBit toolchain verified by sha256; bumping `moon` means updating `MOONBIT_VERSION` and both hashes there.
+- CI (`.github/workflows/ci.yml`) prepares its runner with `scripts/setup.sh` (the pinned MoonBit toolchain verified by sha256, npm dependencies), the same script Claude Code on the web runs; bumping `moon` means updating `MOONBIT_VERSION` and both hashes in `scripts/toolchain.env`.
 - `bench/backend/{kernel,entry}` are MoonBit packages inside this module used only for the Phase 0 backend comparison. The decode loop is intentionally duplicated there (safe arrays vs raw addresses vs JS typed array); do not "deduplicate" it.
 
 - `pbf` reads never raise: a `Reader` records its first error, jumps to the end so loops stop, and its `error()` is checked once at a boundary. Nested messages are read in place with `enter`/`exit`; `reset` re-points one reader instead of allocating another.
@@ -290,7 +299,17 @@ Everything fetched at runtime is attacker-controllable. Decoders must fail safel
 - `bench/lib/serve.mjs` is a dev-only server: it must bind to `127.0.0.1`, refuse paths outside the repo root and dotfiles (`.git`, `.env`), and survive malformed URLs. `bench/lib/serve.test.mjs` pins this down.
 - Ported code keeps its license header and a `NOTICE` entry (VISION §7). License review is part of the dependency check.
 
-## 9. Things to avoid
+## 9. Claude Code on the web
+
+Sessions on claude.ai/code run in a fresh Ubuntu 24.04 VM (4 vCPU, 16 GB) with the repo cloned; Node 22, `gh` and Chrome are there, MoonBit is not.
+
+- **Setup**: `scripts/setup.sh` installs the MoonBit toolchain pinned in `scripts/toolchain.env` (sha256-checked), runs `npm ci` in `npm/`, `bench/` and `examples/react/`, installs Playwright's Chromium and fetches the GSI fixtures (`--no-fixtures`, `--no-browser` skip those); it is idempotent and CI runs it too. The environment needs network access to `cli.moonbitlang.com`, `cyberjapandata.gsi.go.jp` and Playwright's CDN (`cdn.playwright.dev`, `playwright.download.prss.microsoft.com`) besides the default list: set the environment's network access to Custom with those domains plus the default package managers, or Full. Run it from the environment's setup script or a SessionStart hook (docs/CLOUD.md has both); if `moon` is missing when a session starts, run `scripts/setup.sh` first.
+- **What carries over**: only the repo. Local auto-memory and user-level plugins do not reach the web, which is why §2's standing instructions live here; the `moonbit-skills` plugin is absent, so check MoonBit APIs with `moon ide doc`, the generated `.mbti` and docs.moonbitlang.com (§3).
+- **What runs there**: everything in §2's validation loop and the goldens (headless Chromium renders with SwiftShader, as in CI). Performance benchmarks (`worker:browser`, `render`, `*:node` timings) do not: their numbers come from the M2 dev machine only (§5, VISION §2). A step that needs new measurements says so in its report, and the user or a local session runs them.
+- **GitHub**: pushes go through a proxy (branch deletions and tags are refused). If `gh pr create` or `gh pr checks` fail (the proxy may block GraphQL), use REST: `gh api repos/t-ujiie-g/mbmap/pulls -f title=... -f head=<branch> -f base=main -f body=...` and `gh api repos/t-ujiie-g/mbmap/commits/<sha>/check-runs`. If a push to `phaseN/...` is refused, use the branch name the session suggests.
+- **Parallel work**: one web session per line of work is the dependable way; `isolation: "worktree"` subagents may work too but are untested there.
+
+## 10. Things to avoid
 
 - ❌ Planning docs outside VISION.md / PROGRESS.md.
 - ❌ Reversing the package dependency direction, or UI-framework dependencies under `map/`.
