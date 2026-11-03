@@ -45,7 +45,7 @@
       ],
       "maxSize": 256,
       "split": {
-        "differ": 502,
+        "differ": 501,
         "mean": 0,
         "p99": 0,
         "max": 34

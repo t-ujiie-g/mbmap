@@ -21,6 +21,8 @@ const OFFSET_PACK = 32;
 const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, justify: 44, anchors: 45 };
 // A variable anchor in that header: its code and two f64 offsets (worker/labels.mbt `Labels::bytes`).
 const ANCHOR_BYTES = 17;
+// Indices per glyph or icon quad (two triangles); mirrored as QUAD_INDICES in map/labels.mbt.
+const QUAD_INDICES = 6;
 // Justifications of a multi-line label with variable anchors and `text-justify: auto`.
 const VARIANTS = ["left", "center", "right"];
 // `symbol-placement` in worker/labels.mbt's codes.
@@ -270,14 +272,14 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
   const vertices = new ArrayBuffer(quads * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
   const wide = quads * 4 > 65536;
-  const indices = wide ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6);
+  const indices = wide ? new Uint32Array(quads * QUAD_INDICES) : new Uint16Array(quads * QUAD_INDICES);
   const labels = new Float32Array(placed.length * LABEL_FLOATS);
   const iconLabels = placed.filter((l) => l.icon);
   const icons = iconQuads(iconLabels);
   placed.forEach((l, i) => {
     const per = l.variants[0].quads.length;
-    const ic = l.icon ? [...l.icon.box, 1, l.icon.index * 6, 6] : [0, 0, 0, 0, 1, 0, 0];
-    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, ...ic, l.variants.length, l.first * 6, per * 6], i * LABEL_FLOATS);
+    const ic = l.icon ? [...l.icon.box, 1, l.icon.index * QUAD_INDICES, QUAD_INDICES] : [0, 0, 0, 0, 1, 0, 0];
+    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, ...ic, l.variants.length, l.first * QUAD_INDICES, per * QUAD_INDICES], i * LABEL_FLOATS);
     l.variants.flatMap((s) => s.quads).forEach((q, k) => {
       const n = l.first + k;
       // Along lines a glyph's corners are relative to its own middle.
@@ -292,7 +294,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
         v.setUint16(o + 10, c, true);
         v.setUint16(o + 12, Math.round(l.size * 16), true);
       });
-      indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * 6);
+      indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * QUAD_INDICES);
     });
   });
   return {
@@ -316,7 +318,7 @@ function iconQuads(labels) {
   const vertices = new ArrayBuffer(labels.length * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
   const wide = labels.length * 4 > 65536;
-  const indices = wide ? new Uint32Array(labels.length * 6) : new Uint16Array(labels.length * 6);
+  const indices = wide ? new Uint32Array(labels.length * QUAD_INDICES) : new Uint16Array(labels.length * QUAD_INDICES);
   labels.forEach((l, n) => {
     const { name, image, size, rotate, shaped } = l.icon;
     l.icon.index = n;
@@ -331,7 +333,7 @@ function iconQuads(labels) {
       v.setUint16(o + 10, c, true);
       v.setUint16(o + 12, Math.round(size * SIZE_PACK), true);
     });
-    indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * 6);
+    indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * QUAD_INDICES);
   });
   return {
     vertices,

@@ -12,7 +12,7 @@ const ANCHORS = ["center", "left", "right", "top", "bottom", "top-left", "top-ri
 const leftShare = (name) => (name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5);
 const topShare = (name) => (name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5);
 
-/** The shares of a box left of and above an anchor of worker/labels.mbt's code. */
+/** The shares of a box left of and above the anchor of `code` (`TextAnchor::code`). */
 export function anchorShares(code) {
   const name = ANCHORS[code] ?? "center";
   return [leftShare(name), topShare(name)];
