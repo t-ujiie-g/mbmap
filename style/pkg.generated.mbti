@@ -272,6 +272,8 @@ pub struct StyleLayer {
   cap : Cap
   miter_limit : Double
   round_limit : Double
+  antialias : Bool
+  outline_color : Expr?
 }
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool

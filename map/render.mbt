@@ -204,6 +204,14 @@ fn Map::draw_layer(
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_fill(m.mesh, at, self.slots(index, m, p, zoom))
       })
+      // Feature-state ranges index triangles: the outline takes the layer's paint.
+      if layer.antialias {
+        self.renderer.draw_fill_outline(
+          m.mesh,
+          at,
+          self.slots(index, m, p, zoom),
+        )
+      }
     }
   }
 }
@@ -423,20 +431,27 @@ fn Map::slots(
   color(@style.SLOT_STROKE_COLOR, p.stroke_color)
   slots.constant(@style.SLOT_STROKE_OPACITY, p.stroke_opacity)
   slots.constant(@style.SLOT_STROKE_WIDTH, p.stroke_width)
+  // A fill's outline color is its own, or its fill color (slot by slot).
+  let outline_follows = m.kind == KIND_FILL &&
+    self.style.layers[index].outline_color is None
   if m.vertex_paint is Some(buffer) {
     let paint = self.vertex_paint[index]
     let stride = @style.vertex_paint_words(paint) * 4
     let mut offset = 0
     for vp in paint {
       let (i, t) = vp.position(zoom)
-      slots.per_vertex(
-        vp.slot,
-        buffer,
-        offset + i * 4,
-        stride,
-        t,
-        single=vp.count() == 1,
-      )
+      let single = vp.count() == 1
+      slots.per_vertex(vp.slot, buffer, offset + i * 4, stride, t, single~)
+      if outline_follows && vp.slot == @style.SLOT_COLOR {
+        slots.per_vertex(
+          @style.SLOT_STROKE_COLOR,
+          buffer,
+          offset + i * 4,
+          stride,
+          t,
+          single~,
+        )
+      }
       offset += vp.count() * 4
     }
   }

@@ -447,8 +447,15 @@ test "GeoJSON sources draw from columnar tiles, with filters and properties" {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   assert_eq(p.out.layer_count(), 2)
-  // The square: 4 corners (5 with the closing point), 2 triangles.
+  // The square: 4 corners (5 with the closing point), 2 triangles, and its
+  // outline: 4 edges as index pairs, after the triangles' indices.
   assert_eq((entry(0, 0), entry(0, 1), entry(0, 5)), (0, @worker.KIND_FILL, 6))
+  assert_eq(entry(0, 12), 8)
+  let outline = Array::makei(8, i => {
+    let at = entry(0, 11) + i * 2
+    b[at].to_int() | (b[at + 1].to_int() << 8)
+  })
+  assert_eq(outline, [0, 1, 1, 2, 2, 3, 3, 4])
   // Only the point with k, its radius per vertex.
   assert_eq((entry(1, 0), entry(1, 1)), (1, @worker.KIND_CIRCLE))
   assert_eq(entry(1, 3), 4 * @worker.LINE_VERTEX_BYTES)

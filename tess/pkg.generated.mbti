@@ -52,6 +52,7 @@ pub fn ExtrusionTessellator::new() -> Self
 pub struct FillBuffers {
   vertices : Array[Int32]
   indices : Array[Int32]
+  outline : Array[Int32]
 }
 pub fn FillBuffers::clear(Self) -> Unit
 pub fn FillBuffers::new() -> Self

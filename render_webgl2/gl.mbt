@@ -69,6 +69,15 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // Extrusion is in tile units (u_units device pixels at the center's depth
   #|  // u_depth), so lines thin with distance; the last pixel of the half width
   #|  // v_half, taken at the vertex's own depth, fades out (MapLibre's gamma scale).
+  #|  // MapLibre's fill outline: 1 px lines along ring edges, faded by the pixel's
+  #|  // distance to the line's position (u_world: the drawing buffer's size).
+  #|  const fillOutline = program(
+  #|    paint + "in vec2 a_pos; uniform mat4 u_matrix; uniform vec2 u_world; out vec2 v_pos; out vec2 v_line; out vec4 v_color;" +
+  #|    "void main() { v_pos = a_pos; v_color = premul(mix(a_stroke_lo, a_stroke_hi, u_t[3]), at(a_opacity, 1));" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); v_line = (gl_Position.xy / gl_Position.w + 1.0) / 2.0 * u_world; }",
+  #|    clip + "in vec2 v_line; in vec4 v_color; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; o = v_color * (1.0 - smoothstep(0.0, 1.0, length(v_line - gl_FragCoord.xy))); }",
+  #|    ["u_matrix", "u_clip", "u_t", "u_world"]);
   #|  // The half width: the line width (a_extent, CSS px times u_dpr) halved, plus a pixel.
   #|  const line = program(
   #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
@@ -262,7 +271,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, line, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, line, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -314,6 +323,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.elev) c.gl.deleteTexture(m.elev);
   #|  if (m.texture) { c.gl.deleteTexture(m.texture); return; }
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
+  #|  if (m.outline) c.gl.deleteBuffer(m.outline);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|}
 
@@ -415,6 +425,43 @@ extern "js" fn gl_draw_fill(
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|}
+
+///|
+extern "js" fn gl_upload_outline(
+  gl : Gl,
+  mesh : Mesh,
+  indices : JsBuffer,
+  count : Int32,
+) -> Unit =
+  #|(c, m, indices, count) => {
+  #|  const gl = c.gl;
+  #|  m.outline = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.outline);
+  #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  #|  m.outlineCount = count;
+  #|  m.bytes += indices.byteLength;
+  #|}
+
+///|
+/// Draws `mesh`'s outline as lines (with the program and vertex array bound),
+/// then gives the vertex array back its triangles.
+extern "js" fn gl_draw_outline(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip) => {
+  #|  const gl = c.gl, p = c.fillOutline;
+  #|  if (!m.outline) return;
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform2f(p.u_world, 2 / c.px[0], 2 / c.px[1]);
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.outline);
+  #|  gl.drawElements(gl.LINES, m.outlineCount, m.type, 0);
+  #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ibo);
   #|}
 
 ///|

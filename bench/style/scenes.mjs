@@ -12,8 +12,16 @@ export const SCENES = {
       { id: "building", type: "fill", source: "gsi", "source-layer": "building", paint: { "fill-color": "#d9c9b6", "fill-opacity": 0.7 } },
     ]),
     camera: TOKYO,
-    limits: { mean: 1.3, p99: 41 },
-    gap: "fill-antialias: MapLibre outlines fills by default (seams between neighbouring buildings)",
+    limits: { mean: 0.05, p99: 1 },
+  },
+  outlines: {
+    style: style([
+      { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-color": "#a8d4f0", "fill-antialias": false } },
+      { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+        paint: { "fill-color": "#ece6dc", "fill-outline-color": ["match", ["get", "ftCode"], 3103, "#8a6d4b", "#c9bba7"] } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
   },
   lines: {
     style: style([

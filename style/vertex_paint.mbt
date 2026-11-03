@@ -41,7 +41,11 @@ fn StyleLayer::slots(self : StyleLayer) -> Array[(Int32, Expr, Bool, Double)] {
   let color = (SLOT_COLOR, self.color, true, 0.0)
   let opacity = (SLOT_OPACITY, self.opacity, false, 1.0)
   match self.kind {
-    Fill => [color, opacity]
+    Fill =>
+      match self.outline_color {
+        Some(e) => [color, opacity, (SLOT_STROKE_COLOR, e, true, 0.0)]
+        None => [color, opacity]
+      }
     Line => [color, opacity, (SLOT_SIZE, self.width, false, 1.0)]
     Circle =>
       [

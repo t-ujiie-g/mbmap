@@ -184,16 +184,21 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
             None,
           )
         } else {
-          (
-            self.renderer.upload(
-              kind != KIND_FILL,
-              buffer_of(l, "vertices"),
-              buffer_of(l, "indices"),
-              get_int(l, "count"),
-              get_int(l, "indexBytes"),
-            ),
-            None,
+          let mesh = self.renderer.upload(
+            kind != KIND_FILL,
+            buffer_of(l, "vertices"),
+            buffer_of(l, "indices"),
+            get_int(l, "count"),
+            get_int(l, "indexBytes"),
           )
+          if kind == KIND_FILL && get_int(l, "outlineCount") > 0 {
+            self.renderer.upload_outline(
+              mesh,
+              buffer_of(l, "outline"),
+              get_int(l, "outlineCount"),
+            )
+          }
+          (mesh, None)
         }
         let props = props_or_null(l)
         meshes.push({
