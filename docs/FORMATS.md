@@ -26,7 +26,8 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   (`KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3, `KIND_EXTRUSION` 6), vertex byte
   offset and length,
   index byte offset, index count, bytes per index (2 up to 65536 vertices, else 4),
-  group properties byte offset and length (0 if none).
+  group properties byte offset and length (0 if none), per-vertex paint byte offset
+  and length (0 if none; an entry sharing another's geometry has its own).
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
   same data (layers with the same geometry). Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
@@ -37,6 +38,17 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   6553.5 m). Coordinates are in `@core.TILE_EXTENT` units.
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.
   The glue decodes them into prototype-less objects.
+
+## Vertex paint (`style/vertex_paint.mbt`, written by `worker/processor.mbt`)
+
+The data-driven paint of fill, line and circle layers that do not read feature state,
+per vertex in the order of the layer's vertices: for each property of
+`@style.StyleLayer::vertex_paint` (slot order: color, opacity, width or radius, stroke
+color, stroke opacity, stroke width), its value at each zoom stop of its top-level zoom
+curve (one value when it has none), each a u32 word: a color as RGBA bytes (red in the
+lowest byte, straight alpha), a number as a 32-bit float. Both sides derive the layout
+from the style, so the packed tile carries only the bytes; the renderer points each
+slot's attribute at the stop below the current zoom and mixes it with the next.
 
 ## Labels (`worker/labels.mbt`, read by `worker/js/symbols.mjs`)
 

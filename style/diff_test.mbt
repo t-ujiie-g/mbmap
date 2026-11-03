@@ -33,6 +33,18 @@ test "same_tiles holds across paint constants and fails on what workers build" {
 }
 
 ///|
+test "same_tiles fails when per-vertex paint changes, even with the same inputs" {
+  let widths = (w : String) => {
+    diff_style(
+      base_source,
+      "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"paint\": {\"line-width\": [\"match\", [\"get\", \"k\"], 1, \{w}, 2]}}",
+    ).layers[0]
+  }
+  assert_true(widths("4").same_tiles(widths("4")))
+  assert_false(widths("4").same_tiles(widths("6")))
+}
+
+///|
 test "Source::same compares what tiles are fetched and cut with" {
   let a = diff_style(base_source, base_layer).sources[0]
   let attributed = diff_style(

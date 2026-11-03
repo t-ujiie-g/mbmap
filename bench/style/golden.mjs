@@ -1,8 +1,6 @@
-// Style rendering vs MapLibre GL JS 6.16.0 in Chromium, pixel by pixel: one small style per scene
-// over the GSI fixtures (z14 around Tokyo Station) and GeoJSON, the same camera on both engines
-// (bench/query/index.html). Per scene, the mean and 99th percentile of per-channel differences
-// must stay within its limits. Usage: node style/golden.mjs [--scene=name] [--shots=dir];
-// writes bench/results/style-golden.json. Needs `npm --prefix npm run build` and the fixtures.
+// Style rendering vs MapLibre GL JS 6.16.0 in Chromium, pixel by pixel, a small style per scene
+// (scenes.mjs) on the GSI fixtures; each scene's mean and p99 must stay within its limits.
+// Usage: node style/golden.mjs [--scene=name] [--shots=dir]; writes bench/results/style-golden.json.
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";

@@ -305,16 +305,18 @@ fn props_of(b : BytesView, k : Int32) -> Array[String] raise {
 }
 
 ///|
-test "data-driven paint splits a layer into groups carrying their inputs" {
+test "data-driven paint goes per vertex, and a layer sharing its geometry gets its own" {
   let style =
     #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
     #| "layers": [
     #|  {"id": "road", "type": "line", "source": "a", "source-layer": "road",
     #|   "paint": {"line-width": ["case", ["has", "k"], ["match", ["get", "k"], 0, 2, 4], 1]}},
-    #|  {"id": "plain", "type": "line", "source": "a", "source-layer": "road"}
+    #|  {"id": "plain", "type": "line", "source": "a", "source-layer": "road"},
+    #|  {"id": "tinted", "type": "line", "source": "a", "source-layer": "road",
+    #|   "paint": {"line-opacity": ["match", ["get", "k"], 1, 0.5, 1]}}
     #|]}
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  // k = 0, 1, 0 and one feature without k: three groups in first-seen order.
+  // Four lines of 4 vertices: k = 0, 1, 0 and one without k.
   assert_true(
     p.process(
       "a",
@@ -323,27 +325,26 @@ test "data-driven paint splits a layer into groups carrying their inputs" {
     ),
   )
   let b = p.out.to_bytes()[:]
-  assert_eq(p.out.layer_count(), 4)
-  assert_eq([props_of(b, 0), props_of(b, 1), props_of(b, 2)], [
-    ["k=0"],
-    ["k=1"],
-    [],
-  ])
-  // Group 0 holds two of the four lines: 2 x 4 vertices.
   let entry = (k : Int32, w : Int32) => {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
-  assert_eq(entry(0, 3), 8 * @worker.LINE_VERTEX_BYTES)
-  // The header has room for MAX_GROUPS entries of "road" and one of "plain".
-  assert_eq(
-    entry(0, 2),
-    4 + (@worker.MAX_GROUPS + 1) * @worker.LAYER_ENTRY_WORDS * 4,
-  )
-  // The ungrouped layer gets one entry without properties.
-  assert_eq(
-    (entry(3, 0), entry(3, 8), entry(3, 3)),
-    (1, 0, 16 * @worker.LINE_VERTEX_BYTES),
-  )
+  // One entry per layer: the header has room for three.
+  assert_eq(p.out.layer_count(), 3)
+  assert_eq(entry(0, 2), 4 + 3 * @worker.LAYER_ENTRY_WORDS * 4)
+  assert_eq(entry(0, 3), 16 * @worker.LINE_VERTEX_BYTES)
+  // The width, one float per vertex (a value without a zoom curve).
+  let float_at = (at : Int32) => {
+    Float::reinterpret_from_int(u32_at(b, at)).to_double()
+  }
+  let widths = Array::makei(4, f => float_at(entry(0, 9) + f * 4 * 4))
+  assert_eq(entry(0, 10), 16 * 4)
+  assert_eq(widths, [2.0, 4.0, 2.0, 1.0])
+  assert_eq(float_at(entry(0, 9) + 4), 2.0)
+  // "plain" shares the geometry and has no paint of its own; "tinted" shares it with its own.
+  assert_eq((entry(1, 2), entry(1, 9), entry(1, 10)), (entry(0, 2), 0, 0))
+  assert_eq((entry(2, 2), entry(2, 10)), (entry(0, 2), 16 * 4))
+  let opacities = Array::makei(4, f => float_at(entry(2, 9) + f * 4 * 4))
+  assert_eq(opacities, [1.0, 0.5, 1.0, 1.0])
 }
 
 ///|
@@ -448,10 +449,14 @@ test "GeoJSON sources draw from columnar tiles, with filters and properties" {
   assert_eq(p.out.layer_count(), 2)
   // The square: 4 corners (5 with the closing point), 2 triangles.
   assert_eq((entry(0, 0), entry(0, 1), entry(0, 5)), (0, @worker.KIND_FILL, 6))
-  // Only the point with k, grouped by k.
+  // Only the point with k, its radius per vertex.
   assert_eq((entry(1, 0), entry(1, 1)), (1, @worker.KIND_CIRCLE))
   assert_eq(entry(1, 3), 4 * @worker.LINE_VERTEX_BYTES)
-  assert_eq(props_of(b, 1), ["k=1"])
+  assert_eq((entry(1, 8), entry(1, 10)), (0, 4 * 4))
+  assert_eq(
+    Float::reinterpret_from_int(u32_at(b, entry(1, 9))).to_double(),
+    1.0,
+  )
   // The point at 0, 0 lands in the tile's center.
   let v = entry(1, 2)
   assert_eq((i16_at(b, v), i16_at(b, v + 2)), (2048, 2048))

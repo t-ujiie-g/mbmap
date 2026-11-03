@@ -76,30 +76,87 @@ pub(all) struct Placement {
 }
 
 ///|
+/// An empty set of paint slots for one draw.
+pub fn PaintSlots::new() -> PaintSlots {
+  paint_slots_new()
+}
+
+///|
+/// Slot `slot` holds a constant: a straight RGBA color, or a number in `a`.
+pub fn PaintSlots::constant(
+  self : PaintSlots,
+  slot : Int32,
+  a : Double,
+  b~ : Double = 0.0,
+  c~ : Double = 0.0,
+  d~ : Double = 0.0,
+) -> Unit {
+  paint_slots_constant(self, slot, a, b, c, d)
+}
+
+///|
+/// Slot `slot` reads `buffer`'s values `offset` bytes into each vertex of
+/// `stride` bytes (the value the zoom position starts from), mixed `t` of the
+/// way to the next; `single` when it stores one value.
+pub fn PaintSlots::per_vertex(
+  self : PaintSlots,
+  slot : Int32,
+  buffer : PaintBuffer,
+  offset : Int32,
+  stride : Int32,
+  t : Double,
+  single~ : Bool,
+) -> Unit {
+  paint_slots_buffer(self, slot, buffer, offset, stride, t, single)
+}
+
+///|
+/// Uploads a layer's per-vertex paint (docs/FORMATS.md, "Vertex paint").
+pub fn Renderer::upload_paint(self : Renderer, data : JsBuffer) -> PaintBuffer {
+  gl_upload_paint(self.gl, data)
+}
+
+///|
+pub fn Renderer::release_paint(self : Renderer, buffer : PaintBuffer) -> Unit {
+  gl_release_paint(self.gl, buffer)
+}
+
+///|
+/// Binds `mesh` and the first `count` paint slots to `program`.
+fn Renderer::bind(
+  self : Renderer,
+  program : String,
+  mesh : Mesh,
+  slots : PaintSlots,
+  count : Int32,
+) -> Unit {
+  gl_use(self.gl, program, mesh)
+  gl_bind_paint(self.gl, program, slots, count)
+}
+
+///|
+/// Draws a fill layer with `slots`' color and opacity.
 pub fn Renderer::draw_fill(
   self : Renderer,
   mesh : Mesh,
   at : Placement,
-  r : Double,
-  g : Double,
-  b : Double,
-  a : Double,
+  slots : PaintSlots,
 ) -> Unit {
-  gl_draw_fill(self.gl, mesh, at.matrix.m, at.clip, r, g, b, a)
+  self.bind("fill", mesh, slots, 2)
+  gl_draw_fill(self.gl, mesh, at.matrix.m, at.clip)
 }
 
 ///|
-/// Draws a line layer `width` device pixels wide, plus a pixel of antialiasing.
+/// Draws a line layer with `slots`' color, opacity and width (CSS pixels,
+/// times `dpr`), plus a pixel of antialiasing.
 pub fn Renderer::draw_line(
   self : Renderer,
   mesh : Mesh,
   at : Placement,
-  r : Double,
-  g : Double,
-  b : Double,
-  a : Double,
-  width : Double,
+  slots : PaintSlots,
+  dpr : Double,
 ) -> Unit {
+  self.bind("line", mesh, slots, 3)
   gl_draw_line(
     self.gl,
     mesh,
@@ -107,37 +164,22 @@ pub fn Renderer::draw_line(
     at.clip,
     at.units_per_pixel,
     at.center_depth,
-    r,
-    g,
-    b,
-    a,
-    width / 2.0 + 0.5,
+    dpr,
   )
 }
 
 ///|
-/// Draws circles with `radius` and `stroke_width` in device pixels at the
-/// center's depth; `color` and `stroke` are straight RGBA.
+/// Draws circles with `slots`' paint, sizes in CSS pixels times `dpr` at the
+/// center's depth.
 pub fn Renderer::draw_circle(
   self : Renderer,
   mesh : Mesh,
   at : Placement,
-  color : FixedArray[Double],
-  stroke : FixedArray[Double],
-  radius : Double,
-  stroke_width : Double,
+  slots : PaintSlots,
+  dpr : Double,
 ) -> Unit {
-  gl_draw_circle(
-    self.gl,
-    mesh,
-    at.matrix.m,
-    at.clip,
-    at.center_depth,
-    color,
-    stroke,
-    radius,
-    stroke_width,
-  )
+  self.bind("circle", mesh, slots, 6)
+  gl_draw_circle(self.gl, mesh, at.matrix.m, at.clip, at.center_depth, dpr)
 }
 
 ///|

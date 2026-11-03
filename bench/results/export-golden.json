@@ -24,7 +24,7 @@
       ],
       "maxSize": 300,
       "split": {
-        "differ": 5132,
+        "differ": 5126,
         "mean": 0.001,
         "p99": 0,
         "max": 15
@@ -66,8 +66,8 @@
       ],
       "maxSize": 333,
       "split": {
-        "differ": 1400,
-        "mean": 0.001,
+        "differ": 1346,
+        "mean": 0,
         "p99": 0,
         "max": 13
       },

@@ -19,6 +19,10 @@ extern "wasm" fn store_u8(addr : Int32, v : Int32) =
   #|(func (param i32) (param i32) (i32.store8 (local.get 0) (local.get 1)))
 
 ///|
+extern "wasm" fn memory_copy(dst : Int32, src : Int32, n : Int32) =
+  #|(func (param i32) (param i32) (param i32) (memory.copy (local.get 0) (local.get 1) (local.get 2)))
+
+///|
 extern "wasm" fn memory_size() -> Int32 =
   #|(func (result i32) (memory.size))
 
@@ -87,6 +91,18 @@ fn Store::zero(self : Store, start : Int32, end : Int32) -> Unit {
 ///|
 fn Store::copy_out(self : Store, len : Int32) -> Bytes {
   Bytes::makei(len, i => load_u8(self.base + i).to_byte())
+}
+
+///|
+/// Repeats the `len` bytes at `at` until `total` bytes from `at` are filled,
+/// doubling the copied run each time.
+fn Store::repeat(self : Store, at : Int32, len : Int32, total : Int32) -> Unit {
+  let mut filled = len
+  while filled < total {
+    let n = @cmp.minimum(filled, total - filled)
+    memory_copy(self.base + at + filled, self.base + at, n)
+    filled += n
+  }
 }
 
 ///|

@@ -62,3 +62,20 @@ fn Store::zero(self : Store, start : Int32, end : Int32) -> Unit {
 fn Store::copy_out(self : Store, len : Int32) -> Bytes {
   Bytes::from_array(self.data[:len])
 }
+
+///|
+/// Repeats the `len` bytes at `at` until `total` bytes from `at` are filled.
+fn Store::repeat(self : Store, at : Int32, len : Int32, total : Int32) -> Unit {
+  let mut filled = len
+  while filled < total {
+    let n = @cmp.minimum(filled, total - filled)
+    FixedArray::blit_to(
+      self.data,
+      self.data,
+      len=n,
+      src_offset=at,
+      dst_offset=at + filled,
+    )
+    filled += n
+  }
+}
