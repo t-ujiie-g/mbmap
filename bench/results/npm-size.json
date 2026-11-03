@@ -30,6 +30,11 @@
       "budget": 10000
     },
     {
+      "name": "mbmap/search",
+      "bytes": 2814,
+      "budget": 5000
+    },
+    {
       "name": "display worker",
       "bytes": 67192,
       "budget": 100000

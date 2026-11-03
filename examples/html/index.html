@@ -5,12 +5,13 @@
 <link rel="stylesheet" href="../shared/app.css">
 <!-- `npm --prefix bench run examples` installs the packed package into ./node_modules. -->
 <script type="importmap">
-  { "imports": { "mbmap": "./node_modules/mbmap/dist/index.js", "mbmap/analysis": "./node_modules/mbmap/dist/analysis.js", "mbmap/ui": "./node_modules/mbmap/dist/ui.js" } }
+  { "imports": { "mbmap": "./node_modules/mbmap/dist/index.js", "mbmap/analysis": "./node_modules/mbmap/dist/analysis.js", "mbmap/ui": "./node_modules/mbmap/dist/ui.js", "mbmap/search": "./node_modules/mbmap/dist/search.js" } }
 </script>
 <div id="map"></div>
 <aside class="panel">
   <h1>mbmap</h1>
   <p class="variant">素の HTML（<code>import { Map } from "mbmap"</code>）</p>
+  <div id="search"></div>
   <h2>表示</h2>
   <div id="modes"><button data-mode="2d">2D</button><button data-mode="3d">3D</button></div>
   <h2>背景地図</h2>

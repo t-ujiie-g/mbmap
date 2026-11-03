@@ -3,6 +3,7 @@ import "mbmap/element";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { mountControls } from "../shared/controls.js";
 import { mountPanel, panelControllers } from "../shared/panel.js";
+import { mountSearch } from "../shared/search.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { mountCoordinates } from "../shared/coordinates.js";
 import { hoverPlaces, mountIdentify } from "../shared/pick.js";
@@ -74,6 +75,7 @@ el.addEventListener("mb-load", () => {
   mountControls(map, document.body);
   panel = panelControllers(map, () => mode, () => places);
   mountPanel(panel);
+  mountSearch(map, () => places);
   update();
 });
 
