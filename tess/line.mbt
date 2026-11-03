@@ -51,17 +51,19 @@ const ROUND_SEGMENTS : Int32 = 8
 
 ///|
 /// Line geometry: `vertices` holds `LINE_VERTEX_STRIDE` ints per vertex,
-/// `indices` holds triangles as vertex index triples and `distances` each
-/// vertex's distance along its line (see `MAX_LINE_DISTANCE`) when dashed.
+/// `indices` holds triangles as vertex index triples, `distances` each
+/// vertex's distance along its line (see `MAX_LINE_DISTANCE`) when dashed and
+/// `progress` its share of the line's length (MapLibre's `line-progress`).
 pub struct LineBuffers {
   vertices : Array[Int32]
   indices : Array[Int32]
   distances : Array[Int32]
+  progress : Array[Double]
 }
 
 ///|
 pub fn LineBuffers::new() -> LineBuffers {
-  { vertices: [], indices: [], distances: [], }
+  { vertices: [], indices: [], distances: [], progress: [], }
 }
 
 ///|
@@ -69,6 +71,7 @@ pub fn LineBuffers::clear(self : LineBuffers) -> Unit {
   self.vertices.clear()
   self.indices.clear()
   self.distances.clear()
+  self.progress.clear()
 }
 
 ///|
@@ -100,7 +103,8 @@ pub fn LineTessellator::new(
 ///|
 /// Appends the line through points `[start, end)` of `coords` to `out` (equal
 /// ends close it); `miter_limit` is in half widths. A `dashed` line of a layer
-/// of `extent` units records `out.distances`, splitting sharp corners.
+/// of `extent` units records `out.distances`, one with `progress` records
+/// `out.progress`; both split sharp corners.
 pub fn LineTessellator::add_line(
   self : LineTessellator,
   coords : ArrayView[Int32],
@@ -112,6 +116,7 @@ pub fn LineTessellator::add_line(
   miter_limit~ : Double = 2.0,
   round_limit~ : Double = 1.05,
   dashed~ : Bool = false,
+  progress~ : Bool = false,
   extent~ : Int32 = 4096,
 ) -> Unit {
   let n = self.load_points(coords, start, end)
@@ -124,7 +129,15 @@ pub fn LineTessellator::add_line(
   }
   let segments = if closed { n } else { n - 1 }
   self.compute_normals(n, segments)
-  let n = if dashed {
+  // MapLibre takes the length before splitting corners.
+  let mut total = 0.0
+  for i in 0..<segments {
+    let j = (i + 1) % n
+    let dx = (self.xs[j] - self.xs[i]).to_double()
+    let dy = (self.ys[j] - self.ys[i]).to_double()
+    total += (dx * dx + dy * dy).sqrt()
+  }
+  let n = if dashed || progress {
     let offset = SHARP_CORNER_OFFSET * extent.to_double() / 512.0
     let m = self.split_corners(n, closed, offset)
     self.compute_normals(m, if closed { m } else { m - 1 })
@@ -140,8 +153,11 @@ pub fn LineTessellator::add_line(
     miter_limit,
     round_limit,
     dashed,
+    progress,
+    total,
     scale: 4096.0 / extent.to_double(),
     along: 0.0,
+    whole: 0.0,
     distance: 0,
   }
   let xs = self.xs
@@ -348,7 +364,8 @@ fn LineTessellator::split_corners(
 
 ///|
 /// Writes vertices; a dashed line also records each vertex's distance:
-/// `along` units of its layer so far, `scale` stored units per unit.
+/// `along` units of its layer so far, `scale` stored units per unit; with
+/// `progress`, `whole` units of the line's `total` so far.
 priv struct Emitter {
   trig : @core.Trig
   out : LineBuffers
@@ -356,8 +373,11 @@ priv struct Emitter {
   miter_limit : Double
   round_limit : Double
   dashed : Bool
+  progress : Bool
+  total : Double
   scale : Double
   mut along : Double
+  mut whole : Double
   mut distance : Int32
 }
 
@@ -370,10 +390,12 @@ fn Emitter::advance(
   x1 : Int32,
   y1 : Int32,
 ) -> Unit {
-  if self.dashed {
+  if self.dashed || self.progress {
     let dx = (x1 - x0).to_double()
     let dy = (y1 - y0).to_double()
-    self.along += (dx * dx + dy * dy).sqrt()
+    let d = (dx * dx + dy * dy).sqrt()
+    self.whole += d
+    self.along += d
     self.distance = @cmp.minimum(
       0xffff,
       (self.along * self.scale).floor().to_int(),
@@ -382,10 +404,12 @@ fn Emitter::advance(
 }
 
 ///|
-/// Past `MAX_LINE_DISTANCE`, repeats pair `p` at distance 0 (as MapLibre does)
-/// and returns the copy; otherwise `p`.
+/// Past `MAX_LINE_DISTANCE`, repeats pair `p` at distance 0 (as MapLibre does,
+/// unless the line has progress) and returns the copy; otherwise `p`.
 fn Emitter::restart(self : Emitter, p : Int32) -> Int32 {
-  guard self.dashed && self.distance > MAX_LINE_DISTANCE else { return p }
+  guard self.dashed && !self.progress && self.distance > MAX_LINE_DISTANCE else {
+    return p
+  }
   self.along = 0.0
   self.distance = 0
   let v = self.out.vertices
@@ -418,6 +442,15 @@ fn Emitter::vertex(
   v.push(along)
   if self.dashed {
     self.out.distances.push(self.distance)
+  }
+  if self.progress {
+    self.out.progress.push(
+      if self.total > 0.0 {
+        self.whole / self.total
+      } else {
+        0.0
+      },
+    )
   }
   id
 }
