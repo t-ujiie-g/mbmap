@@ -32,6 +32,22 @@ export function createShowcaseSearch(map, places) {
   return search;
 }
 
+/**
+ * The search box's keys: ↑↓ move through the results, Enter chooses (searching first if needed), Esc
+ * closes. Keys that confirm or pick an IME conversion (Japanese input) are left to the IME: Safari
+ * sends the confirming Enter after `compositionend`, with keyCode 229.
+ */
+export function onSearchKey(search, e) {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    search.move(e.key === "ArrowDown" ? 1 : -1);
+  } else if (e.key === "Enter") {
+    if (search.state.results.length) search.select();
+    else void search.submit().then(() => search.select());
+  } else if (e.key === "Escape") search.close();
+}
+
 /** A pin on the chosen result, kept on its place with `track`. */
 export function pinSelection(map, search, parent) {
   const pin = document.createElement("div");
@@ -63,15 +79,7 @@ export function mountSearch(map, places) {
   status.className = "search-status";
   box.append(input, list, status);
   input.addEventListener("input", () => search.setQuery(input.value));
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      search.move(e.key === "ArrowDown" ? 1 : -1);
-    } else if (e.key === "Enter") {
-      if (search.state.results.length) search.select();
-      else void search.submit().then(() => search.select());
-    } else if (e.key === "Escape") search.close();
-  });
+  input.addEventListener("keydown", (e) => onSearchKey(search, e));
   search.subscribe((s) => {
     input.setAttribute("aria-expanded", String(s.open));
     if (s.active >= 0) input.setAttribute("aria-activedescendant", `search-result-${s.active}`);

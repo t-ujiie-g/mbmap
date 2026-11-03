@@ -728,6 +728,17 @@ async function searchChecks(page) {
   const typed = page.locator("#search input, .react-search input").first();
   await typed.fill("東京タワー");
   await page.waitForFunction(() => !window.__search.state.loading && window.__search.state.results.length === 1 && window.__search.state.results[0].label === "東京タワー");
+  // Keys that confirm a Japanese IME conversion are the IME's: neither the composing Enter nor
+  // Safari's confirming one (keyCode 229) chooses a result.
+  const imeIgnored = await page.evaluate(async () => {
+    const input = document.querySelector("#search input, .react-search input");
+    for (const init of [{ key: "Enter", isComposing: true }, { key: "Enter", keyCode: 229 }, { key: "ArrowDown", isComposing: true }]) {
+      input.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true, cancelable: true }));
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    const s = window.__search.state;
+    return s.selected?.label !== "東京タワー" && s.active === -1 && s.open && !window.__map.isMoving();
+  });
   await typed.press("ArrowDown");
   const moved = page.evaluate(() => window.__map.once("moveend"));
   await typed.press("Enter");
@@ -740,8 +751,8 @@ async function searchChecks(page) {
     near(decimal[0], 139.7454, 35.6586, 1e-12) && decimal[0].provider === "座標" &&
     plane.length === 1 && plane[0].detail === "第IX系" && near(plane[0], 139.7671, 35.6812, 1e-6) &&
     utm.length === 1 && utm[0].detail === "UTM 54N" && near(utm[0], 139.77, 35.68, 0.01) &&
-    chosen.label === "東京タワー" && !chosen.open && near({ lng: chosen.center.lng, lat: chosen.center.lat }, 139.7454, 35.6586, 1e-3);
-  return { ok, kanji, decimal: decimal[0], plane: plane[0], utm: utm[0], chosen };
+    imeIgnored && chosen.label === "東京タワー" && !chosen.open && near({ lng: chosen.center.lng, lat: chosen.center.lat }, 139.7454, 35.6586, 1e-3);
+  return { ok, kanji, decimal: decimal[0], plane: plane[0], utm: utm[0], imeIgnored, chosen };
 }
 
 // Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.

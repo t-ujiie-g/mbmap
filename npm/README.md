@@ -134,6 +134,7 @@ list.onclick = (e) => search.select(Number(e.target.dataset.i)); // 選ぶと、
 - `createSearch(map, { providers, debounce, limit, zoom, maxZoom })`：
   - 状態は `query`、`results`（プロバイダの順）、`active`（矢印キーで選んでいるもの。`aria-activedescendant` に使う）、`open`、`loading`、`errors`（失敗したプロバイダ。ほかの結果は出る）、`selected`。
   - 操作は `setQuery(q)`（既定 250ms 待ってから検索し、前の検索は `AbortSignal` で取り消す）、`submit()`（すぐ検索）、`move(±1)`、`select(i?)`（点なら `flyTo`、範囲なら `fitBounds`）、`close()`、`clear()`、`reverse(lngLat)`。
+- キー操作は作り手が書く。日本語入力の変換を確定する Enter（`isComposing` が true、または Safari で確定直後に来る `keyCode` 229）は、検索の決定に使わないこと。example の `onSearchKey` が書き方の例。
 - `coordinates({ transform })`：入力された座標を読む。
   - 読める形：10 進の度（緯度経度のどちらの順でも）、度分秒（`35°40′52″N`、`35度40分52秒`、`'` と `"`）、全角の数字。
   - `transform`（`mbmap/analysis` の `transform` など）を渡すと、平面直角座標系（`第IX系 X -35367.2 Y -5995.2`、`9系`。JGD2011）と UTM（`54N 388708 3949480`）も読む。

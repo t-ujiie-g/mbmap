@@ -16,6 +16,9 @@
 - **外部プロバイダの書き方**：example に国土地理院の地名検索（`gsiPlaceSearch`）を置いた。
   - ただし既定では使わず、`?gsi-search=1` で有効にする。この API には公開の利用規約がなく、国土地理院は「主に地理院地図からの利用を想定し、予告なく変更することがある」と答えているため（gsi-cyberjapan/gsimaps issue #113）。
 - **example**：同じ検索から 2 通りの見た目を作った。HTML と Web Component はパネルの中のコンボボックス（矢印キー、Enter、Esc）、React は地図の上に浮く検索バーと結果のカード。選んだ場所には緑のピンを `map.track` で立てる。
+- **日本語入力（ユーザーの指摘）**：変換を確定する Enter で、検索の結果を選んで地図が動いてしまっていた。
+  - 変換中のキー（`isComposing`）と、Safari が確定の直後に送る Enter（`keyCode` 229）は無視するようにした（`examples/shared/search.js` の `onSearchKey`。React はネイティブのイベントを渡す）。
+  - pack test で、どちらの Enter でも何も選ばれないことを確かめる。
 
 ### 確認
 
