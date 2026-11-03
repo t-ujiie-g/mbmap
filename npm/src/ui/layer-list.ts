@@ -1,11 +1,11 @@
 // A layer list without its look: layers, or groups of them, to show and hide.
 import type { LayerSpecification, Map } from "../index";
 import { Store, type Controller } from "./controller";
-import { layerShown } from "./legend";
+import { inZoomRange } from "../attribution";
 
 /**
  * One item, top first: its `layers` (those the style has), `visible` when all are shown, `mixed`
- * when some are, `inRange` when one is drawn at this zoom.
+ * when some are, `inRange` when this zoom is in one's zoom range (shown or not).
  */
 export interface LayerListItem {
   id: string;
@@ -38,19 +38,25 @@ class LayerListStore extends Store<LayerListState> implements LayerList {
   #map: Map;
   #options: LayerListOptions;
   #json = "";
+  // The style's layers, read when the style changes: `getStyle` copies GeoJSON data too.
+  #layers: LayerSpecification[] = [];
 
   constructor(map: Map, options: LayerListOptions) {
     super({ items: [] });
     this.#map = map;
     this.#options = options;
-    this.#update();
-    for (const type of ["styledata", "zoom", "load"]) this.listen(map, type, () => this.#update());
+    const restyle = () => {
+      this.#layers = (map.getStyle()?.layers ?? []) as LayerSpecification[];
+      this.#update();
+    };
+    restyle();
+    this.listen(map, "styledata", restyle);
+    this.listen(map, "load", restyle);
+    this.listen(map, "zoom", () => this.#update());
   }
 
   #update(): void {
-    const style = this.#map.getStyle();
-    if (!style) return;
-    const layers = style.layers as LayerSpecification[];
+    const layers = this.#layers;
     const zoom = this.#map.getZoom();
     const byId = new globalThis.Map(layers.map((l) => [l.id, l]));
     const groups =
@@ -69,7 +75,7 @@ class LayerListStore extends Store<LayerListState> implements LayerList {
         layers,
         visible: layers.length > 0 && shown.length === layers.length,
         mixed: shown.length > 0 && shown.length < layers.length,
-        inRange: layers.some((id) => layerShown(byId.get(id)!, zoom)),
+        inRange: layers.some((id) => inZoomRange(byId.get(id)!, zoom)),
       };
     });
     const json = JSON.stringify(items);

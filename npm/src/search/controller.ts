@@ -47,6 +47,9 @@ export interface Search extends Controller<SearchState> {
   reverse(lngLat: LngLat): Promise<SearchResult[]>;
 }
 
+/** The longest query the providers get: longer text is cut (patterns stay quick, web APIs get a sane URL). */
+export const MAX_QUERY_LENGTH = 256;
+
 class SearchStore extends Store<SearchState> implements Search {
   #map: Map;
   #options: SearchOptions;
@@ -83,7 +86,7 @@ class SearchStore extends Store<SearchState> implements Search {
 
   async submit(): Promise<void> {
     this.#cancel();
-    const query = this.state.query;
+    const query = this.state.query.slice(0, MAX_QUERY_LENGTH);
     if (!query.trim()) return;
     const abort = (this.#abort = new AbortController());
     this.set({ loading: true });

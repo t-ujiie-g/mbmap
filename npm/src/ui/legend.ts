@@ -1,6 +1,7 @@
 // A legend without its look: each layer's swatches from its style, colors as
 // drawn at the current zoom (the engine evaluates them).
 import type { LayerSpecification, Map, PaintValues } from "../index";
+import { layerShown } from "../attribution";
 import { Store, type Controller } from "./controller";
 import { breakdown, COLOR_PROPERTY, defaultLabel, type LegendCategory } from "./legend-rules";
 
@@ -39,14 +40,6 @@ export interface LegendOptions {
   label?: (layer: LayerSpecification, category: LegendCategory) => string | undefined;
 }
 
-/** Whether `layer` is drawn at `zoom` (MapLibre's `isHidden`, inverted). */
-export function layerShown(layer: LayerSpecification, zoom: number): boolean {
-  const l = layer as { minzoom?: number; maxzoom?: number; layout?: { visibility?: string } };
-  if (l.minzoom && zoom < l.minzoom) return false;
-  if (l.maxzoom && zoom >= l.maxzoom) return false;
-  return l.layout?.visibility !== "none";
-}
-
 function titleOf(layer: LayerSpecification): string {
   const t = (layer as { metadata?: Record<string, unknown> }).metadata?.["mbmap:title"];
   return typeof t === "string" ? t : layer.id;
@@ -56,21 +49,25 @@ class LegendStore extends Store<LegendState> {
   #map: Map;
   #options: LegendOptions;
   #json = "";
+  // The style's layers, read when the style changes: `getStyle` copies GeoJSON data too.
+  #layers: LayerSpecification[] = [];
 
   constructor(map: Map, options: LegendOptions) {
     super({ entries: [] });
     this.#map = map;
     this.#options = options;
-    this.#update();
-    this.listen(map, "styledata", () => this.#update());
+    const restyle = () => {
+      this.#layers = (map.getStyle()?.layers ?? []) as LayerSpecification[];
+      this.#update();
+    };
+    restyle();
+    this.listen(map, "styledata", restyle);
+    this.listen(map, "load", restyle);
     this.listen(map, "zoom", () => this.#update());
-    this.listen(map, "load", () => this.#update());
   }
 
   #update(): void {
-    const style = this.#map.getStyle();
-    if (!style) return;
-    const layers = style.layers as LayerSpecification[];
+    const layers = this.#layers;
     const zoom = this.#map.getZoom();
     const wanted = this.#options.layers ? new Set(this.#options.layers) : null;
     const entries: LegendEntry[] = [];

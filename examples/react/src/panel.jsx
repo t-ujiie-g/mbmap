@@ -1,13 +1,11 @@
 // The panel's basemaps, layer list and legend in React: radio buttons,
 // checkboxes and a collapsible legend over the same controllers the plain-DOM
 // examples draw as buttons (shared/panel.js makes them).
-import { useSyncExternalStore } from "react";
 import { css } from "../../shared/panel.js";
-
-const use = (c) => useSyncExternalStore(c.subscribe, () => c.state);
+import { useController } from "./use-controller.js";
 
 export function Basemaps({ c }) {
-  const s = use(c);
+  const s = useController(c);
   return (
     <div role="radiogroup" aria-label="背景地図" className="react-choices">
       {s.basemaps.map((b) => (
@@ -20,7 +18,7 @@ export function Basemaps({ c }) {
 }
 
 export function LayerChecklist({ c }) {
-  const s = use(c);
+  const s = useController(c);
   return (
     <div className="react-choices">
       {s.items.map((i) => (
@@ -48,7 +46,7 @@ function Swatch({ type, color }) {
 }
 
 export function Legend({ c }) {
-  const s = use(c);
+  const s = useController(c);
   const entries = s.entries.filter((e) => e.visible && e.items.length > 0);
   return (
     <details open className="react-legend">

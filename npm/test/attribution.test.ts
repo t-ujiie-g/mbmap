@@ -30,3 +30,12 @@ test("attributionsOf: a layer outside its zoom range leaves its source out", () 
   assert.deepEqual(attributionsOf(style, 14), ["B", "DEM", "Long source A"]);
   assert.deepEqual(attributionsOf({}, 3), []);
 });
+
+test("inZoomRange and layerShown: MapLibre's isHidden, the zoom range alone or with visibility", async () => {
+  const { inZoomRange, layerShown } = await import("../src/attribution.ts");
+  const layer = { minzoom: 10, maxzoom: 14, layout: { visibility: "none" } };
+  assert.deepEqual([9.9, 10, 13.9, 14].map((z) => inZoomRange(layer, z)), [false, true, true, false]);
+  assert.equal(layerShown(layer, 12), false);
+  assert.equal(layerShown({ minzoom: 10 }, 12), true);
+  assert.equal(inZoomRange({}, 0), true);
+});

@@ -24,6 +24,26 @@ import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
 import { attributionsOf } from "./attribution";
 import { tileJSONUrls, withTileJSON } from "./tilejson";
+import type {
+  MapGeoJSONFeature,
+  FeatureIdentifier,
+  QueryRenderedFeaturesOptions,
+  QuerySourceFeatureOptions,
+  ResourceType,
+  RequestTransformFunction,
+  Source,
+  MapOptions,
+  MapMouseEventType,
+  MapEventType,
+  MapEvent,
+  MapEventListener,
+  StyleSwapOptions,
+  PaintValues,
+  ScreenPosition,
+  ToBlobOptions,
+  Tracker,
+  Handler,
+} from "./types";
 import { resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 
 export { LngLatBounds } from "./camera";
@@ -43,205 +63,30 @@ export type {
 
 export type { LayerSpecification, StyleSpecification } from "./style";
 export type { GeoJSONFeature } from "./query";
-
-/** A rendered feature: the style layer that drew it (as in the style), its source, source layer and state. */
-export interface MapGeoJSONFeature extends GeoJSONFeature {
-  layer: LayerSpecification;
-  source: string;
-  sourceLayer?: string;
-  state: Record<string, unknown>;
-}
-
-/** A feature whose state is set: its source, its source layer (vector sources only) and its id (MapLibre's `FeatureIdentifier`). */
-export interface FeatureIdentifier {
-  source: string;
-  sourceLayer?: string;
-  id?: number | string;
-}
-
-/** `layers` to look in (all by default) and a `filter` the features must pass, as in MapLibre. */
-export interface QueryRenderedFeaturesOptions {
-  layers?: string[] | Set<string>;
-  filter?: unknown;
-}
-
-/** The source layer to read (required for vector sources) and a `filter`, as in MapLibre. */
-export interface QuerySourceFeatureOptions {
-  sourceLayer?: string;
-  filter?: unknown;
-}
-
-/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, or a tile. */
-export type ResourceType = "Style" | "Source" | "Tile";
-
-/**
- * MapLibre's `transformRequest`: may change a request's `url`, add `headers` or send
- * `credentials` (none are sent otherwise). Return undefined to leave the request as it is.
- * PMTiles range requests are not passed through it.
- */
-export type RequestTransformFunction = (
-  url: string,
-  resourceType: ResourceType,
-) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
-
-/** What `getSource` gives: a GeoJSON source also takes new data. */
-export interface Source {
-  id: string;
-  type: string;
-  setData?(data: unknown): void;
-}
-
-/**
- * - `container`: the element (or its id) the map fills. It needs a size of its own.
- * - `style`: a style object, or the URL of one (fetched without credentials).
- * - `bearing`: degrees clockwise from north that point up (default 0).
- * - `pitch`: degrees of tilt from looking straight down, 0 to 85 (default 0).
- * - `workerCount`: tile workers; 0 (the default) picks half the hardware threads, 1 to 4.
- * - `workerUrl`, `wasmUrl`: where the worker (same-origin http(s)) and its wasm
- *   (http(s)) are served; by default next to this module, via `new URL(..., import.meta.url)`.
- * - `geojsonWorkerUrl`, `geojsonWasmUrl`: the same for the worker of GeoJSON sources.
- * - `fontFamily`: the CSS font family labels are drawn in, from the fonts the browser has (default "sans-serif").
- * - `attributionControl`: shows the sources' `attribution` text in a corner (default true).
- * - `minZoom`, `maxZoom` (0 and 22), `minPitch`, `maxPitch` (0 and 85), `maxBounds`: what the camera keeps to.
- * - `bounds`, `fitBoundsOptions`: a box to show at first, in place of `center` and `zoom`.
- * - `transformRequest`: changes the requests for the style, TileJSON and tiles (see `RequestTransformFunction`).
- * - `interactive: false` turns every input off; `dragPan`, `scrollZoom`, `boxZoom`, `dragRotate`,
- *   `keyboard`, `doubleClickZoom`, `touchZoomRotate`, `touchPitch` (all true) one by one.
- */
-export interface MapOptions {
-  container: HTMLElement | string;
-  style: StyleSpecification | string;
-  center?: LngLatLike;
-  zoom?: number;
-  bearing?: number;
-  pitch?: number;
-  workerCount?: number;
-  workerUrl?: string | URL;
-  wasmUrl?: string | URL;
-  geojsonWorkerUrl?: string | URL;
-  geojsonWasmUrl?: string | URL;
-  fontFamily?: string;
-  attributionControl?: boolean;
-  minZoom?: number;
-  maxZoom?: number;
-  minPitch?: number;
-  maxPitch?: number;
-  maxBounds?: LngLatBoundsLike;
-  bounds?: LngLatBoundsLike;
-  fitBoundsOptions?: FitBoundsOptions;
-  interactive?: boolean;
-  dragPan?: boolean;
-  scrollZoom?: boolean;
-  boxZoom?: boolean;
-  dragRotate?: boolean;
-  keyboard?: boolean;
-  doubleClickZoom?: boolean;
-  touchZoomRotate?: boolean;
-  touchPitch?: boolean;
-  transformRequest?: RequestTransformFunction;
-}
-
-/** Mouse events the map fires, and with a layer id fires for that layer's features (`mouseenter` and `mouseleave` only with one). */
-export type MapMouseEventType =
-  | "mousedown"
-  | "mouseup"
-  | "mouseover"
-  | "mouseout"
-  | "mousemove"
-  | "click"
-  | "dblclick"
-  | "contextmenu"
-  | "mouseenter"
-  | "mouseleave";
-
-export type MapEventType =
-  | MapMouseEventType
-  | "load"
-  | "styledata"
-  | "render"
-  | "idle"
-  | "error"
-  | "movestart"
-  | "move"
-  | "moveend"
-  | "zoomstart"
-  | "zoom"
-  | "zoomend"
-  | "rotatestart"
-  | "rotate"
-  | "rotateend"
-  | "pitchstart"
-  | "pitch"
-  | "pitchend";
-
-/**
- * `load` fires at the first drawn view, `render` after each frame, `idle` when the map settles;
- * camera events as MapLibre's (`originalEvent`: a gesture's DOM event). Mouse events carry the
- * `point` (CSS pixels), its `lngLat` and, for a layer, its `features` there.
- */
-export interface MapEvent {
-  type: MapEventType;
-  target: Map;
-  error?: Error;
-  originalEvent?: Event;
-  point?: { x: number; y: number };
-  lngLat?: LngLat;
-  features?: MapGeoJSONFeature[];
-}
-
-export type MapEventListener = (event: MapEvent) => void;
-
-/**
- * `transformStyle(previous, next)` makes the style drawn from the one asked for and the one drawn
- * before (undefined at first), as MapLibre's `setStyle` option: say, to keep overlays across basemaps.
- */
-export interface StyleSwapOptions {
-  transformStyle?: (previous: StyleSpecification | undefined, next: StyleSpecification) => StyleSpecification;
-}
-
-/**
- * A layer's paint for one feature (`Map.evaluatePaint`): `color` (and the circle `stroke`, the label
- * `halo`) as straight RGBA, `width` of lines, `radius` and `strokeWidth` of circles, `haloWidth` of labels.
- */
-export interface PaintValues {
-  color: number[];
-  width: number;
-  radius: number;
-  stroke: number[];
-  strokeWidth: number;
-  halo: number[];
-  haloWidth: number;
-}
-
-/** Where a tracked place is: CSS pixels from the canvas's top-left corner, and whether the terrain hides it. */
-export interface ScreenPosition {
-  x: number;
-  y: number;
-  covered: boolean;
-}
-
-/**
- * `pixelRatio`: device pixels per CSS pixel (the screen's by default); `type` and `quality` as
- * `HTMLCanvasElement.toBlob` takes them (PNG by default); `maxSize`: the largest side drawn at once
- * (the GPU's limit by default), bigger images are drawn in parts and joined.
- */
-export interface ToBlobOptions {
-  pixelRatio?: number;
-  type?: string;
-  quality?: number;
-  maxSize?: number;
-}
+export type {
+  MapGeoJSONFeature,
+  FeatureIdentifier,
+  QueryRenderedFeaturesOptions,
+  QuerySourceFeatureOptions,
+  ResourceType,
+  RequestTransformFunction,
+  Source,
+  MapOptions,
+  MapMouseEventType,
+  MapEventType,
+  MapEvent,
+  MapEventListener,
+  StyleSwapOptions,
+  PaintValues,
+  ScreenPosition,
+  ToBlobOptions,
+  Tracker,
+  Handler,
+} from "./types";
 
 /** The largest image `toBlob` makes: what Chromium and Safari let a canvas hold. */
 const MAX_IMAGE_SIDE = 32767;
 const MAX_IMAGE_PIXELS = 16384 * 16384;
-
-/** A place followed on screen (`Map.track`). */
-export interface Tracker {
-  getLngLat(): LngLat;
-  setLngLat(lnglat: LngLatLike): this;
-  remove(): void;
-}
 
 interface Tracked {
   lnglat: LngLat;
@@ -254,13 +99,6 @@ interface Camera {
   zoom: number;
   bearing: number;
   pitch: number;
-}
-
-/** One input handler: `enable`, `disable`, `isEnabled`, as MapLibre's `map.scrollZoom` and the like. */
-export interface Handler {
-  enable(): void;
-  disable(): void;
-  isEnabled(): boolean;
 }
 
 /** MapLibre's default easing, the CSS `ease` curve (0.25, 0.1, 0.25, 1). */

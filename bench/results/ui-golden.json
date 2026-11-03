@@ -221,6 +221,51 @@
           }
         },
         {
+          "step": "same fix",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.73000000000002,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72999999999996,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "user pans again",
+          "theirs": "background",
+          "mine": "background",
+          "mlCamera": {
+            "lng": 139.72828338623162,
+            "lat": 35.68947717052616,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72828338623043,
+            "lat": 35.68947717052603,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "back again",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.73000000000002,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72999999999996,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          }
+        },
+        {
           "step": "off",
           "theirs": "off",
           "mine": "off",
