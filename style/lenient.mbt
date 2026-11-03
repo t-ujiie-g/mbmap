@@ -2,13 +2,10 @@
 /// Properties of the Style Spec that are not drawn yet: a style using them
 /// is drawn without them, with a warning.
 let ignored_properties : Array[String] = [
-  "fill-sort-key", "line-sort-key", "circle-sort-key", "line-offset", "line-gap-width",
-  "line-blur", "line-translate", "line-translate-anchor", "fill-translate", "fill-translate-anchor",
-  "circle-translate", "circle-translate-anchor", "text-translate", "text-translate-anchor",
-  "icon-translate", "icon-translate-anchor", "circle-blur", "circle-pitch-scale",
-  "circle-pitch-alignment", "symbol-avoid-edges", "symbol-z-order", "text-font",
-  "text-letter-spacing", "text-transform", "text-rotate", "text-halo-blur", "text-overlap",
-  "icon-overlap",
+  "fill-sort-key", "line-sort-key", "circle-sort-key", "text-translate", "text-translate-anchor",
+  "icon-translate", "icon-translate-anchor", "symbol-avoid-edges", "symbol-z-order",
+  "text-font", "text-letter-spacing", "text-transform", "text-rotate", "text-halo-blur",
+  "text-overlap", "icon-overlap",
 ]
 
 ///|

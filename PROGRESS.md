@@ -2,22 +2,39 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 16.2（線と平行移動）と 16.4（円）を 1 本、16.6（式）を並行で。続いて 16.3、16.5、16.8。
+  1. 16.6（式、別の worktree で進行中）。続いて 16.3、16.5、16.8。
 - **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。残る警告の多いものは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）は 16.5 に入れる。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 116.3KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 63.8KB（ラベルは別に `worker-labels.js` 8.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 117.5KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 65.3KB（ラベルは別に `worker-labels.js` 8.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16.2・16.4：線と平行移動、円（2026-11-04）
+
+状態：**完了**（`text-translate` と `icon-translate` を除く）。
+
+- **`line-offset`**（地物ごとの式も）：MapLibre 6.16 の `a_offset_normal` と同じく、頂点ごとに offset が動かす向きを持たせた（`LineBuffers.offsets`、2 つの i8、`EXTRUDE_SCALE` 倍）。線の端と結合のない頂点は線分の法線、結合では miter ベクトルを長さ 2 まで（`MAX_OFFSET_MITER_LENGTH`）、miter の長さ 3〜8 で頂点の法線へ戻す（`offsetFallback`）。offset が 0 でないレイヤーだけが持ち（パックの項目の 17・18 語目、`LAYER_ENTRY_WORDS` は 19 に）、そのバッファは offset のあるレイヤーとだけ共有する（`StyleLayer::line_offsets`、`same_line_layout`）。
+- **`line-gap-width`**（地物ごとの式も）と **`line-blur`**：MapLibre の線のシェーダーの outset・inset とぼかしの式に合わせた。ギャップと offset は円の stroke の不透明度と幅の枠（`SLOT_GAP_WIDTH` 4、`SLOT_OFFSET` 5）を使うので、頂点ごとの paint と定数がそのまま通る。`line-blur` と `circle-blur` は空いた枠がないので一様変数で、ズームの式まで（地物ごとの式は `Unsupported`）。
+- **`*-translate` / `*-translate-anchor`**（fill、line、circle、fill-extrusion）：レイヤーのタイル行列を CSS px 分ずらす（`Map::translated`、MapLibre の `translatePosition`。`viewport` ならカメラの向きで回す）。地形のテクスチャに描くときも同じ。値は定数の `[x, y]` だけ（ズームの式は `Unsupported`）。
+- **円**：`circle-blur`、`circle-pitch-scale`、`circle-pitch-alignment` を MapLibre の circle シェーダーと同じに（地図に寝かせるか画面に向けるか、距離で縮めるか画面の大きさを保つか）。
+- **クエリ**：MapLibre の `queryIntersectsFeature` と同じく、クエリの形を平行移動の分ずらし（`Query::translated`。要求にカメラの向きを足した）、線は `getLineWidth`（ギャップ）と `offsetLine`、円は `circleIntersection` の 4 通りで当てる。タイルのクエリの余白（`queryPadding`）にも offset と平行移動を入れた。
+- **黄金テスト**（クラウドの SwiftShader）：
+  - `style:golden` に 4 場面を足した：`line-offset`（miter・bevel・round、地物ごとの offset）平均 0.029 / p99 0、`line-gap`（ギャップ、ぼかし、回転）0.018 / 0、`translate`（4 種類、map と viewport、回転）0.002 / 0、`circle-pitch`（傾き 55°、4 通りとぼかし）0 / 0。限度はどれも 0.05 / 1。
+  - 既存の場面は変わらないか良くなった（`lines` 0.001 / 0）。傾けた線は以前からの差のまま（`turned` 0.558 / 18）。
+  - `query:golden` に平行移動・offset・ギャップ・円の向きを入れたスタイルの 2 つの見え方（回転、傾き 50°）を足し、447 / 447 一致。
+- **大きさ**（gzip -9）：表示（メイン）116,251 → 117,487 バイト（+1,236）、表示ワーカー 63,773 → 65,323 バイト（+1,550：offset の法線、クエリの offsetLine と平行移動、レイヤーの新しい欄の読み込み）。
+- **残したもの**：`text-translate` と `icon-translate`（ラベルの衝突判定に入れる必要があり 16.5 で）、ズームで変わる平行移動、地物ごとの `line-blur` / `circle-blur`。
+- **本線で測ってほしいもの**：`worker:browser`（offset のないレイヤーの手順は変わらない。項目の語が 2 つ増えた）と `render`。
 
 ## 大きさの対策：スタイルのコンパイルを主スレッドだけに（2026-11-04）
 
@@ -129,7 +146,7 @@
 | 16.2 | 線と平行移動：`line-offset`、`line-gap-width`、`line-blur`、全種類の `*-translate(-anchor)` |
 | 16.3 | 並び順：`fill` / `line` / `circle` の `sort-key`、`symbol-z-order`、`symbol-avoid-edges` |
 | 16.4 | 円：`circle-blur`、`circle-pitch-scale`、`circle-pitch-alignment` |
-| 16.5 | 文字：`text-font`（ブラウザのフォントへ）、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-opacity`、`text-halo-blur`、`text-overlap`、`icon-overlap` |
+| 16.5 | 文字：`text-translate`・`icon-translate`（16.2 から）、`text-font`（ブラウザのフォントへ）、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-opacity`、`text-halo-blur`、`text-overlap`、`icon-overlap` |
 | 16.6 | 式：`format`、`number-format`、`collator`、`split` / `join`、`global-state`、`within`、`distance`、`is-supported-script`、`resolved-locale`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state |
 | 16.7 | 地形の表現：hillshade の方式（`basic`、`combined`、`igor`、`multidirectional`）、`illumination-altitude`、`resampling`、`color-relief` レイヤー |
 | 16.8 | 公開スタイルの突き合わせ：同じスキーマのタイルで MapLibre と画素で比べる |

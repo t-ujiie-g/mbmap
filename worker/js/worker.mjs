@@ -7,7 +7,7 @@ import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 import { readString, readValue } from "./values.mjs";
 
-const LAYER_ENTRY_WORDS = 17; // worker/packed.mbt
+const LAYER_ENTRY_WORDS = 19; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
@@ -119,8 +119,8 @@ function unpack(packed) {
     if (paint) transfer.push(paint);
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
-      const { vertices, indices, outline, distances, progress, clips } = layers[shared];
-      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12), distances, progress, clips });
+      const { vertices, indices, outline, distances, progress, clips, offsets } = layers[shared];
+      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets });
       continue;
     }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
@@ -129,6 +129,8 @@ function unpack(packed) {
     if (outline) transfer.push(outline);
     const distances = e(14) > 0 ? packed.slice(e(13), e(13) + e(14) * 2).buffer : null;
     if (distances) transfer.push(distances);
+    const offsets = e(18) > 0 ? packed.slice(e(17), e(17) + e(18) * 2).buffer : null;
+    if (offsets) transfer.push(offsets);
     // A gradient line's progress (f32 share and row per vertex: 8 bytes, as its vertices), then its rows' clips and longest line (f64s).
     let progress = null, clips = null;
     if (e(15) > 0) {
@@ -139,7 +141,7 @@ function unpack(packed) {
     }
     // `shared` names a position in `layers` (skipped symbol entries have none).
     byOffset.set(e(2), layers.length);
-    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips });
+    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };

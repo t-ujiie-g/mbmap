@@ -71,6 +71,7 @@ pub struct LineBuffers {
   indices : Array[Int32]
   distances : Array[Int32]
   progress : Array[Double]
+  offsets : Array[Int32]
 }
 pub fn LineBuffers::clear(Self) -> Unit
 pub fn LineBuffers::new() -> Self
@@ -97,7 +98,7 @@ pub fn LineJoin::to_repr(Self) -> @debug.Repr
 pub struct LineTessellator {
   // private fields
 }
-pub fn LineTessellator::add_line(Self, ArrayView[Int32], Int32, Int32, LineBuffers, join? : LineJoin, cap? : LineCap, miter_limit? : Double, round_limit? : Double, dashed? : Bool, progress? : Bool, extent? : Int32) -> Unit
+pub fn LineTessellator::add_line(Self, ArrayView[Int32], Int32, Int32, LineBuffers, join? : LineJoin, cap? : LineCap, miter_limit? : Double, round_limit? : Double, dashed? : Bool, progress? : Bool, offset? : Bool, extent? : Int32) -> Unit
 pub fn LineTessellator::new(trig? : @core.Trig) -> Self
 
 // Type aliases

@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 17
+pub const LAYER_ENTRY_WORDS : Int32 = 19
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -322,7 +322,32 @@ fn PackedTile::add_extruded(
     )
   }
   self.put_indices(istart, lines.indices, index_bytes)
-  self.put_distances(lines.distances)
+  self.put_distances(lines.distances) && self.put_offsets(lines.offsets)
+}
+
+///|
+/// Writes an offset line's offset normals as two Int8s per vertex for the last
+/// entry; false without room.
+fn PackedTile::put_offsets(self : PackedTile, o : Array[Int32]) -> Bool {
+  if o.is_empty() {
+    return true
+  }
+  let bytes = (o.length() + 3) / 4 * 4
+  if !self.reserve(bytes) {
+    return false
+  }
+  let at = self.len
+  for i in 0..<(o.length() / 2) {
+    self.store.set_u16(
+      at + i * 2,
+      (o[i * 2] & 0xff) | ((o[i * 2 + 1] & 0xff) << 8),
+    )
+  }
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 68, at)
+  self.put_u32(e + 72, o.length() / 2)
+  self.len = at + bytes
+  true
 }
 
 ///|
@@ -375,8 +400,8 @@ fn PackedTile::add_alias(
   let src = 4 + of * LAYER_ENTRY_WORDS * 4
   let dst = 4 + self.layers * LAYER_ENTRY_WORDS * 4
   self.put_u32(dst, style_layer)
-  // The geometry, its group's properties, outline and distances; per-vertex
-  // paint is each layer's own.
+  // The geometry, its group's properties, outline, distances and offset
+  // normals; per-vertex paint is each layer's own.
   for w in 1..<LAYER_ENTRY_WORDS {
     self.put_u32(dst + w * 4, self.store.get_u32(src + w * 4))
   }

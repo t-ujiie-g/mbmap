@@ -277,6 +277,9 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
             self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
           }
+          if kind == KIND_LINE && !is_null_value(offsets_of_layer(l)) {
+            self.renderer.upload_offsets(mesh, buffer_of(l, "offsets"))
+          }
           if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
             self.renderer.upload_progress(mesh, buffer_of(l, "progress"))
           }

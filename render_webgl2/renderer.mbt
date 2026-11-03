@@ -181,17 +181,31 @@ pub fn Renderer::draw_fill_outline(
 }
 
 ///|
-/// Draws circles with `slots`' paint, sizes in CSS pixels times `dpr` at the
-/// center's depth.
+/// Draws circles with `slots`' paint, sizes in CSS pixels times `dpr`: facing the
+/// viewer or lying on the map (`pitch_with_map`), grown with the map or kept on
+/// screen (not `scale_with_map`), edges faded over `blur` (a share of the size).
 pub fn Renderer::draw_circle(
   self : Renderer,
   mesh : Mesh,
   at : Placement,
   slots : PaintSlots,
   dpr : Double,
+  scale_with_map~ : Bool = true,
+  pitch_with_map~ : Bool = false,
+  blur~ : Double = 0.0,
 ) -> Unit {
   self.bind("circle", mesh, slots, 6)
-  gl_draw_circle(self.gl, mesh, at.matrix.m, at.clip, at.center_depth, dpr)
+  let flag = (b : Bool) => if b { 1.0 } else { 0.0 }
+  gl_draw_circle(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.center_depth,
+    dpr,
+    at.units_per_pixel,
+    [flag(scale_with_map), flag(pitch_with_map), blur],
+  )
 }
 
 ///|

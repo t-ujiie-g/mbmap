@@ -38,6 +38,13 @@ pub const SLOT_STROKE_OPACITY : Int32 = 4
 pub const SLOT_STROKE_WIDTH : Int32 = 5
 
 ///|
+/// A line's gap width and offset, in the circles' stroke opacity and width slots.
+pub const SLOT_GAP_WIDTH : Int32 = 4
+
+///|
+pub const SLOT_OFFSET : Int32 = 5
+
+///|
 /// The paint expressions of a layer by slot, with their defaults (as
 /// MapLibre's), or empty for kinds drawn otherwise.
 fn StyleLayer::slots(self : StyleLayer) -> Array[(Int32, Expr, Bool, Double)] {
@@ -49,7 +56,14 @@ fn StyleLayer::slots(self : StyleLayer) -> Array[(Int32, Expr, Bool, Double)] {
         Some(e) => [color, opacity, (SLOT_STROKE_COLOR, e, true, 0.0)]
         None => [color, opacity]
       }
-    Line => [color, opacity, (SLOT_SIZE, self.width, false, 1.0)]
+    Line =>
+      [
+        color,
+        opacity,
+        (SLOT_SIZE, self.width, false, 1.0),
+        (SLOT_GAP_WIDTH, self.gap_width, false, 0.0),
+        (SLOT_OFFSET, self.offset, false, 0.0),
+      ]
     Circle =>
       [
         color,

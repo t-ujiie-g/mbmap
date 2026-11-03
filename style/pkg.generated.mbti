@@ -17,6 +17,10 @@ pub const MAX_HILLSHADE_LIGHTS : Int32 = 8
 
 pub const SLOT_COLOR : Int32 = 0
 
+pub const SLOT_GAP_WIDTH : Int32 = 4
+
+pub const SLOT_OFFSET : Int32 = 5
+
 pub const SLOT_OPACITY : Int32 = 1
 
 pub const SLOT_SIZE : Int32 = 2
@@ -425,8 +429,16 @@ pub struct StyleLayer {
   dasharray : Expr?
   gradient : Expr?
   pattern : Expr?
+  gap_width : Expr
+  offset : Expr
+  blur : Expr
+  translate : (Double, Double)
+  translate_viewport : Bool
+  scale_with_map : Bool
+  pitch_with_map : Bool
 }
 pub fn StyleLayer::line_distances(Self) -> Bool
+pub fn StyleLayer::line_offsets(Self) -> Bool
 pub fn StyleLayer::paints_by_group(Self) -> Bool
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_line_layout(Self, Self) -> Bool

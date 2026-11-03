@@ -21,7 +21,7 @@ let lenient_style : String =
   #|   {"id": "local", "type": "fill", "source": "f", "source-layer": "a"},
   #|   {"id": "relief", "type": "model", "source": "v"},
   #|   {"id": "water", "type": "fill", "source": "v", "source-layer": "water",
-  #|    "paint": {"fill-translate": [1, 2]}}]}
+  #|    "layout": {"fill-sort-key": 2}}]}
 
 ///|
 test "a lenient style leaves out what it cannot draw and lists it" {
@@ -54,7 +54,7 @@ test "properties parsed but not drawn yet are reported only when asked" {
   let json = @json.parse(lenient_style)
   let style = @style.Style::from_json(json, strict=false)
   style.report_ignored(json, strict=false)
-  assert_eq(paths(style).last(), Some("layers[4].paint.fill-translate"))
+  assert_eq(paths(style).last(), Some("layers[4].layout.fill-sort-key"))
   let path = try {
     @style.Style::from_json(json, strict=false).report_ignored(json)
     ""
@@ -62,7 +62,7 @@ test "properties parsed but not drawn yet are reported only when asked" {
     Unsupported(path~, _) => path
     e => e.message()
   }
-  assert_eq(path, "layers[4].paint.fill-translate")
+  assert_eq(path, "layers[4].layout.fill-sort-key")
 }
 
 ///|

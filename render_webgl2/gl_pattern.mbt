@@ -80,9 +80,10 @@ extern "js" fn gl_draw_line_pattern(
   units : Double,
   depth : Double,
   dpr : Double,
+  blur : Double,
   u : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip, units, depth, dpr, u) => {
+  #|(c, m, matrix, clip, units, depth, dpr, blur, u) => {
   #|  const gl = c.gl, p = c.linePattern;
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
@@ -90,6 +91,7 @@ extern "js" fn gl_draw_line_pattern(
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform1f(p.u_blur, blur);
   #|  gl.uniform4f(p.u_pattern, u[0], u[1], u[2], u[3]);
   #|  gl.uniform2f(p.u_size, u[4], u[5]);
   #|  gl.uniform1f(p.u_along, u[6]);

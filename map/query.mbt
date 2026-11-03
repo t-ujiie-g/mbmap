@@ -305,6 +305,7 @@ pub fn Map::query_rendered(
       w.f64(t.height)
       w.f64(t.center_depth())
       w.f64(t.pixels_per_meter())
+      w.f64(t.camera.bearing * @math.PI / 180.0)
       for v in t.tile_matrix(id, @core.TILE_EXTENT).m {
         w.f64(v)
       }

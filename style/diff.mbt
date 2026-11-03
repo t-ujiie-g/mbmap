@@ -14,6 +14,8 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
       l.stroke_opacity,
       l.halo_color,
       l.halo_width,
+      l.gap_width,
+      l.offset,
       ..l.icon_paint.map_or([], p => p.exprs()),
     ].map(e => e.feature_inputs())
   }
@@ -60,7 +62,7 @@ pub fn Source::same(self : Source, other : Source) -> Bool {
 pub fn StyleLayer::reads_state(self : StyleLayer) -> Bool {
   let exprs = match self.kind {
     Fill | FillExtrusion => [self.color, self.opacity]
-    Line => [self.color, self.opacity, self.width]
+    Line => [self.color, self.opacity, self.width, self.gap_width, self.offset]
     Circle =>
       [
         self.color,
@@ -87,6 +89,7 @@ pub fn StyleLayer::same_line_layout(
   self.miter_limit == other.miter_limit &&
   self.round_limit == other.round_limit &&
   self.line_distances() == other.line_distances() &&
+  self.line_offsets() == other.line_offsets() &&
   (self.gradient is Some(_)) == (other.gradient is Some(_))
 }
 
@@ -95,4 +98,11 @@ pub fn StyleLayer::same_line_layout(
 /// for dashes and patterns.
 pub fn StyleLayer::line_distances(self : StyleLayer) -> Bool {
   self.kind is Line && (self.dasharray is Some(_) || self.pattern is Some(_))
+}
+
+///|
+/// Whether a line layer is offset (`line-offset` other than 0), so its vertices
+/// carry the direction an offset moves them.
+pub fn StyleLayer::line_offsets(self : StyleLayer) -> Bool {
+  self.kind is Line && !(self.offset is Lit(Num(0.0)))
 }

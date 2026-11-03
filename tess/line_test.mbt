@@ -279,3 +279,47 @@ test "progress records each vertex's share of its line's length" {
   assert_eq(ring.progress.fold(init=0.0, @cmp.maximum), 1.0)
   assert_eq(extrude([0, 0, 100, 0]).progress.length(), 0)
 }
+
+///|
+/// The offset normals of a line, as (x, y) per vertex.
+fn offsets_of(
+  points : Array[Int32],
+  join~ : @tess.LineJoin = Miter,
+) -> Array[(Int32, Int32)] raise {
+  let out = @tess.LineBuffers::new()
+  @tess.LineTessellator::new().add_line(
+    points[:],
+    0,
+    points.length() / 2,
+    out,
+    join~,
+    offset=true,
+  )
+  assert_eq(out.offsets.length(), out.num_vertices() * 2)
+  Array::makei(out.num_vertices(), i => {
+    (out.offsets[i * 2], out.offsets[i * 2 + 1])
+  })
+}
+
+///|
+test "an offset line records MapLibre's offset normals: segment normals at its ends" {
+  assert_eq(extrude([0, 0, 100, 0]).offsets.length(), 0)
+  // Heading +x (y down), the normal (-dy, dx) points to +y on both sides.
+  assert_eq(offsets_of([0, 0, 100, 0]), [(0, 63), (0, 63), (0, 63), (0, 63)])
+}
+
+///|
+test "at a join every vertex takes the miter vector, capped at twice the normal" {
+  // A right angle: the bisector times sqrt(2), on both sides.
+  let right = offsets_of([0, 0, 100, 0, 100, 100])
+  assert_eq(right[2], (-63, 63))
+  assert_eq(right[3], (-63, 63))
+  // A hairpin's miter is past MAX_OFFSET_MITER_LENGTH and eased back to the
+  // segment normals (bevel vertices, fallback 1 past miter length 8).
+  let hairpin = offsets_of([0, 0, 100, 0, 0, 2], join=Bevel)
+  for o in hairpin {
+    let (x, y) = o
+    assert_true(x * x + y * y <= 126 * 126 + 2)
+  }
+  assert_eq(hairpin[2], (0, 63))
+}

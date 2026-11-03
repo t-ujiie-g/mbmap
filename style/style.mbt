@@ -39,7 +39,8 @@ pub(all) enum Cap {
 /// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout
 /// (`icon`, `icon_paint` with `icon-image`); `filter_id` shared by identically written
 /// filters (-1 for none); a fill's `antialias` draws its outline, `outline_color` (or
-/// its color); `radius` a circle's or heatmap's.
+/// its color); `radius` a circle's or heatmap's; the rest are the Style Spec's of
+/// the same names (`translate_viewport`: `*-translate-anchor` viewport).
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -75,6 +76,13 @@ pub struct StyleLayer {
   dasharray : Expr?
   gradient : Expr?
   pattern : Expr?
+  gap_width : Expr
+  offset : Expr
+  blur : Expr
+  translate : (Double, Double)
+  translate_viewport : Bool
+  scale_with_map : Bool
+  pitch_with_map : Bool
 }
 
 ///|
@@ -301,6 +309,11 @@ fn parse_layer(
     "round" => Round
     c => raise Invalid(path="\{lpath}.line-cap", "unknown cap \{c}")
   }
+  let (translate, translate_viewport) = match kind {
+    Fill | Line | Circle | FillExtrusion =>
+      parse_translate(paint, "\{prefix}-translate", ppath)
+    _ => ((0.0, 0.0), false)
+  }
   let text = if kind is Symbol { Some(parse_text(layout, lpath)) } else { None }
   let (icon, icon_paint) = match text {
     Some(t) =>
@@ -446,6 +459,34 @@ fn parse_layer(
       }
       _ => None
     },
+    gap_width: if kind is Line {
+      paint_expr(paint, "line-gap-width", ppath, NumberType, Json::number(0.0))
+    } else {
+      Lit(Num(0.0))
+    },
+    offset: if kind is Line {
+      paint_expr(paint, "line-offset", ppath, NumberType, Json::number(0.0))
+    } else {
+      Lit(Num(0.0))
+    },
+    blur: match kind {
+      Line | Circle => {
+        let key = "\{prefix}-blur"
+        let e = paint_expr(paint, key, ppath, NumberType, Json::number(0.0))
+        if data_driven(e) || e.reads_state() {
+          raise Unsupported(path="\{ppath}.\{key}", "data expressions")
+        }
+        e
+      }
+      _ => Lit(Num(0.0))
+    },
+    translate,
+    translate_viewport,
+    scale_with_map: kind is Circle &&
+    alignment(paint, "circle-pitch-scale", ppath) == "map",
+    pitch_with_map: kind is Circle &&
+    alignment(paint, "circle-pitch-alignment", ppath, default="viewport") ==
+    "map",
   }
   // MapLibre allows `line-progress` in `line-gradient` only.
   let others = [
@@ -458,6 +499,9 @@ fn parse_layer(
     layer.stroke_opacity,
     layer.halo_color,
     layer.halo_width,
+    layer.gap_width,
+    layer.offset,
+    layer.blur,
   ]
   for e in [layer.filter, layer.dasharray, layer.outline_color] {
     if e is Some(e) {
@@ -519,6 +563,37 @@ fn parse_dasharray(
     raise Unsupported(path~, "data-driven dashes")
   }
   Some(e)
+}
+
+///|
+/// `key` (a constant pair of CSS px) and its `-anchor` (whether `viewport`).
+fn parse_translate(
+  paint : Map[String, Json],
+  key : String,
+  path : String,
+) -> ((Double, Double), Bool) raise StyleError {
+  let t = match paint.get(key) {
+    None => (0.0, 0.0)
+    Some(Array([Number(x, ..), Number(y, ..)])) => (x, y)
+    Some(Array([String(_), ..])) =>
+      raise Unsupported(path="\{path}.\{key}", "expressions")
+    Some(_) => raise Invalid(path="\{path}.\{key}", "not [x, y]")
+  }
+  (t, alignment(paint, "\{key}-anchor", path) == "viewport")
+}
+
+///|
+/// An alignment property: `map` or `viewport`.
+fn alignment(
+  paint : Map[String, Json],
+  key : String,
+  path : String,
+  default~ : String = "map",
+) -> String raise StyleError {
+  match string_or(paint, key, path, default) {
+    "map" | "viewport" as a => a
+    a => raise Invalid(path="\{path}.\{key}", "unknown alignment \{a}")
+  }
 }
 
 ///|

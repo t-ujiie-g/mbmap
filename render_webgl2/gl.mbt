@@ -37,6 +37,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 0, "a_pos");
   #|    gl.bindAttribLocation(p, 1, "a_data");
   #|    gl.bindAttribLocation(p, 2, "a_tex");
+  #|    gl.bindAttribLocation(p, 2, "a_offset");
   #|    gl.bindAttribLocation(p, 3, "a_size");
   #|    gl.bindAttribLocation(p, 4, "a_ele");
   #|    gl.bindAttribLocation(p, 1, "a_normal");
@@ -82,7 +83,9 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    clip + "in vec2 v_line; in vec4 v_color; out vec4 o;" +
   #|    "void main() { if (outside()) discard; o = v_color * (1.0 - smoothstep(0.0, 1.0, length(v_line - gl_FragCoord.xy))); }",
   #|    ["u_matrix", "u_clip", "u_t", "u_world"]);
-  #|  // The half width: the line width (a_extent, CSS px times u_dpr) halved, plus a pixel.
+  #|  // MapLibre's line: outset and inset (device px) from the width and the gap width
+  #|  // (slot 4), moved along a_offset by the offset (slot 5); edges fade over the blur
+  #|  // u_blur and a pixel, scaled to the vertex's depth (v_scale).
   #|  // Dashes are MapLibre's line_sdf: a_dist (tile units along the line) over the
   #|  // pattern's length u_dash.x, the atlas row u_dash.y spanning u_dash.z
   #|  // across the line, edges smoothed by u_dash.w; all in floor widths
@@ -93,23 +96,27 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // width across the line, repeating along a_dist (u_size: its CSS size,
   #|  // u_along: CSS px per tile unit at the integer zoom).
   #|  const lineProgram = (dash, grad, pat) => program(
-  #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
-  #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half; out vec4 v_color;" +
+  #|    paint + "in vec2 a_pos; in vec4 a_data; in vec2 a_offset; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
+  #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out vec2 v_width; out float v_scale; out vec4 v_color;" +
   #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
   #|    (grad ? "in vec2 a_progress; uniform float u_rows; out vec2 v_uv; out float v_opacity;" : "") +
   #|    (pat ? "in float a_dist; uniform vec2 u_floor; out float v_dist; out float v_fw; out float v_opacity;" : "") +
-  #|    "void main() { float half_ = at(a_extent, 2) * u_dpr / 2.0 + 0.5;" +
-  #|    "  v_pos = a_pos + a_data.xy / 63.0 * half_ * u_units; v_color = color();" +
+  #|    "void main() { float aa = 0.5; float gap = at(a_stroke_opacity, 4) * u_dpr / 2.0;" +
+  #|    "  float half_ = at(a_extent, 2) * u_dpr / 2.0;" +
+  #|    "  float inset = gap + (gap > 0.0 ? aa : 0.0);" +
+  #|    "  float outset = gap + half_ * (gap > 0.0 ? 2.0 : 1.0) + (half_ == 0.0 ? 0.0 : aa);" +
+  #|    "  vec2 off = at(a_stroke_width, 5) * u_dpr * a_offset / 63.0;" +
+  #|    "  v_pos = a_pos + (off + a_data.xy / 63.0 * outset) * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
   #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" +
   #|      "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
   #|    (grad ? "  v_uv = vec2(a_progress.x, (a_progress.y + 0.5) / u_rows); v_opacity = at(a_opacity, 1);" : "") +
   #|    (pat ? "  v_dist = a_dist; v_opacity = at(a_opacity, 1);" +
   #|      "  v_fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
-  #|    "  v_half = half_ * u_depth / gl_Position.w; }",
+  #|    "  v_width = vec2(outset, inset); v_scale = gl_Position.w / u_depth; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
-  #|    clip + "in vec4 v_color; in vec2 v_edge; in float v_half; out vec4 o;" +
+  #|    clip + "in vec4 v_color; in vec2 v_edge; in vec2 v_width; in float v_scale; uniform float u_blur; out vec4 o;" +
   #|    (dash ? "uniform sampler2D u_image; in vec2 v_tex; in float v_gamma;" : "") +
   #|    (grad ? "uniform sampler2D u_image; in vec2 v_uv; in float v_opacity;" : "") +
   #|    (pat ? "uniform sampler2D u_image; uniform vec4 u_pattern; uniform vec2 u_texsize; uniform vec2 u_size;" +
@@ -119,9 +126,10 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|      "  float x = mod(v_dist * u_along / u_size.x * u_size.y / v_fw, 1.0); vec2 ts = 1.0 / u_texsize;" +
   #|      "  vec4 c = texture(u_image, mix(u_pattern.xy * ts - ts, u_pattern.zw * ts + ts, vec2(x, 0.5 - 0.5 * v_edge.x))) * v_opacity;" :
   #|      "  vec4 c = v_color;") +
-  #|    "  o = c * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0);" +
+  #|    "  float d = length(v_edge) * v_width.x; float b = (u_blur + 1.0) * v_scale;" +
+  #|    "  o = c * clamp(min(d - (v_width.y - b), v_width.x - d) / b, 0.0, 1.0);" +
   #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
-  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
+  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", "u_blur", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
   #|      ...(grad ? ["u_rows", "u_image"] : []), ...(pat ? ["u_floor", "u_image", "u_pattern", "u_texsize", "u_size", "u_along"] : [])]);
   #|  const line = lineProgram(false, false, false), lineDash = lineProgram(true, false, false);
   #|  const lineGradient = lineProgram(false, true, false), linePattern = lineProgram(false, false, true);
@@ -164,27 +172,32 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    ["u_matrix", "u_opacity", "u_color", ...patternUniforms]);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  #|  // Circles face the viewer and shrink with distance (MapLibre's pitch-alignment
-  #|  // "viewport", pitch-scale "map"): u_size device pixels at the center's depth;
+  #|  // MapLibre's circles: facing the viewer (u_pitch false) and grown as the map
+  #|  // (u_scale: u_size device pixels at the center's depth), or lying on the map
+  #|  // (u_units tile units per device pixel), or kept on screen with u_scale false.
   #|  // u_inner is the fill radius over u_size, the stroke lies outside it.
   #|  // The radius and stroke width (CSS px times u_dpr) from a_extent and a_stroke_width;
-  #|  // a circle of size 0 is moved out of clip space. Without a stroke the edge fades
-  #|  // to the fill color.
+  #|  // a circle of size 0 is moved out of clip space. Edges fade over a pixel or the
+  #|  // blur u_blur (a share of the size). Without a stroke the edge fades to the fill color.
   #|  const circle = program(
   #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform vec2 u_px; uniform float u_dpr;" +
-  #|    "uniform float u_depth; out vec2 v_extrude; out vec2 v_pos; out vec4 v_color; out vec4 v_stroke;" +
+  #|    "uniform float u_depth; uniform float u_units; uniform bool u_scale; uniform bool u_pitch;" +
+  #|    "out vec2 v_extrude; out vec2 v_pos; out vec4 v_color; out vec4 v_stroke;" +
   #|    "out float v_size; out float v_inner;" +
   #|    "void main() { float r = at(a_extent, 2) * u_dpr; float w = at(a_stroke_width, 5) * u_dpr;" +
   #|    "  v_size = r + w; v_inner = v_size > 0.0 ? r / v_size : 0.0; v_color = color();" +
   #|    "  v_stroke = w > 0.0 ? premul(mix(a_stroke_lo, a_stroke_hi, u_t[3]), at(a_stroke_opacity, 4)) : v_color;" +
   #|    "  v_pos = a_pos; v_extrude = a_data.xy / 63.0; vec4 c = u_matrix * vec4(a_pos, 0.0, 1.0);" +
-  #|    "  gl_Position = v_size > 0.0 ? c + vec4(v_extrude * v_size * u_px * u_depth, 0.0, 0.0) : vec4(2.0, 2.0, 2.0, 1.0); }",
+  #|    "  if (u_pitch) { float k = u_scale ? 1.0 : c.w / u_depth;" +
+  #|    "    c = u_matrix * vec4(a_pos + v_extrude * v_size * u_units * k, 0.0, 1.0); }" +
+  #|    "  else c += vec4(v_extrude * v_size * u_px * (u_scale ? u_depth : c.w), 0.0, 0.0);" +
+  #|    "  gl_Position = v_size > 0.0 ? c : vec4(2.0, 2.0, 2.0, 1.0); }",
   #|    clip + "in vec4 v_color; in vec4 v_stroke; in float v_size; in float v_inner;" +
-  #|    "in vec2 v_extrude; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; float d = length(v_extrude); float aa = 1.0 / v_size;" +
+  #|    "uniform float u_blur; in vec2 v_extrude; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; float d = length(v_extrude); float aa = max(1.0 / v_size, u_blur);" +
   #|    "  float t = smoothstep(v_inner - aa, v_inner, d);" +
   #|    "  o = mix(v_color, v_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
-  #|    ["u_matrix", "u_px", "u_dpr", "u_depth", "u_clip", "u_t"]);
+  #|    ["u_matrix", "u_px", "u_dpr", "u_depth", "u_clip", "u_t", "u_units", "u_scale", "u_pitch", "u_blur"]);
   #|  // MapLibre's heatmap shaders: a Gaussian kernel per point on the map, its quad
   #|  // grown until the kernel falls to 1/255/16, radius in CSS px times u_extrude (tile
   #|  // units); weight and radius in the opacity and size slots.
@@ -577,6 +590,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
   #|  if (m.outline) c.gl.deleteBuffer(m.outline);
   #|  if (m.dist) c.gl.deleteBuffer(m.dist);
+  #|  if (m.offsets) c.gl.deleteBuffer(m.offsets);
   #|  if (m.progress) c.gl.deleteBuffer(m.progress);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|  if (m.shift) c.gl.deleteBuffer(m.shift);
@@ -730,8 +744,10 @@ extern "js" fn gl_draw_circle(
   clip : FixedArray[Double],
   depth : Double,
   dpr : Double,
+  units : Double,
+  look : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip, depth, dpr) => {
+  #|(c, m, matrix, clip, depth, dpr, units, look) => {
   #|  const gl = c.gl, p = c.circle;
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
@@ -739,6 +755,10 @@ extern "js" fn gl_draw_circle(
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform1f(p.u_units, units);
+  #|  gl.uniform1i(p.u_scale, look[0]);
+  #|  gl.uniform1i(p.u_pitch, look[1]);
+  #|  gl.uniform1f(p.u_blur, look[2]);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
