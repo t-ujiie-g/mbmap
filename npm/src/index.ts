@@ -165,6 +165,7 @@ export class Map {
   #listeners = new globalThis.Map<MapEventType, Set<MapEventListener>>();
   #tracked = new Set<Tracked>();
   #loaded = false;
+  #fetching = 0;
   #removed = false;
   #options: MapOptions;
   #limits: Limits;
@@ -301,6 +302,16 @@ export class Map {
 
   /** Fetches TileJSON documents (without credentials), or PMTiles headers, into the cache. */
   async #fetchTileJSON(urls: string[]): Promise<void> {
+    this.#fetching++;
+    try {
+      await this.#fetchDocuments(urls);
+    } finally {
+      // `idle` waited for these sources; it comes now if the engine is idle without them.
+      if (--this.#fetching === 0 && this.#engine && engine.map_is_idle(this.#engine)) this.#idle();
+    }
+  }
+
+  async #fetchDocuments(urls: string[]): Promise<void> {
     await Promise.all(urls.map(async (url) => {
       if (url.startsWith("pmtiles://")) {
         const { pmtilesDocument } = await import("./pmtiles.js");
@@ -311,6 +322,16 @@ export class Map {
       if (!res.ok) throw new Error(`mbmap: TileJSON ${url}: HTTP ${res.status}`);
       this.#tilejson.set(url, await res.json());
     }));
+  }
+
+  /** `load` (the first time) and `idle`, unless a source's TileJSON or PMTiles header is still coming. */
+  #idle(): void {
+    if (this.#fetching > 0) return;
+    if (!this.#loaded) {
+      this.#loaded = true;
+      this.#emit("load");
+    }
+    this.#emit("idle");
   }
 
   /** The style with its TileJSON sources completed and tile URLs made absolute, as the engine takes it. */
@@ -531,13 +552,7 @@ export class Map {
       this.#locate(this.#tracked);
       this.#emit("render");
     });
-    engine.map_on_idle(map, () => {
-      if (!this.#loaded) {
-        this.#loaded = true;
-        this.#emit("load");
-      }
-      this.#emit("idle");
-    });
+    engine.map_on_idle(map, () => this.#idle());
     this.#drawn = resolved;
     this.#showAttribution();
     this.#emit("styledata");
