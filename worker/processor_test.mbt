@@ -667,3 +667,40 @@ test "dashed lines pack their distances and share buffers only with dashed lines
   let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
   assert_eq((u16(d), u16(d + 2), u16(d + 4), u16(d + 6)), (0, 0, 50, 50))
 }
+
+///|
+test "expressions read ids, compute and convert through the processor's hooks" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [
+    #|  {"id": "box", "type": "fill-extrusion", "source": "g", "filter": ["==", ["id"], "square"],
+    #|   "paint": {"fill-extrusion-color": ["match", ["id"], "square", "#f00", "#00f"]}},
+    #|  {"id": "dots", "type": "circle", "source": "g",
+    #|   "filter": ["==", ["to-number", ["concat", "x", ["get", "k"]]], 7],
+    #|   "paint": {"circle-radius": ["*", ["sqrt", ["get", "k"]], 3]}}
+    #|]}
+  // Number("x1") is NaN: the stand-in host says 7 only for that text.
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:], text_number=s => {
+    if s == "x1" {
+      7.0
+    } else {
+      @double.not_a_number
+    }
+  })
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 2)
+  assert_eq(entry(0, 1), @worker.KIND_EXTRUSION)
+  assert_eq(props_of(b, 0), ["$id=\"square\""])
+  assert_eq(
+    (entry(1, 1), entry(1, 3)),
+    (@worker.KIND_CIRCLE, 4 * @worker.LINE_VERTEX_BYTES),
+  )
+  assert_eq(
+    Float::reinterpret_from_int(u32_at(b, entry(1, 9))).to_double(),
+    3.0,
+  )
+}

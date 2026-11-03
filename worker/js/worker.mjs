@@ -1,7 +1,7 @@
 // Glue around the wasm-gc build of `worker`. Messages and the packed tile are in
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
-import { hostNumber } from "../../wasmio/js/host.mjs";
+import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
 import { readCapped } from "./body.mjs";
 import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
 import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
@@ -103,7 +103,7 @@ function unpack(packed) {
 
 async function init({ wasm: url, style, font }) {
   glyphs = new Glyphs(typeof font === "string" && font ? font : "sans-serif");
-  const host = { number: hostNumber(() => wasm.memory) };
+  const host = { number: hostNumber(() => wasm.memory), ...hostText() };
   const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host, Math });
   wasm = instance.exports;
   withInput(encoder.encode(style), () => wasm.init_style());

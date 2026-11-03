@@ -90,7 +90,7 @@ test "unsupported expressions are reported with their path, not ignored" {
   let cases = [
     (
       (
-        #|{"layers": [{"id": "a", "type": "line", "paint": {"line-width": ["sqrt", 2]}}]}
+        #|{"layers": [{"id": "a", "type": "line", "paint": {"line-width": ["number-format", 2, {}]}}]}
       ),
       "layers[0].paint.line-width",
     ),
@@ -349,7 +349,10 @@ test "text-writing-mode takes its first mode; symbol-sort-key compiles" {
     ),
   )
   let v = s.layers[0].text.unwrap()
-  assert_eq((v.vertical, v.sort_key), (true, Some(Get("rank"))))
+  assert_eq(
+    (v.vertical, v.sort_key),
+    (true, Some(Assert(NumberType, [Get("rank")]))),
+  )
   assert_false(s.layers[1].text.unwrap().vertical)
   try
     @style.Style::parse(

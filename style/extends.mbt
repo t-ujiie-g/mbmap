@@ -59,7 +59,27 @@ pub extend Expected with @debug.Debug::{to_repr}
 pub extend Expected with Eq::{not_equal, equal}
 
 ///|
-pub extend NoFeature with FeatureContext::{geometry_type, property, state, pow}
+pub extend NoFeature with FeatureContext::{
+  geometry_type,
+  property,
+  id,
+  state,
+  trig,
+  number_text,
+  text_number,
+}
+
+///|
+pub extend ColorSpace with @debug.Debug::{to_repr}
+
+///|
+pub extend ColorSpace with Eq::{not_equal, equal}
+
+///|
+pub extend Op with @debug.Debug::{to_repr}
+
+///|
+pub extend Op with Eq::{not_equal, equal}
 
 ///|
 pub extend SourceKind with @debug.Debug::{to_repr}

@@ -1,11 +1,11 @@
 // The wasm-gc worker processing every fixture with bench/maplibre/style.json:
 // "cold" is a fresh instance taking each tile once, "warm" the median after warm-up.
-import { hostNumber } from "../../wasmio/js/host.mjs";
+import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
 import { runRows } from "../lib/rows.mjs";
 
 export async function loadWorker(fetchBytes) {
   let e = null;
-  const host = { number: hostNumber(() => e.memory) };
+  const host = { number: hostNumber(() => e.memory), ...hostText() };
   const { instance } = await WebAssembly.instantiate(await fetchBytes("_build/wasm-gc/release/build/worker/worker.wasm"), { host, Math });
   e = instance.exports;
   const put = (bytes) => {

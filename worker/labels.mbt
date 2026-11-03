@@ -109,6 +109,10 @@ fn TileProcessor::symbol_layer(
     for e in text.field {
       parts.push(e.eval(zoom, feature))
     }
+    // A failing part fails the whole `text-field`, which then has no text.
+    if parts.iter().any(p => p is Failed) {
+      continue
+    }
     let size = match text.size.eval(zoom, feature) {
       Num(n) if n > 0.0 => n
       _ => continue

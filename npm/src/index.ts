@@ -130,6 +130,21 @@ function resolveTiles(style: StyleSpecification, base: URL): StyleSpecification 
   return { ...style, sources };
 }
 
+/** `legacy.js` once loaded; only styles with legacy filters or property functions load it. */
+let legacy: typeof import("./legacy") | null = null;
+let legacyLoading: Promise<unknown> | null = null;
+
+function loadLegacy(): Promise<unknown> {
+  legacyLoading ??= import("./legacy.js").then((m) => (legacy = m));
+  return legacyLoading;
+}
+
+/** A query's filter as the engine takes it: JSON text (empty for none), legacy filters converted. */
+function filterText(filter: unknown): string {
+  if (filter === undefined) return "";
+  return JSON.stringify(legacy && edit.isLegacyFilter(filter) ? legacy.convertFilter(filter) : filter);
+}
+
 /** The style's GeoJSON sources, and the style without their data (only their worker needs it). */
 function splitGeoJSON(style: StyleSpecification): [GeoJSONSource[], StyleSpecification] {
   const found: GeoJSONSource[] = [];
@@ -255,6 +270,10 @@ export class Map {
         }
       }
       const next = edit.keepGeoJSONData(this.#style, edit.copy(swapped));
+      if (!legacy && edit.hasLegacy(next)) {
+        loadLegacy().then(() => use(s, base), (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
+        return;
+      }
       this.#base = base;
       if (this.#engine) this.#apply(next);
       else this.#create(next);
@@ -335,7 +354,8 @@ export class Map {
 
   /** The style with its TileJSON sources completed and tile URLs made absolute, as the engine takes it. */
   #engineStyle(style: StyleSpecification): StyleSpecification {
-    return resolveTiles(withTileJSON(style, this.#base, this.#tilejson, resolveTemplate), this.#base);
+    const s = legacy && edit.hasLegacy(style) ? legacy.convertStyle(style) : style;
+    return resolveTiles(withTileJSON(s, this.#base, this.#tilejson, resolveTemplate), this.#base);
   }
 
   /** A copy of the style drawn, GeoJSON data included (null until it has loaded). */
@@ -367,6 +387,11 @@ export class Map {
       next = f(this.#style);
     } catch (err) {
       this.#fail(err instanceof Error ? err : new Error(String(err)));
+      return this;
+    }
+    // Run again once the converter has loaded, on the style as it will be then.
+    if (!legacy && edit.hasLegacy(next)) {
+      loadLegacy().then(() => this.#edit(f), (err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))));
       return this;
     }
     this.#apply(next);
@@ -801,8 +826,9 @@ export class Map {
     const map = this.#engine;
     const style = this.#style;
     if (!map || !style) return Promise.resolve([]);
+    if (!legacy && edit.isLegacyFilter(filter)) return loadLegacy().then(() => this.#query(points, layers, filter));
     return new Promise((resolve, reject) => {
-      const refused = engine.map_query_rendered(map, points, layers === null, layers ?? [], filter === undefined ? "" : JSON.stringify(filter), (tiles) => {
+      const refused = engine.map_query_rendered(map, points, layers === null, layers ?? [], filterText(filter), (tiles) => {
         const specs = new globalThis.Map<string, LayerSpecification | undefined>();
         const out: MapGeoJSONFeature[] = [];
         for (const { layer, feature } of orderRendered(tiles, style.layers as LayerSpecification[])) {
@@ -944,9 +970,9 @@ export class Map {
   querySourceFeatures(sourceId: string, options: QuerySourceFeatureOptions = {}): Promise<GeoJSONFeature[]> {
     const map = this.#engine;
     if (!map) return Promise.resolve([]);
+    if (!legacy && edit.isLegacyFilter(options.filter)) return loadLegacy().then(() => this.querySourceFeatures(sourceId, options));
     return new Promise((resolve, reject) => {
-      const filter = options.filter === undefined ? "" : JSON.stringify(options.filter);
-      const refused = engine.map_query_source(map, sourceId, options.sourceLayer ?? "", filter, (tiles) => resolve(tiles.flatMap((t) => t.hits.map((h) => h.feature))));
+      const refused = engine.map_query_source(map, sourceId, options.sourceLayer ?? "", filterText(options.filter), (tiles) => resolve(tiles.flatMap((t) => t.hits.map((h) => h.feature))));
       if (refused) reject(new Error(refused));
     });
   }

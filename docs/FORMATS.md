@@ -42,7 +42,9 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   base and height at the tile's zoom and one deeper as u16 decimeters (0 to
   6553.5 m). Coordinates are in `@core.TILE_EXTENT` units.
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.
-  The glue decodes them into prototype-less objects.
+  The geometry type goes under `$type` (`@core.GEOMETRY_TYPE_KEY`) and the feature
+  id, when paint reads `["id"]`, under `$id` (`@style.FEATURE_ID_KEY`). The glue
+  decodes them into prototype-less objects.
 
 ## Vertex paint (`style/vertex_paint.mbt`, written by `worker/processor.mbt`)
 
@@ -117,7 +119,9 @@ In:
 
 - `{type: "init", wasm, style, font}`: the wasm URL, the style JSON text and the
   CSS font family labels are drawn in. The wasm imports `host.number`
-  (`wasmio/js/host.mjs`) for JSON numbers longer than 15 digits.
+  (`wasmio/js/host.mjs`) for JSON numbers longer than 15 digits, and `hostText`'s
+  `host.text_char`, `text_number`, `number_text` and `text_code` for the
+  expressions' `Number(string)` and `String(number)`, a UTF-16 code unit per call.
 - `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
   the index in the style's sources).
 - `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),

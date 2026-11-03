@@ -35,6 +35,36 @@ impl @style.FeatureContext for JsProps with fn state(self, key) {
 }
 
 ///|
+impl @style.FeatureContext for JsProps with fn id(self) {
+  js_value(self.obj, @style.FEATURE_ID_KEY).unwrap_or(Null)
+}
+
+///|
+/// `@math` is the browser's `Math` in the js backend.
+let js_trig : @core.Trig = @core.Trig::moonbit()
+
+///|
+impl @style.FeatureContext for JsProps with fn trig(_) {
+  js_trig
+}
+
+///|
+impl @style.FeatureContext for JsProps with fn number_text(_, x) {
+  js_number_text(x)
+}
+
+///|
+impl @style.FeatureContext for JsProps with fn text_number(_, s) {
+  js_text_number(s)
+}
+
+///|
+extern "js" fn js_number_text(x : Double) -> String = "String"
+
+///|
+extern "js" fn js_text_number(s : String) -> Double = "Number"
+
+///|
 impl @style.FeatureContext for JsProps with fn geometry_type(self) {
   match prop_kind(self.obj, @core.GEOMETRY_TYPE_KEY) {
     4 => get_string(self.obj, @core.GEOMETRY_TYPE_KEY)
@@ -67,7 +97,7 @@ priv struct Paint {
 ///|
 fn number_or(v : @style.Value, default : Double) -> Double {
   match v {
-    Num(n) => n
+    Num(n) if n == n => n
     _ => default
   }
 }
