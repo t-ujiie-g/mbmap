@@ -37,6 +37,21 @@ fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
   for v in [t.offset.0, t.offset.1, t.max_width, t.line_height, t.padding] {
     h.f64(v)
   }
+  h.u8(
+    match t.justify {
+      Auto => 0
+      Left => 1
+      Center => 2
+      Right => 3
+    },
+  )
+  let tries = @cmp.minimum(t.variable.length(), 255)
+  h.u8(tries)
+  for v in t.variable[:tries] {
+    h.u8(anchor_code(v.0))
+    h.f64(v.1)
+    h.f64(v.2)
+  }
   h.u32(self.count)
   for b in self.w.to_bytes() {
     h.u8(b.to_int())

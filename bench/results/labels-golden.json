@@ -1,0 +1,89 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600"
+  },
+  "results": [
+    {
+      "scene": "fixed",
+      "same": true,
+      "maplibre": 87,
+      "mbmap": 87,
+      "anchored": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "fixed-turned",
+      "same": true,
+      "maplibre": 63,
+      "mbmap": 63,
+      "anchored": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "fixed-tilted",
+      "same": true,
+      "maplibre": 138,
+      "mbmap": 138,
+      "anchored": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "radial",
+      "same": true,
+      "maplibre": 117,
+      "mbmap": 117,
+      "anchored": 31,
+      "boxDiff": 0
+    },
+    {
+      "scene": "radial-turned",
+      "same": true,
+      "maplibre": 84,
+      "mbmap": 84,
+      "anchored": 23,
+      "boxDiff": 0
+    },
+    {
+      "scene": "radial-tilted",
+      "same": true,
+      "maplibre": 186,
+      "mbmap": 186,
+      "anchored": 61,
+      "boxDiff": 0
+    },
+    {
+      "scene": "offset-sorted",
+      "same": true,
+      "maplibre": 112,
+      "mbmap": 112,
+      "anchored": 110,
+      "boxDiff": 0
+    },
+    {
+      "scene": "anchor-offset-two-layers",
+      "same": true,
+      "maplibre": 62,
+      "mbmap": 62,
+      "anchored": 10,
+      "boxDiff": 0
+    },
+    {
+      "scene": "overlap-anchors",
+      "same": true,
+      "maplibre": 185,
+      "mbmap": 185,
+      "anchored": 74,
+      "boxDiff": 0
+    },
+    {
+      "scene": "basic-labels",
+      "same": true,
+      "maplibre": 86,
+      "mbmap": 86,
+      "anchored": 0,
+      "boxDiff": 0
+    }
+  ]
+}

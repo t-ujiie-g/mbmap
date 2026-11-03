@@ -6,7 +6,7 @@ fn pattern_layer(kind : String, paint : String) -> @style.StyleLayer raise {
 }
 
 ///|
-test "patterns are read for fills and backgrounds" {
+test "patterns are read for fills, backgrounds, lines and extrusions" {
   let at = (l : @style.StyleLayer, z : Double) => {
     l.pattern.unwrap().eval(z, @style.NoFeature::{ })
   }
@@ -28,6 +28,14 @@ test "patterns are read for fills and backgrounds" {
   )
   assert_eq((at(stepped, 14), at(stepped, 15)), (Str("a"), Str("b")))
   assert_true(pattern_layer("circle", "{}").pattern is None)
+  let line = pattern_layer("line", "{\"line-pattern\": \"dots\"}")
+  assert_eq(at(line, 14), Str("dots"))
+  assert_true(line.line_distances())
+  assert_false(pattern_layer("line", "{}").line_distances())
+  assert_true(
+    pattern_layer("fill-extrusion", "{\"fill-extrusion-pattern\": \"x\"}").pattern
+    is Some(_),
+  )
 }
 
 ///|

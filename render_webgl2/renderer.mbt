@@ -266,16 +266,31 @@ pub fn Renderer::upload_symbols(
 }
 
 ///|
-/// Shows the labels of a symbol mesh whose flag is set: label `i` owns the
-/// indices from `labels[i * stride + stride - 2]`, as many as the float after it.
+/// Shows the labels of a symbol mesh whose flag is set, each in its layout
+/// `variant`: label `i` owns as many layouts as `labels[i * stride + stride - 3]`,
+/// each of the index count the last float says, from the index before it.
 pub fn Renderer::show(
   self : Renderer,
   mesh : Mesh,
   labels : JsBuffer,
   stride : Int32,
   shown : FixedArray[Bool],
+  variant : FixedArray[Int32],
 ) -> Unit {
-  gl_show(self.gl, mesh, labels, stride, shown)
+  gl_show(self.gl, mesh, labels, stride, shown, variant)
+}
+
+///|
+/// Moves each label of a symbol mesh by its shift (`shifts`: x and y in CSS px
+/// per label, laid out as for `show`), smaller in the distance like the text.
+pub fn Renderer::set_shifts(
+  self : Renderer,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  shifts : FixedArray[Double],
+) -> Unit {
+  gl_set_shifts(self.gl, mesh, labels, stride, shifts)
 }
 
 ///|

@@ -390,10 +390,8 @@ fn parse_layer(
       None
     },
     pattern: match (kind, paint.get("\{prefix}-pattern")) {
-      (Fill | Background, Some(p)) =>
+      (Fill | Background | Line | FillExtrusion, Some(p)) =>
         Some(compile(p, expected=StringType, path="\{ppath}.\{prefix}-pattern"))
-      (Line, Some(_)) =>
-        raise Unsupported(path="\{ppath}.line-pattern", "patterns")
       _ => None
     },
     gradient: match paint.get("line-gradient") {

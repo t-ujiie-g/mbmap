@@ -13,14 +13,27 @@ pub(all) enum TextAnchor {
 } derive(Debug, Eq)
 
 ///|
+/// How the lines of a label line up (`text-justify`); `Auto` follows the anchor.
+pub(all) enum TextJustify {
+  Auto
+  Left
+  Center
+  Right
+} derive(Debug, Eq)
+
+///|
 /// A symbol layer's text layout: `field` is `text-field` as parts to join; sizes
 /// in CSS pixels, `offset`, `max_width` and `line_height` in ems; `vertical` the
-/// first `text-writing-mode`, `sort_key` the `symbol-sort-key`.
+/// first `text-writing-mode`, `sort_key` the `symbol-sort-key`. `variable` holds
+/// the anchors to try in order with their offsets in ems (MapLibre's
+/// `text-variable-anchor-offset`); such labels are shaped centered, `offset` 0.
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
   anchor : TextAnchor
   offset : (Double, Double)
+  justify : TextJustify
+  variable : Array[(TextAnchor, Double, Double)]
   max_width : Double
   line_height : Double
   padding : Double
@@ -97,17 +110,9 @@ fn parse_text(
   if layout.get("icon-image") is Some(_) {
     raise Unsupported(path="\{path}.icon-image", "icons")
   }
-  let anchor = match string_or(layout, "text-anchor", path, "center") {
-    "center" => TextAnchor::Center
-    "left" => Left
-    "right" => Right
-    "top" => Top
-    "bottom" => Bottom
-    "top-left" => TopLeft
-    "top-right" => TopRight
-    "bottom-left" => BottomLeft
-    "bottom-right" => BottomRight
-    a => raise Invalid(path="\{path}.text-anchor", "unknown anchor \{a}")
+  let anchor = match layout.get("text-anchor") {
+    None => TextAnchor::Center
+    Some(j) => anchor_of(j, "\{path}.text-anchor")
   }
   let offset = match layout.get("text-offset") {
     None => (0.0, 0.0)
@@ -115,6 +120,21 @@ fn parse_text(
     Some(Array([String(_), ..])) =>
       raise Unsupported(path="\{path}.text-offset", "expressions")
     Some(_) => raise Invalid(path="\{path}.text-offset", "not two numbers")
+  }
+  // MapLibre takes `text-radial-offset` over `text-offset` when both are given.
+  let radial = match layout.get("text-radial-offset") {
+    None => None
+    Some(_) => Some(number_or(layout, "text-radial-offset", path, 0.0))
+  }
+  let variable = variable_anchors(layout, path, offset, radial)
+  let offset = match (variable, radial) {
+    ([_, ..], _) => (0.0, 0.0)
+    ([], Some(r)) => variable_offset(anchor, r, 0.0, radial=true)
+    ([], None) => offset
+  }
+  let justify = string_or(layout, "text-justify", path, "center")
+  guard justify_names.search(justify) is Some(j) else {
+    raise Invalid(path="\{path}.text-justify", "unknown justification")
   }
   {
     field: match layout.get("text-field") {
@@ -126,8 +146,14 @@ fn parse_text(
       expected=NumberType,
       path="\{path}.text-size",
     ),
-    anchor,
+    anchor: if variable.is_empty() {
+      anchor
+    } else {
+      Center
+    },
     offset,
+    justify: justify_values[j],
+    variable,
     max_width: number_or(layout, "text-max-width", path, 10.0),
     line_height: number_or(layout, "text-line-height", path, 1.2),
     padding: number_or(layout, "text-padding", path, 2.0),

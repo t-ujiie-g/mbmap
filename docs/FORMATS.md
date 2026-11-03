@@ -42,7 +42,8 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
   along as i8 (`LINE_VERTEX_BYTES` 8). Extrusion vertices
   (`EXTRUSION_VERTEX_BYTES` 24) are x, y, normal x, y, z (times 2^14; x's lowest
-  bit set on the top edge), 0, and the feature's centroid x, y as i16, then its
+  bit set on the top edge), the distance along the ring's walls (0 on roofs;
+  MapLibre's `edgeDistance` halved), and the feature's centroid x, y as i16, then its
   base and height at the tile's zoom and one deeper as u16 decimeters (0 to
   6553.5 m). Coordinates are in `@core.TILE_EXTENT` units.
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.
@@ -69,7 +70,10 @@ vertex range (no indices):
 - u8 text anchor (`center`, `left`, `right`, `top`, `bottom`, `top-left`,
   `top-right`, `bottom-left`, `bottom-right`), u8 allow overlap, u8 ignore
   placement, u8 vertical writing;
-- f64 offset x, offset y, max width, line height (ems), padding (px); u32 label count;
+- f64 offset x, offset y, max width, line height (ems), padding (px);
+- u8 text justify (`auto`, `left`, `center`, `right`), u8 variable anchor count, then
+  per variable anchor its u8 code (as the text anchor) and f64 offset x, y (ems,
+  MapLibre's `text-variable-anchor-offset` with its baseline shift); u32 label count;
 - per label: u32 index of its feature in the source layer, i16 anchor x, y
   (`TILE_EXTENT` units, inside the tile), f64 text size
   (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
@@ -86,9 +90,12 @@ quad (corners top-left, top-right, bottom-right, bottom-left):
   thread turns into atlas pixel coordinates before upload;
 - u16 text size in 1/16 px, u16 0.
 
-`labels` holds 9 floats per label: anchor x, y, its text box (min x, min y, max x,
-max y in CSS px from the anchor), its feature's index, first index and index count of
-its quads.
+`labels` holds 12 floats per label: anchor x, y, its text box (min x, min y, max x,
+max y in CSS px from the anchor), its feature's index, text size (px), sort key, its
+layouts V, first index and index count of each layout's quads. A label with variable
+anchors is laid out centered; one of several lines has V = 3 layouts one after the
+other, justified left, center and right, otherwise V = 1. `anchors` holds the
+variable anchors as code, offset x, y.
 
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 

@@ -15,14 +15,28 @@ test "the atlas packs glyphs in shelves and keeps each glyph's place" {
 }
 
 ///|
-test "the grid finds overlapping boxes across cells, not touching ones" {
+test "the grid finds overlapping and touching boxes across cells" {
   let g = @label.Grid::new(200.0, 100.0, cell=32.0)
   assert_false(g.hits(10.0, 10.0, 50.0, 20.0))
   g.insert(10.0, 10.0, 50.0, 20.0)
   assert_true(g.hits(40.0, 15.0, 90.0, 40.0))
-  assert_false(g.hits(50.0, 10.0, 60.0, 20.0))
+  assert_true(g.hits(50.0, 10.0, 60.0, 20.0))
+  assert_false(g.hits(50.1, 10.0, 60.0, 20.0))
   assert_false(g.hits(0.0, 30.0, 200.0, 100.0))
-  // Boxes reaching past the viewport are clamped into its cells.
+  // Boxes reaching past the grid are clamped into its cells.
   g.insert(-50.0, 90.0, 300.0, 140.0)
   assert_true(g.hits(150.0, 95.0, 160.0, 99.0))
+  // Off the grid nothing is met; over all of it, everything.
+  assert_false(g.hits(201.0, 0.0, 300.0, 100.0))
+  assert_true(g.hits(-1.0, -1.0, 201.0, 101.0))
+  assert_false(@label.Grid::new(10.0, 10.0).hits(-1.0, -1.0, 11.0, 11.0))
+}
+
+///|
+test "a box is inside the grid while some of it lies on it" {
+  let g = @label.Grid::new(200.0, 100.0)
+  assert_true(g.inside(-10.0, -10.0, 0.0, 0.0))
+  assert_false(g.inside(-10.0, -10.0, -0.1, 50.0))
+  assert_false(g.inside(200.0, 0.0, 210.0, 10.0))
+  assert_true(g.inside(199.9, 99.9, 210.0, 110.0))
 }
