@@ -54,7 +54,7 @@ fn text_parts(json : Json, path : String) -> Array[Expr] raise StyleError {
 /// MapLibre's legacy token strings: `{key}` reads a property.
 fn token_parts(s : String) -> Array[Expr] {
   let out = []
-  let mut rest = s.view()
+  let mut rest = s.clamped_view(start=0, end=s.length())
   while rest.find("{") is Some(open) {
     guard rest[open:].find("}") is Some(len) else { break }
     if open > 0 {
