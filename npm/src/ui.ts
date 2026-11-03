@@ -6,3 +6,7 @@ export { createFullscreen, type Fullscreen, type FullscreenOptions, type Fullscr
 export { createGeolocation, type GeolocationController, type GeolocationOptions, type GeolocationState, type GeolocationStatus } from "./ui/geolocation";
 export { createNavigation, type Navigation, type NavigationOptions, type NavigationState } from "./ui/navigation";
 export { createScale, measureScale, type Scale, type ScaleOptions, type ScaleState, type ScaleUnit } from "./ui/scale";
+export { createBasemaps, type Basemap, type Basemaps, type BasemapsOptions, type BasemapsState } from "./ui/basemaps";
+export { createLayerList, type LayerList, type LayerListItem, type LayerListOptions, type LayerListState } from "./ui/layer-list";
+export { createLegend, type LegendEntry, type LegendItem, type LegendOptions, type LegendState } from "./ui/legend";
+export type { LegendCategory } from "./ui/legend-rules";

@@ -344,18 +344,34 @@ async function showcase(page) {
     const map = window.__map;
     const idle = () => map.once("idle");
     let wait = idle();
-    [...document.querySelectorAll("#layers button")].find((b) => b.textContent === "陰影").click();
+    const panel = window.__panel;
+    panel.layers.toggle("陰影");
     await wait;
     const hillshade = map.getLayoutProperty("hillshade", "visibility");
+    const listed = panel.layers.state.items.find((i) => i.id === "陰影").visible;
     wait = idle();
     document.getElementById("marker").click();
     await wait;
-    return { same: map === window.__map, terrain: map.getTerrain(), hillshade, markers: map.getStyle().sources.places.data.features.at(-1).properties.name };
+    const legend = panel.legend.state.entries.find((e) => e.id === "road");
+    // The photo basemap keeps the places (an overlay) with the marker just added.
+    wait = idle();
+    panel.basemaps.select("photo");
+    await wait;
+    const photo = { layers: map.getStyle().layers.map((l) => l.id), marker: map.getStyle().sources.places.data.features.at(-1).properties.name };
+    wait = idle();
+    panel.basemaps.select("map");
+    await wait;
+    return {
+      same: map === window.__map, terrain: map.getTerrain(), hillshade, listed, markers: map.getStyle().sources.places.data.features.at(-1).properties.name,
+      legend: legend && { title: legend.title, kind: legend.kind, labels: legend.items.map((i) => i.label) }, photo, back: map.getLayer("road") !== undefined,
+    };
   });
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
     hovered.id === "東京駅" && hovered.state.hover === true &&
-    styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.markers === "印 1" &&
+    styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.listed === false && styled.markers === "印 1" &&
+    JSON.stringify(styled.legend) === JSON.stringify({ title: "道路", kind: "match", labels: ["0", "1", "その他"] }) &&
+    styled.photo.layers.includes("photo") && !styled.photo.layers.includes("road") && styled.photo.layers.at(-1) === "places-label" && styled.photo.marker === "印 1" && styled.back &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
     first.plane.zone === "第IX系" &&
     Math.abs(first.plane.x - -5995.185) < 0.01 && Math.abs(first.plane.y - -35367.23) < 0.01 &&

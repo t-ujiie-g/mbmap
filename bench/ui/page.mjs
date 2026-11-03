@@ -7,7 +7,10 @@ import * as maplibregl from "/bench/node_modules/maplibre-gl/dist/maplibre-gl.mj
 
 const square = (lng, lat) => ({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[[lng, lat], [lng + 0.01, lat], [lng + 0.01, lat + 0.01], [lng, lat + 0.01], [lng, lat]]] } });
 const source = (attribution) => ({ type: "geojson", data: { type: "FeatureCollection", features: [square(139.76, 35.68)] }, attribution });
-const style = {
+// `?style=` replaces the default style (sources by attribution, for the attribution checks).
+const params = new URLSearchParams(location.search);
+const given = params.get("style") ? JSON.parse((await (await fetch(params.get("style"))).text()).replaceAll("{origin}", location.origin)) : null;
+const style = given ?? {
   version: 8,
   sources: { a: source("Survey A (long)"), b: source("Survey B"), c: source("Survey A"), d: source("Unused"), e: source("Hidden") },
   layers: [
@@ -42,6 +45,7 @@ const mine = {
   nav: ui.createNavigation(mb),
   attribution: ui.createAttribution(mb),
   geolocation: ui.createGeolocation(mb, { trackUserLocation: true }),
+  legend: ui.createLegend(mb),
 };
 const watchStates = { OFF: "off", WAITING_ACTIVE: "waiting", ACTIVE_LOCK: "active", ACTIVE_ERROR: "active-error", BACKGROUND: "background", BACKGROUND_ERROR: "background-error" };
 
@@ -55,5 +59,16 @@ window.__theirs = {
   attribution: () => ml.getContainer().querySelector(".maplibregl-ctrl-attrib-inner")?.textContent ?? "",
   geolocation: () => (geolocate._geolocateButton.disabled && geolocate._watchState === "OFF" ? "unavailable" : watchStates[geolocate._watchState]),
   geolocate,
+  // MapLibre's paint for a feature with `properties` at its zoom: straight RGBA with the opacity in alpha.
+  color(id, colorProperty, opacityProperty, properties) {
+    const layer = ml.style._layers[id];
+    const value = (name) => {
+      const v = layer.paint.get(name);
+      return typeof v?.evaluate === "function" ? v.evaluate({ type: 3, properties }, {}) : v;
+    };
+    const c = value(colorProperty);
+    const opacity = opacityProperty ? value(opacityProperty) : 1;
+    return c.a === 0 ? [0, 0, 0, 0] : [c.r / c.a, c.g / c.a, c.b / c.a, c.a * opacity];
+  },
 };
 window.__ready = true;

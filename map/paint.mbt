@@ -118,3 +118,58 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
     },
   }
 }
+
+///|
+/// A feature's properties, a plain JS object.
+#external
+pub type Properties
+
+///|
+/// What `Map::paint_at` gives: a JS object, or null.
+#external
+pub type PaintValues
+
+///|
+extern "js" fn properties_value(p : Properties) -> JsValue = "(p) => p"
+
+///|
+extern "js" fn no_paint() -> PaintValues = "() => null"
+
+///|
+extern "js" fn paint_object(
+  rgba : FixedArray[Double],
+  width : Double,
+  radius : Double,
+  stroke : FixedArray[Double],
+  stroke_width : Double,
+  halo : FixedArray[Double],
+  halo_width : Double,
+) -> PaintValues =
+  #|(color, width, radius, stroke, strokeWidth, halo, haloWidth) => ({ color, width, radius, stroke, strokeWidth, halo, haloWidth })
+
+///|
+/// Layer `id`'s paint at the current zoom for a feature with properties
+/// `props`, as drawn: `{ color, width, radius, stroke, strokeWidth, halo,
+/// haloWidth }` (straight RGBA, opacity applied); null for an unknown layer.
+pub fn Map::paint_at(
+  self : Map,
+  id : String,
+  props : Properties,
+) -> PaintValues {
+  guard self.style.layers.search_by(l => l.id == id) is Some(i) else {
+    return no_paint()
+  }
+  let p = paint_of(self.style.layers[i], self.transform.camera.zoom, {
+    obj: properties_value(props),
+    state: js_null(),
+  })
+  paint_object(
+    [p.r, p.g, p.b, p.a],
+    p.width,
+    p.radius,
+    p.stroke,
+    p.stroke_width,
+    p.halo,
+    p.halo_width,
+  )
+}

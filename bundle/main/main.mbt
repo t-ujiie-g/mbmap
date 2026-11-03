@@ -470,3 +470,15 @@ pub fn map_constrained_zoom(map : @map.Map, zoom : Double) -> Double {
   let t = map.transform()
   t.with_camera({ ..t.camera, zoom, }).camera.zoom
 }
+
+///|
+/// Layer `id`'s paint now for a feature with properties `props`
+/// (`@map.Map::paint_at`).
+#export_name("map_paint_at")
+pub fn map_paint_at(
+  map : @map.Map,
+  id : String,
+  props : @map.Properties,
+) -> @map.PaintValues {
+  map.paint_at(id, props)
+}

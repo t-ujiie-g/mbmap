@@ -38,6 +38,7 @@ declare module "mbmap-engine" {
   export function map_locate(map: EngineMap, points: number[]): number[];
   export function map_is_idle(map: EngineMap): boolean;
   export function map_constrained_zoom(map: EngineMap, zoom: number): number;
+  export function map_paint_at(map: EngineMap, id: string, props: Record<string, unknown>): PaintValues | null;
   export function map_max_region(map: EngineMap): number;
   export function map_render_region(map: EngineMap, ratio: number, x: number, y: number, width: number, height: number): Uint8ClampedArray<ArrayBuffer>;
   export function map_bounds(map: EngineMap): number[];
@@ -52,6 +53,15 @@ declare module "mbmap-engine" {
   export function map_set_style(map: EngineMap, style: string): string;
   export function map_reload_source(map: EngineMap, id: string): void;
   /** One tile's hits: their layers' ids (-1 for a source query), feature indices, depths and GeoJSON features. */
+  export interface PaintValues {
+    color: number[];
+    width: number;
+    radius: number;
+    stroke: number[];
+    strokeWidth: number;
+    halo: number[];
+    haloWidth: number;
+  }
   export interface TileResult {
     z: number;
     x: number;
