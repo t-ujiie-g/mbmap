@@ -37,6 +37,17 @@
   - `place_line_label` の `head`、`tail`、`path`、`circles` の配列は線のラベルごとに確保したまま（使い回すには Map に作業用の配列を持たせて引き回す必要があり、計測してから判断する）。`draw_icons` の色と数のクロージャ、`placement_order` の比較のクロージャも（メッシュやレイヤーごとで、JS の呼び出しの方が重い）。
   - worker/js/symbols.mjs の `* 6` に `QUAD_INDICES` 相当の定数を置くのは TS 側の PR に任せた。
 
+## Phase 15 の計測：アイコンの後（2026-11-03、main b7b389c）
+
+- **`worker:browser`**（`process_tile` の中央値）：Chromium 7.65ms、Firefox 10.38ms、WebKit 8.12ms。アイコンの前（7.61 / 10.70 / 8.20ms）とぶれの範囲で同じ。出力の大きさも変わらない。
+- **`render --labels`**（vsync あり、1 フレームの CPU 時間。中央値 / 95 パーセンタイル）：
+  - パン：mbmap 0.37 / 1.10ms、MapLibre 1.59 / 2.22ms。
+  - ズーム：mbmap 0.23 / 0.65ms、MapLibre 1.09 / 2.11ms。
+- **`render --labels --line-labels`**：
+  - パン：mbmap 0.46 / 1.23ms、MapLibre 1.76 / 2.55ms。
+  - ズーム：mbmap 0.37 / 0.87ms、MapLibre 1.29 / 2.57ms。
+- 前回の計測より両方とも速く出ているのは、マシンの状態の違いが大きい。比べるのは同じ回の mbmap と MapLibre の比で、どれも MapLibre の 1/4 から 1/3。
+
 ## Phase 15 の後のセキュリティチェック（2026-11-03）
 
 状態：**完了**。Phase 15 で足したもの（スプライト、画像・動画のソース、PMTiles、ラスタ、ワーカーのメッセージ）を AGENTS.md §8 で見直した。
