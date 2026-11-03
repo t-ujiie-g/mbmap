@@ -19,7 +19,7 @@
     {
       "scene": "lines",
       "ok": true,
-      "mean": 0.045,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.1,
@@ -44,6 +44,26 @@
       "limits": {
         "mean": 0.7,
         "p99": 21
+      }
+    },
+    {
+      "scene": "data-circles",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "data-lines",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
       }
     }
   ]

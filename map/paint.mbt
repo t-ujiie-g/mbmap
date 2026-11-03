@@ -43,14 +43,19 @@ impl @style.FeatureContext for JsProps with fn geometry_type(self) {
 }
 
 ///|
-/// A layer's paint values for one draw: colors are straight RGBA; `width` is
-/// the line width, `radius` and the stroke values those of circles (0 and
-/// transparent for other kinds).
+/// A layer's paint values for one draw: colors are straight RGBA (`r`, `g`,
+/// `b`, `a` with the opacity in; `color` and `opacity` apart, as the shaders'
+/// slots take them); `width` is the line width, `radius` and the stroke values
+/// those of circles (0 and transparent for other kinds).
 priv struct Paint {
   r : Double
   g : Double
   b : Double
   a : Double
+  color : @style.Color
+  opacity : Double
+  stroke_color : @style.Color
+  stroke_opacity : Double
   width : Double
   radius : Double
   stroke : FixedArray[Double]
@@ -81,10 +86,11 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
   let opacity = number_or(layer.opacity.eval(zoom, ctx), 1.0)
   let circle = layer.kind is Circle
   let symbol = layer.kind is Symbol
+  let stroke_color = color_of(layer.stroke_color, zoom, ctx)
+  let stroke_opacity = number_or(layer.stroke_opacity.eval(zoom, ctx), 1.0)
   let stroke : FixedArray[Double] = if circle {
-    let s = color_of(layer.stroke_color, zoom, ctx)
-    let o = number_or(layer.stroke_opacity.eval(zoom, ctx), 1.0)
-    [s.r, s.g, s.b, s.a * o]
+    let s = stroke_color
+    [s.r, s.g, s.b, s.a * stroke_opacity]
   } else {
     [0.0, 0.0, 0.0, 0.0]
   }
@@ -93,6 +99,10 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
     g: c.g,
     b: c.b,
     a: c.a * opacity,
+    color: c,
+    opacity,
+    stroke_color,
+    stroke_opacity,
     width: number_or(layer.width.eval(zoom, ctx), 1.0),
     radius: if circle {
       number_or(layer.radius.eval(zoom, ctx), 5.0)

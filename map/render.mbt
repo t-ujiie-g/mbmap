@@ -189,22 +189,20 @@ fn Map::draw_layer(
       }
     } else if m.kind == KIND_LINE {
       self.draw_by_state(m, layer, p, zoom, p => {
-        self.renderer.draw_line(m.mesh, at, p.r, p.g, p.b, p.a, p.width * dpr)
+        self.renderer.draw_line(m.mesh, at, self.slots(index, m, p, zoom), dpr)
       })
     } else if m.kind == KIND_CIRCLE {
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_circle(
           m.mesh,
           at,
-          [p.r, p.g, p.b, p.a],
-          p.stroke,
-          p.radius * dpr,
-          p.stroke_width * dpr,
+          self.slots(index, m, p, zoom),
+          dpr,
         )
       })
     } else {
       self.draw_by_state(m, layer, p, zoom, p => {
-        self.renderer.draw_fill(m.mesh, at, p.r, p.g, p.b, p.a)
+        self.renderer.draw_fill(m.mesh, at, self.slots(index, m, p, zoom))
       })
     }
   }
@@ -396,4 +394,51 @@ fn Map::draw_frame(
       f()
     }
   }
+}
+
+///|
+/// The paint slots of one draw of mesh `m` of style layer `index`: the
+/// layer's per-vertex values where it has them, else `p`'s.
+fn Map::slots(
+  self : Map,
+  index : Int32,
+  m : LayerMesh,
+  p : Paint,
+  zoom : Double,
+) -> @render_webgl2.PaintSlots {
+  let slots = @render_webgl2.PaintSlots::new()
+  let color = (slot : Int32, c : @style.Color) => {
+    slots.constant(slot, c.r, b=c.g, c=c.b, d=c.a)
+  }
+  color(@style.SLOT_COLOR, p.color)
+  slots.constant(@style.SLOT_OPACITY, p.opacity)
+  slots.constant(
+    @style.SLOT_SIZE,
+    if m.kind == KIND_CIRCLE {
+      p.radius
+    } else {
+      p.width
+    },
+  )
+  color(@style.SLOT_STROKE_COLOR, p.stroke_color)
+  slots.constant(@style.SLOT_STROKE_OPACITY, p.stroke_opacity)
+  slots.constant(@style.SLOT_STROKE_WIDTH, p.stroke_width)
+  if m.vertex_paint is Some(buffer) {
+    let paint = self.vertex_paint[index]
+    let stride = @style.vertex_paint_words(paint) * 4
+    let mut offset = 0
+    for vp in paint {
+      let (i, t) = vp.position(zoom)
+      slots.per_vertex(
+        vp.slot,
+        buffer,
+        offset + i * 4,
+        stride,
+        t,
+        single=vp.count() == 1,
+      )
+      offset += vp.count() * 4
+    }
+  }
+  slots
 }

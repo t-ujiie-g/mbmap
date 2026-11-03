@@ -8,7 +8,7 @@ import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
 import { readString, readValue } from "./values.mjs";
 
-const LAYER_ENTRY_WORDS = 9; // worker/packed.mbt
+const LAYER_ENTRY_WORDS = 11; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
@@ -78,17 +78,20 @@ function unpack(packed) {
       transfer.push(s.vertices, s.indices, s.labels.buffer, s.codepoints.buffer);
       continue;
     }
+    // The layer's own per-vertex paint, also over shared geometry.
+    const paint = e(10) > 0 ? packed.slice(e(9), e(9) + e(10)).buffer : null;
+    if (paint) transfer.push(paint);
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
       const { vertices, indices } = layers[shared];
-      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props });
+      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint });
       continue;
     }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
     const indices = packed.slice(e(4), e(4) + e(5) * e(6)).buffer;
     // `shared` names a position in `layers` (skipped symbol entries have none).
     byOffset.set(e(2), layers.length);
-    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props });
+    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };

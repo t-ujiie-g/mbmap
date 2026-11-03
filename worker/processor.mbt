@@ -15,6 +15,8 @@ pub struct TileProcessor {
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
+  priv vertex_paint : Array[Array[@style.VertexPaint]]
+  priv runs : Array[Int32]
   priv number : (BytesView) -> Double
   priv state_layers : Array[Bool]
   priv range_pool : Array[Array[Int32]]
@@ -41,7 +43,15 @@ pub fn TileProcessor::new(
     line_pool: [],
     label_pool: [],
     geometry: @mvt.Geometry::new(),
-    inputs: style.layers.map(paint_inputs),
+    inputs: style.layers.map(l => {
+      if per_vertex(l) {
+        ([], false)
+      } else {
+        paint_inputs(l)
+      }
+    }),
+    vertex_paint: style.layers.map(l => l.vertex_paint()),
+    runs: [],
     number,
     state_layers: style.layers.map(l => l.reads_state()),
     range_pool: [],
@@ -198,8 +208,8 @@ pub fn TileProcessor::process(
   for r in self.range_pool {
     r.clear()
   }
-  // Ungrouped layers packed so far: (style layer, its single entry or -1).
-  let done : Array[(Int32, Int32)] = []
+  // Ungrouped layers packed so far: (style layer, its single entry or -1, its runs).
+  let done : Array[(Int32, Int32, Array[Int32])] = []
   for index, sl in style_layers {
     guard drawn[index] && features_of(sl.source_layer) is Some(layer) else {
       continue
@@ -214,9 +224,13 @@ pub fn TileProcessor::process(
       is Some(i) {
       if done[i].1 >= 0 {
         self.out.add_alias(index, done[i].1)
+        if !self.write_paint(index, layer, done[i].2, zoom) {
+          return false
+        }
       }
       continue
     }
+    self.runs.clear()
     let entries = self.out.layer_count()
     let ok = match sl.kind {
       Fill => self.fill_layer(index, sl, layer, zoom, groups)
@@ -229,9 +243,8 @@ pub fn TileProcessor::process(
       return false
     }
     if !groups.active {
-      done.push(
-        (index, if self.out.layer_count() > entries { entries } else { -1 }),
-      )
+      let entry = if self.out.layer_count() > entries { entries } else { -1 }
+      done.push((index, entry, self.runs.copy()))
     }
   }
   if self.out.overflowed() {
@@ -303,15 +316,18 @@ fn TileProcessor::fill_layer(
       let group = groups.of(feature)
       let out = self.fill_buffers(group)
       let first = out.indices.length()
+      let v0 = out.num_vertices()
       self.fill.add_polygons(g.coords[:], g.ring_ends[:], out)
       self.track(index, group, i, first, out.indices.length())
+      self.run(i, out.num_vertices() - v0)
     }
   }
   for g in 0..<groups.count() {
     let b = self.fill_buffers(g)
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
-      if !self.out.add_fill(index, b, extent=layer.extent()) {
+      if !self.out.add_fill(index, b, extent=layer.extent()) ||
+        !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }
       self.flush_ranges(index, entry, g, layer)
@@ -428,6 +444,7 @@ fn TileProcessor::line_layer(
       let group = groups.of(feature)
       let out = self.line_buffers(group)
       let first = out.indices.length()
+      let v0 = out.num_vertices()
       for r in 0..<g.num_rings() {
         self.line.add_line(
           g.coords[:],
@@ -441,13 +458,15 @@ fn TileProcessor::line_layer(
         )
       }
       self.track(index, group, i, first, out.indices.length())
+      self.run(i, out.num_vertices() - v0)
     }
   }
   for g in 0..<groups.count() {
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
-      if !self.out.add_line(index, b, extent=layer.extent()) {
+      if !self.out.add_line(index, b, extent=layer.extent()) ||
+        !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }
       self.flush_ranges(index, entry, g, layer)
@@ -483,19 +502,22 @@ fn TileProcessor::circle_layer(
       let group = groups.of(feature)
       let out = self.line_buffers(group)
       let first = out.indices.length()
+      let v0 = out.num_vertices()
       @tess.add_points(
         g.coords[:g.num_points() * 2],
         out,
         extent=layer.extent(),
       )
       self.track(index, group, i, first, out.indices.length())
+      self.run(i, out.num_vertices() - v0)
     }
   }
   for g in 0..<groups.count() {
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
-      if !self.out.add_circles(index, b, extent=layer.extent()) {
+      if !self.out.add_circles(index, b, extent=layer.extent()) ||
+        !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }
       self.flush_ranges(index, entry, g, layer)
@@ -503,6 +525,63 @@ fn TileProcessor::circle_layer(
         self.out.set_props(groups.props(g))
       }
     }
+  }
+  true
+}
+
+///|
+/// Whether `sl`'s data-driven paint goes per vertex rather than by groups:
+/// fills, lines and circles that do not read feature state.
+fn per_vertex(sl : @style.StyleLayer) -> Bool {
+  sl.kind is (Fill | Line | Circle) && !sl.reads_state()
+}
+
+///|
+/// Records that feature `i` took the last `n` vertices of an ungrouped layer.
+fn TileProcessor::run(self : TileProcessor, i : Int32, n : Int32) -> Unit {
+  if n > 0 {
+    self.runs.push(i)
+    self.runs.push(n)
+  }
+}
+
+///|
+/// Writes the per-vertex paint of style layer `index` (docs/FORMATS.md, "Vertex
+/// paint") for the last entry, whose vertices came from `runs` (feature,
+/// vertex count) of `layer`; true when it has none. False without room.
+fn TileProcessor::write_paint(
+  self : TileProcessor,
+  index : Int32,
+  layer : Features,
+  runs : Array[Int32],
+  zoom : Double,
+) -> Bool {
+  let paint = self.vertex_paint[index]
+  if paint.is_empty() {
+    return true
+  }
+  let words = @style.vertex_paint_words(paint)
+  let mut vertices = 0
+  for k = 1; k < runs.length(); k = k + 2 {
+    vertices += runs[k]
+  }
+  guard self.out.begin_paint(vertices * words) is Some(at) else { return false }
+  let scratch = FixedArray::make(words, 0)
+  let feature = self.feature_ref(layer)
+  let mut w = at
+  for k = 0; k + 1 < runs.length(); k = k + 2 {
+    feature.index = runs[k]
+    let mut o = 0
+    for p in paint {
+      o = p.encode(zoom, feature, scratch, o)
+    }
+    for x in scratch {
+      self.out.store.set_u32(w, x)
+      w += 4
+    }
+    let n = runs[k + 1] * words * 4
+    self.out.store.repeat(w - words * 4, words * 4, n)
+    w += n - words * 4
   }
   true
 }

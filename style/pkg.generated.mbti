@@ -8,9 +8,23 @@ import {
 // Values
 pub const MAX_EXPR_DEPTH : Int32 = 32
 
+pub const SLOT_COLOR : Int32 = 0
+
+pub const SLOT_OPACITY : Int32 = 1
+
+pub const SLOT_SIZE : Int32 = 2
+
+pub const SLOT_STROKE_COLOR : Int32 = 3
+
+pub const SLOT_STROKE_OPACITY : Int32 = 4
+
+pub const SLOT_STROKE_WIDTH : Int32 = 5
+
 pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
 
 pub fn parse_color(String) -> Color?
+
+pub fn vertex_paint_words(Array[VertexPaint]) -> Int32
 
 // Errors
 pub(all) suberror StyleError {
@@ -261,6 +275,7 @@ pub struct StyleLayer {
 }
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
+pub fn StyleLayer::vertex_paint(Self) -> Array[VertexPaint]
 
 pub struct Terrain {
   source : String
@@ -309,6 +324,19 @@ pub(all) enum Value {
 pub fn Value::equal(Self, Self) -> Bool
 pub fn Value::not_equal(Self, Self) -> Bool
 pub fn Value::to_repr(Self) -> @debug.Repr
+
+pub struct VertexPaint {
+  slot : Int32
+  color : Bool
+  stops : Array[Double]
+  step : Bool
+  base : Double
+  outputs : Array[Expr]
+  default : Double
+}
+pub fn VertexPaint::count(Self) -> Int32
+pub fn[C : FeatureContext] VertexPaint::encode(Self, Double, C, FixedArray[Int32], Int32) -> Int32
+pub fn VertexPaint::position(Self, Double, pow? : (Double, Double) -> Double) -> (Int32, Double)
 
 // Type aliases
 

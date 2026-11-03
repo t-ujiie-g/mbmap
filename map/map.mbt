@@ -7,7 +7,8 @@ pub(all) suberror MapError {
 ///|
 /// `entry` is the mesh's index in the worker's packed tile; `owned` false when an
 /// earlier layer's; `paint` the group's paint at the zoom it was evaluated for;
-/// `states` (first index, count, state) the ranges of features with a state.
+/// `vertex_paint` the layer's own per-vertex paint (also when the geometry is
+/// shared); `states` (first index, count, state) the ranges of features with a state.
 priv struct LayerMesh {
   entry : Int32
   mut states : Array[(Int32, Int32, JsValue)]
@@ -17,6 +18,7 @@ priv struct LayerMesh {
   mut owned : Bool
   props : JsProps?
   mut paint : (Double, Paint)?
+  vertex_paint : @render_webgl2.PaintBuffer?
   labels : LabelSet?
   ground : ExtrusionGround?
   dem : DemTile?
@@ -82,6 +84,8 @@ pub struct Map {
   priv canvas : @render_webgl2.Canvas
   priv renderer : @render_webgl2.Renderer
   priv mut style : @style.Style
+  /// Per style layer: its per-vertex paint (`@style.StyleLayer::vertex_paint`).
+  priv mut vertex_paint : Array[Array[@style.VertexPaint]]
   priv sources : Array[SourceTiles]
   priv geojson : Provider
   priv mut transform : @core.Transform
@@ -186,6 +190,7 @@ pub fn Map::new(
     canvas,
     renderer,
     style,
+    vertex_paint: style.layers.map(l => l.vertex_paint()),
     sources,
     geojson,
     transform: @core.Transform::new(
@@ -407,6 +412,9 @@ fn Map::release_meshes(self : Map, meshes : Array[LayerMesh]) -> Unit {
   for m in meshes {
     if m.owned {
       self.renderer.release(m.mesh)
+    }
+    if m.vertex_paint is Some(b) {
+      self.renderer.release_paint(b)
     }
   }
 }

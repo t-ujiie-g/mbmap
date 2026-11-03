@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 9
+pub const LAYER_ENTRY_WORDS : Int32 = 11
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -342,9 +342,12 @@ fn PackedTile::add_alias(
   let src = 4 + of * LAYER_ENTRY_WORDS * 4
   let dst = 4 + self.layers * LAYER_ENTRY_WORDS * 4
   self.put_u32(dst, style_layer)
-  for w in 1..<LAYER_ENTRY_WORDS {
+  // The geometry and its group's properties; per-vertex paint is each layer's own.
+  for w in 1..<9 {
     self.put_u32(dst + w * 4, self.store.get_u32(src + w * 4))
   }
+  self.put_u32(dst + 36, 0)
+  self.put_u32(dst + 40, 0)
   self.layers += 1
   self.put_u32(0, self.layers)
 }
@@ -365,4 +368,21 @@ fn PackedTile::set_props(self : PackedTile, props : Bytes) -> Unit {
   self.put_u32(e + 28, at)
   self.put_u32(e + 32, props.length())
   self.len = (at + props.length() + 3) / 4 * 4
+}
+
+///|
+/// Makes room for the last entry's per-vertex paint, `words` u32s, and returns
+/// where to write them; None without room (overflow is flagged).
+fn PackedTile::begin_paint(self : PackedTile, words : Int32) -> Int32? {
+  if self.layers == 0 ||
+    words > MAX_PACKED_BYTES / 4 ||
+    !self.reserve(words * 4) {
+    return None
+  }
+  let at = self.len
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 36, at)
+  self.put_u32(e + 40, words * 4)
+  self.len = at + words * 4
+  Some(at)
 }

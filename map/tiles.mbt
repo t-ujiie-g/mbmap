@@ -209,6 +209,11 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
             Some({ obj: props, state: js_null(), })
           },
           paint: None,
+          vertex_paint: if is_null_value(paint_of_layer(l)) {
+            None
+          } else {
+            Some(self.renderer.upload_paint(buffer_of(l, "paint")))
+          },
           labels,
           ground: if kind == KIND_EXTRUSION {
             Some({

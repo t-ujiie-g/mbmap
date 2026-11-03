@@ -41,6 +41,9 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 4, "a_ele");
   #|    gl.bindAttribLocation(p, 1, "a_normal");
   #|    gl.bindAttribLocation(p, 3, "a_heights");
+  #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
+  #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
+  #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
   #|    gl.linkProgram(p);
   #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   #|    const u = { program: p };
@@ -51,41 +54,57 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // loaded ancestor stands in for a missing tile clipped to its area.
   #|  const clip = "uniform vec4 u_clip; in vec2 v_pos;" +
   #|    "bool outside() { return any(lessThan(v_pos, u_clip.xy)) || any(greaterThanEqual(v_pos, u_clip.zw)); }";
+  #|  // Paint values: each slot holds a value and the next along its zoom curve,
+  #|  // mixed by u_t (one per slot); colors are straight RGBA, premultiplied here.
+  #|  const paint = "uniform float u_t[6]; in vec4 a_color_lo; in vec4 a_color_hi; in vec2 a_opacity; in vec2 a_extent;" +
+  #|    "in vec4 a_stroke_lo; in vec4 a_stroke_hi; in vec2 a_stroke_opacity; in vec2 a_stroke_width;" +
+  #|    "float at(vec2 v, int s) { return mix(v.x, v.y, u_t[s]); }" +
+  #|    "vec4 premul(vec4 c, float o) { float a = c.a * o; return vec4(c.rgb * a, a); }" +
+  #|    "vec4 color() { return premul(mix(a_color_lo, a_color_hi, u_t[0]), at(a_opacity, 1)); }";
   #|  const fill = program(
-  #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos;" +
-  #|    "void main() { v_pos = a_pos; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
-  #|    clip + "uniform vec4 u_color; out vec4 o; void main() { if (outside()) discard; o = u_color; }",
-  #|    ["u_matrix", "u_clip", "u_color"]);
+  #|    paint + "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec4 v_color;" +
+  #|    "void main() { v_pos = a_pos; v_color = color(); gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
+  #|    ["u_matrix", "u_clip", "u_t"]);
   #|  // Extrusion is in tile units (u_units device pixels at the center's depth
   #|  // u_depth), so lines thin with distance; the last pixel of the half width
   #|  // v_half, taken at the vertex's own depth, fades out (MapLibre's gamma scale).
+  #|  // The half width: the line width (a_extent, CSS px times u_dpr) halved, plus a pixel.
   #|  const line = program(
-  #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_half;" +
-  #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half;" +
-  #|    "void main() { v_pos = a_pos + a_data.xy / 63.0 * u_half * u_units;" +
+  #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
+  #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half; out vec4 v_color;" +
+  #|    "void main() { float half_ = at(a_extent, 2) * u_dpr / 2.0 + 0.5;" +
+  #|    "  v_pos = a_pos + a_data.xy / 63.0 * half_ * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
-  #|    "  v_half = u_half * u_depth / gl_Position.w; }",
+  #|    "  v_half = half_ * u_depth / gl_Position.w; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
-  #|    clip + "uniform vec4 u_color; in vec2 v_edge; in float v_half; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; o = u_color * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0); }",
-  #|    ["u_matrix", "u_units", "u_half", "u_depth", "u_clip", "u_color"]);
+  #|    clip + "in vec4 v_color; in vec2 v_edge; in float v_half; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; o = v_color * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0); }",
+  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t"]);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   #|  // Circles face the viewer and shrink with distance (MapLibre's pitch-alignment
   #|  // "viewport", pitch-scale "map"): u_size device pixels at the center's depth;
   #|  // u_inner is the fill radius over u_size, the stroke lies outside it.
+  #|  // The radius and stroke width (CSS px times u_dpr) from a_extent and a_stroke_width;
+  #|  // a circle of size 0 is moved out of clip space. Without a stroke the edge fades
+  #|  // to the fill color.
   #|  const circle = program(
-  #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform vec2 u_px; uniform float u_size;" +
-  #|    "uniform float u_depth; out vec2 v_extrude; out vec2 v_pos;" +
-  #|    "void main() { v_pos = a_pos; v_extrude = a_data.xy / 63.0; vec4 c = u_matrix * vec4(a_pos, 0.0, 1.0);" +
-  #|    "  gl_Position = c + vec4(v_extrude * u_size * u_px * u_depth, 0.0, 0.0); }",
-  #|    clip + "uniform vec4 u_color; uniform vec4 u_stroke; uniform float u_size; uniform float u_inner;" +
+  #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform vec2 u_px; uniform float u_dpr;" +
+  #|    "uniform float u_depth; out vec2 v_extrude; out vec2 v_pos; out vec4 v_color; out vec4 v_stroke;" +
+  #|    "out float v_size; out float v_inner;" +
+  #|    "void main() { float r = at(a_extent, 2) * u_dpr; float w = at(a_stroke_width, 5) * u_dpr;" +
+  #|    "  v_size = r + w; v_inner = v_size > 0.0 ? r / v_size : 0.0; v_color = color();" +
+  #|    "  v_stroke = w > 0.0 ? premul(mix(a_stroke_lo, a_stroke_hi, u_t[3]), at(a_stroke_opacity, 4)) : v_color;" +
+  #|    "  v_pos = a_pos; v_extrude = a_data.xy / 63.0; vec4 c = u_matrix * vec4(a_pos, 0.0, 1.0);" +
+  #|    "  gl_Position = v_size > 0.0 ? c + vec4(v_extrude * v_size * u_px * u_depth, 0.0, 0.0) : vec4(2.0, 2.0, 2.0, 1.0); }",
+  #|    clip + "in vec4 v_color; in vec4 v_stroke; in float v_size; in float v_inner;" +
   #|    "in vec2 v_extrude; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; float d = length(v_extrude); float aa = 1.0 / u_size;" +
-  #|    "  float t = smoothstep(u_inner - aa, u_inner, d);" +
-  #|    "  o = mix(u_color, u_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
-  #|    ["u_matrix", "u_px", "u_size", "u_depth", "u_clip", "u_color", "u_stroke", "u_inner"]);
+  #|    "void main() { if (outside()) discard; float d = length(v_extrude); float aa = 1.0 / v_size;" +
+  #|    "  float t = smoothstep(v_inner - aa, v_inner, d);" +
+  #|    "  o = mix(v_color, v_stroke, t) * (1.0 - smoothstep(1.0 - aa, 1.0, d)); }",
+  #|    ["u_matrix", "u_px", "u_dpr", "u_depth", "u_clip", "u_t"]);
   #|  // a_data: corner offset in quarter CSS px (y down); a_size: text size in 1/16 px,
   #|  // both times MapLibre's perspective ratio; a_ele: anchor height (m). SDF edge at
   #|  // 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px); see FORMATS.md.
@@ -299,25 +318,102 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|}
 
 ///|
+/// One draw's paint by slot (`@style.SLOT_*`): per slot, a constant (straight
+/// RGBA or a number) or a layer's per-vertex values from where its zoom
+/// position starts.
+#external
+pub type PaintSlots
+
+///|
+/// A layer's per-vertex paint on the GPU (docs/FORMATS.md, "Vertex paint").
+#external
+pub type PaintBuffer
+
+///|
+extern "js" fn paint_slots_new() -> PaintSlots = "() => []"
+
+///|
+extern "js" fn paint_slots_constant(
+  slots : PaintSlots,
+  slot : Int32,
+  a : Double,
+  b : Double,
+  c : Double,
+  d : Double,
+) -> Unit = "(s, slot, a, b, c, d) => { s[slot] = { value: [a, b, c, d] }; }"
+
+///|
+extern "js" fn paint_slots_buffer(
+  slots : PaintSlots,
+  slot : Int32,
+  buffer : PaintBuffer,
+  offset : Int32,
+  stride : Int32,
+  t : Double,
+  single : Bool,
+) -> Unit =
+  #|(s, slot, buffer, offset, stride, t, single) => { s[slot] = { buffer, offset, stride, t, single }; }
+
+///|
+extern "js" fn gl_upload_paint(gl : Gl, data : JsBuffer) -> PaintBuffer =
+  #|(c, data) => {
+  #|  const gl = c.gl, b = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  #|  return b;
+  #|}
+
+///|
+extern "js" fn gl_release_paint(gl : Gl, buffer : PaintBuffer) -> Unit =
+  #|(c, b) => c.gl.deleteBuffer(b)
+
+///|
+/// Binds the first `count` `slots` to the bound vertex array and `program`: colors take
+/// two attributes (start, next), numbers a vec2 (a `single` value: read once, t 0).
+/// Every slot is set, as layers share vertex arrays.
+extern "js" fn gl_bind_paint(
+  gl : Gl,
+  program : String,
+  slots : PaintSlots,
+  count : Int32,
+) -> Unit =
+  #|(c, name, slots, count) => {
+  #|  const gl = c.gl, p = c[name], LOC = [[5, 6], [7], [8], [9, 10], [11], [12]], ts = new Float32Array(6);
+  #|  for (let k = 0; k < count; k++) {
+  #|    const s = slots[k], locs = LOC[k];
+  #|    if (s.buffer) {
+  #|      ts[k] = s.t;
+  #|      gl.bindBuffer(gl.ARRAY_BUFFER, s.buffer);
+  #|      locs.forEach((loc, h) => {
+  #|        gl.enableVertexAttribArray(loc);
+  #|        if (locs.length === 2) gl.vertexAttribPointer(loc, 4, gl.UNSIGNED_BYTE, true, s.stride, s.offset + (s.single ? 0 : h * 4));
+  #|        else gl.vertexAttribPointer(loc, s.single ? 1 : 2, gl.FLOAT, false, s.stride, s.offset);
+  #|      });
+  #|    } else {
+  #|      const v = s.value;
+  #|      for (const loc of locs) {
+  #|        gl.disableVertexAttribArray(loc);
+  #|        if (locs.length === 2) gl.vertexAttrib4f(loc, v[0], v[1], v[2], v[3]);
+  #|        else gl.vertexAttrib2f(loc, v[0], v[0]);
+  #|      }
+  #|    }
+  #|  }
+  #|  gl.uniform1fv(p.u_t, ts);
+  #|}
+
+///|
 /// `clip` is (min x, min y, max x, max y) in tile units.
 extern "js" fn gl_draw_fill(
   gl : Gl,
   mesh : Mesh,
   matrix : FixedArray[Double],
   clip : FixedArray[Double],
-  r : Double,
-  g : Double,
-  b : Double,
-  a : Double,
 ) -> Unit =
-  #|(c, m, matrix, clip, r, g, b, a) => {
+  #|(c, m, matrix, clip) => {
   #|  const gl = c.gl, p = c.fill;
-  #|  gl.useProgram(p.program);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
-  #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
-  #|  gl.bindVertexArray(m.vao);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
@@ -329,58 +425,43 @@ extern "js" fn gl_draw_line(
   clip : FixedArray[Double],
   units : Double,
   depth : Double,
-  r : Double,
-  g : Double,
-  b : Double,
-  a : Double,
-  half : Double,
+  dpr : Double,
 ) -> Unit =
-  #|(c, m, matrix, clip, units, depth, r, g, b, a, half) => {
+  #|(c, m, matrix, clip, units, depth, dpr) => {
   #|  const gl = c.gl, p = c.line;
-  #|  gl.useProgram(p.program);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
-  #|  gl.uniform1f(p.u_half, half);
-  #|  gl.uniform4f(p.u_color, r * a, g * a, b * a, a);
-  #|  gl.bindVertexArray(m.vao);
+  #|  gl.uniform1f(p.u_dpr, dpr);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|
-/// `color` and `stroke` are straight RGBA; sizes are in device pixels.
 extern "js" fn gl_draw_circle(
   gl : Gl,
   mesh : Mesh,
   matrix : FixedArray[Double],
   clip : FixedArray[Double],
   depth : Double,
-  color : FixedArray[Double],
-  stroke : FixedArray[Double],
-  radius : Double,
-  stroke_width : Double,
+  dpr : Double,
 ) -> Unit =
-  #|(c, m, matrix, clip, depth, color, stroke, radius, strokeWidth) => {
+  #|(c, m, matrix, clip, depth, dpr) => {
   #|  const gl = c.gl, p = c.circle;
-  #|  const size = radius + strokeWidth;
-  #|  if (size <= 0) return;
-  #|  // Without a stroke the edge fades to the fill color.
-  #|  const s = strokeWidth > 0 ? stroke : color;
-  #|  gl.useProgram(p.program);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
-  #|  gl.uniform1f(p.u_size, size);
   #|  gl.uniform1f(p.u_depth, depth);
-  #|  gl.uniform1f(p.u_inner, radius / size);
-  #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
-  #|  gl.uniform4f(p.u_stroke, s[0] * s[3], s[1] * s[3], s[2] * s[3], s[3]);
-  #|  gl.bindVertexArray(m.vao);
+  #|  gl.uniform1f(p.u_dpr, dpr);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
+
+///|
+/// Uses `program` and binds `mesh`'s vertex array with `slots`.
+extern "js" fn gl_use(gl : Gl, program : String, mesh : Mesh) -> Unit =
+  #|(c, name, m) => { c.gl.useProgram(c[name].program); c.gl.bindVertexArray(m.vao); }
 
 ///|
 extern "js" fn mesh_bytes(mesh : Mesh) -> Int32 =

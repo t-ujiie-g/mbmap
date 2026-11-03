@@ -40,4 +40,31 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 30, pitch: 45 },
     limits: { mean: 0.7, p99: 21 },
   },
+  // Data-driven paint per vertex: a radius and a color continuous in the labels' `arrngAgl`
+  // (angles, hundreds of values past the 64 groups paint used to split into), and a width varying
+  // with zoom and `rdCtg` seen at z16.5 on z14 tiles (each zoom stop's value is kept per vertex).
+  "data-circles": {
+    style: style([
+      { id: "pt", type: "circle", source: "gsi", "source-layer": "label",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["get", "arrngAgl"], 0, 2, 360, 9],
+          "circle-color": ["interpolate", ["linear"], ["get", "arrngAgl"], 0, "#2b83ba", 360, "#d7191c"],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": ["step", ["get", "arrngAgl"], 0, 180, 1.5],
+        } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "data-lines": {
+    style: style([
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": ["match", ["get", "rdCtg"], [0, 1], "#e8a33b", "#9aa0a6"],
+          "line-width": ["interpolate", ["exponential", 2], ["zoom"], 14, ["match", ["get", "rdCtg"], [0, 1], 3, 1], 18, ["match", ["get", "rdCtg"], [0, 1], 32, 12]],
+          "line-opacity": ["match", ["get", "rdCtg"], 2, 0.6, 1],
+        } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 16.5, bearing: 0, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
 };
