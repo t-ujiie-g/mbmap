@@ -356,6 +356,7 @@ pub struct StyleLayer {
   gradient : Expr?
   pattern : Expr?
 }
+pub fn StyleLayer::line_distances(Self) -> Bool
 pub fn StyleLayer::paints_by_group(Self) -> Bool
 pub fn StyleLayer::reads_state(Self) -> Bool
 pub fn StyleLayer::same_line_layout(Self, Self) -> Bool

@@ -1,10 +1,12 @@
 ///|
 /// Where a tile's patterns start: its top-left corner in CSS pixels of the
-/// world at the integer zoom (`x`, `y`), and CSS pixels per tile unit there.
+/// world at the integer zoom (`x`, `y`), CSS pixels per tile unit there, and
+/// tile units per meter up a wall (MapLibre's `u_height_factor`, negative).
 pub(all) struct PatternTile {
   x : Double
   y : Double
   units : Double
+  height_factor : Double
 }
 
 ///|
@@ -39,14 +41,7 @@ fn Renderer::use_pattern(
   pos : PatternPosition,
   tile : PatternTile,
 ) -> Unit {
-  if self.patterns.take_dirty() {
-    gl_pattern_atlas(
-      self.gl,
-      self.patterns.data,
-      PATTERN_ATLAS_WIDTH,
-      self.patterns.height,
-    )
-  }
+  self.upload_patterns()
   let (w, h) = pos.display_size()
   let upper = (v : Double) => (v / 65536.0).floor()
   gl_set_pattern(self.gl, name, [
@@ -119,4 +114,56 @@ pub fn Renderer::draw_background_pattern(
     color[2] * a,
     a,
   ])
+}
+
+///|
+/// Uploads the pattern atlas if it changed.
+fn Renderer::upload_patterns(self : Renderer) -> Unit {
+  if self.patterns.take_dirty() {
+    gl_pattern_atlas(
+      self.gl,
+      self.patterns.data,
+      PATTERN_ATLAS_WIDTH,
+      self.patterns.height,
+    )
+  }
+}
+
+///|
+/// Draws a line with pattern `pos` (MapLibre's line_pattern), the image as tall
+/// as the line's floor width (`floor_width`, or the width slot mixed `floor_t`
+/// when negative), times `slots`' opacity.
+pub fn Renderer::draw_line_pattern(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+  pos : PatternPosition,
+  floor_width~ : Double,
+  floor_t~ : Double,
+) -> Unit {
+  self.upload_patterns()
+  self.bind("linePattern", mesh, slots, 3)
+  let (w, h) = pos.display_size()
+  gl_draw_line_pattern(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+    [
+      pos.tl.0.to_double(),
+      pos.tl.1.to_double(),
+      pos.br.0.to_double(),
+      pos.br.1.to_double(),
+      w,
+      h,
+      at.pattern.units,
+      floor_width,
+      floor_t,
+    ],
+  )
 }

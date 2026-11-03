@@ -185,6 +185,38 @@
         "mean": 0.05,
         "p99": 1
       }
+    },
+    {
+      "scene": "line-patterns",
+      "ok": true,
+      "mean": 0.233,
+      "p99": 1,
+      "limits": {
+        "mean": 0.3,
+        "p99": 2
+      },
+      "gap": "pattern edges shift by under a pixel along the line"
+    },
+    {
+      "scene": "extrusion-patterns",
+      "ok": true,
+      "mean": 0.268,
+      "p99": 2,
+      "limits": {
+        "mean": 0.3,
+        "p99": 2
+      },
+      "gap": "pattern edges on walls and roofs shift by under a pixel"
+    },
+    {
+      "scene": "extrusions-translucent",
+      "ok": true,
+      "mean": 0.098,
+      "p99": 0,
+      "limits": {
+        "mean": 0.12,
+        "p99": 1
+      }
     }
   ]
 }

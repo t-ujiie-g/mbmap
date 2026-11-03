@@ -13,9 +13,6 @@ fn parse_extrusion(
   paint : Map[String, Json],
   path : String,
 ) -> ExtrusionPaint raise StyleError {
-  if paint.get("fill-extrusion-pattern") is Some(_) {
-    raise Unsupported(path="\{path}.fill-extrusion-pattern", "patterns")
-  }
   match paint.get("fill-extrusion-translate") {
     None | Some(Array([Number(0.0, ..), Number(0.0, ..)])) => ()
     Some(_) =>

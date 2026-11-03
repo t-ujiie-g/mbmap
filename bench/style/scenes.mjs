@@ -242,4 +242,44 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 25, pitch: 50 },
     limits: { mean: 0.05, p99: 1 },
   },
+  // Line and extrusion patterns (MapLibre's line_pattern and fill_extrusion_pattern): images as
+  // tall as the line, along its distance; walls by their distance and height, roofs by tile units.
+  "line-patterns": {
+    style: {
+      ...style([
+        { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-pattern": "dots", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 4, 17, 12] } },
+        { id: "rail", type: "line", source: "gsi", "source-layer": "railway", paint: { "line-pattern": "stripes", "line-width": 6, "line-opacity": 0.8 } },
+      ]),
+      sprite: SPRITE,
+    },
+    camera: { center: [139.7671, 35.6812], zoom: 16.3, bearing: 0, pitch: 0 },
+    limits: { mean: 0.3, p99: 2 },
+    gap: "pattern edges shift by under a pixel along the line",
+  },
+  "extrusion-patterns": {
+    style: {
+      ...style([
+        { id: "building-3d", type: "fill-extrusion", source: "gsi", "source-layer": "building",
+          paint: {
+            "fill-extrusion-pattern": ["match", ["get", "ftCode"], 3103, "checker", "odd"],
+            "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 40, 12],
+            "fill-extrusion-opacity": 0.9,
+          } },
+      ]),
+      sprite: SPRITE,
+    },
+    camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 },
+    limits: { mean: 0.3, p99: 2 },
+    gap: "pattern edges on walls and roofs shift by under a pixel",
+  },
+
+  // Translucent extrusions: each pixel colored once by its nearest surface, coincident roofs too
+  // (MapLibre's depth pass, then a color pass counted by the stencil).
+  "extrusions-translucent": {
+    style: style([{ id: "building-3d", type: "fill-extrusion", source: "gsi", "source-layer": "building",
+      paint: { "fill-extrusion-color": "#1e8c46", "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 40, 12], "fill-extrusion-opacity": 0.9 } }]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.5, bearing: 30, pitch: 50 },
+    limits: { mean: 0.12, p99: 1 },
+  },
 };

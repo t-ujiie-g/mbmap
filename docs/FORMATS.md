@@ -42,7 +42,8 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
   along as i8 (`LINE_VERTEX_BYTES` 8). Extrusion vertices
   (`EXTRUSION_VERTEX_BYTES` 24) are x, y, normal x, y, z (times 2^14; x's lowest
-  bit set on the top edge), 0, and the feature's centroid x, y as i16, then its
+  bit set on the top edge), the distance along the ring's walls (0 on roofs;
+  MapLibre's `edgeDistance` halved), and the feature's centroid x, y as i16, then its
   base and height at the tile's zoom and one deeper as u16 decimeters (0 to
   6553.5 m). Coordinates are in `@core.TILE_EXTENT` units.
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.

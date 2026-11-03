@@ -7,7 +7,7 @@ test "texture_placement maps a tile and its child into the terrain texture" {
     center_depth: 1.0,
     clip: [0.0, 0.0, 4096.0, 4096.0],
     latitudes: (0.0, 0.0),
-    pattern: { x: 0.0, y: 0.0, units: 1.0, },
+    pattern: { x: 0.0, y: 0.0, units: 1.0, height_factor: -1.0, },
   }
   let into = @core.TileId::new(10, 4, 6).unwrap()
   let e = @core.TILE_EXTENT.to_double()
