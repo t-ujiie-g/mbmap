@@ -303,6 +303,7 @@ fn Map::draw_texture(
           index,
           layer,
           shared,
+          s.id,
           texture_placement(s, id, size),
           s.meshes,
           px,

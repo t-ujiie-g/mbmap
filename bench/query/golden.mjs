@@ -26,6 +26,17 @@ for (const l of stated.layers) {
 }
 await writeFile(path.join(ROOT, "bench/dist/query-state.json"), JSON.stringify(stated));
 await writeFile(path.join(ROOT, "bench/dist/query-extrusion.json"), JSON.stringify(extruded));
+// Layers drawn away from their geometry: translated (to the map or the viewport), roads offset
+// by feature and gapped, circles lying on the map or kept on screen.
+const moved = structuredClone(base);
+for (const l of moved.layers) {
+  if (l.id === "building") Object.assign(l.paint, { "fill-translate": [8, -6], "fill-translate-anchor": "viewport" });
+  if (l.id === "road") Object.assign(l.paint, { "line-offset": ["match", ["get", "rdCtg"], [0, 1], 6, -3], "line-gap-width": 3 });
+  if (l.id === "railway") Object.assign(l.paint, { "line-translate": [0, 10] });
+  if (l.id === "symbol") Object.assign(l.paint, { "circle-pitch-alignment": "map", "circle-translate": [5, 5] });
+  if (l.id === "elevation") Object.assign(l.paint, { "circle-pitch-scale": "viewport" });
+}
+await writeFile(path.join(ROOT, "bench/dist/query-moved.json"), JSON.stringify(moved));
 
 const tokyo = [139.7671, 35.6812];
 const views = [
@@ -36,6 +47,8 @@ const views = [
     name: "state", style: "query-state", camera: { center: tokyo, zoom: 15, bearing: 0, pitch: 0 },
     states: [[{ source: "gsi", sourceLayer: "building", id: 3103 }, { on: true }], [{ source: "gsi", sourceLayer: "road", id: 0 }, { on: true, n: 1 }]],
   },
+  { name: "moved", style: "query-moved", camera: { center: tokyo, zoom: 15.4, bearing: 35, pitch: 0 } },
+  { name: "moved-tilted", style: "query-moved", camera: { center: tokyo, zoom: 15.4, bearing: -30, pitch: 50 }, tilted: true },
   { name: "extrusion", style: "query-extrusion", camera: { center: tokyo, zoom: 15.5, bearing: -20, pitch: 55 }, tilted: true },
 ];
 const points = [];

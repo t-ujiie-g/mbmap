@@ -43,6 +43,7 @@ fn TileProcessor::line_layer(
           round_limit=sl.round_limit,
           dashed=sl.line_distances(),
           progress=gradient,
+          offset=sl.line_offsets(),
           extent=layer.extent(),
         )
         if gradient && out.num_vertices() > before {

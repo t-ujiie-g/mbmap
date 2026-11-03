@@ -157,6 +157,60 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 16.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
+  // Lines beside their geometry (`line-offset`, per feature too), cased by a gap (`line-gap-width`)
+  // and blurred (`line-blur`), through miter, bevel and round joins.
+  "line-offset": {
+    style: style([
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#e8a33b", "line-width": 2, "line-offset": ["match", ["get", "rdCtg"], [0, 1], 6, -3] } },
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway", layout: { "line-join": "miter" },
+        paint: { "line-color": "#555555", "line-width": 1.5, "line-offset": 4 } },
+      { id: "river", type: "line", source: "gsi", "source-layer": "river", layout: { "line-join": "bevel" },
+        paint: { "line-color": "#3a7bd5", "line-width": 1, "line-offset": -2.5 } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "line-gap": {
+    style: style([
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#8a6d4b", "line-width": 1.5, "line-gap-width": ["match", ["get", "rdCtg"], [0, 1], 8, 4] } },
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway",
+        paint: { "line-color": "#333333", "line-width": 3, "line-blur": 2, "line-opacity": 0.8 } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: 25, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Every layer kind's `*-translate`, anchored to the map or to the turned viewport.
+  translate: {
+    style: style([
+      { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-color": "#a8d4f0", "fill-translate": [12, -6] } },
+      { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+        paint: { "fill-color": "#d9c9b6", "fill-translate": [-4, 5], "fill-translate-anchor": "viewport" } },
+      { id: "road", type: "line", source: "gsi", "source-layer": "road",
+        paint: { "line-color": "#999999", "line-width": 2, "line-translate": [6, 6], "line-translate-anchor": "viewport" } },
+      { id: "pt", type: "circle", source: "gsi", "source-layer": "symbol",
+        paint: { "circle-radius": 4, "circle-color": "#3b6ed6", "circle-translate": [0, -10] } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15, bearing: -35, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Circles under pitch: on the map or facing the viewer, growing with the map or kept on screen,
+  // blurred.
+  "circle-pitch": {
+    style: style([
+      { id: "map-map", type: "circle", source: "gsi", "source-layer": "symbol", filter: ["==", ["%", ["get", "ftCode"], 4], 0],
+        paint: { "circle-radius": 6, "circle-color": "#d7191c", "circle-pitch-alignment": "map" } },
+      { id: "map-viewport", type: "circle", source: "gsi", "source-layer": "symbol", filter: ["==", ["%", ["get", "ftCode"], 4], 1],
+        paint: { "circle-radius": 6, "circle-color": "#2b83ba", "circle-pitch-alignment": "map", "circle-pitch-scale": "viewport" } },
+      { id: "viewport-viewport", type: "circle", source: "gsi", "source-layer": "symbol", filter: ["==", ["%", ["get", "ftCode"], 4], 2],
+        paint: { "circle-radius": 6, "circle-color": "#1a9641", "circle-pitch-scale": "viewport", "circle-stroke-width": 1.5, "circle-stroke-color": "#ffffff" } },
+      { id: "blurred", type: "circle", source: "gsi", "source-layer": "symbol", filter: ["==", ["%", ["get", "ftCode"], 4], 3],
+        paint: { "circle-radius": 8, "circle-color": "#7a4fb0", "circle-blur": 0.6 } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 20, pitch: 55 },
+    limits: { mean: 0.05, p99: 1 },
+  },
   // A clustered GeoJSON source: circles sized and colored by `point_count`, and the points left alone.
   clusters: {
     style: style([

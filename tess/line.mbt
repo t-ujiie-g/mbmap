@@ -51,19 +51,20 @@ const ROUND_SEGMENTS : Int32 = 8
 
 ///|
 /// Line geometry: `vertices` holds `LINE_VERTEX_STRIDE` ints per vertex,
-/// `indices` holds triangles as vertex index triples, `distances` each
-/// vertex's distance along its line (see `MAX_LINE_DISTANCE`) when dashed and
-/// `progress` its share of the line's length (MapLibre's `line-progress`).
+/// `indices` triangles, and per vertex `distances` along its line when dashed,
+/// `progress` (MapLibre's `line-progress`) and `offsets` (x, y at `EXTRUDE_SCALE`:
+/// MapLibre's `a_offset_normal`), docs/FORMATS.md "Packed tile".
 pub struct LineBuffers {
   vertices : Array[Int32]
   indices : Array[Int32]
   distances : Array[Int32]
   progress : Array[Double]
+  offsets : Array[Int32]
 }
 
 ///|
 pub fn LineBuffers::new() -> LineBuffers {
-  { vertices: [], indices: [], distances: [], progress: [], }
+  { vertices: [], indices: [], distances: [], progress: [], offsets: [], }
 }
 
 ///|
@@ -72,6 +73,7 @@ pub fn LineBuffers::clear(self : LineBuffers) -> Unit {
   self.indices.clear()
   self.distances.clear()
   self.progress.clear()
+  self.offsets.clear()
 }
 
 ///|
@@ -102,8 +104,8 @@ pub fn LineTessellator::new(
 
 ///|
 /// Appends the line through points `[start, end)` of `coords` to `out` (equal ends
-/// close it); `miter_limit` is in half widths. `dashed` (with the layer's `extent`)
-/// and `progress` record `out.distances` and `out.progress`, splitting sharp corners.
+/// close it); `miter_limit` is in half widths. `dashed` (with `extent`), `progress`
+/// and `offset` record `out`'s per-vertex arrays, the first two splitting sharp corners.
 pub fn LineTessellator::add_line(
   self : LineTessellator,
   coords : ArrayView[Int32],
@@ -116,6 +118,7 @@ pub fn LineTessellator::add_line(
   round_limit~ : Double = 1.05,
   dashed~ : Bool = false,
   progress~ : Bool = false,
+  offset~ : Bool = false,
   extent~ : Int32 = 4096,
 ) -> Unit {
   let n = self.load_points(coords, start, end)
@@ -153,11 +156,17 @@ pub fn LineTessellator::add_line(
     round_limit,
     dashed,
     progress,
+    offset,
     total,
     scale: @core.TILE_EXTENT.to_double() / extent.to_double(),
     along: 0.0,
     whole: 0.0,
     distance: 0,
+    ox: 0.0,
+    oy: 0.0,
+    jx: 0.0,
+    jy: 0.0,
+    fallback: 0.0,
   }
   let xs = self.xs
   let ys = self.ys
@@ -166,6 +175,8 @@ pub fn LineTessellator::add_line(
   if closed {
     // Start past the join at point 0; that join is drawn last, back into
     // `first`, or into a pair at the ring's full length when dashed.
+    emitter.join_offset(nx[n - 1], ny[n - 1], nx[0], ny[0])
+    emitter.offset_toward(nx[0], ny[0])
     let first = emitter.pair(xs[0], ys[0], nx[0], ny[0])
     let mut prev = first
     for i in 1..<n {
@@ -182,6 +193,8 @@ pub fn LineTessellator::add_line(
       prev = emitter.restart(prev)
     }
     emitter.advance(xs[n - 1], ys[n - 1], xs[0], ys[0])
+    emitter.join_offset(nx[n - 1], ny[n - 1], nx[0], ny[0])
+    emitter.offset_toward(nx[0], ny[0])
     let close_to = if dashed {
       emitter.pair(xs[0], ys[0], nx[0], ny[0])
     } else {
@@ -201,6 +214,7 @@ pub fn LineTessellator::add_line(
     )
     return
   }
+  emitter.end_offset(nx[0], ny[0])
   let mut prev = emitter.pair_for_cap(
     xs[0],
     ys[0],
@@ -225,6 +239,7 @@ pub fn LineTessellator::add_line(
   }
   let last = n - 1
   emitter.advance(xs[last - 1], ys[last - 1], xs[last], ys[last])
+  emitter.end_offset(nx[last - 1], ny[last - 1])
   let end_pair = emitter.pair_for_cap(
     xs[last],
     ys[last],
@@ -362,9 +377,9 @@ fn LineTessellator::split_corners(
 }
 
 ///|
-/// Writes vertices; a dashed line also records each vertex's distance:
-/// `along` units of its layer so far, `scale` stored units per unit; with
-/// `progress`, `whole` units of the line's `total` so far.
+/// Writes vertices: dashed, `along` units so far (`scale` stored units per unit);
+/// with `progress`, `whole` units of `total`; with `offset`, (`ox`, `oy`), at a join
+/// its offset normal (`jx`, `jy`) eased `fallback` toward the vertex's normal.
 priv struct Emitter {
   trig : @core.Trig
   out : LineBuffers
@@ -373,11 +388,68 @@ priv struct Emitter {
   round_limit : Double
   dashed : Bool
   progress : Bool
+  offset : Bool
   total : Double
   scale : Double
   mut along : Double
   mut whole : Double
   mut distance : Int32
+  mut ox : Double
+  mut oy : Double
+  mut jx : Double
+  mut jy : Double
+  mut fallback : Double
+}
+
+///|
+/// Longest offset normal at a join (MapLibre's `MAX_OFFSET_MITER_LENGTH`: what
+/// a byte at `EXTRUDE_SCALE` holds).
+const MAX_OFFSET_MITER : Double = 2.0
+
+///|
+/// Offset normals follow a join's miter vector at a line end's normal.
+fn Emitter::end_offset(self : Emitter, nx : Double, ny : Double) -> Unit {
+  self.ox = nx
+  self.oy = ny
+}
+
+///|
+/// The offset normal of the join between normals a and b (MapLibre's
+/// `offsetNormal` and `offsetFallback`, easing from miter length 3 to 8).
+fn Emitter::join_offset(
+  self : Emitter,
+  ax : Double,
+  ay : Double,
+  bx : Double,
+  by : Double,
+) -> Unit {
+  let mx = ax + bx
+  let my = ay + by
+  let len = (mx * mx + my * my).sqrt()
+  if len == 0.0 {
+    self.jx = bx
+    self.jy = by
+    self.fallback = 1.0
+    return
+  }
+  let ux = mx / len
+  let uy = my / len
+  let cos_half = ux * bx + uy * by
+  let miter = if cos_half != 0.0 { 1.0 / cos_half } else { @double.infinity }
+  let k = @cmp.minimum(miter, MAX_OFFSET_MITER)
+  self.jx = ux * k
+  self.jy = uy * k
+  self.fallback = @cmp.maximum(0.0, @cmp.minimum(1.0, (miter - 3.0) / 5.0))
+  self.ox = self.jx
+  self.oy = self.jy
+}
+
+///|
+/// Sets the offset normal of the next vertices to the join's, eased toward the
+/// normal (nx, ny).
+fn Emitter::offset_toward(self : Emitter, nx : Double, ny : Double) -> Unit {
+  self.ox = self.jx + (nx - self.jx) * self.fallback
+  self.oy = self.jy + (ny - self.jy) * self.fallback
 }
 
 ///|
@@ -416,6 +488,12 @@ fn Emitter::restart(self : Emitter, p : Int32) -> Int32 {
   for k in 0..<(2 * LINE_VERTEX_STRIDE) {
     v.push(v[p * LINE_VERTEX_STRIDE + k])
   }
+  if self.offset {
+    let o = self.out.offsets
+    for k in 0..<4 {
+      o.push(o[p * 2 + k])
+    }
+  }
   self.out.distances.push(0)
   self.out.distances.push(0)
   id
@@ -441,6 +519,14 @@ fn Emitter::vertex(
   v.push(along)
   if self.dashed {
     self.out.distances.push(self.distance)
+  }
+  if self.offset {
+    self.out.offsets.push(
+      (self.ox * EXTRUDE_SCALE.to_double()).round().to_int(),
+    )
+    self.out.offsets.push(
+      (self.oy * EXTRUDE_SCALE.to_double()).round().to_int(),
+    )
   }
   if self.progress {
     self.out.progress.push(
@@ -585,17 +671,28 @@ fn Emitter::join_at(
     Bevel => miter <= 1.0 + STRAIGHT_EPSILON
     Round => miter < self.round_limit
   }
+  if close_to is None {
+    self.join_offset(ax, ay, bx, by)
+  }
   if use_miter && close_to is None {
+    self.ox = self.jx
+    self.oy = self.jy
     let pair = self.pair(x, y, mx / mlen * miter, my / mlen * miter)
     self.quad(prev, pair)
     return pair
   }
+  self.offset_toward(ax, ay)
   let end_pair = self.pair(x, y, ax, ay)
   self.quad(prev, end_pair)
   let start_pair = match close_to {
     Some(p) => p
-    None => self.pair(x, y, bx, by)
+    None => {
+      self.offset_toward(bx, by)
+      self.pair(x, y, bx, by)
+    }
   }
+  self.ox = self.jx
+  self.oy = self.jy
   let cross = ax * by - ay * bx
   if cross == 0.0 && ax * bx + ay * by > 0.0 {
     return start_pair

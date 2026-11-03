@@ -84,6 +84,36 @@ fn mesh_paint(
 }
 
 ///|
+/// `at` moved by `layer`'s `*-translate` (MapLibre's `translatePosition`): CSS px
+/// in tile `id`'s units at the camera's zoom, turned with the camera when
+/// anchored to the viewport.
+fn Map::translated(
+  self : Map,
+  at : @render_webgl2.Placement,
+  layer : @style.StyleLayer,
+  id : @core.TileId,
+) -> @render_webgl2.Placement {
+  let (x, y) = layer.translate
+  if x == 0.0 && y == 0.0 {
+    return at
+  }
+  let (x, y) = if layer.translate_viewport {
+    let a = self.transform.camera.bearing * @math.PI / 180.0
+    let c = @math.cos(a)
+    let s = @math.sin(a)
+    (x * c - y * s, x * s + y * c)
+  } else {
+    (x, y)
+  }
+  let k = 1.0 / self.transform.tile_scale(id, @core.TILE_EXTENT)
+  {
+    ..at,
+    matrix: at.matrix.translate(x * k, y * k, 0.0),
+    raster_matrix: at.raster_matrix.translate(x * k, y * k, 0.0),
+  }
+}
+
+///|
 /// Draws `index`'s extrusion meshes of one tile, raised onto terrain if any.
 fn Map::draw_extrusions(
   self : Map,
@@ -115,10 +145,11 @@ fn Map::draw_extrusions(
         }
       None => None
     }
+    let at = self.translated(d.at, layer, d.id)
     self.draw_by_state(m, layer, p, zoom, p => {
       self.renderer.draw_extrusion(
         m.mesh,
-        d.at,
+        at,
         (p.r, p.g, p.b),
         if pattern is Some(_) {
           p.opacity
@@ -167,11 +198,13 @@ fn Map::draw_layer(
   index : Int32,
   layer : @style.StyleLayer,
   shared : Paint,
+  id : @core.TileId,
   at : @render_webgl2.Placement,
   meshes : Array[LayerMesh],
   dpr : Double,
   height_scale~ : Double = 0.0,
 ) -> Unit {
+  let at = self.translated(at, layer, id)
   let zoom = self.transform.camera.zoom
   // Dashes and the width they are measured in are taken at the integer zoom.
   let floor_zoom = @cmp.maximum(0.0, zoom.floor())
@@ -238,6 +271,7 @@ fn Map::draw_layer(
           self.slots(index, m, p, zoom),
           dpr,
           g,
+          blur=p.blur,
         )
       })
     } else if m.kind == KIND_LINE && layer.pattern is Some(_) {
@@ -254,6 +288,7 @@ fn Map::draw_layer(
           pos,
           floor_width~,
           floor_t~,
+          blur=p.blur,
         )
       })
     } else if m.kind == KIND_LINE {
@@ -274,6 +309,7 @@ fn Map::draw_layer(
               px_per_unit~,
               floor_width~,
               floor_t~,
+              blur=p.blur,
             )
           })
         }
@@ -284,6 +320,7 @@ fn Map::draw_layer(
               at,
               self.slots(index, m, p, zoom),
               dpr,
+              blur=p.blur,
             )
           })
       }
@@ -294,6 +331,9 @@ fn Map::draw_layer(
           at,
           self.slots(index, m, p, zoom),
           dpr,
+          scale_with_map=layer.scale_with_map,
+          pitch_with_map=layer.pitch_with_map,
+          blur=p.blur,
         )
       })
     } else if layer.pattern is Some(_) {
@@ -468,7 +508,16 @@ fn Map::draw_frame(
     let draws = draws_of.get(layer.source).unwrap_or([])
     self.draw_icons(index, layer, draws, dpr, height_scale)
     for d in draws {
-      self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
+      self.draw_layer(
+        index,
+        layer,
+        shared,
+        d.id,
+        d.at,
+        d.meshes,
+        dpr,
+        height_scale~,
+      )
     }
   }
 }
@@ -502,8 +551,13 @@ fn Map::slots(
     },
   )
   color(@style.SLOT_STROKE_COLOR, p.stroke_color)
-  slots.constant(@style.SLOT_STROKE_OPACITY, p.stroke_opacity)
-  slots.constant(@style.SLOT_STROKE_WIDTH, p.stroke_width)
+  if m.kind == KIND_LINE {
+    slots.constant(@style.SLOT_GAP_WIDTH, p.gap_width)
+    slots.constant(@style.SLOT_OFFSET, p.offset)
+  } else {
+    slots.constant(@style.SLOT_STROKE_OPACITY, p.stroke_opacity)
+    slots.constant(@style.SLOT_STROKE_WIDTH, p.stroke_width)
+  }
   // A fill's outline color is its own, or its fill color (slot by slot).
   let outline_follows = m.kind == KIND_FILL &&
     self.style.layers[index].outline_color is None

@@ -437,6 +437,13 @@ fn StyleWriter::layer(self : StyleWriter, l : StyleLayer) -> Unit {
   self.opt_expr(l.dasharray)
   self.opt_expr(l.gradient)
   self.opt_expr(l.pattern)
+  self.expr(l.gap_width)
+  self.expr(l.offset)
+  self.expr(l.blur)
+  self.pair(l.translate)
+  self.flag(l.translate_viewport)
+  self.flag(l.scale_with_map)
+  self.flag(l.pitch_with_map)
 }
 
 ///|
@@ -888,6 +895,13 @@ fn StyleReader::layer(self : StyleReader) -> StyleLayer {
   let outline_color = self.opt_expr()
   let dasharray = self.opt_expr()
   let gradient = self.opt_expr()
+  let pattern = self.opt_expr()
+  let gap_width = self.top()
+  let offset = self.top()
+  let blur = self.top()
+  let translate = self.pair()
+  let translate_viewport = self.flag()
+  let scale_with_map = self.flag()
   {
     id,
     kind,
@@ -922,7 +936,14 @@ fn StyleReader::layer(self : StyleReader) -> StyleLayer {
     outline_color,
     dasharray,
     gradient,
-    pattern: self.opt_expr(),
+    pattern,
+    gap_width,
+    offset,
+    blur,
+    translate,
+    translate_viewport,
+    scale_with_map,
+    pitch_with_map: self.flag(),
   }
 }
 
