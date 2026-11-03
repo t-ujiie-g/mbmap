@@ -50,18 +50,29 @@ interface SpriteEntry {
   sdf?: boolean;
 }
 
+/** Most images taken from one sprite. */
+export const MAX_SPRITE_IMAGES = 10000;
+/** Largest image the pattern and icon atlas holds with its 1 px padding (render_webgl2/pattern_atlas.mbt). */
+export const MAX_SPRITE_WIDTH = 1022;
+export const MAX_SPRITE_HEIGHT = 4094;
+
 /**
  * The images of a sprite sheet: each entry of `index` cut out of `sheet` (its pixels), named
- * with `prefix` (MapLibre's `id:` for a sprite of several); entries outside the sheet are left out.
+ * with `prefix` (MapLibre's `id:` for a sprite of several). Entries outside the sheet or too large
+ * for the atlas are left out, and so is anything past `MAX_SPRITE_IMAGES` or twice the sheet's bytes.
  */
 export function spriteImages(index: unknown, sheet: ImagePixels, prefix: string): { name: string; pixels: ImagePixels; pixelRatio: number; sdf: boolean }[] {
   if (!index || typeof index !== "object") throw new Error("mbmap: a sprite index must be a JSON object");
   const out = [];
+  let budget = sheet.data.length * 2;
   for (const [name, e] of Object.entries(index as Record<string, SpriteEntry>)) {
     const { x, y, width, height } = e ?? ({} as SpriteEntry);
     if (![x, y, width, height].every(Number.isInteger) || width <= 0 || height <= 0 || x < 0 || y < 0 || x + width > sheet.width || y + height > sheet.height) {
       continue;
     }
+    if (width > MAX_SPRITE_WIDTH || height > MAX_SPRITE_HEIGHT) continue;
+    budget -= width * height * 4;
+    if (budget < 0 || out.length >= MAX_SPRITE_IMAGES) break;
     const data = new Uint8Array(width * height * 4);
     for (let row = 0; row < height; row++) {
       const from = ((y + row) * sheet.width + x) * 4;

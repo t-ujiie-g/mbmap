@@ -6,17 +6,17 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 107500,
+      "bytes": 107556,
       "budget": 120000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1563,
+      "bytes": 1567,
       "budget": 5000
     },
     {
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
-      "bytes": 470,
+      "bytes": 742,
       "budget": 2000
     },
     {
@@ -26,12 +26,12 @@
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 890,
+      "bytes": 1644,
       "budget": 2000
     },
     {
       "name": "image, video and canvas sources (loaded by mbmap when a style has one)",
-      "bytes": 1962,
+      "bytes": 2617,
       "budget": 3000
     },
     {
@@ -61,17 +61,17 @@
     },
     {
       "name": "display worker",
-      "bytes": 92535,
+      "bytes": 93234,
       "budget": 100000
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 27412,
+      "bytes": 27594,
       "budget": 30000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3370,
+      "bytes": 3404,
       "budget": 5000
     },
     {
@@ -81,7 +81,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 27082,
+      "bytes": 27863,
       "budget": 30000
     },
     {
@@ -96,7 +96,7 @@
     },
     {
       "name": "mbmap/geodesic",
-      "bytes": 1139,
+      "bytes": 1141,
       "budget": 2000
     },
     {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { imageOptions, imagePixels, spriteImages, spriteList } from "../src/images.ts";
+import { imageOptions, imagePixels, MAX_SPRITE_IMAGES, spriteImages, spriteList } from "../src/images.ts";
 
 const noCanvas = () => {
   throw new Error("no canvas in this test");
@@ -43,6 +43,23 @@ test("spriteImages cuts each entry out of the sheet, prefixed, and skips those o
   assert.deepEqual([...dot.pixels.data.subarray(0, 8)], [1, 0, 0, 255, 2, 0, 0, 255]);
   assert.deepEqual([...dot.pixels.data.subarray(8, 12)], [1, 1, 0, 255]);
   assert.throws(() => spriteImages(null, sheet, ""));
+});
+
+test("spriteImages skips entries too large for the atlas", () => {
+  const sheet = { width: 1100, height: 2, data: new Uint8Array(1100 * 2 * 4) };
+  const images = spriteImages({ wide: { x: 0, y: 0, width: 1023, height: 1 }, fits: { x: 0, y: 0, width: 1022, height: 2 } }, sheet, "");
+  assert.deepEqual(images.map((i) => i.name), ["fits"]);
+  const tall = { width: 1, height: 4095, data: new Uint8Array(4095 * 4) };
+  assert.deepEqual(spriteImages({ tall: { x: 0, y: 0, width: 1, height: 4095 } }, tall, ""), []);
+});
+
+test("spriteImages copies at most twice the sheet's bytes and MAX_SPRITE_IMAGES entries", () => {
+  const sheet = { width: 4, height: 4, data: new Uint8Array(4 * 4 * 4) };
+  const whole = { x: 0, y: 0, width: 4, height: 4 };
+  assert.deepEqual(spriteImages({ a: whole, b: whole, c: whole }, sheet, "").map((i) => i.name), ["a", "b"]);
+  const big = { width: 200, height: 200, data: new Uint8Array(200 * 200 * 4) };
+  const index = Object.fromEntries(Array.from({ length: MAX_SPRITE_IMAGES + 5 }, (_, i) => [`p${i}`, { x: 0, y: 0, width: 1, height: 1 }]));
+  assert.equal(spriteImages(index, big, "").length, MAX_SPRITE_IMAGES);
 });
 
 test("spriteList reads one URL or a list of ids and URLs", () => {

@@ -1,15 +1,17 @@
 // A PMTiles archive's header as a TileJSON-like document (pmtiles 4.5.0's
 // `bytesToHeader` layout). Loaded only for `pmtiles://` sources; the display
 // worker reads the rest (worker/js/pmtiles.mjs).
+import { fetchRange } from "../../worker/js/pmtiles.mjs";
 
 /** Tile types of the header's byte 99. */
 const TYPES: Record<number, string> = { 1: "mvt", 2: "png", 3: "jpeg", 4: "webp", 5: "avif" };
 
-/** The document for `pmtiles://<archive>`: tiles the worker reads from the archive, its zoom range, bounds and tile type. */
+/**
+ * The document for `pmtiles://<archive>`: tiles the worker reads from the archive, its zoom range,
+ * bounds and tile type. A server that ignores Range is refused, as the worker refuses it.
+ */
 export async function pmtilesDocument(archive: string): Promise<Record<string, unknown>> {
-  const res = await fetch(archive, { headers: { Range: "bytes=0-126" }, credentials: "omit" });
-  if (!res.ok) throw new Error(`mbmap: PMTiles ${archive}: HTTP ${res.status}`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
+  const bytes = await fetchRange(archive, 0, 127);
   if (bytes.length < 127 || new TextDecoder().decode(bytes.subarray(0, 7)) !== "PMTiles" || bytes[7] !== 3) {
     throw new Error(`mbmap: ${archive} is not a PMTiles v3 archive`);
   }

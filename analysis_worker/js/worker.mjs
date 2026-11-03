@@ -1,7 +1,9 @@
 // Glue around the wasm-gc build of `analysis_worker`; messages are in
 // docs/FORMATS.md ("Analysis worker messages").
 
-import { hostNumber } from "../../wasmio/js/host.mjs";
+import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { readCapped } from "../../worker/js/body.mjs";
+import { checkImageSize } from "../../worker/js/imagesize.mjs";
 import { tableToGeoJSON } from "./table.mjs";
 
 const decoder = new TextDecoder();
@@ -63,7 +65,7 @@ async function load({ url, bytes, crs }) {
     check(typeof url === "string" && /^https?:/.test(url));
     const res = await fetch(url, { credentials: "omit" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    data = new Uint8Array(await res.arrayBuffer());
+    data = await readCapped(res, MAX_INPUT_BYTES);
   }
   input(data);
   const dataset = counted(wasm.load());
@@ -103,7 +105,9 @@ async function loadDem({ url, z, bounds, encoding }) {
     const res = await fetch(t.href, { credentials: "omit" });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${t.href}`);
-    return createImageBitmap(await res.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    const bytes = await readCapped(res);
+    checkImageSize(bytes, MAX_GRID_SIDE, `DEM tile ${t.href}`);
+    return createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
   }));
   const size = images.find((i) => i)?.width ?? 256;
   const [width, height] = [(x1 - x0 + 1) * size, (y1 - y0 + 1) * size];

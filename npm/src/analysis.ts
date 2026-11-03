@@ -2,7 +2,7 @@
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
 // geometry operations are Clipper2's, in a module loaded on their first use.
 import { demZoom } from "./dem-zoom";
-import { wasmUrl } from "./urls";
+import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
 /** `[minX, minY, maxX, maxY]` in degrees. */
@@ -339,10 +339,7 @@ export class DemGrid {
 /** Mosaics the DEM tiles of `tiles` (a `{z}/{x}/{y}` http(s) template) covering `bounds` into a grid. */
 export async function loadDem(tiles: string, options: DemOptions): Promise<DemGrid> {
   start(options);
-  const url = new URL(tiles, document.baseURI);
-  if (!/^https?:$/.test(url.protocol)) throw new Error(`mbmap: analysis: DEM tiles must be an http(s) URL: ${url.href}`);
-  // new URL() percent-encodes the placeholders' braces.
-  const template = url.href.replace(/%7B([zxy])%7D/g, "{$1}");
+  const template = resolveTemplate(tiles, document.baseURI, "analysis: DEM tiles");
   const r = await call<{ grid: number; width: number; height: number; bounds: BBox }>("loadDem", {
     url: template, z: options.zoom, bounds: options.bounds, encoding: encodingArgs(options.encoding),
   });
@@ -420,9 +417,7 @@ export async function load(data: unknown, options: LoadOptions = {}): Promise<Da
   let args: object;
   let transfer: Transferable[] = [];
   if (typeof data === "string") {
-    const url = new URL(data, document.baseURI);
-    if (!/^https?:$/.test(url.protocol)) throw new Error(`mbmap: analysis: data must be an http(s) URL: ${url.href}`);
-    args = { url: url.href };
+    args = { url: httpUrl(data, document.baseURI, "analysis: data") };
   } else {
     // Copied, so the caller's buffer stays usable after the transfer.
     const bytes =
