@@ -73,11 +73,16 @@ vertex range (no indices):
 - f64 offset x, offset y, max width, line height (ems), padding (px);
 - u8 text justify (`auto`, `left`, `center`, `right`), u8 variable anchor count, then
   per variable anchor its u8 code (as the text anchor) and f64 offset x, y (ems,
-  MapLibre's `text-variable-anchor-offset` with its baseline shift); u32 label count;
+  MapLibre's `text-variable-anchor-offset` with its baseline shift);
+- u8 placement (`point`, `line`, `line-center`), u8 keep upright, f64 spacing (px),
+  max angle (degrees); u32 label count;
 - per label: u32 index of its feature in the source layer, i16 anchor x, y
-  (`TILE_EXTENT` units, inside the tile), f64 text size
+  (`TILE_EXTENT` units, inside the tile; 0 along lines), f64 text size
   (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
-  booleans are written out by the glue).
+  booleans are written out by the glue);
+- along lines, one label per feature, then its lines: u32 line count, per line u32
+  point count and i16 x, y per point (`TILE_EXTENT` units, clamped to i16). The glue
+  finds the anchors (`worker/js/line-labels.mjs`).
 
 ## Symbol vertices (`worker/js/symbols.mjs`)
 
@@ -96,6 +101,17 @@ layouts V, first index and index count of each layout's quads. A label with vari
 anchors is laid out centered; one of several lines has V = 3 layouts one after the
 other, justified left, center and right, otherwise V = 1. `anchors` holds the
 variable anchors as code, offset x, y.
+
+Along lines a label is an instance per anchor, found as MapLibre does for tiles 1, 2
+and 4 times as deep as the source's (it lays labels out again past a source's
+maxzoom); its anchor may fall on half units, its box is its collision circle, and its
+glyphs' corner offsets are from each glyph's middle. The entry also has `lineLabels`,
+6 floats per label: that level (0-2), the anchor's segment, the first point and point
+count of its line in `lines` (x, y pairs, `TILE_EXTENT` units), its first glyph in
+`glyphOffsets` (each glyph's middle along the line from the anchor, in 24ths of an
+em) and its collision circle's diameter (px); and `keepUpright`. The main thread
+places each glyph for each frame the camera moved (`map/line_labels.mbt`) into a per-vertex x, y (tile
+units) and angle.
 
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 

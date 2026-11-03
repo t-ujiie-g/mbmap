@@ -42,6 +42,7 @@ const PLACEMENT_INTERVAL : Double = 100.0
 /// terrain heights in meters as of DEM version `heights_at`. With variable
 /// anchors (`anchors`: code and offset x, y in ems each), `anchor` is the one each
 /// label took, `variant` its layout and `shifts` its move in CSS px as uploaded.
+/// Labels along lines have `line`.
 priv struct LabelSet {
   labels : @render_webgl2.JsBuffer
   count : Int32
@@ -49,6 +50,7 @@ priv struct LabelSet {
   ignore_placement : Bool
   padding : Double
   anchors : FixedArray[Double]
+  line : LineSet?
   shown : FixedArray[Bool]
   anchor : FixedArray[Int32]
   variant : FixedArray[Int32]
@@ -142,6 +144,7 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
       ignore_placement: get_bool(l, "ignorePlacement"),
       padding: get_double(l, "padding"),
       anchors: FixedArray::makei(length_of(anchors), i => f32_at(anchors, i)),
+      line: line_set(l, get_int(l, "count") / 6),
       shown: FixedArray::make(count, false),
       anchor: FixedArray::make(count, -1),
       variant: FixedArray::make(count, 0),
@@ -258,6 +261,25 @@ fn Map::place_labels(
       // 8192 units wide, deeper than the source's (`overscaling`).
       let deeper = @cmp.maximum(0, zoom.to_int() - p.draw.id.z)
       let unit = (1 << deeper).to_double() / 16.0
+      if p.set.line is Some(l) {
+        let level = @cmp.minimum(deeper, LINE_LEVELS - 1)
+        let tile_px = 1.0 / t.tile_scale(p.draw.id, @core.TILE_EXTENT)
+        let show = l.meta[i * LINE_FLOATS].to_int() == level &&
+          self.place_line_label(
+            grid,
+            p.draw.at,
+            p.set,
+            l,
+            i,
+            height_scale,
+            tile_px,
+          )
+        if show != p.set.shown[i] {
+          p.set.shown[i] = show
+          p.set.changed = true
+        }
+        continue
+      }
       self.place_label(grid, p.draw.at, p.set, i, height_scale, unit)
     }
     for p in pending {
@@ -443,9 +465,9 @@ fn Map::place_label(
 }
 
 ///|
-/// The labels shown at the last placement, a line each: layer id, tile z, x,
-/// y, feature index, anchor x, y (tile units), the variable anchor's code (-1
-/// for none) and the box (CSS px). For tests comparing placement with MapLibre.
+/// The labels shown at the last placement, for tests: layer id, tile z, x, y, feature,
+/// anchor x, y (MapLibre's 8192 tile units), variable anchor code (-1 for none), box
+/// (CSS px) and, along lines, each glyph's screen x:y:angle, a line each.
 pub fn Map::placed_labels(self : Map) -> String {
   let out = StringBuilder()
   for _, draws in self.drawn {
@@ -466,9 +488,30 @@ pub fn Map::placed_labels(self : Map) -> String {
           out.write_string(
             "\{self.style.layers[m.layer].id},\{d.id.z},\{d.id.x},\{d.id.y},\{f32_at(s.labels, row + LABEL_FEATURE).to_int()},",
           )
+          let ax = (f32_at(s.labels, row) * 2.0).to_int()
+          let ay = (f32_at(s.labels, row + 1) * 2.0).to_int()
           out.write_string(
-            "\{f32_at(s.labels, row).to_int()},\{f32_at(s.labels, row + 1).to_int()},\{code},\{b[i * 4]},\{b[i * 4 + 1]},\{b[i * 4 + 2]},\{b[i * 4 + 3]}\n",
+            "\{ax},\{ay},\{code},\{b[i * 4]},\{b[i * 4 + 1]},\{b[i * 4 + 2]},\{b[i * 4 + 3]}",
           )
+          // Along lines, each glyph's place on screen and angle.
+          if s.line is Some(l) {
+            let q0 = (f32_at(s.labels, row + LABEL_FLOATS - 2) / 6.0).to_int()
+            let n = (f32_at(s.labels, row + LABEL_FLOATS - 1) / 6.0).to_int()
+            out.write_string(",")
+            for k in 0..<n {
+              let g = (q0 + k) * 3
+              let (cx, cy, _, cw) = d.at.matrix.apply(
+                l.glyphs[g],
+                l.glyphs[g + 1],
+                0.0,
+                1.0,
+              )
+              let sx = (cx / cw + 1.0) * 0.5 * self.transform.width
+              let sy = (1.0 - cy / cw) * 0.5 * self.transform.height
+              out.write_string("\{sx}:\{sy}:\{l.glyphs[g + 2]} ")
+            }
+          }
+          out.write_string("\n")
         }
       }
     }

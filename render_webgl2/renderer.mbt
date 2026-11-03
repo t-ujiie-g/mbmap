@@ -317,7 +317,20 @@ pub fn Renderer::draw_symbols(
     halo_width,
     at.center_depth,
     height_scale,
+    at.units_per_pixel * dpr,
   )
+}
+
+///|
+/// Places the glyphs of a mesh of labels along lines (`glyphs`: x, y in tile
+/// units and angle in radians per glyph quad, x below -1e8 hiding it), which
+/// `draw_symbols` then lays on the map.
+pub fn Renderer::set_glyphs(
+  self : Renderer,
+  mesh : Mesh,
+  glyphs : FixedArray[Double],
+) -> Unit {
+  gl_set_glyphs(self.gl, mesh, glyphs)
 }
 
 ///|

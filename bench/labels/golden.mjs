@@ -8,6 +8,9 @@ import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
 
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
+// How far a glyph along a line may lie from MapLibre's (CSS px) and turn from it (radians).
+const GLYPH_TOLERANCE = 0.5;
+const ANGLE_TOLERANCE = 0.01;
 const only = arg("scene");
 const tokyo = [139.7671, 35.6812];
 const source = { type: "vector", tiles: ["{origin}/bench/fixtures/gsi-bvmap/{z}/{x}/{y}.pbf"], minzoom: 14, maxzoom: 14 };
@@ -53,7 +56,30 @@ const SCENES = {
     ),
     camera: { center: tokyo, zoom: 15 },
   },
+  ...contourScenes(),
 };
+
+// GSI contours (west of the fixtures) labeled with their heights along the lines.
+function contourScenes() {
+  const west = [139.702, 35.664];
+  const contours = (layout = {}) => ({
+    id: "c", type: "symbol", source: "gsi", "source-layer": "contour",
+    layout: { "symbol-placement": "line", "text-field": "{alti}", "text-font": ["sans-serif"], "text-size": 11, ...layout },
+    paint: { "text-color": "#8a6d3b" },
+  });
+  return {
+    contours: { style: style(contours()), camera: { center: west, zoom: 14.5 }, along: true },
+    "contours-turned": { style: style(contours()), camera: { center: west, zoom: 14.7, bearing: 40 }, along: true },
+    "contours-tilted": { style: style(contours()), camera: { center: west, zoom: 14.6, bearing: -15, pitch: 45 }, along: true },
+    "contours-deeper": { style: style(contours({ "symbol-spacing": 150 })), camera: { center: west, zoom: 15.4 }, along: true },
+    "contours-center": { style: style(contours({ "symbol-placement": "line-center", "text-max-angle": 30 })), camera: { center: west, zoom: 14.5 }, along: true },
+    "contours-upright": { style: style(contours({ "text-keep-upright": false, "text-size": 14 })), camera: { center: west, zoom: 14.8, bearing: 160 }, along: true },
+    "contours-and-points": {
+      style: style(contours(), label("l", { "text-max-width": 8 })),
+      camera: { center: west, zoom: 14.8 }, along: true,
+    },
+  };
+}
 
 await mkdir(path.join(ROOT, "bench/dist/labels"), { recursive: true });
 const { server, origin } = await serve();
@@ -83,6 +109,24 @@ try {
       const b = theirs.get(l.key).box;
       return b ? Math.max(...l.box.map((v, i) => Math.abs(v - b[i]))) : 0;
     }));
+    // Along lines: how far each glyph lies from MapLibre's on screen (px) and turns from it (radians).
+    const hidden = (g) => !Number.isFinite(g[0]) || Math.abs(g[0]) > 1e6;
+    let glyphDiff = 0;
+    let angleDiff = 0;
+    let glyphCount = 0;
+    for (const l of both.filter((l) => l.glyphs)) {
+      const theirGlyphs = theirs.get(l.key).glyphs ?? [];
+      l.glyphs.forEach((g, k) => {
+        const t = theirGlyphs[k];
+        if (!t || hidden(g) !== hidden(t)) glyphDiff = Infinity;
+        else if (!hidden(g)) {
+          glyphCount++;
+          glyphDiff = Math.max(glyphDiff, Math.hypot(g[0] - t[0], g[1] - t[1]));
+          const turn = Math.abs(g[2] - t[2]) % (2 * Math.PI);
+          angleDiff = Math.max(angleDiff, Math.min(turn, 2 * Math.PI - turn));
+        }
+      });
+    }
     if (arg("debug")) {
       const tiles = (ls) => [...new Set(ls.map((l) => l.key.split(" ")[1]))].sort().join(" ");
       console.log("tiles", tiles(mbmap), "|", tiles(maplibre));
@@ -91,11 +135,13 @@ try {
         if (b && l.box.some((v, i) => Math.abs(v - b[i]) > Number(arg("debug")))) console.log(l.key, l.anchor, theirs.get(l.key).anchor, l.box.map((v) => v.toFixed(3)), b.map((v) => v.toFixed(3)));
       }
     }
-    const same = missing.length === 0 && extra.length === 0 && anchors.length === 0 && maplibre.length > 0;
+    const same = missing.length === 0 && extra.length === 0 && anchors.length === 0 && maplibre.length > 0 &&
+      glyphDiff <= GLYPH_TOLERANCE && angleDiff <= ANGLE_TOLERANCE;
     if (!same) failed++;
     results.push({
       scene: name, same, maplibre: maplibre.length, mbmap: mbmap.length,
       anchored: both.filter((l) => l.anchor !== null && l.anchor !== "top").length, boxDiff: Math.round(boxDiff * 1000) / 1000,
+      ...(scene.along ? { glyphs: glyphCount, glyphDiff: Math.round(glyphDiff * 1000) / 1000, angleDiff: Math.round(angleDiff * 1e6) / 1e6 } : {}),
       ...(same ? {} : {
         missing: missing.slice(0, 10).map((k) => `${k} ${theirs.get(k).box?.map(Math.round)}`),
         extra: extra.slice(0, 10).map((k) => `${k} ${ours.get(k).box.map(Math.round)}`),

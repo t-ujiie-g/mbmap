@@ -363,6 +363,15 @@ pub fn StyleLayer::same_line_layout(Self, Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
 pub fn StyleLayer::vertex_paint(Self) -> Array[VertexPaint]
 
+pub(all) enum SymbolPlacement {
+  Point
+  Line
+  LineCenter
+} derive(Eq, @debug.Debug)
+pub fn SymbolPlacement::equal(Self, Self) -> Bool
+pub fn SymbolPlacement::not_equal(Self, Self) -> Bool
+pub fn SymbolPlacement::to_repr(Self) -> @debug.Repr
+
 pub struct Terrain {
   source : String
   exaggeration : Double
@@ -396,6 +405,10 @@ pub fn TextJustify::to_repr(Self) -> @debug.Repr
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
+  placement : SymbolPlacement
+  spacing : Double
+  max_angle : Double
+  keep_upright : Bool
   anchor : TextAnchor
   offset : (Double, Double)
   justify : TextJustify

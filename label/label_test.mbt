@@ -29,7 +29,23 @@ test "the grid finds overlapping and touching boxes across cells" {
   // Off the grid nothing is met; over all of it, everything.
   assert_false(g.hits(201.0, 0.0, 300.0, 100.0))
   assert_true(g.hits(-1.0, -1.0, 201.0, 101.0))
-  assert_false(@label.Grid::new(10.0, 10.0).hits(-1.0, -1.0, 11.0, 11.0))
+  assert_true(@label.Grid::new(10.0, 10.0).hits(-1.0, -1.0, 11.0, 11.0))
+}
+
+///|
+test "circles meet boxes and circles as MapLibre's grid has them" {
+  let g = @label.Grid::new(200.0, 100.0, cell=32.0)
+  g.insert_circle(50.0, 50.0, 10.0)
+  // Circles must overlap; a box may touch.
+  assert_true(g.hits_circle(65.0, 50.0, 6.0))
+  assert_false(g.hits_circle(66.0, 50.0, 6.0))
+  assert_true(g.hits(60.0, 40.0, 70.0, 60.0))
+  assert_false(g.hits(58.0, 58.0, 70.0, 70.0))
+  assert_true(g.hits(57.0, 57.0, 70.0, 70.0))
+  g.insert(100.0, 10.0, 120.0, 20.0)
+  assert_true(g.hits_circle(125.0, 15.0, 5.0))
+  assert_false(g.hits_circle(125.1, 15.0, 5.0))
+  assert_false(g.hits_circle(-20.0, 50.0, 10.0))
 }
 
 ///|

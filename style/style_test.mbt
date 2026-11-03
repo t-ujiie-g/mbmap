@@ -449,9 +449,54 @@ test "variable anchors as expressions are unsupported, unknown ones invalid" {
 }
 
 ///|
-test "symbol placement on lines, icons and format are unsupported" {
+test "labels along lines read spacing, angle and uprightness, with MapLibre's defaults" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "l", "type": "symbol", "layout": {"symbol-placement": "line", "text-rotation-alignment": "map"}},
+      #|  {"id": "c", "type": "symbol", "layout": {"symbol-placement": "line-center", "symbol-spacing": 0,
+      #|   "text-max-angle": 20, "text-keep-upright": false}},
+      #|  {"id": "p", "type": "symbol"}
+      #|]}
+    ),
+  )
+  let l = s.layers[0].text.unwrap()
+  assert_eq(
+    (l.placement, l.spacing, l.max_angle, l.keep_upright),
+    (Line, 250.0, 45.0, true),
+  )
+  let c = s.layers[1].text.unwrap()
+  assert_eq(
+    (c.placement, c.spacing, c.max_angle, c.keep_upright),
+    (LineCenter, 1.0, 20.0, false),
+  )
+  assert_eq(s.layers[2].text.unwrap().placement, Point)
+  try
+    @style.Style::parse(
+      "{\"layers\": [{\"id\": \"a\", \"type\": \"symbol\", \"layout\": {\"symbol-placement\": \"middle\"}}]}",
+    )
+  catch {
+    Invalid(path~, _) => assert_eq(path, "layers[0].layout.symbol-placement")
+    e => fail("unexpected \{Repr(e)}")
+  } noraise {
+    _ => fail("expected an unknown placement to be invalid")
+  }
+}
+
+///|
+test "text along lines turned to the viewport or offset, icons and format are unsupported" {
   let cases = [
-    ("{\"symbol-placement\": \"line\"}", "layers[0].layout.symbol-placement"),
+    (
+      "{\"symbol-placement\": \"line\", \"text-rotation-alignment\": \"viewport\"}",
+      "layers[0].layout.text-rotation-alignment",
+    ),
+    (
+      "{\"symbol-placement\": \"line-center\", \"text-pitch-alignment\": \"viewport\"}",
+      "layers[0].layout.text-pitch-alignment",
+    ),
+    (
+      "{\"symbol-placement\": \"line\", \"text-offset\": [0, 1]}", "layers[0].layout.text-offset",
+    ),
     ("{\"icon-image\": \"x\"}", "layers[0].layout.icon-image"),
     ("{\"text-field\": [\"format\", \"a\", {}]}", "layers[0].layout.text-field"),
   ]

@@ -52,6 +52,16 @@ fn Labels::bytes(self : Labels, t : @style.TextLayout) -> Bytes {
     h.f64(v.1)
     h.f64(v.2)
   }
+  h.u8(
+    match t.placement {
+      Point => 0
+      Line => 1
+      LineCenter => 2
+    },
+  )
+  h.u8(if t.keep_upright { 1 } else { 0 })
+  h.f64(t.spacing)
+  h.f64(t.max_angle)
   h.u32(self.count)
   for b in self.w.to_bytes() {
     h.u8(b.to_int())
@@ -89,6 +99,23 @@ fn Labels::add(
 }
 
 ///|
+/// Adds the lines of `g` (`TILE_EXTENT` units, clamped to i16) to the label
+/// just added: a count, then each line's point count and points.
+fn Labels::lines(self : Labels, g : @mvt.Geometry, extent : Int32) -> Unit {
+  let w = self.w
+  let clamp = (v : Int32) => @cmp.minimum(32767, @cmp.maximum(-32768, v))
+  w.u32(g.num_rings())
+  for r in 0..<g.num_rings() {
+    let start = g.ring_start(r)
+    w.u32(g.ring_ends[r] - start)
+    for p in start..<g.ring_ends[r] {
+      w.i16(clamp(rescale(g.coords[p * 2], extent)))
+      w.i16(clamp(rescale(g.coords[p * 2 + 1], extent)))
+    }
+  }
+}
+
+///|
 fn TileProcessor::labels(self : TileProcessor, g : Int32) -> Labels {
   while self.label_pool.length() <= g {
     self.label_pool.push(Labels::new())
@@ -115,9 +142,15 @@ fn TileProcessor::symbol_layer(
   let feature = self.feature_ref(layer)
   let extent = layer.extent()
   let parts = []
+  let on_lines = !(text.placement is Point)
   for i in 0..<layer.length() {
     feature.index = i
-    if !(layer.geom_type(i) is Point && passes(sl.filter, feature, zoom)) {
+    let kind_fits = match layer.geom_type(i) {
+      Point => !on_lines
+      LineString | Polygon => on_lines
+      _ => false
+    }
+    if !(kind_fits && passes(sl.filter, feature, zoom)) {
       continue
     }
     parts.clear()
@@ -141,6 +174,13 @@ fn TileProcessor::symbol_layer(
     }
     let g = self.geometry
     let out = self.labels(groups.of(feature))
+    // The glue finds the anchors along lines (worker/js/line-labels.mjs).
+    if on_lines {
+      if out.add(i, 0, 0, size, sort_key, parts) {
+        out.lines(g, extent)
+      }
+      continue
+    }
     for p in 0..<g.num_points() {
       let x = rescale(g.coords[p * 2], extent)
       let y = rescale(g.coords[p * 2 + 1], extent)

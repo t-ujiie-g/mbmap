@@ -22,14 +22,29 @@ pub(all) enum TextJustify {
 } derive(Debug, Eq)
 
 ///|
+/// Where labels go (`symbol-placement`): on points, along lines at intervals,
+/// or at the middle of each line.
+pub(all) enum SymbolPlacement {
+  Point
+  Line
+  LineCenter
+} derive(Debug, Eq)
+
+///|
 /// A symbol layer's text layout: `field` is `text-field` as parts to join; sizes
 /// in CSS pixels, `offset`, `max_width` and `line_height` in ems; `vertical` the
 /// first `text-writing-mode`, `sort_key` the `symbol-sort-key`. `variable` holds
 /// the anchors to try in order with their offsets in ems (MapLibre's
 /// `text-variable-anchor-offset`); such labels are shaped centered, `offset` 0.
+/// Along lines: `spacing` (`symbol-spacing`, px), `max_angle` (`text-max-angle`,
+/// degrees) and `keep_upright` (`text-keep-upright`).
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
+  placement : SymbolPlacement
+  spacing : Double
+  max_angle : Double
+  keep_upright : Bool
   anchor : TextAnchor
   offset : (Double, Double)
   justify : TextJustify
@@ -103,9 +118,30 @@ fn parse_text(
   layout : Map[String, Json],
   path : String,
 ) -> TextLayout raise StyleError {
-  let placement = string_or(layout, "symbol-placement", path, "point")
-  if placement != "point" {
-    raise Unsupported(path="\{path}.symbol-placement", placement)
+  let placement = match string_or(layout, "symbol-placement", path, "point") {
+    "point" => SymbolPlacement::Point
+    "line" => Line
+    "line-center" => LineCenter
+    p =>
+      raise Invalid(path="\{path}.symbol-placement", "unknown placement \{p}")
+  }
+  // Along lines text lies on the map as MapLibre's `auto` alignments make it.
+  if placement != Point {
+    for
+      key in [
+        "text-rotation-alignment", "text-pitch-alignment", "text-offset", "text-radial-offset",
+        "text-variable-anchor", "text-variable-anchor-offset",
+      ] {
+      match (key, layout.get(key)) {
+        (_, None) => ()
+        (
+          "text-rotation-alignment"
+          | "text-pitch-alignment",
+          Some(String("map" | "auto")),
+        ) => ()
+        _ => raise Unsupported(path="\{path}.\{key}", "along lines")
+      }
+    }
   }
   if layout.get("icon-image") is Some(_) {
     raise Unsupported(path="\{path}.icon-image", "icons")
@@ -146,6 +182,10 @@ fn parse_text(
       expected=NumberType,
       path="\{path}.text-size",
     ),
+    placement,
+    spacing: @cmp.maximum(1.0, number_or(layout, "symbol-spacing", path, 250.0)),
+    max_angle: number_or(layout, "text-max-angle", path, 45.0),
+    keep_upright: bool_or(layout, "text-keep-upright", path, true),
     anchor: if variable.is_empty() {
       anchor
     } else {
