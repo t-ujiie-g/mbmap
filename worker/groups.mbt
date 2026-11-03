@@ -72,7 +72,13 @@ fn Groups::of(self : Groups, feature : FeatureRef) -> Int32 {
   let s = self.scratch
   s.clear()
   for k in self.keys {
-    s.push(@style.FeatureContext::property(feature, k))
+    s.push(
+      if k == @style.FEATURE_ID_KEY {
+        Some(@style.FeatureContext::id(feature))
+      } else {
+        @style.FeatureContext::property(feature, k)
+      },
+    )
   }
   if self.geometry {
     s.push(Some(Str(@style.FeatureContext::geometry_type(feature))))
@@ -91,8 +97,8 @@ fn Groups::of(self : Groups, feature : FeatureRef) -> Int32 {
 
 ///|
 /// Group `g`'s shared inputs (docs/FORMATS.md, "Packed tile"): properties by name (absent
-/// ones omitted, so `has` stays correct) and the geometry type under
-/// `@core.GEOMETRY_TYPE_KEY`.
+/// ones omitted, so `has` stays correct), the feature id under
+/// `@style.FEATURE_ID_KEY` and the geometry type under `@core.GEOMETRY_TYPE_KEY`.
 fn Groups::props(self : Groups, g : Int32) -> Bytes {
   let w = @core.ByteWriter::new()
   let v = self.values[g]

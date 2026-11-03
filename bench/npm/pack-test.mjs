@@ -54,7 +54,7 @@ const checks = {
       missing.remove();
       let thrown = "";
       try {
-        new Map({ container: div, style: { version: 8, sources: {}, layers: [{ id: "x", type: "line", paint: { "line-width": ["sqrt", 2] } }] } });
+        new Map({ container: div, style: { version: 8, sources: {}, layers: [{ id: "x", type: "line", paint: { "line-width": ["number-format", 2, {}] } }] } });
       } catch (e) {
         thrown = e.message;
       }
@@ -90,7 +90,7 @@ const checks = {
       r.attribution === ATTRIBUTION &&
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
-      r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression sqrt" &&
+      r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression number-format" &&
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
@@ -456,7 +456,7 @@ async function queryChecks(page) {
     const unknown = await map.queryRenderedFeatures({ layers: ["nope"] });
     map.off("error", f);
     let refused = "";
-    await map.queryRenderedFeatures({ filter: ["sqrt", 2] }).catch((e) => (refused = e.message));
+    await map.queryRenderedFeatures({ filter: ["number-format", 2, {}] }).catch((e) => (refused = e.message));
     const source = await map.querySourceFeatures("q");
     window.__events = [];
     map.on("click", (e) => window.__events.push(["click", Math.round(e.point.x), Math.round(e.point.y), e.lngLat.lng > 139]));
@@ -498,7 +498,7 @@ async function queryChecks(page) {
     found.outside === 0 &&
     JSON.stringify(found.box) === JSON.stringify(["q-spot", "q-road"]) &&
     found.unknown === 0 && /'nope' does not exist/.test(found.errors[0] ?? "") &&
-    /unsupported: expression sqrt/.test(found.refused) &&
+    /unsupported: expression number-format/.test(found.refused) &&
     // The square spans two tiles, and each gives its part, as MapLibre's do.
     JSON.stringify([...new Set(found.source)]) === JSON.stringify([1, 2, 3]) &&
     clicks.length === 1 && clicks[0][1] === 220 && clicks[0][2] === 380 && clicks[0][3] &&
@@ -825,7 +825,7 @@ async function styleChecks(page, requests) {
     map.on("error", f);
     map.setPaintProperty("nope", "fill-color", "#000");
     map.removeSource("gsi");
-    map.setPaintProperty("road", "line-width", ["sqrt", 2]);
+    map.setPaintProperty("road", "line-width", ["number-format", 2, {}]);
     map.off("error", f);
     return { out, width: map.getPaintProperty("road", "line-width"), order: map.getLayersOrder().slice(0, 4) };
   });
@@ -847,7 +847,7 @@ async function styleChecks(page, requests) {
     errors.out.length === 3 &&
     /no layer "nope"/.test(errors.out[0]) &&
     /used by layer "road"/.test(errors.out[1]) &&
-    /unsupported: expression sqrt/.test(errors.out[2]) &&
+    /unsupported: expression number-format/.test(errors.out[2]) &&
     errors.width?.[0] === "interpolate" &&
     JSON.stringify(errors.order) === JSON.stringify(["background", "road", "waterarea", "structurea"]) &&
     near(red, [255, 0, 0]) &&
@@ -978,7 +978,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression sqrt|'nope' does not exist|sourceLayer parameter must be provided/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression number-format|'nope' does not exist|sourceLayer parameter must be provided/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);

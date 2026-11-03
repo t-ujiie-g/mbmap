@@ -10,3 +10,28 @@ export function hostNumber(memory) {
     return Number(String.fromCharCode.apply(null, bytes.subarray(addr, addr + len)));
   };
 }
+
+// The display worker's `Number(string)` and `String(number)`: `text_char` appends a
+// UTF-16 code unit, `text_number` returns `Number()` of the text and empties it;
+// `number_text` keeps `String(x)` and returns its length, `text_code` its code units.
+export function hostText() {
+  let text = "";
+  let out = "";
+  return {
+    number_text(x) {
+      out = String(x);
+      return out.length;
+    },
+    text_code(i) {
+      return out.charCodeAt(i);
+    },
+    text_char(c) {
+      text += String.fromCharCode(c);
+    },
+    text_number() {
+      const n = Number(text);
+      text = "";
+      return n;
+    },
+  };
+}

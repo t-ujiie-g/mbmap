@@ -23,7 +23,7 @@ test "same_tiles holds across paint constants and fails on what workers build" {
       "{\"id\": \"road2\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\"}",
       "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"rail\"}",
       "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"minzoom\": 10}",
-      "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"filter\": [\"==\", \"k\", 1]}",
+      "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"filter\": [\"==\", [\"get\", \"k\"], 1]}",
       "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"layout\": {\"line-cap\": \"round\"}}",
       "{\"id\": \"road\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"paint\": {\"line-width\": [\"get\", \"w\"]}}",
       "{\"id\": \"road\", \"type\": \"fill\", \"source\": \"s\", \"source-layer\": \"road\"}",

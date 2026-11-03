@@ -161,6 +161,43 @@ export function keepGeoJSONData(previous: StyleSpecification | null, next: Style
   return { ...next, sources };
 }
 
+/**
+ * Whether `f` may be a legacy filter, which `legacy.ts` converts: MapLibre's `classifyFilter`,
+ * except that `all` and `any` mixing legacy filters with expressions count (the converter keeps them).
+ */
+export function isLegacyFilter(f: unknown): boolean {
+  if (typeof f === "boolean" || f === undefined) return false;
+  if (!Array.isArray(f) || f.length === 0) return true;
+  switch (f[0]) {
+    case "has":
+      return f.length < 2 || f[1] === "$id" || f[1] === "$type";
+    case "in":
+      return !(f.length >= 3 && (typeof f[1] !== "string" || Array.isArray(f[2])));
+    case "!in":
+    case "!has":
+    case "none":
+      return true;
+    case "==":
+    case "!=":
+    case ">":
+    case ">=":
+    case "<":
+    case "<=":
+      return f.length === 3 && !Array.isArray(f[1]) && !Array.isArray(f[2]);
+    case "any":
+    case "all":
+      return f.slice(1).some(isLegacyFilter);
+    default:
+      return false;
+  }
+}
+
+/** Whether a layer of `style` may have a legacy filter or a property function (a plain object as a paint or layout value). */
+export function hasLegacy(style: StyleSpecification): boolean {
+  const fn = (o: unknown) => !!o && Object.values(o).some((v) => typeof v === "object" && v !== null && !Array.isArray(v));
+  return layers(style).some((l) => isLegacyFilter(l.filter) || fn(l.paint) || fn(l.layout));
+}
+
 /** Sets a top-level property such as `terrain`, `sky` or `light`; undefined or null removes it. */
 export function setRoot(style: StyleSpecification, key: "terrain" | "sky" | "light", value: unknown): StyleSpecification {
   const { [key]: _, ...rest } = style;

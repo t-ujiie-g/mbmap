@@ -6,8 +6,8 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 75885,
-      "budget": 80000
+      "bytes": 82940,
+      "budget": 100000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
@@ -18,6 +18,11 @@
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
       "bytes": 470,
       "budget": 2000
+    },
+    {
+      "name": "legacy filters and functions (loaded by mbmap when a style has them)",
+      "bytes": 3551,
+      "budget": 5000
     },
     {
       "name": "mbmap/element (on top of mbmap)",
@@ -41,12 +46,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 70935,
+      "bytes": 79781,
       "budget": 100000
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 26537,
+      "bytes": 26538,
       "budget": 30000
     },
     {
@@ -61,7 +66,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 27081,
+      "bytes": 27082,
       "budget": 30000
     },
     {

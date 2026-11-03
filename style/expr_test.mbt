@@ -69,7 +69,7 @@ test "comparisons do not coerce types" {
     Bool(true),
   )
   assert_eq(expr("[\"<\", [\"get\", \"n\"], 2]").eval(0.0, f), Bool(true))
-  assert_eq(expr("[\">=\", [\"get\", \"s\"], 2]").eval(0.0, f), Bool(false))
+  assert_eq(expr("[\">=\", [\"get\", \"s\"], 2]").eval(0.0, f), Failed)
   assert_eq(expr("[\"has\", \"s\"]").eval(0.0, f), Bool(true))
   assert_eq(expr("[\"!\", [\"has\", \"x\"]]").eval(0.0, f), Bool(true))
   assert_eq(expr("[\"in\", \"ab\", \"cabd\"]").eval(0.0, f), Bool(true))
@@ -163,7 +163,7 @@ test "malformed expressions are rejected with a path" {
   for
     text in [
       "[\"match\", [\"get\", \"a\"], 1, 2]", "[\"interpolate\", [\"linear\"], [\"zoom\"], 2, 1, 1, 0]",
-      "[\"step\", [\"zoom\"]]", "[1, 2]", "[\"interpolate\", [\"cubic-bezier\", 0, 0, 1, 1], [\"zoom\"], 0, 0, 1, 1]",
+      "[\"step\", [\"zoom\"]]", "[1, 2]", "[\"interpolate\", [\"cubic-bezier\", 0, 0, 2, 1], [\"zoom\"], 0, 0, 1, 1]",
     ] {
     try expr(text) catch {
       @style.Invalid(_) | @style.Unsupported(_) => ()

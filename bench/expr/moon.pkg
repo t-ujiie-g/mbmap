@@ -1,0 +1,16 @@
+// Export surface of `npm run expression:golden`: style expressions compiled and evaluated
+// as the engine does, for comparing with MapLibre's style-spec.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/style",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "js"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "js": { "format": "esm" } },
+)

@@ -38,6 +38,21 @@ test "JsProps reports absent keys as None and other types as Null" {
 }
 
 ///|
+test "JsProps reads the id key and converts with the browser's String and Number" {
+  let props : JsProps = { obj: js_object("{\"$id\": 7}"), state: js_null(), }
+  assert_eq(@style.FeatureContext::id(props), Num(7.0))
+  assert_eq(@style.FeatureContext::id(JsProps::none()), Null)
+  assert_eq(
+    @style.FeatureContext::number_text(props, 0.1 + 0.2),
+    "0.30000000000000004",
+  )
+  assert_eq(@style.FeatureContext::text_number(props, " 0x10 "), 16.0)
+  assert_eq(@style.FeatureContext::trig(props).pow(2.0, 10.0), 1024.0)
+  // NaN paint is the property's default, as MapLibre takes it.
+  assert_eq(number_or(Num(0.0 / 0.0), 3.0), 3.0)
+}
+
+///|
 test "paint_of evaluates circle radius and stroke; other kinds leave them empty" {
   let style = @style.Style::parse(
     (
