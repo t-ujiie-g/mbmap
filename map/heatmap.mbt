@@ -91,4 +91,13 @@ fn Map::prune_ramps(self : Map) -> Unit {
     }
   }
   self.ramps.retain(r => used(r.0))
+  let used = (e : @style.Expr) => {
+    self.style.layers.iter().any(l => l.relief is Some(_) && l.color == e)
+  }
+  for r in self.relief_ramps {
+    if !used(r.0) {
+      self.renderer.release_gradient(r.2)
+    }
+  }
+  self.relief_ramps.retain(r => used(r.0))
 }

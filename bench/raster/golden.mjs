@@ -14,6 +14,7 @@ const paints = {
     "raster-contrast": 0.3, "raster-brightness-min": 0.2, "raster-brightness-max": 0.9,
   },
   nearest: { "raster-resampling": "nearest" },
+  resampling: { resampling: "nearest" },
   zoomed: { "raster-opacity": ["interpolate", ["linear"], ["zoom"], 14, 0.2, 16, 1] },
 };
 const cameras = { z14: { center: [139.7671, 35.6812], zoom: 14, bearing: 0, pitch: 0 }, z15: { center: [139.7671, 35.6812], zoom: 15.3, bearing: 20, pitch: 0 } };

@@ -330,19 +330,24 @@ test "raster-dem sources and hillshade layers, with MapLibre's defaults" {
   assert_eq((s.layers[0].kind, h.viewport), (Hillshade, false))
   assert_eq(constant(h.exaggeration), Num(0.8))
   assert_eq(
-    constant(h.shadow),
+    constant(h.shadow[0]),
     Color({ r: 71.0 / 255.0, g: 59.0 / 255.0, b: 36.0 / 255.0, a: 1.0, }),
   )
   let d = s.layers[1].hillshade.unwrap()
   assert_eq(
-    (constant(d.direction), constant(d.exaggeration), d.viewport),
+    (constant(d.direction[0]), constant(d.exaggeration), d.viewport),
     (Num(335.0), Num(0.5), true),
   )
-  assert_eq(constant(d.highlight), Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }))
+  assert_eq(
+    constant(d.highlight[0]),
+    Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }),
+  )
+  assert_eq(constant(d.altitude[0]), Num(45.0))
+  assert_true(d.shading is Standard && !d.nearest)
 }
 
 ///|
-test "unknown DEM encodings, odd tile sizes and other hillshade methods are refused" {
+test "unknown DEM encodings, odd tile sizes, hillshade methods and resampling are refused" {
   let cases = [
     (
       "{\"sources\": {\"d\": {\"type\": \"raster-dem\", \"tiles\": [\"t\"], \"encoding\": \"x\"}}, \"layers\": []}",
@@ -353,8 +358,24 @@ test "unknown DEM encodings, odd tile sizes and other hillshade methods are refu
       "sources.d.tileSize",
     ),
     (
-      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"hillshade-method\": \"igor\"}}]}",
+      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"hillshade-method\": \"sketch\"}}]}",
       "layers[0].paint.hillshade-method",
+    ),
+    (
+      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"resampling\": \"cubic\"}}]}",
+      "layers[0].paint.resampling",
+    ),
+    (
+      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"hillshade-illumination-direction\": []}}]}",
+      "layers[0].paint.hillshade-illumination-direction",
+    ),
+    (
+      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"hillshade-shadow-color\": [\"#000\", \"nope\"]}}]}",
+      "layers[0].paint.hillshade-shadow-color[1]",
+    ),
+    (
+      "{\"layers\": [{\"id\": \"h\", \"type\": \"hillshade\", \"paint\": {\"hillshade-highlight-color\": [\"#000\", \"#111\", \"#222\", \"#333\", \"#444\", \"#555\", \"#666\", \"#777\", \"#888\"]}}]}",
+      "layers[0].paint.hillshade-highlight-color",
     ),
   ]
   for c in cases {
@@ -483,6 +504,122 @@ test "fill-extrusion layers read heights, the gradient and the light" {
       Unsupported(path~, _) => assert_eq(("Unsupported", path), (c.1, c.2))
     } noraise {
       _ => fail("expected \{text} to be refused")
+    }
+  }
+}
+
+///|
+test "hillshade methods, lists of lights, altitudes and resampling" {
+  let s = @style.Style::parse(
+    (
+      #|{"sources": {"dem": {"type": "raster-dem", "tiles": ["t"]}},
+      #| "layers": [
+      #|  {"id": "m", "type": "hillshade", "source": "dem",
+      #|   "paint": {"hillshade-method": "multidirectional",
+      #|             "hillshade-illumination-direction": [270, 315, 0],
+      #|             "hillshade-illumination-altitude": 30,
+      #|             "hillshade-highlight-color": ["#ff0000", "rgba(0, 255, 0, 0.5)"],
+      #|             "hillshade-shadow-color": ["interpolate", ["linear"], ["zoom"], 10, "#000000", 14, "#ffffff"],
+      #|             "resampling": "nearest"}},
+      #|  {"id": "b", "type": "hillshade", "source": "dem", "paint": {"hillshade-method": "basic"}},
+      #|  {"id": "c", "type": "hillshade", "source": "dem", "paint": {"hillshade-method": "combined"}},
+      #|  {"id": "i", "type": "hillshade", "source": "dem", "paint": {"hillshade-method": "igor"}}
+      #|]}
+    ),
+  )
+  let m = s.layers[0].hillshade.unwrap()
+  assert_true(m.shading is Multidirectional && m.nearest)
+  assert_eq(m.direction.map(constant), [Num(270.0), Num(315.0), Num(0.0)])
+  assert_eq(m.altitude.map(constant), [Num(30.0)])
+  assert_eq(m.highlight.map(constant), [
+    Color({ r: 1.0, g: 0.0, b: 0.0, a: 1.0, }),
+    Color({ r: 0.0, g: 1.0, b: 0.0, a: 0.5, }),
+  ])
+  assert_eq(m.shadow.length(), 1)
+  assert_eq(
+    m.shadow[0].eval(14.0, @style.NoFeature::{ }),
+    Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }),
+  )
+  assert_true(s.layers[1].hillshade.unwrap().shading is Basic)
+  assert_true(s.layers[2].hillshade.unwrap().shading is Combined)
+  assert_true(s.layers[3].hillshade.unwrap().shading is Igor)
+}
+
+///|
+test "raster layers sample the nearest pixel for either resampling property" {
+  let s = @style.Style::parse(
+    (
+      #|{"sources": {"r": {"type": "raster", "tiles": ["t"]}},
+      #| "layers": [
+      #|  {"id": "a", "type": "raster", "source": "r", "paint": {"resampling": "nearest"}},
+      #|  {"id": "b", "type": "raster", "source": "r", "paint": {"raster-resampling": "nearest"}},
+      #|  {"id": "c", "type": "raster", "source": "r", "paint": {"resampling": "linear"}}
+      #|]}
+    ),
+  )
+  assert_eq(s.layers.map(l => l.raster.unwrap().nearest), [true, true, false])
+}
+
+///|
+test "color relief layers keep their ramp's elevation stops" {
+  let s = @style.Style::parse(
+    (
+      #|{"sources": {"dem": {"type": "raster-dem", "tiles": ["t"], "encoding": "terrarium"}},
+      #| "layers": [
+      #|  {"id": "r", "type": "color-relief", "source": "dem",
+      #|   "paint": {"color-relief-color": ["interpolate", ["linear"], ["elevation"], 0, "#2b83ba", 1000, "#ffffbf", 3776, "#d7191c"],
+      #|             "color-relief-opacity": ["interpolate", ["linear"], ["zoom"], 10, 1, 14, 0.5],
+      #|             "resampling": "nearest"}},
+      #|  {"id": "s", "type": "color-relief", "source": "dem",
+      #|   "paint": {"color-relief-color": ["step", ["elevation"], "#000000", 100, "#ffffff"]}},
+      #|  {"id": "d", "type": "color-relief", "source": "dem"}
+      #|]}
+    ),
+  )
+  let r = s.layers[0]
+  assert_eq(r.kind, ColorRelief)
+  assert_eq(r.relief.unwrap().stops, [0.0, 1000.0, 3776.0])
+  assert_true(r.relief.unwrap().nearest)
+  assert_eq(r.opacity.eval(14.0, @style.NoFeature::{ }), Num(0.5))
+  assert_eq(s.layers[1].relief.unwrap().stops, [])
+  assert_eq(s.layers[2].relief.unwrap().stops, [])
+  assert_eq(r.color.eval(0.0, @style.NoFeature::{ }), Failed)
+}
+
+///|
+test "elevation is allowed in color-relief-color only, and zoom is not" {
+  let cases = [
+    (
+      (
+        #|{"layers": [{"id": "f", "type": "fill", "source": "s", "paint": {"fill-opacity": ["/", ["elevation"], 1000]}}]}
+      ),
+      "layers[0]",
+    ),
+    (
+      (
+        #|{"layers": [{"id": "r", "type": "color-relief", "source": "s", "paint": {"color-relief-opacity": ["/", ["elevation"], 1000]}}]}
+      ),
+      "layers[0]",
+    ),
+    (
+      (
+        #|{"layers": [{"id": "r", "type": "color-relief", "source": "s", "paint": {"color-relief-color": ["interpolate", ["linear"], ["zoom"], 0, "#000", 10, "#fff"]}}]}
+      ),
+      "layers[0].paint.color-relief-color",
+    ),
+    (
+      (
+        #|{"layers": [{"id": "r", "type": "color-relief", "source": "s", "paint": {"color-relief-color": ["interpolate", ["linear"], ["get", "h"], 0, "#000", 10, "#fff"]}}]}
+      ),
+      "layers[0].paint.color-relief-color",
+    ),
+  ]
+  for c in cases {
+    try @style.Style::parse(c.0) catch {
+      Invalid(path~, _) => assert_eq(path, c.1)
+      e => fail("\{c.1}: \{e.message()}")
+    } noraise {
+      _ => fail("expected \{c.1} to be refused")
     }
   }
 }

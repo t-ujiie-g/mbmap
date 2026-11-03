@@ -186,6 +186,10 @@ fn Map::draw_layer(
       self.draw_hillshade(h, m.mesh, at)
       continue
     }
+    if m.kind == KIND_HILLSHADE && layer.relief is Some(r) {
+      self.draw_relief(layer, r, m, at)
+      continue
+    }
     if m.kind == KIND_RASTER && layer.raster is Some(r) {
       let ctx = JsProps::none()
       let n = (e : @style.Expr, d : Double) => number_or(e.eval(zoom, ctx), d)
@@ -317,8 +321,9 @@ fn Map::draw_layer(
 }
 
 ///|
-/// Draws a tile's hillshade with a layer's paint at the current zoom (MapLibre's
-/// `standard` method); a light anchored to the viewport turns with the map.
+/// Draws a tile's hillshade with a layer's paint at the current zoom; a light
+/// anchored to the viewport turns with the map. Nothing is drawn without
+/// exaggeration (MapLibre then prepares no slopes).
 fn Map::draw_hillshade(
   self : Map,
   h : @style.HillshadePaint,
@@ -327,17 +332,62 @@ fn Map::draw_hillshade(
 ) -> Unit {
   let zoom = self.transform.camera.zoom
   let ctx = JsProps::none()
-  let direction = number_or(h.direction.eval(zoom, ctx), 335.0) +
-    (if h.viewport { self.transform.camera.bearing } else { 0.0 })
-  let rgba = (e : @style.Expr) => rgba_of(color_of(e, zoom, ctx))
+  let exaggeration = number_or(h.exaggeration.eval(zoom, ctx), 0.5)
+  if exaggeration == 0.0 {
+    return
+  }
+  let radians = (degrees : Double) => degrees * @math.PI / 180.0
+  let turn = if h.viewport {
+    radians(self.transform.camera.bearing)
+  } else {
+    0.0
+  }
+  // Shorter lists repeat their last value (MapLibre's getIlluminationProperties).
+  let pick = (list : Array[@style.Expr], i : Int32) => {
+    list[@cmp.minimum(i, list.length() - 1)]
+  }
+  let n = h.highlight.length()
+  let angles = FixedArray::make(n * 2, 0.0)
+  let colors = FixedArray::make(n * 8, 0.0)
+  for i in 0..<n {
+    angles[i * 2] = radians(
+        number_or(pick(h.direction, i).eval(zoom, ctx), 335.0),
+      ) +
+      turn
+    angles[i * 2 + 1] = radians(
+      number_or(pick(h.altitude, i).eval(zoom, ctx), 45.0),
+    )
+    let shadow = color_of(pick(h.shadow, i), zoom, ctx)
+    let highlight = color_of(h.highlight[i], zoom, ctx)
+    for
+      k, v in [
+        shadow.r,
+        shadow.g,
+        shadow.b,
+        shadow.a,
+        highlight.r,
+        highlight.g,
+        highlight.b,
+        highlight.a,
+      ] {
+      colors[i * 8 + k] = v
+    }
+  }
   self.renderer.draw_hillshade(
     mesh,
     at,
-    direction * @math.PI / 180.0,
-    number_or(h.exaggeration.eval(zoom, ctx), 0.5),
-    rgba(h.shadow),
-    rgba(h.highlight),
-    rgba(h.accent),
+    shading=match h.shading {
+      Standard => 0
+      Combined => 1
+      Igor => 2
+      Multidirectional => 3
+      Basic => 4
+    },
+    exaggeration~,
+    angles~,
+    colors~,
+    accent=rgba_of(color_of(h.accent, zoom, ctx)),
+    nearest=h.nearest,
   )
 }
 
@@ -351,6 +401,7 @@ fn Map::draw_frame(
   let t = self.transform
   let terrain = self.terrain_source()
   self.prerender_custom()
+  self.prepare_relief(draws_of)
   let (r, g, b) = self.background()
   self.renderer.clear(r, g, b)
   self.draw_sky(dpr)

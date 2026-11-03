@@ -58,6 +58,22 @@
       "max": 0
     },
     {
+      "paint": "resampling",
+      "view": "z14",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 0
+    },
+    {
+      "paint": "resampling",
+      "view": "z15",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 0
+    },
+    {
       "paint": "zoomed",
       "view": "z14",
       "ok": true,

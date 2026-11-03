@@ -16,6 +16,40 @@
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
 
+## Phase 16.7：地形の表現（2026-11-04）
+
+状態：**完了**。
+
+- **hillshade の方式**（`hillshade-method`）：MapLibre 6.16 の `standard`、`basic`、`combined`、`igor`、`multidirectional` をすべて描く。シェーダーは MapLibre の hillshade.fragment.glsl をそのまま写した（方式は `u_method`、光の数は `u_count`、上限 `MAX_HILLSHADE_LIGHTS` = 8）。
+  - `hillshade-illumination-direction` / `-altitude`（`numberArray`）と `hillshade-highlight-color` / `-shadow-color`（`colorArray`）は、値 1 つ（式も可）か値の並び。並びか式かは MapLibre と同じく見分ける（数だけ、または色で始まる文字列だけなら並び）。光の数は `hillshade-highlight-color` の数（MapLibre の `NUM_ILLUMINATION_SOURCES`）で、短い並びは最後の値を繰り返す（`getIlluminationProperties`）。並びを返す式は未対応。
+  - `hillshade-illumination-altitude` を読むようにした（`standard` と `igor` は使わない）。`hillshade-exaggeration` が 0 なら描かない（MapLibre は勾配を作らない）。
+  - 勾配のテクスチャに MapLibre と同じ 1 画素の縁を付けた（`@raster.hillshade_slopes` は `(size + 2)²`）。縁は隣のタイルの端の勾配で、隣が来るまでは自分の端を繰り返した標高から。これまでの縁なしでは、タイルの境目の半画素が MapLibre と違っていた（`basic` で平均 0.02、境目で最大 48）。
+  - 陰影も、ラスタと同じく止まっているときは画素の格子に合わせて描く（`raster_matrix`、MapLibre の `aligned`）。
+- **`color-relief` レイヤー**：`color-relief-color`（`["elevation"]` の `interpolate`）と `color-relief-opacity`。MapLibre の color_relief シェーダーをそのまま使う。
+  - 色の段は `interpolate` の入力の値で、そこでの色（ストレートの RGBA、アップロードで premultiply）の間を線形にテクスチャで補間する（`_createColorRamp`。`interpolate` でなければ透明、段が 1 つなら 1m 上に複製）。補間の種類や色空間は段の色にだけ効く（MapLibre と同じ）。
+  - 標高は DEM の符号化で RGB に詰め直したテクスチャから読む（MapLibre の `packDEMData` と `getUnpackVector`。国土地理院の `gsi` は Terrarium で詰める）。MapLibre の DEM と同じく 2 画素の縁を持ち、読み込み済みの隣（斜めも）から埋める（`backfillBorder`）。段の標高も同じ符号化で丸める。
+  - `["elevation"]` は `color-relief-color` の中だけ（`heatmap-density` と同じ扱い）。`color-relief-color` は zoom もデータも読めない。
+- **`resampling`**：hillshade と color relief の `resampling`、raster の `resampling`（`raster-resampling` とどちらかが `nearest` なら最近傍。MapLibre と同じ）。
+- **`npm run style:golden`**：富士山の DEM（Terrarium にしたもの、ズーム 11.8 で z12 のタイルをそのまま）に 8 場面を足した。
+
+  | 場面 | 平均 | p99 |
+  |---|---|---|
+  | `hillshade-standard`（影・アクセントの色） | 0 | 0 |
+  | `hillshade-basic`（高さ 35°、半透明の光） | 0.001 | 0 |
+  | `hillshade-combined` | 0 | 0 |
+  | `hillshade-igor`（`map` に固定） | 0 | 0 |
+  | `hillshade-multidirectional`（光 4 つ、高さの並びは 3 つ） | 0 | 0 |
+  | `hillshade-turned`（40° 回す、`resampling: nearest`） | 0.001 | 0 |
+  | `color-relief`（6 段、上端が半透明、上に `igor`） | 0 | 0 |
+  | `color-relief-nearest`（不透明度 0.7、`nearest`、-20° 回す） | 0 | 0 |
+
+  - 残る差は、斜めの隣のタイルを待たない勾配の角の 1 画素。ほかの場面は変わらない。
+- **`npm run raster:golden`**：`resampling: nearest` の段を足し、10 段すべて一致。
+- 大きさ：メイン 107.1 → 111.7KB（+4.6KB：シェーダー約 1.2KB、hillshade と color relief の描画と DEM の詰め直し・縁、スタイルの読み込み）、表示ワーカー 93.1 → 94.3KB（+1.2KB：スタイルの読み込み）。
+- 例（`examples/`）には足していない。東京駅のあたりは平らで、段彩が見せ場にならないため。
+- MapLibre との違い：並び（`numberArray` / `colorArray`）を返す式（ズームで並びを補間するもの）は未対応。光が 9 つ以上も未対応。勾配の角の画素は、斜めの隣のタイルで埋めない（以前から）。
+- **本線で測ってほしいもの**：なし（タイルの処理と描画の手順は、hillshade の縁が 1 画素増えたことと、color relief のあるときだけの詰め直し以外は変わらない）。
+
 ## 計測：Phase 15 の後のリファクタリングの後（2026-11-04、main 45a5f3a ＋ 壁の模様の修正）
 
 - **`worker:browser`**（`process_tile` の中央値）：Chromium 7.41ms、Firefox 10.16ms、WebKit 7.96ms。リファクタリングの前（7.65 / 10.38 / 8.12ms）とぶれの範囲で同じ。

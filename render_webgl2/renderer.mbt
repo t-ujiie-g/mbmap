@@ -196,7 +196,7 @@ pub fn Renderer::draw_circle(
 
 ///|
 /// Uploads a `raster-dem` tile's slopes (`@raster.hillshade_slopes`, two bytes
-/// per pixel of a `size` x `size` tile) as a texture.
+/// per pixel of a `size` x `size` tile and its border) as a texture.
 pub fn Renderer::upload_slopes(
   self : Renderer,
   slopes : JsBuffer,
@@ -207,39 +207,124 @@ pub fn Renderer::upload_slopes(
 
 ///|
 /// Replaces one side's row or column of a slopes texture (0 top, 1 bottom,
-/// 2 left, 3 right) with `slopes`, two bytes per pixel along it.
+/// 2 left, 3 right), or of its `border`, with `slopes`, two bytes per pixel.
 pub fn Renderer::update_slopes(
   self : Renderer,
   mesh : Mesh,
   side : Int32,
   slopes : Bytes,
+  border~ : Bool = false,
 ) -> Unit {
-  gl_slopes_side(self.gl, mesh, side, slopes)
+  gl_slopes_side(self.gl, mesh, side, slopes, border)
 }
 
 ///|
-/// Draws a tile's hillshade (MapLibre's `standard` method): light from
-/// `azimuth` radians clockwise from north, colors straight RGBA.
+/// Draws a tile's hillshade by `shading` (MapLibre's `u_method`). Per light,
+/// `angles` holds its azimuth (clockwise from north) and altitude in radians,
+/// `colors` its shadow and highlight color (straight RGBA).
 pub fn Renderer::draw_hillshade(
   self : Renderer,
   mesh : Mesh,
   at : Placement,
-  azimuth : Double,
-  exaggeration : Double,
-  shadow : FixedArray[Double],
-  highlight : FixedArray[Double],
-  accent : FixedArray[Double],
+  shading~ : Int32,
+  exaggeration~ : Double,
+  angles~ : FixedArray[Double],
+  colors~ : FixedArray[Double],
+  accent~ : FixedArray[Double],
+  nearest~ : Bool,
 ) -> Unit {
   gl_draw_hillshade(
     self.gl,
     mesh,
-    at.matrix.m,
+    at.raster_matrix.m,
     at.clip,
-    [at.latitudes.0, at.latitudes.1, azimuth, exaggeration],
-    shadow,
-    highlight,
+    [
+      at.latitudes.0,
+      at.latitudes.1,
+      exaggeration,
+      shading.to_double(),
+      (angles.length() / 2).to_double(),
+      if nearest {
+        1.0
+      } else {
+        0.0
+      },
+    ],
+    angles,
+    colors,
     accent,
   )
+}
+
+///|
+/// Gives a DEM tile's mesh its `heights` (a Float32Array of `size` x `size`)
+/// for color relief layers, packed into RGB by `unpack` (red, green and blue
+/// factors and base shift, as MapLibre's `getUnpackVector`).
+pub fn Renderer::relief_heights(
+  self : Renderer,
+  mesh : Mesh,
+  heights : JsBuffer,
+  size : Int32,
+  unpack : FixedArray[Double],
+) -> Unit {
+  gl_relief_heights(self.gl, mesh, heights, size, unpack)
+}
+
+///|
+/// Whether `relief_heights` gave the mesh its heights.
+pub fn Renderer::has_relief(_ : Renderer, mesh : Mesh) -> Bool {
+  gl_has_relief(mesh)
+}
+
+///|
+/// Fills the border of a mesh's `relief_heights` from the `heights` of the
+/// same-size tile (`dx`, `dy`) beside it.
+pub fn Renderer::relief_border(
+  self : Renderer,
+  mesh : Mesh,
+  heights : JsBuffer,
+  size : Int32,
+  unpack : FixedArray[Double],
+  dx~ : Int32,
+  dy~ : Int32,
+) -> Unit {
+  gl_relief_border(self.gl, mesh, heights, size, unpack, dx, dy)
+}
+
+///|
+/// A color relief's ramp: straight RGBA `colors` (bytes) at elevation `stops`,
+/// which `unpack` packs as `relief_heights` does. Freed by `release_gradient`.
+pub fn Renderer::relief_ramp(
+  self : Renderer,
+  stops : FixedArray[Double],
+  colors : FixedArray[Byte],
+  unpack : FixedArray[Double],
+) -> Gradient {
+  let g = gl_upload_gradient(self.gl, colors, stops.length(), 1, false)
+  gl_relief_ramp(self.gl, g, stops, unpack)
+  g
+}
+
+///|
+/// Draws a tile's color relief (MapLibre's color_relief) from the heights given
+/// by `relief_heights` with `ramp`.
+pub fn Renderer::draw_relief(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  ramp : Gradient,
+  unpack : FixedArray[Double],
+  opacity~ : Double,
+  nearest~ : Bool,
+) -> Unit {
+  gl_draw_relief(self.gl, mesh, at.raster_matrix.m, at.clip, ramp, unpack, [
+    opacity,
+    if nearest {
+      1.0
+    } else {
+      0.0
+    },
+  ])
 }
 
 ///|

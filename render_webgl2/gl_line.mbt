@@ -95,7 +95,7 @@ extern "js" fn gl_upload_gradient(
 
 ///|
 extern "js" fn gl_release_gradient(gl : Gl, g : Gradient) -> Unit =
-  #|(c, g) => c.gl.deleteTexture(g.texture)
+  #|(c, g) => { c.gl.deleteTexture(g.texture); if (g.elevations) c.gl.deleteTexture(g.elevations); }
 
 ///|
 /// Draws a line with gradient `g` (see the `lineGradient` program).

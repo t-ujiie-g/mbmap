@@ -17,6 +17,7 @@ test "paint_of evaluates a group's properties and the zoom" {
     state: js_null(),
     progress: @double.not_a_number,
     density: @double.not_a_number,
+    elevation: @double.not_a_number,
   })
   assert_eq((p.r, p.b, p.a, p.width), (1.0, 0.0, 0.5, 6.0))
   let q = paint_of(layer, 10.0, JsProps::none())
@@ -30,6 +31,7 @@ test "JsProps reports absent keys as None and other types as Null" {
     state: js_object("{\"hover\": true}"),
     progress: @double.not_a_number,
     density: @double.not_a_number,
+    elevation: @double.not_a_number,
   }
   assert_eq(@style.FeatureContext::state(props, "hover"), Some(Bool(true)))
   assert_eq(@style.FeatureContext::state(props, "b"), None)
@@ -48,6 +50,7 @@ test "JsProps reads the id key and converts with the browser's String and Number
     state: js_null(),
     progress: @double.not_a_number,
     density: @double.not_a_number,
+    elevation: @double.not_a_number,
   }
   assert_eq(@style.FeatureContext::id(props), Num(7.0))
   assert_eq(@style.FeatureContext::id(JsProps::none()), Null)
@@ -76,6 +79,7 @@ test "paint_of evaluates circle radius and stroke; other kinds leave them empty"
     state: js_null(),
     progress: @double.not_a_number,
     density: @double.not_a_number,
+    elevation: @double.not_a_number,
   })
   assert_eq((c.radius, c.stroke_width), (8.0, 2.0))
   assert_eq(

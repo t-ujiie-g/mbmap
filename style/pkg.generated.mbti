@@ -13,6 +13,8 @@ pub const MAX_EXPR_DEPTH : Int32 = 32
 
 pub const MAX_EXPR_NODES : Int32 = 4096
 
+pub const MAX_HILLSHADE_LIGHTS : Int32 = 8
+
 pub const SLOT_COLOR : Int32 = 0
 
 pub const SLOT_OPACITY : Int32 = 1
@@ -77,6 +79,11 @@ pub fn Color::equal(Self, Self) -> Bool
 pub fn Color::not_equal(Self, Self) -> Bool
 pub fn Color::to_repr(Self) -> @debug.Repr
 
+pub struct ColorReliefPaint {
+  stops : Array[Double]
+  nearest : Bool
+}
+
 pub(all) enum ColorSpace {
   Rgb
   Hcl
@@ -117,6 +124,7 @@ pub(all) enum Expr {
   Zoom
   LineProgress
   HeatmapDensity
+  Elevation
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -153,13 +161,24 @@ pub struct HeatmapPaint {
   color : Expr
 }
 
+pub(all) enum HillshadeMethod {
+  Standard
+  Combined
+  Igor
+  Multidirectional
+  Basic
+}
+
 pub struct HillshadePaint {
-  direction : Expr
+  shading : HillshadeMethod
+  direction : Array[Expr]
+  altitude : Array[Expr]
   viewport : Bool
   exaggeration : Expr
-  shadow : Expr
-  highlight : Expr
+  shadow : Array[Expr]
+  highlight : Array[Expr]
   accent : Expr
+  nearest : Bool
 }
 
 pub struct IconLayout {
@@ -227,6 +246,7 @@ pub(all) enum LayerKind {
   FillExtrusion
   Raster
   Heatmap
+  ColorRelief
   Custom
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
@@ -242,6 +262,7 @@ pub struct Light {
 
 pub(all) struct NoFeature {
 }
+pub fn NoFeature::elevation(Self) -> Double
 pub fn NoFeature::geometry_type(Self) -> String
 pub fn NoFeature::heatmap_density(Self) -> Double
 pub fn NoFeature::id(Self) -> Value
@@ -383,6 +404,7 @@ pub struct StyleLayer {
   icon : IconLayout?
   icon_paint : IconPaint?
   hillshade : HillshadePaint?
+  relief : ColorReliefPaint?
   extrusion : ExtrusionPaint?
   raster : RasterPaint?
   heatmap : HeatmapPaint?
@@ -506,4 +528,5 @@ pub(open) trait FeatureContext {
   fn text_number(Self, String) -> Double = _
   fn line_progress(Self) -> Double = _
   fn heatmap_density(Self) -> Double = _
+  fn elevation(Self) -> Double = _
 }

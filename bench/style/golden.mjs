@@ -9,6 +9,7 @@ import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
 import { SCENES } from "./scenes.mjs";
 import { writeSprite } from "./sprite.mjs";
+import { writeFujiTerrarium } from "../lib/fuji-terrain.mjs";
 
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 const only = arg("scene");
@@ -16,6 +17,7 @@ const shots = arg("shots");
 await mkdir(path.join(ROOT, "bench/dist/style"), { recursive: true });
 if (shots) await mkdir(shots, { recursive: true });
 await writeSprite();
+await writeFujiTerrarium();
 const { server, origin } = await serve();
 const gpu = process.platform === "darwin" ? ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] : [];
 const browser = await chromium.launch({ args: gpu });

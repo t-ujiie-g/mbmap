@@ -69,6 +69,7 @@ pub extend NoFeature with FeatureContext::{
   text_number,
   line_progress,
   heatmap_density,
+  elevation,
 }
 
 ///|

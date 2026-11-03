@@ -17,6 +17,7 @@ pub(all) enum LayerKind {
   FillExtrusion
   Raster
   Heatmap
+  ColorRelief
   Custom
 } derive(Debug, Eq)
 
@@ -61,6 +62,7 @@ pub struct StyleLayer {
   icon : IconLayout?
   icon_paint : IconPaint?
   hillshade : HillshadePaint?
+  relief : ColorReliefPaint?
   extrusion : ExtrusionPaint?
   raster : RasterPaint?
   heatmap : HeatmapPaint?
@@ -235,6 +237,7 @@ fn parse_layer(
     "fill-extrusion" => FillExtrusion
     "raster" => Raster
     "heatmap" => Heatmap
+    "color-relief" => ColorRelief
     "custom" => Custom
     "" => raise Invalid(path="\{path}.type", "missing")
     _ => return None
@@ -256,6 +259,7 @@ fn parse_layer(
     FillExtrusion => "fill-extrusion"
     Raster => "raster"
     Heatmap => "heatmap"
+    ColorRelief => "color-relief"
     Custom => "custom"
   }
   let join = match string_or(layout, "line-join", lpath, "miter") {
@@ -368,6 +372,7 @@ fn parse_layer(
     } else {
       None
     },
+    relief: None,
     extrusion: if kind is FillExtrusion {
       Some(parse_extrusion(paint, ppath))
     } else {
@@ -452,6 +457,18 @@ fn parse_layer(
   }
   if others.iter().any(e => e.reads_line_progress()) {
     raise Invalid(path~, "line-progress is only allowed in line-gradient")
+  }
+  // And `elevation` in `color-relief-color` only (`others[0]`).
+  let elevation_free = if kind is ColorRelief { others[1:] } else { others[:] }
+  if elevation_free.iter().any(e => e.reads_elevation()) ||
+    layer.gradient.map_or(false, e => e.reads_elevation()) {
+    raise Invalid(path~, "elevation is only allowed in color-relief-color")
+  }
+  if kind is ColorRelief {
+    return Some({
+      ..layer,
+      relief: Some(parse_color_relief(layer.color, paint, ppath)),
+    })
   }
   Some(layer)
 }

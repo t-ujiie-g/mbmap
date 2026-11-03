@@ -12,6 +12,7 @@ pub(open) trait FeatureContext {
   fn text_number(Self, String) -> Double = _
   fn line_progress(Self) -> Double = _
   fn heatmap_density(Self) -> Double = _
+  fn elevation(Self) -> Double = _
 }
 
 ///|
@@ -33,6 +34,12 @@ impl FeatureContext with fn line_progress(_) {
 ///|
 /// NaN: `heatmap-density` is known only where a heatmap's colors are made.
 impl FeatureContext with fn heatmap_density(_) {
+  @double.not_a_number
+}
+
+///|
+/// NaN: `elevation` is known only where a color relief's ramp is made.
+impl FeatureContext with fn elevation(_) {
   @double.not_a_number
 }
 
@@ -189,6 +196,14 @@ pub fn[C : FeatureContext] Expr::eval(
         Failed
       } else {
         Num(d)
+      }
+    }
+    Elevation => {
+      let h = ctx.elevation()
+      if h.is_nan() {
+        Failed
+      } else {
+        Num(h)
       }
     }
     Not(e) =>
@@ -348,6 +363,7 @@ fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
     | Zoom
     | LineProgress
     | HeatmapDensity
+    | Elevation
     | FeatureState(_) => ()
     Not(a) => f(a)
     All(es)
@@ -431,6 +447,12 @@ fn Expr::reads_line_progress(self : Expr) -> Bool {
 /// Whether the expression reads `heatmap-density`.
 fn Expr::reads_heatmap_density(self : Expr) -> Bool {
   self.any(e => e is HeatmapDensity)
+}
+
+///|
+/// Whether the expression reads `elevation`.
+fn Expr::reads_elevation(self : Expr) -> Bool {
+  self.any(e => e is Elevation)
 }
 
 ///|

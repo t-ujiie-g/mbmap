@@ -203,7 +203,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
       if (controller.signal.aborted) return;
       // Slopes, border elevations (f64) and elevations (f32): worker/processor.mbt `dem_tile`.
       const out = withInput(rgba, () => wasm.process_dem(source, z, size));
-      const s = size * size * 2;
+      const s = (size + 2) * (size + 2) * 2;
       const image = out.slice(0, s).buffer;
       const edges = new Float64Array(out.slice(s, s + 8 * size * 8).buffer);
       const elevations = new Float32Array(out.slice(s + 8 * size * 8).buffer);
