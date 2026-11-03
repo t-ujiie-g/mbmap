@@ -83,6 +83,12 @@ license and source.
     the placement of src/symbol/placement.ts (variable anchors, passes) and
     collision_index.ts, `GridIndex.hitTest` of grid_index.ts and the tile order
     of `Style._updatePlacement`
+  - worker/js/line-labels.mjs, map/line_labels.mbt and label/grid.mbt: labels
+    along lines, from src/symbol/merge_lines.ts, get_anchors.ts,
+    check_max_angle.ts, clip_line.ts, `anchorIsTooClose` of symbol_layout.ts,
+    `placeGlyphAlongLine` and `updateLineLabels` of projection.ts,
+    `placeCollisionCircles` of collision_index.ts, path_interpolator.ts and the
+    circles of grid_index.ts; the along-line branch of symbol_sdf.vertex.glsl
   - core/camera.mbt, core/animation.mbt and core/constrain.mbt: easeTo, flyTo, cameraForBounds,
     setLocationAtPoint, getBounds and the default constrain of src/ui/camera.ts
     and src/geo/projection/ (mercator_camera_helper.ts, camera_helper.ts,

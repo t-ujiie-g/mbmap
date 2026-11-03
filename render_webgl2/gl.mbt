@@ -44,6 +44,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 13, "a_dist");
   #|    gl.bindAttribLocation(p, 14, "a_progress");
   #|    gl.bindAttribLocation(p, 15, "a_shift");
+  #|    gl.bindAttribLocation(p, 13, "a_glyph");
   #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
@@ -209,7 +210,8 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
   #|  // height (m). SDF edge at 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px).
   #|  const symbol = program(
-  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; uniform mat4 u_matrix;" +
+  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; in vec3 a_glyph;" +
+  #|    "uniform mat4 u_matrix; uniform float u_along;" +
   #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
   #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha;" +
   #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
@@ -217,16 +219,23 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "void main() { vec4 c = u_matrix * vec4(a_pos, a_ele * u_scale, 1.0); v_alpha = 1.0;" +
   #|    "  if (u_occlude) { vec3 f = c.xyz / c.w; v_alpha = visible(f);" +
   #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
-  #|    "  if (v_alpha < 0.1) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
+  #|    "  if (v_alpha < 0.1 || (u_along > 0.0 && a_glyph.x < -1e8)) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
+  #|    "  v_tex = a_tex / u_atlas;" +
+  #|    // Along a line: the glyph at a_glyph (tile units, angle), lying on the map, sized
+  #|    // by MapLibre's ratio for text pitched with the map; u_along is tile units per px.
+  #|    "  if (u_along > 0.0) { float q = clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
+  #|    "    float s = sin(a_glyph.z), k = cos(a_glyph.z);" +
+  #|    "    vec4 p = u_matrix * vec4(a_glyph.xy + mat2(k, s, -s, k) * a_data * 0.25 * q * u_along, a_ele * u_scale, 1.0);" +
+  #|    "    gl_Position = p; v_scale = a_size / 16.0 * q * u_dpr / 48.0 * u_center / p.w; return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
   #|    "  vec2 off = (a_data * 0.25 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
-  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_tex = a_tex / u_atlas; v_scale = a_size / 16.0 * r * u_dpr / 48.0; }",
+  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_scale = a_size / 16.0 * r * u_dpr / 48.0; }",
   #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale;" +
   #|    "in float v_alpha; out vec4 o;" +
   #|    "void main() { float d = (0.75 - texture(u_glyphs, v_tex).r) * 16.0 * v_scale;" +
   #|    "  o = u_color * v_alpha * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
   #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_glyphs", "u_color",
-  #|     "u_halo"]);
+  #|     "u_halo", "u_along"]);
   #|  // MapLibre's fill_extrusion shaders; vertices as in docs/FORMATS.md, a_ele the
   #|  // ground (m) under the centroid times u_ground (0 without terrain, which also
   #|  // skips the 10 m basement), u_scale world pixels per meter.
@@ -469,6 +478,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.progress) c.gl.deleteBuffer(m.progress);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|  if (m.shift) c.gl.deleteBuffer(m.shift);
+  #|  if (m.glyph) c.gl.deleteBuffer(m.glyph);
   #|}
 
 ///|
@@ -756,13 +766,15 @@ extern "js" fn gl_draw_symbols(
   halo_width : Double,
   center : Double,
   scale : Double,
+  along : Double,
 ) -> Unit =
-  #|(c, m, matrix, dpr, color, halo, haloWidth, center, scale) => {
+  #|(c, m, matrix, dpr, color, halo, haloWidth, center, scale, along) => {
   #|  if (m.count === 0 || !c.atlas) return;
   #|  const gl = c.gl, p = c.symbol;
   #|  gl.useProgram(p.program);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform1f(p.u_along, m.glyph ? along : 0);
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
   #|  gl.uniform1f(p.u_dpr, dpr);
   #|  gl.uniform1f(p.u_center, center);
@@ -878,6 +890,37 @@ extern "js" fn gl_set_heights(
   #|    for (let k = first; k < end; k++) out[m.all[k]] = heights[i];
   #|  }
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|}
+
+///|
+/// Sets where each glyph of a mesh of labels along lines lies (`glyphs`: x, y in
+/// tile units and angle per glyph quad, x below -1e8 hiding it).
+extern "js" fn gl_set_glyphs(
+  gl : Gl,
+  mesh : Mesh,
+  glyphs : FixedArray[Double],
+) -> Unit =
+  #|(c, m, glyphs) => {
+  #|  const gl = c.gl;
+  #|  m.glyphData ??= new Float32Array(m.vertices * 3);
+  #|  const out = m.glyphData, n = Math.min(glyphs.length / 3, m.vertices / 4);
+  #|  for (let g = 0; g < n; g++) {
+  #|    for (let o = g * 12; o < g * 12 + 12; o += 3) {
+  #|      out[o] = glyphs[g * 3];
+  #|      out[o + 1] = glyphs[g * 3 + 1];
+  #|      out[o + 2] = glyphs[g * 3 + 2];
+  #|    }
+  #|  }
+  #|  if (!m.glyph) {
+  #|    m.glyph = gl.createBuffer();
+  #|    gl.bindVertexArray(m.vao);
+  #|    gl.bindBuffer(gl.ARRAY_BUFFER, m.glyph);
+  #|    gl.enableVertexAttribArray(13);
+  #|    gl.vertexAttribPointer(13, 3, gl.FLOAT, false, 12, 0);
+  #|    gl.bindVertexArray(null);
+  #|  }
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.glyph);
   #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
   #|}
 

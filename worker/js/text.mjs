@@ -92,7 +92,8 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
       pen += x0;
       for (const cp of line) {
         const m = metrics(cp);
-        if (inked(m)) quads.push(standing(cp, m, pen, baseline));
+        // `along`: the glyph's middle, where a label along a line puts it on the line.
+        if (inked(m)) quads.push({ ...standing(cp, m, pen, baseline), along: pen + (m.advance * scale) / 2 });
         pen += m.advance * scale;
       }
       return;

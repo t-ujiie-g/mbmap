@@ -209,6 +209,10 @@ fn Map::draw_layer(
       // An ancestor standing in for several tiles is drawn once.
       if s.drawn != self.frame_count {
         s.drawn = self.frame_count
+        if s.line is Some(l) {
+          let tile_px = at.units_per_pixel * dpr
+          self.lay_line_glyphs(m.mesh, at, s, l, tile_px, height_scale)
+        }
         self.renderer.draw_symbols(
           m.mesh,
           at,

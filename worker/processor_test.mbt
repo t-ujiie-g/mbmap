@@ -543,8 +543,10 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq([r.f64(), r.f64(), r.f64(), r.f64(), r.f64()], [
     0.0, 1.5, 10.0, 1.2, 2.0,
   ])
-  // `text-justify` center, no variable anchors.
+  // `text-justify` center, no variable anchors; on points, kept upright, 250
+  // px apart, 45° at most along lines.
   assert_eq((r.u8(), r.u8()), (2, 0))
+  assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64(), r.u32()),
@@ -554,7 +556,7 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
   // The other point lacks k: its text is "k=" and a null part.
   let r2 = @core.ByteReader::new(b[entry(1, 2):entry(1, 2) + entry(1, 3)])
-  for _ in 0..<46 {
+  for _ in 0..<64 {
     r2.u8() |> ignore
   }
   assert_eq(r2.u32(), 1)
@@ -580,7 +582,29 @@ test "labels whose text has no value are left out" {
   let b = p.out.to_bytes()[:]
   assert_eq(p.out.layer_count(), 1)
   let at = u32_at(b, 4 + 2 * 4)
-  assert_eq(u32_at(b, at + 46), 1)
+  assert_eq(u32_at(b, at + 64), 1)
+}
+
+///|
+test "labels along lines carry their features' lines" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "t", "type": "symbol", "source": "g",
+    #|   "layout": {"text-field": "a", "symbol-placement": "line-center", "symbol-spacing": 100,
+    #|              "text-max-angle": 30, "text-keep-upright": false}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let r = @core.ByteReader::new(b[u32_at(b, 4 + 2 * 4):])
+  for _ in 0..<46 {
+    r.u8() |> ignore
+  }
+  assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (2, 0, 100.0, 30.0))
+  // The square of the tile is its one line feature, a ring of 5 points.
+  assert_eq(r.u32(), 1)
+  assert_eq((r.u32(), r.i16(), r.i16(), r.f64(), r.f64()), (2, 0, 0, 16.0, 0.0))
+  assert_eq((r.u32(), r.u8(), r.utf8()), (1, @core.PROP_STRING, "a"))
+  assert_eq((r.u32(), r.u32()), (1, 5))
 }
 
 ///|
@@ -601,6 +625,7 @@ test "variable anchors follow the layout, each with its offset in ems" {
   assert_eq((r.u8(), r.u8()), (0, 2))
   assert_eq((r.u8(), r.f64(), r.f64()), (1, 2.0, 0.0))
   assert_eq((r.u8(), r.f64(), r.f64()), (3, 0.0, 2.0 - 7.0 / 24.0))
+  assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
   assert_eq(r.u32(), 1)
 }
 
@@ -620,6 +645,7 @@ test "vertical writing and sort keys reach the labels" {
     r.f64() |> ignore
   }
   assert_eq((r.u8(), r.u8()), (2, 0))
+  assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),

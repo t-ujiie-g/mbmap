@@ -10,7 +10,7 @@ const glyphs = {
 
 // A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
 // size, parts, sort key), the n-th label of feature 10 + n.
-function entry(labels, vertical = 0, { justify = 2, anchors = [] } = {}) {
+function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0, spacing = 250, maxAngle = 45 } = {}) {
   const bytes = [];
   const u8 = (v) => bytes.push(v & 0xff);
   const u32 = (v) => [0, 8, 16, 24].forEach((s) => u8(v >>> s));
@@ -25,8 +25,12 @@ function entry(labels, vertical = 0, { justify = 2, anchors = [] } = {}) {
     f64(x);
     f64(y);
   }
+  u8(placement);
+  u8(1);
+  f64(spacing);
+  f64(maxAngle);
   u32(labels.length);
-  for (const [n, [x, y, size, parts, key = 0]] of labels.entries()) {
+  for (const [n, [x, y, size, parts, key = 0, lines = []]] of labels.entries()) {
     u32(10 + n);
     i16(x);
     i16(y);
@@ -44,6 +48,16 @@ function entry(labels, vertical = 0, { justify = 2, anchors = [] } = {}) {
         u8(4);
         u32(s.length);
         bytes.push(...s);
+      }
+    }
+    if (placement > 0) {
+      u32(lines.length);
+      for (const line of lines) {
+        u32(line.length);
+        for (const [px, py] of line) {
+          i16(px);
+          i16(py);
+        }
       }
     }
   }
@@ -96,4 +110,18 @@ test("variable anchors: a multi-line label once per justification, a single line
   const left = (quad) => v.getInt16(quad * 4 * SYMBOL_VERTEX_BYTES + 4, true) / 4;
   const pad = (SDF_BUFFER * 10) / SDF_SIZE;
   assert.deepEqual([2, 5, 8].map(left), [-10 - pad, -5 - pad, 0 - pad]);
+});
+
+test("labels along lines: an instance per anchor and level, glyphs about their own middles", () => {
+  const s = buildSymbols(entry([[0, 0, 10, ["ab"], 0, [[[50, 2048], [4000, 2048]]]]], 0, { placement: 2 }), glyphs);
+  assert.equal(s.keepUpright, true);
+  assert.deepEqual([...s.lines], [50, 2048, 4000, 2048]);
+  assert.equal(s.labels.length, 3 * LABEL_FLOATS);
+  assert.deepEqual([...s.labels.slice(0, 2)], [2025, 2048]);
+  // Levels 0 to 2, each on segment 0 of the one line, glyphs 2 apart, circles 10 px wide.
+  assert.deepEqual([...s.lineLabels], [0, 0, 0, 2, 0, 10, 1, 0, 0, 2, 2, 10, 2, 0, 0, 2, 4, 10]);
+  assert.deepEqual([...s.glyphOffsets], [-12, 12, -12, 12, -12, 12]);
+  const v = new DataView(s.vertices);
+  const pad = Math.round(((SDF_BUFFER * 10) / SDF_SIZE) * 4);
+  assert.deepEqual([v.getInt16(0, true), v.getInt16(4, true), v.getInt16(SYMBOL_VERTEX_BYTES * 4 + 4, true)], [2025, -20 - pad, -20 - pad]);
 });
