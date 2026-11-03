@@ -3,18 +3,33 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.6b（線に沿ったアイコン）。15.6a（点のアイコン）までと、15.1〜15.5、15.7〜15.12、15.2 は完了。15.6 の後は、Phase 15 の後のリファクタリングとセキュリティチェック。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15 の後のリファクタリングとセキュリティチェック。Phase 15 の 12 段階（15.1〜15.12）はすべて完了。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 105.9KB（画像・動画・canvas のソースは別に `media.js` 2.0KB、カスタムレイヤーは `custom.js` 1.8KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
-  | 表示ワーカー | 92.3KB | 100KB |
+  | 表示（メイン） | 107.1KB（画像・動画・canvas のソースは別に `media.js` 2.0KB、カスタムレイヤーは `custom.js` 1.8KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
+  | 表示ワーカー | 92.5KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.6b：線に沿ったアイコン（2026-11-03）
+
+状態：**完了**。
+
+- **スタイル**：`symbol-placement: line` / `line-center` で `icon-image` を読む。`icon-rotation-alignment` の `auto` は `map`（線に沿って回り、地図の面に寝る）。`viewport` なら、線の上のアンカーに画面に立てて置く。線に沿うときの `icon-offset`（MapLibre は 2 度足す）、`icon-text-fit`、`icon-rotation-alignment: map` と `icon-pitch-alignment: viewport` の組み合わせは Unsupported。
+- **ワーカー**：アンカーの間隔と長さの判定は、MapLibre の `getShapedLabelLength` と同じく、文字（glyph 単位）とアイコン（大きさ 1 の px）の長い方。文字のない（アイコンだけの）ラベルは、角度の窓を使わず、同じ文字どうしの間隔（`anchorIsTooClose`）も取らない。アイコンはインスタンス（アンカー）ごとに 1 つ。
+- **配置**（`map/line_labels.mbt`）：文字は円で、アイコンは箱を地図の面にアンカーで置いて投影する（MapLibre の `_projectCollisionBox`：角と辺の中点の 8 点、遠近の比で大きく。`Map::fits_on_map`）。文字とアイコンの組み合わせは点と同じ規則（`joint`、`show_icon` を点と共有）。
+- **描画**：線に沿って回るアイコンは、カメラが動いたフレームごとに、アンカーに置いた 1 文字として位置と角度を求め（`icon-keep-upright` で反転）、頂点属性 `a_glyph` で描く。
+- **`npm run labels:golden`**：等高線の場面を 5 個足した（文字とアイコン、アイコンだけで回した地図、傾けた地図と `icon-keep-upright`、`viewport` のアイコンと `line-center`、`text-optional` と点のラベル）。**32 場面すべて一致**（アイコン 1,123 個、線に沿う文字 370 個）。文字の位置の差は 0px（許容 0.5px）。
+  - MapLibre の glyph offset の配列は文字とアイコンで共有なので、ページは文字の位置を頂点の番号（`vertexStartIndex`）から読むように直した。同じ地物のインスタンスはグリッドで同じキーなので、箱は最も近いものと比べる。
+- **`npm run style:golden`**：`icons-lines`（線に沿うピンと、`viewport` の SDF の輪、回した地図）は平均 0.016 / p99 0、`icons-lines-tilted`（45° 傾き）は平均 0.027 / p99 1。回したアイコンの縁の補間の丸めの差。
+- 大きさ：メイン 105.9 → 107.1KB（+1.2KB：箱の投影、アイコンの位置、配置の整理）、表示ワーカー 92.3 → 92.5KB。
+- MapLibre との違い：線に沿うアイコンは、`icon-offset`、`icon-text-fit`（道路番号の盾など。文字を画面に立てて線に置く `text-rotation-alignment: viewport` もまだない）を描かない。
+- **本線で測ってほしいもの**：`render --labels --line-labels`（線のラベルの配置にアイコンの箱が、フレームごとの配置にアイコンが加わる）。
 
 ## Phase 15.6a：点のアイコン（2026-11-03）
 
@@ -494,7 +509,7 @@
   | 本線 | 15.3 | 線の距離、`line-dasharray`、`fill-antialias` と輪郭の色 | 済み（#55、#57） |
   | 本線 | 15.4 | `line-gradient`（tiler の lineMetrics） | 済み（#59） |
   | 本線 | 15.5 | スプライト、`addImage`、模様 4 種 | 合成のスプライト（1x と 2x）で、模様の場面 |
-  | 本線 | 15.6 | アイコン | 点は済み（15.6a、`labels:golden` 27/27）。線に沿うアイコンは 15.6b |
+  | 本線 | 15.6 | アイコン | 済み（15.6a 点、15.6b 線。`labels:golden` 32/32） |
   | 本線 | 15.7 | `text-variable-anchor` | 済み（`labels:golden` 10/10） |
   | 本線 | 15.8 | 線に沿ったラベル | 位置は済み（`labels:golden` 17/17）。フレームの CPU 時間は本線で計測 |
   | 本線 | 15.9 | heatmap | 済み |

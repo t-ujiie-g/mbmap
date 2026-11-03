@@ -244,11 +244,13 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  const icon = program(
   #|    symbolBase + "uniform float u_size; uniform bool u_persp; uniform bool u_pitch; uniform bool u_rotate; uniform float u_angle;" +
   #|    "uniform float u_units; out float v_gamma;" +
-  #|    "void main() { vec4 c = anchor(); if (v_alpha < 0.1) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
+  #|    "void main() { vec4 c = anchor(); bool along = u_along > 0.0;" +
+  #|    "  if (v_alpha < 0.1 || (along && a_glyph.x < -1e8)) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
   #|    "  float size = u_size >= 0.0 ? u_size : a_size / 128.0; vec2 off = a_data / 32.0;" +
   #|    "  if (u_pitch) { if (u_persp) size *= clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
-  #|    "    float s = sin(u_angle), k = cos(u_angle);" +
-  #|    "    gl_Position = u_matrix * vec4(a_pos + mat2(k, s, -s, k) * (off * size + a_shift) * u_units, a_ele * u_scale, 1.0);" +
+  #|    "    float t = u_angle + (along ? a_glyph.z : 0.0), s = sin(t), k = cos(t);" +
+  #|    "    gl_Position = u_matrix * vec4((along ? a_glyph.xy : a_pos) + mat2(k, s, -s, k) * (off * size + a_shift) * u_units," +
+  #|    "      a_ele * u_scale, 1.0);" +
   #|    "    v_scale = size; v_gamma = gl_Position.w; return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0); if (u_persp) size *= r; off *= size;" +
   #|    "  if (u_rotate) { vec4 e = u_matrix * vec4(a_pos + vec2(1.0, 0.0), a_ele * u_scale, 1.0);" +
@@ -836,8 +838,8 @@ extern "js" fn gl_draw_symbols(
 
 ///|
 /// `u`: dpr, center clip w, elevation scale, size, perspective, pitch, rotate, angle,
-/// tile units per px, opacity, sdf, halo width, blur, gamma scale, linear (colors
-/// straight RGBA). MapLibre draws a halo wider than 1 px in a pass of its own.
+/// tile units per px, opacity, sdf, halo width, blur, gamma scale, linear, along
+/// (colors straight RGBA). MapLibre draws a halo wider than 1 px in its own pass.
 extern "js" fn gl_draw_icons(
   gl : Gl,
   mesh : Mesh,
@@ -856,6 +858,7 @@ extern "js" fn gl_draw_icons(
   #|  ["u_dpr", "u_center", "u_scale", "u_size", "u_persp", "u_pitch", "u_rotate", "u_angle", "u_units", "u_opacity", "u_sdf"]
   #|    .forEach((name, i) => (i === 4 || i === 5 || i === 6 || i === 10 ? gl.uniform1i(p[name], u[i]) : gl.uniform1f(p[name], u[i])));
   #|  gl.uniform1f(p.u_gamma_scale, u[13]);
+  #|  gl.uniform1f(p.u_along, m.glyph && u[15] ? 1 : 0);
   #|  const occlude = !!c.depth?.ready;
   #|  gl.uniform1i(p.u_occlude, occlude ? 1 : 0);
   #|  gl.activeTexture(gl.TEXTURE2);

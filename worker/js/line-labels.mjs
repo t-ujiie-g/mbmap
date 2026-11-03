@@ -113,9 +113,9 @@ function resample(line, offset, spacing, windowSize, maxAngle, labelLength, cont
  * Anchors every `spacing` along `line` (MapLibre's `getAnchors`), at most `limit`: `length` is the
  * label's in glyph units (24 a em), `boxScale` tile units per glyph unit, `maxAngle` in radians.
  */
-export function getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, extent = EXTENT, limit = Infinity) {
+export function getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, extent = EXTENT, limit = Infinity, text = true) {
   if (!(spacing > 0) || limit <= 0) return [];
-  const windowSize = length > 0 ? (3 / 5) * 24 * boxScale : 0;
+  const windowSize = text && length > 0 ? (3 / 5) * 24 * boxScale : 0;
   const labelLength = length * boxScale;
   const first = line[0];
   const continued = first.x === 0 || first.x === extent || first.y === 0 || first.y === extent;
@@ -125,8 +125,8 @@ export function getAnchors(line, spacing, maxAngle, length, boxScale, overscalin
 }
 
 /** The anchor at the middle of `line` if the label fits there (MapLibre's `getCenterAnchor`). */
-export function getCenterAnchor(line, maxAngle, length, boxScale) {
-  const windowSize = length > 0 ? (3 / 5) * 24 * boxScale : 0;
+export function getCenterAnchor(line, maxAngle, length, boxScale, text = true) {
+  const windowSize = text && length > 0 ? (3 / 5) * 24 * boxScale : 0;
   const labelLength = length * boxScale;
   let prev = 0;
   const center = lineLength(line) / 2;
@@ -240,8 +240,9 @@ export function lineAnchors(lines, text, length, layout, overscaling, seen, limi
   if (layout.placement === "line") {
     for (const line of clipLine(lines, 0, 0, EXTENT, EXTENT)) {
       // Anchors are made only as far as the room left, so a long line cannot outrun the cap.
-      for (const anchor of getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, EXTENT, limit - out.length)) {
-        if (!tooClose(seen, text, spacing / 2, anchor) && inside(anchor)) out.push({ anchor, line });
+      for (const anchor of getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, EXTENT, limit - out.length, !!text)) {
+        // Only labels with text keep apart from their like (MapLibre's `anchorIsTooClose`).
+        if ((!text || !tooClose(seen, text, spacing / 2, anchor)) && inside(anchor)) out.push({ anchor, line });
         if (out.length >= limit) return out;
       }
     }
@@ -249,7 +250,7 @@ export function lineAnchors(lines, text, length, layout, overscaling, seen, limi
     for (const line of lines) {
       if (out.length >= limit) return out;
       if (line.length < 2) continue;
-      const anchor = getCenterAnchor(line, maxAngle, length, boxScale);
+      const anchor = getCenterAnchor(line, maxAngle, length, boxScale, !!text);
       if (anchor && inside(anchor)) out.push({ anchor, line });
     }
   }

@@ -47,7 +47,9 @@ function mbmapLabels() {
     const [layer, z, x, y, feature, ax, ay, code, t, i, ...rest] = line.split(",");
     const box = rest.slice(0, 8).map(Number);
     const boxes = [];
-    if (t === "1" && !ignored(layer, "text-ignore-placement") && Number.isFinite(box[0])) boxes.push(box.slice(0, 4));
+    // Text along lines goes in the grid as circles, which MapLibre keeps apart from boxes.
+    const along = (styleJson.layers.find((l) => l.id === layer)?.layout?.["symbol-placement"] ?? "point") !== "point";
+    if (t === "1" && !along && !ignored(layer, "text-ignore-placement") && Number.isFinite(box[0])) boxes.push(box.slice(0, 4));
     if (i === "1" && !ignored(layer, "icon-ignore-placement") && Number.isFinite(box[4])) boxes.push(box.slice(4));
     return {
       key: `${layer} ${z}/${x}/${y} ${feature}@${ax},${ay}`,
@@ -95,8 +97,9 @@ function maplibreLabels() {
         if (along) {
           const ps = bucket.text.placedSymbolArray.get(s.centerJustifiedTextSymbolIndex);
           glyphs = [];
-          for (let g = ps.glyphStartIndex; g < ps.glyphStartIndex + ps.numGlyphs; g++) {
-            const [lx, ly, angle] = dynamic.slice(g * 12, g * 12 + 3);
+          // Glyph offsets are shared with icons, so a glyph's place is found by its vertices (4 each).
+          for (let g = 0; g < (s.numHorizontalGlyphVertices > 0 ? ps.numGlyphs : 0); g++) {
+            const [lx, ly, angle] = dynamic.slice((ps.vertexStartIndex + g * 4) * 3, (ps.vertexStartIndex + g * 4) * 3 + 3);
             const p = transform.projectTileCoordinates(lx * toTile, ly * toTile, tile.tileID.toUnwrapped());
             glyphs.push([(p.point.x + 1) / 2 * transform.width, (1 - p.point.y) / 2 * transform.height, angle]);
           }

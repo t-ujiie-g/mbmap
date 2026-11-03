@@ -96,3 +96,20 @@ test "icon layout is part of a layer's tiles, icon paint only by its inputs" {
     ),
   )
 }
+
+///|
+test "icons along lines turn and lie with the line unless set upright" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "a", "type": "symbol", "layout": {"symbol-placement": "line", "icon-image": "x"}},
+      #|  {"id": "b", "type": "symbol", "layout": {"symbol-placement": "line-center", "icon-image": "x",
+      #|   "icon-rotation-alignment": "viewport"}}
+      #|]}
+    ),
+  )
+  let a = s.layers[0].icon.unwrap()
+  assert_true(a.rotate_with_map && a.pitch_with_map)
+  let b = s.layers[1].icon.unwrap()
+  assert_false(b.rotate_with_map || b.pitch_with_map)
+}

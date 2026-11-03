@@ -484,7 +484,7 @@ test "labels along lines read spacing, angle and uprightness, with MapLibre's de
 }
 
 ///|
-test "text along lines turned to the viewport or offset, icons along lines and format are unsupported" {
+test "text along lines turned to the viewport or offset, icons offset or fitted along lines and format are unsupported" {
   let cases = [
     (
       "{\"symbol-placement\": \"line\", \"text-rotation-alignment\": \"viewport\"}",
@@ -498,7 +498,16 @@ test "text along lines turned to the viewport or offset, icons along lines and f
       "{\"symbol-placement\": \"line\", \"text-offset\": [0, 1]}", "layers[0].layout.text-offset",
     ),
     (
-      "{\"symbol-placement\": \"line\", \"icon-image\": \"x\"}", "layers[0].layout.icon-image",
+      "{\"symbol-placement\": \"line\", \"icon-image\": \"x\", \"icon-offset\": [0, 1]}",
+      "layers[0].layout.icon-offset",
+    ),
+    (
+      "{\"symbol-placement\": \"line\", \"icon-image\": \"x\", \"icon-text-fit\": \"both\"}",
+      "layers[0].layout.icon-text-fit",
+    ),
+    (
+      "{\"symbol-placement\": \"line-center\", \"icon-image\": \"x\", \"icon-pitch-alignment\": \"viewport\"}",
+      "layers[0].layout.icon-pitch-alignment",
     ),
     (
       "{\"icon-image\": \"x\", \"icon-offset\": [\"literal\", [0, 1]]}", "layers[0].layout.icon-offset",

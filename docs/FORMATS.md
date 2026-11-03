@@ -132,7 +132,9 @@ at size 1 in 32nds of a CSS px (MapLibre's `getIconQuads`: the image's box a pix
 it wider on each side, turned by `icon-rotate`), the index of the image in `images`
 (its names) in place of the glyph's, and the size times 128. `sdf` is the first
 icon's (MapLibre's `sdfIcons`), `rotated` whether any icon is turned. `missing` names
-the images the worker did not know (none are drawn for them).
+the images the worker did not know (none are drawn for them). Along lines each
+instance has its own icon; turned with the line (`rotateWithMap`), the main thread
+places it for each frame like a single glyph at the anchor.
 
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 

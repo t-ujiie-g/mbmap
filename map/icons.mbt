@@ -27,6 +27,12 @@ fn Map::draw_icons(
     }
     // An ancestor standing in for several tiles is drawn once.
     ic.drawn = self.frame_count
+    let s = m.labels.unwrap()
+    let along = s.line is Some(_) && ic.rotate_with_map
+    if s.line is Some(l) {
+      let tile_px = d.at.units_per_pixel * dpr
+      self.lay_line_glyphs(m.mesh, d.at, s, l, tile_px, height_scale)
+    }
     let ctx = m.props.unwrap_or(JsProps::none())
     let c = fn(e : @style.Expr) -> FixedArray[Double] {
       let v = color_of(e, zoom, ctx)
@@ -64,6 +70,7 @@ fn Map::draw_icons(
         1.0
       },
       height_scale~,
+      along~,
     )
   }
 }

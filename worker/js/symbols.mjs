@@ -251,7 +251,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
       ? { name: iconName, image, size: scale, rotate, shaped: shapedIcon, box: iconBox(shapedIcon, scale, icon.padding, rotate) }
       : null;
     if (onLines) {
-      placed.push({ feature, size, key, text, shaped, lines });
+      placed.push({ feature, size, key, text: shaped.quads.length > 0 ? text : "", shaped, lines, icon: iconRow });
       continue;
     }
     // With variable anchors a multi-line label is laid out once per justification
@@ -378,7 +378,8 @@ function alongLines(features, along, lineHeight) {
     const seen = new Map();
     for (const f of features) {
       const size = Math.min(f.size, 256);
-      const length = ((f.shaped.box[2] - f.shaped.box[0]) * 24) / size;
+      // MapLibre's `getShapedLabelLength`: the text's in glyph units or the icon's in px, the longer.
+      const length = Math.max(f.text ? ((f.shaped.box[2] - f.shaped.box[0]) * 24) / size : 0, f.icon ? f.icon.shaped[2] - f.icon.shaped[0] : 0);
       for (const { anchor, line } of lineAnchors(f.lines, f.text, length, { ...along, size }, 2 ** level, seen, MAX_LINE_LABELS - placed.length)) {
         if (placed.length >= MAX_LINE_LABELS) break;
         if (!starts.has(line)) {
@@ -389,7 +390,10 @@ function alongLines(features, along, lineHeight) {
         meta.push(level, anchor.segment, starts.get(line), line.length, glyphs.length, diameter);
         for (const q of f.shaped.quads) glyphs.push((q.along * 24) / size);
         const r = diameter / 2;
-        placed.push({ ...f, x: anchor.x / TO_EXTENT, y: anchor.y / TO_EXTENT, box: [-r, -r, r, r], variants: [f.shaped], meta: meta.length / LINE_FLOATS - 1 });
+        placed.push({
+          ...f, x: anchor.x / TO_EXTENT, y: anchor.y / TO_EXTENT, box: [-r, -r, r, r], variants: [f.shaped],
+          meta: meta.length / LINE_FLOATS - 1, icon: f.icon && { ...f.icon },
+        });
       }
     }
   }

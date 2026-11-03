@@ -175,3 +175,15 @@ test("labels with icons get an icon quad, its box and its image; missing images 
   assert.deepEqual([0, 2, 4, 6].map((o) => v.getInt16(o, true)), [10, 20, -160, -160]);
   assert.deepEqual([8, 10, 12].map((o) => v.getUint16(o, true)), [0, 0, 256]);
 });
+
+test("icons along lines go with each instance; alone they keep no distance from their like", () => {
+  const images = new Map([["dot", [8, 8, 1, false]]]);
+  const line = [[[50, 2048], [4000, 2048]]];
+  const s = buildSymbols(entry([[0, 0, 10, [], 0, line, ["dot", 1, 0]], [0, 0, 10, [], 0, line, ["dot", 1, 0]]], 0, { placement: 2, icon: {} }), glyphs, images);
+  // Two features at the line's middle, three levels each, none with text.
+  assert.equal(s.labels.length, 6 * LABEL_FLOATS);
+  assert.equal(s.icon.count, 6 * 6);
+  const firsts = [0, 1, 2, 3, 4, 5].map((i) => s.labels[i * LABEL_FLOATS + 14]);
+  assert.deepEqual([...firsts].sort((a, b) => a - b), [0, 6, 12, 18, 24, 30]);
+  assert.equal(s.labels[LABEL_FLOATS - 1], 0);
+});

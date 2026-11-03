@@ -91,9 +91,6 @@ fn parse_icon(
 ) -> (IconLayout, IconPaint)? raise StyleError {
   guard layout.get("icon-image") is Some(image) else { return None }
   let ipath = "\{path}.icon-image"
-  if placement != Point {
-    raise Unsupported(path=ipath, "icons along lines")
-  }
   let image = match image {
     Array([String("image"), j]) => j
     j => j
@@ -142,6 +139,21 @@ fn parse_icon(
     Some(Array([String(_), ..])) =>
       raise Unsupported(path="\{path}.icon-offset", "expressions")
     Some(_) => raise Invalid(path="\{path}.icon-offset", "not two numbers")
+  }
+  // Along lines MapLibre adds `icon-offset` twice; icons turned to the line lie on it.
+  let along = if placement is Point {
+    ""
+  } else if offset != (0.0, 0.0) {
+    "icon-offset"
+  } else if fit != 0 {
+    "icon-text-fit"
+  } else if aligned[1] && !aligned[2] {
+    "icon-pitch-alignment"
+  } else {
+    ""
+  }
+  if along != "" {
+    raise Unsupported(path="\{path}.\{along}", "along lines")
   }
   let paints = []
   for d in icon_paint_defaults {
