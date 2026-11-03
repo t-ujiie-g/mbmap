@@ -2,6 +2,8 @@
 /// Screen boxes in a grid of `cell`-pixel squares, to test new boxes against
 /// those already placed without comparing every pair.
 pub struct Grid {
+  priv width : Double
+  priv height : Double
   priv cols : Int32
   priv rows : Int32
   priv cell : Double
@@ -19,6 +21,8 @@ pub fn Grid::new(
   let cols = @cmp.maximum(1, (width / cell).ceil().to_int())
   let rows = @cmp.maximum(1, (height / cell).ceil().to_int())
   {
+    width,
+    height,
     cols,
     rows,
     cell,
@@ -40,7 +44,8 @@ fn Grid::span(
 }
 
 ///|
-/// Whether the box meets one already inserted.
+/// Whether the box meets one already inserted, edges touching included, as
+/// MapLibre's `GridIndex.hitTest` (a box over the whole grid meets everything).
 pub fn Grid::hits(
   self : Grid,
   x0 : Double,
@@ -48,19 +53,41 @@ pub fn Grid::hits(
   x1 : Double,
   y1 : Double,
 ) -> Bool {
+  if x1 < 0.0 || x0 > self.width || y1 < 0.0 || y0 > self.height {
+    return false
+  }
+  if x0 <= 0.0 && y0 <= 0.0 && self.width <= x1 && self.height <= y1 {
+    return !self.boxes.is_empty()
+  }
   let (c0, c1) = self.span(x0, x1, self.cols)
   let (r0, r1) = self.span(y0, y1, self.rows)
   let b = self.boxes
+  let e = 1.0e-6
   for r in r0..<=r1 {
     for c in c0..<=c1 {
       for i in self.cells[r * self.cols + c] {
-        if x0 < b[i + 2] && x1 > b[i] && y0 < b[i + 3] && y1 > b[i + 1] {
+        if x0 <= b[i + 2] + e &&
+          y0 <= b[i + 3] + e &&
+          x1 >= b[i] - e &&
+          y1 >= b[i + 1] - e {
           return true
         }
       }
     }
   }
   false
+}
+
+///|
+/// Whether some of the box lies on the grid (MapLibre's `isInsideGrid`).
+pub fn Grid::inside(
+  self : Grid,
+  x0 : Double,
+  y0 : Double,
+  x1 : Double,
+  y1 : Double,
+) -> Bool {
+  x1 >= 0.0 && x0 < self.width && y1 >= 0.0 && y0 < self.height
 }
 
 ///|

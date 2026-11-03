@@ -12,12 +12,16 @@ const ANCHORS = ["center", "left", "right", "top", "bottom", "top-left", "top-ri
 
 // The em box's share above the baseline.
 const ASCENT = 0.88;
+// MapLibre's glyph units per em (`ONE_EM`), in which it breaks lines.
+const ONE_EM = 24;
 
-// Japanese line-breaking rules (kinsoku): no break before closing marks and
-// small kana, none after opening brackets.
-const NO_BREAK_BEFORE = new Set([..."、。，．）」』】〉》〕｝！？ー・：；ぁぃぅぇぉっゃゅょァィゥェォッャュョ︑︒︶﹂﹄︼︾︺"]);
-const NO_BREAK_AFTER = new Set([..."（「『【〈《〔｛︵﹁﹃︻︽︹"]);
-const ideographic = (cp) => cp >= 0x2e80;
+// MapLibre's line breaking (symbol/tagged_string.ts): characters a line may end
+// on, and those after which it may break between ideographs
+// (`codePointAllowsIdeographicBreaking`).
+const BREAKABLE = new Set([0x0a, 0x0d, 0x20, 0x26, 0x29, 0x2b, 0x2d, 0x2f, 0xad, 0xb7, 0x200b, 0x2010, 0x2013, 0x2027]);
+const IDEOGRAPHIC_BREAK = /[˪˫⺀-⿟⿰-〿ぁ-ゖゝ-ゟァ-ヺヽ-ヿㄅ-ㄯㆠ-䶿一-ꒌ꒐-꓆豈-舘並-龎︐-︟︰-﹏＀-￯]|\uD81B[\uDFE0-\uDFFF]|[\uD81C-\uD822\uD840-\uD868\uD86A-\uD86D\uD86F-\uD872\uD874-\uD879\uD880-\uD883\uD885-\uD88C][\uDC00-\uDFFF]|\uD823[\uDC00-\uDCD5\uDCFF-\uDD1E\uDD80-\uDDF2]|\uD82B[\uDFF0-\uDFFF]|\uD82C[\uDC00-\uDEFB]|\uD83C[\uDE00-\uDEFF]|\uD869[\uDC00-\uDEDF\uDF00-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEAD\uDEB0-\uDFFF]|\uD87A[\uDC00-\uDFE0\uDFF0-\uDFFF]|\uD87B[\uDC00-\uDE5D]|\uD87E[\uDC00-\uDE1D]|\uD884[\uDC00-\uDF4A\uDF50-\uDFFF]|\uD88D[\uDC00-\uDC79]/i;
+const ideographic = (cp) => IDEOGRAPHIC_BREAK.test(String.fromCodePoint(cp));
+const whitespace = (cp) => /\s/u.test(String.fromCodePoint(cp));
 
 // Characters that stand upright in vertical text (a subset of UAX #50's U and
 // Tu: CJK, kana, Hangul, full-width and vertical forms); the rest lie sideways,
@@ -45,17 +49,20 @@ function verticalize(cps) {
   return cps.map((cp, i) => (VERTICAL_FORMS.has(cp) && !sideways(cps[i - 1]) && !sideways(cps[i + 1]) ? VERTICAL_FORMS.get(cp) : cp));
 }
 
+// `text-justify` values in worker/labels.mbt's order; "auto" follows the anchor.
+export const JUSTIFY = ["auto", "left", "center", "right"];
+
 /**
  * Lays `text` out at `size` px like MapLibre, in columns when `vertical` and it has upright
  * characters; `metrics(cp)` is at SDF_SIZE. Returns quads (bitmap corners from top-left, clockwise) and the box.
  */
-export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2, vertical = false }, metrics) {
+export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2, vertical = false, justify = "auto" }, metrics) {
   const scale = size / SDF_SIZE;
   let cps = [...text].map((c) => c.codePointAt(0));
   const columns = vertical && cps.some(upright);
   if (columns) cps = verticalize(cps);
   const advance = (cp) => (columns && upright(cp) ? size : metrics(cp).advance * scale);
-  const lines = breakLines(cps, maxWidth * size, advance);
+  const lines = breakLines(cps, maxWidth * ONE_EM, (cp) => (advance(cp) * ONE_EM) / size);
   const lengths = lines.map((l) => l.reduce((w, cp) => w + advance(cp), 0));
   const across = lines.length * lineHeight * size;
   const along = Math.max(0, ...lengths);
@@ -65,9 +72,10 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
   const ay = name.startsWith("top") ? 0 : name.startsWith("bottom") ? -height : -height / 2;
   const x0 = ax + offset[0] * size;
   const y0 = ay + offset[1] * size;
-  const justify = columns
+  const side = justify === "auto" ? name : justify;
+  const share = columns
     ? (name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5)
-    : (name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5);
+    : (side.endsWith("left") ? 0 : side.endsWith("right") ? 1 : 0.5);
   const quads = [];
   // A glyph's padded bitmap against its pen and baseline, before any turn.
   const rect = (m) => [m.left * scale, -m.top * scale, (m.left + m.width) * scale, (m.height - m.top) * scale];
@@ -78,7 +86,7 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
     return { cp, corners: [[x + l, y + t], [x + r, y + t], [x + r, y + b], [x + l, y + b]] };
   };
   lines.forEach((line, i) => {
-    let pen = (along - lengths[i]) * justify;
+    let pen = (along - lengths[i]) * share;
     if (!columns) {
       const baseline = y0 + i * lineHeight * size + ((lineHeight - 1) * size) / 2 + ASCENT * size;
       pen += x0;
@@ -105,38 +113,66 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
       pen += advance(cp);
     }
   });
-  return { quads, box: [x0, y0, x0 + width, y0 + height] };
+  return { quads, box: [x0, y0, x0 + width, y0 + height], lines: lines.length };
 }
 
-// Greedy line breaking: `\n` always breaks; past `limit`, the line breaks at
-// its last opportunity (a space, which is dropped, or between ideographs).
-function breakLines(cps, limit, advance) {
-  const lines = [];
-  let line = [];
-  let width = 0;
-  let cut = -1;
-  const canBreakBefore = (prev, cp) =>
-    !NO_BREAK_BEFORE.has(String.fromCodePoint(cp)) && !NO_BREAK_AFTER.has(String.fromCodePoint(prev)) && (ideographic(cp) || ideographic(prev));
-  for (const cp of cps) {
-    if (cp === 10) {
-      lines.push(line);
-      line = [];
-      width = 0;
-      cut = -1;
-      continue;
-    }
-    if (cp === 32) cut = line.length;
-    else if (line.length > 0 && canBreakBefore(line[line.length - 1], cp)) cut = line.length;
-    line.push(cp);
-    width += advance(cp);
-    if (width > limit && cut > 0) {
-      const rest = line.slice(line[cut] === 32 ? cut + 1 : cut);
-      lines.push(line.slice(0, cut));
-      line = rest;
-      width = rest.reduce((w, c) => w + advance(c), 0);
-      cut = -1;
+// MapLibre's `calculatePenalty` and `evaluateBreak`: the break at `index`
+// (pen at `x`) after the prior break that makes the lines least ragged.
+function penalty(cp, next, ideographicHint) {
+  return (cp === 0x0a || cp === 0x0d ? -10000 : 0) + (ideographicHint ? 150 : 0) +
+    (cp === 0x28 || cp === 0xff08 ? 50 : 0) + (next === 0x29 || next === 0xff09 ? 50 : 0);
+}
+
+function evaluateBreak(index, x, target, breaks, penalty, last) {
+  const badness = (width) => {
+    const ragged = (width - target) ** 2;
+    if (last) return width < target ? ragged / 2 : ragged * 2;
+    return ragged + Math.abs(penalty) * penalty;
+  };
+  let prior = null;
+  let best = badness(x);
+  for (const b of breaks) {
+    const score = badness(x - b.x) + b.badness;
+    if (score <= best) {
+      prior = b;
+      best = score;
     }
   }
-  lines.push(line);
-  return lines.map((l) => (l[l.length - 1] === 32 ? l.slice(0, -1) : l)).filter((l, _, all) => l.length > 0 || all.length === 1);
+  return { index, x, prior, badness: best };
+}
+
+// MapLibre's `determineLineBreaks`, `breakLines` and `trim`: lines of about equal
+// width under `limit`, `advance` and `limit` in its 24-unit em.
+function breakLines(cps, limit, advance) {
+  const total = cps.reduce((w, cp) => w + advance(cp), 0);
+  const ends = [];
+  if (total > 0 && total <= limit && !cps.includes(0x0a) && !cps.includes(0x0d)) {
+    ends.push(cps.length);
+  } else {
+    const target = total / Math.max(1, Math.ceil(total / limit));
+    const hinted = cps.includes(0x200b);
+    const breaks = [];
+    let x = 0;
+    cps.forEach((cp, i) => {
+      if (i > 0) {
+        const prev = cps[i - 1];
+        const ideographicBreak = ideographic(prev);
+        if (BREAKABLE.has(prev) || ideographicBreak || (cp === 0x28 && i + 1 < cps.length)) {
+          breaks.push(evaluateBreak(i, x, target, breaks, penalty(prev, cp, ideographicBreak && hinted), false));
+        }
+      }
+      if (!whitespace(cp)) x += advance(cp);
+    });
+    for (let b = evaluateBreak(cps.length, x, target, breaks, 0, true); b; b = b.prior) ends.unshift(b.index);
+  }
+  const lines = [];
+  let start = 0;
+  for (const end of [...ends, ...(ends.at(-1) < cps.length ? [cps.length] : [])]) {
+    let [a, b] = [start, end];
+    while (a < b && whitespace(cps[a])) a++;
+    while (b > a && whitespace(cps[b - 1])) b--;
+    lines.push(cps.slice(a, b));
+    start = end;
+  }
+  return lines;
 }

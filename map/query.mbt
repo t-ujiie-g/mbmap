@@ -375,7 +375,10 @@ fn Map::symbols_under(
             b[i * 4 + 2],
             b[i * 4 + 3],
           ) {
-          let hit = (m.layer, f32_at(s.labels, i * LABEL_FLOATS + 6).to_int())
+          let hit = (
+            m.layer,
+            f32_at(s.labels, i * LABEL_FLOATS + LABEL_FEATURE).to_int(),
+          )
           if !list.contains(hit) {
             list.push(hit)
           }

@@ -19,10 +19,10 @@ extern "js" fn gl_offscreen_begin(
   #|  gl.bindRenderbuffer(gl.RENDERBUFFER, color);
   #|  gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, w, h);
   #|  gl.bindRenderbuffer(gl.RENDERBUFFER, depth);
-  #|  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+  #|  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, w, h);
   #|  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   #|  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, color);
-  #|  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
+  #|  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, depth);
   #|  c.out = fb;
   #|  c.offscreen = { fb, color, depth, w, h };
   #|  gl.viewport(0, 0, w, h);

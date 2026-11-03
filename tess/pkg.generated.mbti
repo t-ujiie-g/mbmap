@@ -11,7 +11,7 @@ pub const EXTRUDE_SCALE : Int32 = 63
 
 pub const EXTRUSION_HEIGHTS : Int32 = 4
 
-pub const EXTRUSION_VERTEX_STRIDE : Int32 = 7
+pub const EXTRUSION_VERTEX_STRIDE : Int32 = 8
 
 pub const LINE_VERTEX_STRIDE : Int32 = 6
 

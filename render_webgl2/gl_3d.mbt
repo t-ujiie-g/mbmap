@@ -195,7 +195,7 @@ extern "js" fn gl_upload_extrusion(
   #|  gl.enableVertexAttribArray(0);
   #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 24, 0);
   #|  gl.enableVertexAttribArray(1);
-  #|  gl.vertexAttribIPointer(1, 3, gl.SHORT, 24, 4);
+  #|  gl.vertexAttribIPointer(1, 4, gl.SHORT, 24, 4);
   #|  gl.enableVertexAttribArray(3);
   #|  gl.vertexAttribPointer(3, 4, gl.UNSIGNED_SHORT, false, 24, 16);
   #|  const ele = gl.createBuffer();
@@ -257,10 +257,13 @@ extern "js" fn gl_draw_extrusion(
   light : FixedArray[Double],
   gradient : Bool,
   heights : FixedArray[Double],
+  program : String,
+  pass : Int32,
 ) -> Unit =
-  #|(c, m, matrix, clip, color, opacity, light, gradient, heights) => {
-  #|  const gl = c.gl, p = c.extrusion;
+  #|(c, m, matrix, clip, color, opacity, light, gradient, heights, name, pass) => {
+  #|  const gl = c.gl, p = c[name];
   #|  gl.useProgram(p.program);
+  #|  if (p.u_height_factor) gl.uniform1f(p.u_height_factor, heights[3]);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
@@ -276,13 +279,19 @@ extern "js" fn gl_draw_extrusion(
   #|  gl.bindVertexArray(m.vao);
   #|  gl.enable(gl.DEPTH_TEST);
   #|  gl.depthFunc(gl.LEQUAL);
-  #|  if (opacity < 1) {
-  #|    gl.colorMask(false, false, false, false);
-  #|    gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
-  #|    gl.colorMask(true, true, true, true);
-  #|    gl.depthMask(false);
+  #|  // Pass 1 fills depth only; pass 2 colors each pixel once (the stencil counts).
+  #|  if (pass === 1) gl.colorMask(false, false, false, false);
+  #|  if (pass === 2) {
+  #|    gl.enable(gl.STENCIL_TEST);
+  #|    gl.stencilFunc(gl.EQUAL, 0, 0xff);
+  #|    gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
   #|  }
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
-  #|  gl.depthMask(true);
+  #|  gl.colorMask(true, true, true, true);
+  #|  gl.disable(gl.STENCIL_TEST);
   #|  gl.disable(gl.DEPTH_TEST);
   #|}
+
+///|
+extern "js" fn gl_clear_stencil(gl : Gl) -> Unit =
+  #|(c) => { c.gl.clearStencil(0); c.gl.clear(c.gl.STENCIL_BUFFER_BIT); }

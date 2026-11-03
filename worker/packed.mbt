@@ -29,9 +29,9 @@ pub const FILL_VERTEX_BYTES : Int32 = 4
 pub const LINE_VERTEX_BYTES : Int32 = 8
 
 ///|
-/// Bytes per packed extrusion vertex: x, y, normal x, y, z, 0, centroid x, y as
-/// Int16 (see `@tess.EXTRUSION_VERTEX_STRIDE`), then base and height at the
-/// tile's zoom and one deeper as Uint16 decimeters (0 to 6553.5 m).
+/// Bytes per packed extrusion vertex: x, y, normal x, y, z, wall distance,
+/// centroid x, y as Int16 (see `@tess.EXTRUSION_VERTEX_STRIDE`), then base and
+/// height at the tile's zoom and one deeper as Uint16 decimeters (0 to 6553.5 m).
 pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
@@ -253,9 +253,9 @@ fn PackedTile::add_extrusion(
     self.put_i16(at + 4, v[i * s + 2])
     self.put_i16(at + 6, v[i * s + 3])
     self.put_i16(at + 8, v[i * s + 4])
-    self.put_i16(at + 10, 0)
-    self.put_i16(at + 12, rescale(v[i * s + 5], extent))
-    self.put_i16(at + 14, rescale(v[i * s + 6], extent))
+    self.put_i16(at + 10, rescale(v[i * s + 5], extent))
+    self.put_i16(at + 12, rescale(v[i * s + 6], extent))
+    self.put_i16(at + 14, rescale(v[i * s + 7], extent))
     for k in 0..<h {
       self.store.set_u16(at + 16 + k * 2, decimeters(b.heights[i * h + k]))
     }

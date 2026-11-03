@@ -10,7 +10,7 @@ const glyphs = {
 
 // A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
 // size, parts, sort key), the n-th label of feature 10 + n.
-function entry(labels, vertical = 0) {
+function entry(labels, vertical = 0, { justify = 2, anchors = [] } = {}) {
   const bytes = [];
   const u8 = (v) => bytes.push(v & 0xff);
   const u32 = (v) => [0, 8, 16, 24].forEach((s) => u8(v >>> s));
@@ -18,6 +18,13 @@ function entry(labels, vertical = 0) {
   const i16 = (v) => [0, 8].forEach((s) => u8(v >> s));
   [0, 0, 0, vertical].forEach(u8);
   [0, 0, 10, 1, 2].forEach(f64);
+  u8(justify);
+  u8(anchors.length);
+  for (const [code, x, y] of anchors) {
+    u8(code);
+    f64(x);
+    f64(y);
+  }
   u32(labels.length);
   for (const [n, [x, y, size, parts, key = 0]] of labels.entries()) {
     u32(10 + n);
@@ -47,7 +54,7 @@ test("labels become glyph quads with their anchors, offsets, glyph indices and b
   const s = buildSymbols(entry([[100, 200, 10, ["駅", 1]], [5, 6, 10, [null]]]), glyphs);
   // The second label has no text and is left out.
   assert.equal(s.labels.length, LABEL_FLOATS);
-  assert.deepEqual([...s.labels], [100, 200, -10, -5, 10, 5, 10, 0, 12]);
+  assert.deepEqual([...s.labels], [100, 200, -10, -5, 10, 5, 10, 10, 0, 1, 0, 12]);
   assert.deepEqual([...s.codepoints], ["駅".codePointAt(0), "1".codePointAt(0)]);
   assert.equal(s.vertices.byteLength, 2 * 4 * SYMBOL_VERTEX_BYTES);
   assert.equal(s.count, 12);
@@ -72,4 +79,21 @@ test("long labels are cut and far corners clamp to the i16 range", () => {
 test("lower sort keys come first", () => {
   const s = buildSymbols(entry([[1, 0, 10, ["a"], 5], [2, 0, 10, ["b"], -1], [3, 0, 10, ["c"], 5]]), glyphs);
   assert.deepEqual([0, 1, 2].map((i) => s.labels[i * LABEL_FLOATS]), [2, 1, 3]);
+});
+
+test("variable anchors: a multi-line label once per justification, a single line once", () => {
+  const anchors = [[3, 0, 0.5], [1, 0.25, 0]];
+  const s = buildSymbols(entry([[0, 0, 10, ["ab\nc"]], [1, 0, 10, ["ab"]]], 0, { justify: 0, anchors }), glyphs);
+  assert.deepEqual([...s.anchors], anchors.flat());
+  assert.equal(s.justify, 0);
+  const row = (i) => [...s.labels.slice(i * LABEL_FLOATS, (i + 1) * LABEL_FLOATS)];
+  // Centered boxes; three variants of 3 quads, then one of 2.
+  assert.deepEqual(row(0), [0, 0, -10, -10, 10, 10, 10, 10, 0, 3, 0, 18]);
+  assert.deepEqual(row(1), [1, 0, -10, -5, 10, 5, 11, 10, 0, 1, 54, 12]);
+  assert.equal(s.count, (9 + 2) * 6);
+  // "c" starts the second line at the left, the middle and the right.
+  const v = new DataView(s.vertices);
+  const left = (quad) => v.getInt16(quad * 4 * SYMBOL_VERTEX_BYTES + 4, true) / 4;
+  const pad = (SDF_BUFFER * 10) / SDF_SIZE;
+  assert.deepEqual([2, 5, 8].map(left), [-10 - pad, -5 - pad, 0 - pad]);
 });

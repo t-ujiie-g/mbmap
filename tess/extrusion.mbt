@@ -4,9 +4,10 @@
 
 ///|
 /// Ints per extrusion vertex in `ExtrusionBuffers.vertices`: x, y, normal x
-/// (times 2^14, plus 1 on the top edge), normal y and z (times 2^14), and the
+/// (times 2^14, plus 1 on the top edge), normal y and z (times 2^14), the
+/// distance along the ring's walls (for patterns; 0 on roofs), and the
 /// feature's centroid x, y (where terrain lifts it from).
-pub const EXTRUSION_VERTEX_STRIDE : Int32 = 7
+pub const EXTRUSION_VERTEX_STRIDE : Int32 = 8
 
 ///|
 /// `ExtrusionBuffers.heights` per vertex: the feature's base at the tile's zoom
@@ -67,6 +68,7 @@ fn ExtrusionBuffers::vertex(
   top : Int32,
   centroid : (Int32, Int32),
   heights : FixedArray[Double],
+  edge~ : Int32 = 0,
 ) -> Unit {
   let (nx, ny, nz) = normal
   let v = self.vertices
@@ -75,6 +77,7 @@ fn ExtrusionBuffers::vertex(
   v.push((nx * NORMAL_FACTOR).floor().to_int() * 2 + top)
   v.push((ny * NORMAL_FACTOR * 2.0).to_int())
   v.push((nz * NORMAL_FACTOR * 2.0).to_int())
+  v.push(edge)
   v.push(centroid.0)
   v.push(centroid.1)
   for h in heights {
@@ -168,7 +171,10 @@ pub fn ExtrusionTessellator::add_polygons(
     if end - start < 2 || entirely_outside(coords, start, end, extent) {
       continue
     }
-    // Edges from each point back to the one before it, the closing one last.
+    // Edges from each point back to the one before it, the closing one last;
+    // MapLibre starts the distance again past 32768 of its 8192-unit tile.
+    let mut along = 0.0
+    let restart = 4.0 * extent.to_double()
     for k in (start + 1)..<=end {
       let i = if k == end { start } else { k }
       let j = k - 1
@@ -186,11 +192,17 @@ pub fn ExtrusionTessellator::add_polygons(
         continue
       }
       let normal = (-dy / len, dx / len, 0.0)
+      if along + len > restart {
+        along = 0.0
+      }
       let b = out.num_vertices()
-      out.vertex(x1, y1, normal, 0, centroid, heights)
-      out.vertex(x1, y1, normal, 1, centroid, heights)
-      out.vertex(x2, y2, normal, 0, centroid, heights)
-      out.vertex(x2, y2, normal, 1, centroid, heights)
+      let e1 = along.to_int()
+      out.vertex(x1, y1, normal, 0, centroid, heights, edge=e1)
+      out.vertex(x1, y1, normal, 1, centroid, heights, edge=e1)
+      along += len
+      let e2 = along.to_int()
+      out.vertex(x2, y2, normal, 0, centroid, heights, edge=e2)
+      out.vertex(x2, y2, normal, 1, centroid, heights, edge=e2)
       for k in [0, 2, 1, 1, 2, 3] {
         out.indices.push(b + k)
       }

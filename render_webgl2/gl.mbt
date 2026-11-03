@@ -21,7 +21,7 @@ type Gl
 /// The WebGL2 context with its two programs; JS null if WebGL2 is unavailable.
 extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|(canvas) => {
-  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: false, premultipliedAlpha: true });
+  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: true, premultipliedAlpha: true });
   #|  if (!gl) return null;
   #|  const compile = (type, src) => {
   #|    const s = gl.createShader(type);
@@ -43,6 +43,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 3, "a_heights");
   #|    gl.bindAttribLocation(p, 13, "a_dist");
   #|    gl.bindAttribLocation(p, 14, "a_progress");
+  #|    gl.bindAttribLocation(p, 15, "a_shift");
   #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
@@ -87,30 +88,42 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // (u_floor.x, or the width slot mixed by u_floor.y when it is negative).
   #|  // Gradients are MapLibre's line_gradient: the color at a_progress (share
   #|  // of the line, row of u_rows) in the ramp u_image, premultiplied.
-  #|  const lineProgram = (dash, grad) => program(
+  #|  // Line patterns are MapLibre's line_pattern: the image as tall as the floor
+  #|  // width across the line, repeating along a_dist (u_size: its CSS size,
+  #|  // u_along: CSS px per tile unit at the integer zoom).
+  #|  const lineProgram = (dash, grad, pat) => program(
   #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
   #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half; out vec4 v_color;" +
   #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
   #|    (grad ? "in vec2 a_progress; uniform float u_rows; out vec2 v_uv; out float v_opacity;" : "") +
+  #|    (pat ? "in float a_dist; uniform vec2 u_floor; out float v_dist; out float v_fw; out float v_opacity;" : "") +
   #|    "void main() { float half_ = at(a_extent, 2) * u_dpr / 2.0 + 0.5;" +
   #|    "  v_pos = a_pos + a_data.xy / 63.0 * half_ * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
   #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" +
   #|      "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
   #|    (grad ? "  v_uv = vec2(a_progress.x, (a_progress.y + 0.5) / u_rows); v_opacity = at(a_opacity, 1);" : "") +
+  #|    (pat ? "  v_dist = a_dist; v_opacity = at(a_opacity, 1);" +
+  #|      "  v_fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
   #|    "  v_half = half_ * u_depth / gl_Position.w; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
   #|    clip + "in vec4 v_color; in vec2 v_edge; in float v_half; out vec4 o;" +
   #|    (dash ? "uniform sampler2D u_image; in vec2 v_tex; in float v_gamma;" : "") +
   #|    (grad ? "uniform sampler2D u_image; in vec2 v_uv; in float v_opacity;" : "") +
+  #|    (pat ? "uniform sampler2D u_image; uniform vec4 u_pattern; uniform vec2 u_texsize; uniform vec2 u_size;" +
+  #|      "uniform float u_along; in float v_dist; in float v_fw; in float v_opacity;" : "") +
   #|    "void main() { if (outside()) discard;" +
-  #|    (grad ? "  vec4 c = texture(u_image, v_uv) * v_opacity;" : "  vec4 c = v_color;") +
+  #|    (grad ? "  vec4 c = texture(u_image, v_uv) * v_opacity;" : pat ?
+  #|      "  float x = mod(v_dist * u_along / u_size.x * u_size.y / v_fw, 1.0); vec2 ts = 1.0 / u_texsize;" +
+  #|      "  vec4 c = texture(u_image, mix(u_pattern.xy * ts - ts, u_pattern.zw * ts + ts, vec2(x, 0.5 - 0.5 * v_edge.x))) * v_opacity;" :
+  #|      "  vec4 c = v_color;") +
   #|    "  o = c * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0);" +
   #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
   #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
-  #|      ...(grad ? ["u_rows", "u_image"] : [])]);
-  #|  const line = lineProgram(false, false), lineDash = lineProgram(true, false), lineGradient = lineProgram(false, true);
+  #|      ...(grad ? ["u_rows", "u_image"] : []), ...(pat ? ["u_floor", "u_image", "u_pattern", "u_texsize", "u_size", "u_along"] : [])]);
+  #|  const line = lineProgram(false, false, false), lineDash = lineProgram(true, false, false);
+  #|  const lineGradient = lineProgram(false, true, false), linePattern = lineProgram(false, false, true);
   #|  // MapLibre's patterns (fill_pattern, fill_outline_pattern, background_pattern):
   #|  // tile units in CSS pixels at the integer zoom (u_units), offset by the tile's
   #|  // pixel position (u_pixel: upper and lower 16 bits) modulo the pattern's size
@@ -192,11 +205,11 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "uniform sampler2D u_image; uniform sampler2D u_ramp; uniform float u_opacity; in vec2 v_pos; out vec4 o;" +
   #|    "void main() { o = texture(u_ramp, vec2(texture(u_image, v_pos).r, 0.5)) * u_opacity; }",
   #|    ["u_image", "u_ramp", "u_opacity"]);
-  #|  // a_data: corner offset in quarter CSS px (y down); a_size: text size in 1/16 px,
-  #|  // both times MapLibre's perspective ratio; a_ele: anchor height (m). SDF edge at
-  #|  // 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px); see FORMATS.md.
+  #|  // a_data: corner offset in quarter CSS px (y down), a_shift: the label's in CSS px;
+  #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
+  #|  // height (m). SDF edge at 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px).
   #|  const symbol = program(
-  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; uniform mat4 u_matrix;" +
+  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; uniform mat4 u_matrix;" +
   #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
   #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha;" +
   #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
@@ -206,7 +219,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
   #|    "  if (v_alpha < 0.1) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
-  #|    "  vec2 off = a_data * 0.25 * r * u_dpr * u_px * vec2(1.0, -1.0);" +
+  #|    "  vec2 off = (a_data * 0.25 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
   #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_tex = a_tex / u_atlas; v_scale = a_size / 16.0 * r * u_dpr / 48.0; }",
   #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale;" +
   #|    "in float v_alpha; out vec4 o;" +
@@ -240,6 +253,32 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
   #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_color"]);
+  #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
+  #|  // walls along their distance (a_normal.w) and height (u_height_factor); its
+  #|  // light differs from the plain one's.
+  #|  const extrusionPattern = program(
+  #|    patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele; uniform mat4 u_matrix;" +
+  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos;" +
+  #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
+  #|    "uniform float u_opacity; uniform float u_height_factor; out vec4 v_light; out vec2 v_pos; out vec2 v_pat;" +
+  #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
+  #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal.xyz);" +
+  #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
+  #|    "  float top = a_ele * u_ground, bottom = u_ground > 0.0 ? top - (base > 0.0 ? 0.0 : 10.0) : 0.0;" +
+  #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
+  #|    "  float t = float(a_normal.x & 1); float elevation = t > 0.0 ? height : base; v_pos = a_pos;" +
+  #|    "  gl_Position = u_matrix * vec4(a_pos, elevation * u_scale, 1.0);" +
+  #|    "  bool roof = a_normal.x == 1 && a_normal.y == 0 && a_normal.z == 16384;" +
+  #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w), elevation * u_height_factor));" +
+  #|    "  float directional = clamp(dot(normal / 16383.0, u_lightpos), 0.0, 1.0);" +
+  #|    "  directional = mix(1.0 - u_lightintensity, max(0.5 + u_lightintensity, 1.0), directional);" +
+  #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
+  #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
+  #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity; }",
+  #|    clip + patternColor + "in vec4 v_light; in vec2 v_pat; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; o = patternColor(v_pat, vec4(0.0), 1.0) * v_light; }",
+  #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|     "u_vertical_gradient", "u_opacity", "u_height_factor", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl, `standard` method, over the tile's
   #|  // quad: v_pos runs 0-1 across the slopes texture, u_lat is the tile's north
   #|  // and south latitude, u_light its azimuth (radians) and exaggeration.
@@ -373,7 +412,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, imageGrid, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -429,6 +468,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.dist) c.gl.deleteBuffer(m.dist);
   #|  if (m.progress) c.gl.deleteBuffer(m.progress);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
+  #|  if (m.shift) c.gl.deleteBuffer(m.shift);
   #|}
 
 ///|
@@ -682,8 +722,9 @@ extern "js" fn gl_show(
   labels : JsBuffer,
   stride : Int32,
   shown : FixedArray[Bool],
+  variant : FixedArray[Int32],
 ) -> Unit =
-  #|(c, m, labels, stride, shown) => {
+  #|(c, m, labels, stride, shown, variant) => {
   #|  const gl = c.gl;
   #|  let n = 0;
   #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[(i + 1) * stride - 1];
@@ -691,7 +732,7 @@ extern "js" fn gl_show(
   #|  let at = 0;
   #|  for (let i = 0; i < shown.length; i++) {
   #|    if (!shown[i]) continue;
-  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
+  #|    const count = labels[(i + 1) * stride - 1], first = labels[(i + 1) * stride - 2] + variant[i] * count;
   #|    out.set(m.all.subarray(first, first + count), at);
   #|    at += count;
   #|  }
@@ -736,6 +777,7 @@ extern "js" fn gl_draw_symbols(
   #|  gl.bindTexture(gl.TEXTURE_2D, c.atlas);
   #|  gl.uniform1i(p.u_glyphs, 0);
   #|  gl.bindVertexArray(m.vao);
+  #|  if (!m.shift) gl.vertexAttrib2f(15, 0, 0);
   #|  // The halo goes under the whole layer's text of this tile, then the text.
   #|  if (haloWidth > 0 && halo[3] > 0) {
   #|    gl.uniform4f(p.u_color, halo[0] * halo[3], halo[1] * halo[3], halo[2] * halo[3], halo[3]);
@@ -832,10 +874,41 @@ extern "js" fn gl_set_heights(
   #|(c, m, labels, stride, heights) => {
   #|  const gl = c.gl, out = new Float32Array(m.vertices);
   #|  for (let i = 0; i < heights.length; i++) {
-  #|    const first = labels[(i + 1) * stride - 2], count = labels[(i + 1) * stride - 1];
-  #|    for (let k = first; k < first + count; k++) out[m.all[k]] = heights[i];
+  #|    const first = labels[(i + 1) * stride - 2], end = first + labels[(i + 1) * stride - 1] * labels[(i + 1) * stride - 3];
+  #|    for (let k = first; k < end; k++) out[m.all[k]] = heights[i];
   #|  }
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+  #|}
+
+///|
+/// Sets each label's shift (`shifts`, x and y in CSS px per label of `labels`),
+/// on all its variants' vertices.
+extern "js" fn gl_set_shifts(
+  gl : Gl,
+  mesh : Mesh,
+  labels : JsBuffer,
+  stride : Int32,
+  shifts : FixedArray[Double],
+) -> Unit =
+  #|(c, m, labels, stride, shifts) => {
+  #|  const gl = c.gl, out = new Float32Array(m.vertices * 2);
+  #|  for (let i = 0; i < shifts.length / 2; i++) {
+  #|    const first = labels[(i + 1) * stride - 2], end = first + labels[(i + 1) * stride - 1] * labels[(i + 1) * stride - 3];
+  #|    for (let k = first; k < end; k++) {
+  #|      out[m.all[k] * 2] = shifts[i * 2];
+  #|      out[m.all[k] * 2 + 1] = shifts[i * 2 + 1];
+  #|    }
+  #|  }
+  #|  if (!m.shift) {
+  #|    m.shift = gl.createBuffer();
+  #|    gl.bindVertexArray(m.vao);
+  #|    gl.bindBuffer(gl.ARRAY_BUFFER, m.shift);
+  #|    gl.enableVertexAttribArray(15);
+  #|    gl.vertexAttribPointer(15, 2, gl.FLOAT, false, 8, 0);
+  #|    gl.bindVertexArray(null);
+  #|  }
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.shift);
   #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
   #|}
 

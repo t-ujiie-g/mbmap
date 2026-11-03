@@ -66,3 +66,35 @@ extern "js" fn gl_draw_background_pattern(
   #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   #|  gl.bindVertexArray(null);
   #|}
+
+///|
+/// Draws a line with a pattern (see the `linePattern` program): `u` is its
+/// atlas rectangle (4), CSS size (2), CSS px per tile unit, and floor width (2).
+extern "js" fn gl_draw_line_pattern(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  units : Double,
+  depth : Double,
+  dpr : Double,
+  u : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip, units, depth, dpr, u) => {
+  #|  const gl = c.gl, p = c.linePattern;
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform1f(p.u_units, units);
+  #|  gl.uniform1f(p.u_depth, depth);
+  #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform4f(p.u_pattern, u[0], u[1], u[2], u[3]);
+  #|  gl.uniform2f(p.u_size, u[4], u[5]);
+  #|  gl.uniform1f(p.u_along, u[6]);
+  #|  gl.uniform2f(p.u_floor, u[7], u[8]);
+  #|  gl.uniform2f(p.u_texsize, c.patternSize[0], c.patternSize[1]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, c.patterns);
+  #|  gl.uniform1i(p.u_image, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|}
