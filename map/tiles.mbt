@@ -191,6 +191,9 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
             get_int(l, "count"),
             get_int(l, "indexBytes"),
           )
+          if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
+            self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
+          }
           if kind == KIND_FILL && get_int(l, "outlineCount") > 0 {
             self.renderer.upload_outline(
               mesh,

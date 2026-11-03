@@ -41,6 +41,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 4, "a_ele");
   #|    gl.bindAttribLocation(p, 1, "a_normal");
   #|    gl.bindAttribLocation(p, 3, "a_heights");
+  #|    gl.bindAttribLocation(p, 13, "a_dist");
   #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
@@ -79,18 +80,28 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "void main() { if (outside()) discard; o = v_color * (1.0 - smoothstep(0.0, 1.0, length(v_line - gl_FragCoord.xy))); }",
   #|    ["u_matrix", "u_clip", "u_t", "u_world"]);
   #|  // The half width: the line width (a_extent, CSS px times u_dpr) halved, plus a pixel.
-  #|  const line = program(
+  #|  // Dashes are MapLibre's line_sdf: a_dist (its linesofar halved) over the
+  #|  // pattern's length u_dash.x, the atlas row u_dash.y spanning u_dash.z
+  #|  // across the line, edges smoothed by u_dash.w; all in floor widths
+  #|  // (u_floor.x, or the width slot mixed by u_floor.y when it is negative).
+  #|  const lineProgram = (dash) => program(
   #|    paint + "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
   #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out float v_half; out vec4 v_color;" +
+  #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
   #|    "void main() { float half_ = at(a_extent, 2) * u_dpr / 2.0 + 0.5;" +
   #|    "  v_pos = a_pos + a_data.xy / 63.0 * half_ * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
+  #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" +
+  #|      "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
   #|    "  v_half = half_ * u_depth / gl_Position.w; }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
   #|    clip + "in vec4 v_color; in vec2 v_edge; in float v_half; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; o = v_color * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0); }",
-  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t"]);
+  #|    (dash ? "uniform sampler2D u_image; in vec2 v_tex; in float v_gamma;" : "") +
+  #|    "void main() { if (outside()) discard; o = v_color * clamp((1.0 - length(v_edge)) * v_half, 0.0, 1.0);" +
+  #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
+  #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", ...(dash ? ["u_dash", "u_floor", "u_image"] : [])]);
+  #|  const line = lineProgram(false), lineDash = lineProgram(true);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   #|  // Circles face the viewer and shrink with distance (MapLibre's pitch-alignment
@@ -271,7 +282,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, line, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, line, lineDash, circle, symbol, hillshade, raster, terrain, sky, empty, extrusion, quad, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -324,6 +335,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.texture) { c.gl.deleteTexture(m.texture); return; }
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
   #|  if (m.outline) c.gl.deleteBuffer(m.outline);
+  #|  if (m.dist) c.gl.deleteBuffer(m.dist);
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|}
 
@@ -482,6 +494,79 @@ extern "js" fn gl_draw_line(
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|}
+
+///|
+/// Adds a line mesh's distances along its lines (Uint16 per vertex) as `a_dist`.
+extern "js" fn gl_upload_distances(
+  gl : Gl,
+  mesh : Mesh,
+  distances : JsBuffer,
+) -> Unit =
+  #|(c, m, data) => {
+  #|  const gl = c.gl;
+  #|  gl.bindVertexArray(m.vao);
+  #|  m.dist = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.dist);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(13);
+  #|  gl.vertexAttribPointer(13, 1, gl.UNSIGNED_SHORT, false, 2, 0);
+  #|  gl.bindVertexArray(null);
+  #|  m.bytes += data.byteLength;
+  #|}
+
+///|
+/// Uploads the dash atlas (one byte per pixel) into texture unit 0, created on
+/// first use, wrapping and filtered linearly as MapLibre's.
+extern "js" fn gl_dash_atlas(
+  gl : Gl,
+  data : FixedArray[Byte],
+  width : Int32,
+  height : Int32,
+) -> Unit =
+  #|(c, data, w, h) => {
+  #|  const gl = c.gl;
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  if (!c.dash) {
+  #|    c.dash = gl.createTexture();
+  #|    gl.bindTexture(gl.TEXTURE_2D, c.dash);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  #|    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  #|  } else gl.bindTexture(gl.TEXTURE_2D, c.dash);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, w, h, 0, gl.RED, gl.UNSIGNED_BYTE, data);
+  #|}
+
+///|
+/// Draws a dashed line (see the `lineDash` program): `dash` and `floor` are
+/// its u_dash and u_floor.
+extern "js" fn gl_draw_line_dash(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  units : Double,
+  depth : Double,
+  dpr : Double,
+  dash : FixedArray[Double],
+  floor : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip, units, depth, dpr, dash, floor) => {
+  #|  const gl = c.gl, p = c.lineDash;
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform1f(p.u_units, units);
+  #|  gl.uniform1f(p.u_depth, depth);
+  #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform4f(p.u_dash, dash[0], dash[1], dash[2], dash[3]);
+  #|  gl.uniform2f(p.u_floor, floor[0], floor[1]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, c.dash);
+  #|  gl.uniform1i(p.u_image, 0);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 

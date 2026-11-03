@@ -29,7 +29,10 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   group properties byte offset and length (0 if none), per-vertex paint byte offset
   and length (0 if none; an entry sharing another's geometry has its own), and for
   fills the outline's index byte offset and count (pairs of vertex indices, one per
-  ring edge, in the entry's index size).
+  ring edge, in the entry's index size), and for dashed lines the byte offset and
+  count of their distances (u16 per vertex: the distance from the line's start in
+  `@core.TILE_EXTENT` units, MapLibre's `linesofar` halved, starting again from 0
+  past `@tess.MAX_LINE_DISTANCE`; shared with the geometry).
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
   same data (layers with the same geometry). Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and

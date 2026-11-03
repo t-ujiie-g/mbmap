@@ -163,6 +163,11 @@ extern "js" fn paint_of_layer(v : JsValue) -> JsValue =
   #|(v) => v.paint ?? null
 
 ///|
+/// A packed line layer's distances along its lines (an ArrayBuffer), or null.
+extern "js" fn distances_of_layer(v : JsValue) -> JsValue =
+  #|(v) => v.distances ?? null
+
+///|
 extern "js" fn console_warn(message : String) -> Unit =
   #|(m) => console.warn("[mbmap] " + m)
 

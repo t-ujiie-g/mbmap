@@ -158,3 +158,97 @@ test "miter limits beyond the Int8 range are clamped" {
   )
   assert_valid(out)
 }
+
+///|
+fn dashed(
+  points : Array[Int32],
+  extent~ : Int32 = 4096,
+  join~ : @tess.LineJoin = Miter,
+) -> @tess.LineBuffers {
+  let out = @tess.LineBuffers::new()
+  @tess.LineTessellator::new().add_line(
+    points[:],
+    0,
+    points.length() / 2,
+    out,
+    join~,
+    dashed=true,
+    extent~,
+  )
+  out
+}
+
+///|
+fn positions(out : @tess.LineBuffers) -> Array[(Int32, Int32)] {
+  let s = @tess.LINE_VERTEX_STRIDE
+  let seen = []
+  for i in 0..<out.num_vertices() {
+    let p = (out.vertices[i * s], out.vertices[i * s + 1])
+    if seen.last() != Some(p) {
+      seen.push(p)
+    }
+  }
+  seen
+}
+
+///|
+test "a dashed line records each vertex's distance in MapLibre's half units" {
+  assert_eq(extrude([0, 0, 100, 0, 100, 50]).distances.length(), 0)
+  let out = dashed([0, 0, 100, 0, 100, 50])
+  assert_valid(out)
+  assert_eq(out.distances.length(), out.num_vertices())
+  assert_eq(out.distances[0], 0)
+  assert_eq(out.distances[out.num_vertices() - 1], 150)
+  // An extent of 8192 units halves them.
+  assert_eq(dashed([0, 0, 100, 0], extent=8192).distances, [0, 0, 50, 50])
+}
+
+///|
+test "sharp corners of a dashed line get a point on each side" {
+  // A turn of 75° or more is sharp: points 15 px of a 512 px tile (120 units)
+  // from it.
+  assert_eq(positions(dashed([0, 0, 1000, 0, 1000, 1000])), [
+    (0, 0),
+    (880, 0),
+    (1000, 0),
+    (1000, 120),
+    (1000, 1000),
+  ])
+  assert_eq(positions(dashed([0, 0, 1000, 0, 2000, 500])), [
+    (0, 0),
+    (1000, 0),
+    (2000, 500),
+  ])
+  let out = dashed([0, 0, 1000, 0, 0, 100])
+  assert_valid(out)
+  assert_eq(positions(out), [(0, 0), (880, 0), (1000, 0), (881, 12), (0, 100)])
+  // Segments up to twice the offset get none.
+  assert_eq(positions(dashed([0, 0, 240, 0, 10, 20])), [
+    (0, 0),
+    (240, 0),
+    (10, 20),
+  ])
+}
+
+///|
+test "a dashed line starts again from 0 past MAX_LINE_DISTANCE" {
+  let out = dashed([0, 0, 5000, 0, 10000, 0, 15000, 0])
+  assert_valid(out)
+  let d = out.distances
+  // The pair at 10000 units is repeated at 0.
+  assert_eq(d.length(), out.num_vertices())
+  assert_true(d.iter().all(x => x <= 2 * @tess.MAX_LINE_DISTANCE))
+  assert_eq(d.filter(x => x == 0).length(), 4)
+  assert_eq(d[d.length() - 1], 5000)
+}
+
+///|
+test "a dashed ring closes into a pair at its full length" {
+  let out = dashed([0, 0, 100, 0, 100, 100, 0, 100, 0, 0], join=Bevel)
+  assert_valid(out)
+  assert_eq(out.distances.length(), out.num_vertices())
+  assert_eq(out.distances.fold(init=0, @cmp.maximum), 400)
+  // The same area as the solid ring.
+  let solid = extrude([0, 0, 100, 0, 100, 100, 0, 100, 0, 0], join=Bevel)
+  assert_true(near(line_area(out, 4.0), line_area(solid, 4.0)))
+}

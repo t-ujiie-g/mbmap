@@ -638,3 +638,32 @@ test "fill-extrusion layers pack walls, roofs and per-feature heights" {
     (0, 0, 100, 253),
   )
 }
+
+///|
+test "dashed lines pack their distances and share buffers only with dashed lines" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "road", "type": "line", "source": "a", "source-layer": "line"},
+    #|  {"id": "dash", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-dasharray": [2, 1]}},
+    #|  {"id": "dots", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-dasharray": [1, 1]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", sample_tile()[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 3)
+  // The solid road has none; the dashed lines share one buffer and its distances.
+  assert_eq(entry(0, 14), 0)
+  assert_true(entry(1, 2) != entry(0, 2))
+  assert_eq(entry(2, 2), entry(1, 2))
+  assert_eq((entry(2, 13), entry(2, 14)), (entry(1, 13), entry(1, 14)))
+  // Four vertices along a line of 50 units: 0 at the start, 50 at the end.
+  assert_eq(entry(1, 14), 4)
+  let d = entry(1, 13)
+  let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
+  assert_eq((u16(d), u16(d + 2), u16(d + 4), u16(d + 6)), (0, 0, 50, 50))
+}

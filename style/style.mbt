@@ -64,6 +64,7 @@ pub struct StyleLayer {
   round_limit : Double
   antialias : Bool
   outline_color : Expr?
+  dasharray : Expr?
 }
 
 ///|
@@ -365,7 +366,33 @@ fn parse_layer(
         Some(compile(c, expected=ColorType, path="\{ppath}.fill-outline-color"))
       _ => None
     },
+    dasharray: if kind is Line {
+      parse_dasharray(paint, ppath)
+    } else {
+      None
+    },
   })
+}
+
+///|
+/// `line-dasharray`: an array of numbers, or an expression of zoom giving one
+/// (MapLibre's cross-faded property; data-driven dashes are not supported).
+fn parse_dasharray(
+  paint : Map[String, Json],
+  path : String,
+) -> Expr? raise StyleError {
+  let path = "\{path}.line-dasharray"
+  let json = match paint.get("line-dasharray") {
+    None => return None
+    Some(Array(items) as a) if items.length() == 0 || items[0] is Number(_) =>
+      Json::array([Json::string("literal"), a])
+    Some(j) => j
+  }
+  let e = compile(json, path~)
+  if data_driven(e) || e.reads_state() {
+    raise Unsupported(path~, "data-driven dashes")
+  }
+  Some(e)
 }
 
 ///|

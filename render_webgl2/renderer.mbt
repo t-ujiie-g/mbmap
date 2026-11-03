@@ -3,6 +3,7 @@
 /// sizes are in device pixels unless noted.
 pub struct Renderer {
   priv gl : Gl
+  priv atlas : LineAtlas
 }
 
 ///|
@@ -12,7 +13,7 @@ pub fn Renderer::new(canvas : Canvas) -> Renderer? {
   if is_null(gl) {
     None
   } else {
-    Some({ gl, })
+    Some({ gl, atlas: LineAtlas::new(), })
   }
 }
 
@@ -189,6 +190,70 @@ pub fn Renderer::draw_line(
     at.units_per_pixel,
     at.center_depth,
     dpr,
+  )
+}
+
+///|
+/// Adds a dashed line mesh's distances along its lines (docs/FORMATS.md,
+/// "Packed tile").
+pub fn Renderer::upload_distances(
+  self : Renderer,
+  mesh : Mesh,
+  distances : JsBuffer,
+) -> Unit {
+  gl_upload_distances(self.gl, mesh, distances)
+}
+
+///|
+/// Where the dash pattern `dasharray` (in line widths; round ends when `round`)
+/// lies in the dash atlas; None once it is full.
+pub fn Renderer::dash(
+  self : Renderer,
+  dasharray : Array[Double],
+  round : Bool,
+) -> DashEntry? {
+  self.atlas.dash(dasharray, round)
+}
+
+///|
+/// `draw_line` with dash pattern `entry` (MapLibre's line_sdf; `tile_ratio`: CSS
+/// px per 8192 units at the integer zoom, `floor_width` the width there, or the
+/// width slot mixed `floor_t` when negative; edges smoothed over `gamma_width`).
+pub fn Renderer::draw_line_dash(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+  entry : DashEntry,
+  gamma_width~ : Double,
+  tile_ratio~ : Double,
+  floor_width~ : Double,
+  floor_t~ : Double,
+) -> Unit {
+  if entry.width <= 0.0 || gamma_width <= 0.0 {
+    return
+  }
+  if self.atlas.take_dirty() {
+    gl_dash_atlas(self.gl, self.atlas.data, LINE_ATLAS_WIDTH, LINE_ATLAS_HEIGHT)
+  }
+  self.bind("lineDash", mesh, slots, 3)
+  let h = LINE_ATLAS_HEIGHT.to_double()
+  gl_draw_line_dash(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+    [
+      2.0 * tile_ratio / entry.width,
+      (entry.y.to_double() + 0.5) / h,
+      -entry.height.to_double() / 2.0 / h,
+      1.0 / dpr / gamma_width,
+    ],
+    [floor_width, floor_t],
   )
 }
 

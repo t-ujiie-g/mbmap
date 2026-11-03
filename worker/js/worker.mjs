@@ -8,7 +8,7 @@ import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
 import { readString, readValue } from "./values.mjs";
 
-const LAYER_ENTRY_WORDS = 13; // worker/packed.mbt
+const LAYER_ENTRY_WORDS = 15; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
@@ -83,17 +83,19 @@ function unpack(packed) {
     if (paint) transfer.push(paint);
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
-      const { vertices, indices, outline } = layers[shared];
-      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12) });
+      const { vertices, indices, outline, distances } = layers[shared];
+      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12), distances });
       continue;
     }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
     const indices = packed.slice(e(4), e(4) + e(5) * e(6)).buffer;
     const outline = e(12) > 0 ? packed.slice(e(11), e(11) + e(12) * e(6)).buffer : null;
     if (outline) transfer.push(outline);
+    const distances = e(14) > 0 ? packed.slice(e(13), e(13) + e(14) * 2).buffer : null;
+    if (distances) transfer.push(distances);
     // `shared` names a position in `layers` (skipped symbol entries have none).
     byOffset.set(e(2), layers.length);
-    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12) });
+    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };

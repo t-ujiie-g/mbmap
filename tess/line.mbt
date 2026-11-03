@@ -28,6 +28,20 @@ pub const LINE_VERTEX_STRIDE : Int32 = 6
 pub const MAX_MITER_LIMIT : Double = 2.0
 
 ///|
+/// MapLibre's sharp corners for dashes: a corner whose half angle's cosine is
+/// below this (75°) gets a point `SHARP_CORNER_OFFSET` px (of a 512 px tile)
+/// along each side, so less of the line has its dashes tilted.
+const COS_HALF_SHARP_CORNER : Double = 0.7933533402912352
+
+///|
+const SHARP_CORNER_OFFSET : Double = 15.0
+
+///|
+/// Distances along a line are kept in MapLibre's units, an 8192-unit tile at
+/// half precision (its `LINE_DISTANCE_SCALE`), and start again from 0 past this.
+pub const MAX_LINE_DISTANCE : Int32 = 8192
+
+///|
 /// Slack when deciding that a join is straight (miter length 1).
 const STRAIGHT_EPSILON : Double = 1.0e-9
 
@@ -36,22 +50,25 @@ const STRAIGHT_EPSILON : Double = 1.0e-9
 const ROUND_SEGMENTS : Int32 = 8
 
 ///|
-/// Line geometry: `vertices` holds `LINE_VERTEX_STRIDE` ints per vertex and
-/// `indices` holds triangles as vertex index triples.
+/// Line geometry: `vertices` holds `LINE_VERTEX_STRIDE` ints per vertex,
+/// `indices` holds triangles as vertex index triples and `distances` each
+/// vertex's distance along its line (see `MAX_LINE_DISTANCE`) when dashed.
 pub struct LineBuffers {
   vertices : Array[Int32]
   indices : Array[Int32]
+  distances : Array[Int32]
 }
 
 ///|
 pub fn LineBuffers::new() -> LineBuffers {
-  { vertices: [], indices: [], }
+  { vertices: [], indices: [], distances: [], }
 }
 
 ///|
 pub fn LineBuffers::clear(self : LineBuffers) -> Unit {
   self.vertices.clear()
   self.indices.clear()
+  self.distances.clear()
 }
 
 ///|
@@ -68,6 +85,8 @@ pub struct LineTessellator {
   priv ys : Array[Int32]
   priv nx : Array[Double]
   priv ny : Array[Double]
+  priv cx : Array[Int32]
+  priv cy : Array[Int32]
 }
 
 ///|
@@ -75,13 +94,13 @@ pub struct LineTessellator {
 pub fn LineTessellator::new(
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> LineTessellator {
-  { trig, xs: [], ys: [], nx: [], ny: [], }
+  { trig, xs: [], ys: [], nx: [], ny: [], cx: [], cy: [], }
 }
 
 ///|
-/// Appends the line through points `[start, end)` of `coords` to `out`; equal
-/// end points close it. `miter_limit` is in half widths (up to
-/// `MAX_MITER_LIMIT`); round joins shorter than `round_limit` become miters.
+/// Appends the line through points `[start, end)` of `coords` to `out` (equal
+/// ends close it); `miter_limit` is in half widths. A `dashed` line of a layer
+/// of `extent` units records `out.distances`, splitting sharp corners.
 pub fn LineTessellator::add_line(
   self : LineTessellator,
   coords : ArrayView[Int32],
@@ -92,6 +111,8 @@ pub fn LineTessellator::add_line(
   cap~ : LineCap = Butt,
   miter_limit~ : Double = 2.0,
   round_limit~ : Double = 1.05,
+  dashed~ : Bool = false,
+  extent~ : Int32 = 4096,
 ) -> Unit {
   let n = self.load_points(coords, start, end)
   let closed = n > 2 &&
@@ -103,17 +124,37 @@ pub fn LineTessellator::add_line(
   }
   let segments = if closed { n } else { n - 1 }
   self.compute_normals(n, segments)
+  let n = if dashed {
+    let offset = SHARP_CORNER_OFFSET * extent.to_double() / 512.0
+    let m = self.split_corners(n, closed, offset)
+    self.compute_normals(m, if closed { m } else { m - 1 })
+    m
+  } else {
+    n
+  }
   let miter_limit = @cmp.minimum(miter_limit, MAX_MITER_LIMIT)
-  let emitter = { trig: self.trig, out, join, miter_limit, round_limit, }
+  let emitter : Emitter = {
+    trig: self.trig,
+    out,
+    join,
+    miter_limit,
+    round_limit,
+    dashed,
+    scale: 4096.0 / extent.to_double(),
+    along: 0.0,
+    distance: 0,
+  }
   let xs = self.xs
   let ys = self.ys
   let nx = self.nx
   let ny = self.ny
   if closed {
-    // Start past the join at point 0; that join is drawn last, back into `first`.
+    // Start past the join at point 0; that join is drawn last, back into
+    // `first`, or into a pair at the ring's full length when dashed.
     let first = emitter.pair(xs[0], ys[0], nx[0], ny[0])
     let mut prev = first
     for i in 1..<n {
+      emitter.advance(xs[i - 1], ys[i - 1], xs[i], ys[i])
       prev = emitter.join_at(
         xs[i],
         ys[i],
@@ -123,6 +164,13 @@ pub fn LineTessellator::add_line(
         ny[i],
         prev,
       )
+      prev = emitter.restart(prev)
+    }
+    emitter.advance(xs[n - 1], ys[n - 1], xs[0], ys[0])
+    let close_to = if dashed {
+      emitter.pair(xs[0], ys[0], nx[0], ny[0])
+    } else {
+      first
     }
     ignore(
       emitter.join_at(
@@ -133,7 +181,7 @@ pub fn LineTessellator::add_line(
         nx[0],
         ny[0],
         prev,
-        close_to=first,
+        close_to~,
       ),
     )
     return
@@ -148,6 +196,7 @@ pub fn LineTessellator::add_line(
   )
   emitter.cap_extension(xs[0], ys[0], nx[0], ny[0], cap, prev, start=true)
   for i in 1..<(n - 1) {
+    emitter.advance(xs[i - 1], ys[i - 1], xs[i], ys[i])
     prev = emitter.join_at(
       xs[i],
       ys[i],
@@ -157,8 +206,10 @@ pub fn LineTessellator::add_line(
       ny[i],
       prev,
     )
+    prev = emitter.restart(prev)
   }
   let last = n - 1
+  emitter.advance(xs[last - 1], ys[last - 1], xs[last], ys[last])
   let end_pair = emitter.pair_for_cap(
     xs[last],
     ys[last],
@@ -222,12 +273,129 @@ fn LineTessellator::compute_normals(
 }
 
 ///|
+/// Adds a point `offset` units from each side of every sharp corner of the
+/// `n` points (whose normals are computed), on segments longer than twice
+/// that, as MapLibre's line bucket does; returns the new count.
+fn LineTessellator::split_corners(
+  self : LineTessellator,
+  n : Int32,
+  closed : Bool,
+  offset : Double,
+) -> Int32 {
+  let sharp = (i : Int32) => {
+    guard closed || (i > 0 && i < n - 1) else { false }
+    let a = (i + n - 1) % n
+    let jx = self.nx[a] + self.nx[i]
+    let jy = self.ny[a] + self.ny[i]
+    let len = (jx * jx + jy * jy).sqrt()
+    let cos_half = if len > 0.0 {
+      (jx * self.nx[i] + jy * self.ny[i]) / len
+    } else {
+      0.0
+    }
+    cos_half < COS_HALF_SHARP_CORNER
+  }
+  let cx = self.cx
+  let cy = self.cy
+  cx.clear()
+  cy.clear()
+  // A point `offset` from (x, y) toward (tx, ty), on MapLibre's rounding.
+  let toward = (x : Int32, y : Int32, tx : Int32, ty : Int32) => {
+    let dx = (tx - x).to_double()
+    let dy = (ty - y).to_double()
+    let len = (dx * dx + dy * dy).sqrt()
+    if len > 2.0 * offset {
+      let k = offset / len
+      cx.push(x + (dx * k + 0.5).floor().to_int())
+      cy.push(y + (dy * k + 0.5).floor().to_int())
+    }
+  }
+  // MapLibre moves a point toward the corner by the rounded difference.
+  let before = (x : Int32, y : Int32) => {
+    let k = cx.length() - 1
+    let dx = (x - cx[k]).to_double()
+    let dy = (y - cy[k]).to_double()
+    let len = (dx * dx + dy * dy).sqrt()
+    if len > 2.0 * offset {
+      let f = offset / len
+      cx.push(x - (dx * f + 0.5).floor().to_int())
+      cy.push(y - (dy * f + 0.5).floor().to_int())
+    }
+  }
+  for i in 0..<n {
+    let s = sharp(i)
+    if s && i > 0 {
+      before(self.xs[i], self.ys[i])
+    }
+    cx.push(self.xs[i])
+    cy.push(self.ys[i])
+    if s {
+      let j = (i + 1) % n
+      toward(self.xs[i], self.ys[i], self.xs[j], self.ys[j])
+    }
+  }
+  if closed && sharp(0) {
+    before(self.xs[0], self.ys[0])
+  }
+  self.xs.clear()
+  self.ys.clear()
+  for i, x in cx {
+    self.xs.push(x)
+    self.ys.push(cy[i])
+  }
+  cx.length()
+}
+
+///|
+/// Writes vertices; a dashed line also records each vertex's distance:
+/// `along` units of its layer so far, `scale` stored units per unit.
 priv struct Emitter {
   trig : @core.Trig
   out : LineBuffers
   join : LineJoin
   miter_limit : Double
   round_limit : Double
+  dashed : Bool
+  scale : Double
+  mut along : Double
+  mut distance : Int32
+}
+
+///|
+/// Moves the distance along the segment from (x0, y0) to (x1, y1).
+fn Emitter::advance(
+  self : Emitter,
+  x0 : Int32,
+  y0 : Int32,
+  x1 : Int32,
+  y1 : Int32,
+) -> Unit {
+  if self.dashed {
+    let dx = (x1 - x0).to_double()
+    let dy = (y1 - y0).to_double()
+    self.along += (dx * dx + dy * dy).sqrt()
+    self.distance = @cmp.minimum(
+      0xffff,
+      (self.along * self.scale).floor().to_int(),
+    )
+  }
+}
+
+///|
+/// Past `MAX_LINE_DISTANCE`, repeats pair `p` at distance 0 (as MapLibre does)
+/// and returns the copy; otherwise `p`.
+fn Emitter::restart(self : Emitter, p : Int32) -> Int32 {
+  guard self.dashed && self.distance > MAX_LINE_DISTANCE else { return p }
+  self.along = 0.0
+  self.distance = 0
+  let v = self.out.vertices
+  let id = v.length() / LINE_VERTEX_STRIDE
+  for k in 0..<(2 * LINE_VERTEX_STRIDE) {
+    v.push(v[p * LINE_VERTEX_STRIDE + k])
+  }
+  self.out.distances.push(0)
+  self.out.distances.push(0)
+  id
 }
 
 ///|
@@ -248,6 +416,9 @@ fn Emitter::vertex(
   v.push((ey * EXTRUDE_SCALE.to_double()).round().to_int())
   v.push(side)
   v.push(along)
+  if self.dashed {
+    self.out.distances.push(self.distance)
+  }
   id
 }
 
