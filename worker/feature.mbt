@@ -1,11 +1,14 @@
 ///|
 /// Feature `index` of a layer's features, as expressions see it, with the
-/// processor's `pow`. Property names are resolved to key indices once per layer.
+/// processor's `trig`, `text_number` and `number_text`. Property names are resolved to key
+/// indices once per layer.
 priv struct FeatureRef {
   features : Features
   mut index : Int32
   keys : Map[String, Int32]
-  pow : (Double, Double) -> Double
+  trig : @core.Trig
+  text_number : (String) -> Double
+  number_text : (Double) -> String
 }
 
 ///|
@@ -13,12 +16,34 @@ fn TileProcessor::feature_ref(
   self : TileProcessor,
   features : Features,
 ) -> FeatureRef {
-  { features, index: 0, keys: Map([]), pow: self.trig.pow, }
+  {
+    features,
+    index: 0,
+    keys: Map([]),
+    trig: self.trig,
+    text_number: self.text_number,
+    number_text: self.number_text,
+  }
 }
 
 ///|
-impl @style.FeatureContext for FeatureRef with fn pow(self, x, y) {
-  (self.pow)(x, y)
+impl @style.FeatureContext for FeatureRef with fn trig(self) {
+  self.trig
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn text_number(self, s) {
+  (self.text_number)(s)
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn number_text(self, x) {
+  (self.number_text)(x)
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn id(self) {
+  self.features.id(self.index, None)
 }
 
 ///|

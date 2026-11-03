@@ -31,6 +31,43 @@ fn host_number_of(text : BytesView) -> Double {
 }
 
 ///|
+/// Appends a UTF-16 code unit to the host's text (`wasmio/js/host.mjs`'s
+/// `hostText`).
+fn host_text_char(c : Int32) = "host" "text_char"
+
+///|
+/// `Number()` of the host's text, which it then empties.
+fn host_text_number() -> Double = "host" "text_number"
+
+///|
+/// `to-number` of a string by the host's `Number()`, passed a code unit at a
+/// time: the output area may hold a tile being packed.
+fn host_text_number_of(s : String) -> Double {
+  for i in 0..<s.length() {
+    host_text_char(s[i].to_int())
+  }
+  host_text_number()
+}
+
+///|
+/// The length of the host's `String(x)`, which `host_text_code` then reads.
+fn host_number_text(x : Double) -> Int32 = "host" "number_text"
+
+///|
+fn host_text_code(i : Int32) -> Int32 = "host" "text_code"
+
+///|
+/// `String(x)` by the host, which keeps MoonBit's float printing out of the
+/// module.
+fn host_number_text_of(x : Double) -> String {
+  let out = StringBuilder()
+  for i in 0..<host_number_text(x) {
+    out.write_char(host_text_code(i).unsafe_to_char())
+  }
+  out.to_string()
+}
+
+///|
 fn output_start() -> Int32 {
   (INPUT_ADDR + input_len.val + 7) / 8 * 8
 }
@@ -114,6 +151,8 @@ pub fn init_style() -> Int32 {
     TileProcessor::from_utf8(
       input_bytes()[:],
       number=host_number_of,
+      text_number=host_text_number_of,
+      number_text=host_number_text_of,
       trig=host_trig(),
     )
   catch {

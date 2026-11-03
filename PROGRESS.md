@@ -83,6 +83,82 @@
 - `setClusterOptions`、`getClusterOptions`、`generateId`（GeoJSON ソースの `generateId` そのものが未対応）。
 - 速さは測っていない（クラスタのベンチはまだない）。
 
+## Phase 15.2：式と、旧式のフィルタ・関数の変換（2026-11-03）
+
+状態：**実装と確認は済み。PR の前で止めた（判断待ち）**。メインの入口が 80.7KB になり、予算 80KB を超える（PR を出す目安は 77KB）。下の「サイズ」と「選択肢」を参照。
+
+### できたこと
+
+- **式**（`style/expr.mbt` の compile、`style/eval.mbt` と `style/ops.mbt` の eval）：
+  - 算術と数学：`+ - * / % ^ sqrt log10 ln log2 sin cos tan asin acos atan min max round abs ceil floor pi e ln2`。`log10` と `log2` は MapLibre と同じく `ln(x) / LN10` で計算する。`round` は 0 から遠い方へ丸める。
+  - 型：`to-number`、`to-string`、`to-boolean`、`to-color`、`typeof`、`array`（要素の型と長さ）。既存の `number`、`string`、`boolean` も MapLibre の評価エラーに合わせた。
+  - 文字列：`concat`（text-field の外でも）、`upcase`、`downcase`、`length`、`slice`、`index-of`（コードポイントで数える）、`at`（配列。style-spec 26.5 の `at` は文字列を取らない）。`in` は文字列の haystack で needle を文字列にする。
+  - `let` と `var`：compile のときに束縛した式に置き換える。置き換えた後の大きさを `MAX_EXPR_NODES`（4096）で抑える（`let` を重ねると指数的に大きくなるため）。
+  - 色：`rgb`、`rgba`、`to-rgba`。補間 `cubic-bezier`（`@core.Bezier`）、`interpolate-hcl`、`interpolate-lab`（style-spec の `color_spaces.ts` を移植。`style/color_space.mbt`）。数の配列の補間も。
+  - 地物：`id`、`get`/`has` の第 2 引数の `["properties"]`。オブジェクト値は未対応（Unsupported のまま）。
+- **MapLibre の評価エラー**：`Value::Failed` で表す。上の式へ伝わり、プロパティは既定値になる（フィルタは偽）。比較 `<` の型違い、`!`・`all`・`case` の真偽値でない値、補間の入力が数でない・NaN、`at` の範囲外などが該当する。
+- **型の注釈**：compile は、型を求められた所で MapLibre のパーサーと同じく、型が `value` の式を assertion（色は `to-color`）で包む。`match`・`case`・`step`・`interpolate` の 2 つ目以降の出力は、最初の出力の型に合わせる。`coalesce` は引数を包まず、全体を包む。比べられない型の `==` などは Invalid にする。
+  - これで、`fill-color: ["get", "color"]` のような文字列の色が描ける（以前は黒）。
+- **ホストの関数**：`FeatureContext` に `id`、`trig`、`number_text`（`String(number)`）、`text_number`（`Number(string)`）を足した（`pow` は `trig` に入れた）。
+  - メインスレッドはブラウザの `String`、`Number`、`Math` を使う。
+  - 表示ワーカーは `host.*` の import（`wasmio/js/host.mjs` の `hostText`。1 回に UTF-16 の 1 単位を渡す）を使う。MoonBit の `Double::to_string` をワーカーに入れると 3.9KB 増えたため（測定）。文字列から数への変換では、出力領域を作業場所にできない（タイルをパックしている途中のため）。
+- **地物の id**：グループ方式の paint が `["id"]` を読むときは、グループのプロパティの `$id`（`@style.FEATURE_ID_KEY`）に入れる（FORMATS.md）。
+- **旧式の変換**（`npm/src/legacy.ts`、遅延ロードの `legacy.js`、予算の行を足した。3.6KB／5KB）：
+  - style-spec 26.5.0 の `convertFilter` と `convertFunction`（`convertTokenString` も）を移植した。プロパティの型・既定値・補間の有無の表は style-spec の参照から作った。
+  - 例外が 1 つある。段が 1 つの interval 関数で、style-spec の変換は 0 より上の出力を 0 にしてしまう（`fixupDegenerateStepCurve` の書き間違い）。MapLibre 自身は関数をそのまま評価するので、そちらに合わせて同じ値を繰り返す。
+  - facade は、`isLegacyFilter` と `hasLegacy`（`style.ts`、メインに入る）で旧式があると分かったときだけ `legacy.js` を読む。対象は setStyle、`#edit` を通る編集（読み込みの後で編集をやり直す）、`queryRenderedFeatures` と `querySourceFeatures` の `filter`。エンジンは式だけを見る。`getStyle()` は元のまま返す。
+  - これまで `["==", "class", "x"]` は 2 つのリテラルの比較になり、常に偽だった。いまはエンジンに直接渡すと Invalid（型の違う比較）になり、facade を通せば変換される。
+- **example**：3 つとも、標高点の半径を `["+", 2, ["*", ["sqrt", ["max", ["to-number", ["get", "alti"], 0], 0]], 0.3]]` にした（`examples/shared/style.js`）。
+- pack test の「対応していない式」の例を `["sqrt", 2]` から `["number-format", 2, {}]` に替えた。
+
+### 確認
+
+- **`npm run expression:golden`**（新規、`bench/style/expressions.mjs` と `expression-cases.mjs`、`bench/expr` の js ビルド）：
+  - style-spec 26.5.0（maplibre-gl 6.16.0 が使う版。bench の node_modules にあるものを使い、依存は足していない）の `createExpression` と比べた。
+  - 対象：式 183、GSI の地物 2686（注記、記号、等高線、鉄道、道路、建物などと、端の場合を作った 14）、ズーム 5 つ。評価は 278 万回。
+  - 結果：**値の違いは 0**。色は straight RGBA で 1e-9 以内（MapLibre は内部で premultiplied にして戻すため）。
+  - MapLibre がパースで拒み、mbmap が評価時に Failed にする定数の式が 3 つある（定数の畳み込みをしないため。`MAPLIBRE_REJECTS` に書いた）。
+  - 旧式のフィルタ 31：変換が style-spec と一致し、`featureFilter` と同じ地物を選ぶ。
+  - 旧式の関数 21：変換が style-spec と一致し（上の例外 2 つを除く）、値は MapLibre の `StylePropertyFunction` の評価と一致する（null・エラー・NaN は既定値として比べた）。
+- **`npm run style:golden`**：新しい場面 2 つ。
+  - `expressions`：算術、`to-number`、`interpolate-hcl`、`let`/`var`。平均 0.003、p99 0。
+  - `legacy`：旧式のフィルタと関数（`legacy.js` の読み込みを含む）。平均 0.002、p99 0。
+  - ほかの場面は変わらない。
+- MoonBit のテスト（4 つのバックエンド）：演算子ごと、エラーの伝わり方、`let`/`var` と `MAX_EXPR_NODES`、パース時の型の誤り、色空間、`js_number`。ワーカー（`id`、ホストのフックを通る変換、グループの `$id`）、map（`JsProps` のフック、NaN は既定値）。
+- npm test（`legacy.test.ts` を追加）、pack test 9/9、`query:golden`、`ui:golden`、`export:golden`。
+  - `query:golden` の state の場面で 1 点だけ画素が違う（319/320）。main（5e5c57c）でも同じなので、この段の変更によるものではない（15.3a の輪郭の後から）。
+- **性能**（`worker:browser`、35 タイル、main 5e5c57c と同じマシンで続けて測った）：process_tile の中央値は、Chromium 7.36 → 7.30ms、Firefox 9.88 → 9.90ms、WebKit 7.98 → 7.92ms。違いはぶれの範囲で、出力も同じ（77.4MB）。
+
+### サイズ（判断が要る）
+
+| 入口 | main（5e5c57c） | この段 | 予算 |
+|---|---|---|---|
+| 表示（メイン） | 73.7KB（73676 バイト） | **80.7KB**（80712 バイト） | 80KB |
+| 表示ワーカー | 69.6KB | 78.5KB | 100KB |
+| `legacy.js`（新規） | — | 3.6KB | 5KB |
+
+- メインの +7.0KB の内訳（エンジンの js を esbuild で縮めて gzip、機能を外して測った）：
+  - `Call` の演算子（算術、文字列、配列、色）：2.0KB。うち文字列・配列・色が 1.5KB。
+  - HCL と Lab の補間：1.0KB。
+  - `to-*` の変換：0.4KB。
+  - 残り約 2.8KB：型の注釈、`let`/`var`、エラーの伝わり方、`FeatureContext` のフック、`Trig`。
+  - facade（旧式の判定と `legacy.js` の読み込み）：約 0.8KB。
+- 試して効いたもの：compile のエラーを `raise` から「最初のエラーを記録する」方式にした（js の出力で Result の包みがなくなり、1.0KB 減）。
+- ワーカーの +8.9KB は compile と eval（wasm-gc は js より大きくなる）。予算内。
+- **選択肢**：
+  1. メインの予算を上げる（例：80 → 90KB）。Phase 15 の残り（破線、模様、アイコン、heatmap など）もエンジンに入る。
+  2. 式の評価をワーカーへ寄せる。ワーカーが、一定の paint もズームの折れ点ごとの値として送り（頂点属性と同じ形）、メインには折れ点の補間と、グループの値を読む部分だけを残す。大きな設計の変更（VISION §7）。
+  3. 15.2 の一部をメインから外す（例：HCL/Lab −1.0KB、文字列・配列 −1.5KB）。ただし、外したものを使うスタイルは正しく描けなくなる。
+
+### 既知の違い・まだのもの
+
+- `upcase`/`downcase` は、Latin（ASCII、Latin-1、拡張 A、全角）とキリル文字だけを変換する。ギリシャ文字（語末のシグマを含む）などはそのまま。
+- `to-color` は mbmap の `parse_color` を使う（16 進、`rgb()`/`rgba()`、`black`/`white`/`transparent`）。CSS の色名、`hsl()`、% や空白区切りの書き方は、まだ読めない。
+- 定数の畳み込みはしない。MapLibre がパースで拒む定数の式（範囲外の `rgb` など）は、mbmap では評価時に Failed になる。
+- 文字列型のプロパティ（MapLibre は `to-string` で包む）は、mbmap にはまだない。
+- `object`、オブジェクトのリテラル、`properties` 単独、`get`/`has` のオブジェクト引数、`collator`、`format`、`number-format`、`within`、`distance`、`global-state`、`image`、`split`/`join` などは、引き続き Unsupported。
+- 旧式の変換の対象はレイヤーの filter、paint、layout だけ。`light` などの関数は変換しない。
+
 ## Phase 15.1b：データで変わる paint を頂点属性に（2026-11-03）
 
 状態：**完了**。

@@ -1,12 +1,20 @@
 ///|
-/// What an expression can read about the feature being styled: its
-/// properties, its geometry type ("Point", "LineString", "Polygon" or
-/// "Unknown") and its feature state (none by default).
+/// A feature as expressions read it (`geometry_type` "Point", "LineString",
+/// "Polygon" or "Unknown"), with the `Math` (`trig`, `@math` by default) and the
+/// `String(number)` and `Number(string)` of the JavaScript host MapLibre runs on.
 pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
   fn geometry_type(Self) -> String
+  fn id(Self) -> Value = _
   fn state(Self, String) -> Value? = _
-  fn pow(Self, Double, Double) -> Double = _
+  fn trig(Self) -> @core.Trig = _
+  fn number_text(Self, Double) -> String = _
+  fn text_number(Self, String) -> Double = _
+}
+
+///|
+impl FeatureContext with fn id(_) {
+  Null
 }
 
 ///|
@@ -15,10 +23,18 @@ impl FeatureContext with fn state(_, _) {
 }
 
 ///|
-/// `@math.pow` unless the context brings the host's (a wasm build's `Math.pow`,
-/// as MapLibre interpolates with).
-impl FeatureContext with fn pow(_, x, y) {
-  @math.pow(x, y)
+impl FeatureContext with fn trig(_) {
+  @core.Trig::moonbit()
+}
+
+///|
+impl FeatureContext with fn number_text(_, x) {
+  x.to_string()
+}
+
+///|
+impl FeatureContext with fn text_number(_, s) {
+  js_number(s)
 }
 
 ///|
@@ -36,39 +52,51 @@ pub impl FeatureContext for NoFeature with fn geometry_type(_) {
 }
 
 ///|
-fn truthy(v : Value) -> Bool {
-  v is Bool(true)
-}
-
-///|
-/// Equality without coercion: values of different types are not equal.
+/// Strict equality as JavaScript's `===` on expression values: values of
+/// different types are not equal, nor are colors and arrays.
 fn same(a : Value, b : Value) -> Bool {
   match (a, b) {
     (Num(x), Num(y)) => x == y
     (Str(x), Str(y)) => x == y
     (Bool(x), Bool(y)) => x == y
     (Null, Null) => true
-    (Color(x), Color(y)) => x == y
-    (List(x), List(y)) =>
-      x.length() == y.length() &&
-      x.iter().zip(y.iter()).all(p => same(p.0, p.1))
     _ => false
   }
 }
 
 ///|
-fn order(op : CmpOp, a : Value, b : Value) -> Bool {
+/// JavaScript's `<` on strings: by UTF-16 code units.
+fn str_compare(a : String, b : String) -> Int32 {
+  let n = @cmp.minimum(a.length(), b.length())
+  for i in 0..<n {
+    if a[i] != b[i] {
+      return a[i].to_int() - b[i].to_int()
+    }
+  }
+  a.length() - b.length()
+}
+
+///|
+fn order(op : CmpOp, a : Value, b : Value) -> Value {
   let c = match (a, b) {
-    (Num(x), Num(y)) => x.compare(y)
-    (Str(x), Str(y)) => x.compare(y)
-    _ => return false
+    (Num(x), Num(y)) =>
+      // NaN compares false either way.
+      if x != x || y != y {
+        return Bool(false)
+      } else {
+        x.compare(y)
+      }
+    (Str(x), Str(y)) => str_compare(x, y)
+    _ => return Failed
   }
-  match op {
-    Lt => c < 0
-    Le => c <= 0
-    Gt => c > 0
-    _ => c >= 0
-  }
+  Bool(
+    match op {
+      Lt => c < 0
+      Le => c <= 0
+      Gt => c > 0
+      _ => c >= 0
+    },
+  )
 }
 
 ///|
@@ -94,20 +122,32 @@ fn factor(
 ///|
 fn blend(a : Value, b : Value, t : Double) -> Value {
   match (a, b) {
-    (Num(x), Num(y)) => Num(x + (y - x) * t)
+    (Num(x), Num(y)) => Num(x + t * (y - x))
     (Color(x), Color(y)) =>
       Color({
-        r: x.r + (y.r - x.r) * t,
-        g: x.g + (y.g - x.g) * t,
-        b: x.b + (y.b - x.b) * t,
-        a: x.a + (y.a - x.a) * t,
+        r: x.r + t * (y.r - x.r),
+        g: x.g + t * (y.g - x.g),
+        b: x.b + t * (y.b - x.b),
+        a: x.a + t * (y.a - x.a),
       })
-    _ => if t < 1.0 { a } else { b }
+    (List(xs), List(ys)) if xs.length() == ys.length() => {
+      let out = []
+      for i, x in xs {
+        let v = blend(x, ys[i], t)
+        if !(v is Num(_)) {
+          return Failed
+        }
+        out.push(v)
+      }
+      List(out)
+    }
+    _ => Failed
   }
 }
 
 ///|
-/// Evaluates the expression for a feature at `zoom`.
+/// Evaluates the expression for a feature at `zoom`; `Failed` where MapLibre
+/// raises an evaluation error.
 pub fn[C : FeatureContext] Expr::eval(
   self : Expr,
   zoom : Double,
@@ -118,22 +158,51 @@ pub fn[C : FeatureContext] Expr::eval(
     Lit(v) => v
     Get(k) => ctx.property(k).unwrap_or(Null)
     Has(k) => Bool(ctx.property(k) is Some(_))
+    Id => ctx.id()
     GeometryType => Str(ctx.geometry_type())
     Zoom => Num(zoom)
-    Not(e) => Bool(!truthy(go(e)))
-    All(es) => Bool(es.iter().all(e => truthy(go(e))))
-    Any(es) => Bool(es.iter().any(e => truthy(go(e))))
-    Compare(Eq, a, b) => Bool(same(go(a), go(b)))
-    Compare(Ne, a, b) => Bool(!same(go(a), go(b)))
-    Compare(op, a, b) => Bool(order(op, go(a), go(b)))
-    In(needle, haystack) =>
-      match (go(needle), go(haystack)) {
-        (n, List(items)) => Bool(items.iter().any(i => same(n, i)))
-        (Str(n), Str(h)) => Bool(h.contains(n))
-        _ => Bool(false)
+    Not(e) =>
+      match go(e) {
+        Bool(b) => Bool(!b)
+        _ => Failed
       }
+    All(es) | Any(es) => {
+      let all = self is All(_)
+      for e in es {
+        match go(e) {
+          Bool(b) => if b != all { return Bool(b) }
+          _ => return Failed
+        }
+      }
+      Bool(all)
+    }
+    Compare(op, a, b) => {
+      let (x, y) = (go(a), go(b))
+      match (op, x, y) {
+        (_, Failed, _) | (_, _, Failed) => Failed
+        (Eq, _, _) => Bool(same(x, y))
+        (Ne, _, _) => Bool(!same(x, y))
+        _ => order(op, x, y)
+      }
+    }
+    In(needle, haystack) => {
+      let n = go(needle)
+      let h = go(haystack)
+      match (n, h) {
+        (Failed, _) | (_, Failed) => Failed
+        (_, Null | Bool(false) | Str("")) => Bool(false)
+        (_, Num(x)) if x == 0.0 || x != x => Bool(false)
+        (Color(_) | List(_), _) => Failed
+        (_, List(items)) => Bool(items.iter().any(i => same(n, i)))
+        (_, Str(s)) => Bool(s.contains(js_string(ctx, n)))
+        _ => Failed
+      }
+    }
     Match(input, cases, fallback) => {
       let v = go(input)
+      if v is Failed {
+        return Failed
+      }
       for c in cases {
         if c.0.iter().any(l => same(v, l)) {
           return go(c.1)
@@ -143,8 +212,10 @@ pub fn[C : FeatureContext] Expr::eval(
     }
     Case(cases, fallback) => {
       for c in cases {
-        if truthy(go(c.0)) {
-          return go(c.1)
+        match go(c.0) {
+          Bool(true) => return go(c.1)
+          Bool(false) => ()
+          _ => return Failed
         }
       }
       go(fallback)
@@ -158,39 +229,55 @@ pub fn[C : FeatureContext] Expr::eval(
       }
       Null
     }
-    Interpolate(Exponential(base), input, stops) => {
-      guard go(input) is Num(x) else { return Null }
+    Interpolate(interp, space, input, stops) => {
       let n = stops.length()
+      if n == 1 {
+        return go(stops[0].1)
+      }
+      guard go(input) is Num(x) else { return Failed }
       if x <= stops[0].0 {
         return go(stops[0].1)
       }
       if x >= stops[n - 1].0 {
         return go(stops[n - 1].1)
       }
+      if x != x {
+        return Failed
+      }
       let mut i = 1
-      while stops[i].0 < x {
+      while stops[i].0 <= x {
         i += 1
       }
       let (z0, e0) = stops[i - 1]
       let (z1, e1) = stops[i]
-      blend(go(e0), go(e1), factor((a, b) => ctx.pow(a, b), base, x, z0, z1))
+      let trig = ctx.trig()
+      let t = match interp {
+        Exponential(base) => factor(trig.pow, base, x, z0, z1)
+        CubicBezier(a, b, c, d) =>
+          @core.Bezier::new(a, b, c, d).at(factor(trig.pow, 1.0, x, z0, z1))
+      }
+      match (space, go(e0), go(e1)) {
+        (Rgb, a, b) => blend(a, b, t)
+        (_, Color(a), Color(b)) => Color(blend_space(trig, space, a, b, t))
+        _ => Failed
+      }
     }
     FeatureState(k) => ctx.state(k).unwrap_or(Null)
-    // The first argument of the type asked for (MapLibre fails over to the
-    // property's default otherwise; Null does the same).
     Assert(t, es) => {
       for e in es {
         let v = go(e)
-        match (t, v) {
-          (BoolType, Bool(_)) | (NumberType, Num(_)) | (StringType, Str(_)) =>
-            return v
-          _ => ()
+        if v is Failed || is_type(t, v) {
+          return v
         }
       }
-      Null
+      Failed
     }
+    Coerce(t, es) => coerce(t, es, zoom, ctx)
     Step(input, first, stops) => {
-      guard go(input) is Num(x) else { return go(first) }
+      if stops.length() == 0 {
+        return go(first)
+      }
+      guard go(input) is Num(x) && x == x else { return Failed }
       let mut out = first
       for s in stops {
         if x >= s.0 {
@@ -199,6 +286,23 @@ pub fn[C : FeatureContext] Expr::eval(
       }
       go(out)
     }
+    Call(op, args) => call(op, args, zoom, ctx)
+  }
+}
+
+///|
+/// Whether `v` has type `t` (MapLibre's `checkSubtype` against `typeOf(v)`).
+fn is_type(t : Expected, v : Value) -> Bool {
+  match (t, v) {
+    (AnyType, _) => true
+    (BoolType, Bool(_))
+    | (NumberType, Num(_))
+    | (StringType, Str(_))
+    | (ColorType, Color(_)) => true
+    (ArrayOf(item, n), List(xs)) =>
+      (n < 0 || xs.length() == n) &&
+      (item is AnyType || xs.iter().all(x => is_type(item, x)))
+    _ => false
   }
 }
 
@@ -206,9 +310,14 @@ pub fn[C : FeatureContext] Expr::eval(
 /// Calls `f` with each sub-expression of `self` (not their own).
 fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
   match self {
-    Lit(_) | Get(_) | Has(_) | GeometryType | Zoom | FeatureState(_) => ()
+    Lit(_) | Get(_) | Has(_) | Id | GeometryType | Zoom | FeatureState(_) => ()
     Not(a) => f(a)
-    All(es) | Any(es) | Coalesce(es) | Assert(_, es) => es.each(f)
+    All(es)
+    | Any(es)
+    | Coalesce(es)
+    | Assert(_, es)
+    | Coerce(_, es)
+    | Call(_, es) => es.each(f)
     Compare(_, a, b) | In(a, b) => {
       f(a)
       f(b)
@@ -225,7 +334,7 @@ fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
       })
       f(fallback)
     }
-    Interpolate(_, input, stops) => {
+    Interpolate(_, _, input, stops) => {
       f(input)
       stops.each(s => f(s.1))
     }
@@ -238,14 +347,19 @@ fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
 }
 
 ///|
-/// Property names the expression reads, and whether it reads the geometry
-/// type: the feature data a value depends on.
+/// The key `feature_inputs` reports for an expression reading the feature id.
+pub const FEATURE_ID_KEY : String = "$id"
+
+///|
+/// Property names the expression reads (`FEATURE_ID_KEY` for the id), and
+/// whether it reads the geometry type: the feature data a value depends on.
 pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
   let keys = []
   let mut geometry = false
   fn visit(e : Expr) -> Unit {
     match e {
       Get(k) | Has(k) => if !keys.contains(k) { keys.push(k) }
+      Id => if !keys.contains(FEATURE_ID_KEY) { keys.push(FEATURE_ID_KEY) }
       GeometryType => geometry = true
       _ => e.each_child(visit)
     }

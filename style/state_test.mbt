@@ -42,7 +42,7 @@ test "boolean, number and string give their first argument of that type" {
     Num(3.0),
   )
   assert_eq(eval("[\"string\", [\"feature-state\", \"s\"]]"), Str("x"))
-  assert_eq(eval("[\"boolean\", [\"feature-state\", \"n\"]]"), Null)
+  assert_eq(eval("[\"boolean\", [\"feature-state\", \"n\"]]"), Failed)
   assert_false(@style.compile(@json.parse("[\"number\", 1]")).reads_state())
   let bare = @json.parse("[\"boolean\"]")
   try @style.compile(bare) catch {

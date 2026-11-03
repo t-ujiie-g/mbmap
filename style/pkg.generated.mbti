@@ -3,10 +3,15 @@ package "t-ujiie-g/mbmap/style"
 
 import {
   "moonbitlang/core/debug",
+  "t-ujiie-g/mbmap/core",
 }
 
 // Values
+pub const FEATURE_ID_KEY : String = "$id"
+
 pub const MAX_EXPR_DEPTH : Int32 = 32
+
+pub const MAX_EXPR_NODES : Int32 = 4096
 
 pub const SLOT_COLOR : Int32 = 0
 
@@ -21,6 +26,8 @@ pub const SLOT_STROKE_OPACITY : Int32 = 4
 pub const SLOT_STROKE_WIDTH : Int32 = 5
 
 pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
+
+pub fn js_number(String) -> Double
 
 pub fn parse_color(String) -> Color?
 
@@ -68,6 +75,15 @@ pub fn Color::equal(Self, Self) -> Bool
 pub fn Color::not_equal(Self, Self) -> Bool
 pub fn Color::to_repr(Self) -> @debug.Repr
 
+pub(all) enum ColorSpace {
+  Rgb
+  Hcl
+  Lab
+} derive(Eq, @debug.Debug)
+pub fn ColorSpace::equal(Self, Self) -> Bool
+pub fn ColorSpace::not_equal(Self, Self) -> Bool
+pub fn ColorSpace::to_repr(Self) -> @debug.Repr
+
 pub(all) enum DemEncoding {
   Mapbox
   Terrarium
@@ -84,6 +100,7 @@ pub(all) enum Expected {
   NumberType
   BoolType
   StringType
+  ArrayOf(Expected, Int32)
 } derive(Eq, @debug.Debug)
 pub fn Expected::equal(Self, Self) -> Bool
 pub fn Expected::not_equal(Self, Self) -> Bool
@@ -93,6 +110,7 @@ pub(all) enum Expr {
   Lit(Value)
   Get(String)
   Has(String)
+  Id
   GeometryType
   Zoom
   Not(Expr)
@@ -103,10 +121,12 @@ pub(all) enum Expr {
   Match(Expr, Array[(Array[Value], Expr)], Expr)
   Case(Array[(Expr, Expr)], Expr)
   Coalesce(Array[Expr])
-  Interpolate(Interpolation, Expr, Array[(Double, Expr)])
+  Interpolate(Interpolation, ColorSpace, Expr, Array[(Double, Expr)])
   Step(Expr, Expr, Array[(Double, Expr)])
   FeatureState(String)
   Assert(Expected, Array[Expr])
+  Coerce(Expected, Array[Expr])
+  Call(Op, Array[Expr])
 } derive(Eq, @debug.Debug)
 pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
@@ -134,6 +154,7 @@ pub struct HillshadePaint {
 
 pub(all) enum Interpolation {
   Exponential(Double)
+  CubicBezier(Double, Double, Double, Double)
 } derive(Eq, @debug.Debug)
 pub fn Interpolation::equal(Self, Self) -> Bool
 pub fn Interpolation::not_equal(Self, Self) -> Bool
@@ -172,10 +193,51 @@ pub struct Light {
 pub(all) struct NoFeature {
 }
 pub fn NoFeature::geometry_type(Self) -> String
-pub fn NoFeature::pow(Self, Double, Double) -> Double
+pub fn NoFeature::id(Self) -> Value
+pub fn NoFeature::number_text(Self, Double) -> String
 pub fn NoFeature::property(Self, String) -> Value?
 pub fn NoFeature::state(Self, String) -> Value?
+pub fn NoFeature::text_number(Self, String) -> Double
+pub fn NoFeature::trig(Self) -> @core.Trig
 pub impl FeatureContext for NoFeature
+
+pub(all) enum Op {
+  Add
+  Sub
+  Mul
+  Div
+  Rem
+  Pow
+  Sqrt
+  Log10
+  Ln
+  Log2
+  Sin
+  Cos
+  Tan
+  Asin
+  Acos
+  Atan
+  Min
+  Max
+  Round
+  Abs
+  Ceil
+  Floor
+  Concat
+  Upcase
+  Downcase
+  TypeOf
+  Length
+  Slice
+  IndexOf
+  At
+  Rgba
+  ToRgba
+} derive(Eq, @debug.Debug)
+pub fn Op::equal(Self, Self) -> Bool
+pub fn Op::not_equal(Self, Self) -> Bool
+pub fn Op::to_repr(Self) -> @debug.Repr
 
 pub(all) enum PromoteId {
   FeatureId
@@ -322,6 +384,7 @@ pub(all) enum Value {
   Str(String)
   Color(Color)
   List(Array[Value])
+  Failed
 } derive(Eq, @debug.Debug)
 pub fn Value::equal(Self, Self) -> Bool
 pub fn Value::not_equal(Self, Self) -> Bool
@@ -346,6 +409,9 @@ pub fn VertexPaint::position(Self, Double, pow? : (Double, Double) -> Double) ->
 pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
   fn geometry_type(Self) -> String
+  fn id(Self) -> Value = _
   fn state(Self, String) -> Value? = _
-  fn pow(Self, Double, Double) -> Double = _
+  fn trig(Self) -> @core.Trig = _
+  fn number_text(Self, Double) -> String = _
+  fn text_number(Self, String) -> Double = _
 }

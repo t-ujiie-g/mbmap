@@ -79,7 +79,7 @@ pub fn StyleLayer::vertex_paint(self : StyleLayer) -> Array[VertexPaint] {
     let (slot, e, color, default) = s
     guard data_driven(e) else { continue }
     let vp : VertexPaint = match e {
-      Interpolate(Exponential(base), Zoom, stops) =>
+      Interpolate(Exponential(base), Rgb, Zoom, stops) =>
         {
           slot,
           color,
@@ -204,7 +204,7 @@ fn encode_value(v : Value, color : Bool, default : Double) -> Int32 {
     byte(c.r) | (byte(c.g) << 8) | (byte(c.b) << 16) | (byte(c.a) << 24)
   } else {
     let n = match v {
-      Num(n) => n
+      Num(n) if n == n => n
       _ => default
     }
     Float::from_double(n).reinterpret_as_int()

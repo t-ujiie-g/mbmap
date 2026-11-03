@@ -104,4 +104,28 @@ export const SCENES = {
     camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },
+  expressions: {
+    style: style([
+      { id: "pt", type: "circle", source: "gsi", "source-layer": "label", filter: [">", ["to-number", ["get", "orgGILvl"]], 0],
+        paint: {
+          "circle-radius": ["+", ["*", ["sqrt", ["get", "arrngAgl"]], 0.5], 3],
+          "circle-color": ["interpolate-hcl", ["linear"], ["get", "arrngAgl"], 0, "#2b83ba", 360, "#d7191c"],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": ["let", "a", ["get", "arrngAgl"], ["case", [">", ["%", ["var", "a"], 180], 0], 1.5, 0]],
+        } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  legacy: {
+    style: style([
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", filter: ["in", "rdCtg", 0, 1, 2], layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": { property: "rdCtg", type: "categorical", stops: [[0, "#e8a33b"], [1, "#d08c2b"]], default: "#9aa0a6" },
+          "line-width": { base: 2, stops: [[14, 1], [18, 16]] },
+        } },
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway", filter: ["all", ["has", "snglDbl"], ["!=", "$type", "Polygon"]], paint: { "line-color": "#555555", "line-width": 2 } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
 };

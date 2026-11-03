@@ -1,7 +1,8 @@
 ///|
 /// Turns one style's tiles into `PackedTile`s (an entry per group of features
 /// sharing their paint's inputs); reuse one per worker. `number` parses long JSON
-/// numbers; `ranges` holds feature-state layers' ranges (`feature_ranges`).
+/// numbers, `text_number` / `number_text` are the host's `Number` / `String`;
+/// `ranges` holds feature-state layers' ranges (`feature_ranges`).
 pub struct TileProcessor {
   style : @style.Style
   priv trig : @core.Trig
@@ -18,6 +19,8 @@ pub struct TileProcessor {
   priv vertex_paint : Array[Array[@style.VertexPaint]]
   priv runs : Array[Int32]
   priv number : (BytesView) -> Double
+  priv text_number : (String) -> Double
+  priv number_text : (Double) -> String
   priv state_layers : Array[Bool]
   priv range_pool : Array[Array[Int32]]
   priv ranges : @core.ByteWriter
@@ -29,6 +32,8 @@ pub struct TileProcessor {
 pub fn TileProcessor::new(
   style : @style.Style,
   number~ : (BytesView) -> Double = @core.strconv_number,
+  text_number~ : (String) -> Double = @style.js_number,
+  number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> TileProcessor {
   {
@@ -53,6 +58,8 @@ pub fn TileProcessor::new(
     vertex_paint: style.layers.map(l => l.vertex_paint()),
     runs: [],
     number,
+    text_number,
+    number_text,
     state_layers: style.layers.map(l => l.reads_state()),
     range_pool: [],
     ranges: @core.ByteWriter::new(),
@@ -66,12 +73,20 @@ pub fn TileProcessor::new(
 pub fn TileProcessor::from_utf8(
   bytes : BytesView,
   number~ : (BytesView) -> Double = @core.strconv_number,
+  text_number~ : (String) -> Double = @style.js_number,
+  number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> TileProcessor raise @style.StyleError {
   let json = parse_json(bytes, number) catch {
     e => raise Invalid(path="", "not JSON: \{e.message()}")
   }
-  TileProcessor::new(@style.Style::from_json(json), number~, trig~)
+  TileProcessor::new(
+    @style.Style::from_json(json),
+    number~,
+    text_number~,
+    number_text~,
+    trig~,
+  )
 }
 
 ///|

@@ -21,6 +21,9 @@ const BUILDINGS_3D = {
   },
 };
 
+// Spot heights grow with the square root of their height (GSI writes some as strings).
+const ELEVATION_RADIUS = ["+", 2, ["*", ["sqrt", ["max", ["to-number", ["get", "alti"], 0], 0]], 0.3]];
+
 /** Layers the panel shows and hides together, by the name of each group. */
 export const LAYER_GROUPS = [
   { name: "陰影", ids: ["hillshade"] },
@@ -97,6 +100,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       : [
           { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#5a4a35" } },
           ...GSI_LAYERS.flatMap((l) => {
+            if (l.id === "elevation") return [{ ...l, paint: { ...l.paint, "circle-radius": ELEVATION_RADIUS } }];
             if (mode !== "3d") return [l];
             if (l.id === "building-outline") return [];
             return l.id === "building" ? [BUILDINGS_3D] : [l];
