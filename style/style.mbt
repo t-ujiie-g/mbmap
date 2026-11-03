@@ -33,10 +33,9 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer with its type's paint (sizes in CSS pixels); `text` is a
-/// symbol layer's layout. `filter_id` is shared by layers whose filters are
-/// written identically (-1 without one), so they compare without walking `Expr`s.
-/// A fill's `antialias` draws its outline, `outline_color` (or its color).
+/// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout;
+/// `filter_id` shared by identically written filters (-1 for none); a fill's
+/// `antialias` draws its outline, `outline_color` (or its color).
 pub struct StyleLayer {
   id : String
   kind : LayerKind

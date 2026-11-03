@@ -1,8 +1,7 @@
 ///|
-/// A data-driven paint property given per vertex (docs/FORMATS.md, "Vertex
-/// paint"): `outputs` are its values at the zoom `stops` of its top-level zoom
-/// curve (one output, the whole expression, when it has none), each stored per
-/// vertex; `color` values are packed RGBA, others 32-bit floats.
+/// A data-driven paint property given per vertex (docs/FORMATS.md, "Vertex paint"):
+/// `outputs` at the `stops` of its top-level zoom curve (or the whole expression),
+/// each stored per vertex, a color as packed RGBA, a number as a 32-bit float.
 pub struct VertexPaint {
   slot : Int32
   color : Bool
@@ -138,10 +137,9 @@ pub fn vertex_paint_words(paint : Array[VertexPaint]) -> Int32 {
 }
 
 ///|
-/// Where `zoom` falls on the property's curve: the stored value it starts
-/// from (the next one is where it goes) and how far, 0 to 1, as the
-/// expression interpolates (a step stays at 0, the last value is reached at
-/// 1; a single value is (0, 0)).
+/// Where `zoom` falls on the curve: the stored value it starts from and how far
+/// (0 to 1, as the expression interpolates) toward the next; a step stays at 0,
+/// the last value is reached at 1, a single value is (0, 0).
 pub fn VertexPaint::position(
   self : VertexPaint,
   zoom : Double,
