@@ -1,7 +1,7 @@
 ///|
 /// Turns one style's tiles into `PackedTile`s (an entry per group of features
-/// sharing their paint's inputs); reuse one per worker. `number` parses long JSON
-/// numbers, `text_number` / `number_text` are the host's `Number` / `String`;
+/// sharing their paint's inputs); reuse one per worker. `text_number` /
+/// `number_text` are the host's `Number` / `String`;
 /// `ranges` holds feature-state layers' ranges (`feature_ranges`).
 pub struct TileProcessor {
   style : @style.Style
@@ -19,7 +19,6 @@ pub struct TileProcessor {
   priv inputs : Array[(Array[String], Bool)]
   priv vertex_paint : Array[Array[@style.VertexPaint]]
   priv runs : Array[Int32]
-  priv number : (BytesView) -> Double
   priv text_number : (String) -> Double
   priv number_text : (Double) -> String
   priv state_layers : Array[Bool]
@@ -32,7 +31,6 @@ pub struct TileProcessor {
 ///|
 pub fn TileProcessor::new(
   style : @style.Style,
-  number~ : (BytesView) -> Double = @core.strconv_number,
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
@@ -59,7 +57,6 @@ pub fn TileProcessor::new(
     }),
     vertex_paint: style.layers.map(l => l.vertex_paint()),
     runs: [],
-    number,
     text_number,
     number_text,
     state_layers: style.layers.map(l => l.reads_state()),
@@ -71,20 +68,16 @@ pub fn TileProcessor::new(
 }
 
 ///|
-/// A processor for the style whose JSON text is the UTF-8 `bytes`.
-pub fn TileProcessor::from_utf8(
+/// A processor for the style compiled by the main thread
+/// (`@style.Style::to_compiled`).
+pub fn TileProcessor::from_compiled(
   bytes : BytesView,
-  number~ : (BytesView) -> Double = @core.strconv_number,
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> TileProcessor raise @style.StyleError {
-  let json = parse_json(bytes, number) catch {
-    e => raise Invalid(path="", "not JSON: \{e.message()}")
-  }
   TileProcessor::new(
-    @style.Style::from_json(json, strict=false),
-    number~,
+    @style.Style::from_compiled(bytes),
     text_number~,
     number_text~,
     trig~,
@@ -92,12 +85,24 @@ pub fn TileProcessor::from_utf8(
 }
 
 ///|
-/// The JSON text `bytes`, its slow numbers parsed by `number`.
-fn parse_json(
+/// A processor for the style whose JSON text is the UTF-8 `bytes`, parsed as the
+/// main thread does and passed through the compiled form, as display workers get it.
+pub fn TileProcessor::from_utf8(
   bytes : BytesView,
-  number : (BytesView) -> Double,
-) -> Json raise @core.JsonError {
-  @core.parse_json(bytes, slow_number=(s, e) => number(bytes[s:e]))
+  text_number~ : (String) -> Double = @style.js_number,
+  number_text~ : (Double) -> String = Double::to_string,
+  trig~ : @core.Trig = @core.Trig::moonbit(),
+) -> TileProcessor raise @style.StyleError {
+  let json = @core.parse_json(bytes) catch {
+    e => raise Invalid(path="", "not JSON: \{e.message()}")
+  }
+  let style = @style.Style::from_json(json, strict=false)
+  TileProcessor::from_compiled(
+    style.to_compiled(),
+    text_number~,
+    number_text~,
+    trig~,
+  )
 }
 
 ///|

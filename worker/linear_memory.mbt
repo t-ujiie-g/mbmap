@@ -1,4 +1,4 @@
-// Memory layout: page 0 is left to MoonBit; input (a tile or the style JSON)
+// Memory layout: page 0 is left to MoonBit; input (a tile or the compiled style)
 // starts at INPUT_ADDR, output (a packed tile, written in place by its Store,
 // or an error message) follows it.
 
@@ -10,25 +10,6 @@ let input_len : Ref[Int32] = Ref(0)
 
 ///|
 let processor : Ref[TileProcessor?] = Ref(None)
-
-///|
-/// The JSON number (ASCII) at `[addr, addr + len)` of linear memory, by the
-/// host's `Number()` (worker/js/worker.mjs passes `wasmio/js/host.mjs`'s).
-fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
-
-///|
-/// A JSON number's text parsed by the host: placed in the output area first,
-/// which keeps core `strconv` out of the module.
-fn host_number_of(text : BytesView) -> Double {
-  let at = output_start()
-  if !ensure_memory(at + text.length()) {
-    return @double.not_a_number
-  }
-  for i, b in text {
-    store_u8(at + i, b.to_int())
-  }
-  host_number(at, text.length())
-}
 
 ///|
 /// Appends a UTF-16 code unit to the host's text (`wasmio/js/host.mjs`'s
@@ -143,14 +124,14 @@ fn fail_with(message : Bytes) -> Int32 {
 }
 
 ///|
-/// Parses the style JSON placed as input. Returns 0, or minus the length of
-/// a UTF-8 error message written at `output_addr`.
+/// Reads the compiled style (`@style.Style::to_compiled`) placed as input.
+/// Returns 0, or minus the length of a UTF-8 error message written at
+/// `output_addr`.
 #export_name("init_style")
 pub fn init_style() -> Int32 {
   try
-    TileProcessor::from_utf8(
+    TileProcessor::from_compiled(
       input_bytes()[:],
-      number=host_number_of,
       text_number=host_text_number_of,
       number_text=host_number_text_of,
       trig=host_trig(),
@@ -225,8 +206,8 @@ pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
 
 ///|
 /// A source layer's features: the input holds the tile (`tile_len` bytes), then
-/// the layer's name and a filter's JSON, each a u32 length and UTF-8
-/// (`TileProcessor::source_features`). Returns as `query_tile` does.
+/// the layer's name (a u32 length and UTF-8) and the filter
+/// (`@style.write_expr`; `TileProcessor::source_features`). Returns as `query_tile` does.
 #export_name("source_features")
 pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
   guard processor.val is Some(p) else {
@@ -241,7 +222,7 @@ pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
   }
   let r = @core.ByteReader::new(input[tile_len:])
   let layer = r.utf8()
-  let filter = r.utf8()
+  let filter = @style.read_expr(r)
   guard r.done() else { return fail_with(@utf8.encode("bad query")) }
   match
     p.source_features(

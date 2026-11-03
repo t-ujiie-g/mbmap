@@ -1,5 +1,5 @@
 ///|
-extern "js" fn post_style(w : Worker, style : String) -> Unit =
+extern "js" fn post_style(w : Worker, style : Bytes) -> Unit =
   #|(w, style) => w.postMessage({ type: "style", style })
 
 ///|
@@ -130,8 +130,9 @@ pub fn Map::set_style(
   self.dem_version += 1
   self.labels_dirty = true
   self.idle_fired = false
+  let compiled = next.to_compiled()
   for w in self.workers {
-    post_style(w, style_json)
+    post_style(w, compiled)
   }
   // Which layers draw by state may have changed.
   for src in self.sources {

@@ -1,7 +1,7 @@
 // Glue around the wasm-gc build of `worker`. Messages and the packed tile are in
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
-import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
+import { hostText } from "../../wasmio/js/host.mjs";
 import { readCapped } from "./body.mjs";
 import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
@@ -19,7 +19,6 @@ const MAX_DEM_SIZE = 1024;
 const MAX_RASTER_SIZE = 4096;
 // PMTiles archives kept open at once.
 const MAX_ARCHIVES = 16;
-const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
 let ready = null;
@@ -119,10 +118,10 @@ function unpack(packed) {
 
 async function init({ wasm: url, style, font }) {
   glyphs = new Glyphs(typeof font === "string" && font ? font : "sans-serif");
-  const host = { number: hostNumber(() => wasm.memory), ...hostText() };
+  const host = hostText();
   const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host, Math });
   wasm = instance.exports;
-  withInput(encoder.encode(style), () => wasm.init_style());
+  withInput(style, () => wasm.init_style());
 }
 
 let demCanvas = null;
@@ -258,10 +257,10 @@ onmessage = (e) => {
       () => postMessage({ type: "ready" }),
       (err) => postMessage({ type: "error", message: failure(err) }),
     );
-  } else if (msg?.type === "style" && ready && typeof msg.style === "string") {
+  } else if (msg?.type === "style" && ready && msg.style instanceof Uint8Array) {
     // Tiles asked for after this message are made with the new style; a style
     // that fails is reported, and `ready` stays usable (once the wasm runs).
-    const style = encoder.encode(msg.style);
+    const style = msg.style;
     const apply = () => {
       try {
         withInput(style, () => wasm.init_style());

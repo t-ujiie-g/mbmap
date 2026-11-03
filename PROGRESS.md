@@ -2,7 +2,7 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策のうちスタイルのコンパイルを主スレッドだけにしたもの（下の節）。
 - **次**（2026-11-04 にユーザーが決めた順）：
   1. **大きさの対策**（下の「方針の更新：大きさ（Phase 16）」）。本線で、スタイルのコンパイルを主スレッドだけにし、表示ワーカーへはコンパイル済みの二進形式を送る（docs/FORMATS.md に節を足す）。並行して、表示ワーカーの JS のうちラベル・PMTiles・クエリを使うときだけ読み込む別ファイルに分ける。
   2. その後に 16.2（線と平行移動）と 16.4（円）を 1 本、16.6（式）を並行で。続いて 16.3、16.5、16.8。
@@ -12,13 +12,26 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 114.6KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 96.3KB | 100KB |
+  | 表示（メイン） | 116.2KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 73.4KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## 大きさの対策：スタイルのコンパイルを主スレッドだけに（2026-11-04）
+
+状態：**完了**（「方針の更新：大きさ（Phase 16）」の 1）。
+
+- スタイルを読んで式をコンパイルするのは主スレッドだけになった。表示ワーカーには `Style::to_compiled` の二進形式（docs/FORMATS.md「Compiled style」）を `init` と `style` のメッセージで送り、ワーカーは `Style::from_compiled` で読む。クエリのフィルタ（`queryRenderedFeatures` と `querySourceFeatures`）も主スレッドでコンパイルして `write_expr` の形で送る。
+- 送るのはタイルを作るのに要るものだけ：ソースの URL・`bounds`・`scheme`、hillshade・color relief・raster の paint、`terrain`・`sky`・`light`、アイコンの `layout` の JSON（`same_tiles` で使う）は送らない。
+- 読み手は壊れた入力を拒む：知らないタグ、足りないバイト、残りのバイトより多い個数、後ろに余るバイト。式 1 つあたり `MAX_EXPR_NODES` 個、深さ 4 × `MAX_EXPR_DEPTH` まで（コンパイル時の上限と同じ）。
+- ワーカーから JSON の読み込み（`@core.parse_json`）と `host.number` の取り込みがなくなった。
+- テスト：worker のテスト（`TileProcessor::from_utf8`）はすべて JSON → `Style` → 二進 → `Style` を通るようにした。style には書いて読んだものが元と等しいこと（全レイヤー種類、全式・値の種類）、拒む場合のテストを足した。`worker:browser` などのベンチは `bench/worker/compile_entry`（ベンチ専用の wasm-gc）でスタイルをコンパイルしてから渡す。
+- 大きさ（gzip -9）：表示ワーカー 96,333 → 73,381 バイト（−22,952）、表示（メイン）114,636 → 116,228 バイト（+1,592：書き出し）。見込み（ワーカー約 −22KB、主 +3〜4KB）どおり。
+- 黄金テスト（クラウドの SwiftShader）：`query:golden` 320/320 一致、`labels:golden` 全場面一致、`raster:golden`・`pmtiles:golden` 一致。`style:golden` は `heatmap` と `extrusion-patterns` が限度を少し超えるが、main でも同じ数字（SwiftShader の差）。`npm:pack` はこの環境では main でも `style` の確認（タイルの要求数）で落ちる。CI で確かめる。
+- **本線で測ってほしいもの**：`render`（初回描画。ワーカーがスタイルを読まなくなった分の変化）。`process_tile` の手順は変わらない。
 
 ## 方針の更新：大きさ（Phase 16）（2026-11-04、ユーザー判断）
 

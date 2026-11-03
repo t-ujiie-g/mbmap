@@ -30,4 +30,5 @@ import {
   "t-ujiie-g/mbmap/pbf",
   "t-ujiie-g/mbmap/tiler",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
 } for "test"

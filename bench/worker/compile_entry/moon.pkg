@@ -1,0 +1,16 @@
+// The main thread's style compiling as a wasm-gc module (benches only): turns
+// style JSON into the compiled form the display worker's `init_style` reads.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/style",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

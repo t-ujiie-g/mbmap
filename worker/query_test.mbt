@@ -46,8 +46,25 @@ fn query_request(
     w.u32(s.0)
     w.u32(s.1)
   }
-  w.utf8(filter)
+  if filter == "\u{ff}" {
+    w.u8(1)
+    w.u8(99)
+  } else {
+    @style.write_expr(w, filter_of(filter))
+  }
   w.to_bytes()
+}
+
+///|
+/// A filter's JSON compiled as the main thread does ("" for none).
+fn filter_of(json : String) -> @style.Expr? {
+  if json == "" {
+    None
+  } else {
+    Some(@style.compile(@json.parse(json), expected=BoolType)) catch {
+      e => abort(e.to_string())
+    }
+  }
 }
 
 ///|
@@ -187,7 +204,7 @@ test "query refuses a malformed request or tile" {
   let tile = query_tile()
   assert_eq(p.query("a", tile[:], 14, b"\x00\x01"[:]), None)
   assert_eq(p.error(), "malformed query")
-  let bad_filter = query_request([(0.0, 0.0)], filter="[\"sqrt\", 2]")
+  let bad_filter = query_request([(0.0, 0.0)], filter="\u{ff}")
   assert_eq(p.query("a", tile[:], 14, bad_filter[:]), None)
   assert_eq(
     p.query("a", b"\xff\xff"[:], 14, query_request([(0.0, 0.0)])[:]),
@@ -199,20 +216,20 @@ test "query refuses a malformed request or tile" {
 test "source_features gives a source layer's features that pass the filter, layer -1" {
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(query_style)[:])
   let tile = query_tile()
-  let all = p.source_features("a", tile[:], 14, "pts", "").unwrap()
+  let all = p.source_features("a", tile[:], 14, "pts", None).unwrap()
   // One MultiPoint feature with two points.
   let (hits, ty, rings) = hits_of(all)
   assert_eq((hits, ty), ([(-1, 0)], 1))
   assert_eq(rings.fold(init=0, (a, b) => a + b), 2)
   let none = p
-    .source_features("a", tile[:], 14, "pts", "[\"has\", \"k\"]")
+    .source_features("a", tile[:], 14, "pts", filter_of("[\"has\", \"k\"]"))
     .unwrap()
   assert_eq(hits_of(none).0, [])
   assert_eq(
-    hits_of(p.source_features("a", tile[:], 14, "nope", "").unwrap()).0,
+    hits_of(p.source_features("a", tile[:], 14, "nope", None).unwrap()).0,
     [],
   )
-  assert_eq(p.source_features("a", tile[:], 14, "pts", "[\"sqrt\"]"), None)
+  assert_eq(p.source_features("a", b"\xff\xff"[:], 14, "pts", None), None)
 }
 
 ///|
