@@ -244,8 +244,12 @@ const OPS = {
     check(isId(dataset));
     return geometryOp([dataset], (g) => g.dissolve());
   },
+  merge({ dataset }) {
+    check(isId(dataset));
+    return geometryOp([dataset], (g) => g.merge());
+  },
   overlay({ a, b, kind }) {
-    check(isId(a) && isId(b) && [0, 1, 2].includes(kind));
+    check(isId(a) && isId(b) && [0, 1, 2, 3].includes(kind));
     return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
   },
   async toGeoJSON({ dataset, crs }) {

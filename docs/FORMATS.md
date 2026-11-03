@@ -228,8 +228,8 @@ In:
   - geometry, each giving a new dataset: `buffer` (`dataset`, `meters`, `mode` 0
     geodesic or 1 planar, `join` 0 round, 1 miter, 2 square, 3 bevel, `cap` 0
     round, 1 butt, 2 square, `arcTolerance` in meters, `crs` the projected CRS
-    a planar buffer is measured in), `dissolve` (`dataset`) and
-    `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect); the datasets go to
+    a planar buffer is measured in), `dissolve` (`dataset`), `merge` (`dataset`) and
+    `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect, 3 split); the datasets go to
     the geometry module and back as Table bytes;
   - `toGeoJSON` (`dataset`, `crs`): its Table bytes, transformed to `crs` when
     given, decoded into a FeatureCollection (`analysis_worker/js/table.mjs`);

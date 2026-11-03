@@ -339,6 +339,7 @@ async function showcase(page) {
   const measured = await measureChecks(page);
   const drew = await drawChecks(page);
   const edited = await editChecks(page);
+  const cut = await splitChecks(page);
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -398,8 +399,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok && edited.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew, edited }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok && edited.ok && cut.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew, edited, cut }];
 }
 
 // Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile
@@ -945,6 +946,47 @@ async function editChecks(page) {
     JSON.stringify(snapped) === JSON.stringify(shifted[0]) &&
     named === "区画A" && unnamed === null && left === 1 && pan;
   return { ok, selected, changed, inserted, deleted, allMoved, snapped, corner: shifted[0], named, unnamed, left, pan };
+}
+
+// Split and merge (mbmap/draw over mbmap/analysis's geometry module): a rectangle cut in two by a
+// line drawn across it, the halves selected with Shift and merged back, the merge undone.
+async function splitChecks(page) {
+  const clicks = async (points) => {
+    for (const [x, y] of points) {
+      await page.mouse.click(x, y);
+      await page.waitForTimeout(350);
+    }
+  };
+  const shapes = () => page.evaluate(() => window.__draw.state.features.map((f) => ({ type: f.geometry.type, ring: f.geometry.coordinates[0] })));
+  // Twice the planar area in degrees of a closed ring (counter-clockwise positive).
+  const area = (r) => r.slice(1).reduce((a, p, i) => a + r[i][0] * p[1] - p[0] * r[i][1], 0);
+  await page.click("#draw-modes button >> text=矩形");
+  await clicks([[440, 180], [660, 400]]);
+  const whole = area((await shapes())[0].ring);
+  await page.click("#draw-modes button >> text=分割");
+  await clicks([[550, 140], [560, 450], [560, 450]]);
+  await page.waitForFunction(() => window.__draw.state.features.length === 2, null, { timeout: 10000 });
+  const halves = await shapes();
+  await page.click("#draw-modes button >> text=選択");
+  await clicks([[470, 290]]);
+  await page.keyboard.down("Shift");
+  await clicks([[630, 290]]);
+  await page.keyboard.up("Shift");
+  const picked = await page.evaluate(() => window.__draw.state.selection.length);
+  await page.click("#draw-actions button >> text=結合");
+  await page.waitForFunction(() => window.__draw.state.features.length === 1, null, { timeout: 10000 });
+  const merged = await shapes();
+  await page.click("#draw-actions button >> text=一つ戻す");
+  const undone = (await shapes()).length;
+  await page.evaluate(() => (window.__draw.clear(), window.__draw.setMode(null)));
+  const zooms = await page.evaluate(() => [window.__map.boxZoom.isEnabled(), window.__map.doubleClickZoom.isEnabled()]);
+  const sum = halves.reduce((a, h) => a + area(h.ring), 0);
+  // The geometry module works on a 1e-7 degree grid, which moves the areas by a few millionths.
+  const ok =
+    halves.length === 2 && halves.every((h) => h.type === "Polygon" && area(h.ring) > 0) && Math.abs(sum - whole) / whole < 1e-4 &&
+    picked === 2 && merged.length === 1 && merged[0].type === "Polygon" && Math.abs(area(merged[0].ring) - whole) / whole < 1e-4 &&
+    undone === 2 && zooms.every(Boolean);
+  return { ok, whole, halves: halves.map((h) => area(h.ring)), picked, merged: merged.map((m) => m.type), undone, zooms };
 }
 
 // Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.

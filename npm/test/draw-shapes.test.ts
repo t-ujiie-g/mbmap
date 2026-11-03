@@ -35,3 +35,11 @@ test("finished: coordinates rounded to 9 decimals, rings counter-clockwise", () 
   assert.deepEqual(finished({ type: "LineString", coordinates: [[0.1234567891, 0], [1, 1]] }, 3), { type: "LineString", coordinates: [[0.123, 0], [1, 1]] });
   assert.deepEqual(finished({ type: "Polygon", coordinates: [[[0, 0], [1, 1], [1, 0], [0, 0]]] }), { type: "Polygon", coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] });
 });
+
+test("finished: multi geometries rounded too, unknown types kept", () => {
+  assert.deepEqual(finished({ type: "MultiPoint", coordinates: [[0.12, 1], [2, 3.456]] }, 1), { type: "MultiPoint", coordinates: [[0.1, 1], [2, 3.5]] });
+  assert.deepEqual(finished({ type: "MultiPolygon", coordinates: [[[[0, 0], [1, 1], [1, 0], [0, 0]]]] }), { type: "MultiPolygon", coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 0]]]] });
+  assert.deepEqual(finished({ type: "MultiLineString", coordinates: [[[0.04, 0], [1, 1]]] }, 1), { type: "MultiLineString", coordinates: [[[0, 0], [1, 1]]] });
+  const other = { type: "GeometryCollection", coordinates: [] };
+  assert.equal(finished(other), other);
+});

@@ -25,15 +25,15 @@ export function Draw({ draw }) {
       <p id="drawn" className="react-hint">{t.hint}</p>
       <ol className="react-drawn">
         {s.features.map((f) => (
-          <li key={f.id} aria-current={f.id === s.selected}>
-            <button className="react-link" onClick={() => (draw.state.mode !== "select" && draw.setMode("select"), draw.select(f.id))}>
+          <li key={f.id} aria-current={s.selection.includes(f.id)}>
+            <button className="react-link" onClick={(e) => (draw.state.mode !== "select" && draw.setMode("select"), draw.select(f.id, e.shiftKey))}>
               {DRAW_MODES.find(([m]) => m === f.properties.mode)?.[1]} {f.properties.name ?? <code>{f.id}</code>}
             </button>
             <button aria-label={`${f.id} を消す`} onClick={() => draw.remove(f.id)}>×</button>
           </li>
         ))}
       </ol>
-      {s.selected && (
+      {s.selection.length === 1 && (
         <div id="draw-fields" key={s.selected}>
           {FIELDS.map(([key, label]) => (
             <label key={key}>

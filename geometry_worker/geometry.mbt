@@ -85,7 +85,7 @@ pub fn dissolve() -> Int32 {
 
 ///|
 /// An overlay of the input's two tables (the first `len_a` bytes, then the
-/// rest): `op` 0 clip, 1 erase, 2 intersect.
+/// rest): `op` 0 clip, 1 erase, 2 intersect, 3 split.
 #export_name("overlay")
 pub fn overlay(len_a : Int32, op : Int32) -> Int32 {
   guard tables(len_a) is Some((a, Some(b))) else {
@@ -95,6 +95,23 @@ pub fn overlay(len_a : Int32, op : Int32) -> Int32 {
     0 => finish(@overlay.clip(a, b))
     1 => finish(@overlay.erase(a, b))
     2 => finish(@overlay.intersect(a, b))
+    3 => finish(@overlay.split(a, b))
     _ => @wasmio.fail_with("unknown overlay \{op}")
+  }
+}
+
+///|
+/// `@overlay.merge` of the input table.
+#export_name("merge")
+pub fn merge() -> Int32 {
+  guard tables(-1) is Some((t, _)) else {
+    return @wasmio.fail_with("malformed table")
+  }
+  match @overlay.merge(t) {
+    Some(m) => finish(m)
+    None =>
+      @wasmio.fail_with(
+        "only features of one kind (polygons, lines or points) merge",
+      )
   }
 }

@@ -17,6 +17,10 @@ pub fn erase(@geom.Table, @geom.Table) -> @geom.Table
 
 pub fn intersect(@geom.Table, @geom.Table) -> @geom.Table
 
+pub fn merge(@geom.Table) -> @geom.Table?
+
+pub fn split(@geom.Table, @geom.Table) -> @geom.Table
+
 // Errors
 
 // Types and methods

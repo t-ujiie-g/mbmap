@@ -174,6 +174,8 @@ blocks.dispose();
   - `dissolve()`：多角形をすべて 1 つの地物に結合する（属性なし）。
   - `clip(other)` / `erase(other)`：`other` の多角形の範囲で切る／除く（自分の属性を残す）。線は線のまま、点は内外で選ぶ。
   - `intersect(other)`：重なる組ごとに 1 地物、両方の属性を持つ（`other` の同名のキーには `_2` を付ける）。
+  - `split(lines)`：`lines` の線で地物を分ける。多角形は端から端まで横切ったところ、線は交わったところで分かれ、片は元の属性を持つ。`merge()`：全部の地物を 1 つにする（多角形は union、線は端点でつなぐ、点は MultiPoint。種類が混ざると失敗する）。
+  - `splitFeatures(features, line)`、`mergeFeatures(features)`：GeoJSON の地物のまま同じことをする（`mbmap/draw` の `geometry` に渡す形）。
   - `toGeoJSON({ crs })`：FeatureCollection として取り出す（Worker の中で組み立てる）。`crs` を渡すとその座標系の座標で返す。
 - 座標系：`load(data, { crs })` で投影座標のデータを読める（読み込むときに経緯度へ変換する）。`buffer` の `mode: "planar"` は `crs`（既定は 3857）の平面で測る。`transform(coords, from, to)` は `[x, y, x, y, …]` を別の座標系に変換して `Float64Array` で返す（投影の範囲外の点は NaN）。初めて座標系を使ったときに `proj.wasm` を読む。
   - `crs` に渡せるもの：EPSG コード（`6677`、`"EPSG:6677"`、`"urn:ogc:def:crs:EPSG::6677"`）、`"CRS84"`、PROJ 文字列（`"+proj=lcc +lat_0=46.5 …"`。epsg.io などにある形）、`defineCrs(name, projString)` で名前を付けたもの（`proj4.defs` と同じ使い方。`defineCrs("EPSG:2154", "+proj=lcc …")`）。
@@ -194,7 +196,7 @@ import { createDraw } from "mbmap/draw";
 import * as geodesic from "mbmap/geodesic";
 
 const draw = createDraw(map, { geodesic });   // 円を描くときだけ geodesic が要る
-draw.setMode("polygon");                       // point、linestring、polygon、rectangle、circle、freehand、select、null
+draw.setMode("polygon");                       // point、linestring、polygon、rectangle、circle、freehand、select、split、null
 draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
 ```
 
@@ -209,9 +211,13 @@ draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
   - 選んだ形の頂点をドラッグで動かし、中点をドラッグで頂点を足し、頂点を右クリックで消す（線は 2 つ、多角形は 3 つより減らさない）。形の中（線と点は近く）をドラッグで全体を動かす。
   - ドラッグの間は地図のパンを止める。1 回のドラッグが 1 段の取り消しになる。
 - スナップ（`snapping: true`、または `{ vertices, lines, pixels }`）：描くときと頂点を動かすときに、ほかの形の頂点（なければ辺）へ、40px 以内（terra-draw と同じ）で吸い付く。
+- 分割と結合（`geometry: { split: splitFeatures, merge: mergeFeatures }`、どちらも `mbmap/analysis` の関数）：
+  - `setMode("split")` で線を引くと、選んでいる形を（なければ、その線が横切る形を）分ける。多角形は端から端まで横切ったところで分かれ、線は交わったところで分かれる。片は元の属性を持つ。
+  - Shift+クリックで選ぶ形を増やし、`merge()` で 1 つにする。多角形は union、線は端点でつなぎ、点は MultiPoint にする。属性は最初の形のもの。
+  - 計算はジオメトリのモジュール（Clipper2 の移植）が 1e-7°（約 1cm）の格子で行う。1 回の分割・結合が 1 段の取り消しになる。結合でできた Multi の形は、選べるが頂点は編集できない。
 - 属性：`setProperties(id, { name: "区画A" })` で足す・変える（null でそのキーを消す。`mode` は変えない）。取り消せる。
-- 状態は `mode`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
-- 操作は `setMode(mode)`、`select(id)`、`setProperties(id, properties)`、`deleteSelected()`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
+- 状態は `mode`、`selection`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
+- 操作は `setMode(mode)`、`select(id, add)`、`setProperties(id, properties)`、`deleteSelected()`、`merge()`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
 - 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回りにする（RFC 7946）。
 - 描くのは自前の GeoJSON ソース（既定の id は `mbmap-draw`）とレイヤーで、`setData` で更新する。描いている間はダブルクリックのズームを止める。
 

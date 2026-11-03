@@ -154,3 +154,137 @@ test "intersect keeps both layers' properties, renaming shared keys" {
     Some(Str("b2")),
   ])
 }
+
+///|
+/// The coordinates of feature `f`'s ring `r` (within it) as pairs.
+fn ring_of(t : @geom.Table, f : Int32, r : Int32) -> Array[(Double, Double)] {
+  let (p0, _) = t.parts(f)
+  let (r0, _) = t.rings(p0)
+  let (i0, i1) = t.points(r0 + r)
+  Array::makei(i1 - i0, i => {
+    (t.coords[(i0 + i) * 2], t.coords[(i0 + i) * 2 + 1])
+  })
+}
+
+///|
+test "split cuts a square across into two counter-clockwise halves with its properties" {
+  let a = table([(Polygon, [square(0, 0, 2)], "a")])
+  let b = table([(LineString, [[(1, -1), (1, 3)]], "cut")])
+  let out = split(a, b)
+  assert_eq(out.length(), 2)
+  for f in 0..<2 {
+    assert_true((area_of(out, f) - 2.0).abs() < 1.0e-12)
+    assert_eq(out.columns[0].values[f], Some(Str("a")))
+    let ring = ring_of(out, f, 0)
+    assert_eq(ring[0], ring[ring.length() - 1])
+    assert_true(ring.contains((1.0, 0.0)) && ring.contains((1.0, 2.0)))
+  }
+}
+
+///|
+test "split follows a bent line and several crossings" {
+  // A line in and out twice cuts a square into three.
+  let a = table([(Polygon, [square(0, 0, 4)], "a")])
+  let b = table([(LineString, [[(1, -1), (1, 5), (3, 5), (3, -1)]], "cut")])
+  let out = split(a, b)
+  assert_eq(out.length(), 3)
+  let areas = Array::makei(3, f => area_of(out, f))
+  areas.sort()
+  assert_true(
+    (areas[0] - 4.0).abs() < 1.0e-12 &&
+    (areas[1] - 4.0).abs() < 1.0e-12 &&
+    (areas[2] - 8.0).abs() < 1.0e-12,
+  )
+  // A bent line crossing once divides along its bend.
+  let bent = split(a, table([(LineString, [[(-1, 1), (2, 3), (5, 1)]], "cut")]))
+  assert_eq(bent.length(), 2)
+  assert_true((area_of(bent, 0) + area_of(bent, 1) - 16.0).abs() < 1.0e-12)
+}
+
+///|
+test "split leaves alone what a line does not cross from edge to edge" {
+  let a = table([(Polygon, [square(0, 0, 2)], "a"), (Point, [[(5, 5)]], "p")])
+  // Ends inside the square.
+  let out = split(a, table([(LineString, [[(1, -1), (1, 1)]], "cut")]))
+  assert_eq(out.length(), 2)
+  assert_eq(out.kinds[1], Point)
+  assert_true((area_of(out, 0) - 4.0).abs() < 1.0e-12)
+  // Misses it.
+  assert_eq(
+    split(a, table([(LineString, [[(3, -1), (3, 3)]], "cut")])).length(),
+    2,
+  )
+}
+
+///|
+test "split keeps a hole in the piece around it" {
+  let a = table([(Polygon, [square(0, 0, 4), square(2.5, 1, 1).rev()], "a")])
+  let out = split(a, table([(LineString, [[(2, -1), (2, 5)]], "cut")]))
+  assert_eq(out.length(), 2)
+  let holed = if out.rings(out.parts(0).0) is (r0, r1) && r1 - r0 == 2 {
+    0
+  } else {
+    1
+  }
+  let (r0, r1) = out.rings(out.parts(holed).0)
+  assert_eq(r1 - r0, 2)
+  assert_true((area_of(out, holed) - 7.0).abs() < 1.0e-12)
+  assert_true((area_of(out, 1 - holed) - 8.0).abs() < 1.0e-12)
+}
+
+///|
+test "split cuts a line where lines cross it" {
+  let a = table([(LineString, [[(0, 0), (4, 0)]], "l")])
+  let out = split(
+    a,
+    table([(LineString, [[(1, -1), (1, 1)], [(3, -1), (3, 1)]], "cut")]),
+  )
+  assert_eq(out.length(), 3)
+  assert_eq(ring_of(out, 0, 0), [(0.0, 0.0), (1.0, 0.0)])
+  assert_eq(ring_of(out, 1, 0), [(1.0, 0.0), (3.0, 0.0)])
+  assert_eq(ring_of(out, 2, 0), [(3.0, 0.0), (4.0, 0.0)])
+}
+
+///|
+test "merge unites polygons, joins lines end to end and gathers points" {
+  let polys = merge(
+    table([(Polygon, [square(0, 0, 2)], "a"), (Polygon, [square(1, 0, 2)], "b")]),
+  ).unwrap()
+  assert_eq((polys.length(), polys.kinds[0]), (1, Polygon))
+  assert_true((area_of(polys, 0) - 6.0).abs() < 1.0e-12)
+  assert_eq(polys.columns[0].values[0], Some(Str("a")))
+  let apart = merge(
+    table([(Polygon, [square(0, 0, 1)], "a"), (Polygon, [square(3, 0, 1)], "b")]),
+  ).unwrap()
+  assert_eq(apart.kinds[0], MultiPolygon)
+  let lines = merge(
+    table([
+      (LineString, [[(1, 0), (2, 0)]], "a"),
+      (LineString, [[(3, 1), (2, 0)]], "b"),
+      (LineString, [[(0, 0), (1, 0)]], "c"),
+    ]),
+  ).unwrap()
+  assert_eq(lines.kinds[0], LineString)
+  assert_eq(ring_of(lines, 0, 0), [
+    (0.0, 0.0),
+    (1.0, 0.0),
+    (2.0, 0.0),
+    (3.0, 1.0),
+  ])
+  let gap = merge(
+    table([
+      (LineString, [[(0, 0), (1, 0)]], "a"),
+      (LineString, [[(5, 0), (6, 0)]], "b"),
+    ]),
+  ).unwrap()
+  assert_eq(gap.kinds[0], MultiLineString)
+  let points = merge(
+    table([(Point, [[(0, 0)]], "a"), (Point, [[(1, 1)]], "b")]),
+  ).unwrap()
+  assert_eq((points.kinds[0], points.points(0)), (MultiPoint, (0, 2)))
+  assert_true(
+    merge(table([(Point, [[(0, 0)]], "a"), (Polygon, [square(0, 0, 1)], "b")]))
+    is None,
+  )
+  assert_true(merge(table([])) is None)
+}

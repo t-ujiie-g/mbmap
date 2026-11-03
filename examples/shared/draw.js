@@ -1,17 +1,18 @@
 // Drawing with mbmap/draw (clicks as terra-draw's; circles on the ellipsoid
 // through mbmap/geodesic). Drawing and measuring exclude each other, and keys
 // go to the drawing unless they belong to an IME composition or a text field.
+import { mergeFeatures, splitFeatures } from "mbmap/analysis";
 import { createDraw } from "mbmap/draw";
 import * as geodesic from "mbmap/geodesic";
 
-export const DRAW_MODES = [["select", "選択"], ["point", "点"], ["linestring", "線"], ["polygon", "多角形"], ["rectangle", "矩形"], ["circle", "円"], ["freehand", "フリーハンド"]];
+export const DRAW_MODES = [["select", "選択"], ["split", "分割"], ["point", "点"], ["linestring", "線"], ["polygon", "多角形"], ["rectangle", "矩形"], ["circle", "円"], ["freehand", "フリーハンド"]];
 
 /** The properties the panel edits on the selected shape, as [key, label]. */
 export const FIELDS = [["name", "名前"], ["note", "メモ"]];
 
 /** The drawing over `map`; choosing a mode clears `measurement`'s. */
 export function createShowcaseDraw(map, measurement) {
-  const draw = createDraw(map, { geodesic, snapping: true });
+  const draw = createDraw(map, { geodesic, snapping: true, geometry: { split: splitFeatures, merge: mergeFeatures } });
   const setMode = draw.setMode.bind(draw);
   draw.setMode = (mode) => {
     if (mode) measurement.clear();
@@ -42,7 +43,8 @@ export function drawActions(draw, s) {
     ["やり直す", () => draw.redo(), s.canRedo],
     ["確定", () => draw.finish(), s.vertices.length > 0],
     ["やめる", () => draw.setMode(null), Boolean(s.mode)],
-    ["選んだ形を消す", () => draw.deleteSelected(), Boolean(s.selected)],
+    ["結合", () => void draw.merge(), s.selection.length > 1],
+    ["選んだ形を消す", () => draw.deleteSelected(), s.selection.length > 0],
     ["全部消す", () => draw.clear(), s.features.length > 0],
     ["GeoJSON で保存", () => saveGeoJSON(s.features), s.features.length > 0],
   ];
@@ -52,7 +54,8 @@ export function drawActions(draw, s) {
 export function drawnText(s) {
   const counts = DRAW_MODES.map(([m, label]) => [label, s.features.filter((f) => f.properties.mode === m).length]).filter(([, n]) => n > 0);
   const hint = {
-    select: s.selected ? "頂点や中点をドラッグ、形の中をドラッグで移動、頂点を右クリックで削除" : "形をクリックで選ぶ",
+    select: s.selection.length > 1 ? "Shift+クリックで選ぶ形を増やし、「結合」で 1 つにする" : s.selected ? "頂点や中点をドラッグ、形の中をドラッグで移動、頂点を右クリックで削除。Shift+クリックで選ぶ形を増やす" : "形をクリックで選ぶ",
+    split: `切る線を引き、最後の頂点をもう一度クリックで切る（${s.selection.length ? "選んだ形" : "線が横切る形"}を分ける）`,
     point: "クリックで点を置く",
     linestring: "クリックで頂点、最後の頂点をもう一度クリックで終わる",
     polygon: "クリックで頂点、最初の頂点をクリックで閉じる",
@@ -111,7 +114,7 @@ export function mountDraw(map, measurement) {
     actions.replaceChildren(...drawActions(draw, s).map(([label, f, enabled]) => button(label, f, enabled)));
     const t = drawnText(s);
     readout.textContent = `${t.counts}。${t.hint}`;
-    fields.hidden = !s.selected;
+    fields.hidden = s.selection.length !== 1;
     for (const [key, input] of inputs) if (document.activeElement !== input) input.value = fieldValue(s, key);
   };
   draw.subscribe(show);
