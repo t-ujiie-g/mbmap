@@ -461,3 +461,12 @@ pub fn map_render_region(
 ) -> @render_webgl2.JsBuffer {
   map.render_region(ratio, x, y, width, height)
 }
+
+///|
+/// The zoom `zoom` becomes at the current center once the camera is kept to
+/// the limits (MapLibre's `getMinZoom(true)` asks it of the minimum).
+#export_name("map_constrained_zoom")
+pub fn map_constrained_zoom(map : @map.Map, zoom : Double) -> Double {
+  let t = map.transform()
+  t.with_camera({ ..t.camera, zoom, }).camera.zoom
+}

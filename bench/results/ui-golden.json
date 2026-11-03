@@ -1,0 +1,271 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600"
+  },
+  "results": {
+    "scale": {
+      "ok": true,
+      "cases": 18,
+      "differ": []
+    },
+    "navigation": {
+      "ok": true,
+      "cases": [
+        {
+          "zoom": 18,
+          "theirs": {
+            "canZoomIn": false,
+            "canZoomOut": true
+          },
+          "mine": {
+            "canZoomIn": false,
+            "canZoomOut": true
+          }
+        },
+        {
+          "zoom": 17.5,
+          "theirs": {
+            "canZoomIn": true,
+            "canZoomOut": true
+          },
+          "mine": {
+            "canZoomIn": true,
+            "canZoomOut": true
+          }
+        },
+        {
+          "zoom": 0,
+          "theirs": {
+            "canZoomIn": true,
+            "canZoomOut": true
+          },
+          "mine": {
+            "canZoomIn": true,
+            "canZoomOut": false
+          }
+        },
+        {
+          "zoom": 0.5,
+          "theirs": {
+            "canZoomIn": true,
+            "canZoomOut": true
+          },
+          "mine": {
+            "canZoomIn": true,
+            "canZoomOut": true
+          }
+        }
+      ],
+      "known": [
+        0
+      ]
+    },
+    "attribution": {
+      "ok": true,
+      "cases": [
+        {
+          "zoom": 8,
+          "theirs": "Survey A (long)",
+          "mine": "Survey A (long)"
+        },
+        {
+          "zoom": 12,
+          "theirs": "Survey B | Survey A (long)",
+          "mine": "Survey B | Survey A (long)"
+        },
+        {
+          "zoom": 15,
+          "theirs": "Survey B | Survey A (long)",
+          "mine": "Survey B | Survey A (long)"
+        }
+      ]
+    },
+    "geolocation": {
+      "ok": true,
+      "steps": [
+        {
+          "step": "start",
+          "theirs": "waiting",
+          "mine": "waiting",
+          "mlCamera": {
+            "lng": 139.7671,
+            "lat": 35.6812,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.7671,
+            "lat": 35.6812,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "first fix",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.70000000000005,
+            "lat": 35.66000000727608,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.7,
+            "lat": 35.66000000727608,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "moved",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.71000000000004,
+            "lat": 35.67000000080874,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.71000000000004,
+            "lat": 35.67000000080874,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "user pans",
+          "theirs": "background",
+          "mine": "background",
+          "mlCamera": {
+            "lng": 139.71257492065592,
+            "lat": 35.66930271872886,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.71257492065433,
+            "lat": 35.6693027187284,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "fix in background",
+          "theirs": "background",
+          "mine": "background",
+          "mlCamera": {
+            "lng": 139.71257492065592,
+            "lat": 35.66930271872886,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.71257492065433,
+            "lat": 35.6693027187284,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "back to active",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.72000000000003,
+            "lat": 35.680000000809045,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.71999999999997,
+            "lat": 35.680000000809045,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "user zooms",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.72000000000116,
+            "lat": 35.68000000080869,
+            "zoom": 13
+          },
+          "mbCamera": {
+            "lng": 139.71999999999997,
+            "lat": 35.680000000809045,
+            "zoom": 13
+          }
+        },
+        {
+          "step": "timeout",
+          "theirs": "active-error",
+          "mine": "active-error",
+          "mlCamera": {
+            "lng": 139.72000000000116,
+            "lat": 35.68000000080869,
+            "zoom": 13
+          },
+          "mbCamera": {
+            "lng": 139.71999999999997,
+            "lat": 35.680000000809045,
+            "zoom": 13
+          }
+        },
+        {
+          "step": "fix again",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.73000000000002,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72999999999996,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "off",
+          "theirs": "off",
+          "mine": "off",
+          "mlCamera": {
+            "lng": 139.73000000000002,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72999999999996,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "on again",
+          "theirs": "active",
+          "mine": "active",
+          "mlCamera": {
+            "lng": 139.73000000000002,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72999999999996,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          }
+        },
+        {
+          "step": "denied",
+          "theirs": "unavailable",
+          "mine": "unavailable",
+          "mlCamera": {
+            "lng": 139.73000000000002,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          },
+          "mbCamera": {
+            "lng": 139.72999999999996,
+            "lat": 35.690000000455214,
+            "zoom": 15
+          }
+        }
+      ]
+    }
+  }
+}

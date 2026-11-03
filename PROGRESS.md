@@ -1,5 +1,61 @@
 # PROGRESS
 
+## 方針の更新（2026-11-03、ユーザー判断）
+
+- Phase 12 の完了条件（3 つの example、各 API の黄金テスト、予算）がそろったので、Phase 13 に進む。
+- Phase 13 は 4 段階に分ける：
+  - 13.1：土台、ナビゲーション、現在地、全画面、縮尺、出典
+  - 13.2：凡例、レイヤー一覧、背景地図の切り替え
+  - 13.3：識別、座標の表示と変換
+  - 13.4：GeoSearch（`mbmap/search`）
+- コントローラの共通の形は、`state`（変わるたびに新しいオブジェクト）、`subscribe`（解除の関数を返す）、操作のメソッド、`destroy`。
+
+## Phase 13.1：ヘッドレス UI の土台、ナビゲーション、現在地、全画面、縮尺、出典（2026-11-03）
+
+状態：**完了**。
+
+### できたこと
+
+- **`mbmap/ui`**（新しい入口 `dist/ui.js`）：
+  - 公開された `Map` の API だけを使う、見た目を持たないコントローラ。
+  - 共通の部分は `Store`（`npm/src/ui/controller.ts`）。コントローラはそれぞれ別のモジュールなので、import したものだけがバンドルに入る。
+  - `createNavigation`：ズーム、方位、傾き、ズームできるか。操作はズーム、北を上に、ホーム。
+  - `createGeolocation`：MapLibre の GeolocateControl と同じ状態の遷移（`off`、`waiting`、`active`、`background`、それぞれの `-error`、`unavailable`）。精度の範囲へのカメラの合わせ方と、精度の円の半径（画面のピクセル）も同じ。
+  - `createFullscreen`：Fullscreen API と、API がないときの「疑似」全画面。
+  - `createScale`：MapLibre の ScaleControl の幅とラベル。メートル、ヤード・ポンド、海里に対応する。
+  - `createAttribution`：出典の一覧。
+- **ファサード**：
+  - 出典の表示を MapLibre と同じにした（表示中のレイヤーと地形が使うソースだけ、長さ順、他に含まれるものは除く）。これまでは全ソースを出していた。`getAttributions()` と `styledata` イベントを足した。
+  - `getMinZoom(true)`（制約で決まる最小ズーム）を足した。
+  - `<mb-map attribution-control="false">` で出典を自分で表示できる。
+- **example**：同じコントローラから 2 通りの見た目を作った。
+  - HTML と Web Component：右上の縦並びのボタンと、右下の縮尺（`examples/shared/controls.js`）。
+  - React：右下の横長の帯（`examples/react/src/controls.jsx`、`useSyncExternalStore`）。
+  - どれも現在地の点と精度の円を `map.track` で描き、出典を自分で表示する。
+- **以前からの不具合を直した**：React の example では、`?local=1` のタイルの URL が、バンドルの `import.meta.url` を基準にしていたため 404 になっていた（GeoJSON 以外が描かれていなかった）。ページを基準にした。
+
+### 黄金テスト（`npm run ui:golden`、MapLibre 6.16 と Chromium で比較）
+
+- **縮尺**：6 つのカメラ（極地、南半球、傾きを含む）× 3 つの単位で、ラベルと幅がすべて一致した。
+- **出典**：3 つのズームですべて一致した。
+- **現在地**：差し替えた Geolocation で同じ位置を両方に渡し、12 の手順で状態とカメラ（1e-7 以内）がすべて一致した。手順は、開始、初回の位置、移動、ユーザーのパン、背景での位置、追跡に戻る、ユーザーのズーム、時間切れ、再取得、停止、再開、権限の拒否。
+- **ズームのボタン**：一致した。ただし制約で決まる最小ズームでは、MapLibre は `jumpTo` 後のズームが自分の `getMinZoom(true)` と最後の 1 桁ずれ、ボタンが有効のまま残る。mbmap は無効にする。既知の差として記録した。
+
+### 確認
+
+- pack test：3 つの example で、縮尺と出典、コントローラでのズーム、差し替えた Geolocation での現在地への移動と点の描画を確かめた。
+- `npm test`：`Store`、縮尺の丸め、距離、精度の範囲、出典の規則、`<mb-map>` の真偽値の属性。
+
+### サイズ
+
+- `mbmap/ui`（全コントローラ）2.3KB（予算 5KB、新設）。
+- 表示の入口 70.5 → 70.8KB（出典の規則、`getMinZoom(true)`）。
+
+### 既知の問題・まだのもの
+
+- 方位記号のドラッグでの回転（MapLibre の NavigationControl にある）はない。
+- MoonBit から使うコントローラ（VISION §6）はまだない。
+
 ## リファクタリングとセキュリティチェック（2026-11-03）
 
 状態：**完了**。全体を AGENTS.md §7 と §8 の観点で見直した。範囲はユーザー判断で「メインの HashMap の置き換え以外すべて」。

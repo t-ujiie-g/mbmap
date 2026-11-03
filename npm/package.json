@@ -23,6 +23,10 @@
       "types": "./dist/analysis.d.ts",
       "default": "./dist/analysis.js"
     },
+    "./ui": {
+      "types": "./dist/ui.d.ts",
+      "default": "./dist/ui.js"
+    },
     "./worker.js": "./dist/worker.js",
     "./mbmap.wasm": "./dist/mbmap.wasm",
     "./package.json": "./package.json",

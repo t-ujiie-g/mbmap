@@ -1,6 +1,7 @@
 // The showcase with <mb-map>: attributes and properties in, CustomEvents out.
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
+import { mountControls } from "../shared/controls.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
@@ -76,6 +77,7 @@ el.addEventListener("mb-load", () => {
   map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
   hoverPlaces(map);
   pinDestinations(map, document.body);
+  mountControls(map, document.body);
   update();
 });
 

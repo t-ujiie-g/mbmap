@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../../shared/analysis.js";
 import { pinDestinations, saveImage } from "../../shared/overlay.js";
+import { MapControls } from "./controls.jsx";
 import { describeFeature, hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
@@ -20,6 +21,7 @@ function App() {
   const [described, setDescribed] = useState(null);
   const [hidden, setHidden] = useState(() => new Set(DEFAULT_HIDDEN));
   const [picked, setPicked] = useState(null);
+  const [map, setMap] = useState(null);
   const places = useRef(PLACES);
   const pending = useRef(0);
   // A new style object goes to the map's setStyle: tiles of what stays alike are kept.
@@ -69,6 +71,7 @@ function App() {
     }));
     hoverPlaces(map);
     pinDestinations(map, document.body);
+    setMap(map);
     update(e.detail.center);
   };
   const go = (d) => ref.current.map?.flyTo({ center: d.center, zoom: d.zoom, ...modeCamera(mode) });
@@ -89,10 +92,12 @@ function App() {
         ref={ref}
         center="139.7671,35.6812"
         zoom="15"
+        attribution-control="false"
         onmb-load={onLoad}
         onmb-move={(e) => setCamera(e.detail)}
         onmb-moveend={(e) => update(e.detail.center)}
       />
+      {map && <MapControls map={map} />}
       <aside className="panel">
         <h1>mbmap</h1>
         <p className="variant">React（<code>&lt;mb-map&gt;</code> を JSX で）</p>

@@ -24,3 +24,39 @@ html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; colo
 }
 .pin::after { content: ""; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: #2b5f8e; }
 .pin.covered { opacity: 0.3; }
+.controls { position: absolute; top: 12px; right: 12px; z-index: 1; display: flex; flex-direction: column; gap: 4px; }
+.controls button {
+  width: 32px; height: 32px; font: 18px/1 system-ui, sans-serif; border: 1px solid #bbb; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94); cursor: pointer; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+.controls button:disabled { color: #bbb; cursor: default; }
+.controls .needle { display: inline-block; color: #c0392b; font-weight: 700; }
+.controls button[data-status="active"] { color: #1a73e8; }
+.controls button[data-status="background"] { color: #1a73e8; opacity: 0.6; }
+.controls button[data-status$="error"] { color: #c0392b; }
+.controls button[data-status="waiting"] { animation: pulse 1s infinite alternate; }
+@keyframes pulse { to { opacity: 0.4; } }
+.scale {
+  position: absolute; right: 12px; bottom: 24px; z-index: 1; border: 2px solid #333; border-top: 0;
+  font-size: 11px; padding: 0 4px; background: rgba(255, 255, 255, 0.7); box-sizing: border-box; white-space: nowrap;
+}
+.credits { position: absolute; right: 0; bottom: 0; padding: 0 6px; font-size: 11px; background: rgba(255, 255, 255, 0.7); }
+.location {
+  position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none;
+}
+.location::before, .location::after { content: ""; position: absolute; border-radius: 50%; translate: -50% -50%; }
+.location::before { width: calc(2 * var(--accuracy)); height: calc(2 * var(--accuracy)); background: rgba(26, 115, 232, 0.15); }
+.location::after { width: 14px; height: 14px; background: #1a73e8; border: 2px solid #fff; }
+.pseudo-fullscreen .panel { display: none; }
+@media (max-width: 480px) { .scale { bottom: calc(45% + 30px); } }
+.toolbar {
+  position: absolute; right: 12px; bottom: 28px; z-index: 1; display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 999px; background: rgba(32, 33, 36, 0.88); color: #fff; font-size: 13px; white-space: nowrap;
+}
+.toolbar button { font: inherit; color: inherit; background: none; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.toolbar button:disabled { opacity: 0.35; cursor: default; }
+.toolbar button[aria-pressed="true"] { background: #1a73e8; border-color: #1a73e8; }
+.toolbar-scale { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.toolbar-scale span { display: inline-block; height: 4px; border: 1px solid #fff; border-top: 0; }
+.react-location { position: absolute; pointer-events: none; z-index: 0; }
+@media (max-width: 480px) { .toolbar { bottom: calc(45% + 30px); } }

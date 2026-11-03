@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 70489,
+      "bytes": 70754,
       "budget": 80000
     },
     {
@@ -21,7 +21,12 @@
     },
     {
       "name": "mbmap/element (on top of mbmap)",
-      "bytes": 1539,
+      "bytes": 1600,
+      "budget": 5000
+    },
+    {
+      "name": "mbmap/ui (every controller)",
+      "bytes": 2331,
       "budget": 5000
     },
     {
