@@ -10,6 +10,7 @@ import { panelControllers } from "../../shared/panel.js";
 import { MapControls } from "./controls.jsx";
 import { useIdentify } from "./identify.jsx";
 import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
+import { SearchBar } from "./search.jsx";
 import { hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
@@ -89,6 +90,7 @@ function App() {
         onmb-moveend={(e) => update(e.detail.center)}
       />
       {map && <MapControls map={map} />}
+      {map && <SearchBar map={map} places={() => places.current} />}
       <aside className="panel">
         <h1>mbmap</h1>
         <p className="variant">React（<code>&lt;mb-map&gt;</code> を JSX で）</p>

@@ -22,6 +22,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/index.d.ts` | 型定義 |
 | `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される） |
 | `dist/ui.js` | 見た目を持たない UI のコントローラ（`mbmap/ui`） |
+| `dist/search.js` | 見た目を持たない検索（GeoSearch、`mbmap/search`） |
 | `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
 | `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
@@ -116,6 +117,30 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
   - 投影座標系は `transform`（`mbmap/analysis` の `transform` など）を渡して使う。そのため `mbmap/ui` は座標系の変換を含まない。遅れて届いた古い結果は捨てる。
   - `formatDegrees`、`formatDms`、`utmZone` も単体で使える。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
+
+## 検索 `mbmap/search`
+
+見た目を持たない検索のコントローラ（GeoSearch）。形は `mbmap/ui` と同じ（`state`、`subscribe`、操作、`destroy`）。付いているプロバイダは、サーバーに問い合わせない。
+
+```js
+import { transform } from "mbmap/analysis";
+import { coordinates, createSearch, datasetSearch } from "mbmap/search";
+const search = createSearch(map, { providers: [coordinates({ transform }), datasetSearch(shops, { fields: ["name"] })] });
+search.subscribe((s) => render(s.query, s.results, s.active));
+input.oninput = (e) => search.setQuery(e.target.value);   // 入力の間引きと、古い検索の取り消しはコントローラが行う
+list.onclick = (e) => search.select(Number(e.target.dataset.i)); // 選ぶと、その場所へ地図を動かす
+```
+
+- `createSearch(map, { providers, debounce, limit, zoom, maxZoom })`：
+  - 状態は `query`、`results`（プロバイダの順）、`active`（矢印キーで選んでいるもの。`aria-activedescendant` に使う）、`open`、`loading`、`errors`（失敗したプロバイダ。ほかの結果は出る）、`selected`。
+  - 操作は `setQuery(q)`（既定 250ms 待ってから検索し、前の検索は `AbortSignal` で取り消す）、`submit()`（すぐ検索）、`move(±1)`、`select(i?)`（点なら `flyTo`、範囲なら `fitBounds`）、`close()`、`clear()`、`reverse(lngLat)`。
+- キー操作は作り手が書く。日本語入力の変換を確定する Enter（`isComposing` が true、または Safari で確定直後に来る `keyCode` 229）は、検索の決定に使わないこと。example の `onSearchKey` が書き方の例。
+- `coordinates({ transform })`：入力された座標を読む。
+  - 読める形：10 進の度（緯度経度のどちらの順でも）、度分秒（`35°40′52″N`、`35度40分52秒`、`'` と `"`）、全角の数字。
+  - `transform`（`mbmap/analysis` の `transform` など）を渡すと、平面直角座標系（`第IX系 X -35367.2 Y -5995.2`、`9系`。JGD2011）と UTM（`54N 388708 3949480`）も読む。
+- `datasetSearch(data, { fields, label })`：GeoJSON（または今のデータを返す関数）の属性を探す。全角と半角、大文字と小文字、カタカナとひらがなを同じとみなす。一致、前方一致、部分一致の順に並べる。
+- 外部の検索 API は、`{ name, search(query, { signal, bbox, limit }), reverse?(lngLat) }` の形のプロバイダとして足す。利用条件と出典の表示は、作り手の責任になる。
+  - example の `gsiPlaceSearch`（国土地理院の地名検索、`?gsi-search=1` で有効）は、書き方の例として置いている。この API には公開の利用規約がなく、国土地理院は「主に地理院地図からの利用を想定しており、予告なく変更することがある」と答えている。
 
 ## 解析 `mbmap/analysis`
 

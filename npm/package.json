@@ -27,6 +27,10 @@
       "types": "./dist/ui.d.ts",
       "default": "./dist/ui.js"
     },
+    "./search": {
+      "types": "./dist/search.d.ts",
+      "default": "./dist/search.js"
+    },
     "./worker.js": "./dist/worker.js",
     "./mbmap.wasm": "./dist/mbmap.wasm",
     "./package.json": "./package.json",
