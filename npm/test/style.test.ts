@@ -90,3 +90,12 @@ test("custom layers: placeholders need no source, getStyle leaves them out, MapL
   assert.equal(edit.invalidCustomLayer({ id: "c" }), 'missing required method "render"');
   assert.equal(edit.invalidCustomLayer({ id: "c", render() {}, renderingMode: "4d" }), 'property "renderingMode" must be either "2d" or "3d"');
 });
+
+test("styleWarnings pairs the engine's paths and messages and names each warning's layer", () => {
+  const style = { version: 8, sources: {}, layers: [{ id: "a" }, { id: "b" }] } as unknown as StyleSpecification;
+  assert.deepEqual(edit.styleWarnings(["layers[1].paint.line-blur", "not drawn yet", "sources.s.tiles", "only http(s) tile URLs", "layers[7]", "gone"], style), [
+    { path: "layers[1].paint.line-blur", layer: "b", message: "not drawn yet" },
+    { path: "sources.s.tiles", message: "only http(s) tile URLs" },
+    { path: "layers[7]", message: "gone" },
+  ]);
+});

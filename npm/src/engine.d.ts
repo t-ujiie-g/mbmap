@@ -20,6 +20,7 @@ declare module "mbmap-engine" {
     geojson: Provider | null,
     font: string,
     limits: number[],
+    strict: boolean,
   ): EngineMap;
   export function map_camera(map: EngineMap): { lng: number; lat: number; zoom: number; bearing: number; pitch: number };
   export function map_set_camera(map: EngineMap, lng: number, lat: number, zoom: number, bearing: number, pitch: number): void;
@@ -50,7 +51,9 @@ declare module "mbmap-engine" {
   export function map_input_event(map: EngineMap): Event | null;
   export function default_easing(t: number): number;
   /** "" once drawn, or why the style was refused (the current one stays). */
-  export function map_set_style(map: EngineMap, style: string): string;
+  export function map_set_style(map: EngineMap, style: string, strict: boolean): string;
+  /** What the current style leaves out: path, message, path, ... */
+  export function map_warnings(map: EngineMap): string[];
   export function map_reload_source(map: EngineMap, id: string): void;
   /** Shows `picture` (null for nothing) for image, video or canvas source `id`, placed by `quad` (media.ts `quadOf`). */
   export function map_set_media(map: EngineMap, id: string, picture: TexImageSource | null, quad: number[]): void;

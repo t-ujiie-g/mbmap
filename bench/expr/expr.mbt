@@ -165,3 +165,13 @@ pub fn expr_eval(
   }
   out
 }
+
+///|
+/// `s` read by `@style.parse_color`: `{ color }` (straight RGBA) or null.
+#export_name("color_parse")
+pub fn color_parse(s : String) -> Js {
+  match @style.parse_color(s) {
+    Some(c) => js_color(c.r, c.g, c.b, c.a)
+    None => js_null()
+  }
+}

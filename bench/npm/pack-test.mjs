@@ -55,7 +55,7 @@ const checks = {
       map.jumpTo({ bearing: 370, pitch: 89 });
       const turned = { bearing: map.getBearing(), pitch: map.getPitch() };
       await map.once("idle");
-      // Error paths: a style URL that fails fires `error`; a bad style object throws.
+      // Error paths: a style URL that fails fires `error`; an unsupported expression warns, or throws when strict.
       const { Map } = await import("mbmap");
       const div = document.createElement("div");
       div.style.cssText = "width:10px;height:10px";
@@ -63,9 +63,13 @@ const checks = {
       const missing = new Map({ container: div, style: "/bench/npm/pages/npm/missing.json" });
       const styleError = (await missing.once("error")).error.message;
       missing.remove();
+      const unsupported = { version: 8, sources: {}, layers: [{ id: "x", type: "line", paint: { "line-width": ["number-format", 2, {}] } }] };
+      const lenient = new Map({ container: div, style: unsupported });
+      const warned = (await lenient.once("warning")).warnings;
+      lenient.remove();
       let thrown = "";
       try {
-        new Map({ container: div, style: { version: 8, sources: {}, layers: [{ id: "x", type: "line", paint: { "line-width": ["number-format", 2, {}] } }] } });
+        new Map({ container: div, style: unsupported, strict: true });
       } catch (e) {
         thrown = e.message;
       }
@@ -81,6 +85,7 @@ const checks = {
         lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("proj")),
         styleError,
         thrown,
+        warned,
         workerRefused,
         leftovers: div.children.length,
         center: map.getCenter(),
@@ -102,6 +107,7 @@ const checks = {
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
       r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression number-format" &&
+      JSON.stringify(r.warned) === JSON.stringify([{ path: "layers[0].paint.line-width", layer: "x", message: "expression number-format" }]) &&
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;

@@ -205,3 +205,30 @@ test "nesting beyond MAX_EXPR_DEPTH is Invalid, not a stack overflow" {
     }
   }
 }
+
+///|
+test "interpolation types ignore extra arguments as MapLibre does" {
+  let at = (text : String) => {
+    guard expr(text).eval(16.0, @style.NoFeature::{ }) is Num(v) else {
+      return -1.0
+    }
+    v
+  }
+  assert_eq(
+    at(
+      (
+        #|["interpolate", ["linear", 1], ["zoom"], 14, 0, 18, 4]
+      ),
+    ),
+    2.0,
+  )
+  assert_true(
+    (at(
+      (
+        #|["interpolate", ["exponential", 2, 9], ["zoom"], 14, 5, 18, 40]
+      ),
+    ) -
+    12.0).abs() <
+    1.0e-12,
+  )
+}

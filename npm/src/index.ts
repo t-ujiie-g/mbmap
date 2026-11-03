@@ -41,6 +41,7 @@ import type {
   MapEvent,
   MapEventListener,
   StyleSwapOptions,
+  StyleWarning,
   PaintValues,
   ScreenPosition,
   ToBlobOptions,
@@ -171,6 +172,7 @@ export class Map {
   #attributions: string[] = [];
   /** The style as the engine draws it (TileJSON merged), whose sources the attributions come from. */
   #drawn: StyleSpecification | null = null;
+  #warned = "";
   #engine: engine.EngineMap | null = null;
   #geojson: GeoJSONTiles | null = null;
   #geojsonLoading: Promise<GeoJSONTiles | null> | null = null;
@@ -284,7 +286,9 @@ export class Map {
       }
       const next = edit.keepGeoJSONData(this.#style, edit.copy(swapped));
       if (!legacy && edit.hasLegacy(next)) {
-        loadLegacy().then(() => use(s, base), (err: unknown) => this.#fail(err));
+        loadLegacy()
+          .then(() => use(s, base))
+          .catch((err: unknown) => this.#fail(err));
         return;
       }
       this.#base = base;
@@ -418,15 +422,29 @@ export class Map {
     return edit.copy(this.#style && edit.withoutCustom(this.#style));
   }
 
+  /** Fires `warning` (and logs it) when what the engine leaves out of `drawn` changed. */
+  #warn(drawn: StyleSpecification): void {
+    const flat = engine.map_warnings(this.#engine!);
+    const key = flat.join("\n");
+    if (key === this.#warned) return;
+    this.#warned = key;
+    if (flat.length === 0) return;
+    const warnings = edit.styleWarnings(flat, drawn);
+    console.warn(`mbmap: the style uses what is not drawn yet:\n${warnings.map((w) => `${w.path}: ${w.message}`).join("\n")}`);
+    // After the constructor, which draws an object style at once, has returned.
+    queueMicrotask(() => this.#events.warn(warnings));
+  }
+
   /** Swaps in `next`, an edit of the current style; a style the engine refuses fires `error`. */
   #apply(next: StyleSpecification): void {
     if (!this.#engine) return;
     const [geojson, rest] = splitGeoJSON(this.#engineStyle(next));
-    const refused = engine.map_set_style(this.#engine, JSON.stringify(rest));
+    const refused = engine.map_set_style(this.#engine, JSON.stringify(rest), this.#options.strict ?? false);
     if (refused) {
       this.#fail(new Error(refused));
       return;
     }
+    this.#warn(rest);
     this.#style = next;
     this.#syncMedia(next);
     this.#images.loadSprite(next.sprite, this.#base);
@@ -685,8 +703,10 @@ export class Map {
       (source, z, x, y) => this.#geojsonTile(source, z, x, y),
       o.fontFamily ?? "sans-serif",
       limitsArray(this.#limits),
+      o.strict ?? false,
     );
     this.#engine = map;
+    this.#warn(resolved);
     this.#style = style;
     if (this.#transform) engine.map_set_transform_request(map, this.#transform);
     const canvas = this.#canvas;

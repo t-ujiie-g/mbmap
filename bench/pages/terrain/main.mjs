@@ -20,6 +20,7 @@ const map = mbmap.create_map(
   null,
   "sans-serif",
   [0, 22, 0, 85, NaN, 0, 0, 0],
+  false,
 );
 window.__map = map;
 window.__mbmap = mbmap;

@@ -1,31 +1,4 @@
 ///|
-test "parse_color reads hex, rgb() and a few names" {
-  assert_eq(
-    @style.parse_color("#fff"),
-    Some({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }),
-  )
-  assert_eq(
-    @style.parse_color("#FF000080").map(c => (c.r, c.a)),
-    Some((1.0, 128.0 / 255.0)),
-  )
-  assert_eq(
-    @style.parse_color(" rgba(0, 51, 255, 0.5) "),
-    Some({ r: 0.0, g: 0.2, b: 1.0, a: 0.5, }),
-  )
-  assert_eq(
-    @style.parse_color("rgb(255,255,255)"),
-    Some({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }),
-  )
-  assert_eq(@style.parse_color("transparent").map(c => c.a), Some(0.0))
-  for
-    bad in [
-      "#12", "#ggg", "rgb(1,2)", "rgba(1,2,3)", "rgb(300,0,0)", "hsl(0,0%,0%)", "red",
-    ] {
-    assert_eq(@style.parse_color(bad), None)
-  }
-}
-
-///|
 let sample : String =
   #|{
   #|  "version": 8,
@@ -161,18 +134,6 @@ test "from_json takes a parsed document; errors read as one line" {
     "sources.s: unsupported: url",
   )
   assert_eq(@style.Unsupported(path="", "x").message(), "unsupported: x")
-}
-
-///|
-test "rgb() components are plain decimals" {
-  assert_eq(@style.parse_color("rgba(0,0,0,.5)").map(c => c.a), Some(0.5))
-  assert_eq(
-    @style.parse_color("rgb(12.5,0,0)").map(c => c.r),
-    Some(12.5 / 255.0),
-  )
-  for bad in ["rgb(1.2.3,0,0)", "rgb(,0,0)", "rgb(-1,0,0)", "rgb(1e2,0,0)"] {
-    assert_eq(@style.parse_color(bad), None)
-  }
 }
 
 ///|

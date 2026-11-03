@@ -3,13 +3,13 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 16（スタイル互換の仕上げ、2D）。範囲・段階・完了条件をユーザーと決めてから始める。Phase 15 の後のリファクタリングとセキュリティチェックは完了（#73〜#77 と下の計測）。
+- **次**：Phase 16（スタイル互換の仕上げ、2D。2026-11-04 にユーザーが段階と完了条件を承認）。段階は下の「方針の更新：Phase 16」。16.1 を本線で、16.7（地形の表現）と CSS の色を並行して進めている。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 107.1KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
-  | 表示ワーカー | 93.0KB | 100KB |
+  | 表示（メイン） | 114.6KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
+  | 表示ワーカー | 96.3KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
@@ -49,6 +49,56 @@
 - 例（`examples/`）には足していない。東京駅のあたりは平らで、段彩が見せ場にならないため。
 - MapLibre との違い：並び（`numberArray` / `colorArray`）を返す式（ズームで並びを補間するもの）は未対応。光が 9 つ以上も未対応。勾配の角の画素は、斜めの隣のタイルで埋めない（以前から）。
 - **本線で測ってほしいもの**：なし（タイルの処理と描画の手順は、hillshade の縁が 1 画素増えたことと、color relief のあるときだけの詰め直し以外は変わらない）。
+
+- **16.1 と合わせて**：`hillshade-illumination-altitude` を警告の一覧（`ignored_properties`）から外した。`text-opacity` も一覧から外した（`"\{prefix}-opacity"` で読んでおり、16.1 で誤って載せていた）。
+
+## Phase 16：CSS の色（2026-11-04）
+
+状態：**完了**。公開スタイルの色（OSM Bright の `hsla(30, 19%, 90%, 0.4)` など）が読めずにスタイルごと拒まれていたので、`style/color.mbt` の `parse_color` を MapLibre 6.16（style-spec 26.5.0）の `parseCssColor` の移植に置き換えた。
+
+- **読めるもの**：名前付きの色 148 個と `transparent`、16 進の 4 形式、`rgb()` / `rgba()`（数か百分率。混ぜると拒む）、`hsl()` / `hsla()`（色相に `deg` を付けてもよい）。区切りはカンマ（続く不透明度も `, a`）か空白（`/ a`）。不透明度は数か百分率。範囲の外は拒まずに切り詰め、0..255 の整数に丸めない。大文字と前後の空白は JavaScript の `toLowerCase().trim()` と同じ（Kelvin 記号 U+212A は `k`、空白は `\s` の全種）。
+- **数**：MapLibre は `[\de.+-]+` の並びを `+x` で数にする（`1e2`、`+5`、`.5`、`5.` は読め、`1.2.3` は NaN で拒む）。`strconv` を入れずに同じ値を出す小さな読み手 `css_number` を書いた。有効数字 15 桁・10 の ±22 乗までは Clinger の速い道でビットまで一致。その外は最後の数ビットが違うことがある（`1e-23` など。色では実際には出ない）。`1e400` は Infinity で、色相に入れると MapLibre と同じく NaN の色になる。
+- **名前の表**：「名前 空白 16 進 6 桁」を 1 行ずつ並べた 1 本の文字列（2.3KB、gzip 約 1.1KB）。名前の検索は `#`・`rgb`・`hsl` で始まらないときだけ。
+- **大きさ**（gzip -9）：表示（メイン）107,124 → 108,557 バイト（+1,433）、表示ワーカー 93,108 → 94,175 バイト（+1,067。予算 100KB まで残り約 5.8KB）。増えた分のほとんどは名前の表。
+- **確認**：
+  - **`npm run color:golden`**（新規。`bench/style/colors.mjs`、bench/expr の js ビルドの `color_parse` と style-spec の `parseCssColor` をチャンネルごとに比べる）：7351 入力（色になるもの 6831）で **差 0**。名前（大文字、前後の空白、1 文字欠け・余り）、16 進の各長さ、区切りと単位の組み合わせ、数の書き方 50 種（`1e400`、`-0`、`0e999`、20 桁など）× 10 の位置、空白 8 種の組み合わせ、乱数の hsl / rgb 6000。速い道の外の 25 入力は 1e-15 以内（うち 4 つがビットまでは一致しない）として別に数える。
+  - `npm run expression:golden`：色の式 3 件（`to-color` の既定に hsla、`match` に名前と空白区切りの rgb、`interpolate` に hsl と名前）を足して差 0 のまま。
+  - MoonBit のテスト（`style/color_test.mbt`）：構文ごとと、拒む場合（区切りの混在、単位の混在、壊れた数、余計な文字）。全ターゲット。
+  - style:golden は全場面が限度内、npm:pack は通過。
+- **`style:compat`**（16.1 の後の main と合わせて）：8 本すべてが拒まれずに描ける（色のほか、`["linear", 1]` のような余分な引数を持つ補間の型を MapLibre と同じく受け付けるようにした。OpenFreeMap の 3 本がこれで拒まれていた）。警告は osm-bright 58、positron 49、dark-matter 44、maptiler-basic 21、ofm-liberty 51、ofm-bright 51、ofm-positron 41、demotiles 6。多いのは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。新しく見えたもの：`symbol-placement`（12）、`text-anchor`（7）、`fill-antialias`（2）の式と、線に沿った `text-pitch-alignment` / `text-rotation-alignment`（6）。
+
+## 方針の更新：Phase 16（2026-11-04、ユーザー承認）
+
+スタイル互換の仕上げ（2D）。未対応の扱いを方針 D（VISION §6「スタイルの互換」）にし、未対応の式とプロパティを MapLibre と同じに描く。
+
+| 段階 | 内容 |
+|---|---|
+| 16.1 | 方針 D の土台：未対応のプロパティは既定値に戻し、描けないレイヤーとソースは外し、コンソールと `warning` イベントで知らせる。`strict: true` で従来どおり拒む。黙って無視していたプロパティも警告する。公開スタイルを読んで未対応の一覧を出す `npm run style:compat` |
+| 16.2 | 線と平行移動：`line-offset`、`line-gap-width`、`line-blur`、全種類の `*-translate(-anchor)` |
+| 16.3 | 並び順：`fill` / `line` / `circle` の `sort-key`、`symbol-z-order`、`symbol-avoid-edges` |
+| 16.4 | 円：`circle-blur`、`circle-pitch-scale`、`circle-pitch-alignment` |
+| 16.5 | 文字：`text-font`（ブラウザのフォントへ）、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-opacity`、`text-halo-blur`、`text-overlap`、`icon-overlap` |
+| 16.6 | 式：`format`、`number-format`、`collator`、`split` / `join`、`global-state`、`within`、`distance`、`is-supported-script`、`resolved-locale`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state |
+| 16.7 | 地形の表現：hillshade の方式（`basic`、`combined`、`igor`、`multidirectional`）、`illumination-altitude`、`resampling`、`color-relief` レイヤー |
+| 16.8 | 公開スタイルの突き合わせ：同じスキーマのタイルで MapLibre と画素で比べる |
+
+- 完了条件：公開スタイル（OpenMapTiles 系と Protomaps）を読み、警告なしで描ける。足したものはそれぞれ `style:golden` か `labels:golden` で MapLibre と比べる。
+- 並行：16.1 の間に、調べもの（公開スタイルとタイルの入手先）と 16.7、CSS の色（`hsl()` など。公開スタイルの 7 本が読めない原因）を別の worktree で。16.1 の後に 16.2・16.4 と 16.6 を並行。
+- 調べもの（2026-11-04）：
+  - 候補のスタイル：OpenMapTiles の OSM Bright・Positron・Dark Matter・MapTiler Basic（デザインは CC-BY 4.0、コードは BSD-3-Clause）、OpenFreeMap の liberty・bright・positron、Protomaps basemaps 5.7.2（BSD-3-Clause、`layers()` 関数で生成）、Versatiles colorful（Shortbread スキーマ）、MapLibre demotiles。
+  - タイル：OpenMapTiles スキーマは OpenFreeMap の日付付きタイル（東京駅の周辺を manifest で固定）、Protomaps はデイリービルドを `pmtiles extract` で切り出す。どちらも ODbL（© OpenStreetMap contributors）。
+  - 使われ方：どのスタイルも `text-font` を使う。多いのは `text-halo-blur`、`text-transform`、`text-letter-spacing`、`line-gap-width`、legacy の関数（OSM Bright で約 240）、Protomaps の `format`（91）と `is-supported-script`。`circle-*`、`symbol-z-order`、`text-rotate`、`*-overlap`、`number-format`、`collator`、`within`、`distance` はどれにも出てこない。
+
+## Phase 16.1：未対応の扱い（方針 D）（2026-11-04）
+
+状態：**完了**。
+
+- **読み方**：`Style::from_json(json, strict?)`。strict でなければ、`Unsupported` の出たプロパティ（`paint` / `layout` のキー、ソースのキー）を外して読み直し（`leniently`、1 つのレイヤーかソースにつき 64 回まで）、外せないもの（`filter`、`type`、レイヤーやソースそのもの）はレイヤーかソースごと外す。外したソースを使うレイヤーも外す。どれも `Style.warnings` に入る。不正な値（`Invalid`）はこれまでどおり拒む。知らないレイヤーの種類も、黙って外さず警告にした。
+- **黙って無視していたプロパティ**：`ignored_properties`（30 個）。主スレッドだけが `Style::report_ignored` で警告に足す（表示ワーカーは同じ文字列を同じように読むので、レイヤーとソースのそろい方は変わらない）。各段階で対応したものから一覧を消す。
+- **ファサード**：`MapOptions.strict`（既定 false）。スタイルを描いたあと、除いた内容が前と変わったときだけ、`console.warn` と `warning` イベント（`warnings`：`{path, layer, message}`。オブジェクトのスタイルはコンストラクタの中で描くので、イベントは次のマイクロタスクで出す）。legacy の変換を待つスタイルが拒まれたときに `error` にならず未処理の Promise になっていたのを直した。
+- **`npm run style:compat`**：`bench/style/public-styles.mjs` の 8 本（コミットと sha256 で固定し、`bench/fixtures/styles/` に置く）を Chromium で、すべての外部への要求を断って読み、警告を種類ごとに数える（`bench/results/style-compat.json`）。
+  - いまは demotiles 以外の 7 本が、`hsl()` / `hsla()` の色を読めずに拒まれる（並行の PR で MapLibre の CSS の色の読み方を移植している）。demotiles は警告 6（`text-font`、`text-halo-blur` 各 2、`line-blur`、`text-transform`）。
+- **大きさ**（gzip）：表示（メイン）107.1 → 108.7KB、表示ワーカー 93.0 → 94.0KB（読み直しの処理。`ignored_properties` をワーカーから外して 0.7KB 減らした）。
 
 ## 計測：Phase 15 の後のリファクタリングの後（2026-11-04、main 45a5f3a ＋ 壁の模様の修正）
 

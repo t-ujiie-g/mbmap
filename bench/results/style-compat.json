@@ -1,0 +1,1728 @@
+{
+  "styles": [
+    "osm-bright",
+    "positron",
+    "dark-matter",
+    "maptiler-basic",
+    "ofm-liberty",
+    "ofm-bright",
+    "ofm-positron",
+    "demotiles"
+  ],
+  "rows": [
+    {
+      "kind": "layout.text-font: not drawn yet",
+      "total": 128,
+      "styles": "osm-bright 26, positron 14, dark-matter 13, maptiler-basic 8, ofm-liberty 23, ofm-bright 23, ofm-positron 19, demotiles 2"
+    },
+    {
+      "kind": "paint.text-halo-blur: not drawn yet",
+      "total": 83,
+      "styles": "osm-bright 12, positron 11, dark-matter 8, maptiler-basic 6, ofm-liberty 16, ofm-bright 16, ofm-positron 12, demotiles 2"
+    },
+    {
+      "kind": "layout.text-transform: not drawn yet",
+      "total": 38,
+      "styles": "osm-bright 7, positron 12, dark-matter 11, maptiler-basic 1, ofm-liberty 2, ofm-bright 2, ofm-positron 2, demotiles 1"
+    },
+    {
+      "kind": "layout.text-letter-spacing: not drawn yet",
+      "total": 22,
+      "styles": "osm-bright 6, maptiler-basic 1, ofm-liberty 5, ofm-bright 5, ofm-positron 5"
+    },
+    {
+      "kind": "layout.symbol-placement: expressions",
+      "total": 12,
+      "styles": "osm-bright 3, ofm-liberty 3, ofm-bright 3, ofm-positron 3"
+    },
+    {
+      "kind": "layout.text-anchor: expressions",
+      "total": 7,
+      "styles": "positron 4, dark-matter 3"
+    },
+    {
+      "kind": "paint.line-blur: not drawn yet",
+      "total": 7,
+      "styles": "positron 3, dark-matter 3, demotiles 1"
+    },
+    {
+      "kind": "paint.fill-translate: not drawn yet",
+      "total": 5,
+      "styles": "osm-bright 3, dark-matter 1, ofm-bright 1"
+    },
+    {
+      "kind": "paint.line-gap-width: not drawn yet",
+      "total": 5,
+      "styles": "maptiler-basic 4, ofm-liberty 1"
+    },
+    {
+      "kind": "layout.text-pitch-alignment: along lines",
+      "total": 4,
+      "styles": "positron 2, dark-matter 2"
+    },
+    {
+      "kind": "paint.text-translate: not drawn yet",
+      "total": 4,
+      "styles": "positron 2, dark-matter 2"
+    },
+    {
+      "kind": "paint.fill-antialias: expressions",
+      "total": 2,
+      "styles": "osm-bright 1, ofm-bright 1"
+    },
+    {
+      "kind": "layout.text-rotation-alignment: along lines",
+      "total": 2,
+      "styles": "positron 1, dark-matter 1"
+    },
+    {
+      "kind": "paint.line-offset: not drawn yet",
+      "total": 1,
+      "styles": "maptiler-basic 1"
+    },
+    {
+      "kind": "paint.fill-translate-anchor: not drawn yet",
+      "total": 1,
+      "styles": "ofm-liberty 1"
+    }
+  ],
+  "results": {
+    "osm-bright": {
+      "warnings": [
+        {
+          "path": "layers[9].paint.fill-antialias",
+          "layer": "landcover-wood",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[114].layout.symbol-placement",
+          "layer": "highway-shield",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[115].layout.symbol-placement",
+          "layer": "highway-shield-us-interstate",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[116].layout.symbol-placement",
+          "layer": "highway-shield-us-other",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[19].paint.fill-translate",
+          "layer": "water-offset",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[22].paint.fill-translate",
+          "layer": "water-pattern",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[26].paint.fill-translate",
+          "layer": "building-top",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[101].layout.text-font",
+          "layer": "waterway-name",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[101].layout.text-letter-spacing",
+          "layer": "waterway-name",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].layout.text-font",
+          "layer": "water-name-lakeline",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].layout.text-letter-spacing",
+          "layer": "water-name-lakeline",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[103].layout.text-font",
+          "layer": "water-name-ocean",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[103].layout.text-letter-spacing",
+          "layer": "water-name-ocean",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[104].layout.text-font",
+          "layer": "water-name-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[104].layout.text-letter-spacing",
+          "layer": "water-name-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[107].paint.text-halo-blur",
+          "layer": "poi-level-3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[107].layout.text-font",
+          "layer": "poi-level-3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[108].paint.text-halo-blur",
+          "layer": "poi-level-2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[108].layout.text-font",
+          "layer": "poi-level-2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[109].paint.text-halo-blur",
+          "layer": "poi-level-1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[109].layout.text-font",
+          "layer": "poi-level-1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].paint.text-halo-blur",
+          "layer": "poi-railway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].layout.text-font",
+          "layer": "poi-railway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[111].layout.text-font",
+          "layer": "highway-name-path",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[112].paint.text-halo-blur",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[112].layout.text-font",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[113].paint.text-halo-blur",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[113].layout.text-font",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[114].layout.text-font",
+          "layer": "highway-shield",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[115].layout.text-font",
+          "layer": "highway-shield-us-interstate",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[116].layout.text-font",
+          "layer": "highway-shield-us-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[117].paint.text-halo-blur",
+          "layer": "airport-label-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[117].layout.text-font",
+          "layer": "airport-label-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[118].layout.text-font",
+          "layer": "place-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[118].layout.text-letter-spacing",
+          "layer": "place-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[118].layout.text-transform",
+          "layer": "place-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[119].layout.text-font",
+          "layer": "place-village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[120].layout.text-font",
+          "layer": "place-town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[121].layout.text-font",
+          "layer": "place-state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[121].layout.text-letter-spacing",
+          "layer": "place-state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[121].layout.text-transform",
+          "layer": "place-state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[122].layout.text-font",
+          "layer": "place-city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[123].layout.text-font",
+          "layer": "place-city-capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[124].paint.text-halo-blur",
+          "layer": "place-country-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[124].layout.text-font",
+          "layer": "place-country-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[124].layout.text-transform",
+          "layer": "place-country-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[125].paint.text-halo-blur",
+          "layer": "place-country-3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[125].layout.text-font",
+          "layer": "place-country-3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[125].layout.text-transform",
+          "layer": "place-country-3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[126].paint.text-halo-blur",
+          "layer": "place-country-2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[126].layout.text-font",
+          "layer": "place-country-2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[126].layout.text-transform",
+          "layer": "place-country-2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[127].paint.text-halo-blur",
+          "layer": "place-country-1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[127].layout.text-font",
+          "layer": "place-country-1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[127].layout.text-transform",
+          "layer": "place-country-1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[128].paint.text-halo-blur",
+          "layer": "place-continent",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[128].layout.text-font",
+          "layer": "place-continent",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[128].layout.text-transform",
+          "layer": "place-continent",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "positron": {
+      "warnings": [
+        {
+          "path": "layers[34].layout.text-pitch-alignment",
+          "layer": "highway_name_other",
+          "message": "along lines"
+        },
+        {
+          "path": "layers[35].layout.text-rotation-alignment",
+          "layer": "highway_name_motorway",
+          "message": "along lines"
+        },
+        {
+          "path": "layers[35].layout.text-pitch-alignment",
+          "layer": "highway_name_motorway",
+          "message": "along lines"
+        },
+        {
+          "path": "layers[42].layout.text-anchor",
+          "layer": "place_town",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[43].layout.text-anchor",
+          "layer": "place_city",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[44].layout.text-anchor",
+          "layer": "place_capital",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[45].layout.text-anchor",
+          "layer": "place_city_large",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[8].paint.text-halo-blur",
+          "layer": "water_name",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[8].layout.text-font",
+          "layer": "water_name",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[34].paint.text-halo-blur",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[34].paint.text-translate",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[34].layout.text-font",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[34].layout.text-transform",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[35].paint.text-halo-blur",
+          "layer": "highway_name_motorway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[35].paint.text-translate",
+          "layer": "highway_name_motorway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[35].layout.text-font",
+          "layer": "highway_name_motorway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[36].paint.line-blur",
+          "layer": "boundary_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[37].paint.line-blur",
+          "layer": "boundary_country_z0-4",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[38].paint.line-blur",
+          "layer": "boundary_country_z5-",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].paint.text-halo-blur",
+          "layer": "place_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].layout.text-font",
+          "layer": "place_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].layout.text-transform",
+          "layer": "place_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].paint.text-halo-blur",
+          "layer": "place_suburb",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].layout.text-font",
+          "layer": "place_suburb",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].layout.text-transform",
+          "layer": "place_suburb",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].paint.text-halo-blur",
+          "layer": "place_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].layout.text-font",
+          "layer": "place_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].layout.text-transform",
+          "layer": "place_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].paint.text-halo-blur",
+          "layer": "place_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].layout.text-font",
+          "layer": "place_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].layout.text-transform",
+          "layer": "place_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].paint.text-halo-blur",
+          "layer": "place_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-font",
+          "layer": "place_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-transform",
+          "layer": "place_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].paint.text-halo-blur",
+          "layer": "place_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].layout.text-font",
+          "layer": "place_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].layout.text-transform",
+          "layer": "place_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].paint.text-halo-blur",
+          "layer": "place_city_large",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].layout.text-font",
+          "layer": "place_city_large",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].layout.text-transform",
+          "layer": "place_city_large",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].paint.text-halo-blur",
+          "layer": "place_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-font",
+          "layer": "place_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-transform",
+          "layer": "place_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[47].layout.text-font",
+          "layer": "place_country_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[47].layout.text-transform",
+          "layer": "place_country_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[48].layout.text-font",
+          "layer": "place_country_minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[48].layout.text-transform",
+          "layer": "place_country_minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[49].layout.text-font",
+          "layer": "place_country_major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[49].layout.text-transform",
+          "layer": "place_country_major",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "dark-matter": {
+      "warnings": [
+        {
+          "path": "layers[32].layout.text-pitch-alignment",
+          "layer": "highway_name_other",
+          "message": "along lines"
+        },
+        {
+          "path": "layers[33].layout.text-rotation-alignment",
+          "layer": "highway_name_motorway",
+          "message": "along lines"
+        },
+        {
+          "path": "layers[33].layout.text-pitch-alignment",
+          "layer": "highway_name_motorway",
+          "message": "along lines"
+        },
+        {
+          "path": "layers[40].layout.text-anchor",
+          "layer": "place_town",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[41].layout.text-anchor",
+          "layer": "place_city",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[42].layout.text-anchor",
+          "layer": "place_city_large",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[5].paint.fill-translate",
+          "layer": "landcover_wood",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[8].layout.text-font",
+          "layer": "water_name",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[32].paint.text-halo-blur",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[32].paint.text-translate",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[32].layout.text-font",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[32].layout.text-transform",
+          "layer": "highway_name_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[33].paint.text-translate",
+          "layer": "highway_name_motorway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[33].layout.text-font",
+          "layer": "highway_name_motorway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[34].paint.line-blur",
+          "layer": "boundary_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[35].paint.line-blur",
+          "layer": "boundary_country_z0-4",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[36].paint.line-blur",
+          "layer": "boundary_country_z5-",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[37].paint.text-halo-blur",
+          "layer": "place_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[37].layout.text-font",
+          "layer": "place_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[37].layout.text-transform",
+          "layer": "place_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[38].paint.text-halo-blur",
+          "layer": "place_suburb",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[38].layout.text-font",
+          "layer": "place_suburb",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[38].layout.text-transform",
+          "layer": "place_suburb",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].paint.text-halo-blur",
+          "layer": "place_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].layout.text-font",
+          "layer": "place_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].layout.text-transform",
+          "layer": "place_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].paint.text-halo-blur",
+          "layer": "place_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].layout.text-font",
+          "layer": "place_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].layout.text-transform",
+          "layer": "place_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].paint.text-halo-blur",
+          "layer": "place_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].layout.text-font",
+          "layer": "place_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].layout.text-transform",
+          "layer": "place_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].paint.text-halo-blur",
+          "layer": "place_city_large",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].layout.text-font",
+          "layer": "place_city_large",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].layout.text-transform",
+          "layer": "place_city_large",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].paint.text-halo-blur",
+          "layer": "place_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-font",
+          "layer": "place_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-transform",
+          "layer": "place_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].layout.text-font",
+          "layer": "place_country_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].layout.text-transform",
+          "layer": "place_country_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].layout.text-font",
+          "layer": "place_country_minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].layout.text-transform",
+          "layer": "place_country_minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-font",
+          "layer": "place_country_major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-transform",
+          "layer": "place_country_major",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "maptiler-basic": {
+      "warnings": [
+        {
+          "path": "layers[11].paint.line-gap-width",
+          "layer": "waterway-tunnel",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[16].layout.text-font",
+          "layer": "housenumber",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[29].paint.line-offset",
+          "layer": "road_major_motorway",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[32].paint.line-gap-width",
+          "layer": "waterway-bridge-case",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[34].paint.line-gap-width",
+          "layer": "bridge_minor case",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[35].paint.line-gap-width",
+          "layer": "bridge_major case",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].paint.text-halo-blur",
+          "layer": "poi_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].layout.text-font",
+          "layer": "poi_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].paint.text-halo-blur",
+          "layer": "airport-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].layout.text-font",
+          "layer": "airport-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-font",
+          "layer": "road_major_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-letter-spacing",
+          "layer": "road_major_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-transform",
+          "layer": "road_major_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].paint.text-halo-blur",
+          "layer": "place_label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].layout.text-font",
+          "layer": "place_label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].paint.text-halo-blur",
+          "layer": "place_label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].layout.text-font",
+          "layer": "place_label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].paint.text-halo-blur",
+          "layer": "country_label-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-font",
+          "layer": "country_label-other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[47].paint.text-halo-blur",
+          "layer": "country_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[47].layout.text-font",
+          "layer": "country_label",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "ofm-liberty": {
+      "warnings": [
+        {
+          "path": "layers[98].layout.symbol-placement",
+          "layer": "highway-shield-non-us",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[99].layout.symbol-placement",
+          "layer": "highway-shield-us-interstate",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[100].layout.symbol-placement",
+          "layer": "road_shield_us",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[8].paint.fill-translate-anchor",
+          "layer": "landcover_wetland",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[14].paint.line-gap-width",
+          "layer": "waterway_tunnel",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[88].layout.text-font",
+          "layer": "waterway_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[88].layout.text-letter-spacing",
+          "layer": "waterway_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[89].layout.text-font",
+          "layer": "water_name_point_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[89].layout.text-letter-spacing",
+          "layer": "water_name_point_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[90].layout.text-font",
+          "layer": "water_name_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[90].layout.text-letter-spacing",
+          "layer": "water_name_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[91].paint.text-halo-blur",
+          "layer": "poi_r20",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[91].layout.text-font",
+          "layer": "poi_r20",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[92].paint.text-halo-blur",
+          "layer": "poi_r7",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[92].layout.text-font",
+          "layer": "poi_r7",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[93].paint.text-halo-blur",
+          "layer": "poi_r1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[93].layout.text-font",
+          "layer": "poi_r1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[94].paint.text-halo-blur",
+          "layer": "poi_transit",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[94].layout.text-font",
+          "layer": "poi_transit",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[95].layout.text-font",
+          "layer": "highway-name-path",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[96].paint.text-halo-blur",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[96].layout.text-font",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[97].paint.text-halo-blur",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[97].layout.text-font",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[98].layout.text-font",
+          "layer": "highway-shield-non-us",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[99].layout.text-font",
+          "layer": "highway-shield-us-interstate",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[100].layout.text-font",
+          "layer": "road_shield_us",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[101].paint.text-halo-blur",
+          "layer": "airport",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[101].layout.text-font",
+          "layer": "airport",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].paint.text-halo-blur",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].layout.text-font",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].layout.text-letter-spacing",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].layout.text-transform",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[103].paint.text-halo-blur",
+          "layer": "label_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[103].layout.text-font",
+          "layer": "label_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[104].paint.text-halo-blur",
+          "layer": "label_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[104].layout.text-font",
+          "layer": "label_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[105].paint.text-halo-blur",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[105].layout.text-font",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[105].layout.text-letter-spacing",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[105].layout.text-transform",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[106].paint.text-halo-blur",
+          "layer": "label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[106].layout.text-font",
+          "layer": "label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[107].paint.text-halo-blur",
+          "layer": "label_city_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[107].layout.text-font",
+          "layer": "label_city_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[108].paint.text-halo-blur",
+          "layer": "label_country_3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[108].layout.text-font",
+          "layer": "label_country_3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[109].paint.text-halo-blur",
+          "layer": "label_country_2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[109].layout.text-font",
+          "layer": "label_country_2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].paint.text-halo-blur",
+          "layer": "label_country_1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].layout.text-font",
+          "layer": "label_country_1",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "ofm-bright": {
+      "warnings": [
+        {
+          "path": "layers[11].paint.fill-antialias",
+          "layer": "landcover-wood",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[106].layout.symbol-placement",
+          "layer": "highway-shield-non-us",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[107].layout.symbol-placement",
+          "layer": "highway-shield-us-interstate",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[108].layout.symbol-placement",
+          "layer": "road_shield_us",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[26].paint.fill-translate",
+          "layer": "building-top",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[96].layout.text-font",
+          "layer": "waterway_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[96].layout.text-letter-spacing",
+          "layer": "waterway_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[97].layout.text-font",
+          "layer": "water_name_point_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[97].layout.text-letter-spacing",
+          "layer": "water_name_point_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[98].layout.text-font",
+          "layer": "water_name_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[98].layout.text-letter-spacing",
+          "layer": "water_name_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[99].paint.text-halo-blur",
+          "layer": "poi_r20",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[99].layout.text-font",
+          "layer": "poi_r20",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[100].paint.text-halo-blur",
+          "layer": "poi_r7",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[100].layout.text-font",
+          "layer": "poi_r7",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[101].paint.text-halo-blur",
+          "layer": "poi_r1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[101].layout.text-font",
+          "layer": "poi_r1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].paint.text-halo-blur",
+          "layer": "poi_transit",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[102].layout.text-font",
+          "layer": "poi_transit",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[103].layout.text-font",
+          "layer": "highway-name-path",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[104].paint.text-halo-blur",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[104].layout.text-font",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[105].paint.text-halo-blur",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[105].layout.text-font",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[106].layout.text-font",
+          "layer": "highway-shield-non-us",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[107].layout.text-font",
+          "layer": "highway-shield-us-interstate",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[108].layout.text-font",
+          "layer": "road_shield_us",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[109].paint.text-halo-blur",
+          "layer": "airport",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[109].layout.text-font",
+          "layer": "airport",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].paint.text-halo-blur",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].layout.text-font",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].layout.text-letter-spacing",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[110].layout.text-transform",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[111].paint.text-halo-blur",
+          "layer": "label_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[111].layout.text-font",
+          "layer": "label_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[112].paint.text-halo-blur",
+          "layer": "label_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[112].layout.text-font",
+          "layer": "label_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[113].paint.text-halo-blur",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[113].layout.text-font",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[113].layout.text-letter-spacing",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[113].layout.text-transform",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[114].paint.text-halo-blur",
+          "layer": "label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[114].layout.text-font",
+          "layer": "label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[115].paint.text-halo-blur",
+          "layer": "label_city_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[115].layout.text-font",
+          "layer": "label_city_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[116].paint.text-halo-blur",
+          "layer": "label_country_3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[116].layout.text-font",
+          "layer": "label_country_3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[117].paint.text-halo-blur",
+          "layer": "label_country_2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[117].layout.text-font",
+          "layer": "label_country_2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[118].paint.text-halo-blur",
+          "layer": "label_country_1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[118].layout.text-font",
+          "layer": "label_country_1",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "ofm-positron": {
+      "warnings": [
+        {
+          "path": "layers[42].layout.symbol-placement",
+          "layer": "highway-shield-non-us",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[43].layout.symbol-placement",
+          "layer": "highway-shield-us-interstate",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[44].layout.symbol-placement",
+          "layer": "road_shield_us",
+          "message": "expressions"
+        },
+        {
+          "path": "layers[36].layout.text-font",
+          "layer": "waterway_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[36].layout.text-letter-spacing",
+          "layer": "waterway_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[37].layout.text-font",
+          "layer": "water_name_point_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[37].layout.text-letter-spacing",
+          "layer": "water_name_point_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[38].layout.text-font",
+          "layer": "water_name_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[38].layout.text-letter-spacing",
+          "layer": "water_name_line_label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[39].layout.text-font",
+          "layer": "highway-name-path",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].paint.text-halo-blur",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[40].layout.text-font",
+          "layer": "highway-name-minor",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].paint.text-halo-blur",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[41].layout.text-font",
+          "layer": "highway-name-major",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[42].layout.text-font",
+          "layer": "highway-shield-non-us",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[43].layout.text-font",
+          "layer": "highway-shield-us-interstate",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[44].layout.text-font",
+          "layer": "road_shield_us",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].paint.text-halo-blur",
+          "layer": "airport",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[45].layout.text-font",
+          "layer": "airport",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].paint.text-halo-blur",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-font",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-letter-spacing",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[46].layout.text-transform",
+          "layer": "label_other",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[47].paint.text-halo-blur",
+          "layer": "label_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[47].layout.text-font",
+          "layer": "label_village",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[48].paint.text-halo-blur",
+          "layer": "label_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[48].layout.text-font",
+          "layer": "label_town",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[49].paint.text-halo-blur",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[49].layout.text-font",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[49].layout.text-letter-spacing",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[49].layout.text-transform",
+          "layer": "label_state",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[50].paint.text-halo-blur",
+          "layer": "label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[50].layout.text-font",
+          "layer": "label_city",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[51].paint.text-halo-blur",
+          "layer": "label_city_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[51].layout.text-font",
+          "layer": "label_city_capital",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[52].paint.text-halo-blur",
+          "layer": "label_country_3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[52].layout.text-font",
+          "layer": "label_country_3",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[53].paint.text-halo-blur",
+          "layer": "label_country_2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[53].layout.text-font",
+          "layer": "label_country_2",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[54].paint.text-halo-blur",
+          "layer": "label_country_1",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[54].layout.text-font",
+          "layer": "label_country_1",
+          "message": "not drawn yet"
+        }
+      ]
+    },
+    "demotiles": {
+      "warnings": [
+        {
+          "path": "layers[1].paint.line-blur",
+          "layer": "coastline",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[5].paint.text-halo-blur",
+          "layer": "geolines-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[5].layout.text-font",
+          "layer": "geolines-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[6].paint.text-halo-blur",
+          "layer": "countries-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[6].layout.text-font",
+          "layer": "countries-label",
+          "message": "not drawn yet"
+        },
+        {
+          "path": "layers[6].layout.text-transform",
+          "layer": "countries-label",
+          "message": "not drawn yet"
+        }
+      ]
+    }
+  }
+}
