@@ -60,3 +60,17 @@ html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; colo
 .toolbar-scale span { display: inline-block; height: 4px; border: 1px solid #fff; border-top: 0; }
 .react-location { position: absolute; pointer-events: none; z-index: 0; }
 @media (max-width: 480px) { .toolbar { bottom: calc(45% + 30px); } }
+.panel #legend { list-style: none; padding: 0; font-size: 12px; }
+.panel #legend ul { list-style: none; padding-left: 14px; margin: 0; }
+.swatch { display: inline-block; width: 14px; height: 10px; margin-right: 6px; vertical-align: middle; background: var(--color); }
+.swatch-line { height: 3px; }
+.swatch-circle { width: 10px; border-radius: 50%; }
+.swatch-symbol { width: auto; height: auto; background: none; color: var(--color); }
+.swatch-symbol::before { content: "Aa"; font-weight: 700; }
+.panel button.out-of-range { opacity: 0.55; }
+.react-choices { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.react-choices label.out-of-range { opacity: 0.55; }
+.react-legend { margin-top: 12px; font-size: 12px; }
+.react-legend summary { cursor: pointer; font-weight: 600; color: #666; }
+.react-legend td { padding: 1px 4px; vertical-align: middle; }
+.react-swatch { display: inline-block; width: 16px; height: 10px; }

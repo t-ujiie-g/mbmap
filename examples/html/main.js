@@ -2,17 +2,17 @@
 import { Map } from "mbmap";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { mountControls } from "../shared/controls.js";
+import { mountPanel, panelControllers } from "../shared/panel.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
-import { DEFAULT_HIDDEN, LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
+import { createStyle, modeCamera, withMarker } from "../shared/style.js";
 
 let mode = "2d";
-const hidden = new Set(DEFAULT_HIDDEN);
 let places = PLACES;
 
-const map = new Map({ container: "map", style: createStyle(mode, hidden), center: DESTINATIONS[0].center, zoom: 15, attributionControl: false });
+const map = new Map({ container: "map", style: createStyle(mode), center: DESTINATIONS[0].center, zoom: 15, attributionControl: false });
 map.on("move", showCamera);
 map.on("moveend", update);
 map.once("load").then(() => {
@@ -25,6 +25,8 @@ map.on("click", (e) => map.queryRenderedFeatures(e.point).then(showPicked));
 hoverPlaces(map);
 pinDestinations(map, document.body);
 mountControls(map, document.body);
+const panel = panelControllers(map, () => mode, () => places);
+map.once("load").then(() => mountPanel(panel));
 
 function showPicked(features) {
   const rows = describeFeature(features) ?? [["—", "何もありません"]];
@@ -36,16 +38,8 @@ function showPicked(features) {
 function setMode(next) {
   if (next === mode) return;
   mode = next;
-  map.setStyle(createStyle(mode, hidden, places));
+  map.setStyle(createStyle(mode, panel.hidden(), places, panel.basemaps.state.active ?? "map"));
   map.easeTo({ ...modeCamera(mode), duration: 1000 });
-  showButtons();
-}
-
-function toggle(group) {
-  if (hidden.has(group.name)) hidden.delete(group.name);
-  else hidden.add(group.name);
-  const visibility = hidden.has(group.name) ? "none" : "visible";
-  for (const id of group.ids) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
   showButtons();
 }
 
@@ -56,7 +50,6 @@ function addMarker() {
 
 function showButtons() {
   for (const b of document.querySelectorAll("#modes button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
-  for (const b of document.querySelectorAll("#layers button")) b.setAttribute("aria-pressed", String(!hidden.has(b.textContent)));
 }
 
 const fixed = (v, n) => v.toFixed(n);
@@ -96,14 +89,6 @@ document.getElementById("destinations").replaceChildren(
     const b = document.createElement("button");
     b.textContent = d.name;
     b.addEventListener("click", () => map.flyTo({ center: d.center, zoom: d.zoom, ...modeCamera(mode) }));
-    return b;
-  }),
-);
-document.getElementById("layers").replaceChildren(
-  ...LAYER_GROUPS.map((g) => {
-    const b = document.createElement("button");
-    b.textContent = g.name;
-    b.addEventListener("click", () => toggle(g));
     return b;
   }),
 );

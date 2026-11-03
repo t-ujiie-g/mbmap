@@ -2,31 +2,24 @@
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../shared/analysis.js";
 import { mountControls } from "../shared/controls.js";
+import { mountPanel, panelControllers } from "../shared/panel.js";
 import { pinDestinations, saveImage } from "../shared/overlay.js";
 import { describeFeature, hoverPlaces } from "../shared/pick.js";
 import { DESTINATIONS } from "../shared/places.js";
 import { PLACES } from "../shared/places.js";
-import { DEFAULT_HIDDEN, LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../shared/style.js";
+import { createStyle, modeCamera, withMarker } from "../shared/style.js";
 
 const el = document.querySelector("mb-map");
 let mode = "2d";
-const hidden = new Set(DEFAULT_HIDDEN);
+let panel = null;
 let places = PLACES;
 
 // A new style object goes to the map's setStyle: tiles of what stays alike are kept.
 function setMode(next) {
   if (next === mode) return;
   mode = next;
-  el.mapStyle = createStyle(mode, hidden, places);
+  el.mapStyle = createStyle(mode, panel?.hidden(), places, panel?.basemaps.state.active ?? "map");
   el.map?.easeTo({ ...modeCamera(mode), duration: 1000 });
-  showButtons();
-}
-
-function toggle(group) {
-  if (hidden.has(group.name)) hidden.delete(group.name);
-  else hidden.add(group.name);
-  const visibility = hidden.has(group.name) ? "none" : "visible";
-  for (const id of group.ids) if (el.map?.getLayer(id)) el.map.setLayoutProperty(id, "visibility", visibility);
   showButtons();
 }
 
@@ -37,7 +30,6 @@ function addMarker() {
 
 function showButtons() {
   for (const b of document.querySelectorAll("#modes button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
-  for (const b of document.querySelectorAll("#layers button")) b.setAttribute("aria-pressed", String(!hidden.has(b.textContent)));
 }
 
 const fixed = (v, n) => v.toFixed(n);
@@ -78,6 +70,8 @@ el.addEventListener("mb-load", () => {
   hoverPlaces(map);
   pinDestinations(map, document.body);
   mountControls(map, document.body);
+  panel = panelControllers(map, () => mode, () => places);
+  mountPanel(panel);
   update();
 });
 
@@ -97,16 +91,8 @@ document.getElementById("destinations").replaceChildren(
     return b;
   }),
 );
-document.getElementById("layers").replaceChildren(
-  ...LAYER_GROUPS.map((g) => {
-    const b = document.createElement("button");
-    b.textContent = g.name;
-    b.addEventListener("click", () => toggle(g));
-    return b;
-  }),
-);
 document.getElementById("marker").addEventListener("click", addMarker);
 document.getElementById("save").addEventListener("click", () => el.map && saveImage(el.map));
-el.mapStyle = createStyle(mode, hidden);
+el.mapStyle = createStyle(mode);
 showButtons();
 showCamera();

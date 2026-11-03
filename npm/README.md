@@ -53,7 +53,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 - 操作：`dragPan`、`scrollZoom`、`boxZoom`（Shift＋ドラッグ）、`dragRotate`、`keyboard`（矢印で 100px 移動、Shift＋矢印で回転・傾き、`+`・`-` でズーム）、`doubleClickZoom`（Shift で縮小）、`touchZoomRotate`、`touchPitch`（2 本指を上下に動かす）。オプションの `interactive: false` ですべて止め、`map.scrollZoom.disable()` のように 1 つずつ切り替えられる。ドラッグを離すと、MapLibre と同じ慣性で少し流れる。
 - イベント：`movestart`・`move`・`moveend`、`zoomstart`・`zoom`・`zoomend`、`rotatestart`・`rotate`・`rotateend`、`pitchstart`・`pitch`・`pitchend`（MapLibre と同じ順）。ユーザーの操作によるものは `originalEvent` に DOM のイベントが入る。地図のパディング（`setPadding`）は未対応。
 - スタイルの変更（MapLibre と同じ名前と引数）：
-  - `setStyle(style)`（オブジェクトか URL）、`getStyle()`。前のスタイルと比べ、タイルの作り方が変わらないソースはタイルを残し、変わったソースは古いタイルを描いたまま読み直す。
+  - `setStyle(style, { transformStyle })`（オブジェクトか URL。`transformStyle(previous, next)` は MapLibre と同じく、前のスタイルと合わせて描くスタイルを作る）、`getStyle()`。前のスタイルと比べ、タイルの作り方が変わらないソースはタイルを残し、変わったソースは古いタイルを描いたまま読み直す。
   - `addLayer(layer, beforeId?)`、`removeLayer`、`moveLayer(id, beforeId?)`、`getLayer`、`getLayersOrder()`、`setPaintProperty`・`getPaintProperty`、`setLayoutProperty`・`getLayoutProperty`（`visibility` を含む）、`setFilter`・`getFilter`、`setLayerZoomRange`。
   - `addSource(id, source)`、`removeSource(id)`（レイヤーや地形が使っている間は `error`）、`getSource(id)`（GeoJSON ソースは `setData(data)` でデータを差し替える）。
   - `setTerrain`・`getTerrain`、`setSky`・`getSky`、`setLight`・`getLight`（null で外す）。
@@ -74,7 +74,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - ワーカーが地物の位置を持ち、状態のある地物の分だけを問い合わせるので、変更は 1 往復遅れて描かれる。フィルターや layout では使えない（MapLibre と同じ）。
 - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
   - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
-- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。`styledata` イベントは、スタイルの読み込みと変更のたびに出る。
+- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`evaluatePaint(layerId, properties)`（その属性の地物を、いまのズームでどう描くか。凡例が使う）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。`styledata` イベントは、スタイルの読み込みと変更のたびに出る。
 
 ## UI のコントローラ `mbmap/ui`
 
@@ -97,6 +97,16 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
   - 追跡中に地図を動かすと `background` になる（ズームだけなら追跡を続ける）。点と円は `map.track` で作り手が描く。
 - `createFullscreen(map, { container })`：`{ active, pseudo }` と `toggle()`。Fullscreen API がないときは `pseudo` が true になり、作り手が全画面の見た目を作る。
 - `createScale(map, { maxWidth, unit })`：`{ width, distance, unit, label }`。`unit` は `metric`、`imperial`、`nautical`。`setUnit()` で切り替えられる。`measureScale(map, maxWidth, unit)` はその場で一度だけ測る。
+- `createLegend(map, { layers, title, label })`：レイヤーごとの見本（上のレイヤーから）。
+  - 色が属性で決まるレイヤー（`match`、`step`、属性の `interpolate`、`==` だけの `case`）は区分ごとに分ける。区分ごとの色は、いまのズームでエンジンが評価したもの（MapLibre の評価と同じ。`npm run ui:golden`）。
+  - 状態は `entries`。各要素は `id`、`type`、`title`、`visible`（いまのズームで表示されるか）、`kind`、`property`、`items`。`items` の各要素は `label`、`category`、`paint`。
+  - 題名の既定は `metadata["mbmap:title"]`、なければレイヤーの id。
+- `createLayerList(map, { groups, title })`：レイヤー（または `groups` でまとめたもの）の一覧。
+  - 状態は `items`。各要素は `id`、`title`、`layers`、`visible`、`mixed`（一部だけ表示）、`inRange`（いまのズームで描かれるか）。
+  - 操作は `setVisible(id, visible)`、`toggle(id)`。
+- `createBasemaps(map, { basemaps, active, overlay })`：背景地図の切り替え。
+  - `basemaps` の各要素は `{ id, title, style }`。`style` はスタイル、URL、または選んだときにスタイルを作る関数。
+  - `select(id)` は `setStyle` で差し替え、重ねるレイヤー（既定は `metadata["mbmap:overlay"]` が true のもの）を、そのソースとデータごと残す。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 解析 `mbmap/analysis`

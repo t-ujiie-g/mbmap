@@ -1,6 +1,5 @@
-// `mbmap/ui` vs MapLibre GL JS 6.16.0's controls in Chromium (bench/ui's page):
-// scale bars, zoom buttons at the limits, attributions by zoom, and geolocation's
-// states and camera through a fake Geolocation fed to both.
+// `mbmap/ui` vs MapLibre GL JS 6.16.0's controls in Chromium (bench/ui's page): scale bars, zoom
+// buttons, attributions, geolocation (a fake Geolocation fed to both) and legend colors.
 // Writes bench/results/ui-golden.json. Needs `npm --prefix npm run build`.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -115,6 +114,40 @@ try {
   const camerasAgree = (g) => Math.abs(g.mlCamera.lng - g.mbCamera.lng) < 1e-7 && Math.abs(g.mlCamera.lat - g.mbCamera.lat) < 1e-7 && Math.abs(g.mlCamera.zoom - g.mbCamera.zoom) < 1e-7;
   check("geolocation", geo.every((g) => g.theirs === g.mine && camerasAgree(g)), { steps: geo });
   await page.close();
+
+  // Legend swatches of bench/pages/basic's style: each item's color as MapLibre evaluates the
+  // layer's paint for the same feature properties at the same zoom.
+  const legendPage = await browser.newPage({ viewport: { width: 800, height: 1200 } });
+  legendPage.on("pageerror", (e) => console.log("pageerror", e.message));
+  await legendPage.goto(`${origin}/bench/ui/index.html?style=/bench/pages/basic/style.json`);
+  await legendPage.waitForFunction(() => window.__ready, null, { timeout: 60000 });
+  const legend = [];
+  for (const zoom of [14, 15.5, 17.2]) {
+    legend.push(
+      ...(await legendPage.evaluate(async (zoom) => {
+        const { __mb: mb, __ml: ml, __mine: mine, __theirs: theirs } = window;
+        const settled = Promise.all([mb.once("idle"), new Promise((r) => ml.once("idle", r))]);
+        mb.jumpTo({ center: [139.7671, 35.6812], zoom });
+        ml.jumpTo({ center: [139.7671, 35.6812], zoom });
+        ml.triggerRepaint();
+        await settled;
+        const color = { fill: "fill-color", line: "line-color", circle: "circle-color", symbol: "text-color", "fill-extrusion": "fill-extrusion-color" };
+        const opacity = { fill: "fill-opacity", line: "line-opacity", circle: "circle-opacity", symbol: "text-opacity", "fill-extrusion": "fill-extrusion-opacity" };
+        return mine.legend.state.entries.flatMap((e) =>
+          e.items.map((item) => ({
+            zoom,
+            layer: e.id,
+            label: item.label,
+            mine: item.paint.color,
+            theirs: theirs.color(e.id, color[e.type], opacity[e.type], item.category.properties),
+          })),
+        );
+      }, zoom)),
+    );
+  }
+  const legendDiffs = legend.filter((l) => l.mine.some((v, i) => Math.abs(v - l.theirs[i]) > 1e-6));
+  check("legend", legend.length > 0 && legendDiffs.length === 0, { items: legend.length, differ: legendDiffs.slice(0, 5) });
+  await legendPage.close();
 } finally {
   await browser.close();
   server.close();

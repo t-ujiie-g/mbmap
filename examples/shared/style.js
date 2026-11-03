@@ -20,9 +20,8 @@ const BUILDINGS_3D = {
   },
 };
 
-/** Layers the panel shows and hides together, by the name of each group; `DEFAULT_HIDDEN` start hidden. */
+/** Layers the panel shows and hides together, by the name of each group. */
 export const LAYER_GROUPS = [
-  { name: "航空写真", ids: ["photo"] },
   { name: "陰影", ids: ["hillshade"] },
   { name: "等高線", ids: ["contour", "elevation"] },
   { name: "建物", ids: ["building", "building-outline", "building-3d"] },
@@ -31,7 +30,26 @@ export const LAYER_GROUPS = [
   { name: "地点", ids: ["places", "places-label"] },
 ];
 
-export const DEFAULT_HIDDEN = ["航空写真"];
+/** The basemaps (`createStyle`'s `basemap`): GSI's vector map, or its aerial photos with labels. */
+export const BASEMAPS = [
+  { id: "map", title: "地図" },
+  { id: "photo", title: "写真" },
+];
+
+/** What the legend calls each layer. */
+export const LAYER_TITLES = {
+  waterarea: "水域", structurea: "構造物", building: "建物", "building-3d": "建物（3D）", "building-outline": "建物の輪郭",
+  contour: "等高線", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
+  elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
+  hillshade: "陰影", photo: "写真",
+};
+
+/** A legend item's label: the attribute and its values as GSI codes them, or "その他". */
+export function legendLabel(layer, category) {
+  if (category.other) return "その他";
+  if (category.values) return category.values.join("・");
+  return undefined;
+}
 
 /** The ids of the layers in the groups named in `hidden`. */
 export function hiddenLayers(hidden) {
@@ -44,8 +62,11 @@ export function withMarker(places, center, name) {
   return { ...places, features: [...places.features, marker] };
 }
 
-/** "2d" or "3d" as a MapLibre style object, without the layer groups named in `hidden`. */
-export function createStyle(mode, hidden = new Set(), places = PLACES) {
+/**
+ * "2d" or "3d" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
+ * named in `hidden`; the places are overlays, kept when the basemap changes.
+ */
+export function createStyle(mode, hidden = new Set(), places = PLACES, basemap = "map") {
   const sources = {
     gsi: local
       ? { type: "vector", tiles: [`${fixtures}gsi-bvmap/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 }
@@ -62,17 +83,23 @@ export function createStyle(mode, hidden = new Set(), places = PLACES) {
   sources.photo.attribution = "国土地理院 全国最新写真（シームレス）";
   sources.gsi.attribution = "国土地理院ベクトルタイル提供実験";
   sources.dem.attribution = "国土地理院 標高タイル";
+  const overlay = { "mbmap:overlay": true };
+  const base =
+    basemap === "photo"
+      ? [{ id: "photo", type: "raster", source: "photo" }, ...GSI_LAYERS.filter((l) => l.id.startsWith("label"))]
+      : [
+          { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#5a4a35" } },
+          ...GSI_LAYERS.flatMap((l) => {
+            if (mode !== "3d") return [l];
+            if (l.id === "building-outline") return [];
+            return l.id === "building" ? [BUILDINGS_3D] : [l];
+          }),
+        ];
   const layers = [
     { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
-    { id: "photo", type: "raster", source: "photo" },
-    { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#5a4a35" } },
-    ...GSI_LAYERS.flatMap((l) => {
-      if (mode !== "3d") return [l];
-      if (l.id === "building-outline") return [];
-      return l.id === "building" ? [BUILDINGS_3D] : [l];
-    }),
+    ...base,
     {
-      id: "places", type: "circle", source: "places",
+      id: "places", type: "circle", source: "places", metadata: overlay,
       paint: {
         "circle-radius": ["case", ["boolean", ["feature-state", "hover"], false], 10, 6],
         "circle-color": ["case", ["boolean", ["feature-state", "hover"], false], "#b2182b", "#d6604d"],
@@ -81,7 +108,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES) {
       },
     },
     {
-      id: "places-label", type: "symbol", source: "places",
+      id: "places-label", type: "symbol", source: "places", metadata: overlay,
       layout: { "text-field": "{name}", "text-size": 14, "symbol-sort-key": 0 },
       paint: { "text-color": "#8c2d1f", "text-halo-color": "#ffffff", "text-halo-width": 2 },
     },

@@ -6,11 +6,13 @@ import { createRoot } from "react-dom/client";
 import "mbmap/element";
 import { describe, RADIUS_METERS } from "../../shared/analysis.js";
 import { pinDestinations, saveImage } from "../../shared/overlay.js";
+import { panelControllers } from "../../shared/panel.js";
 import { MapControls } from "./controls.jsx";
+import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
 import { describeFeature, hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
-import { DEFAULT_HIDDEN, LAYER_GROUPS, createStyle, modeCamera, withMarker } from "../../shared/style.js";
+import { createStyle, modeCamera, withMarker } from "../../shared/style.js";
 
 const fixed = (v, n) => v.toFixed(n);
 
@@ -19,14 +21,15 @@ function App() {
   const [mode, setMode] = useState("2d");
   const [camera, setCamera] = useState({ center: { lng: 139.7671, lat: 35.6812 }, zoom: 15, bearing: 0, pitch: 0 });
   const [described, setDescribed] = useState(null);
-  const [hidden, setHidden] = useState(() => new Set(DEFAULT_HIDDEN));
+  const [panel, setPanel] = useState(null);
+  const modeRef = useRef(mode);
   const [picked, setPicked] = useState(null);
   const [map, setMap] = useState(null);
   const places = useRef(PLACES);
   const pending = useRef(0);
   // A new style object goes to the map's setStyle: tiles of what stays alike are kept.
-  // Layer visibility and markers change through the map itself, so the style reads them only on a mode switch.
-  const style = useMemo(() => createStyle(mode, hidden, places.current), [mode]);
+  // Layer visibility, basemaps and markers change through the map itself, so the style reads them only on a mode switch.
+  const style = useMemo(() => createStyle(mode, panel?.hidden(), places.current, panel?.basemaps.state.active ?? "map"), [mode]);
 
   const update = useCallback(async (center) => {
     const ticket = ++pending.current;
@@ -42,17 +45,9 @@ function App() {
 
   const switchMode = (m) => {
     if (m === mode) return;
+    modeRef.current = m;
     setMode(m);
     ref.current.map?.easeTo({ ...modeCamera(m), duration: 1000 });
-  };
-  const toggle = (group) => {
-    const next = new Set(hidden);
-    if (next.has(group.name)) next.delete(group.name);
-    else next.add(group.name);
-    setHidden(next);
-    const map = ref.current.map;
-    const visibility = next.has(group.name) ? "none" : "visible";
-    for (const id of group.ids) if (map?.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
   };
   const addMarker = () => {
     places.current = withMarker(places.current, ref.current.center, `印 ${places.current.features.length - PLACES.features.length + 1}`);
@@ -72,6 +67,7 @@ function App() {
     hoverPlaces(map);
     pinDestinations(map, document.body);
     setMap(map);
+    setPanel(panelControllers(map, () => modeRef.current, () => places.current));
     update(e.detail.center);
   };
   const go = (d) => ref.current.map?.flyTo({ center: d.center, zoom: d.zoom, ...modeCamera(mode) });
@@ -107,14 +103,13 @@ function App() {
             <button key={m} aria-pressed={mode === m} onClick={() => switchMode(m)}>{m.toUpperCase()}</button>
           ))}
         </div>
+        <h2>背景地図</h2>
+        {panel && <Basemaps c={panel.basemaps} />}
         <h2>レイヤー</h2>
-        <div id="layers">
-          {LAYER_GROUPS.map((g) => (
-            <button key={g.name} aria-pressed={!hidden.has(g.name)} onClick={() => toggle(g)}>{g.name}</button>
-          ))}
-        </div>
+        {panel && <LayerChecklist c={panel.layers} />}
         <button id="marker" onClick={addMarker}>中心に印を置く</button>
         <button id="save" onClick={() => ref.current.map && saveImage(ref.current.map)}>画像を保存</button>
+        {panel && <Legend c={panel.legend} />}
         <h2>クリックした地物</h2>
         <dl id="picked">
           {(picked ?? [["—", "地図をクリック"]]).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}

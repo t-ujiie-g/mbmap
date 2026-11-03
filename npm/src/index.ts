@@ -191,6 +191,28 @@ export interface MapEvent {
 
 export type MapEventListener = (event: MapEvent) => void;
 
+/**
+ * `transformStyle(previous, next)` makes the style drawn from the one asked for and the one drawn
+ * before (undefined at first), as MapLibre's `setStyle` option: say, to keep overlays across basemaps.
+ */
+export interface StyleSwapOptions {
+  transformStyle?: (previous: StyleSpecification | undefined, next: StyleSpecification) => StyleSpecification;
+}
+
+/**
+ * A layer's paint for one feature (`Map.evaluatePaint`): `color` (and the circle `stroke`, the label
+ * `halo`) as straight RGBA, `width` of lines, `radius` and `strokeWidth` of circles, `haloWidth` of labels.
+ */
+export interface PaintValues {
+  color: number[];
+  width: number;
+  radius: number;
+  stroke: number[];
+  strokeWidth: number;
+  halo: number[];
+  haloWidth: number;
+}
+
 /** Where a tracked place is: CSS pixels from the canvas's top-left corner, and whether the terrain hides it. */
 export interface ScreenPosition {
   x: number;
@@ -381,11 +403,20 @@ export class Map {
    * and layers that stay alike keep their tiles; the rest load again while the old ones
    * are drawn. A style that cannot be drawn fires `error` and the current one stays.
    */
-  setStyle(style: StyleSpecification | string): this {
+  setStyle(style: StyleSpecification | string, options: StyleSwapOptions = {}): this {
     const request = ++this.#styleRequest;
     const use = (s: StyleSpecification, base: URL) => {
       if (request !== this.#styleRequest || this.#removed) return;
-      const next = edit.keepGeoJSONData(this.#style, edit.copy(s));
+      let swapped = s;
+      if (options.transformStyle) {
+        try {
+          swapped = options.transformStyle(edit.copy(this.#style) ?? undefined, edit.copy(s)!);
+        } catch (err) {
+          this.#fail(err instanceof Error ? err : new Error(String(err)));
+          return;
+        }
+      }
+      const next = edit.keepGeoJSONData(this.#style, edit.copy(swapped));
       this.#base = base;
       if (this.#engine) this.#apply(next);
       else this.#create(next);
@@ -712,6 +743,15 @@ export class Map {
     }
     this.#last = null;
     this.#emit("moveend", undefined, e);
+  }
+
+  /**
+   * Layer `id`'s paint as drawn now (at this zoom) for a feature with `properties`: colors as straight
+   * RGBA in 0 to 1 with the layer's opacity applied, sizes in CSS pixels; null for an unknown layer or
+   * before the map has started. Legends read it.
+   */
+  evaluatePaint(id: string, properties: Record<string, unknown> = {}): PaintValues | null {
+    return this.#engine ? engine.map_paint_at(this.#engine, id, properties) : null;
   }
 
   /** The attributions MapLibre's AttributionControl would show now: of the sources the layers shown or the terrain use. */
