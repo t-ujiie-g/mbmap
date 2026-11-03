@@ -93,6 +93,9 @@ async function loadDem({ url, z, bounds, encoding }) {
     return Math.min(n - 1, Math.max(0, Math.floor((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n)));
   };
   const [x0, x1, y0, y1] = [tx(bounds[0]), tx(bounds[2]), ty(bounds[3]), ty(bounds[1])];
+  // Checked before any fetch: tiles are at least 256 px, so a grid takes at most 16 a side.
+  const most = MAX_GRID_SIDE / 256;
+  if (x1 - x0 + 1 > most || y1 - y0 + 1 > most) throw new Error(`${(x1 - x0 + 1) * (y1 - y0 + 1)} DEM tiles at zoom ${z} are too many for one grid`);
   const tiles = [];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) tiles.push({ x, y, href: url.replace("{z}", z).replace("{x}", x).replace("{y}", y) });
   check(tiles.every((t) => /^https?:/.test(t.href)));

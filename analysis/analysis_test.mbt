@@ -299,5 +299,6 @@ test "mercator_cell places a point in a mosaic of Web Mercator tiles" {
   let (x, y) = @analysis.mercator_cell(
     trig, 139.7671, 35.6812, 14, 14552, 6451, 256,
   )
-  assert_true(x >= 0 && x < 256 && y >= 0 && y < 256)
+  assert_true((x - 244.74055111128837).abs() < 1.0e-9)
+  assert_true((y - 169.1885011838749).abs() < 1.0e-9)
 }

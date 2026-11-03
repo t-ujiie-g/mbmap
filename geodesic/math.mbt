@@ -206,7 +206,7 @@ fn atan2d(trig : Trig, y : Double, x : Double) -> Double {
 
 ///|
 /// GeographicLib's `Accumulator`: a sum held to twice the precision.
-struct Accumulator {
+priv struct Accumulator {
   mut s : Double
   mut t : Double
 }

@@ -43,10 +43,15 @@ export function counterClockwise(ring: Position[]): Position[] {
   return twice < 0 ? [...ring].reverse() : ring;
 }
 
-/** `geometry` with its coordinates rounded to `precision` decimals and its rings counter-clockwise. */
+/** `geometry` with its coordinates rounded to `precision` decimals (0 to 15), outer rings counter-clockwise and holes clockwise (RFC 7946). */
 export function finished(geometry: { type: string; coordinates: unknown }, precision = PRECISION): { type: string; coordinates: unknown } {
-  const round = (p: Position): Position => [Number(p[0].toFixed(precision)), Number(p[1].toFixed(precision))];
-  const polygon = (rings: Position[][]) => rings.map((r) => counterClockwise(r.map(round)));
+  const digits = Math.max(0, Math.min(15, Math.round(precision)));
+  const round = (p: Position): Position => [Number(p[0].toFixed(digits)), Number(p[1].toFixed(digits))];
+  const polygon = (rings: Position[][]) =>
+    rings.map((r, i) => {
+      const ccw = counterClockwise(r.map(round));
+      return i === 0 ? ccw : [...ccw].reverse();
+    });
   const c = geometry.coordinates as any;
   const coordinates = {
     Point: () => round(c),

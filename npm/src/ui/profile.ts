@@ -64,10 +64,10 @@ class ProfileStore extends Store<ProfileState> implements Profile {
     this.set({ positions, loading: true, error: null, active: -1 });
     const { measure, elevation, samples = 200 } = this.#options;
     try {
-      const whole = await measure(positions, { closed: false, step: Infinity });
+      const whole = await measure(positions, { closed: false });
       const step = Math.max(whole.length / samples, 0.01);
       const path = (await measure(positions, { closed: false, step })).path ?? positions;
-      const [along, heights] = await Promise.all([measure(path, { closed: false, step: Infinity }), elevation(path)]);
+      const [along, heights] = await Promise.all([measure(path, { closed: false }), elevation(path)]);
       // A later line, or a clear, has replaced this one.
       if (ticket !== this.#ticket) return;
       const elevations = Array.from(heights);

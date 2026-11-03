@@ -22,7 +22,7 @@ function input(coords) {
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
-const isCoords = (c) => c instanceof ArrayBuffer && c.byteLength % 16 === 0;
+const isCoords = (c) => c instanceof ArrayBuffer && c.byteLength % 16 === 0 && new Float64Array(c).every(Number.isFinite);
 const isPoint = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
 
 const OPS = {
@@ -39,7 +39,7 @@ const OPS = {
     return f64s(wasm.circle(center[0], center[1], radius, steps));
   },
   measure({ coords, closed, step }) {
-    check(isCoords(coords) && typeof closed === "boolean" && (step === undefined || step > 0));
+    check(isCoords(coords) && typeof closed === "boolean" && (step === undefined || (typeof step === "number" && step > 0)));
     input(coords);
     const measured = f64s(wasm.measure_path(closed ? 1 : 0));
     if (step === undefined) return { measured };

@@ -1,0 +1,11 @@
+{
+  "env": {
+    "browser": "chromium 156.0.8078.4",
+    "viewport": "1280x800",
+    "moves": 40
+  },
+  "shapes": 500,
+  "vertices": 16500,
+  "median": 49.375,
+  "p95": 49.71999999880791
+}

@@ -13,8 +13,6 @@ pub const WGS84_F : Double = 0.0033528106647474805
 // Errors
 
 // Types and methods
-type Accumulator
-
 pub struct Geodesic {
   a : Double
   f : Double

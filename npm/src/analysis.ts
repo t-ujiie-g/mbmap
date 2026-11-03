@@ -351,7 +351,8 @@ export async function loadDem(tiles: string, options: DemOptions): Promise<DemGr
 
 /**
  * The elevations at `positions` from the DEM tiles of `tiles` (`encoding`, up to `maxZoom`, default
- * 14): the tiles around them at the deepest zoom that fits one grid, sampled as `DemGrid.sample`.
+ * 14): the tiles around them at the deepest zoom that fits one grid, sampled as `DemGrid.sample`
+ * (a tile the server does not have counts as 0 m, as in `loadDem`).
  */
 export async function sampleDem(
   tiles: string,

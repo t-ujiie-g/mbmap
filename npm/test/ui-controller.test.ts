@@ -51,3 +51,21 @@ test("Store: destroy stops listening to the map and drops listeners", () => {
   c.rename("after");
   assert.equal(calls, 0);
 });
+
+test("addOverlay: sources and overlay layers once, removed in reverse once", async () => {
+  const { addOverlay, OVERLAY } = await import("../src/ui/overlays.ts");
+  const log: string[] = [];
+  const sources = new Set<string>();
+  const map = {
+    getSource: (id: string) => (sources.has(id) ? {} : undefined),
+    addSource: (id: string) => (sources.add(id), log.push(`+s ${id}`)),
+    addLayer: (l: { id: string; metadata: Record<string, unknown> }) => log.push(`+l ${l.id} ${l.metadata[OVERLAY]}`),
+    removeLayer: (id: string) => log.push(`-l ${id}`),
+    removeSource: (id: string) => (sources.delete(id), log.push(`-s ${id}`)),
+  };
+  const remove = addOverlay(map, ["a", "b"], [{ id: "x", source: "a" }, { id: "y", source: "b" }]);
+  addOverlay(map, ["a", "b"], [{ id: "x" }]);
+  remove();
+  remove();
+  assert.deepEqual(log, ["+s a", "+s b", "+l x true", "+l y true", "-l y", "-l x", "-s a", "-s b"]);
+});

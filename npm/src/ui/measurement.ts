@@ -3,6 +3,7 @@
 // passed by the page, so `mbmap/ui` loads no geodesic code itself.
 import type { Map } from "../index";
 import { Store, type Controller } from "./controller";
+import { addOverlay } from "./overlays";
 
 /** `[longitude, latitude]` in degrees. */
 export type Position = [number, number];
@@ -10,7 +11,7 @@ export type Position = [number, number];
 /** What `mbmap/geodesic`'s `measure` is. */
 export type Measure = (
   positions: Position[],
-  options: { closed: boolean; step: number },
+  options: { closed: boolean; step?: number },
 ) => Promise<{ length: number; area: number; distances: ArrayLike<number>; path?: Position[] }>;
 
 /**
@@ -55,6 +56,7 @@ class MeasurementStore extends Store<MeasurementState> implements Measurement {
   #options: MeasurementOptions;
   #id: string;
   #dblclick: boolean | null = null;
+  #unlayer: (() => void) | null = null;
   #dirty = false;
   #running = false;
 
@@ -86,14 +88,12 @@ class MeasurementStore extends Store<MeasurementState> implements Measurement {
   start(mode: "distance" | "area"): void {
     const map = this.#map;
     const id = this.#id;
-    if (!map.getSource(id)) {
-      const color = this.#options.color ?? "#e4572e";
-      const metadata = { "mbmap:overlay": true };
-      map.addSource(id, { type: "geojson", data: EMPTY });
-      map.addLayer({ id: `${id}-fill`, type: "fill", source: id, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": color, "fill-opacity": 0.15 }, metadata });
-      map.addLayer({ id: `${id}-line`, type: "line", source: id, filter: ["!=", ["geometry-type"], "Point"], paint: { "line-color": color, "line-width": 2.5 }, metadata });
-      map.addLayer({ id: `${id}-vertex`, type: "circle", source: id, filter: ["==", ["geometry-type"], "Point"], paint: { "circle-color": "#fff", "circle-radius": 4, "circle-stroke-color": color, "circle-stroke-width": 2 }, metadata });
-    }
+    const color = this.#options.color ?? "#e4572e";
+    this.#unlayer ??= addOverlay(map, [id], [
+      { id: `${id}-fill`, type: "fill", source: id, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": color, "fill-opacity": 0.15 } },
+      { id: `${id}-line`, type: "line", source: id, filter: ["!=", ["geometry-type"], "Point"], paint: { "line-color": color, "line-width": 2.5 } },
+      { id: `${id}-vertex`, type: "circle", source: id, filter: ["==", ["geometry-type"], "Point"], paint: { "circle-color": "#fff", "circle-radius": 4, "circle-stroke-color": color, "circle-stroke-width": 2 } },
+    ]);
     this.#dblclick ??= map.doubleClickZoom.isEnabled();
     map.doubleClickZoom.disable();
     this.#update({ mode, positions: [], pointer: null, finished: false });
@@ -123,10 +123,8 @@ class MeasurementStore extends Store<MeasurementState> implements Measurement {
 
   #remove(): void {
     this.#restore();
-    const map = this.#map;
-    if (!map.getSource(this.#id)) return;
-    for (const l of ["vertex", "line", "fill"]) map.removeLayer(`${this.#id}-${l}`);
-    map.removeSource(this.#id);
+    this.#unlayer?.();
+    this.#unlayer = null;
   }
 
   /** Applies `patch` and measures again: one measure at a time, then once more for what came meanwhile. */
