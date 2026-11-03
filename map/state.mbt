@@ -8,9 +8,10 @@ extern "js" fn state_value(s : FeatureState) -> JsValue =
   #|(s) => s
 
 ///|
-/// A request for the ranges of stated features in one tile: its source, the
-/// tile, the request its bytes came with, and the ids asked for.
+/// A request for the ranges of stated features in one tile: the worker asked,
+/// its source, the tile, the request its bytes came with, and the ids asked for.
 priv struct RangePart {
+  worker : Int32
   source : String
   key : Int64
   request : Int32
@@ -105,12 +106,12 @@ fn Map::ask_ranges(self : Map, src : SourceTiles, e : TileEntry) -> Unit {
     return
   }
   let (worker, request) = e.kept
-  guard worker >= 0 else { return }
+  guard worker >= 0 && !self.failed_workers[worker] else { return }
   let part = self.next_query
   self.next_query += 1
   self.waiting.set(
     part,
-    Ranges({ source: src.source.id, key: e.id.key(), request, ids, }),
+    Ranges({ worker, source: src.source.id, key: e.id.key(), request, ids, }),
   )
   self.ranges_waiting += 1
   post_ranges(self.workers[worker], part, request, FixedArray::from_array(ids))

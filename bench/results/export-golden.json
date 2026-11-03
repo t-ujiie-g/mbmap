@@ -24,7 +24,7 @@
       ],
       "maxSize": 300,
       "split": {
-        "differ": 5009,
+        "differ": 5007,
         "mean": 0.001,
         "p99": 0,
         "max": 11
@@ -45,7 +45,7 @@
       ],
       "maxSize": 256,
       "split": {
-        "differ": 502,
+        "differ": 501,
         "mean": 0,
         "p99": 0,
         "max": 34
@@ -66,7 +66,7 @@
       ],
       "maxSize": 333,
       "split": {
-        "differ": 1324,
+        "differ": 1330,
         "mean": 0,
         "p99": 0,
         "max": 16
@@ -86,7 +86,7 @@
         1200
       ],
       "maxSize": 700,
-      "differ": 18390,
+      "differ": 18217,
       "mean": 0.005,
       "p99": 0,
       "max": 1

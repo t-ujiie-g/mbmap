@@ -81,6 +81,17 @@ export function createGeoJSONTiles(
   let nextTile = 0;
   let nextQuery = 0;
   let nextSource = 0;
+  // Why the worker stopped (null while it runs): tiles asked from then on are empty, cluster queries refused.
+  let stopped: string | null = null;
+  const stop = (why: string): string => {
+    const message = (stopped ??= `mbmap: ${why}`);
+    worker.terminate();
+    for (const resolve of pending.values()) resolve(null);
+    pending.clear();
+    for (const [, reject] of asked.values()) reject(new Error(message));
+    asked.clear();
+    return message;
+  };
   worker.onmessage = (e: MessageEvent) => {
     const msg = e.data;
     if (msg?.type === "tile") {
@@ -96,6 +107,16 @@ export function createGeoJSONTiles(
       onError(new Error(`mbmap: GeoJSON source ${id}: ${msg.message}`));
     }
   };
+  // A worker that fails to load or run fails what it was asked rather than leaving it waiting.
+  const fail = (why: string) => {
+    if (stopped !== null) return;
+    onError(new Error(stop(`GeoJSON: ${why}`)));
+  };
+  worker.onerror = (e: ErrorEvent) => {
+    e.preventDefault();
+    fail(e.message || "the worker failed");
+  };
+  worker.onmessageerror = () => fail("a message could not be read");
   worker.postMessage({ type: "init", wasm: wasmUrl(urls.wasmUrl ?? new URL("./geojson.wasm", import.meta.url), page) });
   const load = (s: GeoJSONSource, n: number) => {
     const options = { type: "load", source: n, ...loadOptions(s.spec) };
@@ -115,7 +136,7 @@ export function createGeoJSONTiles(
   const tiles: GeoJSONTiles = {
     tile(source, z, x, y) {
       const l = loaded.get(source);
-      if (l === undefined) return Promise.resolve(null);
+      if (l === undefined || stopped !== null) return Promise.resolve(null);
       const id = nextTile++;
       return new Promise((resolve) => {
         pending.set(id, resolve);
@@ -145,17 +166,14 @@ export function createGeoJSONTiles(
       return new Promise((resolve, reject) => {
         const l = loaded.get(source);
         if (l === undefined) throw new Error(`mbmap: source "${source}" is not a GeoJSON source`);
+        if (stopped !== null) throw new Error(stopped);
         const id = nextQuery++;
         worker.postMessage({ type: "cluster", id, source: l.n, ...clusterArgs(query) });
         asked.set(id, [resolve, reject]);
       });
     },
     terminate() {
-      worker.terminate();
-      for (const resolve of pending.values()) resolve(null);
-      pending.clear();
-      for (const [, reject] of asked.values()) reject(new Error("mbmap: the map was removed"));
-      asked.clear();
+      stop("the map was removed");
     },
   };
   tiles.set(sources, base);

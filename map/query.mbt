@@ -25,10 +25,11 @@ priv enum Waiting {
 }
 
 ///|
-/// One tile's part of a query: the query, the tile, and the style its layer
-/// indices refer to (None for a source query, whose hits name no layer).
+/// One tile's part of a query: the query, the worker asked, the tile, and the
+/// style its layer indices refer to (None for a source query, whose hits name no layer).
 priv struct QueryPart {
   query : Int32
+  worker : Int32
   tile : @core.TileId
   style : @style.Style?
 }
@@ -119,10 +120,10 @@ fn Map::send_part(
   style : @style.Style?,
 ) -> Bool {
   let (worker, tile) = entry.kept
-  guard worker >= 0 else { return false }
+  guard worker >= 0 && !self.failed_workers[worker] else { return false }
   let part = self.next_query
   self.next_query += 1
-  self.waiting.set(part, Part({ query, tile: entry.id, style, }))
+  self.waiting.set(part, Part({ query, worker, tile: entry.id, style, }))
   q.left += 1
   let id = entry.id
   post_query(
