@@ -244,7 +244,6 @@ fn Map::draw_background_pattern(self : Map, layer : @style.StyleLayer) -> Unit {
     return
   }
   let z = t.tile_zoom(0, @core.MAX_TILE_ZOOM)
-  let c = p.color
   for id in t.covering_tiles(0, z) {
     let matrix = t.tile_matrix(id, @core.TILE_EXTENT)
     let matrix = match self.window {
@@ -256,7 +255,7 @@ fn Map::draw_background_pattern(self : Map, layer : @style.StyleLayer) -> Unit {
       pos,
       pattern_tile(t, id),
       p.opacity,
-      [c.r, c.g, c.b, c.a],
+      rgba_of(p.color),
     )
   }
 }

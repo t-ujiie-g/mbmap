@@ -1,6 +1,6 @@
 ///|
 test "LineAtlas writes MapLibre's dash rows" {
-  let a = @render_webgl2.LineAtlas::new()
+  let a = LineAtlas::new()
   // Hashes of the whole atlas after each pattern, from MapLibre 6.16's LineAtlas.
   let cases : Array[(Array[Double], Bool, Int32, Int32, Double, Int64)] = [
     ([2, 1], false, 0, 0, 3, 543034346),
@@ -27,17 +27,15 @@ test "LineAtlas writes MapLibre's dash rows" {
   assert_eq(a.dash([2, 1], false).map(e => e.y), Some(0))
   assert_true(!a.take_dirty())
   assert_true(a.dash([], false) is None)
-  let long = Array::make(@render_webgl2.MAX_DASH_PARTS + 1, 1.0)
+  let long = Array::make(MAX_DASH_PARTS + 1, 1.0)
   assert_true(a.dash(long, false) is None)
-  assert_true(
-    a.dash(long[:@render_webgl2.MAX_DASH_PARTS].to_owned(), false) is Some(_),
-  )
+  assert_true(a.dash(long[:MAX_DASH_PARTS].to_owned(), false) is Some(_))
 }
 
 ///|
 test "LineAtlas refuses patterns once full" {
-  let a = @render_webgl2.LineAtlas::new()
-  for i in 0..<(@render_webgl2.LINE_ATLAS_HEIGHT / 15) {
+  let a = LineAtlas::new()
+  for i in 0..<(LINE_ATLAS_HEIGHT / 15) {
     assert_true(a.dash([i.to_double() + 1.0, 1], true) is Some(_))
   }
   assert_true(a.dash([100, 1], true) is None)

@@ -218,7 +218,7 @@ fn Map::draw_layer(
           m.mesh,
           at,
           dpr,
-          [p.r, p.g, p.b, p.a],
+          p.rgba(),
           p.halo,
           p.halo_width * dpr,
           height_scale~,
@@ -329,10 +329,7 @@ fn Map::draw_hillshade(
   let ctx = JsProps::none()
   let direction = number_or(h.direction.eval(zoom, ctx), 335.0) +
     (if h.viewport { self.transform.camera.bearing } else { 0.0 })
-  fn rgba(e : @style.Expr) -> FixedArray[Double] {
-    let c = color_of(e, zoom, ctx)
-    [c.r, c.g, c.b, c.a]
-  }
+  let rgba = (e : @style.Expr) => rgba_of(color_of(e, zoom, ctx))
   self.renderer.draw_hillshade(
     mesh,
     at,
@@ -389,7 +386,7 @@ fn Map::draw_frame(
     let shared = paint_of(layer, zoom, JsProps::none())
     if layer.heatmap is Some(h) {
       let draws = draws_of.get(layer.source).unwrap_or([])
-      self.draw_heatmap(index, h, shared, draws, dpr, 0.25)
+      self.draw_heatmap(index, h, shared, draws, dpr, HEATMAP_SCREEN_SCALE)
       continue
     }
     if layer.extrusion is Some(e) {
@@ -418,9 +415,7 @@ fn Map::draw_frame(
       continue
     }
     let draws = draws_of.get(layer.source).unwrap_or([])
-    for d in draws {
-      self.draw_icons(index, layer, d, dpr, height_scale)
-    }
+    self.draw_icons(index, layer, draws, dpr, height_scale)
     for d in draws {
       self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
     }

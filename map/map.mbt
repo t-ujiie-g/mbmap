@@ -142,6 +142,7 @@ pub struct Map {
   priv mut placed_camera : @core.Camera?
   priv mut placed_at : Double
   priv mut placement_round : Int32
+  priv grid : @label.Grid
   priv mut drawn : @hashmap.HashMap[String, Array[Draw]]
   priv waiting : @hashmap.HashMap[Int32, Waiting]
   priv mut ranges_waiting : Int32
@@ -264,6 +265,7 @@ pub fn Map::new(
     placed_camera: None,
     placed_at: 0.0,
     placement_round: 0,
+    grid: @label.Grid::new(0.0, 0.0),
     drawn: @hashmap.HashMap([]),
     waiting: @hashmap.HashMap([]),
     ranges_waiting: 0,

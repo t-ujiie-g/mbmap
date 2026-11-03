@@ -71,7 +71,10 @@ fn Map::icon_set(self : Map, l : JsValue, count : Int32) -> IconSet? {
     shown: FixedArray::make(count, false),
     changed: false,
     drawn: -1,
-    glyphs: FixedArray::make(get_int(ic, "count") / 6 * 3, HIDDEN_GLYPH),
+    glyphs: FixedArray::make(
+      get_int(ic, "count") / QUAD_INDICES * 3,
+      HIDDEN_GLYPH,
+    ),
   })
 }
 
@@ -110,8 +113,7 @@ fn joint(
 /// Puts label `i`'s icon box (as recorded) in the grid if `placed` and shows
 /// the icon; MapLibre shows one that may overlap even off the grid, where
 /// queries do not find it.
-fn Map::show_icon(
-  _self : Map,
+fn show_icon(
   grid : @label.Grid,
   s : LabelSet,
   ic : IconSet,
@@ -119,14 +121,8 @@ fn Map::show_icon(
   placed : Bool,
   visible : Bool,
 ) -> Unit {
-  let b = i * BOX_FLOATS + 4
   if placed && !ic.ignore_placement {
-    grid.insert(
-      s.boxes[b] + VIEWPORT_PADDING,
-      s.boxes[b + 1] + VIEWPORT_PADDING,
-      s.boxes[b + 2] + VIEWPORT_PADDING,
-      s.boxes[b + 3] + VIEWPORT_PADDING,
-    )
+    insert_box(grid, s, i, 4)
   }
   let always = ic.allow_overlap &&
     (s.allow_overlap || !s.has_text || ic.text_optional)
@@ -138,13 +134,13 @@ fn Map::show_icon(
 }
 
 ///|
-/// Draws the shown icons of style layer `index` in one tile, before any of the
-/// layer's text (MapLibre draws a symbol layer's icons, then its text).
+/// Draws the shown icons of style layer `index` in the tiles of `draws`, before
+/// any of the layer's text (MapLibre draws a symbol layer's icons, then its text).
 fn Map::draw_icons(
   self : Map,
   index : Int32,
   layer : @style.StyleLayer,
-  d : Draw,
+  draws : Array[Draw],
   dpr : Double,
   height_scale : Double,
 ) -> Unit {
@@ -158,58 +154,57 @@ fn Map::draw_icons(
     -1.0
   }
   let pitch = t.camera.pitch
-  for m in d.meshes {
-    guard m.layer == index &&
-      m.labels is Some({ icon: Some(ic), .. }) &&
-      ic.drawn != self.frame_count else {
-      continue
+  for d in draws {
+    for m in d.meshes {
+      guard m.layer == index &&
+        m.labels is Some({ icon: Some(ic), .. }) &&
+        ic.drawn != self.frame_count else {
+        continue
+      }
+      // An ancestor standing in for several tiles is drawn once.
+      ic.drawn = self.frame_count
+      let s = m.labels.unwrap()
+      let along = s.line is Some(_) && ic.rotate_with_map
+      if s.line is Some(l) {
+        let tile_px = d.at.units_per_pixel * dpr
+        self.lay_line_glyphs(m.mesh, d.at, s, l, tile_px, height_scale)
+      }
+      let ctx = m.props.unwrap_or(JsProps::none())
+      let c = (e : @style.Expr) => rgba_of(color_of(e, zoom, ctx))
+      let n = (e : @style.Expr, d : Double) => number_or(e.eval(zoom, ctx), d)
+      self.renderer.draw_icons(
+        ic.mesh,
+        d.at,
+        dpr,
+        size~,
+        perspective=!ic.offset,
+        pitch=ic.pitch_with_map,
+        rotate=ic.rotate_with_map,
+        angle=if ic.pitch_with_map && !ic.rotate_with_map {
+          t.camera.bearing * @math.PI / 180.0
+        } else {
+          0.0
+        },
+        sdf=ic.sdf,
+        // MapLibre samples icons as they are unless they are scaled or turned.
+        linear=ic.sdf ||
+          pitch != 0.0 ||
+          ic.pitch_with_map ||
+          size != 1.0 ||
+          !ic.sharp,
+        opacity=n(paint.opacity, 1.0),
+        color=c(paint.color),
+        halo=c(paint.halo_color),
+        halo_width=n(paint.halo_width, 0.0),
+        halo_blur=n(paint.halo_blur, 0.0),
+        gamma_scale=if ic.pitch_with_map {
+          @math.cos(pitch * @math.PI / 180.0) * d.at.center_depth
+        } else {
+          1.0
+        },
+        height_scale~,
+        along~,
+      )
     }
-    // An ancestor standing in for several tiles is drawn once.
-    ic.drawn = self.frame_count
-    let s = m.labels.unwrap()
-    let along = s.line is Some(_) && ic.rotate_with_map
-    if s.line is Some(l) {
-      let tile_px = d.at.units_per_pixel * dpr
-      self.lay_line_glyphs(m.mesh, d.at, s, l, tile_px, height_scale)
-    }
-    let ctx = m.props.unwrap_or(JsProps::none())
-    let c = fn(e : @style.Expr) -> FixedArray[Double] {
-      let v = color_of(e, zoom, ctx)
-      [v.r, v.g, v.b, v.a]
-    }
-    let n = (e : @style.Expr, d : Double) => number_or(e.eval(zoom, ctx), d)
-    self.renderer.draw_icons(
-      ic.mesh,
-      d.at,
-      dpr,
-      size~,
-      perspective=!ic.offset,
-      pitch=ic.pitch_with_map,
-      rotate=ic.rotate_with_map,
-      angle=if ic.pitch_with_map && !ic.rotate_with_map {
-        t.camera.bearing * @math.PI / 180.0
-      } else {
-        0.0
-      },
-      sdf=ic.sdf,
-      // MapLibre samples icons as they are unless they are scaled or turned.
-      linear=ic.sdf ||
-        pitch != 0.0 ||
-        ic.pitch_with_map ||
-        size != 1.0 ||
-        !ic.sharp,
-      opacity=n(paint.opacity, 1.0),
-      color=c(paint.color),
-      halo=c(paint.halo_color),
-      halo_width=n(paint.halo_width, 0.0),
-      halo_blur=n(paint.halo_blur, 0.0),
-      gamma_scale=if ic.pitch_with_map {
-        @math.cos(pitch * @math.PI / 180.0) * d.at.center_depth
-      } else {
-        1.0
-      },
-      height_scale~,
-      along~,
-    )
   }
 }

@@ -232,3 +232,28 @@ test "text along lines turned to the viewport or offset, icons offset or fitted 
     _ => fail("expected an unknown anchor to be invalid")
   }
 }
+
+///|
+test "anchors round-trip through their codes and align as MapLibre's" {
+  let all : Array[@style.TextAnchor] = [
+    Center,
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+  ]
+  for i, a in all {
+    assert_eq(a.code(), i)
+    assert_eq(@style.TextAnchor::from_code(i), a)
+  }
+  assert_eq(@style.TextAnchor::from_code(9), Center)
+  assert_eq(@style.TextAnchor::from_code(-1), Center)
+  assert_eq(@style.TextAnchor::Center.align(), (0.5, 0.5))
+  assert_eq(@style.TextAnchor::TopRight.align(), (1.0, 0.0))
+  assert_eq(@style.TextAnchor::BottomLeft.align(), (0.0, 1.0))
+  assert_eq(@style.TextAnchor::Bottom.align(), (0.5, 1.0))
+}

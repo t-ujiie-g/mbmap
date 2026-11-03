@@ -131,7 +131,8 @@ pub fn Renderer::release_paint(self : Renderer, buffer : PaintBuffer) -> Unit {
 }
 
 ///|
-/// Binds `mesh` and the first `count` paint slots to `program`.
+/// Binds `mesh` and the first `count` paint slots to `program` (`@style.SLOT_*`:
+/// 2 color and opacity, 3 also size, 4 also stroke color, 6 all).
 fn Renderer::bind(
   self : Renderer,
   program : String,

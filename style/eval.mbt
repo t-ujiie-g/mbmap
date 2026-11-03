@@ -423,13 +423,13 @@ fn Expr::any(self : Expr, pred : (Expr) -> Bool) -> Bool {
 
 ///|
 /// Whether the expression reads `line-progress`.
-pub fn Expr::reads_line_progress(self : Expr) -> Bool {
+fn Expr::reads_line_progress(self : Expr) -> Bool {
   self.any(e => e is LineProgress)
 }
 
 ///|
 /// Whether the expression reads `heatmap-density`.
-pub fn Expr::reads_heatmap_density(self : Expr) -> Bool {
+fn Expr::reads_heatmap_density(self : Expr) -> Bool {
   self.any(e => e is HeatmapDensity)
 }
 

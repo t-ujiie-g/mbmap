@@ -3,12 +3,12 @@
 /// `GridIndex`): a cell lists boxes by their offset in `boxes`, circles as -1 -
 /// their offset in `circles` (x, y, radius).
 pub struct Grid {
-  priv width : Double
-  priv height : Double
-  priv cols : Int32
-  priv rows : Int32
+  priv mut width : Double
+  priv mut height : Double
+  priv mut cols : Int32
+  priv mut rows : Int32
   priv cell : Double
-  priv cells : FixedArray[Array[Int32]]
+  priv mut cells : FixedArray[Array[Int32]]
   priv boxes : Array[Double]
   priv circles : Array[Double]
 }
@@ -32,6 +32,27 @@ pub fn Grid::new(
     boxes: [],
     circles: [],
   }
+}
+
+///|
+/// Empties the grid and sizes it to a `width` x `height` viewport, keeping its
+/// cells' capacity when the cell count stays.
+pub fn Grid::reset(self : Grid, width : Double, height : Double) -> Unit {
+  let cols = @cmp.maximum(1, (width / self.cell).ceil().to_int())
+  let rows = @cmp.maximum(1, (height / self.cell).ceil().to_int())
+  if cols * rows == self.cells.length() {
+    for c in self.cells {
+      c.clear()
+    }
+  } else {
+    self.cells = FixedArray::makei(cols * rows, _ => [])
+  }
+  self.width = width
+  self.height = height
+  self.cols = cols
+  self.rows = rows
+  self.boxes.clear()
+  self.circles.clear()
 }
 
 ///|

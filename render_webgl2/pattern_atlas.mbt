@@ -22,9 +22,7 @@ pub struct PatternPosition {
 
 ///|
 /// The size the pattern repeats at, in CSS pixels.
-pub fn PatternPosition::display_size(
-  self : PatternPosition,
-) -> (Double, Double) {
+fn PatternPosition::display_size(self : PatternPosition) -> (Double, Double) {
   (
     (self.br.0 - self.tl.0).to_double() / self.pixel_ratio,
     (self.br.1 - self.tl.1).to_double() / self.pixel_ratio,
@@ -102,7 +100,7 @@ pub fn PatternAtlas::get(
 
 ///|
 /// Whether the pixels changed since the last call.
-pub fn PatternAtlas::take_dirty(self : PatternAtlas) -> Bool {
+fn PatternAtlas::take_dirty(self : PatternAtlas) -> Bool {
   let d = self.dirty
   self.dirty = false
   d

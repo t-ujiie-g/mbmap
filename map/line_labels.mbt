@@ -14,10 +14,20 @@ const LINE_LEVELS : Int32 = 3
 const HIDDEN_GLYPH : Double = -1.0e9
 
 ///|
+/// MapLibre's `ONE_EM`: glyph units per em, as `glyphOffsets` count them.
+const ONE_EM : Double = 24.0
+
+///|
+/// How far past the viewport, in CSS px, an anchor may lie and still have its
+/// glyphs laid (MapLibre's 256 px clipping buffer in `updateLineLabels`).
+const CLIP_BUFFER_PX : Double = 256.0
+
+///|
 /// The labels along lines of a symbol mesh: `meta` (`LINE_FLOATS` per label),
 /// `lines` (x, y in tile units), each glyph's `offsets` along its line (glyph
-/// units, 24 an em), and where each glyph quad is drawn (`glyphs`: x, y in tile
-/// units, angle), laid out for camera `laid` at placement round `laid_round`.
+/// units, `ONE_EM` an em), and where each glyph quad is drawn (`glyphs`: x, y in
+/// tile units, angle), laid out for camera `laid` at placement round `laid_round`.
+/// `LineSet::along` leaves its point in `at_x`, `at_y` and `at_angle`.
 priv struct LineSet {
   meta : FixedArray[Double]
   lines : FixedArray[Double]
@@ -26,11 +36,10 @@ priv struct LineSet {
   glyphs : FixedArray[Double]
   mut laid : @core.Camera?
   mut laid_round : Int32
+  mut at_x : Double
+  mut at_y : Double
+  mut at_angle : Double
 }
-
-///|
-extern "js" fn has(v : JsValue, key : String) -> Bool =
-  #|(v, k) => v[k] != null
 
 ///|
 /// The labels along lines of a symbol entry `l`, if it has them.
@@ -48,13 +57,17 @@ fn line_set(l : JsValue, quads : Int32) -> LineSet? {
     glyphs: FixedArray::make(quads * 3, HIDDEN_GLYPH),
     laid: None,
     laid_round: -1,
+    at_x: 0.0,
+    at_y: 0.0,
+    at_angle: 0.0,
   })
 }
 
 ///|
 /// MapLibre's `placeGlyphAlongLine` in tile units: the point `offset` along the
 /// line of label `i` from its anchor (x, y), backwards with `flip`, and the
-/// line's angle there; `path` gets the points walked past. None past the line's end.
+/// line's angle there, left in `at_x`, `at_y`, `at_angle`; `path` gets the points
+/// walked past. False past the line's end.
 fn LineSet::along(
   self : LineSet,
   i : Int32,
@@ -63,7 +76,7 @@ fn LineSet::along(
   offset : Double,
   flip : Bool,
   path : Array[Double]?,
-) -> (Double, Double, Double)? {
+) -> Bool {
   let m = i * LINE_FLOATS
   let start = self.meta[m + 2].to_int()
   let end = start + self.meta[m + 3].to_int()
@@ -89,7 +102,7 @@ fn LineSet::along(
   while walked + segment <= goal {
     index += dir
     if index < start || index >= end {
-      return None
+      return false
     }
     walked += segment
     px = cx
@@ -109,7 +122,69 @@ fn LineSet::along(
     p.push(gx)
     p.push(gy)
   }
-  Some((gx, gy, angle + @math.atan2(cy - py, cx - px)))
+  self.at_x = gx
+  self.at_y = gy
+  self.at_angle = angle + @math.atan2(cy - py, cx - px)
+  true
+}
+
+///|
+/// The normalized device x of point (x, y) at height `z` of a tile at `at`.
+fn ndc_x(
+  at : @render_webgl2.Placement,
+  x : Double,
+  y : Double,
+  z : Double,
+) -> Double {
+  let (ex, _, _, ew) = at.matrix.apply(x, y, z, 1.0)
+  ex / ew
+}
+
+///|
+/// Whether the line of label `i` runs right to left on screen at its anchor
+/// (x, y) at height `z`: the anchor lies right of the line's next point.
+fn LineSet::backwards(
+  self : LineSet,
+  at : @render_webgl2.Placement,
+  i : Int32,
+  x : Double,
+  y : Double,
+  z : Double,
+) -> Bool {
+  let m = i * LINE_FLOATS
+  let v = self.meta[m + 2].to_int() + self.meta[m + 1].to_int() + 1
+  ndc_x(at, x, y, z) > ndc_x(at, self.lines[v * 2], self.lines[v * 2 + 1], z)
+}
+
+///|
+/// Hides glyph quads `q0..<q0 + n` of `glyphs`.
+fn hide_glyphs(glyphs : FixedArray[Double], q0 : Int32, n : Int32) -> Unit {
+  for k in 0..<n {
+    glyphs[(q0 + k) * 3] = HIDDEN_GLYPH
+  }
+}
+
+///|
+/// Appends the screen point (CSS px) of tile point `k` of `points` at height `z`
+/// to `path`; true if it lies behind the camera.
+fn push_screen(
+  path : Array[Double],
+  at : @render_webgl2.Placement,
+  points : Array[Double],
+  k : Int32,
+  z : Double,
+  w : Double,
+  h : Double,
+) -> Bool {
+  let (cx, cy, _, pw) = at.matrix.apply(
+    points[k * 2],
+    points[k * 2 + 1],
+    z,
+    1.0,
+  )
+  path.push(screen_x(cx, pw, w))
+  path.push(screen_y(cy, pw, h))
+  pw <= 0.0
 }
 
 ///|
@@ -241,32 +316,25 @@ fn Map::place_line_label(
   let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
   let z = s.heights[i] * height_scale
   let (_, _, _, cw) = at.matrix.apply(x, y, z, 1.0)
-  let ratio = 0.5 + 0.5 * at.center_depth / cw
+  let ratio = perspective_ratio(at, cw)
   let m = i * LINE_FLOATS
   let first = l.meta[m + 4].to_int()
-  let glyphs = (f32_at(s.labels, row + LABEL_COUNT) / 6.0).to_int()
-  let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / 24.0 * tile_px
+  let glyphs = quad_at(s.labels, row + LABEL_COUNT)
+  let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / ONE_EM * tile_px
   let (head, tail) = ([], [])
   let mut collided = false
   let mut in_grid = false
   if cw > 0.0 &&
-    l.along(i, x, y, l.offsets[first] * scale, false, Some(head)) is Some(_) &&
-    l.along(i, x, y, l.offsets[first + glyphs - 1] * scale, false, Some(tail))
-    is Some(_) {
+    l.along(i, x, y, l.offsets[first] * scale, false, Some(head)) &&
+    l.along(i, x, y, l.offsets[first + glyphs - 1] * scale, false, Some(tail)) {
     // From the first glyph back past the anchor's vertices to the last.
     let path = []
     let mut behind = false
-    let screen = (k : Int32, p : Array[Double]) => {
-      let (cx, cy, _, pw) = at.matrix.apply(p[k * 2], p[k * 2 + 1], z, 1.0)
-      behind = behind || pw <= 0.0
-      path.push((cx / pw + 1.0) * 0.5 * w)
-      path.push((1.0 - cy / pw) * 0.5 * h)
-    }
     for k = head.length() / 2 - 1; k >= 1; k = k - 1 {
-      screen(k, head)
+      behind = push_screen(path, at, head, k, z, w, h) || behind
     }
     for k in 1..<(tail.length() / 2) {
-      screen(k, tail)
+      behind = push_screen(path, at, tail, k, z, w, h) || behind
     }
     let radius = l.meta[m + 5] * 0.5 * ratio + s.padding
     let (lo_x, lo_y) = (-VIEWPORT_PADDING, -VIEWPORT_PADDING)
@@ -339,8 +407,7 @@ fn Map::place_line_symbol(
     z,
     1.0,
   )
-  let visible = cw > 0.0 &&
-    0.5 + 0.5 * at.center_depth / cw >= MIN_PERSPECTIVE_RATIO
+  let visible = cw > 0.0 && perspective_ratio(at, cw) >= MIN_PERSPECTIVE_RATIO
   let circles = []
   let mut place_text = has_text &&
     self.place_line_label(grid, at, s, l, i, height_scale, tile_px, circles)
@@ -374,7 +441,7 @@ fn Map::place_line_symbol(
     }
   }
   if icon is Some(ic) {
-    self.show_icon(grid, s, ic, i, place_icon, visible)
+    show_icon(grid, s, ic, i, place_icon, visible)
   }
   let show = has_text && place_text
   if show != s.shown[i] {
@@ -405,36 +472,51 @@ fn Map::fits_on_map(
   // Tile units per CSS px of the box, which grows with distance as the text does.
   let k = @cmp.minimum(@cmp.maximum(0.5 + 0.5 * cw / at.center_depth, 0.0), 4.0) *
     tile_px
-  let q = (n : Int32) => {
-    (f32_at(s.labels, row + ICON_COLUMN + n) / unit).to_int().to_double() *
-    unit *
-    k
-  }
-  let xs = [q(0), (q(0) + q(2)) / 2.0, q(2)]
-  let ys = [q(1), (q(1) + q(3)) / 2.0, q(3)]
-  let box = [
-    @double.infinity, @double.infinity, @double.neg_infinity, @double.neg_infinity,
-  ]
+  let box = row + ICON_COLUMN
+  let left = snap(f32_at(s.labels, box), unit) * k
+  let top = snap(f32_at(s.labels, box + 1), unit) * k
+  let right = snap(f32_at(s.labels, box + 2), unit) * k
+  let bottom = snap(f32_at(s.labels, box + 3), unit) * k
+  let mut x0 = @double.infinity
+  let mut y0 = @double.infinity
+  let mut x1 = @double.neg_infinity
+  let mut y1 = @double.neg_infinity
   for a in 0..<3 {
     for c in 0..<3 {
       guard a != 1 || c != 1 else { continue }
-      let (px, py, _, pw) = at.matrix.apply(x + xs[a], y + ys[c], z, 1.0)
-      let sx = (px / pw + 1.0) * 0.5 * t.width + VIEWPORT_PADDING
-      let sy = (1.0 - py / pw) * 0.5 * t.height + VIEWPORT_PADDING
-      box[0] = @cmp.minimum(box[0], sx)
-      box[1] = @cmp.minimum(box[1], sy)
-      box[2] = @cmp.maximum(box[2], sx)
-      box[3] = @cmp.maximum(box[3], sy)
+      let (px, py, _, pw) = at.matrix.apply(
+        x + third(a, left, right),
+        y + third(c, top, bottom),
+        z,
+        1.0,
+      )
+      let sx = screen_x(px, pw, t.width) + VIEWPORT_PADDING
+      let sy = screen_y(py, pw, t.height) + VIEWPORT_PADDING
+      x0 = @cmp.minimum(x0, sx)
+      y0 = @cmp.minimum(y0, sy)
+      x1 = @cmp.maximum(x1, sx)
+      y1 = @cmp.maximum(y1, sy)
     }
   }
-  guard grid.inside(box[0], box[1], box[2], box[3]) &&
-    (overlap || !grid.hits(box[0], box[1], box[2], box[3])) else {
+  guard grid.inside(x0, y0, x1, y1) && (overlap || !grid.hits(x0, y0, x1, y1)) else {
     return false
   }
-  for n in 0..<4 {
-    s.boxes[i * BOX_FLOATS + 4 + n] = box[n] - VIEWPORT_PADDING
-  }
+  let b = i * BOX_FLOATS + 4
+  s.boxes[b] = x0 - VIEWPORT_PADDING
+  s.boxes[b + 1] = y0 - VIEWPORT_PADDING
+  s.boxes[b + 2] = x1 - VIEWPORT_PADDING
+  s.boxes[b + 3] = y1 - VIEWPORT_PADDING
   true
+}
+
+///|
+/// `lo`, the middle of `lo` and `hi`, or `hi` for `k` 0, 1 or 2.
+fn third(k : Int32, lo : Double, hi : Double) -> Double {
+  match k {
+    0 => lo
+    1 => (lo + hi) / 2.0
+    _ => hi
+  }
 }
 
 ///|
@@ -456,67 +538,49 @@ fn Map::lay_line_glyphs(
   }
   l.laid = Some(t.camera)
   l.laid_round = s.round
-  let clip_x = 256.0 / t.width * 2.0 + 1.0
-  let clip_y = 256.0 / t.height * 2.0 + 1.0
+  let clip_x = CLIP_BUFFER_PX / t.width * 2.0 + 1.0
+  let clip_y = CLIP_BUFFER_PX / t.height * 2.0 + 1.0
   for i in 0..<s.count {
     guard s.shown[i] else { continue }
     let row = i * LABEL_FLOATS
-    let q0 = (f32_at(s.labels, row + LABEL_FIRST) / 6.0).to_int()
-    let n = (f32_at(s.labels, row + LABEL_COUNT) / 6.0).to_int()
-    let hide = () => {
-      for k in 0..<n {
-        l.glyphs[(q0 + k) * 3] = HIDDEN_GLYPH
-      }
-    }
-    let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
+    let q0 = quad_at(s.labels, row + LABEL_FIRST)
+    let n = quad_at(s.labels, row + LABEL_COUNT)
+    let x = f32_at(s.labels, row)
+    let y = f32_at(s.labels, row + LABEL_Y)
     let z = s.heights[i] * height_scale
     let (cx, cy, _, cw) = at.matrix.apply(x, y, z, 1.0)
     if cw <= 0.0 || (cx / cw).abs() > clip_x || (cy / cw).abs() > clip_y {
-      hide()
+      hide_glyphs(l.glyphs, q0, n)
       continue
     }
-    let ratio = 0.5 + 0.5 * at.center_depth / cw
-    let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / 24.0 * tile_px
+    let ratio = perspective_ratio(at, cw)
+    let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / ONE_EM * tile_px
     let g0 = l.meta[i * LINE_FLOATS + 4].to_int()
-    let clip = (px : Double, py : Double) => {
-      let (ex, _, _, ew) = at.matrix.apply(px, py, z, 1.0)
-      ex / ew
-    }
     // Text reading right to left on screen is laid out backwards instead.
-    let flip = if !l.keep_upright {
-      Some(false)
-    } else if n > 1 {
-      match
-        (
-          l.along(i, x, y, l.offsets[g0] * scale, false, None),
-          l.along(i, x, y, l.offsets[g0 + n - 1] * scale, false, None),
-        ) {
-        (Some((ax, ay, _)), Some((bx, by, _))) =>
-          Some(clip(ax, ay) > clip(bx, by))
-        _ => None
+    let mut flip = false
+    if l.keep_upright && n > 1 {
+      guard l.along(i, x, y, l.offsets[g0] * scale, false, None) else {
+        hide_glyphs(l.glyphs, q0, n)
+        continue
       }
-    } else {
-      let v = l.meta[i * LINE_FLOATS + 2].to_int() +
-        l.meta[i * LINE_FLOATS + 1].to_int() +
-        1
-      Some(clip(x, y) > clip(l.lines[v * 2], l.lines[v * 2 + 1]))
-    }
-    guard flip is Some(flip) else {
-      hide()
-      continue
+      let (ax, ay) = (l.at_x, l.at_y)
+      guard l.along(i, x, y, l.offsets[g0 + n - 1] * scale, false, None) else {
+        hide_glyphs(l.glyphs, q0, n)
+        continue
+      }
+      flip = ndc_x(at, ax, ay, z) > ndc_x(at, l.at_x, l.at_y, z)
+    } else if l.keep_upright {
+      flip = l.backwards(at, i, x, y, z)
     }
     for k in 0..<n {
-      match l.along(i, x, y, l.offsets[g0 + k] * scale, flip, None) {
-        Some((gx, gy, angle)) => {
-          l.glyphs[(q0 + k) * 3] = gx
-          l.glyphs[(q0 + k) * 3 + 1] = gy
-          l.glyphs[(q0 + k) * 3 + 2] = angle
-        }
-        None => {
-          hide()
-          break
-        }
+      guard l.along(i, x, y, l.offsets[g0 + k] * scale, flip, None) else {
+        hide_glyphs(l.glyphs, q0, n)
+        break
       }
+      let g = (q0 + k) * 3
+      l.glyphs[g] = l.at_x
+      l.glyphs[g + 1] = l.at_y
+      l.glyphs[g + 2] = l.at_angle
     }
   }
   self.renderer.set_glyphs(mesh, l.glyphs)
@@ -524,26 +588,17 @@ fn Map::lay_line_glyphs(
   // An icon is one glyph at its anchor, turned to its segment.
   for i in 0..<s.count {
     guard ic.shown[i] else { continue }
-    let g = (f32_at(s.labels, i * LABEL_FLOATS + ICON_FIRST) / 6.0).to_int() * 3
-    let (x, y) = (
-      f32_at(s.labels, i * LABEL_FLOATS),
-      f32_at(s.labels, i * LABEL_FLOATS + LABEL_Y),
-    )
+    let row = i * LABEL_FLOATS
+    let g = quad_at(s.labels, row + ICON_FIRST) * 3
+    let x = f32_at(s.labels, row)
+    let y = f32_at(s.labels, row + LABEL_Y)
     let z = s.heights[i] * height_scale
-    let clip = (px : Double, py : Double) => {
-      let (ex, _, _, ew) = at.matrix.apply(px, py, z, 1.0)
-      ex / ew
-    }
-    let v = l.meta[i * LINE_FLOATS + 2].to_int() +
-      l.meta[i * LINE_FLOATS + 1].to_int() +
-      1
-    let flip = ic.keep_upright &&
-      clip(x, y) > clip(l.lines[v * 2], l.lines[v * 2 + 1])
+    let flip = ic.keep_upright && l.backwards(at, i, x, y, z)
     ic.glyphs[g] = HIDDEN_GLYPH
-    if l.along(i, x, y, 0.0, flip, None) is Some((gx, gy, angle)) {
-      ic.glyphs[g] = gx
-      ic.glyphs[g + 1] = gy
-      ic.glyphs[g + 2] = angle
+    if l.along(i, x, y, 0.0, flip, None) {
+      ic.glyphs[g] = l.at_x
+      ic.glyphs[g + 1] = l.at_y
+      ic.glyphs[g + 2] = l.at_angle
     }
   }
   self.renderer.set_glyphs(ic.mesh, ic.glyphs)

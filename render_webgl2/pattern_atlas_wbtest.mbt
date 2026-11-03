@@ -1,10 +1,6 @@
 ///|
 /// A `w` x `h` image whose pixel (x, y) is (x, y, 7, 255).
-fn ramp_image(
-  w : Int32,
-  h : Int32,
-  ratio~ : Double = 1.0,
-) -> @render_webgl2.StyleImage {
+fn ramp_image(w : Int32, h : Int32, ratio~ : Double = 1.0) -> StyleImage {
   let data = FixedArray::make(w * h * 4, b'\x00')
   for y in 0..<h {
     for x in 0..<w {
@@ -19,18 +15,14 @@ fn ramp_image(
 }
 
 ///|
-fn atlas_pixel(
-  a : @render_webgl2.PatternAtlas,
-  x : Int32,
-  y : Int32,
-) -> (Int32, Int32) {
-  let at = (y * @render_webgl2.PATTERN_ATLAS_WIDTH + x) * 4
+fn atlas_pixel(a : PatternAtlas, x : Int32, y : Int32) -> (Int32, Int32) {
+  let at = (y * PATTERN_ATLAS_WIDTH + x) * 4
   (a.data[at].to_int(), a.data[at + 1].to_int())
 }
 
 ///|
 test "patterns are packed with their edges wrapped into the padding" {
-  let a = @render_webgl2.PatternAtlas::new()
+  let a = PatternAtlas::new()
   let p = a.add("ramp", ramp_image(4, 3)).unwrap()
   assert_eq((p.tl, p.br), ((1, 1), (5, 4)))
   assert_eq(p.display_size(), (4.0, 3.0))
@@ -51,15 +43,13 @@ test "patterns are packed with their edges wrapped into the padding" {
 
 ///|
 test "the atlas grows downward and refuses what cannot fit" {
-  let a = @render_webgl2.PatternAtlas::new()
+  let a = PatternAtlas::new()
   let tall = a.add("tall", ramp_image(8, 100)).unwrap()
   assert_eq(tall.tl, (1, 1))
   assert_true(a.height >= 102)
   // Kept across growth.
   assert_eq(atlas_pixel(a, 1, 1), (0, 0))
-  assert_true(
-    a.add("wide", ramp_image(@render_webgl2.PATTERN_ATLAS_WIDTH, 1)) is None,
-  )
+  assert_true(a.add("wide", ramp_image(PATTERN_ATLAS_WIDTH, 1)) is None)
   assert_true(
     a.add("bad", { ..ramp_image(2, 2), data: FixedArray::make(4, b'\x00'), })
     is None,
