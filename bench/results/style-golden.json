@@ -272,13 +272,12 @@
     {
       "scene": "extrusion-patterns",
       "ok": true,
-      "mean": 0.696,
-      "p99": 20,
+      "mean": 0.183,
+      "p99": 0,
       "limits": {
-        "mean": 0.75,
-        "p99": 21
-      },
-      "gap": "walls' pattern shifts by up to a pixel: their distance is truncated in 4096 units, MapLibre's rounded in 8192"
+        "mean": 0.2,
+        "p99": 1
+      }
     },
     {
       "scene": "extrusions-translucent",

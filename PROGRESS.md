@@ -3,18 +3,28 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15 の後のリファクタリングとセキュリティチェック。Phase 15 の 12 段階（15.1〜15.12）はすべて完了。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 16（スタイル互換の仕上げ、2D）。範囲・段階・完了条件をユーザーと決めてから始める。Phase 15 の後のリファクタリングとセキュリティチェックは完了（#73〜#77 と下の計測）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
   | 表示（メイン） | 107.1KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
-  | 表示ワーカー | 93.2KB | 100KB |
+  | 表示ワーカー | 93.0KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## 計測：Phase 15 の後のリファクタリングの後（2026-11-04、main 45a5f3a ＋ 壁の模様の修正）
+
+- **`worker:browser`**（`process_tile` の中央値）：Chromium 7.41ms、Firefox 10.16ms、WebKit 7.96ms。リファクタリングの前（7.65 / 10.38 / 8.12ms）とぶれの範囲で同じ。
+- **`render --labels`**（vsync あり、1 フレームの CPU 時間。中央値 / 95 パーセンタイル）：
+  - パン：mbmap 0.60 / 1.48ms、MapLibre 1.76 / 2.66ms。
+  - ズーム：mbmap 0.49 / 0.93ms、MapLibre 1.40 / 2.88ms。
+- **`render --labels --line-labels`**：パン mbmap 0.99 / 2.23ms、MapLibre 2.18 / 3.19ms。ズーム mbmap 0.65 / 1.45ms、MapLibre 2.16 / 3.58ms。
+- この回はマシンが前回の計測（#75）より遅く、MapLibre も 1.59 → 1.76〜2.2ms（パン）。そこでリファクタリングの前（aa3e667）と後を交互に `render --labels` で測った：パンの mbmap は前 0.78 / 0.89ms、後 0.60 / 0.63ms。ラベルの配置の確保を減らした分（`Grid::reset`、クロージャの削除）、後の方が速い。
+- **`extrusion-patterns`**：壁沿いの距離を MapLibre と同じく 8192 単位で丸める（`@tess` の `wall_distance`、シェーダで半分に）。差は 0.696 / 20 → 0.183 / 0、限度を 0.2 / 1 に。ほかの style:golden の場面は変わらない。
 
 ## リファクタリング：Phase 15 の後（TS・bench 側）（2026-11-04）
 
@@ -30,7 +40,7 @@
 - **コメント**：types.ts（`Source`、`MapOptions`）、draw/controller.ts、ui/profile.ts、examples/shared/search.js の 4 行以上の塊を 3 行以内に（`MapOptions` の詳しい説明は README に既にある）。checks/geo-tools.mjs と query/golden.mjs の Phase 番号を消した。
 - **bench**：pack-test.mjs（1020 → 519 行）の query、state、tile sources、track と export、style、camera、controls、search を `bench/npm/checks/*.mjs` へ。画面の画素を読む `pixel` と `near`、`atCentre` は `checks/pixels.mjs` 1 つに（media と custom の写しもこれに。読み方は decodePng に揃えた）。
 - **style:golden**：
-  - `extrusion-patterns` は本来のカメラ（zoom 16、bearing 30、pitch 50）に。mean 0.696、p99 20 で、限度を 0.75 / 21 に。差は壁の模様の横のずれ：壁沿いの距離を mbmap は 4096 単位で切り捨て（tess/extrusion.mbt の `along.to_int()`）、MapLibre は 8192 単位で丸める（`Math.round(e)`）。試しに `(along * 2.0).round()` で入れてシェーダで半分にすると 0.183 / 0 になった（.mbt の変更なのでこの PR には入れていない。直したら限度を戻す）。
+  - `extrusion-patterns` は本来のカメラ（zoom 16、bearing 30、pitch 50）に。mean 0.696、p99 20 だった。差は壁の模様の横のずれで、壁沿いの距離を mbmap は 4096 単位で切り捨て、MapLibre は 8192 単位で丸めていた。続く PR で MapLibre に合わせ（tess/extrusion.mbt の `wall_distance`、シェーダで半分に）、0.183 / 0、限度 0.2 / 1 に。
   - スプライトの模様にも本当の透明度を入れた（dots と stripes が半透明）。`patterns` 0.074 / 2、`patterns-2x` 0.077 / 2 で限度を 0.08 / 2 に（`gap` つき）。差の大部分（約 3 万画素）は半透明の画素の 1〜2 段の丸め。残り約 700 画素の大きな差は輪郭（`fill-antialias` の模様の輪郭）のところで、輪郭を切ると 33 画素に減る。半透明の模様の塗りと輪郭が重なる辺の画素の混ぜ方が MapLibre と違う（原因は未特定）。`line-patterns` は半透明にして 0.233 → 0.143 / 1 になったので限度を 0.2 / 1 に下げた。
 - **確認**：moon check / test（全ターゲット）、npm build / test / size、bench test、npm:pack を 2 回、style / labels / query / track / export / pmtiles / raster の黄金テスト。track:golden の `flank` が 1 回目だけ 319px ずれた（2 回目は 8e-10px。DEM の読み込みとの競合と思われ、このコードの変更とは関係しない）。
 
