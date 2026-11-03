@@ -141,10 +141,17 @@ ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入
 - サーバー側の機能が欠かせないもの：タイル配信、データベース、認証、編集結果の保存と同期、ジオコーディングやルート探索・到達圏のサービス、ジオエンリッチメント、画像サーバーの解析、ストリーミング。ライブラリはブラウザ内で完結させ、保存や共有は利用者のアプリに任せる
   - 外部のサービスにつなぐ部分は、**差し替えられる口**（GeoSearch のプロバイダ、`transformRequest` など）だけを用意する。特定のサービスを既定にはしない
   - 標準の形式のタイルやデータ（XYZ、TileJSON、WMTS、OGC API）を読むのは、データの読み込みとして扱う（どこから配るかは利用者が決める）
-  - 印刷はクライアントで完結させる（Phase 19）。ArcGIS の印刷サービスのようにサーバーで描き直さず、ブラウザで高解像度に描いて PDF にする
+  - 印刷はクライアントで完結させる（Phase 20）。ArcGIS の印刷サービスのようにサーバーで描き直さず、ブラウザで高解像度に描いて PDF にする
 - ArcGIS SDK や CesiumJS の機能の網羅
 
 ## 6. API 方針
+
+### スタイルの互換（2026-11-03、ユーザー判断：方針 D）
+
+- 既定では、未対応の式・値・プロパティがあっても地図を描く。そのプロパティは既定値に戻し（`format` のラベルは最初の部分の文字列など）、レイヤーそのものが描けないときだけ、そのレイヤーを外す。どれも警告（コンソールと、パス付きの一覧を持つイベント）で知らせる。
+- `strict: true` を渡すと、いまと同じく未対応のあるスタイル全体を拒む。正確さを確かめたい作り手やテスト向け。
+- 黙って無視するプロパティは作らない（必ず警告する）。
+- 未対応のものは、Phase 16 以降で、MapLibre と同じに描けるよう可能なかぎり対応する（ユーザーの方針）。
 
 ### TS
 ```ts
@@ -226,10 +233,11 @@ list.onclick = (e) => search.select(Number(e.target.dataset.i)); // 選ぶと、
 | 13 | ヘッドレス UI の土台と GeoSearch：コントローラの共通の形（状態・操作・購読）、ナビゲーション（ズーム、方位、傾き、現在地は Geolocation API）、縮尺、出典、凡例とレイヤー一覧（スタイルから作る）、識別（クリックした地物）、GeoSearch（座標の読み取り、データの属性検索、プロバイダの差し替え） | 素の DOM と React で同じコントローラから別の見た目を作る example。`mbmap/ui` と `mbmap/search` の予算 |
 | 14 | 作図・編集と計測（ヘッドレス）：距離・面積の計測（測地線、`mbmap/geodesic`）、断面図（標高）、点・線・多角形・矩形・円・フリーハンドの描画、取り消し・やり直し、頂点の編集、スナップ、属性の編集、分割・結合（14.1〜14.5 の順） | terra-draw などと操作を比べた example。計測は GeographicLib と比べる |
 | 15 | スタイル表現の拡充：式（算術、型変換、文字列、`let` / `var`）、アイコンとスプライト（`addImage`）、模様、`line-dasharray`・`line-gradient`、線に沿ったラベル、`text-variable-anchor`、heatmap レイヤー、GeoJSON のクラスタリング、画像・動画・canvas のソース | MapLibre と並べた描画の比較（`npm run style:golden` の場面ごとの画素の差。ラベルとアイコンは置かれた位置で比べる）。15.1〜15.12 の段階と並列の分け方は PROGRESS.md |
-| 16 | データ形式：CSV、KML / KMZ、GPX、Shapefile（zip）、FlatGeobuf、TopoJSON、WKT / WKB、GeoTIFF / COG の読み込み、GeoJSON・CSV・KML の書き出し、属性テーブルのコントローラ（並べ替え、絞り込み、ページ送り） | 既存の JS 実装（togeojson、shpjs、flatgeobuf、geotiff.js など）との黄金テスト。形式ごとの予算 |
-| 17 | 解析 第2弾：空間関係（DE-9IM：contains、within、intersects、touches など）、単純化、凸包・凹包、ボロノイ・ドロネー、線の分割と線上の最近点、分類（自然分類、等量、等間隔、標準偏差）と統計（凡例とつなぐ）、カーネル密度・六角形の集計、クラスタリング（DBSCAN、k-means）、補間（IDW）、等高線、可視域・見通し、測地線の計測（GeographicLib）、作り手のデータの道路網での経路探索 | Turf.js、GEOS（JSTS）、GDAL、GeographicLib との黄金テストと速度比較 |
-| 18 | 3D 第2弾：地球（globe）表示、3D Tiles 1.1 / PLATEAU（glTF、Draco、meshopt）、glTF モデルの配置、点群（3D Tiles の点群、COPC / LAS）、太陽の位置による光と影、3D の計測と見通し、断面（クリッピング） | PLATEAU の建物を表示する example。CesiumJS と描画・速度を比べる。`mbmap/3d` の予算 |
-| 19 | 時間・比較・印刷：時刻つきデータの絞り込み（タイムスライダーのコントローラ）、2 つの地図の比較（スワイプ、並べて同期）、概観図、ブックマーク、印刷（ヘッドレスな印刷のコントローラ：用紙・縮尺・解像度を指定し、タイトル・凡例・縮尺・方位記号・出典を配置して、Wasm で PDF を作る。地図は画像で貼るか、線と面をベクトルのまま書く。ベクトルのラベルは使う文字だけのフォントを埋め込む） | A3・300dpi の PDF を作る example。PDF の生成に MoonBit のライブラリを使う場合は、§7 と AGENTS.md §8.1 の確認をしてから |
+| 16 | スタイル互換の仕上げ（2D）：未対応の扱いを方針 D にする（§6「スタイルの互換」）、黙って無視しているプロパティ（`line-offset`、`line-gap-width`、`line-blur`、`*-translate`、`*-sort-key`、`circle-blur`、`circle-pitch-*`、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-opacity`、`text-halo-blur`、`text-optional`、`symbol-z-order`、`symbol-avoid-edges` など）と拒んでいる式（`format`、`number-format`、`collator`、`within`、`distance`、`split`、`join`、`global-state` など）を MapLibre と同じに描く、hillshade の方式（`multidirectional` など）、`color-relief` レイヤー | 公開されている MapLibre のスタイル（OpenMapTiles 系、Protomaps など）を読み、警告なしで描ける。`style:golden` に場面を足して画素で比べる |
+| 17 | データ形式：CSV、KML / KMZ、GPX、Shapefile（zip）、FlatGeobuf、TopoJSON、WKT / WKB、GeoTIFF / COG の読み込み、GeoJSON・CSV・KML の書き出し、属性テーブルのコントローラ（並べ替え、絞り込み、ページ送り） | 既存の JS 実装（togeojson、shpjs、flatgeobuf、geotiff.js など）との黄金テスト。形式ごとの予算 |
+| 18 | 解析 第2弾：空間関係（DE-9IM：contains、within、intersects、touches など）、単純化、凸包・凹包、ボロノイ・ドロネー、線の分割と線上の最近点、分類（自然分類、等量、等間隔、標準偏差）と統計（凡例とつなぐ）、カーネル密度・六角形の集計、クラスタリング（DBSCAN、k-means）、補間（IDW）、等高線、可視域・見通し、測地線の計測（GeographicLib）、作り手のデータの道路網での経路探索 | Turf.js、GEOS（JSTS）、GDAL、GeographicLib との黄金テストと速度比較 |
+| 19 | 3D 第2弾：地球（globe）表示、3D Tiles 1.1 / PLATEAU（glTF、Draco、meshopt）、glTF モデルの配置、点群（3D Tiles の点群、COPC / LAS）、太陽の位置による光と影、Mapbox GL JS v3 相当の光の表現（環境光と平行光、建物と地形の影、押し出しの環境遮蔽と照らし上げ、時間帯のプリセット）、3D の計測と見通し、断面（クリッピング） | PLATEAU の建物を表示する example。CesiumJS と描画・速度を比べる。`mbmap/3d` の予算 |
+| 20 | 時間・比較・印刷：時刻つきデータの絞り込み（タイムスライダーのコントローラ）、2 つの地図の比較（スワイプ、並べて同期）、概観図、ブックマーク、印刷（ヘッドレスな印刷のコントローラ：用紙・縮尺・解像度を指定し、タイトル・凡例・縮尺・方位記号・出典を配置して、Wasm で PDF を作る。地図は画像で貼るか、線と面をベクトルのまま書く。ベクトルのラベルは使う文字だけのフォントを埋め込む） | A3・300dpi の PDF を作る example。PDF の生成に MoonBit のライブラリを使う場合は、§7 と AGENTS.md §8.1 の確認をしてから |
 | 以降 | UI ライブラリ向けアダプタ（rabbita、Luna 等）、WebGPU、§5 の「後回し」 | 需要を見て判断 |
 
 各 Phase の完了条件には、その Phase の機能を `examples/` のショーケース（素の HTML・`<mb-map>`・React の 3 通り）に足すことを含める。
@@ -265,10 +273,10 @@ MapLibre GL JS、ArcGIS Maps SDK for JavaScript、CesiumJS と比べて、mbmap 
 | 式の拡充（算術、型変換、文字列、`let` / `var`） | 15 |
 | アイコン・スプライト、模様、破線、グラデーションの線、線に沿ったラベル、ラベルの位置の候補 | 15 |
 | heatmap レイヤー、GeoJSON のクラスタリング、画像・動画・canvas のソース | 15 |
-| 地球（globe）表示 | 18 |
+| 地球（globe）表示 | 19 |
 | カスタムレイヤー（作り手の WebGL 描画を差し込む口） | 15 |
 
-### ヘッドレス UI（主に ArcGIS のウィジェットと MapLibre のコントロールとの差）→ Phase 13、14、16、19
+### ヘッドレス UI（主に ArcGIS のウィジェットと MapLibre のコントロールとの差）→ Phase 13、14、17、20
 
 | 足りないもの | Phase |
 |---|---|
@@ -277,38 +285,50 @@ MapLibre GL JS、ArcGIS Maps SDK for JavaScript、CesiumJS と比べて、mbmap 
 | 識別（クリックした地物の属性）、GeoSearch | 13 |
 | 作図・編集（Sketch / Editor 相当。保存は作り手）、計測（距離・面積）、断面図 | 14 |
 | 座標の表示と変換（proj を使う） | 13 |
-| 属性テーブル（並べ替え、絞り込み、地図との選択の連動） | 16 |
-| タイムスライダー、スワイプ・並べての比較、概観図、ブックマーク | 19 |
-| 印刷（レイアウトと PDF の出力。ブラウザ内で作る） | 19 |
+| 属性テーブル（並べ替え、絞り込み、地図との選択の連動） | 17 |
+| タイムスライダー、スワイプ・並べての比較、概観図、ブックマーク | 20 |
+| 印刷（レイアウトと PDF の出力。ブラウザ内で作る） | 20 |
 
-### データ（主に ArcGIS のクライアント側のレイヤーとの差）→ Phase 16
+### データ（主に ArcGIS のクライアント側のレイヤーとの差）→ Phase 17
 
 | 足りないもの | Phase |
 |---|---|
-| CSV（緯度経度の列）、KML / KMZ、GPX、Shapefile、FlatGeobuf、TopoJSON、WKT / WKB | 16 |
-| GeoTIFF / COG（ラスタの表示と解析の入力） | 16 |
-| 書き出し（GeoJSON、CSV、KML） | 16 |
+| CSV（緯度経度の列）、KML / KMZ、GPX、Shapefile、FlatGeobuf、TopoJSON、WKT / WKB | 17 |
+| GeoTIFF / COG（ラスタの表示と解析の入力） | 17 |
+| 書き出し（GeoJSON、CSV、KML） | 17 |
 | GeoParquet、GeoPackage | 後回し |
 
-### 解析（主に ArcGIS のクライアント側の geometry engine と Turf.js との差）→ Phase 14、17
+### 解析（主に ArcGIS のクライアント側の geometry engine と Turf.js との差）→ Phase 14、18
 
 | 足りないもの | Phase |
 |---|---|
-| 空間関係の判定（DE-9IM）、単純化、凸包・凹包、ボロノイ・ドロネー、線の分割・最近点 | 17 |
-| 分類と統計（凡例を自動で作るための値の区切り。ArcGIS の smart mapping 相当） | 17 |
-| カーネル密度、六角形の集計、クラスタリング、補間、等高線 | 17 |
+| 空間関係の判定（DE-9IM）、単純化、凸包・凹包、ボロノイ・ドロネー、線の分割・最近点 | 18 |
+| 分類と統計（凡例を自動で作るための値の区切り。ArcGIS の smart mapping 相当） | 18 |
+| カーネル密度、六角形の集計、クラスタリング、補間、等高線 | 18 |
 | 可視域・見通し、断面（標高） | 14、17 |
 | 楕円体の上での正確な距離と面積（GeographicLib） | 14、17 |
-| 作り手が持つ道路網の上の経路探索（サーバーのルート探索サービスは作らない） | 17 |
+| 作り手が持つ道路網の上の経路探索（サーバーのルート探索サービスは作らない） | 18 |
 
-### 3D（主に CesiumJS と ArcGIS の SceneView との差）→ Phase 18
+### スタイル表現（主に Mapbox GL JS v3 との差）→ Phase 16、19
+
+見た目の作り込みの幅と自由度は、2D と 3D の両方で確保する（2026-11-03、ユーザーの方針）。Phase 15 の後の時点で、2D は MapLibre の Style Spec の大部分に追いついたが、下の差がある。
 
 | 足りないもの | Phase |
 |---|---|
-| 地球（globe）表示と大気 | 18 |
-| 3D Tiles 1.1（PLATEAU）、glTF（Draco、meshopt）、モデルの配置 | 18 |
-| 点群（3D Tiles、COPC / LAS） | 18 |
-| 太陽の位置による光と影、3D の計測・見通し、断面（クリッピング） | 18 |
+| 黙って無視しているプロパティ（線のずらし・2 本線・ぼかし、平行移動、並べ順、文字の字間・大文字化・回転など）と、拒んでいる式（`format`、`number-format` など） | 16 |
+| hillshade の方式（`multidirectional` など）、`color-relief` レイヤー | 16 |
+| 光の表現：環境光と平行光、建物と地形の影、押し出しの環境遮蔽と照らし上げ、時間帯のプリセット（昼・夕・夜） | 19 |
+| glTF モデルのレイヤー、地球表示と大気 | 19 |
+| スタイルの部品化（Mapbox の imports・config・slots に当たるもの）、ズームで変わる色の調整（色の LUT） | 後回し（需要を見て） |
+
+### 3D（主に CesiumJS と ArcGIS の SceneView との差）→ Phase 19
+
+| 足りないもの | Phase |
+|---|---|
+| 地球（globe）表示と大気 | 19 |
+| 3D Tiles 1.1（PLATEAU）、glTF（Draco、meshopt）、モデルの配置 | 19 |
+| 点群（3D Tiles、COPC / LAS） | 19 |
+| 太陽の位置による光と影、3D の計測・見通し、断面（クリッピング） | 19 |
 | I3S、ボクセル、ガウシアンスプラッティング、時間で動く 3D（CZML 相当） | 後回し |
 
 ### 作らないもの（サーバー側の機能が欠かせない）
