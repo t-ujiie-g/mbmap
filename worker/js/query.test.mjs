@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyRings, rangesOf, readFeatureRanges, readQueryResult, toGeometry } from "./query.mjs";
+import { classifyRings, readQueryResult, toGeometry } from "./query.mjs";
+import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 
 test("classifyRings groups holes with the outer ring before them, as @mapbox/vector-tile", () => {
   const outer = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]];

@@ -22,5 +22,5 @@ await build({
   logLevel: "warning",
 });
 for (const f of await readdir(PACKAGE)) {
-  if (f.endsWith(".wasm") || f.endsWith("worker.js")) await copyFile(path.join(PACKAGE, f), path.join(DIST, f));
+  if (f.endsWith(".wasm") || /worker(-\w+)?\.js$/.test(f)) await copyFile(path.join(PACKAGE, f), path.join(DIST, f));
 }

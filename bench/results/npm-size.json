@@ -6,8 +6,8 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 114636,
-      "budget": 120000
+      "bytes": 114536,
+      "budget": 135000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
@@ -71,12 +71,27 @@
     },
     {
       "name": "display worker",
-      "bytes": 96333,
+      "bytes": 86826,
       "budget": 100000
     },
     {
+      "name": "labels (loaded by the display worker with the first tile that has them)",
+      "bytes": 8570,
+      "budget": 10000
+    },
+    {
+      "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
+      "bytes": 1990,
+      "budget": 3000
+    },
+    {
+      "name": "feature queries (loaded by the display worker with the first query)",
+      "bytes": 905,
+      "budget": 1500
+    },
+    {
       "name": "GeoJSON worker",
-      "bytes": 27594,
+      "bytes": 27606,
       "budget": 30000
     },
     {
@@ -91,12 +106,12 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 27870,
+      "bytes": 27916,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 41244,
+      "bytes": 41267,
       "budget": 50000
     },
     {
@@ -111,7 +126,7 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12013,
+      "bytes": 12014,
       "budget": 15000
     },
     {

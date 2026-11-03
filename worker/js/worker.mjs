@@ -4,9 +4,7 @@
 import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
 import { readCapped } from "./body.mjs";
 import { checkImageSize, decodeImage } from "./imagesize.mjs";
-import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
-import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
-import { buildSymbols, Glyphs } from "./symbols.mjs";
+import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 import { readString, readValue } from "./values.mjs";
 
 const LAYER_ENTRY_WORDS = 17; // worker/packed.mbt
@@ -23,6 +21,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
 let ready = null;
+let font = "sans-serif";
 let glyphs = null;
 // Without OffscreenCanvas (Safari before 16.4) labels are left out, once said.
 const canDrawGlyphs = typeof OffscreenCanvas !== "undefined";
@@ -38,6 +37,36 @@ const archives = new Map();
 let images = new Map();
 let imagesReady = Promise.resolve();
 let imagesLoaded = null;
+
+// Labels, PMTiles and queries load on first use (the npm build emits them as files next to
+// this one). A failed load is forgotten, so the next tile or query tries again.
+function lazy(load) {
+  let p = null;
+  return () => (p ??= load().catch((err) => {
+    p = null;
+    throw err;
+  }));
+}
+let symbols = null;
+const loadSymbols = lazy(() => import("./symbols.mjs").then((m) => {
+  glyphs = new m.Glyphs(font);
+  symbols = m;
+}));
+const loadPmtiles = lazy(() => import("./pmtiles.mjs"));
+let queries = null;
+const loadQueries = lazy(() => import("./query.mjs").then((m) => (queries = m)));
+// Starts loading labels early for a style with symbol layers; each tile still checks its own.
+const prefetchSymbols = (style) => {
+  if (canDrawGlyphs && /"type"\s*:\s*"symbol"/.test(style)) loadSymbols().catch(() => {});
+};
+
+function hasSymbols(packed) {
+  const view = new DataView(packed.buffer, packed.byteOffset, packed.byteLength);
+  for (let k = view.getUint32(0, true) - 1; k >= 0; k--) {
+    if (view.getUint32(4 + (k * LAYER_ENTRY_WORDS + 1) * 4, true) === KIND_SYMBOL) return true;
+  }
+  return false;
+}
 
 function withInput(bytes, run) {
   const addr = wasm.prepare_input(bytes.length);
@@ -79,7 +108,7 @@ function unpack(packed) {
         warned = true;
         continue;
       }
-      const s = buildSymbols(packed.subarray(e(2), e(2) + e(3)), glyphs, images);
+      const s = symbols.buildSymbols(packed.subarray(e(2), e(2) + e(3)), glyphs, images);
       if (s.count === 0 && !(s.icon?.count > 0) && !s.missing?.length) continue;
       layers.push({ entry: k, layer: e(0), kind: e(1), shared: -1, props, ...s });
       transfer.push(s.vertices, s.indices, s.labels.buffer, s.codepoints.buffer);
@@ -117,8 +146,9 @@ function unpack(packed) {
   return { layers, transfer };
 }
 
-async function init({ wasm: url, style, font }) {
-  glyphs = new Glyphs(typeof font === "string" && font ? font : "sans-serif");
+async function init({ wasm: url, style, font: family }) {
+  if (typeof family === "string" && family) font = family;
+  prefetchSymbols(style);
   const host = { number: hostNumber(() => wasm.memory), ...hostText() };
   const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host, Math });
   wasm = instance.exports;
@@ -159,15 +189,17 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
   pending.set(id, controller);
   try {
     let bytes;
-    const pm = typeof url === "string" ? splitTileUrl(url) : null;
     if (!Number.isInteger(source) || !Number.isInteger(z)) throw new Error("malformed tile message");
+    const pmtiles = !(given instanceof ArrayBuffer) && typeof url === "string" && url.startsWith("pmtiles://") ? await loadPmtiles() : null;
+    const pm = pmtiles?.splitTileUrl(url);
+    if (controller.signal.aborted) return;
     if (given instanceof ArrayBuffer) {
       bytes = new Uint8Array(given);
     } else if (pm) {
       let archive = archives.get(pm.archive);
       if (!archive) {
         if (archives.size >= MAX_ARCHIVES) archives.delete(archives.keys().next().value);
-        archives.set(pm.archive, (archive = new Archive(pm.archive, (u, o, l) => fetchRange(u, o, l))));
+        archives.set(pm.archive, (archive = new pmtiles.Archive(pm.archive, (u, o, l) => pmtiles.fetchRange(u, o, l))));
       }
       bytes = await archive.tile(pm.z, pm.x, pm.y);
       if (!bytes) {
@@ -212,13 +244,24 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
     }
     await imagesReady;
     if (controller.signal.aborted) return;
-    glyphs.startTile();
-    const { layers, transfer } = unpack(withInput(bytes, () => wasm.process_tile(source, z)));
+    let packed = withInput(bytes, () => wasm.process_tile(source, z));
+    const featureRanges = () => readFeatureRanges(withInput(new Uint8Array(0), () => wasm.feature_ranges()));
+    let ranges = null;
+    if (!symbols && canDrawGlyphs && hasSymbols(packed)) {
+      // Other tiles use the wasm while labels load: this tile's output is kept first.
+      packed = packed.slice();
+      ranges = featureRanges();
+      await loadSymbols();
+      if (controller.signal.aborted) return;
+    }
+    glyphs?.startTile();
+    const { layers, transfer } = unpack(packed);
+    ranges ??= featureRanges();
     if (controller.signal.aborted) return;
     // New glyphs go with the first tile posted after they were drawn; the main
     // thread takes them even from tiles it no longer wants.
-    const fresh = glyphs.take();
-    kept.set(id, { bytes, ranges: readFeatureRanges(withInput(new Uint8Array(0), () => wasm.feature_ranges())) });
+    const fresh = glyphs?.take() ?? [];
+    kept.set(id, { bytes, ranges });
     postMessage({ type: "tile", id, layers, glyphs: fresh }, [...transfer, ...fresh.map((g) => g.data.buffer)]);
   } catch (err) {
     if (!controller.signal.aborted) postMessage({ type: "tile-error", id, message: String(err?.message ?? err) });
@@ -228,17 +271,17 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
 }
 
 // A query of a kept tile (`features`: of its source layer, else of what is
-// drawn), answered with GeoJSON features; none if the tile is gone.
+// drawn), answered with GeoJSON features; none if the tile is gone or query.mjs failed to load.
 function query({ id, kind, tile, source, z, x, y, request }) {
   const bytes = kept.get(tile)?.bytes;
   let hits = [];
-  if (bytes && ArrayBuffer.isView(request)) {
+  if (queries && bytes && ArrayBuffer.isView(request)) {
     const input = new Uint8Array(bytes.length + request.byteLength);
     input.set(bytes);
     input.set(new Uint8Array(request.buffer, request.byteOffset, request.byteLength), bytes.length);
     const run = kind === "features" ? wasm.source_features : wasm.query_tile;
     try {
-      hits = readQueryResult(withInput(input, () => run(source, z, bytes.length)), z, x, y);
+      hits = queries.readQueryResult(withInput(input, () => run(source, z, bytes.length)), z, x, y);
     } catch (err) {
       postMessage({ type: "error", message: String(err?.message ?? err) });
     }
@@ -262,6 +305,7 @@ onmessage = (e) => {
     // Tiles asked for after this message are made with the new style; a style
     // that fails is reported, and `ready` stays usable (once the wasm runs).
     const style = encoder.encode(msg.style);
+    prefetchSymbols(msg.style);
     const apply = () => {
       try {
         withInput(style, () => wasm.init_style());
@@ -277,6 +321,8 @@ onmessage = (e) => {
     // Tiles requested before init finished wait for it.
     ready.then(() => loadTile(msg), (err) => postMessage({ type: "tile-error", id: msg.id, message: failure(err) }));
   } else if (msg?.type === "query" && ready && Number.isInteger(msg.id) && Number.isInteger(msg.tile)) {
+    // What comes after the first query (a `drop` of its tile, a new style) waits for the module.
+    if (!queries) ready = ready.then(() => loadQueries().catch((err) => postMessage({ type: "error", message: failure(err) })));
     ready.then(() => query(msg), () => postMessage({ type: "query", id: msg.id, hits: [] }));
   } else if (msg?.type === "ranges" && ready && Number.isInteger(msg.id) && Number.isInteger(msg.tile) && Array.isArray(msg.ids)) {
     // Where the features with these ids lie in the tile's entries.
