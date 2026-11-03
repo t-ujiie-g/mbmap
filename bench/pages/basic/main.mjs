@@ -47,6 +47,7 @@ const map = mbmap.create_map(
   null, // no GeoJSON sources
   "sans-serif", // labels' font family
   [0, 22, 0, 85, NaN, 0, 0, 0], // zoom 0-22, pitch 0-85, no bounds (bundle/main limits_of)
+  false, // draw what is supported, as the facade does unless `strict`
 );
 window.__map = map;
 window.__mbmap = mbmap;

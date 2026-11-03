@@ -61,9 +61,17 @@ fn Map::remap(
 ///|
 /// Draws `style_json` from now on: sources whose tiles would come out alike keep
 /// them, the others are reloaded while the old ones are drawn. Raises, keeping
-/// the current style, if it cannot be drawn.
-pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
-  let next = @style.Style::from_json(parse_json(style_json)) catch {
+/// the current style, if it cannot be drawn (`strict`: if it uses the unsupported).
+pub fn Map::set_style(
+  self : Map,
+  style_json : String,
+  strict~ : Bool = false,
+) -> Unit raise MapError {
+  let json = parse_json(style_json)
+  let next = @style.Style::from_json(json, strict~) catch {
+    e => raise BadStyle(e)
+  }
+  next.report_ignored(json, strict~) catch {
     e => raise BadStyle(e)
   }
   let old = self.style
@@ -178,4 +186,10 @@ pub fn Map::reload_source(self : Map, id : String) -> Unit {
   self.content_version += 1
   self.idle_fired = false
   self.request_render()
+}
+
+///|
+/// What the current style uses that is not drawn (see `@style.Style::parse`).
+pub fn Map::warnings(self : Map) -> Array[@style.StyleError] {
+  self.style.warnings
 }

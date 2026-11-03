@@ -14,16 +14,25 @@ export async function styleChecks(page, requests) {
   const kept = tiles();
   await step(page, "style: show again", 'map.setLayoutProperty("waterarea", "visibility", "visible");');
   const relaid = tiles();
-  const errors = await page.evaluate(() => {
+  const errors = await page.evaluate(async () => {
     const map = window.__map;
     const out = [];
+    const warned = [];
     const f = (e) => out.push(e.error.message);
+    const w = (e) => warned.push(...e.warnings);
     map.on("error", f);
+    map.on("warning", w);
     map.setPaintProperty("nope", "fill-color", "#000");
     map.removeSource("gsi");
+    // Unsupported, so drawn at its default width with a warning; then put back.
+    const before = map.getPaintProperty("road", "line-width");
     map.setPaintProperty("road", "line-width", ["number-format", 2, {}]);
+    const width = map.getPaintProperty("road", "line-width");
+    map.setPaintProperty("road", "line-width", before);
+    await new Promise((r) => setTimeout(r, 0));
     map.off("error", f);
-    return { out, width: map.getPaintProperty("road", "line-width"), order: map.getLayersOrder().slice(0, 4) };
+    map.off("warning", w);
+    return { out, warned, width, order: map.getLayersOrder().slice(0, 4) };
   });
   await step(page, "style: setStyle", 'map.setStyle({ version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ff0000" } }] });');
   const red = await pixel(page, 400, 300);
@@ -40,11 +49,11 @@ export async function styleChecks(page, requests) {
     painted === before &&
     kept === painted &&
     relaid > kept &&
-    errors.out.length === 3 &&
+    errors.out.length === 2 &&
     /no layer "nope"/.test(errors.out[0]) &&
     /used by layer "road"/.test(errors.out[1]) &&
-    /unsupported: expression number-format/.test(errors.out[2]) &&
-    errors.width?.[0] === "interpolate" &&
+    errors.warned.some((w) => w.layer === "road" && /paint\.line-width$/.test(w.path) && w.message === "expression number-format") &&
+    errors.width?.[0] === "number-format" &&
     JSON.stringify(errors.order) === JSON.stringify(["background", "road", "waterarea", "structurea"]) &&
     near(red, [255, 0, 0]) &&
     swapped === relaid &&

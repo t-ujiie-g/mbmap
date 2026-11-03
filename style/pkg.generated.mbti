@@ -356,9 +356,11 @@ pub struct Style {
   terrain : Terrain?
   sky : Sky?
   light : Light
+  warnings : Array[StyleError]
 }
-pub fn Style::from_json(Json) -> Self raise StyleError
-pub fn Style::parse(StringView) -> Self raise StyleError
+pub fn Style::from_json(Json, strict? : Bool) -> Self raise StyleError
+pub fn Style::parse(StringView, strict? : Bool) -> Self raise StyleError
+pub fn Style::report_ignored(Self, Json, strict? : Bool) -> Unit raise StyleError
 pub fn Style::source(Self, String) -> Source?
 
 pub struct StyleLayer {
