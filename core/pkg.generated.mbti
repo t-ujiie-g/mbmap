@@ -101,6 +101,7 @@ pub fn ByteReader::i16(Self) -> Int32
 pub fn ByteReader::new(BytesView) -> Self
 pub fn ByteReader::ok(Self) -> Bool
 pub fn ByteReader::pad4(Self) -> Unit
+pub fn ByteReader::remaining(Self) -> Int32
 pub fn ByteReader::u32(Self) -> Int32
 pub fn ByteReader::u8(Self) -> Int32
 pub fn ByteReader::utf8(Self) -> String

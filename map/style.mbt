@@ -1,6 +1,6 @@
 ///|
-extern "js" fn post_style(w : Worker, style : String) -> Unit =
-  #|(w, style) => w.postMessage({ type: "style", style })
+extern "js" fn post_style(w : Worker, style : Bytes, symbols : Bool) -> Unit =
+  #|(w, style, symbols) => w.postMessage({ type: "style", style, symbols })
 
 ///|
 /// Whether a style draws from source `id`: a layer other than the background
@@ -130,8 +130,9 @@ pub fn Map::set_style(
   self.dem_version += 1
   self.labels_dirty = true
   self.idle_fired = false
+  let compiled = next.to_compiled()
   for w in self.workers {
-    post_style(w, style_json)
+    post_style(w, compiled, self.has_labels)
   }
   // Which layers draw by state may have changed.
   for src in self.sources {

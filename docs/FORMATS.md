@@ -167,11 +167,12 @@ A `@geom.Table` without feature ids:
 
 In:
 
-- `{type: "init", wasm, style, font}`: the wasm URL, the style JSON text and the
-  CSS font family labels are drawn in. The wasm imports `host.number`
-  (`wasmio/js/host.mjs`) for JSON numbers longer than 15 digits, and `hostText`'s
-  `host.text_char`, `text_number`, `number_text` and `text_code` for the
-  expressions' `Number(string)` and `String(number)`, a UTF-16 code unit per call.
+- `{type: "init", wasm, style, symbols, font}`: the wasm URL, the style ("Compiled
+  style", a Uint8Array), whether it has symbol layers (the label code is then loaded
+  ahead of the first tile) and the CSS font family labels are drawn in. The wasm imports
+  `hostText`'s (`wasmio/js/host.mjs`) `host.text_char`, `text_number`,
+  `number_text` and `text_code` for the expressions' `Number(string)` and
+  `String(number)`, a UTF-16 code unit per call.
 - `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
   the index in the style's sources).
 - `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),
@@ -185,13 +186,13 @@ In:
 - `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
-- `{type: "style", style}`: the style JSON text tiles asked for from now on are
+- `{type: "style", style, symbols}`: the compiled style tiles asked for from now on are
   made with (`Map::set_style`; requests made before it were cancelled).
 - `{type: "query", id, kind, tile, source, z, x, y, request}`: a query of the
   tile sent for request `tile` (the worker keeps each vector or GeoJSON tile's
   bytes until it is dropped): `kind` "rendered" with a "Query" `request`, or
-  "features" with a source layer's name and a filter's JSON (each a u32 length
-  and UTF-8; "" for none). z/x/y place the result's geometry.
+  "features" with a source layer's name (a u32 length and UTF-8) and a filter
+  ("Compiled style"'s optional expression). z/x/y place the result's geometry.
 - `{type: "ranges", id, tile, ids}`: where the features with these ids (strings,
   as `String(id)`) lie in the entries of the tile sent for request `tile`.
 - `{type: "drop", id}`: forget the bytes of the tile sent for request `id`.
@@ -231,7 +232,7 @@ Out:
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
   height in meters (no data as 0), for its hillshade layers and terrain.
 
-## Feature ranges (`worker/processor.mbt`, read by `worker/js/query.mjs`)
+## Feature ranges (`worker/processor.mbt`, read by `worker/js/ranges.mjs`)
 
 What `feature_ranges` gives after `process_tile`, for the entries of layers whose
 paint reads the feature state (kept by the worker glue, never sent whole): u32
@@ -239,6 +240,42 @@ entry count, then per entry u32 packed entry index, u32 feature count and per
 feature its id as a property value (the source's `promoteId` property, or the
 tile's id; null without one), u32 first index and u32 index count, then the same of
 its fill outline's indices (0 and 0 for other kinds).
+
+## Compiled style (`style/compiled.mbt`, written by `map`, read by `worker`)
+
+The style as the main thread compiled it (`Style::to_compiled`), so display workers
+never parse JSON or compile expressions. Enumerations are a u8, their variants'
+index in declaration order (`LayerKind`, `SourceKind`, `TextAnchor`, ...); a flag
+is a u8 0 or 1; an optional item is a flag, then the item if 1.
+
+- Value: a "Property values" tag and payload (0 to 4), 6 a color (4 f64, straight
+  RGBA 0 to 1), 7 a list (u32 count, values), 8 `Failed`.
+- Expected: u8 0 any, 1 color, 2 number, 3 boolean, 4 string, 5 array: its item
+  Expected and u32 length (-1 any).
+- Expr: u8 tag, `Expr`'s variant index, then its fields in order: values, UTF-8
+  keys, nested Exprs; an array is u32 count and items, a stop f64 input and Expr,
+  a `match` arm its labels (values) and Expr, a `case` arm two Exprs;
+  `Interpolate` is u8 0 exponential (f64 base) or 1 cubic Bézier (4 f64), u8
+  color space, input and stops; `Compare` and `Call` lead with their operator's
+  u8. An expression may have at most `MAX_EXPR_NODES` nodes (values included) and
+  4 × `MAX_EXPR_DEPTH` levels; a reader refuses more.
+- Source: UTF-8 id, u8 kind, u32 min zoom, max zoom, tile size, the DEM encoding
+  (u8 mapbox, terrarium, gsi, or 3 custom with 4 f64), u32 buffer, f64 tolerance,
+  `promoteId` (u8 0 feature id, 1 a property's UTF-8 name, 2 u32 count of source
+  layer and property UTF-8 pairs). Tile URLs, bounds and scheme stay on the main
+  thread.
+- Layer: UTF-8 id, u8 kind, UTF-8 source and source layer, f64 min and max zoom,
+  optional filter, u32 `filter_id`; Exprs color, opacity, width, radius, stroke
+  width, color and opacity, halo color and width; optional text layout, icon
+  layout, icon paint (u32 5 and `IconPaint::exprs`), extrusion (height, base,
+  vertical-gradient flag) and heatmap paint (u32 3: weight, intensity, color);
+  u8 join and cap, f64 miter and round limits, antialias flag, optional outline
+  color, dash array, gradient and pattern. A text layout is `TextLayout`'s fields
+  in order (Expr arrays and pairs as above, the variable anchors as u32 count and
+  (u8 anchor, f64, f64)); an icon layout `IconLayout`'s without `layout`.
+  Hillshade, color relief and raster paint, terrain, sky and light are drawn on
+  the main thread and left out.
+- The style: u32 count and sources, u32 count and layers, nothing after.
 
 ## Query (`map/query.mbt`, read by `worker/query.mbt`)
 
@@ -253,7 +290,7 @@ A rendered-features query of one tile, little-endian:
 - u8 1 for every layer (else 0), u32 count and the style layer indices asked for;
 - u32 count, then (u32 style layer, u32 feature index) per label the main thread
   found under the query;
-- u32 length and UTF-8: the query's filter as JSON, or "".
+- the query's filter ("Compiled style"'s optional expression).
 
 ## Query result (`worker/query.mbt`, read by `worker/js/query.mjs`)
 

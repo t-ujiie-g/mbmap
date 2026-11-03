@@ -33,7 +33,7 @@ priv struct Query {
 const MAX_QUERY_ITEMS : Int32 = 65536
 
 ///|
-fn read_query(r : @core.ByteReader, number : (BytesView) -> Double) -> Query? {
+fn read_query(r : @core.ByteReader) -> Query? {
   let zoom = r.f64()
   let pixels = r.f64()
   let pitch_factor = r.f64()
@@ -55,21 +55,8 @@ fn read_query(r : @core.ByteReader, number : (BytesView) -> Double) -> Query? {
   let s = r.u32()
   guard r.ok() && s >= 0 && s <= MAX_QUERY_ITEMS else { return None }
   let symbols = Array::makei(s, _ => (r.u32(), r.u32()))
-  let text = r.utf8()
+  let filter = @style.read_expr(r)
   guard r.done() else { return None }
-  let filter = if text == "" {
-    None
-  } else {
-    Some(
-      @style.compile(
-        parse_json(@utf8.encode(text)[:], number),
-        expected=BoolType,
-        path="filter",
-      ) catch {
-        _ => return None
-      },
-    )
-  }
   Some({
     zoom,
     pixels,
@@ -399,7 +386,7 @@ pub fn TileProcessor::query(
   z : Int32,
   request : BytesView,
 ) -> Bytes? {
-  guard read_query(@core.ByteReader::new(request), self.number) is Some(query) else {
+  guard read_query(@core.ByteReader::new(request)) is Some(query) else {
     self.error = "malformed query"
     return None
   }
@@ -479,32 +466,16 @@ pub fn TileProcessor::query(
 
 ///|
 /// Every feature of `source_layer` (any, for GeoJSON) in tile `bytes` passing
-/// `filter` (JSON or "") as feature records (layer -1). None, with the error
-/// set, if the tile or the filter is malformed.
+/// `filter` as feature records (layer -1). None, with the error set, if the
+/// tile is malformed.
 pub fn TileProcessor::source_features(
   self : TileProcessor,
   source : String,
   bytes : BytesView,
   z : Int32,
   source_layer : String,
-  filter : String,
+  filter : @style.Expr?,
 ) -> Bytes? {
-  let compiled = if filter == "" {
-    None
-  } else {
-    Some(
-      @style.compile(
-        parse_json(@utf8.encode(filter)[:], self.number),
-        expected=BoolType,
-        path="filter",
-      ) catch {
-        _ => {
-          self.error = "malformed filter"
-          return None
-        }
-      },
-    )
-  }
   guard self.read_tile(source, bytes) is Some(features_of) else { return None }
   let w = @core.ByteWriter::new()
   guard features_of(source_layer) is Some(layer) else {
@@ -515,7 +486,7 @@ pub fn TileProcessor::source_features(
   let picked = []
   for i in 0..<layer.length() {
     feature.index = i
-    if passes(compiled, feature, z.to_double()) {
+    if passes(filter, feature, z.to_double()) {
       picked.push(i)
     }
   }

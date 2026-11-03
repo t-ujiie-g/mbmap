@@ -203,16 +203,16 @@ fn Map::drawn_tiles(self : Map, src : SourceTiles) -> Array[TileEntry] {
 ///|
 /// Compiles a query's `filter` (JSON text from `JSON.stringify`, or "" for
 /// none); the error if it is not one mbmap evaluates.
-fn check_filter(filter : String) -> String? {
+fn compile_filter(filter : String) -> Result[@style.Expr?, String] {
   if filter == "" {
-    return None
+    return Ok(None)
   }
   try
     @style.compile(parse_json(filter), expected=BoolType, path="filter")
   catch {
-    e => Some("mbmap: \{e.message()}")
+    e => Err("mbmap: \{e.message()}")
   } noraise {
-    _ => None
+    e => Ok(Some(e))
   }
 }
 
@@ -227,8 +227,9 @@ pub fn Map::query_rendered(
   filter : String,
   done : (TileResults) -> Unit,
 ) -> String {
-  if check_filter(filter) is Some(why) {
-    return why
+  let filter = match compile_filter(filter) {
+    Ok(f) => f
+    Err(why) => return why
   }
   if points.is_empty() {
     return "mbmap: a query needs a point"
@@ -329,7 +330,7 @@ pub fn Map::query_rendered(
         w.u32(l.0)
         w.u32(l.1)
       }
-      w.utf8(filter)
+      @style.write_expr(w, filter)
       self.send_part(query, q, "rendered", src, e, w.to_bytes(), Some(style))
       |> ignore
     }
@@ -409,8 +410,9 @@ pub fn Map::query_source(
   filter : String,
   done : (TileResults) -> Unit,
 ) -> String {
-  if check_filter(filter) is Some(why) {
-    return why
+  let filter = match compile_filter(filter) {
+    Ok(f) => f
+    Err(why) => return why
   }
   let (query, q) = self.start_query(done)
   if self.sources.search_by(s => s.source.id == source) is Some(at) &&
@@ -418,7 +420,7 @@ pub fn Map::query_source(
     let src = self.sources[at]
     let w = @core.ByteWriter::new()
     w.utf8(source_layer)
-    w.utf8(filter)
+    @style.write_expr(w, filter)
     let request = w.to_bytes()
     for e in self.drawn_tiles(src) {
       self.send_part(query, q, "features", src, e, request, None) |> ignore

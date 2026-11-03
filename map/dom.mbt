@@ -91,10 +91,11 @@ extern "js" fn spawn_worker(
 extern "js" fn post_init(
   w : Worker,
   wasm : String,
-  style : String,
+  style : Bytes,
+  symbols : Bool,
   font : String,
 ) -> Unit =
-  #|(w, wasm, style, font) => w.postMessage({ type: "init", wasm, style, font })
+  #|(w, wasm, style, symbols, font) => w.postMessage({ type: "init", wasm, style, symbols, font })
 
 ///|
 /// Asks worker `w` for a tile at `url`, passed first through `transform` (the

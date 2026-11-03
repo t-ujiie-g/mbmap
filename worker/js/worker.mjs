@@ -1,7 +1,7 @@
 // Glue around the wasm-gc build of `worker`. Messages and the packed tile are in
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
-import { hostNumber, hostText } from "../../wasmio/js/host.mjs";
+import { hostText } from "../../wasmio/js/host.mjs";
 import { readCapped } from "./body.mjs";
 import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { rangesOf, readFeatureRanges } from "./ranges.mjs";
@@ -17,7 +17,6 @@ const MAX_DEM_SIZE = 1024;
 const MAX_RASTER_SIZE = 4096;
 // PMTiles archives kept open at once.
 const MAX_ARCHIVES = 16;
-const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
 let ready = null;
@@ -56,8 +55,8 @@ const loadPmtiles = lazy(() => import("./pmtiles.mjs"));
 let queries = null;
 const loadQueries = lazy(() => import("./query.mjs").then((m) => (queries = m)));
 // Starts loading labels early for a style with symbol layers; each tile still checks its own.
-const prefetchSymbols = (style) => {
-  if (canDrawGlyphs && /"type"\s*:\s*"symbol"/.test(style)) loadSymbols().catch(() => {});
+const prefetchSymbols = (symbols) => {
+  if (canDrawGlyphs && symbols === true) loadSymbols().catch(() => {});
 };
 
 function hasSymbols(packed) {
@@ -146,13 +145,13 @@ function unpack(packed) {
   return { layers, transfer };
 }
 
-async function init({ wasm: url, style, font: family }) {
+async function init({ wasm: url, style, symbols, font: family }) {
   if (typeof family === "string" && family) font = family;
-  prefetchSymbols(style);
-  const host = { number: hostNumber(() => wasm.memory), ...hostText() };
+  prefetchSymbols(symbols);
+  const host = hostText();
   const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host, Math });
   wasm = instance.exports;
-  withInput(encoder.encode(style), () => wasm.init_style());
+  withInput(style, () => wasm.init_style());
 }
 
 let demCanvas = null;
@@ -301,11 +300,11 @@ onmessage = (e) => {
       () => postMessage({ type: "ready" }),
       (err) => postMessage({ type: "error", message: failure(err) }),
     );
-  } else if (msg?.type === "style" && ready && typeof msg.style === "string") {
+  } else if (msg?.type === "style" && ready && msg.style instanceof Uint8Array) {
     // Tiles asked for after this message are made with the new style; a style
     // that fails is reported, and `ready` stays usable (once the wasm runs).
-    const style = encoder.encode(msg.style);
-    prefetchSymbols(msg.style);
+    const style = msg.style;
+    prefetchSymbols(msg.symbols);
     const apply = () => {
       try {
         withInput(style, () => wasm.init_style());
