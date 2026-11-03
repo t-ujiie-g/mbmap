@@ -4,7 +4,9 @@
 import { useEffect, useState } from "react";
 import { createIdentify } from "mbmap/ui";
 import { createCoordinateReadout } from "../../shared/coordinates.js";
+import { createShowcaseMeasurement, identifyWhenIdle } from "../../shared/measure.js";
 import { selectedRows } from "../../shared/pick.js";
+import { Measure } from "./measure.jsx";
 import { useController } from "./use-controller.js";
 
 function Picked({ identify }) {
@@ -49,15 +51,22 @@ function Coordinates({ c }) {
   );
 }
 
-/** The identify list and the coordinates table, their controllers made once per map. */
+/**
+ * The identify list, the coordinates table and the measurement, their controllers made once per
+ * map; clicks identify unless they measure.
+ */
 export function useIdentify(map) {
   const [c, setC] = useState(null);
   useEffect(() => {
     if (!map) return;
-    const next = { identify: createIdentify(map), coordinates: createCoordinateReadout(map) };
+    const next = { identify: createIdentify(map, { click: false }), coordinates: createCoordinateReadout(map), measurement: createShowcaseMeasurement(map) };
+    const stop = identifyWhenIdle(map, next.identify, next.measurement);
     window.__identify = next.identify;
     setC(next);
-    return () => Object.values(next).forEach((x) => x.destroy());
+    return () => {
+      stop();
+      Object.values(next).forEach((x) => x.destroy());
+    };
   }, [map]);
-  return c && { picked: <Picked identify={c.identify} />, coordinates: <Coordinates c={c.coordinates} /> };
+  return c && { picked: <Picked identify={c.identify} />, coordinates: <Coordinates c={c.coordinates} />, measure: <Measure m={c.measurement} /> };
 }

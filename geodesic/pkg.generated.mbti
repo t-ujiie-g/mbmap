@@ -1,0 +1,70 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/geodesic"
+
+import {
+  "t-ujiie-g/mbmap/core",
+}
+
+// Values
+pub const WGS84_A : Double = 6378137.0
+
+pub const WGS84_F : Double = 0.0033528106647474805
+
+// Errors
+
+// Types and methods
+type Accumulator
+
+pub struct Geodesic {
+  a : Double
+  f : Double
+  // private fields
+}
+pub fn Geodesic::densify(Self, ArrayView[Double], Double, Int32) -> Array[Double]?
+pub fn Geodesic::direct(Self, Double, Double, Double, Double) -> Position
+pub fn Geodesic::inverse(Self, Double, Double, Double, Double, area? : Bool) -> Inverse
+pub fn Geodesic::inverse_line(Self, Double, Double, Double, Double) -> GeodesicLine
+pub fn Geodesic::line(Self, Double, Double, Double) -> GeodesicLine
+pub fn Geodesic::measure_path(Self, ArrayView[Double], Bool) -> FixedArray[Double]
+pub fn Geodesic::new(Double, Double, trig? : @core.Trig) -> Self?
+pub fn Geodesic::polygon(Self, polyline? : Bool) -> PolygonArea
+pub fn Geodesic::wgs84(trig? : @core.Trig) -> Self
+
+pub struct GeodesicLine {
+  lat1 : Double
+  lon1 : Double
+  azi1 : Double
+  s13 : Double
+  a13 : Double
+  // private fields
+}
+pub fn GeodesicLine::position(Self, Bool, Double, unroll? : Bool) -> Position
+
+pub(all) struct Inverse {
+  s12 : Double
+  azi1 : Double
+  azi2 : Double
+  a12 : Double
+  area : Double
+}
+
+pub struct PolygonArea {
+  polyline : Bool
+  // private fields
+}
+pub fn PolygonArea::add_point(Self, Double, Double) -> Unit
+pub fn PolygonArea::compute(Self, reverse? : Bool, sign? : Bool) -> (Double, Double)
+pub fn PolygonArea::count(Self) -> Int32
+
+pub(all) struct Position {
+  lat2 : Double
+  lon2 : Double
+  azi2 : Double
+  s12 : Double
+  a12 : Double
+}
+
+// Type aliases
+pub using @core {type Trig}
+
+// Traits

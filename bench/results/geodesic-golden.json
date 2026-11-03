@@ -1,0 +1,94 @@
+{
+  "env": {
+    "geographiclib": "geographiclib-geodesic 2.2.0",
+    "node": "v22.23.4"
+  },
+  "cases": 20000,
+  "rows": [
+    {
+      "group": "inverse random",
+      "cases": 20000,
+      "identical": 20000
+    },
+    {
+      "group": "direct random",
+      "cases": 20000,
+      "identical": 20000
+    },
+    {
+      "group": "inverse short",
+      "cases": 5000,
+      "identical": 5000
+    },
+    {
+      "group": "direct short",
+      "cases": 5000,
+      "identical": 5000
+    },
+    {
+      "group": "inverse antipodal",
+      "cases": 5000,
+      "identical": 5000
+    },
+    {
+      "group": "direct antipodal",
+      "cases": 5000,
+      "identical": 5000
+    },
+    {
+      "group": "inverse pole",
+      "cases": 1000,
+      "identical": 1000
+    },
+    {
+      "group": "direct pole",
+      "cases": 1000,
+      "identical": 1000
+    },
+    {
+      "group": "inverse meridian",
+      "cases": 1000,
+      "identical": 1000
+    },
+    {
+      "group": "direct meridian",
+      "cases": 1000,
+      "identical": 1000
+    },
+    {
+      "group": "inverse equator",
+      "cases": 1000,
+      "identical": 1000
+    },
+    {
+      "group": "direct equator",
+      "cases": 1000,
+      "identical": 1000
+    },
+    {
+      "group": "inverse edge",
+      "cases": 7,
+      "identical": 7
+    },
+    {
+      "group": "direct edge",
+      "cases": 7,
+      "identical": 7
+    },
+    {
+      "group": "polygon",
+      "cases": 2000,
+      "identical": 2000
+    },
+    {
+      "group": "polyline",
+      "cases": 2000,
+      "identical": 2000
+    },
+    {
+      "group": "densify",
+      "cases": 2000,
+      "identical": 2000
+    }
+  ]
+}

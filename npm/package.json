@@ -31,6 +31,10 @@
       "types": "./dist/search.d.ts",
       "default": "./dist/search.js"
     },
+    "./geodesic": {
+      "types": "./dist/geodesic.d.ts",
+      "default": "./dist/geodesic.js"
+    },
     "./worker.js": "./dist/worker.js",
     "./mbmap.wasm": "./dist/mbmap.wasm",
     "./package.json": "./package.json",
@@ -39,7 +43,9 @@
     "./analysis-worker.js": "./dist/analysis-worker.js",
     "./analysis.wasm": "./dist/analysis.wasm",
     "./geometry.wasm": "./dist/geometry.wasm",
-    "./proj.wasm": "./dist/proj.wasm"
+    "./proj.wasm": "./dist/proj.wasm",
+    "./geodesic-worker.js": "./dist/geodesic-worker.js",
+    "./geodesic.wasm": "./dist/geodesic.wasm"
   },
   "types": "./dist/index.d.ts",
   "sideEffects": [

@@ -1,0 +1,11 @@
+// Geodesics on an ellipsoid: a port of GeographicLib's geodesic routines.
+// Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "moonbitlang/core/double",
+}
+
+import {
+  "moonbitlang/core/double",
+} for "test"

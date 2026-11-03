@@ -336,6 +336,7 @@ async function showcase(page) {
   await page.mouse.move(400, 300, { steps: 3 });
   await page.waitForFunction(() => window.__hovered);
   const hovered = await page.evaluate(() => ({ id: window.__hovered, state: window.__map.getFeatureState({ source: "places", id: window.__hovered }) }));
+  const measured = await measureChecks(page);
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -395,8 +396,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured }];
 }
 
 // Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile
@@ -755,6 +756,50 @@ async function searchChecks(page) {
     utm.length === 1 && utm[0].detail === "UTM 54N" && near(utm[0], 139.77, 35.68, 0.01) &&
     imeIgnored && chosen.label === "東京タワー" && !chosen.open && near({ lng: chosen.center.lng, lat: chosen.center.lat }, 139.7454, 35.6586, 1e-3);
   return { ok, kanji, decimal: decimal[0], plane: plane[0], utm: utm[0], imeIgnored, chosen };
+}
+
+// The showcase's measurement: a line ended by a double click (no zoom, no identify) and an area
+// finished from the panel reach geographiclib-geodesic's numbers to the bit; 「消す」 empties the overlay.
+async function measureChecks(page) {
+  // geographiclib in the page itself: engines' Math differ in the last bit now and then.
+  await page.addScriptTag({ path: path.join(ROOT, "bench/node_modules/geographiclib-geodesic/geographiclib-geodesic.min.js") });
+  // The numbers of the vertices placed, once the controller has them (vertices come at once, numbers from the worker).
+  const measured = async (n, closed) => {
+    await page.waitForFunction((n) => window.__measurement.state.positions.length === n && window.__measurement.state.finished, n);
+    await page.waitForFunction((closed) => {
+      const s = window.__measurement.state;
+      const p = geodesic.Geodesic.WGS84.Polygon(!closed);
+      for (const [lng, lat] of s.positions) p.AddPoint(lat, lng);
+      const r = p.Compute(false, true);
+      return s.length === r.perimeter && s.area === (closed ? Math.abs(r.area) : null) && s.segments.length === (closed ? s.positions.length : s.positions.length - 1);
+    }, closed);
+    return page.evaluate(() => window.__measurement.state);
+  };
+  const before = await page.evaluate(() => ({ zoom: window.__map.getZoom(), point: window.__identify.state.point }));
+  await page.click("#measure button >> text=距離");
+  await page.mouse.click(420, 160);
+  await page.mouse.click(620, 200);
+  await page.mouse.move(560, 300, { steps: 2 });
+  await page.mouse.dblclick(520, 380);
+  const line = await measured(3, false);
+  const after = await page.evaluate(() => ({ zoom: window.__map.getZoom(), point: window.__identify.state.point, layers: window.__map.getStyle().layers.filter((l) => l.id.startsWith("mbmap-measure")).map((l) => l.id) }));
+  const text = await page.evaluate(() => document.getElementById("measured").textContent);
+  await page.click("#measure button >> text=面積");
+  for (const [x, y] of [[420, 160], [620, 200], [520, 380]]) await page.mouse.click(x, y);
+  await page.click("#measure button >> text=終える");
+  const area = await measured(3, true);
+  await page.click("#measure button >> text=消す");
+  const cleared = await page.evaluate(async () => {
+    await window.__map.once("idle");
+    return { mode: window.__measurement.state.mode, features: window.__map.getStyle().sources["mbmap-measure"].data.features.length, dblclick: window.__map.doubleClickZoom.isEnabled() };
+  });
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
+  const ok =
+    line.mode === "distance" && line.segments.length === 2 && Math.abs(sum(line.segments) - line.length) < 1e-6 &&
+    area.mode === "area" && area.segments.length === 3 && area.area > 0 &&
+    after.zoom === before.zoom && JSON.stringify(after.point) === JSON.stringify(before.point) && after.layers.length === 3 && text.includes(" m") &&
+    cleared.mode === null && cleared.features === 0 && cleared.dblclick;
+  return { ok, line: { mode: line.mode, length: line.length, segments: line.segments }, area: { mode: area.mode, perimeter: area.length, area: area.area, segments: area.segments }, after, text, cleared };
 }
 
 // Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.

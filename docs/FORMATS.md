@@ -242,6 +242,21 @@ geometry). proj.wasm names a CRS by EPSG code, or by -1 - the handle
 `define_crs` returns for a definition; `crs_kind(id)` is 1 for a geographic CRS,
 0 for a projected one.
 
+## Geodesic worker messages (`geodesic_worker/js/worker.mjs`)
+
+In: `{type: "init", wasm}` (instantiated with `{ Math }`), then `{type: "call", id, op, ...}`
+with `op` and its arguments, positions as `[lng, lat]`:
+
+- `inverse` (`from`, `to`): a Float64Array of s12, azi1, azi2, a12, S12;
+- `direct` (`from`, `azimuth`, `distance`): lat2, lon2, azi2, a12;
+- `measure` (`coords` an ArrayBuffer of f64 lng, lat pairs, `closed`, `step` optional):
+  `{measured}`, a Float64Array of the length, the area (NaN for a line) and the distance to
+  each vertex (`@geodesic.Geodesic::measure_path`), and with a `step` also `path`, the
+  pairs densified along each geodesic (a ring back to its first vertex) with longitudes
+  unrolled (`densify`, at most 1,000,000 points).
+
+Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
+
 ## CRS definition (`proj/encoding.mbt`, written by `npm/src/projstring.ts`)
 
 A parsed PROJ string as 34 f64s; angles in radians, NaN where a parameter was

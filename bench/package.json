@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker analysis_worker geometry_worker proj_worker --release --target wasm-gc && moon build bundle/main --release --target js && npm --prefix bench run opt",
+    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker analysis_worker geometry_worker proj_worker geodesic_worker --release --target wasm-gc && moon build bundle/main --release --target js && npm --prefix bench run opt",
     "opt": "node backend/opt.mjs",
     "test": "node --test lib/*.test.mjs",
     "fixtures": "node maplibre/fetch-tiles.mjs",
@@ -41,6 +41,7 @@
     "proj:golden": "npm run build:moon && node proj/golden.mjs",
     "proj:node": "npm run build:moon && node proj/node.mjs",
     "buffer:check": "npm run build:moon && node clipper/buffer-check.mjs",
+    "geodesic:golden": "npm run build:moon && node geodesic/golden.mjs",
     "geometry:node": "npm run build:moon && node clipper/node.mjs"
   },
   "devDependencies": {

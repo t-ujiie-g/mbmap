@@ -1,7 +1,8 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
 // geometry operations are Clipper2's, in a module loaded on their first use.
-import { wasmUrl, workerScriptUrl } from "./urls";
+import { wasmUrl } from "./urls";
+import { WorkerClient } from "./worker-client";
 
 /** `[minX, minY, maxX, maxY]` in degrees. */
 export type BBox = [number, number, number, number];
@@ -86,43 +87,19 @@ export interface Collected {
   mean: Float64Array;
 }
 
-let worker: Worker | null = null;
-const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
-let nextCall = 0;
+const client = new WorkerClient("analysis");
 
-function start(options: AnalysisOptions): Worker {
-  if (worker) return worker;
-  const page = new URL(document.baseURI);
-  const w = new Worker(
-    workerScriptUrl(options.workerUrl ?? new URL("./analysis-worker.js", import.meta.url), page, location.origin),
-    { type: "module" },
-  );
-  w.onmessage = (e: MessageEvent) => {
-    const msg = e.data;
-    const call = msg?.type === "result" ? pending.get(msg.id) : undefined;
-    if (!call) return;
-    pending.delete(msg.id);
-    if (typeof msg.error === "string") call.reject(new Error(`mbmap: analysis: ${msg.error}`));
-    else call.resolve(msg.value);
-  };
-  w.postMessage({
-    type: "init",
+function start(options: AnalysisOptions): void {
+  client.start(options.workerUrl ?? new URL("./analysis-worker.js", import.meta.url), (page) => ({
     wasm: wasmUrl(options.wasmUrl ?? new URL("./analysis.wasm", import.meta.url), page),
     geometry: wasmUrl(options.geometryWasmUrl ?? new URL("./geometry.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
-  });
-  worker = w;
-  return w;
+  }));
 }
 
 function call<T>(op: string, args: object, transfer: Transferable[] = []): Promise<T> {
-  if (!worker) return Promise.reject(new Error("mbmap: analysis: no dataset has been loaded"));
-  const id = nextCall++;
-  const w = worker;
-  return new Promise<T>((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    w.postMessage({ type: "call", id, op, ...args }, transfer);
-  });
+  if (!client.started) return Promise.reject(new Error("mbmap: analysis: no dataset has been loaded"));
+  return client.call<T>(op, args, transfer);
 }
 
 // Codes of geometry_worker/geometry.mbt.
@@ -394,8 +371,5 @@ export function distance(from: [number, number], to: [number, number]): number {
 
 /** Stops the analysis worker; datasets are lost and pending calls reject. */
 export function terminate(): void {
-  worker?.terminate();
-  worker = null;
-  for (const p of pending.values()) p.reject(new Error("mbmap: analysis: terminated"));
-  pending.clear();
+  client.terminate();
 }
