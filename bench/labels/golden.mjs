@@ -28,6 +28,7 @@ const SCENES = {
   radial: { style: style(label("l", VARIABLE)), camera: { center: tokyo, zoom: 15 } },
   "radial-turned": { style: style(label("l", VARIABLE)), camera: { center: [139.7645, 35.6795], zoom: 15.4, bearing: 30 } },
   "radial-tilted": { style: style(label("l", VARIABLE)), camera: { center: tokyo, zoom: 15.2, bearing: -20, pitch: 50 } },
+  "radial-multiline": { style: style(label("l", { ...VARIABLE, "text-max-width": 3 })), camera: { center: tokyo, zoom: 15 } },
   "offset-sorted": {
     style: style(label("l", {
       "text-variable-anchor": ["bottom-left", "top-right", "left", "right", "top", "bottom"], "text-offset": [0.4, 0.6],
@@ -172,8 +173,8 @@ try {
     const extra = mbmap.filter((l) => !theirs.has(l.key)).map((l) => l.key);
     const both = mbmap.filter((l) => theirs.has(l.key));
     const anchors = both
-      .filter((l) => l.anchor !== theirs.get(l.key).anchor || l.text !== theirs.get(l.key).text || l.icon !== theirs.get(l.key).icon)
-      .map((l) => `${l.key}: ${l.anchor} ${l.text} ${l.icon} vs ${theirs.get(l.key).anchor} ${theirs.get(l.key).text} ${theirs.get(l.key).icon}`);
+      .filter((l) => ["anchor", "text", "icon", "justify"].some((k) => l[k] !== theirs.get(l.key)[k]))
+      .map((l) => `${l.key}: ${l.anchor} ${l.text} ${l.icon} ${l.justify} vs ${theirs.get(l.key).anchor} ${theirs.get(l.key).text} ${theirs.get(l.key).icon} ${theirs.get(l.key).justify}`);
     // How far the boxes the labels both placed put in the grid lie from MapLibre's nearest of
     // the same feature (along lines a feature's instances share its boxes' key), in CSS px.
     const diff = (l) => Math.max(0, ...l.box.map((b) => Math.min(...theirs.get(l.key).box.map((t) => Math.max(...b.map((v, i) => Math.abs(v - t[i])))))));
@@ -208,7 +209,8 @@ try {
     if (!same) failed++;
     results.push({
       scene: name, same, maplibre: maplibre.length, mbmap: mbmap.length,
-      anchored: both.filter((l) => l.anchor !== null && l.anchor !== "top").length, icons: both.filter((l) => l.icon).length,
+      anchored: both.filter((l) => l.anchor !== null && l.anchor !== "top").length,
+      justified: both.filter((l) => l.justify !== null && l.justify !== "left").length, icons: both.filter((l) => l.icon).length,
       boxDiff: Math.round(boxDiff * 1000) / 1000,
       ...(scene.along ? { glyphs: glyphCount, glyphDiff: Math.round(glyphDiff * 1000) / 1000, angleDiff: Math.round(angleDiff * 1e6) / 1e6 } : {}),
       ...(same ? {} : {

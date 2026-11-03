@@ -3,22 +3,15 @@
 const KIND_SYMBOL : Int32 = 4
 
 ///|
-/// Floats per label in a symbol entry's `labels` (docs/FORMATS.md "Symbol
-/// vertices"); the renderer reads the last three. Mirrors LABEL_FLOATS in worker/js/symbols.mjs.
-const LABEL_FLOATS : Int32 = 19
+/// Columns of a label's floats in a symbol entry's `labels` (docs/FORMATS.md
+/// "Symbol vertices"); mirrored in worker/js/symbols.mjs.
+const LABEL_Y : Int32 = 1
 
 ///|
-/// Where a label's icon box, layouts (1), first index and index count start in
-/// its floats. Mirrors ICON_COLUMN in worker/js/symbols.mjs.
-const ICON_COLUMN : Int32 = 9
+/// The text box: min x, min y, max x, max y.
+const LABEL_BOX : Int32 = 2
 
 ///|
-/// Floats per label in `LabelSet::boxes`: its text box, then its icon's.
-const BOX_FLOATS : Int32 = 8
-
-///|
-/// Positions in a label's floats: its feature index, text size, sort key and
-/// layout variants.
 const LABEL_FEATURE : Int32 = 6
 
 ///|
@@ -28,7 +21,36 @@ const LABEL_SIZE : Int32 = 7
 const LABEL_KEY : Int32 = 8
 
 ///|
-const LABEL_VARIANTS : Int32 = 9
+/// The icon's box (four floats), then its layouts (1), first index and index
+/// count. Mirrors ICON_COLUMN in worker/js/symbols.mjs.
+const ICON_COLUMN : Int32 = 9
+
+///|
+const ICON_LAYOUTS : Int32 = ICON_COLUMN + 4
+
+///|
+const ICON_FIRST : Int32 = ICON_LAYOUTS + 1
+
+///|
+const ICON_COUNT : Int32 = ICON_LAYOUTS + 2
+
+///|
+/// The text's layouts, then the first index and index count of each.
+const LABEL_LAYOUTS : Int32 = 16
+
+///|
+const LABEL_FIRST : Int32 = LABEL_LAYOUTS + 1
+
+///|
+const LABEL_COUNT : Int32 = LABEL_LAYOUTS + 2
+
+///|
+/// Floats per label. Mirrors LABEL_FLOATS in worker/js/symbols.mjs.
+const LABEL_FLOATS : Int32 = LABEL_COUNT + 1
+
+///|
+/// Floats per label in `LabelSet::boxes`: its text box, then its icon's.
+const BOX_FLOATS : Int32 = 8
 
 ///|
 /// Labels below this perspective ratio (MapLibre's: 0.5 + 0.5 x the center's
@@ -338,14 +360,20 @@ fn Map::place_labels(
         if terrain is Some(src) && s.heights_at != self.dem_version {
           s.heights_at = self.dem_version
           label_heights(src, d.id, s)
-          self.renderer.set_heights(m.mesh, s.labels, LABEL_FLOATS, s.heights)
+          self.renderer.set_heights(
+            m.mesh,
+            s.labels,
+            LABEL_FLOATS,
+            s.heights,
+            col=LABEL_LAYOUTS,
+          )
           if s.icon is Some(ic) {
             self.renderer.set_heights(
               ic.mesh,
               s.labels,
               LABEL_FLOATS,
               s.heights,
-              col=ICON_COLUMN + 4,
+              col=ICON_LAYOUTS,
             )
           }
         }
@@ -390,10 +418,17 @@ fn Map::place_labels(
           LABEL_FLOATS,
           s.shown,
           s.variant,
+          col=LABEL_LAYOUTS,
         )
       }
       if s.moved {
-        self.renderer.set_shifts(p.mesh.mesh, s.labels, LABEL_FLOATS, s.shifts)
+        self.renderer.set_shifts(
+          p.mesh.mesh,
+          s.labels,
+          LABEL_FLOATS,
+          s.shifts,
+          col=LABEL_LAYOUTS,
+        )
       }
       if s.icon is Some(ic) {
         if ic.changed {
@@ -403,7 +438,7 @@ fn Map::place_labels(
             LABEL_FLOATS,
             ic.shown,
             s.variant,
-            col=ICON_COLUMN + 4,
+            col=ICON_LAYOUTS,
           )
         }
         // With `icon-text-fit` the icon moves with its text.
@@ -413,7 +448,7 @@ fn Map::place_labels(
             s.labels,
             LABEL_FLOATS,
             s.shifts,
-            col=ICON_COLUMN + 4,
+            col=ICON_LAYOUTS,
           )
         }
         ic.changed = false
@@ -488,7 +523,7 @@ fn Map::place_label(
   let row = i * LABEL_FLOATS
   let (cx, cy, _, cw) = at.matrix.apply(
     f32_at(s.labels, row),
-    f32_at(s.labels, row + 1),
+    f32_at(s.labels, row + LABEL_Y),
     s.heights[i] * height_scale,
     1.0,
   )
@@ -529,7 +564,7 @@ fn Map::place_label(
       s.boxes[b + 3] + VIEWPORT_PADDING,
     )
   }
-  let has_text = f32_at(s.labels, row + LABEL_FLOATS - 1) > 0.0
+  let has_text = f32_at(s.labels, row + LABEL_COUNT) > 0.0
   let icon = icon_of(s, i)
   // With `icon-text-fit` an icon that may not overlap must fit at each anchor tried.
   let fitted = match icon {
@@ -540,15 +575,14 @@ fn Map::place_label(
   let mut shifted = false
   let mut place_text = has_text &&
     tries == 0 &&
-    fits(0, 2, s.padding, 0.0, 0.0, s.allow_overlap)
+    fits(0, LABEL_BOX, s.padding, 0.0, 0.0, s.allow_overlap)
   if has_text && tries > 0 {
     let pad = s.padding
-    let x0 = q(f32_at(s.labels, row + 2) - pad)
-    let y0 = q(f32_at(s.labels, row + 3) - pad)
-    let x1 = q(f32_at(s.labels, row + 4) + pad)
-    let y1 = q(f32_at(s.labels, row + 5) + pad)
+    let x0 = q(f32_at(s.labels, row + LABEL_BOX) - pad)
+    let y0 = q(f32_at(s.labels, row + LABEL_BOX + 1) - pad)
+    let x1 = q(f32_at(s.labels, row + LABEL_BOX + 2) + pad)
+    let y1 = q(f32_at(s.labels, row + LABEL_BOX + 3) + pad)
     let size = f32_at(s.labels, row + LABEL_SIZE)
-    let multi = f32_at(s.labels, row + LABEL_VARIANTS) > 1.0
     let mut prev = if s.shown[i] { s.anchor[i] } else { -1 }
     let mut overlap = false
     let passes = (if s.allow_overlap { 2 } else { 1 }) +
@@ -565,7 +599,7 @@ fn Map::place_label(
         if fitted && !fits(4, ICON_COLUMN, 0.0, dx, dy, overlap) {
           continue
         }
-        if fits(0, 2, pad, dx, dy, overlap) {
+        if fits(0, LABEL_BOX, pad, dx, dy, overlap) {
           placed = k
           shifted = true
           if s.shifts[i * 2] != dx || s.shifts[i * 2 + 1] != dy {
@@ -573,7 +607,7 @@ fn Map::place_label(
             s.shifts[i * 2 + 1] = dy
             s.moved = true
           }
-          let v = if multi { (ha * 2.0).to_int() } else { 0 }
+          let v = text_layout(s.labels, i, ha)
           if v != s.variant[i] {
             s.variant[i] = v
             s.changed = true
@@ -626,10 +660,25 @@ fn Map::place_label(
 }
 
 ///|
+/// Which of label `i`'s text layouts shows at horizontal alignment `ha` (0
+/// left, 0.5 center, 1 right): a multi-line label has one per justification.
+fn text_layout(
+  labels : @render_webgl2.JsBuffer,
+  i : Int32,
+  ha : Double,
+) -> Int32 {
+  if f32_at(labels, i * LABEL_FLOATS + LABEL_LAYOUTS) > 1.0 {
+    (ha * 2.0).to_int()
+  } else {
+    0
+  }
+}
+
+///|
 /// Label `i`'s icon set if it has an icon.
 fn icon_of(s : LabelSet, i : Int32) -> IconSet? {
   match s.icon {
-    Some(ic) if f32_at(s.labels, i * LABEL_FLOATS + ICON_COLUMN + 6) > 0.0 =>
+    Some(ic) if f32_at(s.labels, i * LABEL_FLOATS + ICON_COUNT) > 0.0 =>
       Some(ic)
     _ => None
   }
@@ -708,9 +757,9 @@ fn nan_box(s : LabelSet, i : Int32, k : Int32) -> Bool {
 }
 
 ///|
-/// The labels shown at the last placement, for tests, a line each: layer id, tile z, x, y,
-/// feature, anchor x, y (8192 units), variable anchor code (or -1), text and icon shown (1, 0),
-/// their boxes (CSS px) and, along lines, each glyph's screen x:y:angle.
+/// The labels shown at the last placement, for tests, a line each: layer id, tile z, x, y, feature, anchor
+/// x, y (8192 units), variable anchor code (or -1), text and icon shown (1, 0), the text's layout (0-2: left,
+/// center, right; -1 with one), their boxes (CSS px) and, along lines, each glyph's screen x:y:angle.
 pub fn Map::placed_labels(self : Map) -> String {
   let out = StringBuilder()
   for _, draws in self.drawn {
@@ -736,18 +785,24 @@ pub fn Map::placed_labels(self : Map) -> String {
             "\{self.style.layers[m.layer].id},\{d.id.z},\{d.id.x},\{d.id.y},\{f32_at(s.labels, row + LABEL_FEATURE).to_int()},",
           )
           let ax = (f32_at(s.labels, row) * 2.0).to_int()
-          let ay = (f32_at(s.labels, row + 1) * 2.0).to_int()
+          let ay = (f32_at(s.labels, row + LABEL_Y) * 2.0).to_int()
           let flag = (v : Bool) => if v { 1 } else { 0 }
+          let layout = if s.shown[i] &&
+            f32_at(s.labels, row + LABEL_LAYOUTS) > 1.0 {
+            s.variant[i]
+          } else {
+            -1
+          }
           out.write_string(
-            "\{ax},\{ay},\{code},\{flag(s.shown[i])},\{flag(icon)}",
+            "\{ax},\{ay},\{code},\{flag(s.shown[i])},\{flag(icon)},\{layout}",
           )
           for k in 0..<BOX_FLOATS {
             out.write_string(",\{b[i * BOX_FLOATS + k]}")
           }
           // Along lines, each glyph's place on screen and angle.
           if s.line is Some(l) {
-            let q0 = (f32_at(s.labels, row + LABEL_FLOATS - 2) / 6.0).to_int()
-            let n = (f32_at(s.labels, row + LABEL_FLOATS - 1) / 6.0).to_int()
+            let q0 = (f32_at(s.labels, row + LABEL_FIRST) / 6.0).to_int()
+            let n = (f32_at(s.labels, row + LABEL_COUNT) / 6.0).to_int()
             out.write_string(",")
             for k in 0..<n {
               let g = (q0 + k) * 3
@@ -779,7 +834,7 @@ fn label_heights(src : SourceTiles, id : @core.TileId, s : LabelSet) -> Unit {
     let at = i * LABEL_FLOATS
     let m : @core.MercatorCoord = {
       x: (id.x.to_double() + f32_at(s.labels, at) / extent) / n,
-      y: (id.y.to_double() + f32_at(s.labels, at + 1) / extent) / n,
+      y: (id.y.to_double() + f32_at(s.labels, at + LABEL_Y) / extent) / n,
     }
     s.heights[i] = elevation_at(src, m).unwrap_or(0.0)
   }

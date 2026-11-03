@@ -560,11 +560,6 @@ fn Map::draw_frame(
       self.draw_layer(index, layer, shared, d.at, d.meshes, dpr, height_scale~)
     }
   }
-  for _, l in self.listeners {
-    if l is Render(f) {
-      f()
-    }
-  }
 }
 
 ///|

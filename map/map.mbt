@@ -104,6 +104,8 @@ pub struct Map {
   priv geojson : Provider
   priv mut transform : @core.Transform
   priv workers : Array[Worker]
+  /// Per worker: whether it failed (`Map::worker_failed`) and gets no more work.
+  priv failed_workers : Array[Bool]
   priv mut next_worker : Int32
   priv requests : @hashmap.HashMap[Int32, (Int32, Int64)]
   priv mut next_request : Int32
@@ -227,6 +229,7 @@ pub fn Map::new(
       limits~,
     ),
     workers: [],
+    failed_workers: [],
     next_worker: 0,
     requests: @hashmap.HashMap([]),
     next_request: 0,
@@ -284,10 +287,13 @@ pub fn Map::new(
   } else {
     @cmp.maximum(1, @cmp.minimum(MAX_WORKERS, hardware_concurrency() / 2))
   }
-  for _ in 0..<count {
-    let w = spawn_worker(absolute_url(worker_url), msg => map.on_message(msg))
+  for i in 0..<count {
+    let w = spawn_worker(absolute_url(worker_url), msg => map.on_message(msg), message => {
+      map.worker_failed(i, message)
+    })
     post_init(w, wasm, style_json, font)
     map.workers.push(w)
+    map.failed_workers.push(false)
   }
   map.attach_input()
   map.cleanups.push(observe_resize(canvas, () => map.request_render()))
@@ -396,7 +402,7 @@ pub fn Map::destroy(self : Map) -> Unit {
     src.tiles.clear()
   }
   self.sources.clear()
-  self.prune_media()
+  self.prune_media([])
 }
 
 ///|

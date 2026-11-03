@@ -93,16 +93,19 @@ fn Map::changed(self : Map) -> Unit {
 }
 
 ///|
-/// Frees the pictures of sources that are no longer image sources of the style.
-fn Map::prune_media(self : Map) -> Unit {
+/// Forgets the pictures of sources that are no longer image sources in
+/// `style`, and frees the GPU copies of those no layer draws (uploaded again
+/// once one does: the facade shows a picture only once).
+fn Map::prune_media(self : Map, style : Array[@style.Source]) -> Unit {
   let kept = []
   for m in self.media {
-    if self.sources
-      .iter()
-      .any(s => s.source.id == m.id && s.source.kind is Image) {
-      kept.push(m)
-    } else if m.mesh is Some(mesh) {
+    let drawn = self.sources.iter().any(s => s.source.id == m.id)
+    if !drawn && m.mesh is Some(mesh) {
       self.renderer.release(mesh)
+      m.mesh = None
+    }
+    if style.iter().any(s => s.id == m.id && s.kind is Image) {
+      kept.push(m)
     }
   }
   self.media.clear()

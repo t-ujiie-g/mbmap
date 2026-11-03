@@ -1,7 +1,8 @@
-// Image, video and canvas sources on bench/npm/pages/media: each shows where its corners put it; a playing canvas
-// is drawn again each frame and kept when paused; the video pauses and plays; the image moves, takes a new picture
-// and refuses a URL that is not http(s); the map goes idle while the video plays.
+// Image, video and canvas sources on bench/npm/pages/media: each shows where its corners put it; a playing canvas is drawn
+// again each frame and kept when paused; the video pauses and plays; the image moves, takes a new picture, refuses a URL
+// that is not http(s) and comes back with its layer; the map goes idle while the video plays and when the layer is shown.
 import { decodePng } from "../../lib/png.mjs";
+import { step } from "./step.mjs";
 
 async function pixel(page, x, y) {
   const { rgba } = decodePng(await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } }));
@@ -72,16 +73,21 @@ export async function mediaChecks(page, requests) {
   await frames(3);
   const left = await pixel(page, picture.x, picture.y);
   const north = await pixel(page, moved.north.x, moved.north.y);
+  await step(page, "media: hide the image", `map.setLayoutProperty("picture", "visibility", "none");`);
+  const hidden = await pixel(page, moved.north.x, moved.north.y);
+  const reshown = await step(page, "media: show the image again", `map.setLayoutProperty("picture", "visibility", "visible");`, { timeout: 10_000 })
+    .then(() => true, (e) => e.message);
+  const back = await pixel(page, moved.north.x, moved.north.y);
 
   const loaded = requests.map((u) => u.split("/").pop());
-  const r = { idle: at.idle, shown, playing, paused, resumed, video, moved, left, north, loaded: loaded.filter((n) => /media|clip|sketch/.test(n)) };
+  const r = { idle: at.idle, shown, playing, paused, resumed, video, moved, left, north, hidden, reshown, back, loaded: loaded.filter((n) => /media|clip|sketch/.test(n)) };
   const ok =
     at.idle &&
     !near(shown.picture, white, 30) &&
     (near(shown.clip, [255, 0, 0], 60) || near(shown.clip, [0, 0, 255], 60)) &&
     near(shown.paint, [255, 0, 0]) && near(playing, [0, 0, 255]) && near(paused, [0, 0, 255]) && near(resumed, [0, 255, 0]) &&
     video.paused && video.playing && video.canvas === "paint" &&
-    near(left, white) && near(north, [0, 255, 0]) &&
+    near(left, white) && near(north, [0, 255, 0]) && near(hidden, white) && reshown === true && near(back, [0, 255, 0]) &&
     JSON.stringify(moved.coordinates) === "[-30,24]" && moved.errors.some((e) => /http\(s\)/.test(e)) &&
     ["media.js", "clip.webm", "station-sketch.png"].every((n) => loaded.includes(n));
   return [ok, r];

@@ -1,16 +1,10 @@
 // Style images on the npm example's map: a fill whose pattern is missing draws nothing and fires
 // `styleimagemissing`; `addImage` draws it, `updateImage` replaces it, an id used twice fires
 // `error`, and `hasImage` / `listImages` / `removeImage` keep track. `pixel` reads the screen.
+import { step } from "./step.mjs";
+
 export async function imageChecks(page, pixel) {
-  const step = (body) =>
-    page.evaluate(async (b) => {
-      const map = window.__map;
-      const idle = map.once("idle");
-      const out = new Function("map", b)(map);
-      await idle;
-      return out;
-    }, body);
-  await step(`
+  await step(page, "images: a missing pattern", `
     map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
     window.__missing = [];
     map.on("styleimagemissing", (e) => window.__missing.push(e.id));
@@ -20,7 +14,7 @@ export async function imageChecks(page, pixel) {
   const solid = (rgb) => `({ width: 2, height: 2, data: new Uint8Array([${rgb.join(",")},255].concat(...Array(3).fill([${rgb.join(",")},255]))) })`;
   const without = await pixel(page, 200, 200);
   const missing = await page.evaluate(() => window.__missing.slice());
-  await step(`map.addImage("swatch", ${solid([255, 0, 0])});`);
+  await step(page, "images: addImage", `map.addImage("swatch", ${solid([255, 0, 0])});`);
   const added = await pixel(page, 200, 200);
   const tracked = await page.evaluate(() => {
     const map = window.__map;
@@ -32,9 +26,9 @@ export async function imageChecks(page, pixel) {
     map.off("error", f);
     return { has: map.hasImage("swatch"), bad: map.hasImage("bad"), listed: map.listImages().includes("swatch"), errors };
   });
-  await step(`map.updateImage("swatch", ${solid([0, 0, 255])});`);
+  await step(page, "images: updateImage", `map.updateImage("swatch", ${solid([0, 0, 255])});`);
   const updated = await pixel(page, 200, 200);
-  const removed = await step(`
+  const removed = await step(page, "images: removeImage", `
     map.removeImage("swatch");
     const gone = !map.hasImage("swatch");
     map.removeLayer("img");

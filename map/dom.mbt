@@ -72,11 +72,20 @@ extern "js" fn absolute_url(url : String) -> String =
   #|(u) => new URL(u, location.href).href
 
 ///|
+/// `on_error` gets what went wrong when the worker fails to start, throws an
+/// error it does not catch, or sends a message that cannot be read.
 extern "js" fn spawn_worker(
   url : String,
   on_message : (JsValue) -> Unit,
+  on_error : (String) -> Unit,
 ) -> Worker =
-  #|(url, f) => { const w = new Worker(url, { type: "module" }); w.onmessage = (e) => f(e.data); return w; }
+  #|(url, f, fail) => {
+  #|  const w = new Worker(url, { type: "module" });
+  #|  w.onmessage = (e) => f(e.data);
+  #|  w.onerror = (e) => { e.preventDefault(); fail(e.message || "the worker failed to start"); };
+  #|  w.onmessageerror = () => fail("a message could not be read");
+  #|  return w;
+  #|}
 
 ///|
 extern "js" fn post_init(

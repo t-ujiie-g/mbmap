@@ -37,14 +37,16 @@ await new Promise((r) => setTimeout(r, 500));
 
 // The anchor names in worker/labels.mbt's codes.
 const ANCHORS = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
+// A multi-line label's layouts in worker/js/symbols.mjs, in order.
+const JUSTIFY = ["left", "center", "right"];
 
 // Each shown label as `layer z/x/y feature@x,y` (anchor in MapLibre's 8192 tile units) with its
-// anchor, whether its text and its icon show, the boxes it put in the collision grid (CSS px:
+// anchor, whether its text and its icon show, its text's justification if it has several layouts, the boxes it put in the collision grid (CSS px:
 // its text's, then its icon's) and, along lines, its glyphs' screen positions and angles.
 function mbmapLabels() {
   const ignored = (layer, key) => styleJson.layers.find((l) => l.id === layer)?.layout?.[key] === true;
   return mbmap.map_placed_labels(mb).split("\n").filter(Boolean).map((line) => {
-    const [layer, z, x, y, feature, ax, ay, code, t, i, ...rest] = line.split(",");
+    const [layer, z, x, y, feature, ax, ay, code, t, i, layout, ...rest] = line.split(",");
     const box = rest.slice(0, 8).map(Number);
     const boxes = [];
     // Text along lines goes in the grid as circles, which MapLibre keeps apart from boxes.
@@ -56,6 +58,7 @@ function mbmapLabels() {
       anchor: Number(code) < 0 ? null : ANCHORS[Number(code)],
       text: t === "1",
       icon: i === "1",
+      justify: JUSTIFY[Number(layout)] ?? null,
       box: boxes,
       glyphs: rest[8] ? rest[8].trim().split(" ").map((g) => g.split(":").map(Number)) : null,
     };
@@ -93,6 +96,12 @@ function maplibreLabels() {
         const text = !!placed?.text && s.numHorizontalGlyphVertices + s.numVerticalGlyphVertices > 0 && !(variable && !placement.variableOffsets[s.crossTileID]);
         const icon = !!placed?.icon && s.numIconVertices > 0;
         if (!text && !icon) continue;
+        // The layout shown when the label has several (`markUsedJustification`).
+        const indices = [s.leftJustifiedTextSymbolIndex, s.centerJustifiedTextSymbolIndex, s.rightJustifiedTextSymbolIndex];
+        const several = new Set(indices.filter((k) => k >= 0)).size > 1;
+        const justify = text && several
+          ? JUSTIFY.find((_, k) => indices[k] >= 0 && bucket.text.placedSymbolArray.get(indices[k]).crossTileID === s.crossTileID) ?? null
+          : null;
         let glyphs = null;
         if (along) {
           const ps = bucket.text.placedSymbolArray.get(s.centerJustifiedTextSymbolIndex);
@@ -109,6 +118,7 @@ function maplibreLabels() {
           anchor: text ? placement.variableOffsets[s.crossTileID]?.anchor ?? null : null,
           text,
           icon,
+          justify,
           box: boxes.get(`${bucket.bucketInstanceId} ${s.featureIndex}`) ?? [],
           glyphs,
         });

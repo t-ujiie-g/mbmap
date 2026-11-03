@@ -15,6 +15,7 @@ import { imageChecks } from "./checks/images.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
 import { mediaChecks } from "./checks/media.mjs";
 import { customChecks } from "./checks/custom.mjs";
+import { awaitAfter, crumb, mapState, step, trail } from "./checks/step.mjs";
 
 const shots = process.argv.find((a) => a.startsWith("--screenshots="))?.split("=")[1];
 await prepareExamples();
@@ -99,12 +100,19 @@ const checks = {
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
+    crumb("queryChecks");
     const query = await queryChecks(page);
+    crumb("stateChecks");
     const state = await stateChecks(page);
+    crumb("tileSourceChecks");
     const tiles = await tileSourceChecks(page);
+    crumb("trackExportChecks");
     const exported = await trackExportChecks(page);
+    crumb("styleChecks");
     const style = await styleChecks(page, requests);
+    crumb("cameraChecks");
     const camera = await cameraChecks(page);
+    crumb("imageChecks");
     const images = await imageChecks(page, pixel);
     return [
       ok && query.ok && state.ok && tiles.ok && exported.ok && style.ok && camera.ok && images.ok,
@@ -369,11 +377,17 @@ async function showcase(page) {
   await page.mouse.move(400, 300, { steps: 3 });
   await page.waitForFunction(() => window.__hovered);
   const hovered = await page.evaluate(() => ({ id: window.__hovered, state: window.__map.getFeatureState({ source: "places", id: window.__hovered }) }));
+  crumb("measureChecks");
   const measured = await measureChecks(page);
+  crumb("drawChecks");
   const drew = await drawChecks(page);
+  crumb("editChecks");
   const edited = await editChecks(page);
+  crumb("splitChecks");
   const cut = await splitChecks(page);
+  crumb("clusterChecks");
   const clustered = await clusterChecks(page);
+  crumb("showcase: 3D");
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -383,11 +397,15 @@ async function showcase(page) {
   const osaka = await page.evaluate(() => window.__described);
   const shown = await panel();
   const osakaPin = await pin("大阪駅");
+  crumb("showcase: save");
   await page.click("#save");
   await page.waitForFunction(() => window.__saved, null, { timeout: 30000 });
   const saved = await page.evaluate(() => window.__saved);
+  crumb("controlChecks");
   const controls = await controlChecks(page);
+  crumb("searchChecks");
   const searched = await searchChecks(page);
+  crumb("showcase: layers, marker, basemaps");
   // The 3D switch went through setStyle; layer groups hide through setLayoutProperty and markers go in with setData.
   const styled = await page.evaluate(async () => {
     const map = window.__map;
@@ -530,15 +548,7 @@ async function queryChecks(page) {
 // Feature state on the npm example's map: two squares, one by GeoJSON id and
 // one by a promoted property, are drawn red while their state says `on`.
 async function stateChecks(page) {
-  const step = (body) =>
-    page.evaluate(async (b) => {
-      const map = window.__map;
-      const idle = map.once("idle");
-      const out = new Function("map", b)(map);
-      await idle;
-      return out;
-    }, body);
-  await step(`
+  await step(page, "state: two squares", `
     map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
     const square = (x0, y0, x1, y1) => {
       const [a, b] = [map.unproject([x0, y1]), map.unproject([x1, y0])];
@@ -555,7 +565,7 @@ async function stateChecks(page) {
     map.addLayer({ id: "pr", type: "fill", source: "pr", paint: { "fill-color": color } });`);
   const colors = async () => [await pixel(page, 150, 150), await pixel(page, 350, 150)];
   const before = await colors();
-  const set = await step(`
+  const set = await step(page, "state: setFeatureState", `
     map.setFeatureState({ source: "st", id: 1 }, { on: true });
     map.setFeatureState({ source: "pr", id: "b" }, { on: true, other: 2 });`);
   const on = await colors();
@@ -570,7 +580,7 @@ async function stateChecks(page) {
     const [hit] = await map.queryRenderedFeatures([350, 150], { layers: ["pr"] });
     return { state: map.getFeatureState({ source: "pr", id: "b" }), queried: hit?.state, id: hit?.id, errors };
   });
-  await step(`map.removeFeatureState({ source: "pr", id: "b" }, "on"); map.removeFeatureState({ source: "st" });`);
+  await step(page, "state: removeFeatureState", `map.removeFeatureState({ source: "pr", id: "b" }, "on"); map.removeFeatureState({ source: "st" });`);
   const off = await colors();
   const left = await page.evaluate(() => {
     const map = window.__map;
@@ -609,31 +619,23 @@ async function tileSourceChecks(page) {
   await writeFile(path.join(dir, "green.png"), solid(0, 255, 0));
   await writeFile(path.join(dir, "tiles.json"), JSON.stringify({ tilejson: "3.0.0", tiles: ["green.png"], attribution: "TileJSON test" }));
   await writeFile(path.join(dir, "blue.pmtiles"), writeArchive([{ z: 0, x: 0, y: 0, bytes: solid(0, 0, 255) }], { tileType: 2 }));
-  const step = (body) =>
-    page.evaluate(async (b) => {
-      const map = window.__map;
-      const idle = map.once("idle");
-      const out = await new Function("map", `return (async () => { ${b} })()`)(map);
-      await idle;
-      return out;
-    }, body);
   const centre = () => pixel(page, 400, 300);
-  await step(`map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
+  await step(page, "tiles: a raster template", `map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
     map.addSource("t", { type: "raster", tiles: ["/bench/dist/pack/red.png"], tileSize: 256 });
     map.addLayer({ id: "t", type: "raster", source: "t" });`);
   const red = await centre();
-  await step(`map.setPaintProperty("t", "raster-opacity", 0.5);`);
+  await step(page, "tiles: raster-opacity", `map.setPaintProperty("t", "raster-opacity", 0.5);`);
   const half = await centre();
-  await step(`map.removeLayer("t"); map.removeSource("t");
+  await step(page, "tiles: TileJSON", `map.removeLayer("t"); map.removeSource("t");
     map.addSource("j", { type: "raster", url: "/bench/dist/pack/tiles.json", tileSize: 256 });
     map.addLayer({ id: "j", type: "raster", source: "j" });`);
   const green = await centre();
   const attribution = await page.evaluate(() => document.querySelector("#map > div")?.textContent);
-  await step(`map.removeLayer("j"); map.removeSource("j");
+  await step(page, "tiles: PMTiles", `map.removeLayer("j"); map.removeSource("j");
     map.addSource("p", { type: "raster", url: "pmtiles:///bench/dist/pack/blue.pmtiles", tileSize: 256 });
     map.addLayer({ id: "p", type: "raster", source: "p" });`);
   const blue = await centre();
-  await step(`map.removeLayer("p"); map.removeSource("p");
+  await step(page, "tiles: transformRequest", `map.removeLayer("p"); map.removeSource("p");
     window.__asked = [];
     map.setTransformRequest((url, type) => { window.__asked.push(type); return { url: url.replace("red.png", "green.png") }; });
     map.addSource("x", { type: "raster", tiles: ["/bench/dist/pack/red.png"], tileSize: 256 });
@@ -782,9 +784,7 @@ async function searchChecks(page) {
     return s.selected?.label !== "東京タワー" && s.active === -1 && s.open && !window.__map.isMoving();
   });
   await typed.press("ArrowDown");
-  const moved = page.evaluate(() => window.__map.once("moveend"));
-  await typed.press("Enter");
-  await moved;
+  await awaitAfter(page, "search: Enter on a result", () => typed.press("Enter"), { event: "moveend" });
   const chosen = await page.evaluate(() => ({ label: window.__search.state.selected?.label, center: window.__map.getCenter(), open: window.__search.state.open }));
   const near = (r, lng, lat, tol) => r && Math.abs(r.lng - lng) < tol && Math.abs(r.lat - lat) < tol;
   const ok =
@@ -821,21 +821,13 @@ const near = (rgb, want) => rgb.every((v, i) => Math.abs(v - want[i]) <= 3);
 // GeoJSON sources come and go, and refused changes fire `error` and keep the style.
 async function styleChecks(page, requests) {
   const tiles = () => requests.filter((u) => u.endsWith(".pbf")).length;
-  const step = (f) =>
-    page.evaluate(async (body) => {
-      const map = window.__map;
-      const idle = map.once("idle");
-      const out = new Function("map", body)(map);
-      await idle;
-      return out;
-    }, f);
-  await step("map.jumpTo({ center: [139.7671, 35.6812], zoom: 14.5, bearing: 0, pitch: 0 });");
+  await step(page, "style: jumpTo", "map.jumpTo({ center: [139.7671, 35.6812], zoom: 14.5, bearing: 0, pitch: 0 });");
   const before = tiles();
-  const original = await step('const s = map.getStyle(); map.setPaintProperty("waterarea", "fill-color", "#00ff00"); map.setPaintProperty("background", "background-color", "#ff0000"); return s;');
+  const original = await step(page, "style: setPaintProperty", 'const s = map.getStyle(); map.setPaintProperty("waterarea", "fill-color", "#00ff00"); map.setPaintProperty("background", "background-color", "#ff0000"); return s;');
   const painted = tiles();
-  await step('map.setLayoutProperty("waterarea", "visibility", "none"); map.moveLayer("road", "waterarea"); map.removeLayer("railway");');
+  await step(page, "style: hide, move, remove", 'map.setLayoutProperty("waterarea", "visibility", "none"); map.moveLayer("road", "waterarea"); map.removeLayer("railway");');
   const kept = tiles();
-  await step('map.setLayoutProperty("waterarea", "visibility", "visible");');
+  await step(page, "style: show again", 'map.setLayoutProperty("waterarea", "visibility", "visible");');
   const relaid = tiles();
   const errors = await page.evaluate(() => {
     const map = window.__map;
@@ -848,16 +840,16 @@ async function styleChecks(page, requests) {
     map.off("error", f);
     return { out, width: map.getPaintProperty("road", "line-width"), order: map.getLayersOrder().slice(0, 4) };
   });
-  await step('map.setStyle({ version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ff0000" } }] });');
+  await step(page, "style: setStyle", 'map.setStyle({ version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ff0000" } }] });');
   const red = await pixel(page, 400, 300);
   const swapped = tiles();
   const point = (lng, lat) => ({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [lng, lat] } }] });
-  await step(`map.addSource("pts", { type: "geojson", data: ${JSON.stringify(point(139.7671, 35.6812))} }); map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": 30, "circle-color": "#0000ff" } });`);
+  await step(page, "style: addSource", `map.addSource("pts", { type: "geojson", data: ${JSON.stringify(point(139.7671, 35.6812))} }); map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": 30, "circle-color": "#0000ff" } });`);
   const blue = await pixel(page, 400, 300);
-  await step(`map.getSource("pts").setData(${JSON.stringify(point(139.8, 35.7))});`);
+  await step(page, "style: setData", `map.getSource("pts").setData(${JSON.stringify(point(139.8, 35.7))});`);
   const moved = await pixel(page, 400, 300);
-  const order = await step('map.removeLayer("pts"); map.removeSource("pts"); return [map.getLayersOrder(), Object.keys(map.getStyle().sources)];');
-  await step(`map.setStyle(${JSON.stringify(original)});`);
+  const order = await step(page, "style: removeSource", 'map.removeLayer("pts"); map.removeSource("pts"); return [map.getLayersOrder(), Object.keys(map.getStyle().sources)];');
+  await step(page, "style: setStyle back", `map.setStyle(${JSON.stringify(original)});`);
   const restored = { tiles: tiles(), center: await pixel(page, 400, 300), layers: await page.evaluate(() => window.__map.getLayersOrder().length) };
   const ok =
     painted === before &&
@@ -950,18 +942,15 @@ async function cameraChecks(page) {
   // ArrowRight pans 100 px east and `+` zooms in by 1, each over 300 ms.
   const before = await page.evaluate(() => window.__map.project([139.7671, 35.6812]).x);
   await page.click("canvas", { position: { x: 400, y: 300 } });
-  await page.keyboard.press("ArrowRight");
-  await page.evaluate(() => window.__map.once("moveend"));
+  await awaitAfter(page, "camera: ArrowRight", () => page.keyboard.press("ArrowRight"), { event: "moveend" });
   const keyed = await page.evaluate(() => window.__map.project([139.7671, 35.6812]).x);
-  await page.keyboard.press("Equal");
-  await page.evaluate(() => window.__map.once("moveend"));
+  await awaitAfter(page, "camera: +", () => page.keyboard.press("Equal"), { event: "moveend" });
   const plus = await page.evaluate(() => window.__map.getZoom());
   // A double click zooms in by 1 around the point clicked (in canvas pixels).
   const top = await page.evaluate(() => window.__map.getCanvas().getBoundingClientRect().top);
   const left = await page.evaluate(() => window.__map.getCanvas().getBoundingClientRect().left);
   const target = await page.evaluate(() => window.__map.unproject([600, 200]));
-  await page.mouse.dblclick(left + 600, top + 200);
-  await page.evaluate(() => window.__map.once("moveend"));
+  await awaitAfter(page, "camera: double click", () => page.mouse.dblclick(left + 600, top + 200), { event: "moveend" });
   const dbl = await page.evaluate((t) => ({ zoom: window.__map.getZoom(), at: window.__map.project(t) }), target);
   const ok =
     r.moving &&
@@ -1005,12 +994,18 @@ try {
     await page.goto(`${origin}/${PAGES[example]}`);
     await page.waitForFunction(() => window.__loaded, null, { timeout: 30000 });
     if (shots) await page.screenshot({ path: path.join(shots, `${example}.png`) });
-    // A check that hangs (an event that never comes) fails after CHECK_TIMEOUT instead of holding CI.
+    // A check that hangs (an event that never comes) fails after CHECK_TIMEOUT instead of holding CI,
+    // saying which steps it entered last and what the map was doing.
+    trail.length = 0;
+    crumb(example);
     let timer;
     const late = new Promise((resolve) => {
-      timer = setTimeout(() => resolve([false, { timedOut: `no answer after ${CHECK_TIMEOUT / 1000} s` }]), CHECK_TIMEOUT);
+      timer = setTimeout(async () => {
+        resolve([false, { timedOut: `no answer after ${CHECK_TIMEOUT / 1000} s`, steps: trail.slice(), map: await mapState(page) }]);
+      }, CHECK_TIMEOUT);
     });
-    const [ok, details] = await Promise.race([check(page, requests), late]);
+    const run = check(page, requests).catch(async (e) => [false, { failed: e.message, steps: trail.slice(), map: await mapState(page) }]);
+    const [ok, details] = await Promise.race([run, late]);
     clearTimeout(timer);
     const pass = ok && errors.length === 0;
     failed ||= !pass;
