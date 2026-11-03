@@ -6,8 +6,8 @@ import { Store, type Controller } from "../ui/controller";
 import { deleteVertex, insertVertex, insideRing, midpoints, moveVertex, nearestOnSegment, translate, vertices as verticesOf, type At } from "./edit";
 import { CIRCLE_STEPS, CLOSE_PIXELS, FREEHAND_PIXELS, enoughVertices, finished, geometryOf, rectangleRing, type DrawMode, type Position } from "./shapes";
 
-/** The modes: drawing one of the shapes, or `"select"` to pick and edit them. */
-export type EditMode = DrawMode | "select";
+/** The modes: drawing one of the shapes, `"select"` to pick and edit them, `"split"` to draw a line that cuts them. */
+export type EditMode = DrawMode | "select" | "split";
 
 /** A feature drawn: `id` given by the controller, `properties.mode` the mode that drew it. */
 export interface DrawnFeature {
@@ -15,6 +15,14 @@ export interface DrawnFeature {
   id: string;
   properties: { mode: DrawMode; [key: string]: unknown };
   geometry: { type: string; coordinates: unknown };
+}
+
+type Plain = { properties?: Record<string, unknown> | null; geometry: { type: string; coordinates: unknown } };
+
+/** What `mbmap/analysis` gives for splitting and merging: `splitFeatures` and `mergeFeatures`. */
+export interface GeometryOps {
+  split(features: Plain[], line: { type: string; coordinates: unknown }): Promise<Plain[]>;
+  merge(features: Plain[]): Promise<Plain>;
 }
 
 /** What `mbmap/geodesic` gives for circles: `circle` and `inverse`. */
@@ -25,11 +33,13 @@ export interface Geodesic {
 
 /**
  * `mode` (null for none); `features` drawn; `drawing` the shape under way (with the pointer) or null;
- * `vertices` placed for it; `selected` the id of the feature picked in `"select"` mode; `canUndo` and `canRedo`.
+ * `vertices` placed for it; `selection` the ids picked in `"select"` mode (Shift adds), `selected` the
+ * last of them; `canUndo` and `canRedo`.
  */
 export interface DrawState {
   mode: EditMode | null;
   selected: string | null;
+  selection: string[];
   features: DrawnFeature[];
   drawing: { type: string; coordinates: unknown } | null;
   vertices: Position[];
@@ -40,10 +50,12 @@ export interface DrawState {
 /**
  * `geodesic`: mbmap/geodesic (circle mode needs it); `id`: of the GeoJSON source and the prefix of the
  * layers (default `"mbmap-draw"`); `color` (default `"#3b6ed6"`); `steps`: points of a circle (default 64);
+ * `geometry`: mbmap/analysis's `{ split: splitFeatures, merge: mergeFeatures }` (split and merge need it);
  * `precision`: decimals kept in the coordinates (default 9); `snapping`: to the other features'
  * `vertices` and `lines` within `pixels` (default 40, as terra-draw), `true` for both. Rings stay counter-clockwise.
  */
 export interface DrawOptions {
+  geometry?: GeometryOps;
   snapping?: boolean | { vertices?: boolean; lines?: boolean; pixels?: number };
   geodesic?: Geodesic;
   id?: string;
@@ -57,6 +69,7 @@ export interface Draw extends Controller<DrawState> {
   select(id: string | null): void;
   setProperties(id: string, properties: Record<string, unknown>): void;
   deleteSelected(): void;
+  merge(): Promise<void>;
   finish(): void;
   cancel(): void;
   undo(): void;
@@ -78,15 +91,16 @@ class DrawStore extends Store<DrawState> implements Draw {
   #pointer: Position | null = null;
   #ring: Position[] | null = null;
   #ticket = 0;
-  #dblclick: boolean | null = null;
+  /** Whether double-click and box zoom were on before a mode turned them off (Shift+click selects). */
+  #zooms: [boolean, boolean] | null = null;
   #drag: { at: At | null; from: Position; before: DrawnFeature[]; pan: boolean } | null = null;
 
   constructor(map: Map, options: DrawOptions) {
-    super({ mode: null, selected: null, features: [], drawing: null, vertices: [], canUndo: false, canRedo: false });
+    super({ mode: null, selected: null, selection: [], features: [], drawing: null, vertices: [], canUndo: false, canRedo: false });
     this.#map = map;
     this.#options = options;
     this.#id = options.id ?? "mbmap-draw";
-    this.listen(map, "click", (e) => this.#click(lngLat(e), e.point));
+    this.listen(map, "click", (e) => this.#click(lngLat(e), e.point, e.originalEvent?.shiftKey));
     this.listen(map, "mousemove", (e) => this.#move(lngLat(e), e.point));
     this.listen(map, "mousedown", (e) => this.#press(lngLat(e), e.point));
     this.listen(map, "mouseup", () => this.#release());
@@ -96,22 +110,59 @@ class DrawStore extends Store<DrawState> implements Draw {
 
   setMode(mode: EditMode | null): void {
     if (mode === "circle" && !this.#options.geodesic) throw new Error("mbmap: draw: circles need the `geodesic` option (mbmap/geodesic)");
+    if (mode === "split" && !this.#options.geometry) throw new Error("mbmap: draw: splitting needs the `geometry` option (mbmap/analysis)");
     this.#reset();
     if (mode) this.#layers();
     const map = this.#map;
-    if (mode && this.#dblclick === null) {
-      this.#dblclick = map.doubleClickZoom.isEnabled();
-      map.doubleClickZoom.disable();
-    } else if (!mode && this.#dblclick !== null) {
-      if (this.#dblclick) map.doubleClickZoom.enable();
-      this.#dblclick = null;
+    const handlers = [map.doubleClickZoom, map.boxZoom];
+    if (mode && !this.#zooms) {
+      this.#zooms = [handlers[0].isEnabled(), handlers[1].isEnabled()];
+      for (const h of handlers) h.disable();
+    } else if (!mode && this.#zooms) {
+      this.#zooms.forEach((on, i) => on && handlers[i].enable());
+      this.#zooms = null;
     }
     map.getCanvas().style.cursor = mode && mode !== "select" ? "crosshair" : "";
-    this.#show({ mode, selected: mode === "select" ? this.state.selected : null });
+    // The selection stays for a split, which cuts it.
+    this.#show(mode === "select" || mode === "split" ? { mode } : { mode, selected: null, selection: [] });
   }
 
-  select(id: string | null): void {
-    this.#show({ selected: this.state.features.some((f) => f.id === id) ? id : null });
+  /** Selects feature `id` alone (null for none), or with `add` toggles it in the selection. */
+  select(id: string | null, add = false): void {
+    const known = this.state.features.some((f) => f.id === id) ? id : null;
+    const was = this.state.selection;
+    const selection = !known ? (add ? was : []) : !add ? [known] : was.includes(known) ? was.filter((x) => x !== known) : [...was, known];
+    this.#show({ selection, selected: selection.at(-1) ?? null });
+  }
+
+  /** The selected features as one (mbmap/analysis's `merge`), replacing them; one step to undo. */
+  async merge(): Promise<void> {
+    const ids = this.state.selection;
+    const geometry = this.#options.geometry;
+    if (!geometry || ids.length < 2) return;
+    const parts = ids.map((id) => this.state.features.find((f) => f.id === id)!);
+    const merged = await geometry.merge(parts);
+    const feature = this.#feature({ ...merged.properties, mode: modeOf(merged.geometry.type) }, finished(merged.geometry, this.#options.precision));
+    const features = this.state.features.filter((f) => !ids.includes(f.id));
+    this.#change([...features, feature]);
+    this.select(feature.id);
+  }
+
+  /** The features (the selection, or all) cut by `line` (mbmap/analysis's `split`), each replaced by its pieces. */
+  async #split(line: DrawnFeature["geometry"]): Promise<void> {
+    const before = this.state.features;
+    const ids = this.state.selection.length > 0 ? this.state.selection : before.map((f) => f.id);
+    const targets = before.filter((f) => ids.includes(f.id));
+    const pieces = await this.#options.geometry!.split(targets.map((f) => ({ properties: { ...f.properties, [SOURCE]: f.id }, geometry: f.geometry })), line);
+    const features = before.flatMap((f) => {
+      const mine = pieces.filter((p) => p.properties?.[SOURCE] === f.id);
+      if (!ids.includes(f.id) || mine.length < 2) return [f];
+      return mine.map((p) => {
+        const { [SOURCE]: _, ...properties } = p.properties ?? {};
+        return this.#feature({ ...properties, mode: f.properties.mode }, finished(p.geometry, this.#options.precision));
+      });
+    });
+    if (features.length !== before.length) this.#change(features, before);
   }
 
   /** Merges `properties` into feature `id`'s (null removes a key); `mode` stays. */
@@ -125,13 +176,18 @@ class DrawStore extends Store<DrawState> implements Draw {
   }
 
   deleteSelected(): void {
-    if (this.state.selected) this.remove(this.state.selected);
+    const ids = this.state.selection;
+    if (ids.length > 0) this.#change(this.state.features.filter((f) => !ids.includes(f.id)));
   }
 
   /** Ends the shape under way: kept if it has enough vertices (Enter in terra-draw). */
   finish(): void {
     const { mode, vertices } = this.state;
-    if (mode === "linestring" || mode === "polygon" || mode === "freehand") {
+    if (mode === "split" && enoughVertices("linestring", vertices)) {
+      const line = geometryOf("linestring", vertices)!;
+      this.#reset();
+      void this.#split(line);
+    } else if (mode === "linestring" || mode === "polygon" || mode === "freehand") {
       if (enoughVertices(mode, vertices)) this.#commit(mode, geometryOf(mode, vertices)!);
       else this.#reset();
       this.#show({});
@@ -156,14 +212,14 @@ class DrawStore extends Store<DrawState> implements Draw {
     const last = this.#done.pop();
     if (!last) return;
     this.#undone.push(this.state.features);
-    this.#show({ features: last, selected: valid(last, this.state.selected) });
+    this.#show({ features: last, ...kept(last, this.state.selection) });
   }
 
   redo(): void {
     const next = this.#undone.pop();
     if (!next) return;
     this.#done.push(this.state.features);
-    this.#show({ features: next, selected: valid(next, this.state.selected) });
+    this.#show({ features: next, ...kept(next, this.state.selection) });
   }
 
   add(features: { geometry: { type: string; coordinates: unknown }; properties?: Record<string, unknown> }[]): void {
@@ -187,7 +243,7 @@ class DrawStore extends Store<DrawState> implements Draw {
   #change(features: DrawnFeature[], before = this.state.features): void {
     this.#done.push(before);
     this.#undone = [];
-    this.#show({ features, selected: valid(features, this.state.selected) });
+    this.#show({ features, ...kept(features, this.state.selection) });
   }
 
   #commit(mode: DrawMode, geometry: DrawnFeature["geometry"]): void {
@@ -208,14 +264,14 @@ class DrawStore extends Store<DrawState> implements Draw {
     return Math.hypot(p.x - point.x, p.y - point.y) <= pixels;
   }
 
-  #click(at: Position, point: { x: number; y: number }): void {
+  #click(at: Position, point: { x: number; y: number }, shift = false): void {
     const { mode, vertices } = this.state;
     if (!mode) return;
-    if (mode === "select") return this.select(this.#hit(point)?.id ?? null);
+    if (mode === "select") return this.select(this.#hit(point)?.id ?? null, shift);
     if (mode !== "freehand") at = this.#snap(at, point, null);
     this.#pointer = at;
     if (mode === "point") return this.#commit(mode, { type: "Point", coordinates: at });
-    if (mode === "linestring" || mode === "polygon") {
+    if (mode === "linestring" || mode === "polygon" || mode === "split") {
       // A click on the last vertex finishes; for a polygon, so does one on the first.
       const closes = this.#near(vertices.at(-1), point, CLOSE_PIXELS) || (mode === "polygon" && vertices.length > 2 && this.#near(vertices[0], point, CLOSE_PIXELS));
       if (closes && vertices.length > 0) return this.finish();
@@ -238,8 +294,9 @@ class DrawStore extends Store<DrawState> implements Draw {
     this.#show({});
   }
 
+  /** The selected feature when it is the only one. */
   #selectedFeature(): DrawnFeature | undefined {
-    return this.state.features.find((f) => f.id === this.state.selected);
+    return this.state.selection.length === 1 ? this.state.features.find((f) => f.id === this.state.selected) : undefined;
   }
 
   #screen(p: Position): { x: number; y: number } {
@@ -251,11 +308,14 @@ class DrawStore extends Store<DrawState> implements Draw {
     const near = (q: { x: number; y: number }) => Math.hypot(q.x - point.x, q.y - point.y) <= CLOSE_PIXELS;
     return [...this.state.features].reverse().find((f) => {
       const g = f.geometry;
-      if (g.type === "Point") return near(this.#screen(g.coordinates as Position));
-      const rs = g.type === "LineString" ? [g.coordinates as Position[]] : (g.coordinates as Position[][]);
+      const c = g.coordinates as any;
+      if (g.type === "Point") return near(this.#screen(c));
+      if (g.type === "MultiPoint") return c.some((p: Position) => near(this.#screen(p)));
+      const rs: Position[][] = g.type === "LineString" ? [c] : g.type === "MultiPolygon" ? c.flat() : c;
+      const area = g.type.endsWith("Polygon");
       return rs.some((r) => {
         const xy = r.map((p) => this.#screen(p));
-        return (g.type === "Polygon" && insideRing(point, xy)) || xy.slice(1).some((b, i) => near(nearestOnSegment(point, xy[i], b)));
+        return (area && insideRing(point, xy)) || xy.slice(1).some((b, i) => near(nearestOnSegment(point, xy[i], b)));
       });
     });
   }
@@ -294,7 +354,8 @@ class DrawStore extends Store<DrawState> implements Draw {
   /** In `"select"` mode, a press on the selected feature's vertex, midpoint or body starts dragging it. */
   #press(at: Position, point: { x: number; y: number }): void {
     const f = this.state.mode === "select" ? this.#selectedFeature() : undefined;
-    if (!f) return;
+    // Multi geometries (from a merge) are kept as they are.
+    if (!f || f.geometry.type.startsWith("Multi")) return;
     const handle = this.#handle(f, point);
     if (!handle && this.#hit(point)?.id !== f.id) return;
     const map = this.#map;
@@ -373,15 +434,16 @@ class DrawStore extends Store<DrawState> implements Draw {
     let drawing: DrawState["drawing"] = null;
     const p = this.#pointer;
     if (mode && mode !== "select" && vertices.length > 0) {
+      const shape = mode === "split" ? "linestring" : mode;
       if (mode === "rectangle") drawing = p ? { type: "Polygon", coordinates: [rectangleRing(vertices[0], p)] } : null;
       else if (mode === "circle") drawing = this.#ring ? { type: "Polygon", coordinates: [this.#ring] } : null;
-      else drawing = geometryOf(mode, mode === "freehand" || !p ? vertices : [...vertices, p]);
+      else drawing = geometryOf(shape, mode === "freehand" || !p ? vertices : [...vertices, p]);
     }
     this.set({ drawing, canUndo: this.#done.length > 0 || vertices.length > 0, canRedo: this.#undone.length > 0 });
-    const selected = this.state.selected;
-    const shown: object[] = features.map((f) => ({ ...f, properties: { ...f.properties, kind: f.id === selected ? "selected" : "feature" } }));
-    const sf = features.find((f) => f.id === selected);
-    if (sf && sf.geometry.type !== "Point") {
+    const selection = this.state.selection;
+    const shown: object[] = features.map((f) => ({ ...f, properties: { ...f.properties, kind: selection.includes(f.id) ? "selected" : "feature" } }));
+    const sf = this.#selectedFeature();
+    if (sf && /^(LineString|Polygon)$/.test(sf.geometry.type)) {
       const handle = (kind: string) => (v: { position: Position }) => ({ type: "Feature", properties: { kind }, geometry: { type: "Point", coordinates: v.position } });
       shown.push(...midpoints(sf.geometry).map(handle("midpoint")), ...verticesOf(sf.geometry).map(handle("vertex")));
     }
@@ -417,13 +479,17 @@ class DrawStore extends Store<DrawState> implements Draw {
   }
 }
 
-/** `id` if one of `features` has it, else null. */
-function valid(features: DrawnFeature[], id: string | null): string | null {
-  return id !== null && features.some((f) => f.id === id) ? id : null;
+/** The property that ties a piece of a split to its feature. */
+const SOURCE = "mbmap:draw-source";
+
+/** The selection without the ids `features` no longer has. */
+function kept(features: DrawnFeature[], selection: string[]): Pick<DrawState, "selection" | "selected"> {
+  const left = selection.filter((id) => features.some((f) => f.id === id));
+  return { selection: left, selected: left.at(-1) ?? null };
 }
 
 function modeOf(type: string): DrawMode {
-  return type === "Point" ? "point" : type === "LineString" ? "linestring" : "polygon";
+  return type.endsWith("Point") ? "point" : type.endsWith("LineString") ? "linestring" : "polygon";
 }
 
 export function createDraw(map: Map, options: DrawOptions = {}): Draw {

@@ -106,7 +106,7 @@ function call<T>(op: string, args: object, transfer: Transferable[] = []): Promi
 // Codes of geometry_worker/geometry.mbt.
 const JOIN = { round: 0, miter: 1, square: 2, bevel: 3 } as const;
 const CAP = { round: 0, butt: 1, square: 2 } as const;
-const OVERLAY = { clip: 0, erase: 1, intersect: 2 } as const;
+const OVERLAY = { clip: 0, erase: 1, intersect: 2, split: 3 } as const;
 
 // Mirrors MEASURE_* in analysis_worker/datasets.mbt.
 const MEASURE = { area: 0, length: 1, centroid: 2, bbox: 3 } as const;
@@ -228,6 +228,22 @@ export class Dataset {
    */
   intersect(other: Dataset): Promise<Dataset> {
     return this.#geometry("overlay", { a: Dataset.#idOf(this, "intersected"), b: Dataset.#idOf(other, "intersecting"), kind: OVERLAY.intersect });
+  }
+
+  /**
+   * Each feature split by `lines`' lines, its pieces as features with its properties: a polygon by
+   * the stretches that cross it from edge to edge, a line where they cross it; the rest stays whole.
+   */
+  split(lines: Dataset): Promise<Dataset> {
+    return this.#geometry("overlay", { a: Dataset.#idOf(this, "split"), b: Dataset.#idOf(lines, "splitting"), kind: OVERLAY.split });
+  }
+
+  /**
+   * The features as one with the first one's properties: polygons united, lines joined end to end,
+   * points gathered; rejects when their kinds differ.
+   */
+  merge(): Promise<Dataset> {
+    return this.#geometry("merge", { dataset: Dataset.#idOf(this, "merged") });
   }
 
   /** The dataset as a GeoJSON FeatureCollection (feature ids are not kept), in `crs` if given. */
@@ -359,6 +375,38 @@ export async function sampleDem(
   } finally {
     grid.dispose();
   }
+}
+
+type Feature = { type?: string; properties?: Record<string, unknown> | null; geometry: { type: string; coordinates: unknown } };
+
+/** `features` loaded, `op` run on the dataset, the result as GeoJSON features; every dataset disposed. */
+async function onFeatures(features: Feature[], op: (d: Dataset) => Promise<Dataset>, options: AnalysisOptions): Promise<Feature[]> {
+  const d = await load({ type: "FeatureCollection", features: features.map((f) => ({ type: "Feature", properties: f.properties ?? {}, geometry: f.geometry })) }, options);
+  try {
+    const r = await op(d);
+    try {
+      return (await r.toGeoJSON()).features as Feature[];
+    } finally {
+      r.dispose();
+    }
+  } finally {
+    d.dispose();
+  }
+}
+
+/** `features` split by `line` (a LineString), as `Dataset.split`: what mbmap/draw's `geometry.split` takes. */
+export async function splitFeatures(features: Feature[], line: Feature["geometry"], options: AnalysisOptions = {}): Promise<Feature[]> {
+  const cut = await load({ type: "Feature", properties: {}, geometry: line }, options);
+  try {
+    return await onFeatures(features, (d) => d.split(cut), options);
+  } finally {
+    cut.dispose();
+  }
+}
+
+/** `features` as one, as `Dataset.merge`: what mbmap/draw's `geometry.merge` takes. */
+export async function mergeFeatures(features: Feature[], options: AnalysisOptions = {}): Promise<Feature> {
+  return (await onFeatures(features, (d) => d.merge(), options))[0];
 }
 
 /**

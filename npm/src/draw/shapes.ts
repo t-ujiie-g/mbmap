@@ -46,7 +46,15 @@ export function counterClockwise(ring: Position[]): Position[] {
 /** `geometry` with its coordinates rounded to `precision` decimals and its rings counter-clockwise. */
 export function finished(geometry: { type: string; coordinates: unknown }, precision = PRECISION): { type: string; coordinates: unknown } {
   const round = (p: Position): Position => [Number(p[0].toFixed(precision)), Number(p[1].toFixed(precision))];
-  if (geometry.type === "Point") return { type: "Point", coordinates: round(geometry.coordinates as Position) };
-  if (geometry.type === "LineString") return { type: "LineString", coordinates: (geometry.coordinates as Position[]).map(round) };
-  return { type: "Polygon", coordinates: (geometry.coordinates as Position[][]).map((r) => counterClockwise(r.map(round))) };
+  const polygon = (rings: Position[][]) => rings.map((r) => counterClockwise(r.map(round)));
+  const c = geometry.coordinates as any;
+  const coordinates = {
+    Point: () => round(c),
+    MultiPoint: () => c.map(round),
+    LineString: () => c.map(round),
+    MultiLineString: () => c.map((l: Position[]) => l.map(round)),
+    Polygon: () => polygon(c),
+    MultiPolygon: () => c.map(polygon),
+  }[geometry.type as "Point"]?.();
+  return coordinates === undefined ? geometry : { type: geometry.type, coordinates };
 }
