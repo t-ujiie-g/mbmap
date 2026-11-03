@@ -16,6 +16,27 @@
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
 
+## リファクタリング：Phase 15 の後（MoonBit 側）（2026-11-04）
+
+状態：**完了**。Phase 15 で足した MoonBit のコード（ラベル、アイコン、線に沿ったラベル、heatmap、render_webgl2 の GL）を AGENTS.md §7 で見直した。TS・JS・bench 側は並行する別の PR。
+
+- **分割**（コードは変えていない）：`render_webgl2/gl.mbt`（1128 行）からシンボルの GL を `gl_symbol.mbt`、陰影・ラスタ・画像の GL を `gl_raster.mbt` へ（`gl.mbt` は 689 行。残りのほとんどは `create_gl` のシェーダ）。`map/labels.mbt` からアイコンの配置（`IconSet`、`icon_set`、`icon_of`、`joint`、`show_icon`）を `map/icons.mbt` へ、`map/render.mbt` からタイルの被覆と置き場所（`draws`、`placement`、`cover`、`pattern_tile`）を `map/draws.mbt` へ。テストもシンボルの分を `worker/labels_test.mbt`、`style/text_test.mbt` へ。
+- **定数**：`QUAD_INDICES`（6、worker/js/symbols.mjs の `* 6` と対応）、`ONE_EM`（24）、`CLIP_BUFFER_PX`（256）、`HEATMAP_SCREEN_SCALE`（0.25）、`HEATMAP_RAMP_WIDTH`（256）。遠近の比（5 か所）と画面への投影（4 か所）は `perspective_ratio`、`screen_x` / `screen_y` に。`fits_on_map` の `0.5 + 0.5 * cw / center_depth` は逆向きの量（箱が距離で大きくなる率）なので別のまま。
+- **重複**：アンカーの符号と揃えは `@style.TextAnchor::code` / `from_code` / `align` の 1 か所に（ワーカーの `anchor_code`、地図の `anchor_align` を消した）。`@core.ByteWriter::append` でワーカーの 1 バイトずつのコピー（ラベル、feature の範囲）をやめた。`Labels::lines` の i16 の重複した切り詰めを削除。`lay_line_glyphs` の文字とアイコンで重複していた「アンカーの次の点」と左右の判定を `LineSet::backwards` に。JS の取り出し（`f32_at`、`length_of`、`get_bool`、`get_value`、`strings_of`、`has`）を `map/dom.mbt` へ。色の RGBA 化を `rgba_of` / `Paint::rgba` に。`show_icon` は普通の関数に。
+- **公開の整理**：外から使われない `Expr::reads_line_progress`、`reads_heatmap_density`、`PatternPosition::display_size`、`PatternAtlas::take_dirty`、`LineAtlas::take_dirty` を非公開に（テストは wbtest へ。`reads_*` には直接のテストを足した）。heatmap-intensity がデータや feature state を読むと `Invalid`（パス `layers[0].paint.heatmap-intensity`）になるテストを足した。
+- **確保を減らした（配置と毎フレーム）**：
+  - 配置の `Grid` を毎回作らず、`Map` の 1 つを `Grid::reset` で空にして使う（セルの数が同じなら配列も再利用）。
+  - `place_label` のクロージャ（`q`、`fits`、`box`、`insert`）を `snap`、`fits_box`、`insert_box` に。
+  - `lay_line_glyphs` のクロージャ（`hide`、`clip`）と、`LineSet::along` の `Option` のタプルをやめた（`along` は Bool を返し、点を `at_x`、`at_y`、`at_angle` に残す）。`place_line_label` の `screen` クロージャ、`fits_on_map` の配列 3 つとクロージャも。
+  - `draw_icons` は `icon-size` の入力（`feature_inputs`）をタイルごとでなくレイヤーごとに 1 回読む。
+  - ワーカーの `symbol_layer` と `Labels::add` の地物ごとのクロージャ（`iter().any`、`map_or`、`Option::map`）をループの関数に。
+  - 計測はこの PR の後でメインのセッションが行う（対象：ラベルの多い場面の `place_labels` と、線に沿ったラベルを動かしたときの 1 フレームの CPU、`worker:browser` の記号のタイル）。
+- **大きさ**：表示（メイン）107.6 → 107.3KB、表示ワーカー 93.2 → 93.0KB。
+- **残したもの**：
+  - `Renderer::bind` のスロット数（2/3/4/6）はプログラムごとの定数にせず、`bind` の doc に各数の意味を書いた（定数にすると呼び出しが読みにくくなる）。
+  - `place_line_label` の `head`、`tail`、`path`、`circles` の配列は線のラベルごとに確保したまま（使い回すには Map に作業用の配列を持たせて引き回す必要があり、計測してから判断する）。`draw_icons` の色と数のクロージャ、`placement_order` の比較のクロージャも（メッシュやレイヤーごとで、JS の呼び出しの方が重い）。
+  - worker/js/symbols.mjs の `* 6` に `QUAD_INDICES` 相当の定数を置くのは TS 側の PR に任せた。
+
 ## Phase 15 の後のセキュリティチェック（2026-11-03）
 
 状態：**完了**。Phase 15 で足したもの（スプライト、画像・動画のソース、PMTiles、ラスタ、ワーカーのメッセージ）を AGENTS.md §8 で見直した。

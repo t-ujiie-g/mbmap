@@ -7,7 +7,7 @@ export const SDF_SIZE = 48;
 export const SDF_BUFFER = 6;
 export const SDF_RADIUS = 16;
 
-// `@style.TextAnchor` order (worker/labels.mbt `anchor_code`).
+// `@style.TextAnchor` order (`TextAnchor::code` in style/anchor.mbt).
 const ANCHORS = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
 
 // The em box's share above the baseline.
