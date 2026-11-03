@@ -5,8 +5,11 @@ MoonBit 製の軽量・高性能な Web 向けベクトルタイル地図描画�
 - ビジョンと設計方針: [docs/VISION.md](docs/VISION.md)
 - 進捗・ベンチ結果: [PROGRESS.md](PROGRESS.md)
 - ベンチマーク: [bench/README.md](bench/README.md)
+- 開発の決まり（人と AI エージェント向け）: [AGENTS.md](AGENTS.md)、Claude Code on the web での開発: [docs/CLOUD.md](docs/CLOUD.md)
 
 ## 開発
+
+新しい Linux の環境（Claude Code on the web、CI）は `scripts/setup.sh` でツールチェーンと依存を入れる。
 
 ```sh
 moon check --target all

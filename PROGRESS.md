@@ -1,20 +1,38 @@
 # PROGRESS
 
-## 現在の状況（2026-11-03）
+## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 16（スタイル互換の仕上げ、2D。2026-11-04 にユーザーが段階と完了条件を承認）。段階は下の「方針の更新：Phase 16」。16.1 を本線で、16.7（地形の表現）と CSS の色を並行して進めている。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）。
+- **次**（2026-11-04 にユーザーが決めた順）：
+  1. **大きさの対策**（下の「方針の更新：大きさ（Phase 16）」）。本線で、スタイルのコンパイルを主スレッドだけにし、表示ワーカーへはコンパイル済みの二進形式を送る（docs/FORMATS.md に節を足す）。並行して、表示ワーカーの JS のうちラベル・PMTiles・クエリを使うときだけ読み込む別ファイルに分ける。
+  2. その後に 16.2（線と平行移動）と 16.4（円）を 1 本、16.6（式）を並行で。続いて 16.3、16.5、16.8。
+- **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。残る警告の多いものは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）は 16.5 に入れる。
+- **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 114.6KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
+  | 表示（メイン） | 114.6KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
   | 表示ワーカー | 96.3KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## 方針の更新：大きさ（Phase 16）（2026-11-04、ユーザー判断）
+
+16.1・CSS の色・16.7 の後で、表示（メイン）114.6KB / 120KB、表示ワーカー 96.3KB / 100KB。Phase 16 の残り（式、文字）で両方が予算を超える見込みだったので、内訳を測って決めた。
+
+- **内訳**（gzip、限界寄与。d8439c1、#81 の前）：
+  - 表示ワーカー 95.1KB（wasm 81.1 ＋ worker.js 14.0）。wasm のうち style の読み込みとコンパイル 20.8KB、moonbit core 9.0KB、style の評価 7.0KB、worker 7.2KB、earcut 4.9KB、クエリ 4.6KB、JSON 3.5KB、線 3.1KB、mvt/pbf 2.3KB。`Style::from_json` とフィルタの `compile` を外すと wasm は 81.1 → 53.3KB。worker.js のうちラベル（symbols・text・line-labels・tiny-sdf）7.9KB、pmtiles 1.3KB、query 0.7KB。
+  - 表示（メイン）110.1KB。map 25.9KB、style 24.9KB（読み込みとコンパイル約 17、評価約 7）、ソースマップに載らない部分 20.5KB（JS バックエンドのコンストラクタなど約 14、シェーダーと GL 約 6）、TS 11.3KB、moonbit core 10.1KB、core 7.1KB、render_webgl2 5.1KB。
+  - MapLibre 6.16 は主 294.3KB ＋ ワーカー 147.3KB。
+- **決めたこと**：
+  1. スタイルのコンパイルは主スレッドだけで行い、ワーカーにはコンパイル済みの二進形式を送る。見込みはワーカー約 −22KB、主 +3〜4KB。`compile → 書き出し → 読み込み` が元と等しいことを全バックエンドのテストで守る。ワーカーのクエリのフィルタも主スレッドでコンパイルして送る。
+  2. ワーカーの JS のラベル・PMTiles・クエリを、使うときだけ動的 import する（size.mjs に行を足す）。
+  3. 表示（メイン）の予算を 120KB から 135KB に。
+- **やらないこと**：ワーカーの wasm を機能ごとに分けること（MoonBit は複数モジュールをリンクできず、mvt・評価・core の重複がほうが大きい）。小さな削減（js-string-builtins で −1.9KB、hashmap の統一など）は性能ベンチで確かめられるときに。
 
 ## Phase 16.7：地形の表現（2026-11-04）
 
