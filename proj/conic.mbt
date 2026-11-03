@@ -1,7 +1,5 @@
-// Follows proj4js 2.22.0's conic projections (lib/projections/lcc.js, aea.js,
-// eqdc.js, bonne.js, poly.js), MIT License, Copyright (c) 2014, Mike Adair,
-// Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral, Calvin
-// Metcalf. See NOTICE.
+// Port of proj4js 2.22.0's conic projections (lib/projections/lcc.js, aea.js,
+// eqdc.js, bonne.js, poly.js), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE.
 
 ///|
 /// Lambert conformal conic, on one standard parallel or two.

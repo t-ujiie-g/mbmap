@@ -1,8 +1,5 @@
-// Golden test: the clipper package must give exactly the paths Clipper2 2.0.1
-// gives (clipper2-wasm 0.4.0, the C++ library compiled to wasm): random
-// polygons, grid-aligned rectangles, open paths and the GSI fixtures'
-// buildings and water, under every ClipType and FillRule, as paths and as
-// trees of nested polygons (js build in full, wasm-gc by hash).
+// clipper vs Clipper2 2.0.1 (clipper2-wasm 0.4.0): random and grid polygons, open paths and GSI
+// features under every ClipType and FillRule, as paths and trees; must be identical.
 // Usage: node clipper/golden.mjs [--cases=N]
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";

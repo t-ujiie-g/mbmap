@@ -1,9 +1,6 @@
-// `Map.toBlob` in Chromium (bench/query's page): an image drawn in parts
-// (`maxSize`) is the image drawn whole, to rounding; at pixelRatio 1 it is
-// what the canvas shows; and raster tiles drawn at pixelRatio 2 match MapLibre
-// GL JS 6.16.0 drawing them on a 2x screen. Writes bench/results/export-golden.json.
-// Needs `npm --prefix npm run build` and the gsi-bvmap, gsi-std and
-// gsi-dem-fuji fixtures.
+// `Map.toBlob` in Chromium: parts joined vs drawn whole, pixelRatio 1 vs the canvas, 2x raster vs
+// MapLibre GL JS 6.16.0 on a 2x screen. Writes bench/results/export-golden.json; needs the npm
+// build and the gsi-bvmap, gsi-std and gsi-dem-fuji fixtures.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";

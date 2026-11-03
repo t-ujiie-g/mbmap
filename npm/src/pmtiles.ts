@@ -1,7 +1,6 @@
-// A PMTiles archive's header as a TileJSON-like document for the facade: zoom
-// range, bounds and tile type (layout of pmtiles 4.5.0's `bytesToHeader`; the
-// display worker reads the whole archive with worker/js/pmtiles.mjs). Loaded by
-// the facade only for `pmtiles://` sources.
+// A PMTiles archive's header as a TileJSON-like document (pmtiles 4.5.0's
+// `bytesToHeader` layout). Loaded only for `pmtiles://` sources; the display
+// worker reads the rest (worker/js/pmtiles.mjs).
 
 /** Tile types of the header's byte 99. */
 const TYPES: Record<number, string> = { 1: "mvt", 2: "png", 3: "jpeg", 4: "webp", 5: "avif" };

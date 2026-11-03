@@ -1,8 +1,7 @@
 ///|
-/// A raster layer's paint (MapLibre's raster properties): `opacity`,
-/// `hue_rotate` (degrees), `brightness_min` and `brightness_max`,
-/// `saturation` and `contrast` (-1 to 1), and whether to sample the nearest
-/// pixel (`raster-resampling: nearest`) instead of blending.
+/// A raster layer's paint: `opacity`, `hue_rotate` (degrees), `brightness_min`,
+/// `brightness_max`, `saturation` and `contrast` (-1 to 1), and `nearest` for
+/// `raster-resampling: nearest`.
 pub struct RasterPaint {
   opacity : Expr
   hue_rotate : Expr

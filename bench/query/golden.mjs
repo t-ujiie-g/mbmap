@@ -1,14 +1,6 @@
-// queryRenderedFeatures and querySourceFeatures of mbmap against MapLibre GL JS
-// 6.16.0 in Chromium: the same style, tiles (bench fixtures) and camera, the
-// same points and boxes; every result must list the same features in the same
-// order. Writes bench/results/query-golden.json. Needs `npm --prefix npm run build`.
-//
-// Known differences, left out of the asks: on a tilted view MapLibre also keeps
-// tiles whose bounding box only touches the view's frustum, which mbmap's
-// covering leaves out, so queries of the whole view and of a source differ by
-// those tiles' features. Extrusions that meet a query at the same depth (GSI has
-// many buildings both as a polygon and as its outline) are ordered by rounding,
-// so such pairs are put in one order before comparing.
+// queryRenderedFeatures / querySourceFeatures vs MapLibre GL JS 6.16.0 in Chromium, same style,
+// tiles and camera: the same features in the same order (known differences left out: PROGRESS.md
+// Phase 12.3a). Writes bench/results/query-golden.json. Needs `npm --prefix npm run build`.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";

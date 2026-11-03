@@ -189,3 +189,16 @@ test "lengths beyond the buffer and group wire types are errors" {
   ignore(e.enter())
   assert_true(e.at_end() && e.failed())
 }
+
+///|
+test "read_len_start skips a length-delimited field and gives its start" {
+  let r = reader(b"\x03abc\x07")
+  assert_eq(r.read_len_start(), 1)
+  assert_eq(r.pos(), 4)
+  assert_eq(r.read_varint32(), 7)
+  assert_true(r.at_end() && !r.failed())
+  // A length past the end fails and stops the reader.
+  let bad = reader(b"\x09ab")
+  ignore(bad.read_len_start())
+  assert_true(bad.failed() && bad.at_end())
+}

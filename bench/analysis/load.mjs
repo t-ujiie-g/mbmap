@@ -10,7 +10,7 @@ export async function loadAnalysis(fetchBytes) {
   let e = null;
   const host = { number: hostNumber(() => e.memory) };
   const { instance } = await WebAssembly.instantiate(await fetchBytes(ANALYSIS_WASM), {
-    Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 },
+    Math,
     host,
   });
   e = instance.exports;

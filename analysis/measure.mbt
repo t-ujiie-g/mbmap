@@ -6,18 +6,9 @@
 pub const EARTH_RADIUS : Double = 6371008.8
 
 ///|
-/// The trigonometry measures use. A wasm-gc build passes the host's `Math` to
-/// match Turf bit for bit; `@math` can differ in the last bit.
-pub(all) struct Trig {
-  sin : (Double) -> Double
-  cos : (Double) -> Double
-  atan2 : (Double, Double) -> Double
-}
-
-///|
-pub fn Trig::moonbit() -> Trig {
-  { sin: @math.sin, cos: @math.cos, atan2: @math.atan2, }
-}
+/// The trigonometry measures use (`@core.Trig`): a wasm build passes the
+/// host's `Math` to match Turf bit for bit; `@math` can differ in the last bit.
+pub using @core {type Trig}
 
 ///|
 /// Turf's `degreesToRadians`, which first takes the degrees modulo 360.

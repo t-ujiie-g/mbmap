@@ -2,6 +2,7 @@
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
 import { hostNumber } from "../../wasmio/js/host.mjs";
+import { readCapped } from "./body.mjs";
 import { Archive, fetchRange, splitTileUrl } from "./pmtiles.mjs";
 import { rangesOf, readFeatureRanges, readQueryResult } from "./query.mjs";
 import { buildSymbols, Glyphs } from "./symbols.mjs";
@@ -11,6 +12,11 @@ const LAYER_ENTRY_WORDS = 9; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
+// Largest DEM tile side (worker/processor.mbt `dem_tile`) and raster tile side.
+const MAX_DEM_SIZE = 1024;
+const MAX_RASTER_SIZE = 4096;
+// PMTiles archives kept open at once.
+const MAX_ARCHIVES = 16;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let wasm = null;
@@ -91,7 +97,7 @@ function unpack(packed) {
 async function init({ wasm: url, style, font }) {
   glyphs = new Glyphs(typeof font === "string" && font ? font : "sans-serif");
   const host = { number: hostNumber(() => wasm.memory) };
-  const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host });
+  const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { host, Math });
   wasm = instance.exports;
   withInput(encoder.encode(style), () => wasm.init_style());
 }
@@ -101,7 +107,10 @@ let demCanvas = null;
 async function demPixels(bytes) {
   const bitmap = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "none", colorSpaceConversion: "none" });
   const size = bitmap.width;
-  if (bitmap.height !== size) throw new Error(`DEM tile is ${size} x ${bitmap.height}, not square`);
+  if (bitmap.height !== size || size > MAX_DEM_SIZE) {
+    bitmap.close();
+    throw new Error(`DEM tile is ${size} x ${bitmap.height}, not square up to ${MAX_DEM_SIZE}`);
+  }
   if (demCanvas?.width !== size) demCanvas = new OffscreenCanvas(size, size);
   const ctx = demCanvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(bitmap, 0, 0);
@@ -132,7 +141,10 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
       bytes = new Uint8Array(given);
     } else if (pm) {
       let archive = archives.get(pm.archive);
-      if (!archive) archives.set(pm.archive, (archive = new Archive(pm.archive, (u, o, l) => fetchRange(u, o, l))));
+      if (!archive) {
+        if (archives.size >= MAX_ARCHIVES) archives.delete(archives.keys().next().value);
+        archives.set(pm.archive, (archive = new Archive(pm.archive, (u, o, l) => fetchRange(u, o, l))));
+      }
       bytes = await archive.tile(pm.z, pm.x, pm.y);
       if (!bytes) {
         postMessage({ type: "tile", id, layers: [] });
@@ -145,13 +157,17 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      bytes = new Uint8Array(await res.arrayBuffer());
+      bytes = await readCapped(res);
     }
     if (controller.signal.aborted) return;
     if (raster === true) {
       // Premultiplied, as MapLibre uploads raster tiles (its shader divides it out).
       const image = await createImageBitmap(new Blob([bytes]), { premultiplyAlpha: "premultiply" });
       if (controller.signal.aborted) return image.close();
+      if (image.width > MAX_RASTER_SIZE || image.height > MAX_RASTER_SIZE) {
+        image.close();
+        throw new Error(`raster tile is ${image.width} x ${image.height}, over ${MAX_RASTER_SIZE}`);
+      }
       postMessage({ type: "tile", id, layers: [{ entry: 0, layer: -1, kind: KIND_RASTER, image }], glyphs: [] }, [image]);
       return;
     }

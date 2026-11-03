@@ -43,7 +43,7 @@ onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready) {
     const host = { number: hostNumber(() => wasm.memory) };
-    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math: { sin: Math.sin, log: Math.log }, host })
+    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })
       .then(({ instance }) => { wasm = instance.exports; });
   } else if (msg?.type === "load" && ready && Number.isInteger(msg.source)) {
     const done = load(msg, loads.get(msg.source));

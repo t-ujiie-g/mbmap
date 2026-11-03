@@ -228,7 +228,7 @@ pub fn proj_mem(
     bytes_from_mem(addr, len)[:],
     from,
     to,
-    trig=host_proj_trig(),
+    trig=host_trig(),
   )
   let need = out + values.length() * 8
   let have = memory_grow(0) * 65536

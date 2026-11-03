@@ -110,7 +110,13 @@ fn fail_with(message : Bytes) -> Int32 {
 /// a UTF-8 error message written at `output_addr`.
 #export_name("init_style")
 pub fn init_style() -> Int32 {
-  try TileProcessor::from_utf8(input_bytes()[:], number=host_number_of) catch {
+  try
+    TileProcessor::from_utf8(
+      input_bytes()[:],
+      number=host_number_of,
+      trig=host_trig(),
+    )
+  catch {
     e => fail_with(@utf8.encode(e.message()))
   } noraise {
     p => {
@@ -121,10 +127,9 @@ pub fn init_style() -> Int32 {
 }
 
 ///|
-/// Turns the RGBA pixels placed as input (a `size` x `size` tile of the
-/// `raster-dem` source with index `source`, at zoom `z`) into what its hillshade
-/// layers need (`TileProcessor::dem_tile`) at `output_addr`. Returns their length, or minus the length
-/// of a UTF-8 error message there.
+/// Turns the RGBA input (a `size` x `size` tile of DEM source `source` at zoom
+/// `z`) into `TileProcessor::dem_tile`'s output at `output_addr`. Returns its
+/// length, or minus an error message's.
 #export_name("process_dem")
 pub fn process_dem(source : Int32, z : Int32, size : Int32) -> Int32 {
   guard processor.val is Some(p) else {
@@ -157,10 +162,9 @@ pub fn process_tile(source : Int32, z : Int32) -> Int32 {
 }
 
 ///|
-/// Answers a query of a tile: the input holds the tile (`tile_len` bytes) of
-/// the source with index `source` at zoom `z`, then the request
-/// (`TileProcessor::query`). Returns the result's length at `output_addr`, or
-/// minus the length of a UTF-8 error message there.
+/// Answers a query: the input holds the tile (`tile_len` bytes, source `source`,
+/// zoom `z`), then the request (`TileProcessor::query`). Returns the result's
+/// length at `output_addr`, or minus an error message's.
 #export_name("query_tile")
 pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
   guard processor.val is Some(p) else {
@@ -181,9 +185,8 @@ pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
 }
 
 ///|
-/// The features of a tile's source layer: the input holds the tile (`tile_len`
-/// bytes) of the source with index `source` at zoom `z`, then the source
-/// layer's name and a filter's JSON, each a u32 length and UTF-8
+/// A source layer's features: the input holds the tile (`tile_len` bytes), then
+/// the layer's name and a filter's JSON, each a u32 length and UTF-8
 /// (`TileProcessor::source_features`). Returns as `query_tile` does.
 #export_name("source_features")
 pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {

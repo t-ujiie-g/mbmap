@@ -1,8 +1,7 @@
 ///|
-/// Where a buffer's distance is measured: `Geodesic`, on the ground (each
-/// feature in a plane where distances from its center are true; coordinates
-/// in degrees), or `Planar`, in the coordinates' own plane (a projected CRS's
-/// meters).
+/// Where a buffer's distance is measured: `Geodesic` on the ground (coordinates
+/// in degrees, each feature in a plane true to distances from its center), or
+/// `Planar` in the coordinates' own plane (a projected CRS's meters).
 pub(all) enum BufferMode {
   Geodesic
   Planar
@@ -113,11 +112,9 @@ fn tree_of(paths : Array[Array[@clipper.Point64]]) -> @clipper.PolyPath64 {
 }
 
 ///|
-/// Every feature of `t` grown by `meters` (shrunk if negative; lines and
-/// points only grow), as polygons keeping its properties. `join` turns
-/// corners, `cap` ends lines (`Round`, `Butt` or `Square`); `arc_tolerance`
-/// (meters, 0 for distance / 500) bounds how far round edges stray from true
-/// arcs. Features that vanish keep their row with no geometry.
+/// Every feature of `t` grown by `meters` (shrunk if negative; lines and points
+/// only grow) as polygons with its properties, shaped by `join`, `cap` and
+/// `arc_tolerance` (meters, 0 for distance / 500); vanished ones keep their row.
 pub fn buffer(
   t : @geom.Table,
   meters : Double,

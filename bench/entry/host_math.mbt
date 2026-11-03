@@ -32,8 +32,8 @@ fn host_exp(x : Double) -> Double = "Math" "exp"
 fn host_pow(x : Double, y : Double) -> Double = "Math" "pow"
 
 ///|
-/// The functions proj_worker takes from the host.
-fn host_proj_trig() -> @proj.Trig {
+/// The host's `Math` as a `@core.Trig`.
+fn host_trig() -> @proj.Trig {
   {
     sin: host_sin,
     cos: host_cos,
@@ -46,11 +46,6 @@ fn host_proj_trig() -> @proj.Trig {
     ln: host_log,
     pow: host_pow,
   }
-}
-
-///|
-fn host_trig() -> @tiler.Trig {
-  { sin: host_sin, ln: host_log, }
 }
 
 ///|

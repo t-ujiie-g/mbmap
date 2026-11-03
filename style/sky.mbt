@@ -1,10 +1,7 @@
 ///|
-/// The style's `sky` (with the Style Spec's defaults for what it leaves out;
-/// without one, MapLibre draws neither sky nor fog): the sky's color
-/// above the horizon blending into `horizon` over `sky_horizon_blend` of half
-/// the screen, and terrain fading into `fog` (towards `horizon` farther out)
-/// past `fog_ground_blend` of the depth. `atmosphere-blend` is for globes and
-/// is not read.
+/// The style's `sky` (Style Spec defaults; without one MapLibre draws neither sky
+/// nor fog): `sky` blends into `horizon` over `sky_horizon_blend` of half the
+/// screen; terrain fades into `fog` past `fog_ground_blend` of the depth.
 pub struct Sky {
   sky : Expr
   horizon : Expr

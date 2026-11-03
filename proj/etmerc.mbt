@@ -1,8 +1,6 @@
-// Follows proj4js 2.22.0's extended transverse Mercator (lib/projections/
-// etmerc.js and lib/common/gatg.js, clens.js, clens_cmplx.js, asinhy.js,
-// hypot.js, log1py.js, sinh.js, adjust_lon.js: Poder/Engsager's Krüger series
-// to 6th order), MIT License, Copyright (c) 2014, Mike Adair, Richard Greenwood,
-// Didier Richard, Stephen Irons, Olivier Terral, Calvin Metcalf. See NOTICE.
+// Port of proj4js 2.22.0's extended transverse Mercator (lib/projections/etmerc.js
+// and the lib/common/ helpers it uses: Poder/Engsager's Krüger series to 6th
+// order), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE.
 
 ///|
 /// A transverse Mercator projection (`etmerc`): its ellipsoid's semi-major

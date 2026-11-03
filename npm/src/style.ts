@@ -1,7 +1,6 @@
-// Edits of a MapLibre style document, as the facade's `addLayer`, `setPaintProperty`
-// and the like make them: each returns a new document and leaves its input as it
-// was, or throws an Error naming what is wrong. Import-free, so that `npm test`
-// can load it.
+// Edits of a style document as `addLayer`, `setPaintProperty` and the like make
+// them: each returns a new document or throws an Error naming what is wrong.
+// Import-free, so that `npm test` can load it.
 
 /** A MapLibre style document; anything mbmap cannot draw faithfully is an error. */
 export interface StyleSpecification {

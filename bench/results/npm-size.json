@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 70444,
+      "bytes": 70489,
       "budget": 80000
     },
     {
@@ -26,12 +26,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 75078,
+      "bytes": 67192,
       "budget": 100000
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 22796,
+      "bytes": 20262,
       "budget": 30000
     },
     {
@@ -46,17 +46,17 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 29170,
+      "bytes": 26503,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 38188,
+      "bytes": 35504,
       "budget": 50000
     },
     {
       "name": "coordinate systems (loaded by the analysis worker on first use)",
-      "bytes": 21647,
+      "bytes": 21629,
       "budget": 25000
     }
   ]

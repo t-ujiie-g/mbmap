@@ -197,7 +197,7 @@ pub fn ByteReader::utf8(self : ByteReader) -> String {
     return ""
   }
   self.at += n
-  @utf8.decode_lossy(self.b[self.at - n:self.at])
+  utf8_lossy(self.b[self.at - n:self.at])
 }
 
 ///|

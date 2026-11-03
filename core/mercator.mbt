@@ -34,12 +34,12 @@ pub fn mercator_y_from_lat(lat : Double) -> Double {
 }
 
 ///|
-pub fn lng_from_mercator_x(x : Double) -> Double {
+fn lng_from_mercator_x(x : Double) -> Double {
   x * 360.0 - 180.0
 }
 
 ///|
-pub fn lat_from_mercator_y(y : Double) -> Double {
+fn lat_from_mercator_y(y : Double) -> Double {
   360.0 /
   @math.PI *
   @math.atan(@math.exp((180.0 - y * 360.0) * @math.PI / 180.0)) -

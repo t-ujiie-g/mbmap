@@ -10,7 +10,7 @@ pub fn edge_slopes(FixedArray[Double], FixedArray[Double], Int32, Int32, Int32) 
 
 pub fn elevations(BytesView, Unpack) -> FixedArray[Double]
 
-pub fn hillshade_slopes(FixedArray[Double], Int32, Int32) -> Bytes
+pub fn hillshade_slopes(FixedArray[Double], Int32, Int32, pow? : (Double, Double) -> Double) -> Bytes
 
 // Errors
 

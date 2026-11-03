@@ -1,8 +1,7 @@
 ///|
-/// Whether a worker builds the same tile for `self` as for `other` (two
-/// versions of a layer): the same kind, source, zoom range, filter, text and
-/// line layout and extruded heights, and paint that reads the same feature
-/// data (paint values themselves are applied on the main thread).
+/// Whether a worker builds the same tile for both versions of a layer: same
+/// kind, source, zoom range, filter, text and line layout, extruded heights and
+/// feature inputs of paint (paint values are applied on the main thread).
 pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   let inputs = (l : StyleLayer) => {
     [

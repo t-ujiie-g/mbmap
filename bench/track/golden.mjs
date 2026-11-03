@@ -1,11 +1,5 @@
-// Screen positions on terrain, mbmap against MapLibre GL JS 6.16.0 in Chromium
-// (bench/query's page, the same DEM tiles and camera): `project` and the
-// `covered` flag of `Map.track` against MapLibre's `project` and
-// `isLocationOccluded` (what its Marker fades by), and `unproject`. The DEM is
-// bench/fixtures/gsi-dem-fuji as Terrarium PNGs, which both engines read.
-// Only places on terrain MapLibre draws from the DEM count: it covers distant
-// ground with tiles below the DEM's minzoom and draws them flat, where mbmap
-// takes the DEM's heights.
+// `project`, `unproject` and `Map.track`'s `covered` on terrain vs MapLibre GL JS 6.16.0 (Mt Fuji
+// DEM as Terrarium), only where MapLibre draws the DEM (it draws distant ground flat).
 // Writes bench/results/track-golden.json. Needs `npm --prefix npm run build`.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";

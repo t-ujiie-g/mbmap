@@ -127,10 +127,9 @@ fn dem_under(
 }
 
 ///|
-/// Draws the map onto terrain. Terrain tiles follow the display zoom (or the DEM
-/// tiles', if deeper): each gets a texture of the layers under it (drawn again
-/// only when they change), then its grid is drawn raised by the DEM, nearest
-/// surface wins.
+/// Draws the map onto terrain: each terrain tile (the display zoom, or the DEM's
+/// if deeper) gets a texture of the layers under it, redrawn when they change,
+/// on its grid raised by the DEM.
 fn Map::render_terrain(
   self : Map,
   src : SourceTiles,

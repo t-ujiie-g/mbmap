@@ -1,15 +1,24 @@
 ///|
-/// Feature `index` of a layer's features, as expressions see it. Property
-/// names are resolved to key indices once per layer.
+/// Feature `index` of a layer's features, as expressions see it, with the
+/// processor's `pow`. Property names are resolved to key indices once per layer.
 priv struct FeatureRef {
   features : Features
   mut index : Int32
   keys : Map[String, Int32]
+  pow : (Double, Double) -> Double
 }
 
 ///|
-fn FeatureRef::new(features : Features) -> FeatureRef {
-  { features, index: 0, keys: Map([]), }
+fn TileProcessor::feature_ref(
+  self : TileProcessor,
+  features : Features,
+) -> FeatureRef {
+  { features, index: 0, keys: Map([]), pow: self.trig.pow, }
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn pow(self, x, y) {
+  (self.pow)(x, y)
 }
 
 ///|

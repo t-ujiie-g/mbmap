@@ -49,10 +49,9 @@ fn parse_extrusion(
 }
 
 ///|
-/// The style's `light` for extrusions (the Style Spec's defaults for what it
-/// leaves out): whether it turns with the map's bearing (`viewport` anchor),
-/// its color and intensity, and its `position` (radial distance, azimuth and
-/// polar angle in degrees).
+/// The style's `light` (Style Spec defaults for what it leaves out): whether it
+/// turns with the map (`viewport`), its color, intensity and `position` (radial
+/// distance, azimuth and polar angle in degrees).
 pub struct Light {
   viewport : Bool
   color : Expr

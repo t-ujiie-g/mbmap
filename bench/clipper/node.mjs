@@ -1,9 +1,5 @@
-// Geometry operations on each GSI fixture tile's buildings, mbmap (the
-// analysis and geometry wasm modules, as the analysis worker runs them) against
-// Turf.js 7.4.0 (polyclip-ts for union and intersect, JSTS for buffer): dissolve
-// all buildings, buffer each by 10 m, clip them by the tile's water. Totals over
-// the first tiles, median of runs. Both clips cut each building only by the
-// water polygons whose boxes meet it.
+// Dissolve, 10 m buffer and water clip of each fixture tile's buildings: mbmap's wasm modules vs
+// Turf.js 7.4.0 (polyclip-ts, JSTS), totals over the first tiles, median of runs.
 // Usage: node clipper/node.mjs [--runs=5] [--tiles=5]
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -24,7 +20,7 @@ const tileCount = Number(arg("tiles", 5));
 let a;
 const { instance: ai } = await WebAssembly.instantiate(
   await readFile(path.join(ROOT, "_build/wasm-gc/release/build/analysis_worker/analysis_worker.wasm")),
-  { Math: { sin: Math.sin, cos: Math.cos, atan2: Math.atan2 }, host: { number: hostNumber(() => a.memory) } },
+  { Math, host: { number: hostNumber(() => a.memory) } },
 );
 a = ai.exports;
 const { instance: gi } = await WebAssembly.instantiate(await readFile(path.join(ROOT, "_build/wasm-gc/release/build/geometry_worker/geometry_worker.wasm")), {});

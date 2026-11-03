@@ -1,9 +1,6 @@
-// PROJ strings for `mbmap/analysis`, parsed as proj4js 2.22.0 reads them (lib/projString.js, lib/Proj.js,
-// lib/deriveConstants.js and the tables of lib/constants/; MIT License,
-// Copyright (c) 2014, Mike Adair, Richard Greenwood, Didier Richard, Stephen
-// Irons, Olivier Terral, Calvin Metcalf; see NOTICE). Loaded by
-// `mbmap/analysis` on the first PROJ string; import-free, so that `npm test`
-// can load it.
+// PROJ strings parsed as proj4js 2.22.0 reads them (lib/projString.js and what it
+// uses), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE. Loaded by
+// `mbmap/analysis` on the first PROJ string; import-free for `npm test`.
 
 const D2R = 0.01745329251994329577;
 // `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).

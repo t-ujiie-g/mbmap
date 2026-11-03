@@ -8,18 +8,9 @@ fn project_x(lng : Double) -> Double {
 }
 
 ///|
-/// The projection's sine and logarithm. A wasm-gc build passes the host's
-/// `Math.sin`/`Math.log` to match geojson-vt bit for bit; `@math` differs in
-/// the last bit now and then.
-pub(all) struct Trig {
-  sin : (Double) -> Double
-  ln : (Double) -> Double
-}
-
-///|
-pub fn Trig::moonbit() -> Trig {
-  { sin: @math.sin, ln: @math.ln, }
-}
+/// The functions projecting uses (`@core.Trig`): a wasm build passes the host's
+/// `Math.sin` and `Math.log` to match geojson-vt bit for bit.
+pub using @core {type Trig}
 
 ///|
 /// Latitude to world y in [0, 1] (spherical mercator, clamped).

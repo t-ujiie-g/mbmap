@@ -1,7 +1,8 @@
-// PMTiles v3 archives read over HTTP range requests: the header, directories
-// and Hilbert tile ids follow pmtiles 4.5.0 (src/index.ts; BSD-3-Clause,
-// Copyright (c) 2021 Protomaps LLC; see NOTICE). Archives are untrusted input:
-// sizes, entry counts and nesting are capped (AGENTS.md §8.2). Import-free.
+// PMTiles v3 archives over HTTP range requests, as pmtiles 4.5.0 reads them
+// (src/index.ts; BSD-3-Clause, Copyright (c) 2021 Protomaps LLC; see NOTICE).
+// Archives are untrusted: sizes, entry counts and nesting are capped.
+
+import { readCapped } from "./body.mjs";
 
 /** Bytes fetched first: the 127-byte header and, in most archives, the root directory. */
 export const FIRST_BYTES = 16384;
@@ -198,5 +199,5 @@ export async function fetchRange(url, offset, length, signal) {
   if (res.status !== 206 && !(res.status === 200 && offset === 0 && Number(res.headers.get("content-length")) <= length)) {
     throw new Error(`PMTiles: ${url} answered ${res.status} to a range request`);
   }
-  return new Uint8Array(await res.arrayBuffer());
+  return readCapped(res, length);
 }

@@ -1,7 +1,5 @@
-// Follows proj4js 2.22.0's oblique projections (lib/projections/omerc.js,
-// somerc.js, krovak.js), MIT License, Copyright (c) 2014, Mike Adair, Richard
-// Greenwood, Didier Richard, Stephen Irons, Olivier Terral, Calvin Metcalf.
-// See NOTICE.
+// Port of proj4js 2.22.0's oblique projections (lib/projections/omerc.js,
+// somerc.js, krovak.js), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE.
 
 ///|
 /// Hotine oblique Mercator, by its center's azimuth (`alpha`, `gamma`,

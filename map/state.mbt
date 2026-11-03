@@ -44,10 +44,9 @@ fn state_key(source_layer : String, id : String) -> String {
 }
 
 ///|
-/// Sets the state of feature `id` (as `String(id)`) of `source_layer` (""
-/// for a GeoJSON source) in `source` to the JS object `state`, or removes it
-/// when `state` is null. Layers whose paint reads the feature state draw
-/// that feature with it once the workers have said where it lies.
+/// Sets feature `id`'s state (the JS object `state`; null removes it) in `source`
+/// (`source_layer` "" for GeoJSON); layers reading it draw the feature with it
+/// once the workers have said where it lies.
 pub fn Map::set_feature_state(
   self : Map,
   source : String,

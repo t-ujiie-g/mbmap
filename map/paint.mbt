@@ -1,8 +1,7 @@
 ///|
-/// The properties a data-driven layer's group shares (a JS object from the
-/// worker; null for no feature) and a feature's state (a JS object from
-/// `set_feature_state`, or null). The only context type on the main thread,
-/// so `Expr::eval` is compiled into the bundle once.
+/// A data-driven group's properties (a JS object from the worker, or null) and a
+/// feature's state (from `set_feature_state`, or null): the main thread's only
+/// context type, so `Expr::eval` is compiled into the bundle once.
 priv struct JsProps {
   obj : JsValue
   state : JsValue

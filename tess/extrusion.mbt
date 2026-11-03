@@ -120,11 +120,9 @@ fn entirely_outside(
 }
 
 ///|
-/// Appends one polygon feature's rings (as in `@mvt.Geometry`) extruded:
-/// walls along every ring that reaches the tile, roofs triangulated like
-/// fills. `heights` is the feature's `EXTRUSION_HEIGHTS` values; the centroid
-/// is the mean of its ring points (of the whole feature, where MapLibre takes
-/// each polygon's).
+/// Appends one polygon feature's rings extruded: walls along rings reaching the
+/// tile, roofs triangulated like fills; `heights` are its `EXTRUSION_HEIGHTS`.
+/// The centroid is the whole feature's (MapLibre takes each polygon's).
 pub fn ExtrusionTessellator::add_polygons(
   self : ExtrusionTessellator,
   coords : ArrayView[Int32],

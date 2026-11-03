@@ -1,7 +1,6 @@
-// Ports Clipper2 2.0.1 (CPP/Clipper2Lib/include/clipper2/clipper.engine.h and
-// src/clipper.engine.cpp, commit 642390d), Boost Software License 1.0,
-// Copyright (c) Angus Johnson 2010-2026. See NOTICE. Up and down are premised
-// on a y-down frame, as in Clipper2.
+// Port of Clipper2 2.0.1 (clipper.engine.h and .cpp, commit 642390d), Boost
+// Software License 1.0, Copyright (c) Angus Johnson 2010-2026; see NOTICE.
+// Up and down assume a y-down frame, as in Clipper2.
 
 ///|
 priv enum PathType {

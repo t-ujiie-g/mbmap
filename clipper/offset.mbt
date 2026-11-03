@@ -14,10 +14,9 @@ pub(all) enum JoinType {
 } derive(Eq)
 
 ///|
-/// How paths are closed or capped when offset (`EndType`): `Polygon` offsets
-/// one side of a closed path, `Joined` both sides of a path closed by joining
-/// its ends, and `Butt`, `Square` and `Round` both sides of an open path with
-/// those caps.
+/// How offset paths end (`EndType`): `Polygon` one side of a closed path,
+/// `Joined` both sides with the ends joined, `Butt`, `Square` and `Round` both
+/// sides of an open path with those caps.
 pub(all) enum EndType {
   Polygon
   Joined

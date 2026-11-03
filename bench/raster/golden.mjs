@@ -1,7 +1,5 @@
-// Raster sources and layers drawn by mbmap and MapLibre GL JS 6.16.0 side by
-// side in Chromium (bench/query's page): GSI's standard map (bench fixtures,
-// 256 px tiles at z14) under several raster paints, compared pixel by pixel.
-// Writes bench/results/raster-golden.json. Needs `npm --prefix npm run build`.
+// Raster sources and paints vs MapLibre GL JS 6.16.0 in Chromium, pixel by pixel, on GSI's standard
+// map (z14 fixtures). Writes bench/results/raster-golden.json. Needs `npm --prefix npm run build`.
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";

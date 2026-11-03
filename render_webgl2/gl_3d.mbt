@@ -244,10 +244,9 @@ extern "js" fn gl_set_ground(
   #|}
 
 ///|
-/// Draws an extrusion mesh with depth testing (twice when translucent: depth
-/// first, then the nearest surface's color). `light` is the light's direction
-/// (x, y, z), intensity and color (r, g, b); `heights` is the zoom mix,
-/// world pixels per meter and the terrain exaggeration (0 without terrain).
+/// Draws an extrusion mesh depth-tested (twice when translucent: depth, then
+/// color). `light`: direction, intensity, color; `heights`: zoom mix, world
+/// pixels per meter, terrain exaggeration (0 without terrain).
 extern "js" fn gl_draw_extrusion(
   gl : Gl,
   mesh : Mesh,

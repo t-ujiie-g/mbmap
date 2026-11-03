@@ -1,7 +1,5 @@
-// The transform pipeline follows proj4js 2.22.0 (lib/Proj.js, lib/transform.js,
-// lib/deriveConstants.js, lib/datum.js), MIT License, Copyright (c) 2014,
-// Mike Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier
-// Terral, Calvin Metcalf. See NOTICE.
+// The transform pipeline of proj4js 2.22.0 (lib/Proj.js, lib/transform.js,
+// lib/deriveConstants.js, lib/datum.js), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE.
 
 ///|
 /// The map projections a `Definition` can name, as PROJ calls them

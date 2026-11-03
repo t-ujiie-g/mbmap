@@ -1,7 +1,5 @@
-// Follows proj4js 2.22.0's cylindrical projections (lib/projections/merc.js,
-// cass.js, eqc.js, cea.js, mill.js), MIT License, Copyright (c) 2014, Mike
-// Adair, Richard Greenwood, Didier Richard, Stephen Irons, Olivier Terral,
-// Calvin Metcalf. See NOTICE.
+// Port of proj4js 2.22.0's cylindrical projections (lib/projections/merc.js,
+// cass.js, eqc.js, cea.js, mill.js), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE.
 
 ///|
 /// Mercator, spherical or ellipsoidal, scaled by `k0` or true at `lat_ts`.

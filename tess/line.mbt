@@ -63,6 +63,7 @@ pub fn LineBuffers::num_vertices(self : LineBuffers) -> Int32 {
 /// Extrudes polylines into triangles. Reuse one instance; its scratch buffers
 /// keep their capacity, so steady-state use does not allocate.
 pub struct LineTessellator {
+  priv trig : @core.Trig
   priv xs : Array[Int32]
   priv ys : Array[Int32]
   priv nx : Array[Double]
@@ -70,8 +71,11 @@ pub struct LineTessellator {
 }
 
 ///|
-pub fn LineTessellator::new() -> LineTessellator {
-  { xs: [], ys: [], nx: [], ny: [], }
+/// `trig` gives round joins their angles (a wasm build passes the host's).
+pub fn LineTessellator::new(
+  trig~ : @core.Trig = @core.Trig::moonbit(),
+) -> LineTessellator {
+  { trig, xs: [], ys: [], nx: [], ny: [], }
 }
 
 ///|
@@ -100,7 +104,7 @@ pub fn LineTessellator::add_line(
   let segments = if closed { n } else { n - 1 }
   self.compute_normals(n, segments)
   let miter_limit = @cmp.minimum(miter_limit, MAX_MITER_LIMIT)
-  let emitter = { out, join, miter_limit, round_limit, }
+  let emitter = { trig: self.trig, out, join, miter_limit, round_limit, }
   let xs = self.xs
   let ys = self.ys
   let nx = self.nx
@@ -219,6 +223,7 @@ fn LineTessellator::compute_normals(
 
 ///|
 priv struct Emitter {
+  trig : @core.Trig
   out : LineBuffers
   join : LineJoin
   miter_limit : Double
@@ -413,7 +418,7 @@ fn Emitter::join_at(
     self.triangle(center, tip, to)
   } else if self.join is Round {
     // Signed angle from s·a to s·b; the sign flip cancels in the cross product.
-    let sweep = @math.atan2(cross, ax * bx + ay * by)
+    let sweep = self.trig.atan2(cross, ax * bx + ay * by)
     let steps = @cmp.maximum(
       1,
       (sweep.abs() / @math.PI * ROUND_SEGMENTS.to_double()).ceil().to_int(),
@@ -427,8 +432,8 @@ fn Emitter::join_at(
       to,
       sd * ax,
       sd * ay,
-      @math.cos(step),
-      @math.sin(step),
+      self.trig.cos(step),
+      self.trig.sin(step),
       steps,
       s,
     )

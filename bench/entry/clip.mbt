@@ -22,10 +22,9 @@ fn read_paths(
 }
 
 ///|
-/// Runs Clipper64 on input i32s (subjects, open subjects, clips, as in
-/// `read_paths`) with ClipType `op` (1-4) and FillRule `fill` (0-3), as
-/// i32s: closed solution paths in `read_paths` form (or with `tree`, the
-/// solution tree in preorder), then open ones.
+/// Clipper64 on input i32s (subjects, open subjects, clips as in `read_paths`)
+/// with ClipType `op` (1-4) and FillRule `fill` (0-3): closed solution paths (or
+/// with `tree` the solution tree in preorder), then open ones, as i32s.
 fn clip_words(
   words : Array[Int32],
   op : Int32,

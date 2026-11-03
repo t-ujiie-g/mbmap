@@ -77,7 +77,7 @@ pub fn PackedTile::layer_count(self : PackedTile) -> Int32 {
 
 ///|
 /// Whether the last tile hit `MAX_PACKED_BYTES`.
-pub fn PackedTile::overflowed(self : PackedTile) -> Bool {
+fn PackedTile::overflowed(self : PackedTile) -> Bool {
   self.overflow
 }
 
@@ -115,7 +115,7 @@ fn rescale(v : Int32, extent : Int32) -> Int32 {
 
 ///|
 /// Starts a tile that will hold at most `max_layers` layer entries.
-pub fn PackedTile::begin(self : PackedTile, max_layers : Int32) -> Unit {
+fn PackedTile::begin(self : PackedTile, max_layers : Int32) -> Unit {
   self.len = 0
   self.layers = 0
   self.overflow = false
@@ -176,7 +176,7 @@ fn PackedTile::put_indices(
 
 ///|
 /// Appends a fill layer; returns false if the tile would exceed `MAX_PACKED_BYTES`.
-pub fn PackedTile::add_fill(
+fn PackedTile::add_fill(
   self : PackedTile,
   style_layer : Int32,
   fills : @tess.FillBuffers,
@@ -215,7 +215,7 @@ fn decimeters(m : Double) -> Int32 {
 ///|
 /// Appends a fill-extrusion layer; returns false if the tile would exceed
 /// `MAX_PACKED_BYTES`.
-pub fn PackedTile::add_extrusion(
+fn PackedTile::add_extrusion(
   self : PackedTile,
   style_layer : Int32,
   b : @tess.ExtrusionBuffers,
@@ -255,7 +255,7 @@ pub fn PackedTile::add_extrusion(
 
 ///|
 /// Appends a line layer; returns false if the tile would exceed `MAX_PACKED_BYTES`.
-pub fn PackedTile::add_line(
+fn PackedTile::add_line(
   self : PackedTile,
   style_layer : Int32,
   lines : @tess.LineBuffers,
@@ -267,7 +267,7 @@ pub fn PackedTile::add_line(
 ///|
 /// Appends a circle layer (quads from `@tess.add_points`); returns false if
 /// the tile would exceed `MAX_PACKED_BYTES`.
-pub fn PackedTile::add_circles(
+fn PackedTile::add_circles(
   self : PackedTile,
   style_layer : Int32,
   points : @tess.LineBuffers,
@@ -334,7 +334,7 @@ fn PackedTile::add_labels(
 
 ///|
 /// Appends an entry for `style_layer` that points at entry `of`'s buffers.
-pub fn PackedTile::add_alias(
+fn PackedTile::add_alias(
   self : PackedTile,
   style_layer : Int32,
   of : Int32,

@@ -368,10 +368,9 @@ pub fn map_reload_source(map : @map.Map, id : String) -> Unit {
 }
 
 ///|
-/// The features drawn under `points` (x, y pairs in CSS pixels: one point or
-/// a closed ring) of the layers named in `layers` (all when `all_layers`),
-/// passing `filter` (JSON, or ""); `done` gets each tile's hits
-/// (`@map.TileResults`). Returns "" or why the query cannot run.
+/// The features under `points` (one point or a closed ring, CSS pixels) of the
+/// layers named (all when `all_layers`) passing `filter` (JSON or ""); `done`
+/// gets each tile's hits. Returns "" or why the query cannot run.
 #export_name("map_query_rendered")
 pub fn map_query_rendered(
   map : @map.Map,

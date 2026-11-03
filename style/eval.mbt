@@ -6,11 +6,19 @@ pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
   fn geometry_type(Self) -> String
   fn state(Self, String) -> Value? = _
+  fn pow(Self, Double, Double) -> Double = _
 }
 
 ///|
 impl FeatureContext with fn state(_, _) {
   None
+}
+
+///|
+/// `@math.pow` unless the context brings the host's (a wasm build's `Math.pow`,
+/// as MapLibre interpolates with).
+impl FeatureContext with fn pow(_, x, y) {
+  @math.pow(x, y)
 }
 
 ///|
@@ -66,6 +74,7 @@ fn order(op : CmpOp, a : Value, b : Value) -> Bool {
 ///|
 /// MapLibre's exponential interpolation factor between `lower` and `upper`.
 fn factor(
+  pow : (Double, Double) -> Double,
   base : Double,
   input : Double,
   lower : Double,
@@ -78,7 +87,7 @@ fn factor(
   } else if base == 1.0 {
     progress / span
   } else {
-    (@math.pow(base, progress) - 1.0) / (@math.pow(base, span) - 1.0)
+    (pow(base, progress) - 1.0) / (pow(base, span) - 1.0)
   }
 }
 
@@ -164,7 +173,7 @@ pub fn[C : FeatureContext] Expr::eval(
       }
       let (z0, e0) = stops[i - 1]
       let (z1, e1) = stops[i]
-      blend(go(e0), go(e1), factor(base, x, z0, z1))
+      blend(go(e0), go(e1), factor((a, b) => ctx.pow(a, b), base, x, z0, z1))
     }
     FeatureState(k) => ctx.state(k).unwrap_or(Null)
     // The first argument of the type asked for (MapLibre fails over to the

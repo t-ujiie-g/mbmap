@@ -11,10 +11,9 @@ fn draws_from(style : @style.Style, id : String) -> Bool {
 }
 
 ///|
-/// Whether tiles of source `src` made under `a` serve `b`: each of its layers
-/// in `b` was in `a` and builds the same output there (`same_tiles`). Order
-/// does not matter (it is applied when drawing) and meshes of removed layers
-/// are dropped. An elevation source's tiles serve every hillshade layer alike.
+/// Whether `src`'s tiles made under `a` serve `b`: each of its layers in `b` has a
+/// `same_tiles` twin in `a` (order is applied when drawing). DEM and raster
+/// tiles serve any layers.
 fn same_layers(src : @style.Source, a : @style.Style, b : @style.Style) -> Bool {
   src.kind is (RasterDem | Raster) ||
   b.layers
@@ -59,10 +58,9 @@ fn Map::remap(
 }
 
 ///|
-/// Draws `style_json` from now on, keeping what it can: a source whose tiles
-/// the workers would make alike keeps them (renumbered for the new layers),
-/// any other has its tiles loaded again, the old ones drawn until then.
-/// Raises (and keeps the current style) if the style cannot be drawn.
+/// Draws `style_json` from now on: sources whose tiles would come out alike keep
+/// them, the others are reloaded while the old ones are drawn. Raises, keeping
+/// the current style, if it cannot be drawn.
 pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
   let next = @style.Style::from_json(parse_json(style_json)) catch {
     e => raise BadStyle(e)

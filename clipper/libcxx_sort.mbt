@@ -1,7 +1,6 @@
-// Follows libc++'s std::sort (LLVM 21, libcxx/include/__algorithm/sort.h:
-// introsort with a comparator that is not branchless), Apache License 2.0 with
-// LLVM Exceptions, so that ties in Clipper2's intersection list come out in the
-// order the C++ library gives them. See NOTICE.
+// Port of libc++'s std::sort (LLVM 21, __algorithm/sort.h), Apache 2.0 with
+// LLVM Exceptions; see NOTICE. Ties in Clipper2's intersection list must come
+// out in the order the C++ library gives them.
 
 ///|
 fn[T] swap_at(a : Array[T], i : Int32, j : Int32) -> Unit {

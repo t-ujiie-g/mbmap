@@ -1,5 +1,71 @@
 # PROGRESS
 
+## リファクタリングとセキュリティチェック（2026-11-03）
+
+状態：**完了**。全体を AGENTS.md §7 と §8 の観点で見直した。範囲はユーザー判断で「メインの HashMap の置き換え以外すべて」。
+
+### セキュリティ（§8）
+
+- 問題がなかった所：
+  - 依存の監査：npm audit（bench、npm、examples/react）と Dependabot がすべて 0 件。依存は版を固定し、CI の Actions も SHA で固定している。
+  - 秘密情報はない。出荷コードに innerHTML、eval、new Function はない。
+  - fetch は既定で資格情報を送らない。ワーカーのメッセージは形と型を確かめている。線形メモリは入出力の上限と範囲を確かめている。
+- 直した所（信頼できないタイルサーバーへの備え）：
+  - タイルの応答を 64MB（wasm の入力上限）までしか読まない（`worker/js/body.mjs` の `readCapped`。Content-Length と、読み込み中のバイト数で判断する）。PMTiles の範囲リクエストにも使う。
+  - DEM 画像は、canvas を作る前に縦横を確かめる（1024px まで）。ラスタ画像は 4096px まで。
+  - PMTiles のアーカイブのキャッシュを 16 個までにした。
+
+### サイズ（gzip）
+
+| 入口 | 前 | 後 |
+|---|---|---|
+| 表示ワーカー | 75.1KB | 67.2KB |
+| GeoJSON ワーカー | 22.8KB | 20.3KB |
+| 解析ワーカー | 29.2KB | 26.5KB |
+| ジオメトリ | 38.2KB | 35.5KB |
+| 表示の入口（メイン） | 70.4KB | 70.5KB |
+
+- **ブラウザの `Math`**：
+  - `Trig` が tiler、analysis、proj に別々にあったのを `@core.Trig` 1 つにまとめた（各パッケージは `pub using` で同じ名前のまま公開）。ブラウザの `Math` を受け取る宣言も `@wasmio.host_trig` に共通化した。
+  - 表示ワーカーにも渡すようにした（スタイルの指数補間は `FeatureContext::pow`、DEM の陰影の係数、線の丸い継ぎ目）。これで core の算術関数（約 5KB）が表示ワーカーから消えた。補間は MapLibre と同じ `Math.pow` で計算することになる。
+  - ジオメトリのモジュールは、Clipper2（C++ の libm）と完全に一致させるため `@math` のままにした。
+- **UTF-8 の復号**：標準ライブラリの `decode_lossy` は「厳密版で試し、失敗したら寛容版」なので、復号器が 2 本入る（約 3.4KB）。1 回の走査で同じ結果を出す `@core.utf8_lossy` を書いた。
+  - 2 バイト列の全通り、3・4 バイト列の境界値、疑似乱数の列で、4 つの backend とも標準ライブラリと一致することを確かめた。
+  - js backend では従来どおり TextDecoder を使う。
+- **wasm の分割は見送った**：表示ワーカーの中で使うときだけ要る部分は、問い合わせ 4.7KB、ラベル 2.3KB、押し出し 1.2KB、DEM 1.1KB と小さい。切り出すと mvt の復号とスタイルのフィルタ（約 8〜10KB）を両方に持つことになり、合計が増える。VISION の基準（固有のコードが約 20KB）にも届かない。Phase 15 で大きくなったら測り直す。
+- まだのもの：メインの HashMap は値の型ごとに 11 通り複製されている（推定 約 3KB）。ブラウザの Map の包みへの置き換えは別の機会にする。
+
+### 性能
+
+- `npm run worker:browser`（タイル 35 枚の合計、main と交互に 2 回ずつ）：
+  - Chromium 219 → 217ms、Firefox 292 → 291ms は誤差の範囲。
+  - WebKit は 237 → 231ms で、約 2〜3% 速くなった。
+- 描画の CPU 時間（`node render/run.mjs --runs=5`、比較のための計測で結果は残していない）：1 フレームは mbmap 0.42〜0.58ms、MapLibre 0.94〜1.06ms で、Phase 12 での悪化はない。
+
+### リファクタリング（§7）
+
+- **ファイル分割**（論理的な境目で）：
+  - `core/transform.mbt` → `constrain.mbt`（MapLibre の制約）、`covering.mbt`（被覆タイル）。
+  - `core/camera.mbt` → `animation.mbt`（easeTo、flyTo、ease 曲線）。
+  - `style/style.mbt` → `source.mbt`（ソースの解析）。
+  - `worker/processor.mbt` → `ranges.mbt`（地物の範囲）、`dem.mbt`。
+- **公開範囲とテスト**：
+  - `PackedTile` の書き込みメソッドと、core のメルカトル変換 2 つを非公開にした。
+  - `Mat4::mul`、`Transform::resize`、`Reader::read_len_start`、`Trig` のメソッドにテストを足した。
+  - 依存の向き（core ← pbf、core ← tess、core ← proj）に沿って、足りなかった import を足した。
+- **コメント**：3 行を超えるコメントが 105 か所あった（ユーザーの指摘で見つかった）。
+  - 移植元のライセンス表示は 3 行にし、著作者の一覧は NOTICE に任せた。関数の説明と bench スクリプトの冒頭も縮めた。
+  - 残すのは、型の項目やオプションの一覧の 4 か所だけ。
+  - 次から見落とさないよう `node bench/lib/long-comments.mjs` を足し、AGENTS §7.7 から案内した。
+- フェーズ番号のコメント、列挙の途中のコメント、非推奨の構文はなかった。
+
+### 確認
+
+- 黄金テストはすべて従来どおりだった：
+  - mvt 35/35、tess 35/35、GeoJSON 差 0、解析・proj・clipper は全一致。
+  - query 320/320、ラスタ・PMTiles・追跡・書き出し・カメラも変わらず。
+- pack test も通った。
+
 ## Phase 12.5：画面座標の追跡と画像の書き出し（2026-11-03）
 
 状態：**完了**。これで Phase 12（地図の基本 API）の各項目がそろった。

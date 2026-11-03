@@ -28,10 +28,9 @@ fn curvature_radii(lat : Double) -> (Double, Double) {
 }
 
 ///|
-/// A plane in meters around (`lon0`, `lat0`) where distances from that point
-/// are true: an azimuthal equidistant projection on the unit sphere, scaled
-/// east-west by the ellipsoid's N and north-south by its M there, so that it
-/// matches the ellipsoid's scale in both directions near the center.
+/// A plane in meters around (`lon0`, `lat0`), true to distances from it: an
+/// azimuthal equidistant projection on the unit sphere scaled east-west by the
+/// ellipsoid's N and north-south by its M there.
 priv struct LocalPlane {
   lon0 : Double
   lat0 : Double

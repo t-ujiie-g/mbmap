@@ -216,11 +216,9 @@ fn check_filter(filter : String) -> String? {
 }
 
 ///|
-/// The features drawn under `points` (CSS pixels from the canvas's top-left
-/// corner: one point, or a closed ring), of the layers named in `layers` (all
-/// if None) that pass `filter` (a filter's JSON, or ""), as MapLibre's
-/// `queryRenderedFeatures` finds them: `done` gets each tile's hits, which the
-/// caller orders. Returns why the query cannot run, or "".
+/// The features under `points` (one point or a closed ring, CSS pixels) of the
+/// layers named (all if None) passing `filter` (JSON or ""), as MapLibre finds
+/// them; `done` gets each tile's hits. Returns why it cannot run, or "".
 pub fn Map::query_rendered(
   self : Map,
   points : Array[(Double, Double)],
@@ -389,10 +387,9 @@ fn Map::symbols_under(
 }
 
 ///|
-/// Every feature of `source_layer` (any, for a GeoJSON source) in the drawn
-/// tiles of source `source` that passes `filter` (JSON, or ""), as MapLibre's
-/// `querySourceFeatures` gives them: `done` gets each tile's (hits name layer
-/// -1). Returns why the query cannot run, or "".
+/// Every feature of `source_layer` (any, for GeoJSON) in the drawn tiles of
+/// `source` passing `filter` (JSON or ""), as MapLibre's `querySourceFeatures`;
+/// `done` gets each tile's. Returns why it cannot run, or "".
 pub fn Map::query_source(
   self : Map,
   source : String,

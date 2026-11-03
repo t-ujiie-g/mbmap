@@ -1,8 +1,6 @@
-// `npm --prefix bench run example`, then /bench/pages/basic/: the z14 fixtures, or
-// GSI's live tiles with `?remote=1`. `?center=lng,lat`, `?zoom=`, `?bearing=`,
-// `?pitch=` set the camera; `?buildings=1` extrudes buildings (GSI tiles have
-// no heights: 30 m for sturdy buildings, 8 m for others); `?terrain=1` raises it on GSI's DEM (`&exaggeration=`); right-drag
-// (or Ctrl+drag) rotates and tilts.
+// /bench/pages/basic/ (`npm --prefix bench run example`): z14 fixtures, or GSI's tiles with
+// `?remote=1`; `?center=lng,lat&zoom=&bearing=&pitch=` set the camera, `?buildings=1` extrudes
+// buildings (30 m or 8 m), `?terrain=1` adds GSI's DEM (`&exaggeration=`).
 import * as mbmap from "/_build/js/release/build/bundle/main/main.js";
 
 const GSI_TILES = "https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/{z}/{x}/{y}.pbf";

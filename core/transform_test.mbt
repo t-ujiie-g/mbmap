@@ -387,3 +387,18 @@ test "fog_range runs from sea level under the camera to the far plane" {
   let (lifted, _) = t.with_elevation(1000.0).fog_range()
   assert_true(lifted > d * 1.1)
 }
+
+///|
+test "resize keeps the camera unless the view no longer fits the world" {
+  let t = @core.Transform::new(
+    { center: { lng: 139.0, lat: 35.0, }, zoom: 3.0, bearing: 0.0, pitch: 0.0, },
+    800.0,
+    600.0,
+  )
+  assert_true(physical_equal(t.resize(800.0, 600.0), t))
+  let wider = t.resize(1000.0, 700.0)
+  assert_eq(wider.camera, t.camera)
+  assert_eq((wider.width, wider.height), (1000.0, 700.0))
+  // 2^3 x 512 px of world is shorter than 5000 px of screen: the zoom rises.
+  assert_true(t.resize(800.0, 5000.0).camera.zoom > 3.0)
+}

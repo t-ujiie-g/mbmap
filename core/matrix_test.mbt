@@ -51,3 +51,12 @@ test "invert undoes the matrix; singular matrices have no inverse" {
   assert_true(near4((a / d, b / d, c / d, 1.0), (5.0, 6.0, 0.0, 1.0)))
   assert_eq(@core.Mat4::identity().scale(1.0, 0.0, 1.0).invert(), None)
 }
+
+///|
+test "mul composes transforms as their builders chain them" {
+  let a = @core.Mat4::identity().translate(1.0, 2.0, 3.0)
+  let b = @core.Mat4::identity().scale(2.0, 4.0, 8.0)
+  assert_eq(a.mul(b), a.scale(2.0, 4.0, 8.0))
+  assert_eq(@core.Mat4::identity().mul(a), a)
+  assert_eq(a.mul(b).apply(1.0, 1.0, 1.0, 1.0), (3.0, 6.0, 11.0, 1.0))
+}

@@ -38,10 +38,9 @@ fn tables(len : Int32) -> (@geom.Table, @geom.Table?)? {
 }
 
 ///|
-/// `@overlay.buffer` of the input table: `mode` 0 geodesic (degrees), 1
-/// planar (in the coordinates' own units); `join` 0 round, 1 miter, 2 square, 3
-/// bevel; `cap` 0 round, 1 butt, 2 square. Returns the result's length at
-/// `output_addr`, or minus an error's.
+/// `@overlay.buffer` of the input table: `mode` 0 geodesic, 1 planar; `join` 0
+/// round, 1 miter, 2 square, 3 bevel; `cap` 0 round, 1 butt, 2 square. Returns
+/// the result's length at `output_addr`, or minus an error's.
 #export_name("buffer")
 pub fn buffer(
   meters : Double,

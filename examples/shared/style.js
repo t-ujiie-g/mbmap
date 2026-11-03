@@ -1,7 +1,6 @@
-// The showcase's style: GSI's vector tiles and DEM, the places as a GeoJSON
-// source, and in 3D the terrain, the sky and extruded buildings. Tiles come
-// from GSI's servers, or from the bench fixtures with `?local=1` (the z14
-// tiles around Tokyo Station, for tests without the network).
+// The showcase's style: GSI's vector tiles and DEM, the places as GeoJSON, and
+// in 3D terrain, sky and extruded buildings; `?local=1` reads the bench
+// fixtures (z14 around Tokyo Station) instead of GSI's servers.
 import { GSI_LAYERS } from "./layers.js";
 import { PLACES } from "./places.js";
 

@@ -1,7 +1,6 @@
 // Rendered-feature queries of one tile as MapLibre GL JS 6.16.0 answers them
-// (src/data/feature_index.ts and the `queryIntersectsFeature` of the fill,
-// line, circle and fill-extrusion style layers), BSD-3-Clause, Copyright (c)
-// 2020, MapLibre contributors. See NOTICE.
+// (feature_index.ts, the style layers' `queryIntersectsFeature`), BSD-3-Clause,
+// Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
 /// A query of one tile (docs/FORMATS.md, "Query"). `zoom` is the camera's, at
@@ -359,7 +358,7 @@ fn TileProcessor::query_padding(
       features_of(sl.source_layer) is Some(layer) else {
       continue
     }
-    let feature = FeatureRef::new(layer)
+    let feature = self.feature_ref(layer)
     for i in 0..<layer.length() {
       feature.index = i
       if passes(sl.filter, feature, tile_zoom) {
@@ -377,10 +376,9 @@ fn TileProcessor::query_padding(
 }
 
 ///|
-/// Answers `request` (docs/FORMATS.md, "Query") about tile `bytes` of `source`
-/// at zoom `z`: the features of each layer asked for that meet the query, last
-/// drawn first, then the labels named, as feature records ("Query result").
-/// None, with the error set, if the tile or the request is malformed.
+/// Answers `request` (docs/FORMATS.md "Query") about tile `bytes`: each asked
+/// layer's features meeting it, last drawn first, then the labels named, as
+/// feature records. None, with the error set, if anything is malformed.
 pub fn TileProcessor::query(
   self : TileProcessor,
   source : String,
@@ -414,7 +412,7 @@ pub fn TileProcessor::query(
       features_of(sl.source_layer) is Some(layer) else {
       continue
     }
-    let feature = FeatureRef::new(layer)
+    let feature = self.feature_ref(layer)
     for k in 0..<layer.length() {
       feature.index = layer.length() - 1 - k
       if !passes(sl.filter, feature, tile_zoom) ||
@@ -435,7 +433,7 @@ pub fn TileProcessor::query(
       i < layer.length() else {
       continue
     }
-    let feature = FeatureRef::new(layer)
+    let feature = self.feature_ref(layer)
     feature.index = i
     if passes(query.filter, feature, tile_zoom) {
       hits.push(
@@ -467,10 +465,9 @@ pub fn TileProcessor::query(
 }
 
 ///|
-/// Every feature of `source_layer` (any, for a GeoJSON source) in tile `bytes`
-/// of `source` that passes `filter` (JSON, or "" for none) at zoom `z`, as
-/// feature records (docs/FORMATS.md, "Query result"; layer -1). None, with the
-/// error set, if the tile or the filter is malformed.
+/// Every feature of `source_layer` (any, for GeoJSON) in tile `bytes` passing
+/// `filter` (JSON or "") as feature records (layer -1). None, with the error
+/// set, if the tile or the filter is malformed.
 pub fn TileProcessor::source_features(
   self : TileProcessor,
   source : String,
@@ -501,7 +498,7 @@ pub fn TileProcessor::source_features(
     w.u32(0)
     return Some(w.to_bytes())
   }
-  let feature = FeatureRef::new(layer)
+  let feature = self.feature_ref(layer)
   let picked = []
   for i in 0..<layer.length() {
     feature.index = i
