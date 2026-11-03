@@ -12,6 +12,7 @@ import { useIdentify } from "./identify.jsx";
 import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
 import { SearchBar } from "./search.jsx";
 import { hoverPlaces } from "../../shared/pick.js";
+import { keepRadiusRing } from "../../shared/ring.js";
 import { zoomIntoClusters } from "../../shared/stations.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
@@ -62,6 +63,7 @@ function App() {
     const map = e.detail.map;
     window.__map = map;
     hoverPlaces(map);
+    keepRadiusRing(map);
     zoomIntoClusters(map);
     pinDestinations(map, document.body);
     setMap(map);

@@ -52,6 +52,31 @@ test "a flat view maps one world pixel to one CSS pixel" {
 }
 
 ///|
+test "world_matrix takes world pixels and meters to the screen as project does" {
+  for camera in views() {
+    let t = @core.Transform::new(camera, 800.0, 600.0)
+    let m = t.world_matrix()
+    let ws = t.world_size()
+    let p : @core.LngLat = { lng: 139.77, lat: 35.68, }
+    let w = p.to_mercator()
+    let (cx, cy, _, cw) = m.apply(w.x * ws, w.y * ws, 0.0, 1.0)
+    let (x, y) = t.project(p)
+    assert_true(close((cx / cw + 1.0) / 2.0 * 800.0, x))
+    assert_true(close((1.0 - cy / cw) / 2.0 * 600.0, y))
+  }
+  // A flat view: a meter up comes pixels_per_meter closer to the camera.
+  let t = @core.Transform::new(tokyo(), 800.0, 600.0)
+  let c = tokyo().center.to_mercator()
+  let ws = t.world_size()
+  let (_, _, _, ground) = t.world_matrix().apply(c.x * ws, c.y * ws, 0.0, 1.0)
+  let (_, _, _, up) = t.world_matrix().apply(c.x * ws, c.y * ws, 1.0, 1.0)
+  assert_true(close(ground - up, t.pixels_per_meter()))
+  let (_, near, far) = t.projection()
+  assert_eq(near, 12.0)
+  assert_true(far > t.center_depth())
+}
+
+///|
 test "bearing turns the map: at 90° east points up" {
   let t = @core.Transform::new({ ..tokyo(), bearing: 90.0, }, 800.0, 600.0)
   let c = tokyo().center.to_mercator()

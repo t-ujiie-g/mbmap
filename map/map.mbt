@@ -156,6 +156,7 @@ pub struct Map {
   /// Heatmap color ramps by `heatmap-color` expression.
   priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
   priv media : Array[Media]
+  priv mut custom : CustomRenderer
 }
 
 ///|
@@ -266,6 +267,7 @@ pub fn Map::new(
     on_missing_image: _ => (),
     ramps: [],
     media: [],
+    custom: no_custom(),
   }
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {

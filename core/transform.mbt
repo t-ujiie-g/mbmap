@@ -403,6 +403,31 @@ pub fn Transform::center_depth(self : Transform) -> Double {
 }
 
 ///|
+/// MapLibre's `modelViewProjectionMatrix`: world pixels from the world's
+/// top-left corner (x east, y south) and meters above sea level to clip space.
+pub fn Transform::world_matrix(self : Transform) -> Mat4 {
+  let ws = self.world_size()
+  let c = self.camera.center.to_mercator()
+  self.view
+  .translate(-c.x * ws, -c.y * ws, 0.0)
+  .scale(1.0, 1.0, self.pixels_per_meter())
+}
+
+///|
+/// MapLibre's `projectionMatrix`, `nearZ` and `farZ`: the perspective alone and
+/// its near and far planes (CSS pixels from the camera).
+pub fn Transform::projection(self : Transform) -> (Mat4, Double, Double) {
+  let lift = self.elevation * self.pixels_per_meter()
+  let near = self.height / 50.0
+  let far = far_distance(self.camera.pitch, self.height, lift)
+  (
+    Mat4::perspective(FIELD_OF_VIEW, self.width / self.height, near, far),
+    near,
+    far,
+  )
+}
+
+///|
 /// Maps tile units (`extent` per edge) of `tile` to clip space; `aligned` puts it
 /// on the pixel grid as MapLibre draws raster tiles at rest (`alignedProjMatrix`).
 pub fn Transform::tile_matrix(

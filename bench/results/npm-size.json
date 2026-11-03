@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 92274,
+      "bytes": 93037,
       "budget": 100000
     },
     {
@@ -35,6 +35,11 @@
       "budget": 3000
     },
     {
+      "name": "custom layers (loaded by mbmap with the first one)",
+      "bytes": 1809,
+      "budget": 3000
+    },
+    {
       "name": "mbmap/element (on top of mbmap)",
       "bytes": 1600,
       "budget": 5000
@@ -56,7 +61,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 83107,
+      "bytes": 83119,
       "budget": 100000
     },
     {

@@ -6,6 +6,8 @@ pub fn camera_bounds(FixedArray[Double]) -> String
 
 pub fn camera_constrain(FixedArray[Double]) -> String
 
+pub fn camera_custom(FixedArray[Double]) -> String
+
 pub fn camera_ease(FixedArray[Double], FixedArray[Double], FixedArray[Double]) -> String
 
 pub fn camera_easing(FixedArray[Double]) -> String
