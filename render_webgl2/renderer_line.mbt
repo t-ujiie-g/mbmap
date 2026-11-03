@@ -1,0 +1,137 @@
+///|
+/// Draws a line layer with `slots`' color, opacity and width (CSS pixels,
+/// times `dpr`), plus a pixel of antialiasing.
+pub fn Renderer::draw_line(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+) -> Unit {
+  self.bind("line", mesh, slots, 3)
+  gl_draw_line(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+  )
+}
+
+///|
+/// Adds a dashed line mesh's distances along its lines (docs/FORMATS.md,
+/// "Packed tile").
+pub fn Renderer::upload_distances(
+  self : Renderer,
+  mesh : Mesh,
+  distances : JsBuffer,
+) -> Unit {
+  gl_upload_distances(self.gl, mesh, distances)
+}
+
+///|
+/// Adds a gradient line mesh's progress (docs/FORMATS.md, "Packed tile").
+pub fn Renderer::upload_progress(
+  self : Renderer,
+  mesh : Mesh,
+  progress : JsBuffer,
+) -> Unit {
+  gl_upload_progress(self.gl, mesh, progress)
+}
+
+///|
+/// Uploads a line gradient's color ramp (`color_ramp`): `width` pixels per row
+/// and a row per line; `nearest` for a step.
+pub fn Renderer::upload_gradient(
+  self : Renderer,
+  pixels : FixedArray[Byte],
+  width : Int32,
+  height : Int32,
+  nearest~ : Bool,
+) -> Gradient {
+  gl_upload_gradient(self.gl, pixels, width, height, nearest)
+}
+
+///|
+pub fn Renderer::release_gradient(self : Renderer, g : Gradient) -> Unit {
+  gl_release_gradient(self.gl, g)
+}
+
+///|
+/// Draws a line as `draw_line`, its color from gradient `g` (MapLibre's
+/// line_gradient) times `slots`' opacity.
+pub fn Renderer::draw_line_gradient(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+  g : Gradient,
+) -> Unit {
+  self.bind("lineGradient", mesh, slots, 3)
+  gl_draw_line_gradient(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+    g,
+  )
+}
+
+///|
+/// Where the dash pattern `dasharray` (in line widths; round ends when `round`)
+/// lies in the dash atlas; None once it is full.
+pub fn Renderer::dash(
+  self : Renderer,
+  dasharray : Array[Double],
+  round : Bool,
+) -> DashEntry? {
+  self.atlas.dash(dasharray, round)
+}
+
+///|
+/// `draw_line` with dash pattern `entry` (MapLibre's line_sdf; `px_per_unit`: CSS
+/// px per tile unit at the integer zoom, `floor_width` the width there, or the
+/// width slot mixed `floor_t` when negative; edges smoothed over `gamma_width`).
+pub fn Renderer::draw_line_dash(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+  entry : DashEntry,
+  gamma_width~ : Double,
+  px_per_unit~ : Double,
+  floor_width~ : Double,
+  floor_t~ : Double,
+) -> Unit {
+  if entry.width <= 0.0 || gamma_width <= 0.0 {
+    return
+  }
+  if self.atlas.take_dirty() {
+    gl_dash_atlas(self.gl, self.atlas.data, LINE_ATLAS_WIDTH, LINE_ATLAS_HEIGHT)
+  }
+  self.bind("lineDash", mesh, slots, 3)
+  let h = LINE_ATLAS_HEIGHT.to_double()
+  gl_draw_line_dash(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+    [
+      px_per_unit / entry.width,
+      (entry.y.to_double() + 0.5) / h,
+      -entry.height.to_double() / 2.0 / h,
+      1.0 / dpr / gamma_width,
+    ],
+    [floor_width, floor_t],
+  )
+}

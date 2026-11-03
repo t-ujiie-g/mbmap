@@ -422,45 +422,6 @@ fn PackedTile::begin_paint(self : PackedTile, words : Int32) -> Int32? {
 }
 
 ///|
-/// A gradient line layer's rows (MapLibre's `lineClipsArray`): each vertex's
-/// row, each row's start and end along its line, and the longest line in tiles.
-priv struct GradientRows {
-  rows : Array[Int32]
-  clips : Array[Double]
-  mut longest : Double
-}
-
-///|
-fn GradientRows::new() -> GradientRows {
-  { rows: [], clips: [], longest: 0.0, }
-}
-
-///|
-fn GradientRows::clear(self : GradientRows) -> Unit {
-  self.rows.clear()
-  self.clips.clear()
-  self.longest = 0.0
-}
-
-///|
-/// A line of `vertices` vertices lying from `clip.0` to `clip.1` along its
-/// whole, `length` tiles long, as a row of its own.
-fn GradientRows::add(
-  self : GradientRows,
-  vertices : Int32,
-  clip : (Double, Double),
-  length : Double,
-) -> Unit {
-  let row = self.clips.length() / 2
-  for _ in 0..<vertices {
-    self.rows.push(row)
-  }
-  self.clips.push(clip.0)
-  self.clips.push(clip.1)
-  self.longest = @cmp.maximum(self.longest, length)
-}
-
-///|
 /// Writes a gradient line's progress for the last entry (docs/FORMATS.md,
 /// "Packed tile"); false without room.
 fn PackedTile::put_progress(

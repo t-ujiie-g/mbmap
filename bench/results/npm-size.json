@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 84437,
+      "bytes": 84565,
       "budget": 100000
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
-      "bytes": 3551,
+      "bytes": 3568,
       "budget": 5000
     },
     {
@@ -46,7 +46,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 81698,
+      "bytes": 81743,
       "budget": 100000
     },
     {

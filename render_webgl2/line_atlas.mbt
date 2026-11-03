@@ -7,6 +7,11 @@ pub const LINE_ATLAS_WIDTH : Int32 = 256
 pub const LINE_ATLAS_HEIGHT : Int32 = 512
 
 ///|
+/// Most numbers a dash pattern may have; longer ones are refused (building a
+/// pattern takes time quadratic in its length).
+pub const MAX_DASH_PARTS : Int32 = 64
+
+///|
 /// Rows above and below a round dash's middle row.
 const ROUND_DASH_ROWS : Int32 = 7
 
@@ -49,12 +54,15 @@ pub fn LineAtlas::new() -> LineAtlas {
 
 ///|
 /// The pattern `dasharray` (dash, gap, … in line widths), with round ends when
-/// `round`; None once the atlas is full.
+/// `round`; None once the atlas is full or past `MAX_DASH_PARTS` numbers.
 pub fn LineAtlas::dash(
   self : LineAtlas,
   dasharray : Array[Double],
   round : Bool,
 ) -> DashEntry? {
+  if dasharray.length() > MAX_DASH_PARTS {
+    return None
+  }
   for e in self.entries {
     if e.0 == dasharray && e.1 == round {
       return e.2

@@ -61,3 +61,28 @@ test "Source::same compares what tiles are fetched and cut with" {
     assert_false(a.same(diff_style(other, base_layer).sources[0]))
   }
 }
+
+///|
+test "same_line_layout compares joins, caps, limits, dashes and gradients" {
+  let line = (layout : String, paint : String) => {
+    diff_style(
+      base_source,
+      "{\"id\": \"r\", \"type\": \"line\", \"source\": \"s\", \"source-layer\": \"road\", \"layout\": \{layout}, \"paint\": \{paint}}",
+    ).layers[0]
+  }
+  let a = line("{}", "{\"line-color\": \"#fff\"}")
+  assert_true(a.same_line_layout(line("{}", "{\"line-width\": 9}")))
+  for
+    other in [
+      line("{\"line-join\": \"round\"}", "{}"),
+      line("{\"line-cap\": \"square\"}", "{}"),
+      line("{\"line-miter-limit\": 1.5}", "{}"),
+      line("{\"line-round-limit\": 1.2}", "{}"),
+      line("{}", "{\"line-dasharray\": [2, 1]}"),
+      line(
+        "{}", "{\"line-gradient\": [\"interpolate\", [\"linear\"], [\"line-progress\"], 0, \"#000\", 1, \"#fff\"]}",
+      ),
+    ] {
+    assert_false(a.same_line_layout(other))
+  }
+}
