@@ -65,8 +65,8 @@ pub type Gradient
 
 ///|
 /// Uploads a color ramp (straight RGBA bytes, `width` x `height`, premultiplied
-/// by the upload as MapLibre's), clamped at its edges and filtered linearly, or
-/// `nearest` for a step ramp.
+/// and rounded as MapLibre's `premultiplyAlpha`), clamped at its edges and
+/// filtered linearly, or `nearest` for a step ramp.
 extern "js" fn gl_upload_gradient(
   gl : Gl,
   pixels : FixedArray[Byte],
@@ -82,10 +82,14 @@ extern "js" fn gl_upload_gradient(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+  #|  const pre = new Uint8Array(data.length);
+  #|  for (let i = 0; i < data.length; i += 4) {
+  #|    const a = data[i + 3];
+  #|    for (let k = 0; k < 3; k++) pre[i + k] = Math.round(data[i + k] * a / 255);
+  #|    pre[i + 3] = a;
+  #|  }
   #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
-  #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-  #|  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, pre);
   #|  return { texture: t, rows: h };
   #|}
 

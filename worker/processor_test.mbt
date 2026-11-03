@@ -399,6 +399,36 @@ test "circle layers pack one quad per point and share buffers like other kinds" 
 }
 
 ///|
+test "heatmap layers pack circle quads with their weights per vertex" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "heat", "type": "heatmap", "source": "a", "source-layer": "pts",
+    #|   "paint": {"heatmap-weight": ["coalesce", ["get", "w"], 3]}},
+    #|  {"id": "dots", "type": "circle", "source": "a", "source-layer": "pts"}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let tile = tile_of([tile_with("pts", 1, [cmd(1, 2), 10, 20, 5000, 0])])
+  assert_true(p.process("a", tile[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 2)
+  // Circles of their own: a heatmap's buffers are not shared with circles.
+  assert_eq(
+    (entry(0, 1), entry(1, 1)),
+    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
+  )
+  assert_true(entry(1, 2) != entry(0, 2))
+  // One point inside the tile, its weight (the default 3) on each of its 4 vertices.
+  assert_eq((entry(0, 3), entry(0, 5)), (4 * @worker.LINE_VERTEX_BYTES, 6))
+  assert_eq(entry(0, 10), 4 * 4)
+  let weight = Float::reinterpret_from_int(u32_at(b, entry(0, 9) + 12))
+  assert_eq(weight.to_double(), 3.0)
+}
+
+///|
 /// A GeoJSON source's tile as the GeoJSON worker sends it: two points (one
 /// with k = 1) and a square, cut at 0/0/0.
 fn geojson_tile() -> Bytes {

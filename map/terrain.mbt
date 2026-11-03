@@ -269,6 +269,17 @@ fn Map::draw_texture(
       continue
     }
     let shared = paint_of(layer, zoom, JsProps::none())
+    if layer.heatmap is Some(h) {
+      // As MapLibre: each tile's own kernels, at 512 px.
+      let draws = draws_of
+        .get(layer.source)
+        .unwrap_or([])
+        .filter(s => overlap(s.id, id))
+        .map(s => { ..s, at: texture_placement(s, id, size), })
+      let scale = HEATMAP_TILE_SIZE / size.to_double()
+      self.draw_heatmap(index, h, shared, draws, px, scale)
+      continue
+    }
     for s in draws_of.get(layer.source).unwrap_or([]) {
       if overlap(s.id, id) {
         self.draw_layer(

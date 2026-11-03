@@ -14,12 +14,16 @@ pub struct VertexPaint {
 
 ///|
 /// The paint slots per vertex, in order, of fills (color, opacity), lines
-/// (and width) and circles (and radius, stroke color, opacity and width); a
-/// slot's index is its attribute in the shaders.
+/// (and width), circles (and radius, stroke color, opacity and width) and
+/// heatmaps (weight, radius); a slot's index is its attribute in the shaders.
 pub const SLOT_COLOR : Int32 = 0
 
 ///|
 pub const SLOT_OPACITY : Int32 = 1
+
+///|
+/// A heatmap's weight, in the opacity slot (its opacity is the layer's).
+pub const SLOT_WEIGHT : Int32 = 1
 
 ///|
 pub const SLOT_SIZE : Int32 = 2
@@ -55,6 +59,15 @@ fn StyleLayer::slots(self : StyleLayer) -> Array[(Int32, Expr, Bool, Double)] {
         (SLOT_STROKE_OPACITY, self.stroke_opacity, false, 1.0),
         (SLOT_STROKE_WIDTH, self.stroke_width, false, 0.0),
       ]
+    Heatmap =>
+      match self.heatmap {
+        Some(h) =>
+          [
+            (SLOT_WEIGHT, h.weight, false, 1.0),
+            (SLOT_SIZE, self.radius, false, 30.0),
+          ]
+        None => []
+      }
     _ => []
   }
 }
@@ -67,7 +80,7 @@ fn data_driven(e : Expr) -> Bool {
 }
 
 ///|
-/// The data-driven paint of a fill, line or circle layer that does not read
+/// The data-driven paint of a fill, line, circle or heatmap layer that does not read
 /// feature state, given per vertex; empty when there is none (or the layer is
 /// drawn otherwise), so every value is the same for all its features.
 pub fn StyleLayer::vertex_paint(self : StyleLayer) -> Array[VertexPaint] {

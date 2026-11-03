@@ -25,6 +25,8 @@ pub const SLOT_STROKE_OPACITY : Int32 = 4
 
 pub const SLOT_STROKE_WIDTH : Int32 = 5
 
+pub const SLOT_WEIGHT : Int32 = 1
+
 pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
 
 pub fn js_number(String) -> Double
@@ -114,6 +116,7 @@ pub(all) enum Expr {
   GeometryType
   Zoom
   LineProgress
+  HeatmapDensity
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -133,6 +136,7 @@ pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
 pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
+pub fn Expr::reads_heatmap_density(Self) -> Bool
 pub fn Expr::reads_line_progress(Self) -> Bool
 pub fn Expr::reads_state(Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
@@ -144,6 +148,12 @@ pub struct ExtrusionPaint {
 } derive(Eq)
 pub fn ExtrusionPaint::equal(Self, Self) -> Bool
 pub fn ExtrusionPaint::not_equal(Self, Self) -> Bool
+
+pub struct HeatmapPaint {
+  weight : Expr
+  intensity : Expr
+  color : Expr
+}
 
 pub struct HillshadePaint {
   direction : Expr
@@ -180,6 +190,7 @@ pub(all) enum LayerKind {
   Hillshade
   FillExtrusion
   Raster
+  Heatmap
 } derive(Eq, @debug.Debug)
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
@@ -195,6 +206,7 @@ pub struct Light {
 pub(all) struct NoFeature {
 }
 pub fn NoFeature::geometry_type(Self) -> String
+pub fn NoFeature::heatmap_density(Self) -> Double
 pub fn NoFeature::id(Self) -> Value
 pub fn NoFeature::line_progress(Self) -> Double
 pub fn NoFeature::number_text(Self, Double) -> String
@@ -333,6 +345,7 @@ pub struct StyleLayer {
   hillshade : HillshadePaint?
   extrusion : ExtrusionPaint?
   raster : RasterPaint?
+  heatmap : HeatmapPaint?
   join : Join
   cap : Cap
   miter_limit : Double
@@ -423,4 +436,5 @@ pub(open) trait FeatureContext {
   fn number_text(Self, Double) -> String = _
   fn text_number(Self, String) -> Double = _
   fn line_progress(Self) -> Double = _
+  fn heatmap_density(Self) -> Double = _
 }

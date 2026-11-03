@@ -32,6 +32,7 @@ function points(count) {
 }
 const CLUSTERED = { pts: { type: "geojson", data: points(3000), cluster: true, clusterRadius: 40, clusterMaxZoom: 14 } };
 const isCluster = ["has", "point_count"];
+const POINTS = { pts: { type: "geojson", data: points(3000) } };
 // Lines winding across tile borders around Tokyo Station, for line metrics: a zigzag and a loop.
 const zigzag = (lat) => Array.from({ length: 13 }, (_, i) => [139.70 + i * 0.012, lat + (i % 2) * 0.012]);
 const loop = Array.from({ length: 41 }, (_, i) => [139.767 + 0.03 * Math.cos((i / 40) * 2 * Math.PI), 35.681 + 0.024 * Math.sin((i / 40) * 2 * Math.PI)]);
@@ -201,6 +202,44 @@ export const SCENES = {
     style: patterned(PATTERN_LAYERS),
     camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: 0, pitch: 0 },
     dpr: 2,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Heatmaps (kernels into a quarter-size float texture, colored by a 256-px ramp of density): the
+  // default ramp over GeoJSON points and over a tile's labels, then a step ramp with data-driven
+  // radii on a turned and pitched map.
+  heatmap: {
+    style: style([
+      { id: "heat", type: "heatmap", source: "pts",
+        paint: {
+          "heatmap-weight": ["interpolate", ["linear"], ["get", "i"], 0, 0.2, 3000, 2],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 9, 6, 13, 30],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 13, 2],
+          "heatmap-opacity": 0.85,
+        } },
+    ], POINTS),
+    camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
+    limits: { mean: 0.5, p99: 5 },
+    gap: "GeoJSON tiles of extent 4096 (MapLibre's 8192) move points up to 1/16 px, about 1% of the density",
+  },
+  "heatmap-tiles": {
+    style: style([
+      { id: "heat", type: "heatmap", source: "gsi", "source-layer": "label",
+        paint: { "heatmap-weight": ["interpolate", ["linear"], ["get", "arrngAgl"], 0, 0.3, 360, 1.5], "heatmap-radius": 25 } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "heatmap-turned": {
+    style: style([
+      { id: "heat", type: "heatmap", source: "gsi", "source-layer": "label",
+        paint: {
+          "heatmap-radius": ["step", ["get", "arrngAgl"], 12, 90, 22, 270, 35],
+          "heatmap-intensity": 4,
+          "heatmap-color": ["step", ["heatmap-density"], "rgba(0, 0, 0, 0)", 0.05, "#fee5d9", 0.3, "#fcae91", 0.6, "#fb6a4a", 0.9, "#cb181d"],
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 14, 1, 16, 0.6],
+        } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 25, pitch: 50 },
     limits: { mean: 0.05, p99: 1 },
   },
 };
