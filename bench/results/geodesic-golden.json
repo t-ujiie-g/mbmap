@@ -89,6 +89,11 @@
       "group": "densify",
       "cases": 2000,
       "identical": 2000
+    },
+    {
+      "group": "circle",
+      "cases": 1000,
+      "identical": 1000
     }
   ]
 }

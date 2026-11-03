@@ -251,6 +251,8 @@ with `op` and its arguments, positions as `[lng, lat]`:
 
 - `inverse` (`from`, `to`): a Float64Array of s12, azi1, azi2, a12, S12;
 - `direct` (`from`, `azimuth`, `distance`): lat2, lon2, azi2, a12;
+- `circle` (`center`, `radius` meters, `steps`): a ring of `steps` lng, lat pairs at equal
+  azimuths from north, then the first again;
 - `measure` (`coords` an ArrayBuffer of f64 lng, lat pairs, `closed`, `step` optional):
   `{measured}`, a Float64Array of the length, the area (NaN for a line) and the distance to
   each vertex (`@geodesic.Geodesic::measure_path`), and with a `step` also `path`, the

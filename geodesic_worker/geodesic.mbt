@@ -72,3 +72,15 @@ pub fn densify(step : Double) -> Int32 {
     None => @wasmio.fail_with("too many points along the path")
   }
 }
+
+///|
+/// Writes `@geodesic.Geodesic::circle` (`n` from 1 to 4096 points, `radius` up
+/// to 20,000 km); returns the count of f64s, or minus an error's length.
+#export_name("circle")
+pub fn circle(lng : Double, lat : Double, radius : Double, n : Int32) -> Int32 {
+  @wasmio.clear_input()
+  guard n >= 1 && n <= 4096 && radius >= 0.0 && radius <= 2.0e7 else {
+    return @wasmio.fail_with("invalid circle")
+  }
+  @wasmio.write_f64s(wgs84.circle(lng, lat, radius, n))
+}

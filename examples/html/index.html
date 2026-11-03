@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="../shared/app.css">
 <!-- `npm --prefix bench run examples` installs the packed package into ./node_modules. -->
 <script type="importmap">
-  { "imports": { "mbmap": "./node_modules/mbmap/dist/index.js", "mbmap/analysis": "./node_modules/mbmap/dist/analysis.js", "mbmap/ui": "./node_modules/mbmap/dist/ui.js", "mbmap/search": "./node_modules/mbmap/dist/search.js", "mbmap/geodesic": "./node_modules/mbmap/dist/geodesic.js" } }
+  { "imports": { "mbmap": "./node_modules/mbmap/dist/index.js", "mbmap/analysis": "./node_modules/mbmap/dist/analysis.js", "mbmap/ui": "./node_modules/mbmap/dist/ui.js", "mbmap/search": "./node_modules/mbmap/dist/search.js", "mbmap/geodesic": "./node_modules/mbmap/dist/geodesic.js", "mbmap/draw": "./node_modules/mbmap/dist/draw.js" } }
 </script>
 <div id="map"></div>
 <aside class="panel">
@@ -22,6 +22,10 @@
   <button id="save">画像を保存</button>
   <h2>凡例</h2>
   <ul id="legend"></ul>
+  <h2>作図</h2>
+  <div id="draw-modes"></div>
+  <div id="draw-actions"></div>
+  <p id="drawn"></p>
   <h2>計測</h2>
   <div id="measure"></div>
   <dl id="measured"></dl>

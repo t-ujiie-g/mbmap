@@ -77,6 +77,15 @@ export async function direct(from: Position, azimuth: number, distance: number, 
   return { position: [lng, lat], azimuth: az, arc };
 }
 
+/** The ring of `steps` points (default 64, up to 4096) `radius` meters around `center`, closed. */
+export async function circle(center: Position, radius: number, { steps = 64, ...options }: GeodesicOptions & { steps?: number } = {}): Promise<Position[]> {
+  start(options);
+  const v = await client.call<Float64Array>("circle", { center: [...center], radius, steps });
+  const ring: Position[] = [];
+  for (let i = 0; i < v.length; i += 2) ring.push([v[i], v[i + 1]]);
+  return ring;
+}
+
 /** Measures the line through `positions`, or the ring they close (`closed`), along geodesics. */
 export async function measure(positions: ArrayLike<Position>, options: MeasureOptions = {}): Promise<Measurement> {
   start(options);

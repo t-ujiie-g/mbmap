@@ -117,3 +117,7 @@ html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; colo
 .profile-dot { position: absolute; left: 0; top: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #e4572e; border: 2px solid #fff; box-sizing: border-box; pointer-events: none; z-index: 1; }
 .react-profile { margin: 0; }
 .react-profile figcaption { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.react-hint { margin: 4px 0; font-size: 12px; color: #666; }
+.react-drawn { margin: 0; padding-left: 18px; font-size: 12px; }
+.react-drawn button { padding: 0 6px; margin: 0 0 0 6px; }
+#drawn { margin: 4px 0; font-size: 12px; color: #555; }

@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 71113,
+      "bytes": 71116,
       "budget": 80000
     },
     {
@@ -35,6 +35,11 @@
       "budget": 5000
     },
     {
+      "name": "mbmap/draw",
+      "bytes": 2395,
+      "budget": 5000
+    },
+    {
       "name": "display worker",
       "bytes": 67245,
       "budget": 100000
@@ -56,7 +61,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 26999,
+      "bytes": 27003,
       "budget": 30000
     },
     {
@@ -71,12 +76,12 @@
     },
     {
       "name": "mbmap/geodesic",
-      "bytes": 1012,
+      "bytes": 1084,
       "budget": 2000
     },
     {
       "name": "geodesic worker",
-      "bytes": 11834,
+      "bytes": 11995,
       "budget": 15000
     },
     {

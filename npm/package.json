@@ -31,6 +31,10 @@
       "types": "./dist/search.d.ts",
       "default": "./dist/search.js"
     },
+    "./draw": {
+      "types": "./dist/draw.d.ts",
+      "default": "./dist/draw.js"
+    },
     "./geodesic": {
       "types": "./dist/geodesic.d.ts",
       "default": "./dist/geodesic.js"

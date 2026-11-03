@@ -34,6 +34,10 @@ const OPS = {
     check(isPoint(from) && Number.isFinite(azimuth) && Number.isFinite(distance));
     return f64s(wasm.direct(from[1], from[0], azimuth, distance));
   },
+  circle({ center, radius, steps }) {
+    check(isPoint(center) && Number.isFinite(radius) && Number.isInteger(steps));
+    return f64s(wasm.circle(center[0], center[1], radius, steps));
+  },
   measure({ coords, closed, step }) {
     check(isCoords(coords) && typeof closed === "boolean" && (step === undefined || step > 0));
     input(coords);

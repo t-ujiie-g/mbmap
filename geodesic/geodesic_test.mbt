@@ -213,3 +213,18 @@ test "densify splits edges into steps and unrolls longitudes" {
 fn view(a : FixedArray[Double]) -> ArrayView[Double] {
   a[:]
 }
+
+///|
+test "circle places points at the radius, closed back to the first" {
+  let g = @geodesic.Geodesic::wgs84()
+  let c = g.circle(139.7671, 35.6812, 1000, 8)
+  assert_eq(c.length(), 18)
+  assert_eq(c[16], c[0])
+  assert_eq(c[17], c[1])
+  for i in 0..<8 {
+    let r = g.inverse(35.6812, 139.7671, c[i * 2 + 1], c[i * 2])
+    assert_true(near(r.s12, 1000, 1.0e-6))
+    assert_true(near((r.azi1 + 360.0) % 360.0, 45.0 * i.to_double(), 1.0e-9))
+  }
+  assert_eq(g.circle(0, 0, 10, 0).length(), 2)
+}

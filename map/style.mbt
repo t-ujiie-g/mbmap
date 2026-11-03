@@ -158,6 +158,8 @@ pub fn Map::reload_source(self : Map, id : String) -> Unit {
   for key in gone {
     tiles.remove(key)
   }
+  // Asked for now rather than by the next frame, so they can be drawn in it.
+  self.update_tiles(self.sources[at], self.cover(self.sources[at]))
   self.content_version += 1
   self.idle_fired = false
   self.request_render()
