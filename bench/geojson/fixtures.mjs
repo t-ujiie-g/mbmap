@@ -84,3 +84,34 @@ export async function makeGeoJSONFixtures() {
   }
   return files;
 }
+
+// Tiles from z0 up to `maxZ` over `bbox` and a ring around it, leaving out
+// zooms that would need more than 400.
+export function tilesFor(bbox, maxZ) {
+  const out = [];
+  for (let z = 0; z <= maxZ; z++) {
+    const n = 2 ** z;
+    const tx = (lng) => Math.floor(((lng + 180) / 360) * n);
+    const ty = (lat) => {
+      const s = Math.sin((lat * Math.PI) / 180);
+      return Math.floor((0.5 - (0.25 * Math.log((1 + s) / (1 - s))) / Math.PI) * n);
+    };
+    const [x0, x1] = [tx(bbox[0]) - 1, tx(bbox[2]) + 1];
+    const [y0, y1] = [Math.max(0, ty(bbox[3]) - 1), Math.min(n - 1, ty(bbox[1]) + 1)];
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 400) continue;
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push([z, x, y]);
+  }
+  return out;
+}
+
+// The lng/lat box of a FeatureCollection, within ±85° of latitude.
+export function bboxOf(data) {
+  const b = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (c) => {
+    if (typeof c[0] === "number") {
+      b[0] = Math.min(b[0], c[0]); b[1] = Math.min(b[1], c[1]); b[2] = Math.max(b[2], c[0]); b[3] = Math.max(b[3], c[1]);
+    } else c.forEach(visit);
+  };
+  for (const f of data.features) if (f.geometry) visit(f.geometry.coordinates);
+  return [Math.max(-180, b[0]), Math.max(-85, b[1]), Math.min(180, b[2]), Math.min(85, b[3])];
+}

@@ -5,6 +5,21 @@ const TOKYO = { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 };
 const bg = { id: "bg", type: "background", paint: { "background-color": "#f5f3ee" } };
 const style = (layers, sources = { gsi: GSI }) => ({ version: 8, sources, layers: [bg, ...layers] });
 
+// Seeded points around Tokyo, half of them in a few clumps.
+function points(count) {
+  let s = 11;
+  const rand = () => ((s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296);
+  const clumps = Array.from({ length: 8 }, () => [139.6 + rand() * 0.3, 35.6 + rand() * 0.2]);
+  const features = Array.from({ length: count }, (_, i) => {
+    const [cx, cy] = i % 2 ? [139.6 + rand() * 0.3, 35.6 + rand() * 0.2] : clumps[i % clumps.length];
+    const r = i % 2 ? 0 : 0.02;
+    return { type: "Feature", properties: { i }, geometry: { type: "Point", coordinates: [cx + (rand() - 0.5) * r, cy + (rand() - 0.5) * r] } };
+  });
+  return { type: "FeatureCollection", features };
+}
+const CLUSTERED = { pts: { type: "geojson", data: points(3000), cluster: true, clusterRadius: 40, clusterMaxZoom: 14 } };
+const isCluster = ["has", "point_count"];
+
 export const SCENES = {
   fills: {
     style: style([
@@ -74,6 +89,20 @@ export const SCENES = {
     ]),
     camera: { center: [139.7671, 35.6812], zoom: 16.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
+  },
+  // A clustered GeoJSON source: circles sized and colored by `point_count`, and the points left alone.
+  clusters: {
+    style: style([
+      { id: "clusters", type: "circle", source: "pts", filter: isCluster,
+        paint: {
+          "circle-color": ["step", ["get", "point_count"], "#51bbd6", 10, "#f1a340", 50, "#e7298a"],
+          "circle-radius": ["step", ["get", "point_count"], 8, 10, 12, 50, 18],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": 1,
+        } },
+      { id: "single", type: "circle", source: "pts", filter: ["!", isCluster], paint: { "circle-color": "#11b4da", "circle-radius": 3 } },
+    ], CLUSTERED),
+    camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
+    limits: { mean: 0.07, p99: 1 },
   },
   // Dashes (MapLibre's line_sdf over the line atlas): a railway's white dashes over its casing, butt
   // and round dash ends, boundaries; at a fractional zoom the pattern is measured at the integer one.

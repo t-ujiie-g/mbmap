@@ -131,8 +131,21 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
     if tolerance < 0.0 {
       raise Invalid(path="\{path}.tolerance", "negative")
     }
-    if s.get("cluster") is Some(True) {
-      raise Unsupported(path="\{path}.cluster", "clustering")
+    match s.get("cluster") {
+      None | Some(False) => ()
+      Some(True) =>
+        if s.get("clusterProperties") is Some(_) {
+          raise Unsupported(
+            path="\{path}.clusterProperties",
+            "cluster properties",
+          )
+        }
+      Some(_) => raise Invalid(path="\{path}.cluster", "not a boolean")
+    }
+    for key in ["clusterRadius", "clusterMaxZoom", "clusterMinPoints"] {
+      if number_or(s, key, path, 0.0) < 0.0 {
+        raise Invalid(path="\{path}.\{key}", "negative")
+      }
     }
     return Some({
       id,

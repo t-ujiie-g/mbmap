@@ -251,6 +251,8 @@ test "GeoJSON sources keep MapLibre's options; their data stays outside" {
       #|{"sources": {
       #|  "pts": {"type": "geojson", "data": "points.geojson", "maxzoom": 16, "buffer": 64},
       #|  "inline": {"type": "geojson", "data": {"type": "FeatureCollection", "features": []}},
+      #|  "clustered": {"type": "geojson", "data": "p.geojson", "cluster": true, "clusterRadius": 40,
+      #|                "clusterMaxZoom": 12, "clusterMinPoints": 3},
       #|  "img": {"type": "image", "url": "x"}},
       #| "layers": []}
     ),
@@ -262,6 +264,7 @@ test "GeoJSON sources keep MapLibre's options; their data stays outside" {
   )
   let inline = s.source("inline").unwrap()
   assert_eq((inline.max_zoom, inline.buffer), (18, 128))
+  assert_eq(s.source("clustered").map(x => x.kind), Some(GeoJSON))
   assert_eq(s.source("img").map(x => x.id), None)
   for
     bad in [
@@ -273,8 +276,20 @@ test "GeoJSON sources keep MapLibre's options; their data stays outside" {
         "sources.g.buffer",
       ),
       (
-        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"cluster\": true}}, \"layers\": []}",
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"cluster\": 1}}, \"layers\": []}",
         "sources.g.cluster",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"cluster\": true, \"clusterProperties\": {}}}, \"layers\": []}",
+        "sources.g.clusterProperties",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"clusterRadius\": -1}}, \"layers\": []}",
+        "sources.g.clusterRadius",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"clusterMinPoints\": \"2\"}}, \"layers\": []}",
+        "sources.g.clusterMinPoints",
       ),
     ] {
     try @style.Style::parse(bad.0) catch {

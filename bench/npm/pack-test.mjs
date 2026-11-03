@@ -10,6 +10,7 @@ import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
 import { prepareExamples } from "./prepare.mjs";
 import { fakeGeolocation } from "../lib/fake-geolocation.mjs";
+import { clusterChecks } from "./checks/clusters.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
 
 const shots = process.argv.find((a) => a.startsWith("--screenshots="))?.split("=")[1];
@@ -325,7 +326,7 @@ const checks = {
 
 // The showcase, alike in all three examples: Tokyo Station within 5 km and in plane IX (proj4js:
 // X -35367.230, Y -5995.185), 3D on terrain, a flight to a destination, the panel following the
-// camera, the destinations' pins on their places, and the view saved as a PNG.
+// camera, the destinations' pins on their places, the view saved as a PNG, and the stations' clusters.
 async function showcase(page) {
   await page.waitForFunction(() => window.__described);
   const first = await page.evaluate(() => window.__described);
@@ -355,6 +356,7 @@ async function showcase(page) {
   const drew = await drawChecks(page);
   const edited = await editChecks(page);
   const cut = await splitChecks(page);
+  const clustered = await clusterChecks(page);
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -414,8 +416,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok && edited.ok && cut.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew, edited, cut }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew, edited, cut, clustered }];
 }
 
 // Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile

@@ -96,7 +96,9 @@ A GeoJSON source's tile, from the GeoJSON worker to a display worker:
 - K keys (UTF-8), then per key, per feature, a property value;
 - per feature, its id as a property value (absent without one).
 
-Only keys some feature of the tile has are written.
+Only keys some feature of the tile has are written. A clustered source's tile has a
+feature per point or cluster; a cluster's id is its cluster id, and its properties
+are those of "Cluster features".
 
 ## Table (`geom/bytes.mbt`)
 
@@ -206,18 +208,33 @@ a vector tile keeps its first place and last value, as a JS object does.
 In:
 
 - `{type: "init", wasm}`.
-- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance}`: `source` is a
+- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance, cluster}`: `source` is a
   number naming the source; `url` is fetched without credentials, `bytes` is the
   GeoJSON as UTF-8; the options are MapLibre's GeoJSON source options in pixels.
+  `cluster` is null, or `{maxZoom, radius, minPoints}` as MapLibre's GeoJSONSource
+  derives them (`npm/src/geojson.ts`); its tiles then hold points and clusters.
   Loading a number again replaces its data once the earlier load has finished.
 - `{type: "unload", source}`: forgets the source.
 - `{type: "tile", id, source, z, x, y}`: waits until the source has loaded.
+- `{type: "cluster", id, source, op, cluster, limit, offset}`: `op` is `"expansion"`,
+  `"children"` or `"leaves"` of cluster `cluster` (an int32); `limit` (-1 for all) and
+  `offset` (int32s) only for leaves. Waits until the source has loaded.
 
 Out:
 
 - `{type: "loaded", source, features}`, `{type: "error", source, message}`.
 - `{type: "tile", id, bytes}`: a columnar tile (transferred), or null when the source
   has nothing there, failed or was never loaded.
+- `{type: "cluster", id, result}`: the expansion zoom, or the features as GeoJSON
+  points (from "Cluster features"); null if the source does not cluster. Or
+  `{type: "cluster", id, error}` (no such cluster, source not loaded).
+
+## Cluster features (`tiler/encode.mbt`, read by `geojson_worker/js/features.mjs`)
+
+u32 feature count, then per feature: f64 longitude and latitude, its id as a
+property value (a cluster's is its cluster id), u32 property count and per
+property a key (UTF-8) and a property value. A cluster's properties are
+`cluster`, `cluster_id`, `point_count` and `point_count_abbreviated`.
 
 ## Analysis worker messages (`analysis_worker/js/worker.mjs`)
 

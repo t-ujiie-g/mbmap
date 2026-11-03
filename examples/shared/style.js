@@ -1,8 +1,9 @@
-// The showcase's style: GSI's vector tiles and DEM, the places as GeoJSON, and
-// in 3D terrain, sky and extruded buildings; `?local=1` reads the bench
-// fixtures (z14 around Tokyo Station) instead of GSI's servers.
+// The showcase's style: GSI's vector tiles and DEM, the places and clustered stations as
+// GeoJSON, and in 3D terrain, sky and extruded buildings; `?local=1` reads the bench fixtures
+// (z14 around Tokyo Station) instead of GSI's servers.
 import { GSI_LAYERS } from "./layers.js";
 import { PLACES } from "./places.js";
+import { STATIONS_SOURCE, stationLayers } from "./stations.js";
 
 const GSI = "https://cyberjapandata.gsi.go.jp/xyz";
 const local = new URLSearchParams(location.search).get("local") === "1";
@@ -28,6 +29,7 @@ export const LAYER_GROUPS = [
   { name: "道路・鉄道", ids: ["road-casing", "road", "railway"] },
   { name: "注記", ids: ["symbol", "label", "label-vertical"] },
   { name: "地点", ids: ["places", "places-label"] },
+  { name: "山手線の駅", ids: ["stations-cluster", "stations", "stations-count"] },
 ];
 
 /** The basemaps (`createStyle`'s `basemap`): GSI's vector map, or its aerial photos with labels. */
@@ -41,6 +43,7 @@ export const LAYER_TITLES = {
   waterarea: "水域", structurea: "構造物", building: "建物", "building-3d": "建物（3D）", "building-outline": "建物の輪郭",
   contour: "等高線", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
   elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
+  "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数",
   hillshade: "陰影", photo: "写真",
 };
 
@@ -78,6 +81,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       ? { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
       : { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
     places: { type: "geojson", data: places, promoteId: "name" },
+    stations: STATIONS_SOURCE,
     // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
     photo: local
       ? { type: "raster", tiles: [`${fixtures}gsi-std/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14 }
@@ -101,6 +105,7 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
   const layers = [
     { id: "background", type: "background", paint: { "background-color": "#f5f3ee" } },
     ...base,
+    ...stationLayers(overlay),
     {
       id: "places", type: "circle", source: "places", metadata: overlay,
       paint: {

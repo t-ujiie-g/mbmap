@@ -12,6 +12,7 @@ import { useIdentify } from "./identify.jsx";
 import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
 import { SearchBar } from "./search.jsx";
 import { hoverPlaces } from "../../shared/pick.js";
+import { zoomIntoClusters } from "../../shared/stations.js";
 import { DESTINATIONS } from "../../shared/places.js";
 import { PLACES } from "../../shared/places.js";
 import { createStyle, modeCamera, withMarker } from "../../shared/style.js";
@@ -61,6 +62,7 @@ function App() {
     const map = e.detail.map;
     window.__map = map;
     hoverPlaces(map);
+    zoomIntoClusters(map);
     pinDestinations(map, document.body);
     setMap(map);
     setPanel(panelControllers(map, () => modeRef.current, () => places.current));
