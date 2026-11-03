@@ -316,21 +316,22 @@ fn Map::place_line_label(
   let placed = s.allow_overlap || (!circles.is_empty() && !collided)
   // Queries find the label by its circles' bounds.
   let b = s.boxes
-  b[i * 4] = @double.not_a_number
+  let o = i * BOX_FLOATS
+  b[o] = @double.not_a_number
   if placed && !circles.is_empty() {
-    b[i * 4] = @double.infinity
-    b[i * 4 + 1] = @double.infinity
-    b[i * 4 + 2] = @double.neg_infinity
-    b[i * 4 + 3] = @double.neg_infinity
+    b[o] = @double.infinity
+    b[o + 1] = @double.infinity
+    b[o + 2] = @double.neg_infinity
+    b[o + 3] = @double.neg_infinity
     for k = 0; k < circles.length(); k = k + 3 {
       let (cx, cy, r) = (circles[k], circles[k + 1], circles[k + 2])
       if !s.ignore_placement {
         grid.insert_circle(cx, cy, r)
       }
-      b[i * 4] = @cmp.minimum(b[i * 4], cx - r - VIEWPORT_PADDING)
-      b[i * 4 + 1] = @cmp.minimum(b[i * 4 + 1], cy - r - VIEWPORT_PADDING)
-      b[i * 4 + 2] = @cmp.maximum(b[i * 4 + 2], cx + r - VIEWPORT_PADDING)
-      b[i * 4 + 3] = @cmp.maximum(b[i * 4 + 3], cy + r - VIEWPORT_PADDING)
+      b[o] = @cmp.minimum(b[o], cx - r - VIEWPORT_PADDING)
+      b[o + 1] = @cmp.minimum(b[o + 1], cy - r - VIEWPORT_PADDING)
+      b[o + 2] = @cmp.maximum(b[o + 2], cx + r - VIEWPORT_PADDING)
+      b[o + 3] = @cmp.maximum(b[o + 3], cy + r - VIEWPORT_PADDING)
     }
   }
   placed

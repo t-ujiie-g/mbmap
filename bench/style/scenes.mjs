@@ -4,12 +4,24 @@ const GSI = { type: "vector", tiles: ["{origin}/bench/fixtures/gsi-bvmap/{z}/{x}
 const TOKYO = { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 };
 const bg = { id: "bg", type: "background", paint: { "background-color": "#f5f3ee" } };
 const style = (layers, sources = { gsi: GSI }) => ({ version: 8, sources, layers: [bg, ...layers] });
-// style/sprite.mjs's sheets: dots 12 px, stripes 16 x 8 (translucent), checker 10, odd 7 x 5.
+// style/sprite.mjs's sheets: dots 12 px, stripes 16 x 8, checker 10, odd 7 x 5 (all opaque), pin
+// 14 x 18 and an SDF ring 20 px.
 const SPRITE = "{origin}/bench/dist/style/sprite";
 const patterned = (layers) => ({
   ...style(layers),
   sprite: SPRITE,
   layers: [{ id: "bg", type: "background", paint: { "background-pattern": "checker" } }, ...layers],
+});
+// GSI symbols as icons by their code: pins, dots at half opacity, SDF rings colored with halos.
+const ICONS = (layout = {}) => ({
+  ...style([
+    { id: "pins", type: "symbol", source: "gsi", "source-layer": "symbol", filter: ["!=", ["get", "ftCode"], 3218],
+      layout: { "icon-image": ["match", ["get", "ftCode"], 3211, "dots", "pin"], "icon-anchor": "bottom", ...layout },
+      paint: { "icon-color": "#1f6fb2", "icon-halo-color": "#ffffff", "icon-halo-width": 2, "icon-opacity": ["match", ["get", "ftCode"], 3211, 0.5, 1] } },
+    { id: "rings", type: "symbol", source: "gsi", "source-layer": "symbol", filter: ["==", ["get", "ftCode"], 3218],
+      layout: { "icon-image": "ring", "icon-size": 1.2, ...layout }, paint: { "icon-color": "#2a9d4b", "icon-halo-color": "#333333", "icon-halo-width": 0.8, "icon-halo-blur": 0.5 } },
+  ]),
+  sprite: SPRITE,
 });
 const PATTERN_LAYERS = [
   { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-pattern": "dots" } },
@@ -199,6 +211,24 @@ export const SCENES = {
     ], ROUTES),
     camera: { center: [139.767, 35.678], zoom: 12.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
+  },
+  // Icons from a sprite (MapLibre's symbol_icon, and symbol_sdf for SDF icons with halos): at
+  // size 1 sampled as they are, then turned, scaled and pitched with the map, then at 2x.
+  icons: {
+    style: ICONS(),
+    camera: { center: [139.7671, 35.6812], zoom: 15.3, bearing: 0, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "icons-turned": {
+    style: ICONS({ "icon-rotate": 25, "icon-size": 1.4, "icon-rotation-alignment": "map" }),
+    camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 30, pitch: 40 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "icons-2x": {
+    style: ICONS({ "icon-pitch-alignment": "viewport", "icon-rotation-alignment": "map" }),
+    camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: -20, pitch: 0 },
+    dpr: 2,
+    limits: { mean: 0.05, p99: 1 },
   },
   // Patterns from a sprite (MapLibre's fill_pattern, fill_outline_pattern, background_pattern):
   // a constant and a per-feature pattern, an outline in the pattern and one in a color, a

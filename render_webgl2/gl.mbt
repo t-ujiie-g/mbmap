@@ -209,18 +209,21 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // a_data: corner offset in quarter CSS px (y down), a_shift: the label's in CSS px;
   #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
   #|  // height (m). SDF edge at 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px).
-  #|  const symbol = program(
-  #|    "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; in vec3 a_glyph;" +
+  #|  // The anchor in clip space and its visibility behind terrain (v_alpha).
+  #|  const symbolBase = "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; in vec3 a_glyph;" +
   #|    "uniform mat4 u_matrix; uniform float u_along;" +
   #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
   #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha;" +
   #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
   #|    "  return 1.0 - clamp(-d * 500.0, 0.0, 1.0); }" +
-  #|    "void main() { vec4 c = u_matrix * vec4(a_pos, a_ele * u_scale, 1.0); v_alpha = 1.0;" +
+  #|    "vec4 anchor() { vec4 c = u_matrix * vec4(a_pos, a_ele * u_scale, 1.0); v_alpha = 1.0;" +
   #|    "  if (u_occlude) { vec3 f = c.xyz / c.w; v_alpha = visible(f);" +
   #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
+  #|    "  v_tex = a_tex / u_atlas; return c; }";
+  #|  const symbolUniforms = ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_along", "u_glyphs", "u_color"];
+  #|  const symbol = program(
+  #|    symbolBase + "void main() { vec4 c = anchor();" +
   #|    "  if (v_alpha < 0.1 || (u_along > 0.0 && a_glyph.x < -1e8)) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
-  #|    "  v_tex = a_tex / u_atlas;" +
   #|    // Along a line: the glyph at a_glyph (tile units, angle), lying on the map, sized
   #|    // by MapLibre's ratio for text pitched with the map; u_along is tile units per px.
   #|    "  if (u_along > 0.0) { float q = clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
@@ -234,8 +237,37 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "in float v_alpha; out vec4 o;" +
   #|    "void main() { float d = (0.75 - texture(u_glyphs, v_tex).r) * 16.0 * v_scale;" +
   #|    "  o = u_color * v_alpha * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
-  #|    ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_glyphs", "u_color",
-  #|     "u_halo", "u_along"]);
+  #|    [...symbolUniforms, "u_halo"]);
+  #|  // MapLibre's symbol_icon and, for SDF icons, symbol_sdf: a_data a corner at size 1 in 32nds of a
+  #|  // px, a_size the size times 128 unless u_size is set; u_angle turns icons pitched with the map
+  #|  // (u_units tile units per px), u_rotate turns the others with it. u_halo: width, blur, plain.
+  #|  const icon = program(
+  #|    symbolBase + "uniform float u_size; uniform bool u_persp; uniform bool u_pitch; uniform bool u_rotate; uniform float u_angle;" +
+  #|    "uniform float u_units; out float v_gamma;" +
+  #|    "void main() { vec4 c = anchor(); if (v_alpha < 0.1) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
+  #|    "  float size = u_size >= 0.0 ? u_size : a_size / 128.0; vec2 off = a_data / 32.0;" +
+  #|    "  if (u_pitch) { if (u_persp) size *= clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
+  #|    "    float s = sin(u_angle), k = cos(u_angle);" +
+  #|    "    gl_Position = u_matrix * vec4(a_pos + mat2(k, s, -s, k) * (off * size + a_shift) * u_units, a_ele * u_scale, 1.0);" +
+  #|    "    v_scale = size; v_gamma = gl_Position.w; return; }" +
+  #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0); if (u_persp) size *= r; off *= size;" +
+  #|    "  if (u_rotate) { vec4 e = u_matrix * vec4(a_pos + vec2(1.0, 0.0), a_ele * u_scale, 1.0);" +
+  #|    "    vec2 d = e.xy / e.w - c.xy / c.w; float t = atan(d.y * u_px.x / u_px.y, d.x), s = sin(t), k = cos(t);" +
+  #|    "    off = mat2(k, -s, s, k) * off; }" +
+  #|    "  gl_Position = vec4(c.xy + (off + a_shift * r) * u_dpr * u_px * vec2(1.0, -1.0) * c.w, c.z, c.w);" +
+  #|    "  v_scale = size; v_gamma = 1.0; }",
+  #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform vec4 u_halo_color; uniform vec3 u_halo; uniform bool u_sdf;" +
+  #|    "uniform float u_dpr; uniform float u_opacity; uniform float u_gamma_scale; in vec2 v_tex; in float v_scale; in float v_alpha;" +
+  #|    "in float v_gamma; out vec4 o;" +
+  #|    "void main() { vec4 t = texture(u_glyphs, v_tex); float a = u_opacity * v_alpha; if (!u_sdf) { o = t * a; return; }" +
+  #|    "  float e = 0.105 / u_dpr, g = e / (v_scale * u_gamma_scale) * v_gamma, d = t.a;" +
+  #|    "  vec4 f = a * smoothstep(0.75 - g, 0.75 + g, d) * u_color; o = f;" +
+  #|    "  if (u_halo.x > 0.0) { float gh = (u_halo.y * 1.19 / 8.0 + e) / (v_scale * u_gamma_scale) * v_gamma;" +
+  #|    "    float he = (6.0 - u_halo.x / v_scale) / 8.0;" +
+  #|    "    float ah = min(smoothstep(he - gh, he + gh, d), 1.0 - smoothstep(0.75, 0.75 + 2.0 * gh, d));" +
+  #|    "    vec4 h = a * ah * u_halo_color; o = u_halo.z > 0.0 ? f + (1.0 - f.a) * h : h; } }",
+  #|    [...symbolUniforms, "u_halo_color", "u_halo", "u_sdf", "u_opacity", "u_gamma_scale", "u_size", "u_persp", "u_pitch",
+  #|     "u_rotate", "u_angle", "u_units"]);
   #|  // MapLibre's fill_extrusion shaders; vertices as in docs/FORMATS.md, a_ele the
   #|  // ground (m) under the centroid times u_ground (0 without terrain, which also
   #|  // skips the 10 m basement), u_scale world pixels per meter.
@@ -421,7 +453,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -731,18 +763,19 @@ extern "js" fn gl_show(
   mesh : Mesh,
   labels : JsBuffer,
   stride : Int32,
+  col : Int32,
   shown : FixedArray[Bool],
   variant : FixedArray[Int32],
 ) -> Unit =
-  #|(c, m, labels, stride, shown, variant) => {
+  #|(c, m, labels, stride, col, shown, variant) => {
   #|  const gl = c.gl;
   #|  let n = 0;
-  #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[(i + 1) * stride - 1];
+  #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[i * stride + col + 2];
   #|  const out = new m.all.constructor(n);
   #|  let at = 0;
   #|  for (let i = 0; i < shown.length; i++) {
   #|    if (!shown[i]) continue;
-  #|    const count = labels[(i + 1) * stride - 1], first = labels[(i + 1) * stride - 2] + variant[i] * count;
+  #|    const r = i * stride + col, count = labels[r + 2], first = labels[r + 1] + Math.min(variant[i], labels[r] - 1) * count;
   #|    out.set(m.all.subarray(first, first + count), at);
   #|    at += count;
   #|  }
@@ -799,6 +832,53 @@ extern "js" fn gl_draw_symbols(
   #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
   #|  gl.uniform1f(p.u_halo, 0);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|}
+
+///|
+/// `u`: dpr, center clip w, elevation scale, size, perspective, pitch, rotate, angle,
+/// tile units per px, opacity, sdf, halo width, blur, gamma scale, linear (colors
+/// straight RGBA). MapLibre draws a halo wider than 1 px in a pass of its own.
+extern "js" fn gl_draw_icons(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  u : FixedArray[Double],
+  color : FixedArray[Double],
+  halo : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, u, color, halo) => {
+  #|  if (m.count === 0 || !c.icons) return;
+  #|  const gl = c.gl, p = c.icon, pre = (loc, v) => gl.uniform4f(loc, v[0] * v[3], v[1] * v[3], v[2] * v[3], v[3]);
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
+  #|  ["u_dpr", "u_center", "u_scale", "u_size", "u_persp", "u_pitch", "u_rotate", "u_angle", "u_units", "u_opacity", "u_sdf"]
+  #|    .forEach((name, i) => (i === 4 || i === 5 || i === 6 || i === 10 ? gl.uniform1i(p[name], u[i]) : gl.uniform1f(p[name], u[i])));
+  #|  gl.uniform1f(p.u_gamma_scale, u[13]);
+  #|  const occlude = !!c.depth?.ready;
+  #|  gl.uniform1i(p.u_occlude, occlude ? 1 : 0);
+  #|  gl.activeTexture(gl.TEXTURE2);
+  #|  gl.bindTexture(gl.TEXTURE_2D, occlude ? c.depth.texture : null);
+  #|  gl.uniform1i(p.u_depth, 2);
+  #|  gl.uniform2f(p.u_atlas, c.iconsSize[0], c.iconsSize[1]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, c.icons);
+  #|  const filter = u[14] ? gl.LINEAR : gl.NEAREST;
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  #|  gl.uniform1i(p.u_glyphs, 0);
+  #|  pre(p.u_color, color);
+  #|  pre(p.u_halo_color, halo);
+  #|  gl.bindVertexArray(m.vao);
+  #|  if (!m.shift) gl.vertexAttrib2f(15, 0, 0);
+  #|  const hasHalo = u[10] && u[11] > 0;
+  #|  if (hasHalo && u[11] > 1) {
+  #|    gl.uniform3f(p.u_halo, u[11], u[12], 0);
+  #|    gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  }
+  #|  gl.uniform3f(p.u_halo, hasHalo && u[11] <= 1 ? u[11] : 0, u[12], 1);
+  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
   #|}
 
 ///|
@@ -881,12 +961,13 @@ extern "js" fn gl_set_heights(
   mesh : Mesh,
   labels : JsBuffer,
   stride : Int32,
+  col : Int32,
   heights : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, labels, stride, heights) => {
+  #|(c, m, labels, stride, col, heights) => {
   #|  const gl = c.gl, out = new Float32Array(m.vertices);
   #|  for (let i = 0; i < heights.length; i++) {
-  #|    const first = labels[(i + 1) * stride - 2], end = first + labels[(i + 1) * stride - 1] * labels[(i + 1) * stride - 3];
+  #|    const r = i * stride + col, first = labels[r + 1], end = first + labels[r + 2] * labels[r];
   #|    for (let k = first; k < end; k++) out[m.all[k]] = heights[i];
   #|  }
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.ele);
@@ -932,12 +1013,13 @@ extern "js" fn gl_set_shifts(
   mesh : Mesh,
   labels : JsBuffer,
   stride : Int32,
+  col : Int32,
   shifts : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, labels, stride, shifts) => {
+  #|(c, m, labels, stride, col, shifts) => {
   #|  const gl = c.gl, out = new Float32Array(m.vertices * 2);
   #|  for (let i = 0; i < shifts.length / 2; i++) {
-  #|    const first = labels[(i + 1) * stride - 2], end = first + labels[(i + 1) * stride - 1] * labels[(i + 1) * stride - 3];
+  #|    const r = i * stride + col, first = labels[r + 1], end = first + labels[r + 2] * labels[r];
   #|    for (let k = first; k < end; k++) {
   #|      out[m.all[k] * 2] = shifts[i * 2];
   #|      out[m.all[k] * 2 + 1] = shifts[i * 2 + 1];

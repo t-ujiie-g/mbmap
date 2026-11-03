@@ -75,11 +75,19 @@ vertex range (no indices):
   per variable anchor its u8 code (as the text anchor) and f64 offset x, y (ems,
   MapLibre's `text-variable-anchor-offset` with its baseline shift);
 - u8 placement (`point`, `line`, `line-center`), u8 keep upright, f64 spacing (px),
-  max angle (degrees); u32 label count;
+  max angle (degrees);
+- u8 1 if the layer has `icon-image`, then: u8 icon anchor (as the text anchor),
+  u8 allow overlap, ignore placement, optional, text optional, rotation and pitch
+  alignment (1 for `map`, after `auto` is resolved), keep upright, u8 text fit
+  (`none`, `width`, `height`, `both`); f64 offset x, y (px at size 1), padding top,
+  right, bottom, left (px), text fit padding top, right, bottom, left (px);
+- u32 label count;
 - per label: u32 index of its feature in the source layer, i16 anchor x, y
   (`TILE_EXTENT` units, inside the tile; 0 along lines), f64 text size
   (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
-  booleans are written out by the glue);
+  booleans are written out by the glue); with an icon, u32 part count and the parts
+  of its image's name, f64 `icon-size` (at the tile's zoom plus one, as MapLibre lays
+  icons out) and f64 `icon-rotate` (degrees). A label has text, an icon or both;
 - along lines, one label per feature, then its lines: u32 line count, per line u32
   point count and i16 x, y per point (`TILE_EXTENT` units, clamped to i16). The glue
   finds the anchors (`worker/js/line-labels.mjs`).
@@ -95,9 +103,12 @@ quad (corners top-left, top-right, bottom-right, bottom-left):
   thread turns into atlas pixel coordinates before upload;
 - u16 text size in 1/16 px, u16 0.
 
-`labels` holds 12 floats per label: anchor x, y, its text box (min x, min y, max x,
+`labels` holds 19 floats per label: anchor x, y, its text box (min x, min y, max x,
 max y in CSS px from the anchor), its feature's index, text size (px), sort key, its
-layouts V, first index and index count of each layout's quads. A label with variable
+icon's collision box (CSS px at its layout size, padded and turned as MapLibre's
+`CollisionFeature`), 1, the first index and index count of its icon's quad (0 without
+an icon), its text's layouts V, first index and index count of each layout's quads
+(0 without text). A label with variable
 anchors is laid out centered; one of several lines has V = 3 layouts one after the
 other, justified left, center and right, otherwise V = 1. `anchors` holds the
 variable anchors as code, offset x, y.
@@ -112,6 +123,16 @@ count of its line in `lines` (x, y pairs, `TILE_EXTENT` units), its first glyph 
 em) and its collision circle's diameter (px); and `keepUpright`. The main thread
 places each glyph for each frame the camera moved (`map/line_labels.mbt`) into a per-vertex x, y (tile
 units) and angle.
+
+A layer with `icon-image` adds `icon`: its layout (`allowOverlap`, `ignorePlacement`,
+`optional`, `textOptional`, `rotateWithMap`, `pitchWithMap`, `keepUpright`,
+`textFit`, `hasOffset`) and its icons, one quad per label with an icon in `vertices`
+and `indices` (`count`, `indexBytes`) laid out as glyph quads but for: corner offsets
+at size 1 in 32nds of a CSS px (MapLibre's `getIconQuads`: the image's box a pixel of
+it wider on each side, turned by `icon-rotate`), the index of the image in `images`
+(its names) in place of the glyph's, and the size times 128. `sdf` is the first
+icon's (MapLibre's `sdfIcons`), `rotated` whether any icon is turned. `missing` names
+the images the worker did not know (none are drawn for them).
 
 ## Columnar tile (`tiler/encode.mbt`, read by `worker/column_tile.mbt`)
 
@@ -172,6 +193,9 @@ In:
 - `{type: "ranges", id, tile, ids}`: where the features with these ids (strings,
   as `String(id)`) lie in the entries of the tile sent for request `tile`.
 - `{type: "drop", id}`: forget the bytes of the tile sent for request `id`.
+- `{type: "images", images, loading}`: the style images icons are laid out with,
+  `[name, width, height, pixelRatio, sdf]` each; while `loading` (a sprite is on its
+  way) tiles wait, as MapLibre's do for icons.
 
 Out:
 
@@ -181,7 +205,8 @@ Out:
   symbol entries without labels are left out). Buffers are transferred, never copied;
   `shared` is the position in `layers` of an earlier entry whose buffers it reuses (or -1); `props`
   the group properties (or null). Symbol entries add `labels`, `codepoints`
-  (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`. `glyphs` are the
+  (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`, and with icons
+  `icon` and `missing` ("Symbol vertices"). `glyphs` are the
   SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
   byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
   worker, so the main thread takes them even from tiles it no longer wants.

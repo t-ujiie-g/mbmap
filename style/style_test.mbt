@@ -484,7 +484,7 @@ test "labels along lines read spacing, angle and uprightness, with MapLibre's de
 }
 
 ///|
-test "text along lines turned to the viewport or offset, icons and format are unsupported" {
+test "text along lines turned to the viewport or offset, icons along lines and format are unsupported" {
   let cases = [
     (
       "{\"symbol-placement\": \"line\", \"text-rotation-alignment\": \"viewport\"}",
@@ -497,7 +497,12 @@ test "text along lines turned to the viewport or offset, icons and format are un
     (
       "{\"symbol-placement\": \"line\", \"text-offset\": [0, 1]}", "layers[0].layout.text-offset",
     ),
-    ("{\"icon-image\": \"x\"}", "layers[0].layout.icon-image"),
+    (
+      "{\"symbol-placement\": \"line\", \"icon-image\": \"x\"}", "layers[0].layout.icon-image",
+    ),
+    (
+      "{\"icon-image\": \"x\", \"icon-offset\": [\"literal\", [0, 1]]}", "layers[0].layout.icon-offset",
+    ),
     ("{\"text-field\": [\"format\", \"a\", {}]}", "layers[0].layout.text-field"),
   ]
   for c in cases {

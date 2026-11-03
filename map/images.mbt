@@ -17,7 +17,23 @@ pub fn Map::add_image(
     !(pixel_ratio > 0.0) {
     return false
   }
-  self.images.set(name, { width, height, data, pixel_ratio, sdf, })
+  let image : @render_webgl2.StyleImage = {
+    width,
+    height,
+    data,
+    pixel_ratio,
+    sdf,
+  }
+  // Icons are laid out again unless the new pixels have the old size.
+  match self.images.get(name) {
+    Some(b) if b.width == width &&
+      b.height == height &&
+      b.pixel_ratio == pixel_ratio &&
+      b.sdf == sdf => ()
+    _ => self.changed_images.add(name)
+  }
+  self.images.set(name, image)
+  self.renderer.update_icon(name, image)
   self.images_changed(name)
   true
 }
@@ -27,6 +43,7 @@ pub fn Map::add_image(
 pub fn Map::remove_image(self : Map, name : String) -> Bool {
   guard self.images.get(name) is Some(_) else { return false }
   self.images.remove(name)
+  self.changed_images.add(name)
   self.images_changed(name)
   true
 }
@@ -69,12 +86,110 @@ fn Map::pattern(self : Map, name : String) -> @render_webgl2.PatternPosition? {
   match self.images.get(name) {
     Some(image) => self.renderer.add_pattern(name, image)
     None => {
-      if !self.missing_images.contains(name) {
-        self.missing_images.add(name)
-        (self.on_missing_image)(name)
-      }
+      self.report_missing(name)
       None
     }
+  }
+}
+
+///|
+/// Fires `on_missing_image` for `name`, once until it is added.
+fn Map::report_missing(self : Map, name : String) -> Unit {
+  if !self.missing_images.contains(name) && self.images.get(name) is None {
+    self.missing_images.add(name)
+    (self.on_missing_image)(name)
+  }
+}
+
+///|
+/// Holds tiles with icons in the workers while `loading` (a sprite is on its
+/// way), as MapLibre's tiles wait for the sprite.
+pub fn Map::hold_images(self : Map, loading : Bool) -> Unit {
+  if self.images_loading != loading {
+    self.images_loading = loading
+    self.changed_images.add("")
+    self.request_render()
+  }
+}
+
+///|
+/// `names` and, per image, its width, height, pixel ratio and sdf (0 or 1).
+extern "js" fn post_images(
+  w : Worker,
+  names : FixedArray[String],
+  sizes : FixedArray[Double],
+  loading : Bool,
+) -> Unit =
+  #|(w, names, d, loading) => w.postMessage({ type: "images", loading,
+  #|  images: names.map((n, i) => [n, d[i * 4], d[i * 4 + 1], d[i * 4 + 2], d[i * 4 + 3] === 1]) })
+
+///|
+/// Tells the workers the images' sizes when some changed, and loads again the
+/// tiles whose icons used the changed ones; tiles still loading too, unless
+/// the workers were holding them for a sprite.
+fn Map::send_images(self : Map) -> Unit {
+  guard !self.changed_images.is_empty() else { return }
+  let names = FixedArray::make(self.images.length(), "")
+  let sizes = FixedArray::make(self.images.length() * 4, 0.0)
+  let mut i = 0
+  for name, image in self.images {
+    names[i] = name
+    sizes[i * 4] = image.width.to_double()
+    sizes[i * 4 + 1] = image.height.to_double()
+    sizes[i * 4 + 2] = image.pixel_ratio
+    sizes[i * 4 + 3] = if image.sdf { 1.0 } else { 0.0 }
+    i += 1
+  }
+  let sources = []
+  for l in self.style.layers {
+    if l.icon is Some(_) {
+      sources.push(l.source)
+    }
+  }
+  let held = self.images_held
+  self.images_held = self.images_loading && sources.length() > 0
+  for w in self.workers {
+    post_images(w, names, sizes, self.images_held)
+  }
+  for src in self.sources {
+    guard sources.contains(src.source.id) else { continue }
+    let gone = []
+    for key, e in src.tiles {
+      match e.state {
+        Ready(m) if uses_images(m, self.changed_images) => e.state = Stale(m)
+        Loading(_) if !held && !self.cancel_load(e) => gone.push(key)
+        _ => ()
+      }
+    }
+    for key in gone {
+      src.tiles.remove(key)
+    }
+  }
+  self.changed_images.clear()
+}
+
+///|
+fn uses_images(
+  meshes : Array[LayerMesh],
+  names : @hashset.HashSet[String],
+) -> Bool {
+  for m in meshes {
+    if m.labels is Some({ icon: Some(ic), .. }) {
+      for n in ic.names {
+        if names.contains(n) {
+          return true
+        }
+      }
+    }
+  }
+  false
+}
+
+///|
+/// Frees mesh `m`'s icons, if it has any.
+fn release_icons(r : @render_webgl2.Renderer, m : LayerMesh) -> Unit {
+  if m.labels is Some({ icon: Some(ic), .. }) {
+    r.release(ic.mesh)
   }
 }
 

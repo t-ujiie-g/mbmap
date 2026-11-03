@@ -31,6 +31,11 @@ const pending = new Map();
 const kept = new Map();
 // PMTiles archives by URL, their headers and directories cached.
 const archives = new Map();
+// The style images the main thread has, by name: [width, height, pixelRatio, sdf].
+// While it is still loading a sprite, tiles wait (`imagesReady`), as MapLibre's do.
+let images = new Map();
+let imagesReady = Promise.resolve();
+let imagesLoaded = null;
 
 function withInput(bytes, run) {
   const addr = wasm.prepare_input(bytes.length);
@@ -72,10 +77,11 @@ function unpack(packed) {
         warned = true;
         continue;
       }
-      const s = buildSymbols(packed.subarray(e(2), e(2) + e(3)), glyphs);
-      if (s.count === 0) continue;
+      const s = buildSymbols(packed.subarray(e(2), e(2) + e(3)), glyphs, images);
+      if (s.count === 0 && !(s.icon?.count > 0) && !s.missing?.length) continue;
       layers.push({ entry: k, layer: e(0), kind: e(1), shared: -1, props, ...s });
       transfer.push(s.vertices, s.indices, s.labels.buffer, s.codepoints.buffer);
+      if (s.icon) transfer.push(s.icon.vertices, s.icon.indices);
       continue;
     }
     // The layer's own per-vertex paint, also over shared geometry.
@@ -198,6 +204,8 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
       postMessage({ type: "tile", id, layers: [{ layer: -1, kind: KIND_HILLSHADE, image, edges, elevations, size }], glyphs: [] }, [image, edges.buffer, elevations.buffer]);
       return;
     }
+    await imagesReady;
+    if (controller.signal.aborted) return;
     glyphs.startTile();
     const { layers, transfer } = unpack(withInput(bytes, () => wasm.process_tile(source, z)));
     if (controller.signal.aborted) return;
@@ -258,6 +266,14 @@ onmessage = (e) => {
   } else if (msg?.type === "drop" && ready) {
     // After the queries asked before it.
     ready.then(() => kept.delete(msg.id), () => {});
+  } else if (msg?.type === "images" && Array.isArray(msg.images)) {
+    images = new Map(msg.images.filter((i) => Array.isArray(i) && typeof i[0] === "string").map(([name, ...meta]) => [name, meta]));
+    if (msg.loading === true && !imagesLoaded) {
+      imagesReady = new Promise((resolve) => (imagesLoaded = resolve));
+    } else if (msg.loading !== true && imagesLoaded) {
+      imagesLoaded();
+      imagesLoaded = null;
+    }
   } else if (msg?.type === "cancel") {
     pending.get(msg.id)?.abort();
   }

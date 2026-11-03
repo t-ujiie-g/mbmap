@@ -17,7 +17,7 @@ const GSI = "https://cyberjapandata.gsi.go.jp/xyz";
 const local = new URLSearchParams(location.search).get("local") === "1";
 // Relative to the page (examples/<name>/): a bundle's import.meta.url lies elsewhere.
 const fixtures = new URL("../../bench/fixtures/", location.href).href;
-// The showcase's own sprite (a hatch for structures), at 1x and 2x.
+// The showcase's own sprite (a hatch for structures, a station icon), at 1x and 2x.
 const SPRITE = new URL("../shared/sprite/sprite", location.href).href;
 const HATCH = { id: "structurea-hatch", type: "fill", source: "gsi", "source-layer": "structurea", paint: { "fill-pattern": "hatch" } };
 

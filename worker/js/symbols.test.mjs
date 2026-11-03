@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSymbols, LABEL_FLOATS, MAX_LABEL_CHARS, SYMBOL_VERTEX_BYTES } from "./symbols.mjs";
+import { buildSymbols, iconBox, iconCorners, LABEL_FLOATS, MAX_LABEL_CHARS, shapeIcon, SYMBOL_VERTEX_BYTES } from "./symbols.mjs";
 import { SDF_BUFFER, SDF_SIZE } from "./text.mjs";
+
+// A label's icon columns without an icon: no box, one layout, no indices.
+const NO_ICON = [0, 0, 0, 0, 1, 0, 0];
 
 // Every glyph a full em with ink, drawn by nothing (no OffscreenCanvas needed).
 const glyphs = {
@@ -10,7 +13,7 @@ const glyphs = {
 
 // A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
 // size, parts, sort key), the n-th label of feature 10 + n.
-function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0, spacing = 250, maxAngle = 45 } = {}) {
+function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0, spacing = 250, maxAngle = 45, icon = null } = {}) {
   const bytes = [];
   const u8 = (v) => bytes.push(v & 0xff);
   const u32 = (v) => [0, 8, 16, 24].forEach((s) => u8(v >>> s));
@@ -29,26 +32,38 @@ function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0,
   u8(1);
   f64(spacing);
   f64(maxAngle);
+  u8(icon ? 1 : 0);
+  if (icon) {
+    [icon.anchor ?? 0, 0, 0, icon.optional ?? 0, icon.textOptional ?? 0, 0, 0, 0, icon.textFit ?? 0].forEach(u8);
+    [...(icon.offset ?? [0, 0]), ...(icon.padding ?? [2, 2, 2, 2]), ...(icon.fitPadding ?? [0, 0, 0, 0])].forEach(f64);
+  }
   u32(labels.length);
-  for (const [n, [x, y, size, parts, key = 0, lines = []]] of labels.entries()) {
+  const value = (p) => {
+    if (typeof p === "number") {
+      u8(3);
+      f64(p);
+    } else if (p === null) {
+      u8(0);
+    } else {
+      const s = new TextEncoder().encode(p);
+      u8(4);
+      u32(s.length);
+      bytes.push(...s);
+    }
+  };
+  for (const [n, [x, y, size, parts, key = 0, lines = [], image = null]] of labels.entries()) {
     u32(10 + n);
     i16(x);
     i16(y);
     f64(size);
     f64(key);
     u32(parts.length);
-    for (const p of parts) {
-      if (typeof p === "number") {
-        u8(3);
-        f64(p);
-      } else if (p === null) {
-        u8(0);
-      } else {
-        const s = new TextEncoder().encode(p);
-        u8(4);
-        u32(s.length);
-        bytes.push(...s);
-      }
+    parts.forEach(value);
+    if (icon) {
+      u32(image ? 1 : 0);
+      if (image) value(image[0]);
+      f64(image?.[1] ?? 1);
+      f64(image?.[2] ?? 0);
     }
     if (placement > 0) {
       u32(lines.length);
@@ -68,7 +83,7 @@ test("labels become glyph quads with their anchors, offsets, glyph indices and b
   const s = buildSymbols(entry([[100, 200, 10, ["駅", 1]], [5, 6, 10, [null]]]), glyphs);
   // The second label has no text and is left out.
   assert.equal(s.labels.length, LABEL_FLOATS);
-  assert.deepEqual([...s.labels], [100, 200, -10, -5, 10, 5, 10, 10, 0, 1, 0, 12]);
+  assert.deepEqual([...s.labels], [100, 200, -10, -5, 10, 5, 10, 10, 0, ...NO_ICON, 1, 0, 12]);
   assert.deepEqual([...s.codepoints], ["駅".codePointAt(0), "1".codePointAt(0)]);
   assert.equal(s.vertices.byteLength, 2 * 4 * SYMBOL_VERTEX_BYTES);
   assert.equal(s.count, 12);
@@ -102,8 +117,8 @@ test("variable anchors: a multi-line label once per justification, a single line
   assert.equal(s.justify, 0);
   const row = (i) => [...s.labels.slice(i * LABEL_FLOATS, (i + 1) * LABEL_FLOATS)];
   // Centered boxes; three variants of 3 quads, then one of 2.
-  assert.deepEqual(row(0), [0, 0, -10, -10, 10, 10, 10, 10, 0, 3, 0, 18]);
-  assert.deepEqual(row(1), [1, 0, -10, -5, 10, 5, 11, 10, 0, 1, 54, 12]);
+  assert.deepEqual(row(0), [0, 0, -10, -10, 10, 10, 10, 10, 0, ...NO_ICON, 3, 0, 18]);
+  assert.deepEqual(row(1), [1, 0, -10, -5, 10, 5, 11, 10, 0, ...NO_ICON, 1, 54, 12]);
   assert.equal(s.count, (9 + 2) * 6);
   // "c" starts the second line at the left, the middle and the right.
   const v = new DataView(s.vertices);
@@ -124,4 +139,39 @@ test("labels along lines: an instance per anchor and level, glyphs about their o
   const v = new DataView(s.vertices);
   const pad = Math.round(((SDF_BUFFER * 10) / SDF_SIZE) * 4);
   assert.deepEqual([v.getInt16(0, true), v.getInt16(4, true), v.getInt16(SYMBOL_VERTEX_BYTES * 4 + 4, true)], [2025, -20 - pad, -20 - pad]);
+});
+
+test("icons are shaped against their anchor and offset, padded and turned for collisions", () => {
+  const image = [20, 10, 2, false];
+  const icon = { anchor: 7, offset: [1, 2], textFit: 0, fitPadding: [0, 0, 0, 0] };
+  // 10 x 5 px at size 1, its bottom-left corner at the offset.
+  assert.deepEqual(shapeIcon(image, icon, null), [1, -3, 11, 2]);
+  // Fit to a text box of (-20, -6)-(20, 6): stretched both ways with the padding, then centered on it.
+  const fit = { ...icon, textFit: 3, fitPadding: [1, 2, 3, 4] };
+  assert.deepEqual(shapeIcon(image, fit, [-20, -6, 20, 6]), [-23, -5, 23, 11]);
+  assert.deepEqual(shapeIcon(image, { ...fit, textFit: 1 }, [-20, -6, 20, 6]), [-23, -0.5, 23, 4.5]);
+  assert.deepEqual(iconBox([0, 0, 10, 4], 2, [1, 2, 3, 4], 0), [-4, -1, 22, 11]);
+  const turned = iconBox([-1, -1, 1, 1], 1, [0, 0, 0, 0], 90).map((v) => Math.round(v * 1e9) / 1e9);
+  assert.deepEqual(turned, [-1, -1, 1, 1]);
+  // A quad a pixel of the image wider each side: 10 px over 20 image pixels.
+  assert.deepEqual(iconCorners([0, 0, 10, 5], image, 0), [[-0.5, -0.5], [10.5, -0.5], [10.5, 5.5], [-0.5, 5.5]]);
+});
+
+test("labels with icons get an icon quad, its box and its image; missing images are listed", () => {
+  const images = new Map([["dot", [8, 8, 1, false]]]);
+  const s = buildSymbols(entry([[10, 20, 10, ["a"], 0, [], ["dot", 2, 0]], [30, 40, 10, [], 0, [], ["none", 1, 0]], [50, 60, 10, [], 0, [], ["dot", 1, 0]]], 0, { icon: {} }), glyphs, images);
+  // The second label has neither text nor an image and is left out.
+  assert.equal(s.labels.length, 2 * LABEL_FLOATS);
+  assert.deepEqual(s.missing, ["none"]);
+  assert.deepEqual(s.icon.images, ["dot"]);
+  assert.equal(s.icon.count, 12);
+  // Boxes at the layout size, padded by 2: 16 px, then 8 px.
+  assert.deepEqual([...s.labels.slice(9, 16)], [-10, -10, 10, 10, 1, 0, 6]);
+  assert.deepEqual([...s.labels.slice(LABEL_FLOATS + 9, LABEL_FLOATS + 16)], [-6, -6, 6, 6, 1, 6, 6]);
+  // The icon-only label has no text indices.
+  assert.equal(s.labels[2 * LABEL_FLOATS - 1], 0);
+  const v = new DataView(s.icon.vertices);
+  // The first quad's top-left corner at size 1 (-5 px in 32nds), image 0, size 2 x 128.
+  assert.deepEqual([0, 2, 4, 6].map((o) => v.getInt16(o, true)), [10, 20, -160, -160]);
+  assert.deepEqual([8, 10, 12].map((o) => v.getUint16(o, true)), [0, 0, 256]);
 });

@@ -1203,6 +1203,8 @@ export class Map {
     if (key === this.#spriteKey) return;
     this.#spriteKey = key;
     for (const name of this.#spriteImages.splice(0)) this.removeImage(name);
+    // Tiles with icons wait for the sprite, as MapLibre's do.
+    this.#withEngine((m) => engine.map_hold_images(m, sprite != null));
     if (sprite == null) return;
     this.#fetching++;
     import("./sprite.js")
@@ -1218,6 +1220,7 @@ export class Map {
       })
       .catch((err: unknown) => this.#fail(err instanceof Error ? err : new Error(String(err))))
       .finally(() => {
+        if (key === this.#spriteKey) this.#withEngine((m) => engine.map_hold_images(m, false));
         if (--this.#fetching === 0 && this.#engine && engine.map_is_idle(this.#engine)) this.#idle();
       });
   }

@@ -32,8 +32,9 @@ pub fn PatternPosition::display_size(
 }
 
 ///|
-/// Pixels around each image, copied from its opposite edge so that linear
-/// filtering wraps (MapLibre's `IMAGE_PADDING`).
+/// Pixels around each image (MapLibre's `IMAGE_PADDING`): copied from its
+/// opposite edge in a pattern atlas so that linear filtering wraps,
+/// transparent in an icon atlas.
 const PATTERN_PADDING : Int32 = 1
 
 ///|
@@ -44,24 +45,49 @@ pub const PATTERN_ATLAS_WIDTH : Int32 = 1024
 pub const PATTERN_ATLAS_MAX : Int32 = 4096
 
 ///|
-/// The patterns of a style in one texture, packed in shelves as they are first
-/// drawn. Positions never move, so the atlas only grows.
+/// The patterns (or, without `wrap`, icons) of a style in one texture, packed
+/// in shelves as they are first drawn. Positions never move, so the atlas only
+/// grows.
 pub struct PatternAtlas {
   mut height : Int32
   mut data : FixedArray[Byte]
+  priv wrap : Bool
   priv positions : Map[String, PatternPosition]
   priv shelves : Array[(Int32, Int32, Int32)]
   priv mut dirty : Bool
 }
 
 ///|
-pub fn PatternAtlas::new() -> PatternAtlas {
+pub fn PatternAtlas::new(wrap~ : Bool = true) -> PatternAtlas {
   {
     height: 64,
     data: FixedArray::make(PATTERN_ATLAS_WIDTH * 64 * 4, b'\x00'),
+    wrap,
     positions: Map([]),
     shelves: [],
     dirty: false,
+  }
+}
+
+///|
+/// Puts `image` as `name`: over its pixels if it has their size, else in a new
+/// place (the old one is left unused, so meshes drawing it stay valid).
+pub fn PatternAtlas::put(
+  self : PatternAtlas,
+  name : String,
+  image : StyleImage,
+) -> PatternPosition? {
+  match self.positions.get(name) {
+    Some(p) if p.br.0 - p.tl.0 == image.width &&
+      p.br.1 - p.tl.1 == image.height &&
+      image.data.length() >= image.width * image.height * 4 => {
+      let p = { ..p, pixel_ratio: image.pixel_ratio, sdf: image.sdf, }
+      self.copy(image, p.tl.0, p.tl.1)
+      self.positions[name] = p
+      self.dirty = true
+      Some(p)
+    }
+    _ => self.add(name, image)
   }
 }
 
@@ -158,8 +184,8 @@ fn PatternAtlas::place(
 }
 
 ///|
-/// Copies `image` to (x, y) with each edge's pixels repeated past the opposite
-/// edge, as MapLibre's atlas pads patterns.
+/// Copies `image` to (x, y), in a pattern atlas with each edge's pixels repeated
+/// past the opposite edge, as MapLibre's atlas pads patterns.
 fn PatternAtlas::copy(
   self : PatternAtlas,
   image : StyleImage,
@@ -180,6 +206,7 @@ fn PatternAtlas::copy(
       put(i, j, i, j)
     }
   }
+  guard self.wrap else { return }
   for i in 0..<w {
     put(i, -1, i, h - 1)
     put(i, h, i, 0)

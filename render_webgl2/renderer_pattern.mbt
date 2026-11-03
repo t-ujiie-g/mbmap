@@ -122,6 +122,7 @@ fn Renderer::upload_patterns(self : Renderer) -> Unit {
   if self.patterns.take_dirty() {
     gl_pattern_atlas(
       self.gl,
+      "patterns",
       self.patterns.data,
       PATTERN_ATLAS_WIDTH,
       self.patterns.height,

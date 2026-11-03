@@ -143,9 +143,6 @@ fn parse_text(
       }
     }
   }
-  if layout.get("icon-image") is Some(_) {
-    raise Unsupported(path="\{path}.icon-image", "icons")
-  }
   let anchor = match layout.get("text-anchor") {
     None => TextAnchor::Center
     Some(j) => anchor_of(j, "\{path}.text-anchor")

@@ -20,7 +20,14 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
         sl.stroke_color,
         sl.stroke_opacity,
       ]
-    Symbol => [sl.color, sl.opacity, sl.halo_color, sl.halo_width]
+    Symbol =>
+      [
+        sl.color,
+        sl.opacity,
+        sl.halo_color,
+        sl.halo_width,
+        ..sl.icon_paint.map_or([], p => p.exprs()),
+      ]
     // Base and height go into the vertices instead.
     _ => [sl.color, sl.opacity]
   }

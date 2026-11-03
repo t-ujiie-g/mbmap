@@ -48,6 +48,7 @@ fn Map::remap(
     }
   }
   for m in dropped {
+    release_icons(self.renderer, m)
     guard m.owned else { continue }
     match kept.search_by(k => physical_equal(k.mesh, m.mesh)) {
       Some(i) => kept[i].owned = true
@@ -115,6 +116,8 @@ pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
   self.vertex_paint = next.layers.map(l => l.vertex_paint())
   self.prune_ramps()
   self.has_labels = next.layers.iter().any(l => l.kind is Symbol)
+  // Whether workers hold tiles for a sprite depends on the style's icons.
+  self.changed_images.add("")
   self.content_version += 1
   self.dem_version += 1
   self.labels_dirty = true
@@ -135,6 +138,22 @@ pub fn Map::set_style(self : Map, style_json : String) -> Unit raise MapError {
 }
 
 ///|
+/// Cancels `e`'s load, keeping the meshes it had meanwhile as stale; false when
+/// it had none.
+fn Map::cancel_load(self : Map, e : TileEntry) -> Bool {
+  guard e.state is Loading(request~, worker~, previous~) else { return true }
+  post_cancel(self.workers[worker], request)
+  self.requests.remove(request)
+  match previous {
+    Some(m) => {
+      e.state = Stale(m)
+      true
+    }
+    None => false
+  }
+}
+
+///|
 /// Loads every tile of source `id` again (its data changed), drawing the old
 /// ones until then.
 pub fn Map::reload_source(self : Map, id : String) -> Unit {
@@ -146,14 +165,7 @@ pub fn Map::reload_source(self : Map, id : String) -> Unit {
   for key, e in tiles {
     match e.state {
       Ready(m) => e.state = Stale(m)
-      Loading(request~, worker~, previous~) => {
-        post_cancel(self.workers[worker], request)
-        self.requests.remove(request)
-        match previous {
-          Some(m) => e.state = Stale(m)
-          None => gone.push(key)
-        }
-      }
+      Loading(_) => if !self.cancel_load(e) { gone.push(key) }
       Stale(_) => ()
       Failed => gone.push(key)
     }
