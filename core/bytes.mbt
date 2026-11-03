@@ -85,6 +85,12 @@ pub fn ByteWriter::pad4(self : ByteWriter) -> Unit {
 }
 
 ///|
+/// The bytes written to `other` so far.
+pub fn ByteWriter::append(self : ByteWriter, other : ByteWriter) -> Unit {
+  self.buf.append(other.buf)
+}
+
+///|
 /// Empties the writer, keeping its capacity for reuse.
 pub fn ByteWriter::clear(self : ByteWriter) -> Unit {
   self.buf.clear()

@@ -12,21 +12,6 @@ fn Labels::new() -> Labels {
 }
 
 ///|
-fn anchor_code(a : @style.TextAnchor) -> Int32 {
-  match a {
-    Center => 0
-    Left => 1
-    Right => 2
-    Top => 3
-    Bottom => 4
-    TopLeft => 5
-    TopRight => 6
-    BottomLeft => 7
-    BottomRight => 8
-  }
-}
-
-///|
 /// The entry's bytes: the layer's layout, then the labels.
 fn Labels::bytes(
   self : Labels,
@@ -34,7 +19,7 @@ fn Labels::bytes(
   icon : @style.IconLayout?,
 ) -> Bytes {
   let h = @core.ByteWriter::new()
-  h.u8(anchor_code(t.anchor))
+  h.u8(t.anchor.code())
   h.u8(if t.allow_overlap { 1 } else { 0 })
   h.u8(if t.ignore_placement { 1 } else { 0 })
   h.u8(if t.vertical { 1 } else { 0 })
@@ -52,7 +37,7 @@ fn Labels::bytes(
   let tries = @cmp.minimum(t.variable.length(), 255)
   h.u8(tries)
   for v in t.variable[:tries] {
-    h.u8(anchor_code(v.0))
+    h.u8(v.0.code())
     h.f64(v.1)
     h.f64(v.2)
   }
@@ -69,7 +54,7 @@ fn Labels::bytes(
   let flag = (b : Bool) => h.u8(if b { 1 } else { 0 })
   flag(icon is Some(_))
   if icon is Some(i) {
-    h.u8(anchor_code(i.anchor))
+    h.u8(i.anchor.code())
     for
       b in [
         i.allow_overlap,
@@ -97,9 +82,7 @@ fn Labels::bytes(
     }
   }
   h.u32(self.count)
-  for b in self.w.to_bytes() {
-    h.u8(b.to_int())
-  }
+  h.append(self.w)
   h.to_bytes()
 }
 
@@ -117,10 +100,11 @@ fn Labels::add(
   parts : Array[@style.Value],
   icon : (Array[@style.Value], Double, Double)?,
 ) -> Bool {
-  let empty = (ps : Array[@style.Value]) => {
-    ps.iter().all(v => v is (Null | Str("")))
+  let icon_empty = match icon {
+    Some((name, _, _)) => no_value(name)
+    None => true
   }
-  if empty(parts) && icon.map_or(true, i => empty(i.0)) {
+  if no_value(parts) && icon_empty {
     return false
   }
   let w = self.w
@@ -129,15 +113,9 @@ fn Labels::add(
   w.i16(y)
   w.f64(size)
   w.f64(sort_key)
-  let values = (ps : Array[@style.Value]) => {
-    w.u32(ps.length())
-    for v in ps {
-      write_value(w, v)
-    }
-  }
-  values(parts)
+  write_values(w, parts)
   if icon is Some((name, size, rotate)) {
-    values(name)
+    write_values(w, name)
     w.f64(size)
     w.f64(rotate)
   }
@@ -146,18 +124,62 @@ fn Labels::add(
 }
 
 ///|
+/// Whether none of `parts` has a value: each is null or empty.
+fn no_value(parts : Array[@style.Value]) -> Bool {
+  for v in parts {
+    if !(v is (Null | Str(""))) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+/// Whether one of `parts` failed to evaluate.
+fn any_failed(parts : Array[@style.Value]) -> Bool {
+  for v in parts {
+    if v is Failed {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// A count, then each of `parts`.
+fn write_values(w : @core.ByteWriter, parts : Array[@style.Value]) -> Unit {
+  w.u32(parts.length())
+  for v in parts {
+    write_value(w, v)
+  }
+}
+
+///|
+/// `e`'s number at zoom `z` for `feature`, or `default` if it gives none.
+fn number_or(
+  e : @style.Expr,
+  z : Double,
+  feature : FeatureRef,
+  default : Double,
+) -> Double {
+  match e.eval(z, feature) {
+    Num(n) if n == n => n
+    _ => default
+  }
+}
+
+///|
 /// Adds the lines of `g` (`TILE_EXTENT` units, clamped to i16) to the label
 /// just added: a count, then each line's point count and points.
 fn Labels::lines(self : Labels, g : @mvt.Geometry, extent : Int32) -> Unit {
   let w = self.w
-  let clamp = (v : Int32) => @cmp.minimum(32767, @cmp.maximum(-32768, v))
   w.u32(g.num_rings())
   for r in 0..<g.num_rings() {
     let start = g.ring_start(r)
     w.u32(g.ring_ends[r] - start)
     for p in start..<g.ring_ends[r] {
-      w.i16(clamp(rescale(g.coords[p * 2], extent)))
-      w.i16(clamp(rescale(g.coords[p * 2 + 1], extent)))
+      w.i16(rescale(g.coords[p * 2], extent))
+      w.i16(rescale(g.coords[p * 2 + 1], extent))
     }
   }
 }
@@ -171,8 +193,8 @@ fn TileProcessor::labels(self : TileProcessor, g : Int32) -> Labels {
 }
 
 ///|
-/// Labels of a symbol layer's points; anchors outside the tile are left to the
-/// tile that holds them, as MapLibre does.
+/// Labels of a symbol layer: at its points, whose anchors outside the tile are
+/// left to the tile that holds them as MapLibre does, or along its lines.
 fn TileProcessor::symbol_layer(
   self : TileProcessor,
   index : Int32,
@@ -208,7 +230,7 @@ fn TileProcessor::symbol_layer(
       parts.push(e.eval(zoom, feature))
     }
     // A failing part fails the whole `text-field`, which then has no text.
-    if parts.iter().any(p => p is Failed) {
+    if any_failed(parts) {
       parts.clear()
     }
     let size = match text.size.eval(zoom, feature) {
@@ -225,25 +247,25 @@ fn TileProcessor::symbol_layer(
         for e in l.image {
           icon_parts.push(e.eval(zoom, feature))
         }
-        if icon_parts.iter().any(p => p is Failed) {
+        if any_failed(icon_parts) {
           icon_parts.clear()
         }
-        let n = (e : @style.Expr, z : Double, d : Double) => {
-          match e.eval(z, feature) {
-            Num(n) if n == n => n
-            _ => d
-          }
-        }
-        Some((icon_parts, n(l.size, zoom + 1.0, 1.0), n(l.rotate, zoom, 0.0)))
+        Some(
+          (
+            icon_parts,
+            number_or(l.size, zoom + 1.0, feature, 1.0),
+            number_or(l.rotate, zoom, feature, 0.0),
+          ),
+        )
       }
       None => None
     }
     if parts.is_empty() && icon is None {
       continue
     }
-    let sort_key = match text.sort_key.map(e => e.eval(zoom, feature)) {
-      Some(Num(n)) => n
-      _ => 0.0
+    let sort_key = match text.sort_key {
+      Some(e) => number_at(e, zoom, feature)
+      None => 0.0
     }
     if !self.decode(layer, i) {
       return false

@@ -75,7 +75,7 @@ pub fn LineAtlas::dash(
 
 ///|
 /// Whether patterns were added since the last call.
-pub fn LineAtlas::take_dirty(self : LineAtlas) -> Bool {
+fn LineAtlas::take_dirty(self : LineAtlas) -> Bool {
   let d = self.dirty
   self.dirty = false
   d

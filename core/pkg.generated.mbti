@@ -108,6 +108,7 @@ pub fn ByteReader::utf8(Self) -> String
 pub struct ByteWriter {
   // private fields
 }
+pub fn ByteWriter::append(Self, Self) -> Unit
 pub fn ByteWriter::clear(Self) -> Unit
 pub fn ByteWriter::f32(Self, Double) -> Unit
 pub fn ByteWriter::f64(Self, Double) -> Unit

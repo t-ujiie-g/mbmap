@@ -24,6 +24,7 @@ pub fn Grid::insert(Self, Double, Double, Double, Double) -> Unit
 pub fn Grid::insert_circle(Self, Double, Double, Double) -> Unit
 pub fn Grid::inside(Self, Double, Double, Double, Double) -> Bool
 pub fn Grid::new(Double, Double, cell? : Double) -> Self
+pub fn Grid::reset(Self, Double, Double) -> Unit
 
 // Type aliases
 

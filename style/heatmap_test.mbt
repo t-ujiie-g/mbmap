@@ -73,8 +73,6 @@ test "heatmap paint is read from its own properties" {
     h.color.eval(0.0, { d: 0.7, }),
     Color({ r: 1.0, g: 1.0, b: 1.0, a: 1.0, }),
   )
-  assert_true(h.color.reads_heatmap_density())
-  assert_true(!h.weight.reads_heatmap_density())
 }
 
 ///|
@@ -107,6 +105,21 @@ test "heatmap-density only in heatmap-color, which reads nothing else" {
     Invalid(_, ..) => fail("unexpected Invalid")
   } noraise {
     _ => fail("expected Unsupported")
+  }
+}
+
+///|
+test "data-driven or state heatmap-intensity is Invalid at its own path" {
+  for
+    bad in [
+      "{\"heatmap-intensity\": [\"get\", \"i\"]}", "{\"heatmap-intensity\": [\"feature-state\", \"i\"]}",
+    ] {
+    try heatmap_style(bad) catch {
+      Invalid(path~, _) => assert_eq(path, "layers[0].paint.heatmap-intensity")
+      Unsupported(path~, _) => fail("unexpected Unsupported at \{path}")
+    } noraise {
+      _ => fail("expected Invalid for \{bad}")
+    }
   }
 }
 

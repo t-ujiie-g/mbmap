@@ -27,6 +27,19 @@ test "ByteWriter and ByteReader round-trip little-endian values" {
 }
 
 ///|
+test "ByteWriter::append adds another writer's bytes" {
+  let w = @core.ByteWriter::new()
+  w.u8(1)
+  let other = @core.ByteWriter::new()
+  other.u8(2)
+  other.u8(3)
+  w.append(other)
+  w.append(@core.ByteWriter::new())
+  assert_eq(w.to_bytes(), b"\x01\x02\x03")
+  assert_eq(other.to_bytes(), b"\x02\x03")
+}
+
+///|
 test "ByteReader fails sticky past the end and on fail()" {
   let r = @core.ByteReader::new(b"\x01\x02\x03"[:])
   assert_eq(r.u32(), 0)

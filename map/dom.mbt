@@ -354,3 +354,32 @@ extern "js" fn null_provider() -> Provider =
 ///|
 extern "js" fn is_null_provider(p : Provider) -> Bool =
   #|(p) => p == null
+
+///|
+extern "js" fn f32_at(buffer : @render_webgl2.JsBuffer, i : Int32) -> Double =
+  #|(b, i) => b[i]
+
+///|
+extern "js" fn length_of(buffer : @render_webgl2.JsBuffer) -> Int32 =
+  #|(b) => b.length
+
+///|
+extern "js" fn u32_at(buffer : @render_webgl2.JsBuffer, i : Int32) -> Int32 =
+  #|(b, i) => b[i] | 0
+
+///|
+extern "js" fn get_bool(v : JsValue, key : String) -> Bool =
+  #|(v, k) => v[k] === true
+
+///|
+extern "js" fn get_value(v : JsValue, key : String) -> JsValue =
+  #|(v, k) => v[k] ?? null
+
+///|
+/// The strings of array `v[key]` (none if it is not an array).
+extern "js" fn strings_of(v : JsValue, key : String) -> FixedArray[String] =
+  #|(v, k) => Array.isArray(v[k]) ? v[k].filter((x) => typeof x === "string") : []
+
+///|
+extern "js" fn has(v : JsValue, key : String) -> Bool =
+  #|(v, k) => v[k] != null

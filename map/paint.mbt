@@ -133,6 +133,18 @@ fn color_of(e : @style.Expr, zoom : Double, ctx : JsProps) -> @style.Color {
 }
 
 ///|
+/// `c` as straight RGBA, as the renderer takes colors.
+fn rgba_of(c : @style.Color) -> FixedArray[Double] {
+  [c.r, c.g, c.b, c.a]
+}
+
+///|
+/// The paint's color with its opacity applied, as straight RGBA.
+fn Paint::rgba(self : Paint) -> FixedArray[Double] {
+  [self.r, self.g, self.b, self.a]
+}
+
+///|
 fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
   let c = color_of(layer.color, zoom, ctx)
   let opacity = number_or(layer.opacity.eval(zoom, ctx), 1.0)
@@ -246,7 +258,7 @@ pub fn Map::paint_at(
     obj: properties_value(props),
   })
   paint_object(
-    [p.r, p.g, p.b, p.a],
+    p.rgba(),
     p.width,
     p.radius,
     p.stroke,

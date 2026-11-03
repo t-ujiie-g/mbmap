@@ -61,8 +61,6 @@ fn TileProcessor::flush_ranges(
 pub fn TileProcessor::feature_ranges(self : TileProcessor) -> Bytes {
   let w = @core.ByteWriter::new()
   w.u32(self.range_entries)
-  for b in self.ranges.to_bytes() {
-    w.u8(b.to_int())
-  }
+  w.append(self.ranges)
   w.to_bytes()
 }

@@ -34,9 +34,33 @@ fn anchor_of(j : Json, path : String) -> TextAnchor raise StyleError {
 }
 
 ///|
-/// The shares of a label's width and height left of and above `a`.
-fn align(a : TextAnchor) -> (Double, Double) {
-  match a {
+/// The anchor's code in a symbol entry (docs/FORMATS.md "Labels"): its place
+/// in `TextAnchor`'s order.
+pub fn TextAnchor::code(self : TextAnchor) -> Int32 {
+  match self {
+    Center => 0
+    Left => 1
+    Right => 2
+    Top => 3
+    Bottom => 4
+    TopLeft => 5
+    TopRight => 6
+    BottomLeft => 7
+    BottomRight => 8
+  }
+}
+
+///|
+/// The anchor of `code` (`TextAnchor::code`); `Center` for an unknown code.
+pub fn TextAnchor::from_code(code : Int32) -> TextAnchor {
+  anchor_values.get(code).unwrap_or(Center)
+}
+
+///|
+/// MapLibre's alignment of a label against its anchor: the shares of its width
+/// and height left of and above it.
+pub fn TextAnchor::align(self : TextAnchor) -> (Double, Double) {
+  match self {
     Center => (0.5, 0.5)
     Left => (0.0, 0.5)
     Right => (1.0, 0.5)
@@ -63,7 +87,7 @@ fn variable_offset(
   y : Double,
   radial~ : Bool,
 ) -> (Double, Double) {
-  let (h, v) = align(a)
+  let (h, v) = a.align()
   let (dx, dy) = if radial {
     let r = @cmp.maximum(x, 0.0)
     let d = if h != 0.5 && v != 0.5 { r / 2.0.sqrt() } else { r }
@@ -96,7 +120,7 @@ fn variable_anchors(
           raise Invalid(path=p, "not anchors and offsets")
         }
         let a = anchor_of(list[i], p)
-        out.push((a, x, y + (2.0 * align(a).1 - 1.0) * BASELINE_OFFSET))
+        out.push((a, x, y + (2.0 * a.align().1 - 1.0) * BASELINE_OFFSET))
       }
       return out
     }

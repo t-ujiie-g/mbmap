@@ -56,3 +56,20 @@ test "a box is inside the grid while some of it lies on it" {
   assert_false(g.inside(200.0, 0.0, 210.0, 10.0))
   assert_true(g.inside(199.9, 99.9, 210.0, 110.0))
 }
+
+///|
+test "reset empties the grid and resizes it" {
+  let g = @label.Grid::new(200.0, 100.0, cell=32.0)
+  g.insert(10.0, 10.0, 50.0, 20.0)
+  g.insert_circle(150.0, 50.0, 10.0)
+  g.reset(200.0, 100.0)
+  assert_false(g.hits(0.0, 0.0, 199.0, 99.0))
+  assert_false(g.hits_circle(150.0, 50.0, 10.0))
+  g.insert(10.0, 10.0, 50.0, 20.0)
+  assert_true(g.hits(40.0, 15.0, 90.0, 40.0))
+  g.reset(400.0, 300.0)
+  assert_false(g.hits(40.0, 15.0, 90.0, 40.0))
+  assert_true(g.inside(390.0, 290.0, 410.0, 310.0))
+  g.insert(350.0, 250.0, 380.0, 280.0)
+  assert_true(g.hits(370.0, 270.0, 390.0, 290.0))
+}

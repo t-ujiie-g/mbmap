@@ -4,6 +4,15 @@
 const HEATMAP_TILE_SIZE : Double = 512.0
 
 ///|
+/// The size of a heatmap's density texture on screen over the viewport's, as
+/// MapLibre's (a quarter).
+const HEATMAP_SCREEN_SCALE : Double = 0.25
+
+///|
+/// Pixels in a heatmap's color ramp, as MapLibre's `renderColorRamp` makes it.
+const HEATMAP_RAMP_WIDTH : Int32 = 256
+
+///|
 /// Draws heatmap layer `index` as MapLibre does: each point's kernel added into
 /// a density texture `scale` times the viewport's size, then colored through
 /// the layer's ramp; `px` device (or texture) pixels per CSS pixel.
@@ -46,19 +55,24 @@ fn Map::draw_heatmap(
 }
 
 ///|
-/// The 256-pixel color ramp of `heatmap-color` `e` over density (MapLibre's
+/// The color ramp of `heatmap-color` `e` over density (MapLibre's
 /// `renderColorRamp`), made once per expression.
 fn Map::heatmap_ramp(self : Map, e : @style.Expr) -> @render_webgl2.Gradient {
   match self.ramps.search_by(r => r.0 == e) {
     Some(i) => self.ramps[i].1
     None => {
-      let pixels = @render_webgl2.color_ramp([], 256, d => {
+      let pixels = @render_webgl2.color_ramp([], HEATMAP_RAMP_WIDTH, d => {
         match e.eval(0.0, { ..JsProps::none(), density: d, }) {
           Color(c) => (c.r, c.g, c.b, c.a)
           _ => (0.0, 0.0, 0.0, 0.0)
         }
       })
-      let g = self.renderer.upload_gradient(pixels, 256, 1, nearest=false)
+      let g = self.renderer.upload_gradient(
+        pixels,
+        HEATMAP_RAMP_WIDTH,
+        1,
+        nearest=false,
+      )
       self.ramps.push((e, g))
       g
     }

@@ -136,8 +136,6 @@ pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
 pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
-pub fn Expr::reads_heatmap_density(Self) -> Bool
-pub fn Expr::reads_line_progress(Self) -> Bool
 pub fn Expr::reads_state(Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
@@ -430,7 +428,10 @@ pub(all) enum TextAnchor {
   BottomLeft
   BottomRight
 } derive(Eq, @debug.Debug)
+pub fn TextAnchor::align(Self) -> (Double, Double)
+pub fn TextAnchor::code(Self) -> Int32
 pub fn TextAnchor::equal(Self, Self) -> Bool
+pub fn TextAnchor::from_code(Int32) -> Self
 pub fn TextAnchor::not_equal(Self, Self) -> Bool
 pub fn TextAnchor::to_repr(Self) -> @debug.Repr
 
