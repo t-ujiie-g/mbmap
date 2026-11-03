@@ -150,6 +150,9 @@ pub struct Map {
     String,
     @hashmap.HashMap[String, JsValue],
   ]
+  priv images : @hashmap.HashMap[String, @render_webgl2.StyleImage]
+  priv missing_images : @hashset.HashSet[String]
+  priv mut on_missing_image : (String) -> Unit
   /// Heatmap color ramps by `heatmap-color` expression.
   priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
 }
@@ -257,6 +260,9 @@ pub fn Map::new(
     next_query: 0,
     window: None,
     feature_states: @hashmap.HashMap([]),
+    images: @hashmap.HashMap([]),
+    missing_images: @hashset.HashSet([]),
+    on_missing_image: _ => (),
     ramps: [],
   }
   let wasm = absolute_url(wasm_url)

@@ -95,7 +95,8 @@ impl @style.FeatureContext for JsProps with fn geometry_type(self) {
 /// A layer's paint values for one draw: colors are straight RGBA (`r`, `g`,
 /// `b`, `a` with the opacity in; `color` and `opacity` apart, as the shaders'
 /// slots take them); `width` a line's, `radius` a circle's or heatmap's, `weight`
-/// a heatmap's, the stroke a circle's (0 and transparent for other kinds).
+/// a heatmap's, the stroke a circle's (0 and transparent for other kinds);
+/// `pattern` the image a fill or background repeats, at the integer zoom.
 priv struct Paint {
   r : Double
   g : Double
@@ -112,6 +113,7 @@ priv struct Paint {
   stroke_width : Double
   halo : FixedArray[Double]
   halo_width : Double
+  pattern : String?
 }
 
 ///|
@@ -187,6 +189,14 @@ fn paint_of(layer : @style.StyleLayer, zoom : Double, ctx : JsProps) -> Paint {
       number_or(layer.halo_width.eval(zoom, ctx), 0.0)
     } else {
       0.0
+    },
+    pattern: match layer.pattern {
+      Some(e) =>
+        match e.eval(@cmp.maximum(0.0, zoom.floor()), ctx) {
+          Str(name) => Some(name)
+          _ => None
+        }
+      None => None
     },
   }
 }

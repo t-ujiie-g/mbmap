@@ -482,3 +482,44 @@ pub fn map_paint_at(
 ) -> @map.PaintValues {
   map.paint_at(id, props)
 }
+
+///|
+/// Adds or replaces style image `name` (straight RGBA bytes, `width` x
+/// `height`); false when the bytes do not match the size.
+#export_name("map_add_image")
+pub fn map_add_image(
+  map : @map.Map,
+  name : String,
+  width : Int32,
+  height : Int32,
+  data : FixedArray[Byte],
+  pixel_ratio : Double,
+  sdf : Bool,
+) -> Bool {
+  map.add_image(name, width, height, data, pixel_ratio~, sdf~)
+}
+
+///|
+#export_name("map_remove_image")
+pub fn map_remove_image(map : @map.Map, name : String) -> Bool {
+  map.remove_image(name)
+}
+
+///|
+#export_name("map_has_image")
+pub fn map_has_image(map : @map.Map, name : String) -> Bool {
+  map.has_image(name)
+}
+
+///|
+#export_name("map_image_names")
+pub fn map_image_names(map : @map.Map) -> Array[String] {
+  map.image_names()
+}
+
+///|
+/// Calls `f` with the name of an image the style lacks (`styleimagemissing`).
+#export_name("map_on_missing_image")
+pub fn map_on_missing_image(map : @map.Map, f : (String) -> Unit) -> Unit {
+  map.on_missing_image(f)
+}

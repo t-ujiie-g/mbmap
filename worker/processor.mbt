@@ -489,7 +489,7 @@ fn TileProcessor::circle_layer(
 /// Whether `sl`'s data-driven paint goes per vertex rather than by groups:
 /// fills, lines, circles and heatmaps that do not read feature state.
 fn per_vertex(sl : @style.StyleLayer) -> Bool {
-  sl.kind is (Fill | Line | Circle | Heatmap) && !sl.reads_state()
+  sl.kind is (Fill | Line | Circle | Heatmap) && !sl.paints_by_group()
 }
 
 ///|

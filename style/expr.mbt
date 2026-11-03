@@ -300,8 +300,13 @@ fn Compiler::compile(
 fn arity(op : String) -> (Int32, Int32, Int32) {
   match op {
     "id" | "geometry-type" | "zoom" | "pi" | "e" | "ln2" => (0, 0, -1)
-    "literal" | "feature-state" | "!" | "to-string" | "to-boolean" | "var" =>
-      (1, 1, -1)
+    "literal"
+    | "feature-state"
+    | "!"
+    | "to-string"
+    | "to-boolean"
+    | "var"
+    | "image" => (1, 1, -1)
     "get" | "has" => (1, 2, -1)
     "==" | "!=" | "<" | "<=" | ">" | ">=" | "in" => (2, 2, -1)
     "all" | "any" => (0, 1 << 20, -1)
@@ -442,6 +447,8 @@ fn Compiler::compile_at(
     "to-number" => Coerce(NumberType, rest(1, AnyType))
     "to-color" => Coerce(ColorType, rest(1, AnyType))
     "to-string" => Coerce(StringType, rest(1, AnyType))
+    // An image is known by its name (MapLibre's ResolvedImage).
+    "image" => Coerce(StringType, rest(1, AnyType))
     "to-boolean" => Coerce(BoolType, rest(1, AnyType))
     "!" => Not(arg(1, BoolType))
     "all" => All(rest(1, BoolType))

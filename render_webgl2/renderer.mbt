@@ -4,6 +4,7 @@
 pub struct Renderer {
   priv gl : Gl
   priv atlas : LineAtlas
+  priv patterns : PatternAtlas
 }
 
 ///|
@@ -13,7 +14,7 @@ pub fn Renderer::new(canvas : Canvas) -> Renderer? {
   if is_null(gl) {
     None
   } else {
-    Some({ gl, atlas: LineAtlas::new(), })
+    Some({ gl, atlas: LineAtlas::new(), patterns: PatternAtlas::new(), })
   }
 }
 
@@ -74,6 +75,7 @@ pub(all) struct Placement {
   center_depth : Double
   clip : FixedArray[Double]
   latitudes : (Double, Double)
+  pattern : PatternTile
 }
 
 ///|
@@ -144,7 +146,7 @@ pub fn Renderer::draw_fill(
   slots : PaintSlots,
 ) -> Unit {
   self.bind("fill", mesh, slots, 2)
-  gl_draw_fill(self.gl, mesh, at.matrix.m, at.clip)
+  gl_draw_fill(self.gl, "fill", mesh, at.matrix.m, at.clip)
 }
 
 ///|
@@ -168,7 +170,7 @@ pub fn Renderer::draw_fill_outline(
   slots : PaintSlots,
 ) -> Unit {
   self.bind("fillOutline", mesh, slots, 4)
-  gl_draw_outline(self.gl, mesh, at.matrix.m, at.clip)
+  gl_draw_outline(self.gl, "fillOutline", mesh, at.matrix.m, at.clip)
 }
 
 ///|
