@@ -14,6 +14,7 @@ fn build_tiler(
   extent : Int32,
   buffer : Int32,
   wrap : Bool,
+  line_metrics : Bool,
   trig : @tiler.Trig,
   slow_number~ : (Int32, Int32) -> Double = (s, e) => {
     @core.strconv_number(bytes[s:e])
@@ -30,6 +31,7 @@ fn build_tiler(
     extent,
     buffer,
     wrap,
+    line_metrics,
   }
   current_tiler.val = Some(@tiler.Tiler::new(table, options~, trig~))
   table.length()
@@ -72,6 +74,38 @@ pub fn geojson_tile(z : Int32, x : Int32, y : Int32) -> FixedArray[Int32] {
     out.push(v)
   }
   FixedArray::from_array(out)
+}
+
+///|
+/// Tile (z, x, y)'s line metrics (`TileData::clips`), empty without them.
+#export_name("geojson_tile_clips")
+pub fn geojson_tile_clips(
+  z : Int32,
+  x : Int32,
+  y : Int32,
+) -> FixedArray[Double] {
+  guard current_tiler.val is Some(t) && t.tile(z, x, y) is Some(d) else {
+    return []
+  }
+  FixedArray::from_array(d.clips)
+}
+
+///|
+/// FNV-1a over the 32-bit halves of `geojson_tile_clips` (low half first).
+#export_name("geojson_tile_clips_hash")
+pub fn geojson_tile_clips_hash(z : Int32, x : Int32, y : Int32) -> Int32 {
+  let mut h = 0x811c9dc5
+  for v in geojson_tile_clips(z, x, y) {
+    // NaN as JavaScript writes it into a Float64Array.
+    let bits = if v.is_nan() {
+      0x7ff8000000000000L
+    } else {
+      v.reinterpret_as_int64()
+    }
+    h = (h ^ bits.to_int()) * 0x01000193
+    h = (h ^ (bits >> 32).to_int()) * 0x01000193
+  }
+  h
 }
 
 ///|

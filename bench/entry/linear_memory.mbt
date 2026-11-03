@@ -75,7 +75,8 @@ pub fn fill_hash_mem(addr : Int32, len : Int32) -> Int32 {
 }
 
 ///|
-/// `build_tiler` on GeoJSON at `[addr, addr + len)`; `wrap` is 0 or 1.
+/// `build_tiler` on GeoJSON at `[addr, addr + len)`; `wrap` and
+/// `line_metrics` are 0 or 1.
 #export_name("geojson_tiler_mem")
 pub fn geojson_tiler_mem(
   addr : Int32,
@@ -87,6 +88,7 @@ pub fn geojson_tiler_mem(
   extent : Int32,
   buffer : Int32,
   wrap : Int32,
+  line_metrics : Int32,
 ) -> Int32 {
   build_tiler(
     bytes_from_mem(addr, len)[:],
@@ -97,6 +99,7 @@ pub fn geojson_tiler_mem(
     extent,
     buffer,
     wrap != 0,
+    line_metrics != 0,
     host_trig(),
     slow_number=host_slow_number(addr),
   )
@@ -181,6 +184,7 @@ pub fn geojson_tiler_table_mem(
       extent,
       buffer,
       wrap: wrap != 0,
+      line_metrics: false,
     },
     host_trig(),
   )

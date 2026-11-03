@@ -39,7 +39,7 @@ export async function runGeoJSONBench(fetchBytes, { gc }, { runs = 5 } = {}) {
   const o = OPTIONS;
   const buildMbmap = (bytes) => {
     const addr = gc.copyIn(bytes);
-    return e.geojson_tiler_mem(addr, bytes.length, o.maxZoom, o.indexMaxZoom, o.indexMaxPoints, o.tolerance, o.extent, o.buffer, o.wrap ? 1 : 0);
+    return e.geojson_tiler_mem(addr, bytes.length, o.maxZoom, o.indexMaxZoom, o.indexMaxPoints, o.tolerance, o.extent, o.buffer, o.wrap ? 1 : 0, 0);
   };
   const time = (f) => {
     f(); // warm-up

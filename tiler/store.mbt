@@ -3,8 +3,9 @@
 
 ///|
 /// geojson-vt's projected features, nested like `@geom.Table` with points as
-/// (x, y, importance) in `pts` and `size` a ring's length or area. A conversion
-/// or clip writes a store of its own; features kept whole are shared (`FRef`).
+/// (x, y, importance) in `pts`, `size` a ring's length or area and `from`, `to`
+/// where a line's slice lies along it (line metrics). A conversion or clip
+/// writes a store of its own; features kept whole are shared (`FRef`).
 priv struct Store {
   kind : Array[Int32]
   row : Array[Int32]
@@ -16,6 +17,8 @@ priv struct Store {
   ring_ends : Array[Int32]
   point_ends : Array[Int32]
   size : Array[Double]
+  from : Array[Double]
+  to : Array[Double]
   pts : Array[Double]
 }
 
@@ -32,6 +35,8 @@ fn Store::new() -> Store {
     ring_ends: [],
     point_ends: [],
     size: [],
+    from: [],
+    to: [],
     pts: [],
   }
 }
@@ -67,11 +72,19 @@ fn Store::open_points(self : Store) -> Int32 {
 }
 
 ///|
-/// Closes the ring of points pushed since the last one, if any.
-fn Store::end_ring(self : Store, size : Double) -> Unit {
+/// Closes the ring of points pushed since the last one, if any; a line's slice
+/// lies from `from` to `to` along it (all of it by default).
+fn Store::end_ring(
+  self : Store,
+  size : Double,
+  from~ : Double = 0.0,
+  to~ : Double = size,
+) -> Unit {
   if self.open_points() > 0 {
     self.point_ends.push(self.pts.length() / 3)
     self.size.push(size)
+    self.from.push(from)
+    self.to.push(to)
   }
 }
 
@@ -93,6 +106,8 @@ fn Store::end_feature(self : Store, kind : Int32, row : Int32) -> Int32 {
     let r = last_or_zero(self.ring_ends)
     self.point_ends.truncate(r)
     self.size.truncate(r)
+    self.from.truncate(r)
+    self.to.truncate(r)
     self.pts.truncate(last_or_zero(self.point_ends) * 3)
     return -1
   }

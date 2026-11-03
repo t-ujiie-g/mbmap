@@ -212,9 +212,11 @@ a vector tile keeps its first place and last value, as a JS object does.
 In:
 
 - `{type: "init", wasm}`.
-- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance, cluster}`: `source` is a
+- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster}`: `source` is a
   number naming the source; `url` is fetched without credentials, `bytes` is the
   GeoJSON as UTF-8; the options are MapLibre's GeoJSON source options in pixels.
+  With `lineMetrics` (a boolean) each line feature of a tile has `geojsonvt_clip_start`
+  and `geojsonvt_clip_end` (`@tiler.CLIP_START`, `CLIP_END`).
   `cluster` is null, or `{maxZoom, radius, minPoints}` as MapLibre's GeoJSONSource
   derives them (`npm/src/geojson.ts`); its tiles then hold points and clusters.
   Loading a number again replaces its data once the earlier load has finished.

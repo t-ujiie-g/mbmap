@@ -17,7 +17,7 @@ function input(bytes) {
 
 const isInt32 = (v) => Number.isInteger(v) && v >= -(2 ** 31) && v < 2 ** 31;
 
-async function load({ source, url, bytes, maxzoom, buffer, tolerance, cluster }, previous) {
+async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster }, previous) {
   await ready;
   // A source loaded again keeps the order of its loads.
   await previous?.catch(() => {});
@@ -33,7 +33,7 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance, cluster },
   }
   input(data);
   const c = cluster ?? { maxZoom: 0, radius: 0, minPoints: 0 };
-  const n = wasm.load(source, maxzoom, buffer, tolerance, cluster ? 1 : 0, c.maxZoom, c.radius, c.minPoints);
+  const n = wasm.load(source, maxzoom, buffer, tolerance, lineMetrics === true ? 1 : 0, cluster ? 1 : 0, c.maxZoom, c.radius, c.minPoints);
   if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), -n)));
   return n;
 }

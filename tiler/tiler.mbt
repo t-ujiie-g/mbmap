@@ -4,7 +4,8 @@
 ///|
 /// geojson-vt's options and defaults: tiles up to `index_max_zoom` (or
 /// `index_max_points`) are cut up front, the rest on demand; `tolerance` and
-/// `buffer` are in tile units.
+/// `buffer` are in tile units; with `line_metrics`, line features tell where
+/// they lie along their line (`CLIP_START`, `CLIP_END`).
 pub(all) struct TilerOptions {
   max_zoom : Int32
   index_max_zoom : Int32
@@ -13,6 +14,7 @@ pub(all) struct TilerOptions {
   extent : Int32
   buffer : Int32
   wrap : Bool
+  line_metrics : Bool
 }
 
 ///|
@@ -25,6 +27,7 @@ pub fn TilerOptions::default() -> TilerOptions {
     extent: @core.TILE_EXTENT,
     buffer: 64,
     wrap: true,
+    line_metrics: false,
   }
 }
 
@@ -54,14 +57,17 @@ pub fn Tiler::new(
   let t : Tiler = { options, tiles: Map([]), }
   let z = (1 << max_zoom).to_double() * options.extent.to_double()
   let sq_tolerance = options.tolerance / z * (options.tolerance / z)
-  let mut set = convert(table, sq_tolerance, trig)
+  let metrics = options.line_metrics
+  let mut set = convert(table, sq_tolerance, trig, metrics~)
   let buffer = options.buffer.to_double() / options.extent.to_double()
   if options.wrap {
-    set = wrap(set, buffer)
+    set = wrap(set, buffer, metrics~)
   } else {
     let inf = @double.infinity
-    let in_x = clip(set, 1.0, -buffer, 1.0 + buffer, 0, -inf, inf).unwrap_or([])
-    set = clip(in_x, 1.0, -buffer, 1.0 + buffer, 1, -inf, inf).unwrap_or([])
+    let in_x = clip(set, 1.0, -buffer, 1.0 + buffer, 0, -inf, inf, metrics~).unwrap_or([],
+    )
+    set = clip(in_x, 1.0, -buffer, 1.0 + buffer, 1, -inf, inf, metrics~).unwrap_or([],
+    )
   }
   if !set.is_empty() {
     t.split(set, 0, 0, 0, None)
@@ -120,19 +126,73 @@ fn Tiler::split(
     let k4 = 1.0 + k1
     let xd = x.to_double()
     let yd = y.to_double()
-    let left = clip(features, z2, xd - k1, xd + k3, 0, tile.min_x, tile.max_x)
-    let right = clip(features, z2, xd + k2, xd + k4, 0, tile.min_x, tile.max_x)
+    let left = clip(
+      features,
+      z2,
+      xd - k1,
+      xd + k3,
+      0,
+      tile.min_x,
+      tile.max_x,
+      metrics=o.line_metrics,
+    )
+    let right = clip(
+      features,
+      z2,
+      xd + k2,
+      xd + k4,
+      0,
+      tile.min_x,
+      tile.max_x,
+      metrics=o.line_metrics,
+    )
     let mut tl = None
     let mut bl = None
     let mut tr = None
     let mut br = None
     if left is Some(l) {
-      tl = clip(l, z2, yd - k1, yd + k3, 1, tile.min_y, tile.max_y)
-      bl = clip(l, z2, yd + k2, yd + k4, 1, tile.min_y, tile.max_y)
+      tl = clip(
+        l,
+        z2,
+        yd - k1,
+        yd + k3,
+        1,
+        tile.min_y,
+        tile.max_y,
+        metrics=o.line_metrics,
+      )
+      bl = clip(
+        l,
+        z2,
+        yd + k2,
+        yd + k4,
+        1,
+        tile.min_y,
+        tile.max_y,
+        metrics=o.line_metrics,
+      )
     }
     if right is Some(r) {
-      tr = clip(r, z2, yd - k1, yd + k3, 1, tile.min_y, tile.max_y)
-      br = clip(r, z2, yd + k2, yd + k4, 1, tile.min_y, tile.max_y)
+      tr = clip(
+        r,
+        z2,
+        yd - k1,
+        yd + k3,
+        1,
+        tile.min_y,
+        tile.max_y,
+        metrics=o.line_metrics,
+      )
+      br = clip(
+        r,
+        z2,
+        yd + k2,
+        yd + k4,
+        1,
+        tile.min_y,
+        tile.max_y,
+        metrics=o.line_metrics,
+      )
     }
     stack.push((tl.unwrap_or([]), z + 1, x * 2, y * 2))
     stack.push((bl.unwrap_or([]), z + 1, x * 2, y * 2 + 1))

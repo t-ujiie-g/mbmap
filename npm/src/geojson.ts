@@ -40,7 +40,7 @@ function loadOptions(spec: Record<string, unknown>) {
           minPoints: Math.min(INT32_MAX, Math.ceil(Math.max(2, num(spec.clusterMinPoints, 0) || 2))),
         }
       : null;
-  return { maxzoom, buffer: num(spec.buffer, 128), tolerance: num(spec.tolerance, 0.375), cluster };
+  return { maxzoom, buffer: num(spec.buffer, 128), tolerance: num(spec.tolerance, 0.375), lineMetrics: spec.lineMetrics === true, cluster };
 }
 
 function sameOptions(a: GeoJSONSource, b: GeoJSONSource): boolean {

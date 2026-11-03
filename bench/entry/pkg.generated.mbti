@@ -40,13 +40,17 @@ pub fn geojson_read_mem(Int32, Int32) -> Int32
 
 pub fn geojson_tile(Int32, Int32, Int32) -> FixedArray[Int32]
 
+pub fn geojson_tile_clips(Int32, Int32, Int32) -> FixedArray[Double]
+
+pub fn geojson_tile_clips_hash(Int32, Int32, Int32) -> Int32
+
 pub fn geojson_tile_hash(Int32, Int32, Int32) -> Int32
 
 pub fn geojson_tile_mem(Int32, Int32, Int32, Int32) -> Int32
 
 pub fn geojson_tile_size(Int32, Int32, Int32) -> Int32
 
-pub fn geojson_tiler_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32) -> Int32
+pub fn geojson_tiler_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32, Int32) -> Int32
 
 pub fn geojson_tiler_table_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32) -> Int32
 
