@@ -2,7 +2,7 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.6（式。`within`・`distance` などは残り）。
 - **次**（2026-11-04 にユーザーが決めた順）：
   1. 16.2（線と平行移動）と 16.4（円）を 1 本、16.6（式）を並行で。続いて 16.3、16.5、16.8。
 - **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。残る警告の多いものは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）は 16.5 に入れる。
@@ -11,13 +11,37 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 116.3KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 63.8KB（ラベルは別に `worker-labels.js` 8.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 119.7KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 66.9KB（ラベルは別に `worker-labels.js` 9.0KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16.6：式（2026-11-04）
+
+状態：**一部完了**（優先度の高いものから。残りは下の「未対応のまま」）。
+
+- **足した式**（MapLibre 6.16 / style-spec 26.5.0 の定義を写した）：
+  - `format`：区切りごとに `font-scale`、`text-font`、`text-color`、`vertical-align`。値は `Value::Formatted`（MapLibre の `Formatted` と同じ区切り）。MapLibre と同じく偽の値（`0`、`""`、`null`）の設定は無いものとし、区切りの後でない `{}` や `vertical-align` の不正な値は `Invalid`。`["image", ...]` の区切りは未対応（`Unsupported`）。
+  - `is-supported-script`：常に true。MapLibre 6.16 はどこからも `isSupportedScript` を渡さないため（`compound_expression.ts` は引数を評価せずに true を返す）。引数の型は調べる。
+  - `number-format`：`locale`、`currency`、`unit`、`min-fraction-digits`、`max-fraction-digits`。ホストの `Intl.NumberFormat` で書く（`Intl` が投げたら評価エラー）。`currency` と `unit` の両方は `Invalid`。
+  - `collator` と、比較（`==` `!=` `<` `<=` `>` `>=`）の 3 つ目の引数、`resolved-locale`：ホストの `Intl.Collator`（`usage: "search"`、sensitivity は MapLibre と同じ組み合わせ）。等しさは両方が文字列のときだけ照合し、ほかは厳密な比較。順序は文字列どうしか数どうし（数は文字列にして照合）。`collator` は比較・`resolved-locale`・`let` の束縛・式の一番上にだけ置ける（ほかは MapLibre と同じく `Invalid`）。
+  - `split` / `join`：style-spec 26.5.0 にある文字列の操作はこの 2 つ（JavaScript の `split` / `join`。空の区切りは UTF-16 の単位ごと）。
+  - `global-state`：スタイルの `state` の既定値を読む。コンパイル時に値を埋め込む（`Assert(AnyType, [Lit(v)])`）。ファサードに MapLibre と同じ `setGlobalStateProperty(name, value)`（`null` で既定値に戻す）、`getGlobalState()`、`MapOptions.globalState` を足した。ファサードは値をスタイルの `state` の既定値にしてエンジンに渡す（`npm/src/style.ts` の `withState`、`loadedState` は MapLibre の `setGlobalState` と同じ）ので、変わったキーを読むレイヤーは `same_tiles` が違って描き直し・読み直しになる。`getStyle()` の `state` は元のまま。
+- **`Intl` の通り道**：`FeatureContext` に `number_format`、`collate`、`resolved_locale`。既定は js バックエンドでは `Intl` を直接呼び（`style/intl_js.mbt`。主スレッドと bench/expr）、ほかのバックエンドでは近似（`style/intl_nonjs.mbt`。テスト用）。表示ワーカーは `@style.Intl` を `TileProcessor` に渡し、`host.intl`（`wasmio/js/host.mjs`）で文字列を 1 単位ずつ渡して呼ぶ（地物の値に NUL があっても長さで切る）。wasm に数の書式や照合の表は入らない。
+- **ラベル**：ワーカーは `format` の区切りを文字列・`font-scale`・`vertical-align` で詰め（docs/FORMATS.md「Labels」のタグ 6）、`worker/js/text.mjs` が MapLibre の `shapeLines` と同じに組む：字の送りと大きさは区切りの倍率、行の高さは行の最大の倍率、`vertical-align` は行の中での位置、どれかの行の高さが `text-line-height` と違うと MapLibre と同じく揃え方（`align` の `shiftY`）が変わる。グリフの SDF の鋭さ用の大きさも倍率をかける（頂点の u16 に収めるため倍率は 0〜15）。縦書きの列では倍率を使わない。
+- **MapLibre との違い**：区切りの `text-font` と `text-color` は読むが描かない（`report_ignored` が `layers[i].layout.text-field: text-font of format sections not drawn yet` などを警告する）。`text-font` はレイヤーのものも未対応（16.5）。区切りの色は記号の頂点に色を持たせる必要があり、16.2 の `text-translate` と同じシェーダーに触るので後に回した。`collator` を型の合わない場所に置いた一部（`let` で束縛して `typeof` に渡すなど）は MapLibre は拒み mbmap は評価エラー。
+- **大きさ**（gzip -9）：表示（メイン）116,251 → 119,749 バイト（+3,498：7 つの式のコンパイルと評価）、表示ワーカー 63,773 → 66,869 バイト（+3,096：評価、`host.intl`、区切りの書き出し）、`worker-labels.js` 8,570 → 8,959 バイト（+389、予算 10KB まで約 1KB）。
+- **確認**（クラウドの SwiftShader）：
+  - `npm run expression:golden`：式 243（新しく 57：`format` 9、`is-supported-script` 3、`number-format` 10、`split` / `join` 13、`global-state` 8、`collator` と `resolved-locale` 14。`createExpression` に `globalState` を渡す）で **差 0**、問題 0。
+  - `npm run labels:golden`：新しい場面 7 つ（`format`：2 行・倍率・`vertical-align`、可変アンカーと、線に沿った `contours-format`、全体を縮めた `format-scaled`、`split` / `join` / `is-supported-script` と照合のフィルタの `string-ops`、`global-state` のフィルタ、`number-format` の等高線）を含めて全場面一致（表示されるラベル、アンカー、箱、線に沿ったグリフ）。結果の JSON はフォントが Mac と違うので戻した（Mac で走らせて更新してほしい）。
+  - `npm run style:golden`：新しい場面 `expressions-strings`（`global-state` の既定値の色、照合のフィルタ、`split` / `join` / `is-supported-script` の paint）は mean 0.001 / p99 0（限度 0.05 / 1）。ほかは `heatmap` と `extrusion-patterns` が限度を少し超えるが main でも同じ（SwiftShader の差）。
+  - MoonBit のテスト（`style/format_test.mbt` ほか、全ターゲット）、コンパイル済みの形の往復（新しい `Op` と `Collate`）と、引数の数が合わない `Call` を読み手が拒むこと（この PR で読み手に `arity_fits` を足した。前は引数の足りない `Call(At, [])` などで範囲外の読みになりえた）。`npm test`（`hostText` の `intl`、`text.mjs` の区切り、`loadedState` / `withState`）。pack test にグローバルな状態（設定、`getGlobalState`、`null` で既定値、色が変わる）を足した。
+  - 見つけたもの（この PR とは別）：線に沿ったラベルで文字列に空白があると、空白の後のグリフが MapLibre と 6px ずれる（`["concat", ["get", "alti"], " m"]` で再現。`number-format` の有無と関係しない）。黄金テストのグリフの並べ方（空白のグリフを数えるか）の違いか本当のずれかは未確認。
+- **未対応のまま**（`Unsupported` で、警告を出して除く）：`within`、`distance`（地物の形とタイルの位置が評価に要る。filter はワーカー、paint の一部は主スレッドで評価するので、形を渡す仕組みから）、`accumulated` と GeoJSON の `clusterProperties`（クラスタの集計の式を GeoJSON ワーカーで評価する必要がある）、地物ごとの `line-dasharray`（線のアトラスを地物ごとに。16.2 と同じ線の描画に触る）、heatmap の paint の feature-state、`format` の画像の区切り。
+- **本線で測ってほしいもの**：`labels:golden` の結果（Mac のフォントで）。性能は変わらない見込み（ラベルの組み方に区切りがないときの手順は同じ）。
 
 ## 大きさの対策：スタイルのコンパイルを主スレッドだけに（2026-11-04）
 

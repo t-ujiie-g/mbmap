@@ -36,5 +36,29 @@ export function hostText() {
       text = "";
       return n;
     },
+    // MapLibre's number-format (op 0), Collator compare (1) and resolvedLocale (2) on
+    // the text's strings: `la` and `lb` code units, then the rest (worker/linear_memory.mbt).
+    intl(op, f, x, y, z, la, lb) {
+      const [a, b, c] = [text.slice(0, la), text.slice(la, la + lb), text.slice(la + lb)];
+      text = "";
+      try {
+        if (op === 1) {
+          const sensitivity = f & 1 ? (f & 2 ? "variant" : "case") : f & 2 ? "accent" : "base";
+          return new Intl.Collator(f & 4 ? c : [], { sensitivity, usage: "search" }).compare(a, b);
+        }
+        out = op === 0
+          ? new Intl.NumberFormat(f & 1 ? a : [], {
+            style: f & 2 ? "currency" : f & 4 ? "unit" : "decimal",
+            currency: f & 2 ? b : undefined,
+            unit: f & 4 ? c : undefined,
+            minimumFractionDigits: f & 8 ? y : undefined,
+            maximumFractionDigits: f & 16 ? z : undefined,
+          }).format(x)
+          : new Intl.Collator(f & 1 ? a : []).resolvedOptions().locale;
+        return out.length;
+      } catch {
+        return op === 1 ? NaN : -1;
+      }
+    },
   };
 }

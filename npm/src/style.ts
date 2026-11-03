@@ -34,6 +34,24 @@ function indexOf(style: StyleSpecification, id: string): number {
   return i;
 }
 
+/**
+ * The global state after `style` loads, as MapLibre's `setGlobalState`: each key of its `state` or
+ * of `initial` takes `initial`'s value, else its default, else null; other keys of `current` stay.
+ */
+export function loadedState(current: Record<string, unknown>, style: StyleSpecification, initial: Record<string, unknown>): Record<string, unknown> {
+  const defaults = (style.state ?? {}) as Record<string, { default?: unknown } | undefined>;
+  const out = { ...current };
+  for (const k of new Set([...Object.keys(defaults), ...Object.keys(initial)])) out[k] = initial[k] ?? defaults[k]?.default ?? null;
+  return out;
+}
+
+/** `style` whose `state` holds `values` as defaults, which the engine's `global-state` reads. */
+export function withState(style: StyleSpecification, values: Record<string, unknown>): StyleSpecification {
+  const keys = Object.keys(values);
+  if (keys.length === 0) return style;
+  return { ...style, state: Object.fromEntries(keys.map((k) => [k, { default: values[k] }])) };
+}
+
 /** A plain copy, so that later changes by the caller do not reach the map. */
 export function copy<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);

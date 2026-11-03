@@ -96,6 +96,22 @@ export const SCENES = {
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
   },
+  // A global-state default, a collator in a filter, split / join / is-supported-script in paint.
+  "expressions-strings": {
+    style: {
+      ...style([
+        { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+          filter: ["!=", ["to-string", ["get", "ftCode"]], "3101", ["collator", { "case-sensitive": true }]],
+          paint: { "fill-color": ["global-state", "buildingColor"], "fill-opacity": ["case", ["is-supported-script", ["get", "name"]], 0.8, 0.2] } },
+        { id: "road", type: "line", source: "gsi", "source-layer": "road",
+          paint: { "line-color": ["match", ["at", 0, ["split", ["to-string", ["get", "rdCtg"]], ""]], "0", "#e07040", "#777777"],
+            "line-width": ["length", ["join", ["literal", ["a", "b"]], "--"]] } },
+      ]),
+      state: { buildingColor: { default: "#b48ccc" } },
+    },
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
   outlines: {
     style: style([
       { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-color": "#a8d4f0", "fill-antialias": false } },

@@ -85,7 +85,9 @@ vertex range (no indices):
 - per label: u32 index of its feature in the source layer, i16 anchor x, y
   (`TILE_EXTENT` units, inside the tile; 0 along lines), f64 text size
   (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
-  booleans are written out by the glue); with an icon, u32 part count and the parts
+  booleans are written out by the glue) or, for a `format` result, tag 6, u32 section count and
+  per section its UTF-8 text, f64 `font-scale` (NaN without one) and u8 `vertical-align` (0
+  bottom or none, 1 center, 2 top); with an icon, u32 part count and the parts
   of its image's name, f64 `icon-size` (at the tile's zoom plus one, as MapLibre lays
   icons out) and f64 `icon-rotate` (degrees). A label has text, an icon or both;
 - along lines, one label per feature, then its lines: u32 line count, per line u32
@@ -172,7 +174,9 @@ In:
   ahead of the first tile) and the CSS font family labels are drawn in. The wasm imports
   `hostText`'s (`wasmio/js/host.mjs`) `host.text_char`, `text_number`,
   `number_text` and `text_code` for the expressions' `Number(string)` and
-  `String(number)`, a UTF-16 code unit per call.
+  `String(number)`, a UTF-16 code unit per call, and `host.intl(op, flags, x, y, z, la,
+  lb)` for `Intl` (`number-format`, collators): its strings are the text, the first two
+  `la` and `lb` code units long (`worker/linear_memory.mbt` `host_intl`).
 - `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
   the index in the style's sources).
 - `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),
@@ -249,16 +253,18 @@ index in declaration order (`LayerKind`, `SourceKind`, `TextAnchor`, ...); a fla
 is a u8 0 or 1; an optional item is a flag, then the item if 1.
 
 - Value: a "Property values" tag and payload (0 to 4), 6 a color (4 f64, straight
-  RGBA 0 to 1), 7 a list (u32 count, values), 8 `Failed`.
+  RGBA 0 to 1), 7 a list (u32 count, values), 8 `Failed` (also written for a formatted
+  text or a collator, which only expressions make).
 - Expected: u8 0 any, 1 color, 2 number, 3 boolean, 4 string, 5 array: its item
   Expected and u32 length (-1 any).
 - Expr: u8 tag, `Expr`'s variant index, then its fields in order: values, UTF-8
   keys, nested Exprs; an array is u32 count and items, a stop f64 input and Expr,
   a `match` arm its labels (values) and Expr, a `case` arm two Exprs;
   `Interpolate` is u8 0 exponential (f64 base) or 1 cubic Bézier (4 f64), u8
-  color space, input and stops; `Compare` and `Call` lead with their operator's
-  u8. An expression may have at most `MAX_EXPR_NODES` nodes (values included) and
-  4 × `MAX_EXPR_DEPTH` levels; a reader refuses more.
+  color space, input and stops; `Compare`, `Collate` and `Call` lead with their operator's
+  u8, and a `Call` must have as many arguments as `compile` gives its operator (`Format`
+  five per section). An expression may have at most `MAX_EXPR_NODES` nodes (values
+  included) and 4 × `MAX_EXPR_DEPTH` levels; a reader refuses more.
 - Source: UTF-8 id, u8 kind, u32 min zoom, max zoom, tile size, the DEM encoding
   (u8 mapbox, terrarium, gsi, or 3 custom with 4 f64), u32 buffer, f64 tolerance,
   `promoteId` (u8 0 feature id, 1 a property's UTF-8 name, 2 u32 count of source

@@ -1,7 +1,7 @@
 ///|
-/// A feature as expressions read it (`geometry_type` "Point", "LineString",
-/// "Polygon" or "Unknown"), with the `Math` (`trig`, `@math` by default) and the
-/// `String(number)` and `Number(string)` of the JavaScript host MapLibre runs on.
+/// A feature as expressions read it (`geometry_type` "Point", "LineString", "Polygon" or
+/// "Unknown"), with the JavaScript host's `Math` (`trig`), `String(number)`, `Number(string)`
+/// and `Intl` as MapLibre calls it (None or NaN where `Intl` throws; `style/intl_js.mbt`).
 pub(open) trait FeatureContext {
   fn property(Self, String) -> Value?
   fn geometry_type(Self) -> String
@@ -13,6 +13,24 @@ pub(open) trait FeatureContext {
   fn line_progress(Self) -> Double = _
   fn heatmap_density(Self) -> Double = _
   fn elevation(Self) -> Double = _
+  fn number_format(Self, Double, String?, String?, String?, Double?, Double?) -> String? = _
+  fn collate(Self, String, String, Bool, Bool, String?) -> Double = _
+  fn resolved_locale(Self, String?) -> String? = _
+}
+
+///|
+impl FeatureContext with fn number_format(_, x, l, c, u, min, max) {
+  intl_number_format(x, l, c, u, min, max)
+}
+
+///|
+impl FeatureContext with fn collate(_, a, b, case, diacritic, locale) {
+  intl_collate(a, b, case, diacritic, locale)
+}
+
+///|
+impl FeatureContext with fn resolved_locale(_, locale) {
+  intl_resolved_locale(locale)
 }
 
 ///|
@@ -230,6 +248,38 @@ pub fn[C : FeatureContext] Expr::eval(
         _ => order(op, x, y)
       }
     }
+    Collate(op, a, b, c) => {
+      let (x, y) = (go(a), go(b))
+      match (op, x, y) {
+        (_, Failed, _) | (_, _, Failed) => return Failed
+        (_, Str(_), Str(_)) => ()
+        (Eq, _, _) => return Bool(same(x, y))
+        (Ne, _, _) => return Bool(!same(x, y))
+        (_, Num(_), Num(_)) => ()
+        _ => return Failed
+      }
+      guard go(c) is Collator(case, diacritic, locale) else { return Failed }
+      let d = ctx.collate(
+        js_string(ctx, x),
+        js_string(ctx, y),
+        case,
+        diacritic,
+        locale,
+      )
+      if d != d {
+        return Failed
+      }
+      Bool(
+        match op {
+          Eq => d == 0.0
+          Ne => d != 0.0
+          Lt => d < 0.0
+          Le => d <= 0.0
+          Gt => d > 0.0
+          Ge => d >= 0.0
+        },
+      )
+    }
     In(needle, haystack) => {
       let n = go(needle)
       let h = go(haystack)
@@ -237,7 +287,7 @@ pub fn[C : FeatureContext] Expr::eval(
         (Failed, _) | (_, Failed) => Failed
         (_, Null | Bool(false) | Str("")) => Bool(false)
         (_, Num(x)) if x == 0.0 || x != x => Bool(false)
-        (Color(_) | List(_), _) => Failed
+        (Color(_) | List(_) | Formatted(_) | Collator(_, _, _), _) => Failed
         (_, List(items)) => Bool(items.iter().any(i => same(n, i)))
         (_, Str(s)) => Bool(s.contains(js_string(ctx, n)))
         _ => Failed
@@ -375,6 +425,11 @@ fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
     Compare(_, a, b) | In(a, b) => {
       f(a)
       f(b)
+    }
+    Collate(_, a, b, c) => {
+      f(a)
+      f(b)
+      f(c)
     }
     Match(input, cases, fallback) => {
       f(input)

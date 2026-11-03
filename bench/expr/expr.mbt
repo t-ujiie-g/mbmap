@@ -128,20 +128,48 @@ fn result_js(v : @style.Value) -> Js {
       }
       a
     }
+    Formatted(sections) => {
+      let a = js_array()
+      for s in sections {
+        let row = js_array()
+        js_push(row, js_of_string(s.text))
+        js_push(row, s.scale.map(js_of_double).unwrap_or(js_null()))
+        js_push(row, s.font.map(js_of_string).unwrap_or(js_null()))
+        js_push(
+          row,
+          s.color.map(c => js_color(c.r, c.g, c.b, c.a)).unwrap_or(js_null()),
+        )
+        js_push(row, s.align.map(js_of_string).unwrap_or(js_null()))
+        js_push(a, row)
+      }
+      js_wrap("formatted", a)
+    }
+    Collator(case, diacritic, locale) => {
+      let a = js_array()
+      js_push(a, js_of_bool(case))
+      js_push(a, js_of_bool(diacritic))
+      js_push(a, locale.map(js_of_string).unwrap_or(js_null()))
+      js_wrap("collator", a)
+    }
     Failed => js_failed()
   }
 }
 
 ///|
+extern "js" fn js_wrap(key : String, v : Js) -> Js = "(k, v) => ({ [k]: v })"
+
+///|
 /// `expression` (JSON text) compiled for `expected` ("value", "number", "string",
 /// "boolean" or "color") and evaluated at `zoom` for each feature: an array of
-/// results (`{ color }`, `{ error }` or plain values), or the compile error.
+/// results (`{ color }`, `{ error }`, `{ formatted }`, `{ collator }` or plain
+/// values), or the compile error; `global-state` reads `state` (JSON text).
 #export_name("expr_eval")
 pub fn expr_eval(
   expression : String,
   expected : String,
   zoom : Double,
   features : Js,
+  state : String,
 ) -> Js {
   let expected : @style.Expected = match expected {
     "number" => NumberType
@@ -153,7 +181,12 @@ pub fn expr_eval(
   let json = @json.parse(expression) catch {
     e => return js_of_string("not JSON: \{e}")
   }
-  let e = @style.compile(json, expected~) catch {
+  let state = @json.parse(state) catch { _ => Json::null() }
+  let state = match state {
+    Object(o) => o
+    _ => Map([])
+  }
+  let e = @style.with_global_state(state, () => @style.compile(json, expected~)) catch {
     e => return js_of_string(e.message())
   }
   let out = js_array()

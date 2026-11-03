@@ -26,7 +26,7 @@ export async function styleChecks(page, requests) {
     map.removeSource("gsi");
     // Unsupported, so drawn at its default width with a warning; then put back.
     const before = map.getPaintProperty("road", "line-width");
-    map.setPaintProperty("road", "line-width", ["number-format", 2, {}]);
+    map.setPaintProperty("road", "line-width", ["accumulated"]);
     const width = map.getPaintProperty("road", "line-width");
     map.setPaintProperty("road", "line-width", before);
     await new Promise((r) => setTimeout(r, 0));
@@ -34,8 +34,13 @@ export async function styleChecks(page, requests) {
     map.off("warning", w);
     return { out, warned, width, order: map.getLayersOrder().slice(0, 4) };
   });
-  await step(page, "style: setStyle", 'map.setStyle({ version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ff0000" } }] });');
+  await step(page, "style: setStyle", 'map.setStyle({ version: 8, sources: {}, state: { bg: { default: "#ff0000" } }, layers: [{ id: "bg", type: "background", paint: { "background-color": ["global-state", "bg"] } }] });');
   const red = await pixel(page, 400, 300);
+  // Global state: set and read back, then null takes the style's default again.
+  const read = await step(page, "style: setGlobalStateProperty", 'map.setGlobalStateProperty("bg", "#00ff00"); return map.getGlobalState();');
+  const green = await pixel(page, 400, 300);
+  const state = await step(page, "style: global state default", 'map.setGlobalStateProperty("bg", null); return [map.getGlobalState(), map.getStyle().state];');
+  const red2 = await pixel(page, 400, 300);
   const swapped = tiles();
   const point = (lng, lat) => ({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [lng, lat] } }] });
   await step(page, "style: addSource", `map.addSource("pts", { type: "geojson", data: ${JSON.stringify(point(139.7671, 35.6812))} }); map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": 30, "circle-color": "#0000ff" } });`);
@@ -52,10 +57,15 @@ export async function styleChecks(page, requests) {
     errors.out.length === 2 &&
     /no layer "nope"/.test(errors.out[0]) &&
     /used by layer "road"/.test(errors.out[1]) &&
-    errors.warned.some((w) => w.layer === "road" && /paint\.line-width$/.test(w.path) && w.message === "expression number-format") &&
-    errors.width?.[0] === "number-format" &&
+    errors.warned.some((w) => w.layer === "road" && /paint\.line-width$/.test(w.path) && w.message === "expression accumulated") &&
+    errors.width?.[0] === "accumulated" &&
     JSON.stringify(errors.order) === JSON.stringify(["background", "road", "waterarea", "structurea"]) &&
     near(red, [255, 0, 0]) &&
+    read?.bg === "#00ff00" &&
+    near(green, [0, 255, 0]) &&
+    state?.[0].bg === "#ff0000" &&
+    state?.[1].bg.default === "#ff0000" &&
+    near(red2, [255, 0, 0]) &&
     swapped === relaid &&
     near(blue, [0, 0, 255]) &&
     near(moved, [255, 0, 0]) &&
@@ -63,5 +73,5 @@ export async function styleChecks(page, requests) {
     restored.tiles > swapped &&
     !near(restored.center, [255, 0, 0]) &&
     restored.layers === original.layers.length;
-  return { ok, before, painted, kept, relaid, errors, red, swapped, blue, moved, order, restored };
+  return { ok, before, painted, kept, relaid, errors, red, read, green, state, red2, swapped, blue, moved, order, restored };
 }

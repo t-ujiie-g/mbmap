@@ -49,6 +49,80 @@ fn host_number_text_of(x : Double) -> String {
 }
 
 ///|
+/// `Intl` by the host (`hostText`'s `intl`): `op` 0 number format, 1 collate, 2 resolved
+/// locale, on the text's strings (the first two `la` and `lb` code units long); a text result's
+/// length for `host_text_code` (-1 where `Intl` threw), or a comparison (NaN where it threw).
+fn host_intl(
+  op : Int32,
+  flags : Int32,
+  x : Double,
+  y : Double,
+  z : Double,
+  la : Int32,
+  lb : Int32,
+) -> Double = "host" "intl"
+
+///|
+/// Appends `s` (if any) to the host's text and returns its length.
+fn host_arg(s : String?) -> Int32 {
+  guard s is Some(s) else { return 0 }
+  for i in 0..<s.length() {
+    host_text_char(s[i].to_int())
+  }
+  s.length()
+}
+
+///|
+fn host_result(n : Double) -> String? {
+  guard n >= 0.0 else { return None }
+  let out = StringBuilder()
+  for i in 0..<n.to_int() {
+    out.write_char(host_text_code(i).unsafe_to_char())
+  }
+  Some(out.to_string())
+}
+
+///|
+fn bit(given : Bool, b : Int32) -> Int32 {
+  if given {
+    b
+  } else {
+    0
+  }
+}
+
+///|
+/// The host's `Intl`, as MapLibre formats numbers and compares strings.
+fn host_intl_of() -> @style.Intl {
+  {
+    number_format: (x, locale, currency, unit, min, max) => {
+      let la = host_arg(locale)
+      let lb = host_arg(currency)
+      host_arg(unit) |> ignore
+      let flags = bit(locale is Some(_), 1) |
+        bit(currency is Some(_), 2) |
+        bit(unit is Some(_), 4) |
+        bit(min is Some(_), 8) |
+        bit(max is Some(_), 16)
+      host_result(
+        host_intl(0, flags, x, min.unwrap_or(0.0), max.unwrap_or(0.0), la, lb),
+      )
+    },
+    collate: (a, b, case, diacritic, locale) => {
+      let la = host_arg(Some(a))
+      let lb = host_arg(Some(b))
+      host_arg(locale) |> ignore
+      let flags = bit(case, 1) | bit(diacritic, 2) | bit(locale is Some(_), 4)
+      host_intl(1, flags, 0.0, 0.0, 0.0, la, lb)
+    },
+    resolved_locale: locale => {
+      let la = host_arg(locale)
+      host_result(host_intl(2, bit(locale is Some(_), 1), 0.0, 0.0, 0.0, la, 0))
+    },
+  }
+}
+
+///|
 fn output_start() -> Int32 {
   (INPUT_ADDR + input_len.val + 7) / 8 * 8
 }
@@ -134,6 +208,7 @@ pub fn init_style() -> Int32 {
       input_bytes()[:],
       text_number=host_text_number_of,
       number_text=host_number_text_of,
+      intl=host_intl_of(),
       trig=host_trig(),
     )
   catch {

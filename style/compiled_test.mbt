@@ -208,6 +208,19 @@ test "every expression and value kind survives write_expr and read_expr" {
     Coerce(ColorType, [Get("a"), Lit(Str("red"))]),
     Call(ToRgba, [Get("a")]),
     Call(Add, [Zoom, Zoom]),
+    Call(Split, [Get("a"), Lit(Str(","))]),
+    Call(Join, [Get("a"), Lit(Str(","))]),
+    Call(Format, [Get("a"), Zoom, Lit(Null), Get("c"), Lit(Str("top"))]),
+    Call(NumberFormat, [Zoom, Lit(Str("ja")), Lit(Null), Lit(Null), Id, Id]),
+    Call(ResolvedLocale, [
+      Call(Collator, [Lit(Bool(true)), Lit(Bool(false)), Lit(Null)]),
+    ]),
+    Collate(
+      Lt,
+      Get("a"),
+      Get("b"),
+      Call(Collator, [Lit(Bool(false)), Get("d"), Lit(Str("de"))]),
+    ),
   ]
   for e in exprs {
     let w = @core.ByteWriter::new()
@@ -243,6 +256,9 @@ test "read_expr refuses unknown tags, short input and huge counts" {
       b"\x01\x16\x20\x00\x00\x00\x00"[:],
       b"\x01\x0a\xff\xff\xff\x7f"[:],
       expr_bytes(Get("abc"))[:6],
+      expr_bytes(Call(NumberFormat, [Zoom]))[:],
+      expr_bytes(Call(Format, [Zoom, Zoom]))[:],
+      expr_bytes(Call(Split, [Zoom]))[:],
     ] {
     let r = @core.ByteReader::new(bad)
     @style.read_expr(r) |> ignore

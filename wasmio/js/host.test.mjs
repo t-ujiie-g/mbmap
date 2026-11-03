@@ -34,3 +34,24 @@ test("hostText builds a number from code units and gives String(x) unit by unit"
   assert.equal(s, String(1 / 3));
   assert.equal(t.number_text(1e21), 5);
 });
+
+test("hostText's intl formats numbers, compares and resolves locales as Intl does", () => {
+  const t = hostText();
+  const push = (...parts) => parts.forEach((s) => [...s].forEach((c) => t.text_char(c.charCodeAt(0))));
+  const read = (n) => Array.from({ length: n }, (_, i) => String.fromCharCode(t.text_code(i))).join("");
+  push("de-DE", "EUR");
+  const euro = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 1 });
+  assert.equal(read(t.intl(0, 1 | 2 | 16, 1234.5, 0, 1, 5, 3)), euro.format(1234.5));
+  push("meter");
+  assert.equal(read(t.intl(0, 4, 12, 0, 0, 0, 0)), new Intl.NumberFormat([], { style: "unit", unit: "meter" }).format(12));
+  push("XYZ1");
+  assert.equal(t.intl(0, 2, 1, 0, 0, 0, 4), -1);
+  push("abc", "ABC");
+  assert.equal(t.intl(1, 0, 0, 0, 0, 3, 3), 0);
+  push("abc", "ABC");
+  assert.notEqual(t.intl(1, 1, 0, 0, 0, 3, 3), 0);
+  push("a", "b", "not a locale!");
+  assert.ok(Number.isNaN(t.intl(1, 4, 0, 0, 0, 1, 1)));
+  push("ja-JP");
+  assert.equal(read(t.intl(2, 1, 0, 0, 0, 5, 0)), new Intl.Collator("ja-JP").resolvedOptions().locale);
+});

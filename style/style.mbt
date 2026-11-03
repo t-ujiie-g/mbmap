@@ -123,11 +123,17 @@ pub fn Style::parse(
 }
 
 ///|
-/// `Style::parse` for an already parsed document.
+/// `Style::parse` for an already parsed document; `global-state` takes the
+/// defaults of its `state`.
 pub fn Style::from_json(
   json : Json,
   strict~ : Bool = true,
 ) -> Style raise StyleError {
+  with_global_state(state_defaults(json), () => style_of(json, strict))
+}
+
+///|
+fn style_of(json : Json, strict : Bool) -> Style raise StyleError {
   guard json is Object(root) else { raise Invalid(path="", "not an object") }
   let issues = { strict, warnings: [], }
   let sources = []

@@ -59,6 +59,12 @@ const SPEC = (type) => (type === "value" ? undefined : { type, "property-type": 
 /** A result in one shape for both engines: colors as straight RGBA, errors as `{ error }`. */
 function maplibreValue(v) {
   if (v && typeof v === "object" && "r" in v && "rgb" in v) return { color: v.rgb };
+  if (v && typeof v === "object" && Array.isArray(v.sections)) {
+    return { formatted: v.sections.map((s) => [s.text, s.scale, s.fontStack, s.textColor ? { color: s.textColor.rgb } : null, s.verticalAlign]) };
+  }
+  if (v && typeof v === "object" && typeof v.sensitivity === "string") {
+    return { collator: [v.sensitivity === "variant" || v.sensitivity === "case", v.sensitivity === "variant" || v.sensitivity === "accent", v.locale] };
+  }
   if (Array.isArray(v)) return v.map(maplibreValue);
   return v === undefined ? null : v;
 }
@@ -69,6 +75,7 @@ function same(a, b) {
   if (a && b && typeof a === "object" && typeof b === "object") {
     if ("error" in a || "error" in b) return "error" in a && "error" in b;
     if ("color" in a && "color" in b) return a.color.every((x, i) => Math.abs(x - b.color[i]) <= 1e-9);
+    for (const k of ["formatted", "collator"]) if (k in a && k in b) return same(a[k], b[k]);
     return false;
   }
   return a === b;
@@ -79,10 +86,10 @@ const rows = [];
 let evaluations = 0;
 let mismatches = 0;
 const rejected = [];
-for (const [e, type = "value"] of CASES) {
+for (const [e, type = "value", state] of CASES) {
   const text = JSON.stringify(e);
-  const ml = createExpression(e, "layers[0].paint.x", SPEC(type));
-  const ours = ZOOMS.map((z) => expr_eval(text, type, z, feats));
+  const ml = createExpression(e, "layers[0].paint.x", SPEC(type), state);
+  const ours = ZOOMS.map((z) => expr_eval(text, type, z, feats, JSON.stringify(state ?? {})));
   if (ml.result === "error") {
     if (typeof ours[0] === "string") continue;
     rejected.push(text);
@@ -126,7 +133,7 @@ for (const f of LEGACY_FILTERS) {
     continue;
   }
   const ml = featureFilter(f, "layers[0].filter");
-  const results = expr_eval(JSON.stringify(ours), "boolean", 14, feats);
+  const results = expr_eval(JSON.stringify(ours), "boolean", 14, feats, "{}");
   if (typeof results === "string") {
     legacyRows.push({ filter: text, problem: `mbmap rejects the conversion: ${results}` });
     continue;
@@ -153,7 +160,7 @@ for (const [name, fn] of LEGACY_FUNCTIONS) {
   let bad = 0;
   let sample = null;
   for (const zoom of ZOOMS) {
-    const results = expr_eval(JSON.stringify(ours), spec.type, zoom, feats);
+    const results = expr_eval(JSON.stringify(ours), spec.type, zoom, feats, "{}");
     if (typeof results === "string") {
       legacyRows.push({ function: text, problem: `mbmap rejects the conversion: ${results}` });
       break;

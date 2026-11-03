@@ -1,6 +1,7 @@
 ///|
-/// A value an expression produces. `Failed` is MapLibre's runtime error: it
-/// goes up through the expressions above it, and a property takes its default.
+/// A value an expression produces. `Failed` is MapLibre's runtime error: it goes up through
+/// the expressions above it, and a property takes its default. `Collator` holds a
+/// collator's case and diacritic sensitivity and locale.
 pub(all) enum Value {
   Null
   Bool(Bool)
@@ -8,7 +9,21 @@ pub(all) enum Value {
   Str(String)
   Color(Color)
   List(Array[Value])
+  Formatted(Array[Section])
+  Collator(Bool, Bool, String?)
   Failed
+} derive(Debug, Eq)
+
+///|
+/// A section of `format`'s text (MapLibre's `FormattedSection`): `font` is its
+/// `text-font` joined by commas, `align` its `vertical-align`; None where the
+/// section has no such option.
+pub(all) struct Section {
+  text : String
+  scale : Double?
+  font : String?
+  color : Color?
+  align : String?
 } derive(Debug, Eq)
 
 ///|
@@ -40,9 +55,9 @@ pub(all) enum ColorSpace {
 } derive(Debug, Eq)
 
 ///|
-/// The operators with fixed arguments: arithmetic and math (`-` with one
-/// argument negates), strings, `typeof`, `length`, `slice`, `index-of`, `at`,
-/// `rgb`/`rgba` and `to-rgba`.
+/// The operators with fixed arguments (`-` with one argument negates). `Format` takes per
+/// section its text, `font-scale`, `text-font`, `text-color` and `vertical-align`, and
+/// `NumberFormat` and `Collator` their options in order; `Lit(Null)` where one is not given.
 pub(all) enum Op {
   Add
   Sub
@@ -76,11 +91,18 @@ pub(all) enum Op {
   At
   Rgba
   ToRgba
+  Split
+  Join
+  ResolvedLocale
+  Format
+  NumberFormat
+  Collator
 } derive(Debug, Eq)
 
 ///|
-/// A compiled MapLibre expression (the subset this engine supports). `let`
-/// and `var` are resolved when compiling: a `var` is its bound expression.
+/// A compiled MapLibre expression (the subset this engine supports). Compiling resolves
+/// `let`, `var` (its bound expression) and `global-state` (its value in the style's `state`);
+/// `Collate` is a comparison with a collator, the last Expr.
 pub(all) enum Expr {
   Lit(Value)
   Get(String)
@@ -105,6 +127,7 @@ pub(all) enum Expr {
   Assert(Expected, Array[Expr])
   Coerce(Expected, Array[Expr])
   Call(Op, Array[Expr])
+  Collate(CmpOp, Expr, Expr, Expr)
 } derive(Debug, Eq)
 
 ///|
@@ -137,7 +160,7 @@ pub fn compile(
   expected~ : Expected = AnyType,
   path~ : String = "",
 ) -> Expr raise StyleError {
-  let c = { scope: [], error: None, }
+  let c = { scope: [], error: None, collator: expected is AnyType, }
   let e = c.compile(json, expected, path, 0)
   if c.error is Some(err) {
     raise err
@@ -166,6 +189,7 @@ fn Expr::size(self : Expr, budget : Int32, depth : Int32) -> Int32 {
 priv struct Compiler {
   scope : Array[(String, Expr)]
   mut error : StyleError?
+  mut collator : Bool
 }
 
 ///|
@@ -229,6 +253,7 @@ fn Expr::static_type(self : Expr) -> Expected {
     | All(_)
     | Any(_)
     | Compare(_, _, _)
+    | Collate(_, _, _, _)
     | In(_, _) => BoolType
     Lit(Color(_)) => ColorType
     Assert(t, _) | Coerce(t, _) => t
@@ -253,9 +278,16 @@ fn Expr::static_type(self : Expr) -> Expected {
 /// The type a `Call` of `op` produces.
 fn op_type(op : Op) -> Expected {
   match op {
-    Concat | Upcase | Downcase | TypeOf => StringType
+    Concat
+    | Upcase
+    | Downcase
+    | TypeOf
+    | Join
+    | ResolvedLocale
+    | NumberFormat => StringType
     Rgba => ColorType
-    At | Slice | ToRgba => AnyType
+    Split => ArrayOf(StringType, -1)
+    At | Slice | ToRgba | Format | Collator => AnyType
     _ => NumberType
   }
 }
@@ -307,9 +339,15 @@ fn arity(op : String) -> (Int32, Int32, Int32) {
     | "to-string"
     | "to-boolean"
     | "var"
-    | "image" => (1, 1, -1)
+    | "image"
+    | "collator"
+    | "global-state"
+    | "resolved-locale"
+    | "is-supported-script" => (1, 1, -1)
     "get" | "has" => (1, 2, -1)
-    "==" | "!=" | "<" | "<=" | ">" | ">=" | "in" => (2, 2, -1)
+    "in" | "number-format" => (2, 2, -1)
+    "==" | "!=" | "<" | "<=" | ">" | ">=" => (2, 3, -1)
+    "format" => (1, 1 << 20, -1)
     "all" | "any" => (0, 1 << 20, -1)
     "match" | "interpolate" | "interpolate-hcl" | "interpolate-lab" =>
       (4, 1 << 20, 0)
@@ -344,6 +382,9 @@ fn Compiler::compile_at(
   if depth > MAX_EXPR_DEPTH {
     return self.fail(Invalid(path~, "nested deeper than \{MAX_EXPR_DEPTH}"))
   }
+  // Only the top, a binding and a comparison's collator may make a collator.
+  let collator = self.collator
+  self.collator = false
   guard json is Array(items) && items.length() > 0 && items[0] is String(op) else {
     if json is Array(_) {
       return self.fail(
@@ -471,7 +512,81 @@ fn Compiler::compile_at(
           Invalid(path~, "cannot compare \{type_name(ta)} and \{type_name(tb)}"),
         )
       }
-      Compare(cmp, a, b)
+      if n == 2 {
+        return Compare(cmp, a, b)
+      }
+      if !(ta is (StringType | AnyType)) && !(tb is (StringType | AnyType)) {
+        return self.fail(
+          Invalid(path~, "cannot use collator to compare non-string types"),
+        )
+      }
+      Collate(cmp, a, b, self.collator(items[3], sub(path, 3), depth))
+    }
+    "collator" => {
+      if !collator {
+        return self.fail(Invalid(path~, "a collator only goes in comparisons"))
+      }
+      guard items[1] is Object(o) else {
+        return self.fail(Invalid(path~, "collator options must be an object"))
+      }
+      let at = sub(path, 1)
+      let flag = (key : String) => {
+        match o.get(key) {
+          None => Lit(Bool(false))
+          Some(j) => self.compile(j, BoolType, "\{at}.\{key}", depth + 1)
+        }
+      }
+      Call(Collator, [
+        flag("case-sensitive"),
+        flag("diacritic-sensitive"),
+        self.option(o, "locale", StringType, at, depth),
+      ])
+    }
+    "resolved-locale" =>
+      Call(ResolvedLocale, [self.collator(items[1], sub(path, 1), depth)])
+    "number-format" => {
+      guard items[2] is Object(o) else {
+        return self.fail(
+          Invalid(path~, "number-format options must be an object"),
+        )
+      }
+      let at = sub(path, 2)
+      let option = (key : String, t : Expected) => {
+        self.option(o, key, t, at, depth)
+      }
+      let currency = option("currency", StringType)
+      let unit = option("unit", StringType)
+      if !(currency is Lit(Null)) && !(unit is Lit(Null)) {
+        return self.fail(
+          Invalid(path=at, "currency and unit are mutually exclusive"),
+        )
+      }
+      Call(NumberFormat, [
+        arg(1, NumberType),
+        option("locale", StringType),
+        currency,
+        unit,
+        option("min-fraction-digits", NumberType),
+        option("max-fraction-digits", NumberType),
+      ])
+    }
+    "format" => self.format(items, path, depth)
+    // MapLibre's hosts never pass `isSupportedScript`, so every script is.
+    "is-supported-script" => {
+      arg(1, StringType) |> ignore
+      Lit(Bool(true))
+    }
+    "global-state" => {
+      guard items[1] is String(key) else {
+        return self.fail(
+          Invalid(path~, "global state property must be a string"),
+        )
+      }
+      let v = match style_state.val.get(key) {
+        Some(j) => self.value(j, sub(path, 1), depth)
+        None => Null
+      }
+      Assert(AnyType, [Lit(v)])
     }
     "in" => In(arg(1, AnyType), arg(2, AnyType))
     "match" => {
@@ -546,6 +661,7 @@ fn Compiler::compile_at(
           name.iter().all(word_char) else {
           return self.fail(Invalid(path=sub(path, i), "not a variable name"))
         }
+        self.collator = true
         bound.push((name, arg(i + 1, AnyType)))
       }
       let k = self.scope.length()
@@ -576,6 +692,139 @@ fn Compiler::compile_at(
         None => self.fail(Unsupported(path~, "expression \{op}"))
       }
   }
+}
+
+///|
+/// `option` of `o` compiled for `t`, or `Lit(Null)` when it is absent or
+/// falsy in JavaScript, as MapLibre leaves such options out.
+fn Compiler::option(
+  self : Compiler,
+  o : Map[String, Json],
+  key : String,
+  t : Expected,
+  path : String,
+  depth : Int32,
+) -> Expr {
+  match o.get(key) {
+    None | Some(Null | False | String("")) => Lit(Null)
+    Some(Number(x, ..)) if x == 0.0 => Lit(Null)
+    Some(j) => self.compile(j, t, "\{path}.\{key}", depth + 1)
+  }
+}
+
+///|
+/// A collator argument: an expression that makes one.
+fn Compiler::collator(
+  self : Compiler,
+  json : Json,
+  path : String,
+  depth : Int32,
+) -> Expr {
+  self.collator = true
+  let e = self.compile(json, AnyType, path, depth + 1)
+  guard e is Call(Collator, _) || self.error is Some(_) else {
+    return self.fail(Invalid(path~, "expected collator"))
+  }
+  e
+}
+
+///|
+/// `format`: per section its text and options (`Op::Format`).
+fn Compiler::format(
+  self : Compiler,
+  items : Array[Json],
+  path : String,
+  depth : Int32,
+) -> Expr {
+  if items[1] is Object(_) {
+    return self.fail(
+      Invalid(path~, "the first argument must be an image or text section"),
+    )
+  }
+  let args = []
+  let mut options = false
+  for i in 1..<items.length() {
+    let at = sub(path, i)
+    match items[i] {
+      Object(o) if options => {
+        options = false
+        let k = args.length() - 4
+        args[k] = self.option(o, "font-scale", NumberType, at, depth)
+        args[k + 1] = self.option(
+          o,
+          "text-font",
+          ArrayOf(StringType, -1),
+          at,
+          depth,
+        )
+        args[k + 2] = self.option(o, "text-color", ColorType, at, depth)
+        if o.get("vertical-align") is Some(String(a)) &&
+          !(a is ("bottom" | "center" | "top")) {
+          return self.fail(
+            Invalid(
+              path="\{at}.vertical-align",
+              "not one of bottom, center and top",
+            ),
+          )
+        }
+        args[k + 3] = self.option(o, "vertical-align", StringType, at, depth)
+      }
+      Object(_) =>
+        return self.fail(Invalid(path=at, "an object must follow a section"))
+      Array([String("image"), ..]) =>
+        return self.fail(Unsupported(path=at, "images in format"))
+      j => {
+        let content = self.compile(j, AnyType, at, depth + 1)
+        if !(content.static_type() is (StringType | AnyType)) {
+          return self.fail(
+            Invalid(path=at, "a section must be a string, a value or null"),
+          )
+        }
+        args.push(content)
+        for _ in 0..<4 {
+          args.push(Lit(Null))
+        }
+        options = true
+      }
+    }
+  }
+  Call(Format, args)
+}
+
+///|
+/// The global state while a style's expressions compile: `global-state`
+/// takes its value from here.
+let style_state : Ref[Map[String, Json]] = { val: Map([]), }
+
+///|
+/// `f()` with `global-state` reading `state` (MapLibre's global state: each
+/// key's value), as `Style::from_json` compiles with its style's `state`.
+pub fn[T] with_global_state(
+  state : Map[String, Json],
+  f : () -> T raise StyleError,
+) -> T raise StyleError {
+  let saved = style_state.val
+  style_state.val = state
+  defer {
+    style_state.val = saved
+  }
+  f()
+}
+
+///|
+/// MapLibre's global state of a style: each key of its `state` with its
+/// `default` (null without one).
+pub fn state_defaults(json : Json) -> Map[String, Json] {
+  let out = Map([])
+  if json is Object(root) && root.get("state") is Some(Object(state)) {
+    for k, v in state {
+      out[k] = match v {
+        Object(o) => o.get("default").unwrap_or(Json::null())
+        _ => Json::null()
+      }
+    }
+  }
+  out
 }
 
 ///|
@@ -616,6 +865,8 @@ fn op_of(name : String) -> (Op, Int32, Int32)? {
     "slice" => (Slice, 2, 3)
     "index-of" => (IndexOf, 2, 3)
     "at" => (At, 2, 2)
+    "split" => (Split, 2, 2)
+    "join" => (Join, 2, 2)
     "rgb" => (Rgba, 3, 3)
     "rgba" => (Rgba, 4, 4)
     _ => {

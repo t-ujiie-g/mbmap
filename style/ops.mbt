@@ -83,6 +83,105 @@ fn[C : FeatureContext] call(
           List([Num(c.r * 255.0), Num(c.g * 255.0), Num(c.b * 255.0), Num(c.a)])
         _ => Failed
       }
+    Split =>
+      match (go(0), go(1)) {
+        (Str(s), Str(d)) => List(js_split(s, d))
+        _ => Failed
+      }
+    Join =>
+      match (go(0), go(1)) {
+        (List(xs), Str(d)) => {
+          let out = StringBuilder()
+          for i, x in xs {
+            guard x is Str(s) else { return Failed }
+            if i > 0 {
+              out.write_string(d)
+            }
+            out.write_string(s)
+          }
+          Str(out.to_string())
+        }
+        _ => Failed
+      }
+    Format => {
+      let sections = []
+      for k = 0; k + 4 < n; k = k + 5 {
+        let text = match go(k) {
+          Failed => return Failed
+          v => value_to_string(ctx, v)
+        }
+        let (scale, font, color, align) = match
+          (go(k + 1), go(k + 2), go(k + 3), go(k + 4)) {
+          (Failed, _, _, _)
+          | (_, Failed, _, _)
+          | (_, _, Failed, _)
+          | (_, _, _, Failed) => return Failed
+          (s, f, c, a) => (s, f, c, a)
+        }
+        sections.push({
+          text,
+          scale: if scale is Num(x) {
+            Some(x)
+          } else {
+            None
+          },
+          font: match font {
+            List(xs) =>
+              Some(xs.map(x => if x is Str(s) { s } else { "" }).join(","))
+            _ => None
+          },
+          color: if color is Color(c) {
+            Some(c)
+          } else {
+            None
+          },
+          align: if align is Str(a) {
+            Some(a)
+          } else {
+            None
+          },
+        })
+      }
+      Formatted(sections)
+    }
+    NumberFormat => {
+      guard go(0) is Num(x) else { return Failed }
+      let text = (v : Value) => if v is Str(s) { Some(s) } else { None }
+      let number = (v : Value) => if v is Num(x) { Some(x) } else { None }
+      let (locale, currency, unit) = (go(1), go(2), go(3))
+      let (min, max) = (go(4), go(5))
+      if [locale, currency, unit, min, max].iter().any(v => v is Failed) {
+        return Failed
+      }
+      match
+        ctx.number_format(
+          x,
+          text(locale),
+          text(currency),
+          text(unit),
+          number(min),
+          number(max),
+        ) {
+        Some(s) => Str(s)
+        None => Failed
+      }
+    }
+    Collator =>
+      match (go(0), go(1), go(2)) {
+        (Bool(case), Bool(diacritic), Str(l)) =>
+          Collator(case, diacritic, Some(l))
+        (Bool(case), Bool(diacritic), Null) => Collator(case, diacritic, None)
+        _ => Failed
+      }
+    ResolvedLocale =>
+      match go(0) {
+        Collator(_, _, locale) =>
+          match ctx.resolved_locale(locale) {
+            Some(s) => Str(s)
+            None => Failed
+          }
+        _ => Failed
+      }
     _ => {
       let trig = ctx.trig()
       let mut a = match op {
@@ -207,7 +306,8 @@ fn[C : FeatureContext] index_of(
     _ => return Failed
   }
   match (needle, hay) {
-    (Failed | Color(_) | List(_), _) => Failed
+    (Failed | Color(_) | List(_) | Formatted(_) | Collator(_, _, _), _) =>
+      Failed
     (_, Str(s)) => {
       let t = js_string(ctx, needle)
       let a = if start != start { 0.0 } else { start.trunc() }
@@ -342,6 +442,8 @@ fn type_of(v : Value) -> String {
     Num(_) => "number"
     Str(_) => "string"
     Color(_) => "color"
+    Formatted(_) => "formatted"
+    Collator(_, _, _) => "collator"
     Failed => "error"
     List(xs) => {
       // Array types are compared by identity: two array items never match.
@@ -387,7 +489,34 @@ fn[C : FeatureContext] value_to_string(ctx : C, v : Value) -> String {
       "rgba(\{ch(c.r)},\{ch(c.g)},\{ch(c.b)},\{ctx.number_text(c.a)})"
     }
     List(_) => json_text(ctx, v)
+    Formatted(sections) => sections.map(s => s.text).join("")
+    // MapLibre's parser keeps collators out of strings.
+    Collator(_, _, _) => ""
   }
+}
+
+///|
+/// JavaScript's `s.split(d)`: an empty `d` splits between UTF-16 code units.
+fn js_split(s : String, d : String) -> Array[Value] {
+  if d == "" {
+    return Array::makei(s.length(), i => {
+      Str(s.unsafe_substring(start=i, end=i + 1))
+    })
+  }
+  let out = []
+  let mut start = 0
+  let mut i = 0
+  while i + d.length() <= s.length() {
+    if s.has_prefix_at(d, i) {
+      out.push(Str(s.unsafe_substring(start~, end=i)))
+      i += d.length()
+      start = i
+    } else {
+      i += 1
+    }
+  }
+  out.push(Str(s.unsafe_substring(start~, end=s.length())))
+  out
 }
 
 ///|
@@ -431,7 +560,7 @@ fn[C : FeatureContext] json_text(ctx : C, v : Value) -> String {
       let n = (x : Double) => json_text(ctx, Num(x))
       "{\"r\":\{n(c.r * c.a)},\"g\":\{n(c.g * c.a)},\"b\":\{n(c.b * c.a)},\"a\":\{n(c.a)}}"
     }
-    Null | Failed => "null"
+    Null | Failed | Formatted(_) | Collator(_, _, _) => "null"
     Bool(b) => b.to_string()
   }
 }

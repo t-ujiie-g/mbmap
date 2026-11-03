@@ -69,3 +69,16 @@ test("vertical text turns Latin sideways and punctuation to its vertical forms",
   // Text without upright characters stays horizontal.
   assert.equal(round(layoutLabel("AB", 10, { vertical: true, lineHeight: 1 }, metrics).box)[2], 10);
 });
+
+test("formatted sections scale their glyphs, lines take their largest scale, and align in it", () => {
+  const sections = (aligns) => ({ scales: [2, 1, 1, 0.5], aligns });
+  const { quads, box } = layoutLabel("ab\nc", 10, { lineHeight: 1 }, metrics, sections([0, 0, 0, 0]));
+  assert.deepEqual(round(box), [-15, -12.5, 15, 12.5]);
+  assert.deepEqual(quads.map((q) => q.scale), [2, 1, 0.5]);
+  assert.deepEqual(round(quads.map((q) => bounds(q)[2] - bounds(q)[0])), round([20, 10, 5].map((w) => w + (2 * SDF_BUFFER * w) / SDF_SIZE)));
+  // `vertical-align: center` puts the smaller glyph half the difference of the em boxes higher.
+  const centered = layoutLabel("ab\nc", 10, { lineHeight: 1 }, metrics, sections([0, 1, 0, 0])).quads;
+  assert.equal(Math.round(bounds(quads[1])[1] - bounds(centered[1])[1]), 5);
+  // Without sections, nothing changes.
+  assert.deepEqual(layoutLabel("ab", 10, {}, metrics).quads, layoutLabel("ab", 10, {}, metrics, { scales: [1, 1], aligns: [0, 0] }).quads.map(({ scale, ...q }) => q));
+});

@@ -184,6 +184,7 @@ export class Map {
   /** Canvas sources given an element, which the style's JSON copies cannot hold. */
   #canvases = new globalThis.Map<string, unknown>();
   #style: StyleSpecification | null = null;
+  #globalState: Record<string, unknown> = {};
   #base = new URL(document.baseURI);
   #styleRequest = 0;
   #tilejson = new globalThis.Map<string, unknown>();
@@ -292,8 +293,11 @@ export class Map {
         return;
       }
       this.#base = base;
+      const state = this.#globalState;
+      this.#globalState = edit.loadedState(state, next, this.#options.globalState ?? {});
       if (this.#engine) this.#apply(next);
       else this.#create(next);
+      if (this.#style !== next) this.#globalState = state;
     };
     // Sources given by TileJSON wait for their documents.
     const ready = (s: StyleSpecification, base: URL) => {
@@ -408,9 +412,27 @@ export class Map {
     this.#events.emit("idle");
   }
 
+  /**
+   * Sets a key of the global state that `global-state` expressions read (null takes the style's
+   * default back), as MapLibre's: layers reading it are drawn again, their tiles loaded again.
+   */
+  setGlobalStateProperty(name: string, value: unknown): this {
+    const defaults = (this.#style?.state ?? {}) as Record<string, { default?: unknown } | undefined>;
+    const next = value === null ? (defaults[name]?.default ?? null) : value;
+    if (JSON.stringify(next) === JSON.stringify(this.#globalState[name])) return this;
+    this.#globalState = { ...this.#globalState, [name]: next };
+    if (this.#style) this.#apply(this.#style);
+    return this;
+  }
+
+  /** A copy of the global state: each key with its value. */
+  getGlobalState(): Record<string, unknown> {
+    return edit.copy(this.#globalState);
+  }
+
   /** The style with its TileJSON sources completed and tile URLs made absolute, as the engine takes it. */
   #engineStyle(style: StyleSpecification): StyleSpecification {
-    const s = legacy && edit.hasLegacy(style) ? legacy.convertStyle(style) : style;
+    const s = edit.withState(legacy && edit.hasLegacy(style) ? legacy.convertStyle(style) : style, this.#globalState);
     const urls = tileJSONUrls(s, this.#base);
     // Without the merger no document has come yet: every `url` source is still loading.
     const merged = urls.size === 0 ? s : tilejson ? tilejson.withTileJSON(s, urls, this.#tilejson, resolveTemplate) : withoutSources(s, new Set(urls.keys()));

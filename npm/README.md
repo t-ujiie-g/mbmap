@@ -74,6 +74,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 - 地物の状態（feature-state）：`setFeatureState({ source, sourceLayer, id }, state)`、`getFeatureState`、`removeFeatureState(target, key?)`。
   - paint で `["feature-state", key]`（`boolean`・`number`・`string` で型をそろえる）を読むと、その地物だけその状態で描く。fill、line、circle、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
   - 地物の id は、タイルの id、GeoJSON の `id`、または source の `promoteId` が指すプロパティ。同じ id の地物はまとめて同じ状態になる。
+- グローバルな状態（global state、MapLibre と同じ）：`setGlobalStateProperty(name, value)`、`getGlobalState()`、`new Map` の `globalState`（スタイルの `state` の既定値より優先）。`["global-state", name]` を読むレイヤーは描き直され、フィルタやレイアウトで読むレイヤーはタイルを読み直す。`null` を渡すとスタイルの既定値に戻る。
   - ワーカーが地物の位置を持ち、状態のある地物の分だけを問い合わせるので、変更は 1 往復遅れて描かれる。フィルターや layout では使えない（MapLibre と同じ）。
 - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
   - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
@@ -257,7 +258,7 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 
 ## 対応するスタイル
 
-background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`。`clusterProperties` は未対応）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較、`in` `match` `case` `coalesce` `interpolate` `step`。未対応のものは、JSON 上の場所付きの警告を出して除く（`strict` ではエラー）。黙って無視はしない。
+background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`。`clusterProperties` は未対応）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較（`collator` つきも）、`in` `match` `case` `coalesce` `interpolate` `step`、`format`（`font-scale` と `vertical-align`。区切りごとの `text-font` と `text-color` は警告を出して使わない）、`number-format`、`split` `join`、`resolved-locale`、`is-supported-script`（MapLibre 6.16 と同じく常に true）、`global-state` など。数の書式と文字列の照合はブラウザの `Intl` で行う。未対応のものは、JSON 上の場所付きの警告を出して除く（`strict` ではエラー）。黙って無視はしない。
 
 fill-extrusion レイヤー（`fill-extrusion-color`、`fill-extrusion-opacity`、`fill-extrusion-height`、`fill-extrusion-base`、`fill-extrusion-vertical-gradient`）とスタイルの `light`（`anchor`、`color`、`intensity`、`position`）に対応している。高さと基部は地物ごとに Worker で頂点に入れ、ズームの式はタイルのズームとその 1 段下の値の間を補間する（MapLibre と同じ）。高さは 0〜6553.5m（0.1m 単位）。地形があるときは、建物を重心の地面の高さに置く。`fill-extrusion-pattern` と `fill-extrusion-translate` は未対応。
 

@@ -15,7 +15,7 @@ let lenient_style : String =
   #|   "f": {"type": "vector", "tiles": ["file:///tiles/{z}/{x}/{y}.pbf"]}},
   #| "layers": [
   #|   {"id": "road", "type": "line", "source": "v", "source-layer": "road",
-  #|    "paint": {"line-color": ["collator", {}], "line-width": 3}},
+  #|    "paint": {"line-color": ["distance", {"type": "Point", "coordinates": [0, 0]}], "line-width": 3}},
   #|   {"id": "odd", "type": "fill", "source": "v", "source-layer": "a",
   #|    "filter": ["within", {}]},
   #|   {"id": "local", "type": "fill", "source": "f", "source-layer": "a"},
@@ -63,6 +63,25 @@ test "properties parsed but not drawn yet are reported only when asked" {
     e => e.message()
   }
   assert_eq(path, "layers[4].paint.fill-translate")
+}
+
+///|
+test "fonts and colors of format sections are reported as not drawn yet" {
+  let json = @json.parse(
+    (
+      #|{"version": 8, "sources": {"v": {"type": "vector", "tiles": ["https://x/{z}/{x}/{y}"]}},
+      #| "layers": [{"id": "t", "type": "symbol", "source": "v", "source-layer": "l",
+      #|   "layout": {"text-field": ["case", true, ["format", "a", {"text-color": "red"}],
+      #|                             ["format", "b", {"font-scale": 2, "text-font": ["literal", ["A"]]}]]}}]}
+    ),
+  )
+  let style = @style.Style::from_json(json, strict=false)
+  assert_eq(style.layers.length(), 1)
+  style.report_ignored(json, strict=false)
+  assert_eq(style.warnings.map(e => e.message()), [
+    "layers[0].layout.text-field: unsupported: text-font of format sections not drawn yet",
+    "layers[0].layout.text-field: unsupported: text-color of format sections not drawn yet",
+  ])
 }
 
 ///|
