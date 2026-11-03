@@ -34,7 +34,7 @@ export function enoughVertices(mode: DrawMode, positions: Position[]): boolean {
 }
 
 /** Decimals kept in the coordinates of shapes drawn (terra-draw's `coordinatePrecision`; 1e-9° is about 0.1 mm). */
-export const PRECISION = 9;
+const PRECISION = 9;
 
 /** `ring` (closed) counter-clockwise in longitude and latitude, as RFC 7946 wants exterior rings. */
 export function counterClockwise(ring: Position[]): Position[] {

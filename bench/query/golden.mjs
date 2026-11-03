@@ -1,6 +1,6 @@
 // queryRenderedFeatures / querySourceFeatures vs MapLibre GL JS 6.16.0 in Chromium, same style,
-// tiles and camera: the same features in the same order (known differences left out: PROGRESS.md
-// Phase 12.3a). Writes bench/results/query-golden.json. Needs `npm --prefix npm run build`.
+// tiles and camera: the same features in the same order (known differences, listed in PROGRESS.md,
+// left out). Writes bench/results/query-golden.json. Needs `npm --prefix npm run build`.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";

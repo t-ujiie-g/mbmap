@@ -1,7 +1,7 @@
 // Symbol layer entries: labels from the wasm (docs/FORMATS.md, "Labels") laid
 // out into glyph quads, with SDF glyphs drawn here by TinySDF.
 import TinySDF from "./tiny-sdf.mjs";
-import { JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
+import { anchorShares, JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
 import { EXTENT, lineAnchors, mergeLines } from "./line-labels.mjs";
 import { readValue } from "./values.mjs";
 
@@ -10,14 +10,19 @@ export const SYMBOL_VERTEX_BYTES = 16;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
 export const LABEL_FLOATS = 19;
 // Where a label's icon columns start in its `labels` row: box (4), 1, first index, index count.
+// Mirrored as ICON_COLUMN in map/labels.mbt.
 export const ICON_COLUMN = 9;
-// Icon sizes per vertex are packed as MapLibre's (`SIZE_PACK_FACTOR`), corner offsets in 32nds of a px.
+// Icon sizes per vertex are packed as MapLibre's (`SIZE_PACK_FACTOR`), corner offsets in 32nds of
+// a px; the symbol shader in render_webgl2/gl.mbt divides by both (`a_size / 128.0`, `a_data / 32.0`).
 const SIZE_PACK = 128;
 const OFFSET_PACK = 32;
 // Byte offsets in a symbol entry's header (worker/labels.mbt `Labels::bytes`);
 // `anchors` (a count, then per anchor its code and offset) ends the fixed part.
 const HEADER = { anchor: 0, allowOverlap: 1, ignorePlacement: 2, vertical: 3, offset: 4, maxWidth: 20, lineHeight: 28, padding: 36, justify: 44, anchors: 45 };
+// A variable anchor in that header: its code and two f64 offsets (worker/labels.mbt `Labels::bytes`).
 const ANCHOR_BYTES = 17;
+// Indices per glyph or icon quad (two triangles); mirrored as QUAD_INDICES in map/labels.mbt.
+const QUAD_INDICES = 6;
 // Justifications of a multi-line label with variable anchors and `text-justify: auto`.
 const VARIANTS = ["left", "center", "right"];
 // `symbol-placement` in worker/labels.mbt's codes.
@@ -89,13 +94,6 @@ export class Glyphs {
 const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
 const quarterPixels = (px) => clamp16(px * 4);
 
-// The shares of a box left of and above an anchor of worker/labels.mbt's code.
-function alignment(code) {
-  const name = ANCHOR_NAMES[code] ?? "center";
-  return [name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5, name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5];
-}
-const ANCHOR_NAMES = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
-
 /**
  * MapLibre's `shapeIcon` and, with `icon-text-fit` (`fit` 1 width, 2 height, 3 both) around a text
  * `box` (CSS px), `fitIconToText`: the icon's left, top, right, bottom at size 1. `image` is
@@ -106,7 +104,7 @@ export function shapeIcon(image, icon, box) {
   const [dx, dy] = icon.offset;
   const fit = box ? icon.textFit : 0;
   const [pt, pr, pb, pl] = icon.fitPadding;
-  const [ha, va] = alignment(icon.anchor);
+  const [ha, va] = anchorShares(icon.anchor);
   let left = dx - w * ha;
   let top = dy - h * va;
   if (fit) left = fit & 1 ? dx + box[0] - pl : dx + (box[0] + box[2] - w) / 2;
@@ -274,14 +272,14 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
   const vertices = new ArrayBuffer(quads * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
   const wide = quads * 4 > 65536;
-  const indices = wide ? new Uint32Array(quads * 6) : new Uint16Array(quads * 6);
+  const indices = wide ? new Uint32Array(quads * QUAD_INDICES) : new Uint16Array(quads * QUAD_INDICES);
   const labels = new Float32Array(placed.length * LABEL_FLOATS);
   const iconLabels = placed.filter((l) => l.icon);
   const icons = iconQuads(iconLabels);
   placed.forEach((l, i) => {
     const per = l.variants[0].quads.length;
-    const ic = l.icon ? [...l.icon.box, 1, l.icon.index * 6, 6] : [0, 0, 0, 0, 1, 0, 0];
-    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, ...ic, l.variants.length, l.first * 6, per * 6], i * LABEL_FLOATS);
+    const ic = l.icon ? [...l.icon.box, 1, l.icon.index * QUAD_INDICES, QUAD_INDICES] : [0, 0, 0, 0, 1, 0, 0];
+    labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, ...ic, l.variants.length, l.first * QUAD_INDICES, per * QUAD_INDICES], i * LABEL_FLOATS);
     l.variants.flatMap((s) => s.quads).forEach((q, k) => {
       const n = l.first + k;
       // Along lines a glyph's corners are relative to its own middle.
@@ -296,7 +294,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
         v.setUint16(o + 10, c, true);
         v.setUint16(o + 12, Math.round(l.size * 16), true);
       });
-      indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * 6);
+      indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * QUAD_INDICES);
     });
   });
   return {
@@ -320,7 +318,7 @@ function iconQuads(labels) {
   const vertices = new ArrayBuffer(labels.length * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
   const wide = labels.length * 4 > 65536;
-  const indices = wide ? new Uint32Array(labels.length * 6) : new Uint16Array(labels.length * 6);
+  const indices = wide ? new Uint32Array(labels.length * QUAD_INDICES) : new Uint16Array(labels.length * QUAD_INDICES);
   labels.forEach((l, n) => {
     const { name, image, size, rotate, shaped } = l.icon;
     l.icon.index = n;
@@ -335,7 +333,7 @@ function iconQuads(labels) {
       v.setUint16(o + 10, c, true);
       v.setUint16(o + 12, Math.round(size * SIZE_PACK), true);
     });
-    indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * 6);
+    indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * QUAD_INDICES);
   });
   return {
     vertices,

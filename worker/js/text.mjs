@@ -9,6 +9,14 @@ export const SDF_RADIUS = 16;
 
 // `@style.TextAnchor` order (`TextAnchor::code` in style/anchor.mbt).
 const ANCHORS = ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"];
+const leftShare = (name) => (name.endsWith("left") ? 0 : name.endsWith("right") ? 1 : 0.5);
+const topShare = (name) => (name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5);
+
+/** The shares of a box left of and above the anchor of `code` (`TextAnchor::code`). */
+export function anchorShares(code) {
+  const name = ANCHORS[code] ?? "center";
+  return [leftShare(name), topShare(name)];
+}
 
 // The em box's share above the baseline.
 const ASCENT = 0.88;
@@ -68,14 +76,9 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
   const along = Math.max(0, ...lengths);
   const [width, height] = columns ? [across, along] : [along, across];
   const name = ANCHORS[anchor] ?? "center";
-  const ax = name.endsWith("left") ? 0 : name.endsWith("right") ? -width : -width / 2;
-  const ay = name.startsWith("top") ? 0 : name.startsWith("bottom") ? -height : -height / 2;
-  const x0 = ax + offset[0] * size;
-  const y0 = ay + offset[1] * size;
-  const side = justify === "auto" ? name : justify;
-  const share = columns
-    ? (name.startsWith("top") ? 0 : name.startsWith("bottom") ? 1 : 0.5)
-    : (side.endsWith("left") ? 0 : side.endsWith("right") ? 1 : 0.5);
+  const x0 = -width * leftShare(name) + offset[0] * size;
+  const y0 = -height * topShare(name) + offset[1] * size;
+  const share = columns ? topShare(name) : leftShare(justify === "auto" ? name : justify);
   const quads = [];
   // A glyph's padded bitmap against its pen and baseline, before any turn.
   const rect = (m) => [m.left * scale, -m.top * scale, (m.left + m.width) * scale, (m.height - m.top) * scale];

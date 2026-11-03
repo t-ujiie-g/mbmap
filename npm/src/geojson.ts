@@ -1,17 +1,15 @@
 // GeoJSON sources, served by their own worker. `Map` imports this module only
 // for styles that have one.
-import { workerScriptUrl, wasmUrl } from "./urls";
+import { type ClusterQuery, clusterArgs, loadOptions, sameOptions } from "./geojson-options.ts";
+import { workerScriptUrl, wasmUrl } from "./urls.ts";
+
+export type { ClusterQuery } from "./geojson-options.ts";
 
 /** A GeoJSON source of the style: its id and its specification, whose `data` is the GeoJSON itself or a URL to fetch it from (without credentials). */
 export interface GeoJSONSource {
   id: string;
   spec: Record<string, unknown>;
 }
-
-/** A cluster query: the expansion zoom, the children or the leaves (`limit`, `offset`) of cluster `cluster`. */
-export type ClusterQuery =
-  | { op: "expansion" | "children"; cluster: number }
-  | { op: "leaves"; cluster: number; limit?: number; offset?: number };
 
 /**
  * `tile` gives a source's tile as an encoded columnar tile, or null where it has nothing. `set` loads `sources` in place of
@@ -23,43 +21,6 @@ export interface GeoJSONTiles {
   set(sources: GeoJSONSource[], base: URL): string[];
   cluster(source: string, query: ClusterQuery): Promise<unknown>;
   terminate(): void;
-}
-
-const INT32_MAX = 2 ** 31 - 1;
-
-/** The options the worker loads a source with, derived as MapLibre's GeoJSONSource does (`clusterMaxZoom` 0 or unset means `maxzoom` - 1). */
-function loadOptions(spec: Record<string, unknown>) {
-  const num = (v: unknown, d: number) => (typeof v === "number" ? v : d);
-  const maxzoom = num(spec.maxzoom, 18);
-  const clusterMaxZoom = num(spec.clusterMaxZoom, 0);
-  const cluster =
-    spec.cluster === true
-      ? {
-          maxZoom: Math.max(-1, Math.min(30, clusterMaxZoom ? Math.round(clusterMaxZoom) : maxzoom - 1)),
-          radius: num(spec.clusterRadius, 0) || 50,
-          minPoints: Math.min(INT32_MAX, Math.ceil(Math.max(2, num(spec.clusterMinPoints, 0) || 2))),
-        }
-      : null;
-  return { maxzoom, buffer: num(spec.buffer, 128), tolerance: num(spec.tolerance, 0.375), lineMetrics: spec.lineMetrics === true, cluster };
-}
-
-function sameOptions(a: GeoJSONSource, b: GeoJSONSource): boolean {
-  return a.spec.data === b.spec.data && JSON.stringify(loadOptions(a.spec)) === JSON.stringify(loadOptions(b.spec));
-}
-
-/**
- * `query` as the worker takes it: integer ids, a `limit` of 0 (MapLibre's 10), more or
- * Infinity (-1), an `offset` from 0. Throws on anything else.
- */
-function clusterArgs(query: ClusterQuery) {
-  const { cluster } = query;
-  if (!Number.isInteger(cluster) || Math.abs(cluster) > INT32_MAX) throw new Error(`mbmap: no cluster with the id ${cluster}`);
-  if (query.op !== "leaves") return query;
-  const limit = query.limit ?? 10;
-  const offset = query.offset ?? 0;
-  if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new Error(`mbmap: bad limit ${limit}`);
-  if (!(Number.isInteger(offset) && offset >= 0)) throw new Error(`mbmap: bad offset ${offset}`);
-  return { op: "leaves", cluster, limit: limit > INT32_MAX ? -1 : limit, offset: Math.min(offset, INT32_MAX) };
 }
 
 /** Starts the GeoJSON worker and loads `sources`, resolving data URLs against `base`. */
@@ -154,7 +115,7 @@ export function createGeoJSONTiles(
       }
       for (const s of next) {
         const old = loaded.get(s.id);
-        if (old && sameOptions(old.source, s)) continue;
+        if (old && sameOptions(old.source.spec, s.spec)) continue;
         const n = old?.n ?? nextSource++;
         loaded.set(s.id, { n, source: s });
         load(s, n);

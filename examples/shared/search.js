@@ -1,7 +1,5 @@
-// The showcase's search from `mbmap/search`: coordinates (projected ones
-// through mbmap/analysis) and the places, both without a server; with
-// `?gsi-search=1`, also GSI's place-name search as an example of an external
-// provider (it has no published terms: GSI made it for its own map; see the README).
+// The showcase's search from `mbmap/search`: coordinates (projected ones through mbmap/analysis) and the places,
+// without a server; `?gsi-search=1` adds GSI's place-name search as an external provider (no published terms; see the README).
 import { transform } from "mbmap/analysis";
 import { coordinates, createSearch, datasetSearch } from "mbmap/search";
 

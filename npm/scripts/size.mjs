@@ -14,13 +14,15 @@ const DIST = path.join(PKG, "dist");
 // `files` are what a user of the entry loads on top of the entries it builds
 // on; `references` the dist files its JS may import or load by URL.
 const ENTRIES = [
-  { name: "mbmap", files: ["index.js"], budget: 120_000, references: ["./geojson.js", "./pmtiles.js", "./legacy.js", "./sprite.js", "./media.js", "./custom.js", "./worker.js", "./mbmap.wasm"] },
+  { name: "mbmap", files: ["index.js"], budget: 120_000, references: ["./geojson.js", "./pmtiles.js", "./legacy.js", "./sprite.js", "./media.js", "./custom.js", "./export.js", "./tilejson-merge.js", "./worker.js", "./mbmap.wasm"] },
   { name: "GeoJSON sources (loaded by mbmap when a style has one)", files: ["geojson.js"], budget: 5_000, references: ["./geojson-worker.js", "./geojson.wasm"] },
   { name: "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)", files: ["pmtiles.js"], budget: 2_000, references: [] },
   { name: "legacy filters and functions (loaded by mbmap when a style has them)", files: ["legacy.js"], budget: 5_000, references: [] },
   { name: "sprite sheets (loaded by mbmap when a style has a sprite)", files: ["sprite.js"], budget: 2_000, references: [] },
   { name: "image, video and canvas sources (loaded by mbmap when a style has one)", files: ["media.js"], budget: 3_000, references: [] },
   { name: "custom layers (loaded by mbmap with the first one)", files: ["custom.js"], budget: 3_000, references: [] },
+  { name: "image export (loaded by mbmap with the first toBlob)", files: ["export.js"], budget: 1_000, references: [] },
+  { name: "TileJSON merging (loaded by mbmap with the first source given by url)", files: ["tilejson-merge.js"], budget: 1_000, references: [] },
   { name: "mbmap/element (on top of mbmap)", files: ["element.js"], budget: 5_000, references: ["./index.js"] },
   { name: "mbmap/ui (every controller)", files: ["ui.js"], budget: 10_000, references: [] },
   { name: "mbmap/search", files: ["search.js"], budget: 5_000, references: [] },

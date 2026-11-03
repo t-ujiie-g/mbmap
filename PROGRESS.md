@@ -8,13 +8,31 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 107.6KB（画像・動画・canvas のソースは別に `media.js` 2.0KB、カスタムレイヤーは `custom.js` 1.8KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
+  | 表示（メイン） | 107.1KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 120KB（2026-11-03、ユーザー判断。15.8 で 100KB を超えるため、100KB から引き上げ） |
   | 表示ワーカー | 93.2KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## リファクタリング：Phase 15 の後（TS・bench 側）（2026-11-04）
+
+状態：**完了**。Phase 15 で足した TS・JS・bench を AGENTS.md §7 で見直した（MoonBit 側は前の節、PR #76）。
+
+- **重複**：画像を並べ替えずに読む `createImageBitmap(..., {premultiplyAlpha: "none", colorSpaceConversion: "none"})` を worker/js/imagesize.mjs の `decodeImage` 1 つに（スプライト、`loadImage`、DEM タイル、解析の DEM の 4 か所）。`err instanceof Error ? err : new Error(String(err))` の 14 か所は `Map` の `#fail` が `unknown` を受けて 1 か所で変換する形に（media.ts も同じ `fail` を受ける）。symbols.mjs のアンカー名と揃えは text.mjs の `anchorShares` に。GeoJSON ワーカーの呼び出しは `WorkerClient` にまとめなかった（タイル・クラスタ・エラーの 3 種の返事を持つ別のプロトコルで、まとめるにはワーカー側も変える）。
+- **使われない export**：legacy.ts の `isFunction`、draw/shapes.ts の `PRECISION`、dem-zoom.ts の `MAX_GRID_SIDE` を非公開に。
+- **index.ts の分割**（1529 → 1359 行）：イベント（`on` / `off` / `once`、レイヤーのマウスイベントと hover）を `events.ts` の `Events` に、スタイルの画像（スプライト、`addImage` など、`loadImage`）を `style-images.ts` の `StyleImages` に、どちらも `Map` が持つ形で。`idle` を待たせる処理（TileJSON とスプライト）は `#waitFor` 1 つに。分割の分だけ gzip で +185 バイト（イベント +100、画像 +85）。
+- **遅延読み込み**：`toBlob` の結合と符号化を `export.js`（368 バイト）、TileJSON の取り込み（`withTileJSON`）を `tilejson-merge.js`（411 バイト）に分け、それぞれ最初の `toBlob`、最初の文書を取りに行くときに読む。文書の来ていない `url` のソースは本体の `withoutSources` で外す。size.mjs にそれぞれの行（予算 1KB）。
+- **大きさ**（gzip）：表示（メイン）107,263 → 107,122 バイト（-141。遅延読み込みと重複の整理で -326、分割で +185）。`sprite.js` +13、`media.js` -15、`pmtiles.js` +17。
+- **JS と MoonBit の定数**：symbols.mjs の `SIZE_PACK` / `OFFSET_PACK`（render_webgl2/gl.mbt のシェーダ）、`ICON_COLUMN`、`ANCHOR_BYTES`、`QUAD_INDICES`（新設、`* 6` を置き換え）、line-labels.mjs の `EXTENT`（MapLibre の 8192）、worker.mjs の `MAX_RASTER_SIZE`（JS だけの値）に相手の場所を書いた。
+- **テスト**（npm test 134 → 151）：`geojson-options.ts`（`loadOptions`、`sameOptions`、`clusterArgs` を import のないファイルへ。既定値と int32 の境界）、pmtiles の `headerDocument`（純粋な関数に分けた。v3、短すぎ、tileType）、`loadSprites`（sprite.ts を `./images.ts` のように拡張子つきで import して Node で読めるように。fetch を差し込んで 404、@2x、名前つきスプライト、大きすぎるシート）、geojson_worker/js/features.mjs（`__proto__` のキー）、wasmio/js/host.mjs。`npm test` に geojson_worker/js と wasmio/js のテストを足した。tsconfig に `allowImportingTsExtensions`。
+- **コメント**：types.ts（`Source`、`MapOptions`）、draw/controller.ts、ui/profile.ts、examples/shared/search.js の 4 行以上の塊を 3 行以内に（`MapOptions` の詳しい説明は README に既にある）。checks/geo-tools.mjs と query/golden.mjs の Phase 番号を消した。
+- **bench**：pack-test.mjs（1020 → 519 行）の query、state、tile sources、track と export、style、camera、controls、search を `bench/npm/checks/*.mjs` へ。画面の画素を読む `pixel` と `near`、`atCentre` は `checks/pixels.mjs` 1 つに（media と custom の写しもこれに。読み方は decodePng に揃えた）。
+- **style:golden**：
+  - `extrusion-patterns` は本来のカメラ（zoom 16、bearing 30、pitch 50）に。mean 0.696、p99 20 で、限度を 0.75 / 21 に。差は壁の模様の横のずれ：壁沿いの距離を mbmap は 4096 単位で切り捨て（tess/extrusion.mbt の `along.to_int()`）、MapLibre は 8192 単位で丸める（`Math.round(e)`）。試しに `(along * 2.0).round()` で入れてシェーダで半分にすると 0.183 / 0 になった（.mbt の変更なのでこの PR には入れていない。直したら限度を戻す）。
+  - スプライトの模様にも本当の透明度を入れた（dots と stripes が半透明）。`patterns` 0.074 / 2、`patterns-2x` 0.077 / 2 で限度を 0.08 / 2 に（`gap` つき）。差の大部分（約 3 万画素）は半透明の画素の 1〜2 段の丸め。残り約 700 画素の大きな差は輪郭（`fill-antialias` の模様の輪郭）のところで、輪郭を切ると 33 画素に減る。半透明の模様の塗りと輪郭が重なる辺の画素の混ぜ方が MapLibre と違う（原因は未特定）。`line-patterns` は半透明にして 0.233 → 0.143 / 1 になったので限度を 0.2 / 1 に下げた。
+- **確認**：moon check / test（全ターゲット）、npm build / test / size、bench test、npm:pack を 2 回、style / labels / query / track / export / pmtiles / raster の黄金テスト。track:golden の `flank` が 1 回目だけ 319px ずれた（2 回目は 8e-10px。DEM の読み込みとの競合と思われ、このコードの変更とは関係しない）。
 
 ## リファクタリング：Phase 15 の後（MoonBit 側）（2026-11-04）
 

@@ -1,7 +1,7 @@
 // A style's sprite sheets (MapLibre's `loadSprite`), loaded only for styles with a `sprite`.
-import { checkBlobImageSize } from "../../worker/js/imagesize.mjs";
-import { canvasPixels, spriteImages, spriteList } from "./images";
-import { httpUrl } from "./urls";
+import { checkBlobImageSize, decodeImage } from "../../worker/js/imagesize.mjs";
+import { canvasPixels, spriteImages, spriteList } from "./images.ts";
+import { httpUrl } from "./urls.ts";
 
 /** Largest side of a sprite sheet, checked before it is decoded. */
 const MAX_SHEET_SIZE = 8192;
@@ -23,7 +23,7 @@ export async function loadSprites(
     if (!json.ok || !png.ok) throw new Error(`mbmap: sprite ${at}: HTTP ${json.ok ? png.status : json.status}`);
     const blob = await png.blob();
     await checkBlobImageSize(blob, MAX_SHEET_SIZE, `mbmap: sprite ${at}`);
-    const bitmap = await createImageBitmap(blob, { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    const bitmap = await decodeImage(blob);
     try {
       return spriteImages(await json.json(), canvasPixels(bitmap), id === "default" ? "" : `${id}:`);
     } finally {

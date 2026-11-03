@@ -49,11 +49,9 @@ export interface DrawState {
 }
 
 /**
- * `geodesic`: mbmap/geodesic (circle mode needs it); `id`: of the GeoJSON source and the prefix of the
- * layers (default `"mbmap-draw"`); `color` (default `"#3b6ed6"`); `steps`: points of a circle (default 64);
- * `geometry`: mbmap/analysis's `{ split: splitFeatures, merge: mergeFeatures }` (split and merge need it);
- * `precision`: decimals kept in the coordinates (default 9); `snapping`: to the other features'
- * `vertices` and `lines` within `pixels` (default 40, as terra-draw), `true` for both. Rings stay counter-clockwise.
+ * `geodesic`: mbmap/geodesic (circles need it); `geometry`: mbmap/analysis's `{ split: splitFeatures, merge: mergeFeatures }`;
+ * `id`: the source and layer prefix (default "mbmap-draw"); `color` "#3b6ed6"; `steps` per circle 64; `precision` 9 decimals;
+ * `snapping`: to other shapes' `vertices` and `lines` within `pixels` (default 40, as terra-draw), `true` for both.
  */
 export interface DrawOptions {
   geometry?: GeometryOps;

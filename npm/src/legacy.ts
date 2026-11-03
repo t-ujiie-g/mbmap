@@ -282,7 +282,7 @@ function hasOp(property: string): Json {
 }
 
 /** A legacy property function: a plain object, not an expression or a constant. */
-export function isFunction(value: Json): value is Record<string, unknown> {
+function isFunction(value: Json): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

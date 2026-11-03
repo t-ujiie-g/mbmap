@@ -9,10 +9,8 @@ import type { Measure, Position } from "./measurement";
 export type Elevation = (positions: Position[]) => Promise<ArrayLike<number>>;
 
 /**
- * `positions` of the line (empty for none); `path` its samples, `distances` along it to each (m)
- * and `elevations` there (m, NaN without data); `length`, `min`, `max`, `gain` and `loss` in meters;
- * `active` the sample pointed at (-1 for none); `loading` while it is computed; `error` of the last
- * attempt.
+ * `path`: samples along `positions`, `distances` to each and `elevations` there (m, NaN without data); `length`, `min`, `max`,
+ * `gain`, `loss` in meters; `active`: the sample pointed at (-1 for none); `loading`, and the last attempt's `error`.
  */
 export interface ProfileState {
   positions: Position[];

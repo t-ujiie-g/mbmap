@@ -75,3 +75,8 @@ const HEADER_BYTES = 256 * 1024;
 export async function checkBlobImageSize(blob, max, what = "image") {
   checkImageSize(new Uint8Array(await blob.slice(0, HEADER_BYTES).arrayBuffer()), max, what);
 }
+
+/** An image's pixels exactly as stored: not premultiplied, no color management (DEM heights, sprites). */
+export function decodeImage(blob) {
+  return createImageBitmap(blob, { premultiplyAlpha: "none", colorSpaceConversion: "none" });
+}

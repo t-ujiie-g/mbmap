@@ -2,7 +2,7 @@
 // one grid. Import-free, so that `npm test` can load it.
 
 /** Largest grid side in cells (`MAX_GRID_SIDE`, analysis_worker/dem.mbt). */
-export const MAX_GRID_SIDE = 4096;
+const MAX_GRID_SIDE = 4096;
 
 /** The tile columns or rows `[first, last]` that cover `[a, b]` at zoom `z` (Web Mercator, latitudes clamped). */
 function tileSpan(z: number, a: number, b: number, lat: boolean): number {

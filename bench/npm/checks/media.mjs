@@ -1,15 +1,10 @@
 // Image, video and canvas sources on bench/npm/pages/media: each shows where its corners put it; a playing canvas is drawn
 // again each frame and kept when paused; the video pauses and plays; the image moves, takes a new picture, refuses a URL
 // that is not http(s) and comes back with its layer; the map goes idle while the video plays and when the layer is shown.
-import { decodePng } from "../../lib/png.mjs";
+import { near as within, pixel } from "./pixels.mjs";
 import { step } from "./step.mjs";
 
-async function pixel(page, x, y) {
-  const { rgba } = decodePng(await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } }));
-  return [rgba[0], rgba[1], rgba[2]];
-}
-
-const near = (rgb, want, d = 8) => rgb.every((v, i) => Math.abs(v - want[i]) <= d);
+const near = (rgb, want, d = 8) => within(rgb, want, d);
 const white = [255, 255, 255];
 
 export async function mediaChecks(page, requests) {
