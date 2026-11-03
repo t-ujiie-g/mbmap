@@ -19,6 +19,18 @@ function points(count) {
 }
 const CLUSTERED = { pts: { type: "geojson", data: points(3000), cluster: true, clusterRadius: 40, clusterMaxZoom: 14 } };
 const isCluster = ["has", "point_count"];
+// Lines winding across tile borders around Tokyo Station, for line metrics: a zigzag and a loop.
+const zigzag = (lat) => Array.from({ length: 13 }, (_, i) => [139.70 + i * 0.012, lat + (i % 2) * 0.012]);
+const loop = Array.from({ length: 41 }, (_, i) => [139.767 + 0.03 * Math.cos((i / 40) * 2 * Math.PI), 35.681 + 0.024 * Math.sin((i / 40) * 2 * Math.PI)]);
+const ROUTES = {
+  routes: {
+    type: "geojson", lineMetrics: true,
+    data: { type: "FeatureCollection", features: [
+      { type: "Feature", properties: { k: 1 }, geometry: { type: "LineString", coordinates: zigzag(35.66) } },
+      { type: "Feature", properties: { k: 2 }, geometry: { type: "MultiLineString", coordinates: [zigzag(35.69), loop] } },
+    ] },
+  },
+};
 
 export const SCENES = {
   fills: {
@@ -151,5 +163,17 @@ export const SCENES = {
     ]),
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
+  },
+  // Line gradients over line metrics (MapLibre's line_gradient and renderColorRamp): an
+  // interpolated ramp with a translucent end, and a step ramp.
+  gradients: {
+    style: style([
+      { id: "smooth", type: "line", source: "routes", filter: ["==", ["get", "k"], 1], layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-width": 8, "line-gradient": ["interpolate", ["linear"], ["line-progress"], 0, "#2b83ba", 0.5, "#ffffbf", 1, "rgba(215, 25, 28, 0.4)"] } },
+      { id: "steps", type: "line", source: "routes", filter: ["==", ["get", "k"], 2],
+        paint: { "line-width": 5, "line-opacity": 0.9, "line-gradient": ["step", ["line-progress"], "#1a9641", 0.3, "#fdae61", 0.7, "#7b3294"] } },
+    ], ROUTES),
+    camera: { center: [139.767, 35.678], zoom: 12.5, bearing: 0, pitch: 0 },
+    limits: { mean: 0.07, p99: 1 },
   },
 };

@@ -10,6 +10,7 @@ pub(open) trait FeatureContext {
   fn trig(Self) -> @core.Trig = _
   fn number_text(Self, Double) -> String = _
   fn text_number(Self, String) -> Double = _
+  fn line_progress(Self) -> Double = _
 }
 
 ///|
@@ -20,6 +21,12 @@ impl FeatureContext with fn id(_) {
 ///|
 impl FeatureContext with fn state(_, _) {
   None
+}
+
+///|
+/// NaN: `line-progress` is known only where a line gradient is drawn.
+impl FeatureContext with fn line_progress(_) {
+  @double.not_a_number
 }
 
 ///|
@@ -161,6 +168,14 @@ pub fn[C : FeatureContext] Expr::eval(
     Id => ctx.id()
     GeometryType => Str(ctx.geometry_type())
     Zoom => Num(zoom)
+    LineProgress => {
+      let p = ctx.line_progress()
+      if p.is_nan() {
+        Failed
+      } else {
+        Num(p)
+      }
+    }
     Not(e) =>
       match go(e) {
         Bool(b) => Bool(!b)
@@ -310,7 +325,14 @@ fn is_type(t : Expected, v : Value) -> Bool {
 /// Calls `f` with each sub-expression of `self` (not their own).
 fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
   match self {
-    Lit(_) | Get(_) | Has(_) | Id | GeometryType | Zoom | FeatureState(_) => ()
+    Lit(_)
+    | Get(_)
+    | Has(_)
+    | Id
+    | GeometryType
+    | Zoom
+    | LineProgress
+    | FeatureState(_) => ()
     Not(a) => f(a)
     All(es)
     | Any(es)
@@ -366,6 +388,21 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
   }
   visit(self)
   (keys, geometry)
+}
+
+///|
+/// Whether the expression reads `line-progress`.
+pub fn Expr::reads_line_progress(self : Expr) -> Bool {
+  let mut found = false
+  fn visit(e : Expr) -> Unit {
+    if e is LineProgress {
+      found = true
+    } else if !found {
+      e.each_child(visit)
+    }
+  }
+  visit(self)
+  found
 }
 
 ///|

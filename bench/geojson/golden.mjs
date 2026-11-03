@@ -1,7 +1,6 @@
-// Golden test: tiler must cut every tile in range exactly as geojson-vt does
-// (js build in full, wasm-gc by hash), with geojson-vt's defaults and
-// MapLibre's settings, wrapping or not, and with line metrics (where each line
-// feature lies along its line). Usage: node geojson/golden.mjs
+// Golden test: tiler must cut every tile in range exactly as geojson-vt does (js build in
+// full, wasm-gc by hash), with geojson-vt's defaults, MapLibre's settings, without wrapping
+// and with line metrics. Usage: node geojson/golden.mjs
 import { readFile } from "node:fs/promises";
 import { GeoJSONVT } from "@maplibre/geojson-vt";
 import { loadEntry } from "../lib/entry.mjs";

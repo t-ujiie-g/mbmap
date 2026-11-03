@@ -8,7 +8,8 @@ pub(all) suberror MapError {
 /// `entry` is the mesh's index in the worker's packed tile; `owned` false when an
 /// earlier layer's; `paint` the group's paint at the zoom it was evaluated for;
 /// `vertex_paint` the layer's own per-vertex paint (also when the geometry is
-/// shared); `states` (first index, count, state) the ranges of features with a state.
+/// shared); `states` (first index, count, state) the ranges of features with a state;
+/// `clips` a gradient line's rows and ramp length, `gradient` its ramp and expression.
 priv struct LayerMesh {
   entry : Int32
   mut states : Array[(Int32, Int32, JsValue)]
@@ -22,6 +23,8 @@ priv struct LayerMesh {
   labels : LabelSet?
   ground : ExtrusionGround?
   dem : DemTile?
+  clips : FixedArray[Double]?
+  mut gradient : (@style.Expr, @render_webgl2.Gradient)?
 }
 
 ///|
@@ -415,6 +418,9 @@ fn Map::release_meshes(self : Map, meshes : Array[LayerMesh]) -> Unit {
     }
     if m.vertex_paint is Some(b) {
       self.renderer.release_paint(b)
+    }
+    if m.gradient is Some((_, g)) {
+      self.renderer.release_gradient(g)
     }
   }
 }

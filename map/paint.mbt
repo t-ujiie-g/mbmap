@@ -5,11 +5,12 @@
 priv struct JsProps {
   obj : JsValue
   state : JsValue
+  progress : Double
 }
 
 ///|
 fn JsProps::none() -> JsProps {
-  { obj: js_null(), state: js_null(), }
+  { obj: js_null(), state: js_null(), progress: @double.not_a_number, }
 }
 
 ///|
@@ -42,6 +43,12 @@ impl @style.FeatureContext for JsProps with fn id(self) {
 ///|
 /// `@math` is the browser's `Math` in the js backend.
 let js_trig : @core.Trig = @core.Trig::moonbit()
+
+///|
+/// Where along a line a gradient is evaluated (NaN elsewhere).
+impl @style.FeatureContext for JsProps with fn line_progress(self) {
+  self.progress
+}
 
 ///|
 impl @style.FeatureContext for JsProps with fn trig(_) {
@@ -207,6 +214,7 @@ pub fn Map::paint_at(
   let p = paint_of(self.style.layers[i], self.transform.camera.zoom, {
     obj: properties_value(props),
     state: js_null(),
+    progress: @double.not_a_number,
   })
   paint_object(
     [p.r, p.g, p.b, p.a],

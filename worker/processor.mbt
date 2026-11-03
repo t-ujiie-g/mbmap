@@ -13,6 +13,7 @@ pub struct TileProcessor {
   priv fill_pool : Array[@tess.FillBuffers]
   priv extrusion_pool : Array[@tess.ExtrusionBuffers]
   priv line_pool : Array[@tess.LineBuffers]
+  priv gradient_pool : Array[GradientRows]
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
@@ -46,6 +47,7 @@ pub fn TileProcessor::new(
     fill_pool: [],
     extrusion_pool: [],
     line_pool: [],
+    gradient_pool: [],
     label_pool: [],
     geometry: @mvt.Geometry::new(),
     inputs: style.layers.map(l => {
@@ -156,7 +158,8 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
       a.cap == b.cap &&
       a.miter_limit == b.miter_limit &&
       a.round_limit == b.round_limit &&
-      (a.dasharray is Some(_)) == (b.dasharray is Some(_))
+      (a.dasharray is Some(_)) == (b.dasharray is Some(_)) &&
+      (a.gradient is Some(_)) == (b.gradient is Some(_))
     )
   )
 }
@@ -446,9 +449,13 @@ fn TileProcessor::line_layer(
   for b in self.line_pool {
     b.clear()
   }
+  for r in self.gradient_pool {
+    r.clear()
+  }
   let feature = self.feature_ref(layer)
   let join = join_of(sl.join)
   let cap = cap_of(sl.cap)
+  let gradient = sl.gradient is Some(_)
   for i in 0..<layer.length() {
     feature.index = i
     let ty = layer.geom_type(i)
@@ -461,7 +468,9 @@ fn TileProcessor::line_layer(
       let out = self.line_buffers(group)
       let first = out.indices.length()
       let v0 = out.num_vertices()
+      let clip = if gradient { clip_of(feature) } else { (0.0, 1.0) }
       for r in 0..<g.num_rings() {
+        let before = out.num_vertices()
         self.line.add_line(
           g.coords[:],
           g.ring_start(r),
@@ -472,8 +481,19 @@ fn TileProcessor::line_layer(
           miter_limit=sl.miter_limit,
           round_limit=sl.round_limit,
           dashed=sl.dasharray is Some(_),
+          progress=gradient,
           extent=layer.extent(),
         )
+        if gradient && out.num_vertices() > before {
+          self
+          .gradient_rows(group)
+          .add(
+            out.num_vertices() - before,
+            clip,
+            ring_length(g.coords, g.ring_start(r), g.ring_ends[r]) /
+            layer.extent().to_double(),
+          )
+        }
       }
       self.track(index, group, i, first, out.indices.length())
       self.run(i, out.num_vertices() - v0)
@@ -484,6 +504,7 @@ fn TileProcessor::line_layer(
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
       if !self.out.add_line(index, b, extent=layer.extent()) ||
+        (gradient && !self.out.put_progress(b, self.gradient_rows(g))) ||
         !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }
@@ -494,6 +515,48 @@ fn TileProcessor::line_layer(
     }
   }
   true
+}
+
+///|
+fn TileProcessor::gradient_rows(
+  self : TileProcessor,
+  g : Int32,
+) -> GradientRows {
+  while self.gradient_pool.length() <= g {
+    self.gradient_pool.push(GradientRows::new())
+  }
+  self.gradient_pool[g]
+}
+
+///|
+/// The properties a GeoJSON source's line metrics add (`@tiler.CLIP_START`
+/// and `CLIP_END`; the worker does not import the tiler).
+const CLIP_START : String = "geojsonvt_clip_start"
+
+///|
+const CLIP_END : String = "geojsonvt_clip_end"
+
+///|
+/// Where a feature lies along its line (a GeoJSON source's line metrics);
+/// all of it without them.
+fn clip_of(feature : FeatureRef) -> (Double, Double) {
+  let prop = (k : String) => @style.FeatureContext::property(feature, k)
+  match (prop(CLIP_START), prop(CLIP_END)) {
+    (Some(Num(a)), Some(Num(b))) => (a, b)
+    _ => (0.0, 1.0)
+  }
+}
+
+///|
+/// The length of the line through points `[start, end)` of `coords`.
+fn ring_length(coords : Array[Int32], start : Int32, end : Int32) -> Double {
+  let mut total = 0.0
+  for i in (start + 1)..<end {
+    let dx = (coords[i * 2] - coords[i * 2 - 2]).to_double()
+    let dy = (coords[i * 2 + 1] - coords[i * 2 - 1]).to_double()
+    total += (dx * dx + dy * dy).sqrt()
+  }
+  total
 }
 
 ///|

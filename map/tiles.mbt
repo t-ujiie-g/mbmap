@@ -124,6 +124,30 @@ fn Map::finish(self : Map, request : Int32, meshes : Array[LayerMesh]?) -> Unit 
 }
 
 ///|
+/// A gradient line's rows (start, end) and, last, how many tiles long its ramp
+/// must be for a step: its longest line, times the zoom levels a tile at the
+/// source's deepest zoom can be overzoomed (as MapLibre sizes it).
+fn Map::ramp_clips(
+  self : Map,
+  request : Int32,
+  clips : FixedArray[Double],
+) -> FixedArray[Double] {
+  let n = clips.length()
+  if n > 0 &&
+    self.requests.get(request) is Some((source, key)) &&
+    self.source_tiles(source) is Some(src) &&
+    src.tiles.get(key) is Some(entry) &&
+    entry.id.z == src.source.max_zoom {
+    let over = @math.pow(
+      2.0,
+      self.transform.limits.max_zoom - entry.id.z.to_double(),
+    ).ceil()
+    clips[n - 1] = clips[n - 1] * @cmp.maximum(1.0, over)
+  }
+  clips
+}
+
+///|
 fn Map::on_message(self : Map, msg : JsValue) -> Unit {
   if self.destroyed {
     return
@@ -194,6 +218,9 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
             self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
           }
+          if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
+            self.renderer.upload_progress(mesh, buffer_of(l, "progress"))
+          }
           if kind == KIND_FILL && get_int(l, "outlineCount") > 0 {
             self.renderer.upload_outline(
               mesh,
@@ -214,7 +241,11 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           props: if is_null_value(props) {
             None
           } else {
-            Some({ obj: props, state: js_null(), })
+            Some({
+              obj: props,
+              state: js_null(),
+              progress: @double.not_a_number,
+            })
           },
           paint: None,
           vertex_paint: if is_null_value(paint_of_layer(l)) {
@@ -231,6 +262,12 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           } else {
             None
           },
+          clips: if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
+            Some(self.ramp_clips(request, f64_array(buffer_of(l, "clips"))))
+          } else {
+            None
+          },
+          gradient: None,
           dem: if kind == KIND_HILLSHADE {
             let heights = buffer_of(l, "elevations")
             let range = height_range(heights)

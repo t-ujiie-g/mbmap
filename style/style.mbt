@@ -65,6 +65,7 @@ pub struct StyleLayer {
   antialias : Bool
   outline_color : Expr?
   dasharray : Expr?
+  gradient : Expr?
 }
 
 ///|
@@ -258,7 +259,7 @@ fn parse_layer(
     "round" => Round
     c => raise Invalid(path="\{lpath}.line-cap", "unknown cap \{c}")
   }
-  Some({
+  let layer : StyleLayer = {
     id: string_or(l, "id", path, ""),
     kind,
     source: string_or(l, "source", path, ""),
@@ -371,7 +372,39 @@ fn parse_layer(
     } else {
       None
     },
-  })
+    gradient: match paint.get("line-gradient") {
+      Some(g) if kind is Line => {
+        let path = "\{ppath}.line-gradient"
+        let e = compile(g, expected=ColorType, path~)
+        if data_driven(e) || e.reads_state() {
+          raise Invalid(path~, "data expressions not supported")
+        }
+        Some(e)
+      }
+      _ => None
+    },
+  }
+  // MapLibre allows `line-progress` in `line-gradient` only.
+  let others = [
+    layer.color,
+    layer.opacity,
+    layer.width,
+    layer.radius,
+    layer.stroke_width,
+    layer.stroke_color,
+    layer.stroke_opacity,
+    layer.halo_color,
+    layer.halo_width,
+  ]
+  for e in [layer.filter, layer.dasharray, layer.outline_color] {
+    if e is Some(e) {
+      others.push(e)
+    }
+  }
+  if others.iter().any(e => e.reads_line_progress()) {
+    raise Invalid(path~, "line-progress is only allowed in line-gradient")
+  }
+  Some(layer)
 }
 
 ///|

@@ -88,6 +88,7 @@ pub(all) enum Expr {
   Id
   GeometryType
   Zoom
+  LineProgress
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -217,7 +218,7 @@ fn Compiler::key(self : Compiler, json : Json, path : String) -> String {
 /// The type `e` produces, as far as compiling can tell.
 fn Expr::static_type(self : Expr) -> Expected {
   match self {
-    Lit(Num(_)) | Zoom => NumberType
+    Lit(Num(_)) | Zoom | LineProgress => NumberType
     Call(op, _) => op_type(op)
     Lit(Str(_)) | GeometryType => StringType
     Lit(Bool(_))
@@ -409,6 +410,7 @@ fn Compiler::compile_at(
     "id" => Id
     "geometry-type" => GeometryType
     "zoom" => Zoom
+    "line-progress" => LineProgress
     "pi" => Lit(Num(3.141592653589793))
     "e" => Lit(Num(2.718281828459045))
     "ln2" => Lit(Num(0.6931471805599453))

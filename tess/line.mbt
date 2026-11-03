@@ -101,10 +101,9 @@ pub fn LineTessellator::new(
 }
 
 ///|
-/// Appends the line through points `[start, end)` of `coords` to `out` (equal
-/// ends close it); `miter_limit` is in half widths. A `dashed` line of a layer
-/// of `extent` units records `out.distances`, one with `progress` records
-/// `out.progress`; both split sharp corners.
+/// Appends the line through points `[start, end)` of `coords` to `out` (equal ends
+/// close it); `miter_limit` is in half widths. `dashed` (with the layer's `extent`)
+/// and `progress` record `out.distances` and `out.progress`, splitting sharp corners.
 pub fn LineTessellator::add_line(
   self : LineTessellator,
   coords : ArrayView[Int32],

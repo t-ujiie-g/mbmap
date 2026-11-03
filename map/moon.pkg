@@ -6,6 +6,7 @@ import {
   "t-ujiie-g/mbmap/style",
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
+  "moonbitlang/core/double",
   "moonbitlang/core/hashmap",
   "moonbitlang/core/hashset",
   "moonbitlang/core/math",

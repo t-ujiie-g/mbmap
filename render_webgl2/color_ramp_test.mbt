@@ -22,39 +22,19 @@ test "color_ramp maps each row's pixels onto its slice of the line" {
 ///|
 test "ramp_width widens step ramps for long lines, as a power of two" {
   assert_eq(
-    @render_webgl2.ramp_width(
-      step=false,
-      length=10.0,
-      overzoom=1.0,
-      max_size=4096,
-    ),
+    @render_webgl2.ramp_width(step=false, length=10.0, max_size=4096),
     256,
   )
   assert_eq(
-    @render_webgl2.ramp_width(
-      step=true,
-      length=0.1,
-      overzoom=1.0,
-      max_size=4096,
-    ),
+    @render_webgl2.ramp_width(step=true, length=0.1, max_size=4096),
     256,
   )
   assert_eq(
-    @render_webgl2.ramp_width(
-      step=true,
-      length=1.5,
-      overzoom=1.0,
-      max_size=4096,
-    ),
+    @render_webgl2.ramp_width(step=true, length=1.5, max_size=4096),
     2048,
   )
   assert_eq(
-    @render_webgl2.ramp_width(
-      step=true,
-      length=1.5,
-      overzoom=16.0,
-      max_size=4096,
-    ),
+    @render_webgl2.ramp_width(step=true, length=24.0, max_size=4096),
     4096,
   )
 }

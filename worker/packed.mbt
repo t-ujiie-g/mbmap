@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 15
+pub const LAYER_ENTRY_WORDS : Int32 = 17
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -419,4 +419,84 @@ fn PackedTile::begin_paint(self : PackedTile, words : Int32) -> Int32? {
   self.put_u32(e + 40, words * 4)
   self.len = at + words * 4
   Some(at)
+}
+
+///|
+/// A gradient line layer's rows (MapLibre's `lineClipsArray`): each vertex's
+/// row, each row's start and end along its line, and the longest line in tiles.
+priv struct GradientRows {
+  rows : Array[Int32]
+  clips : Array[Double]
+  mut longest : Double
+}
+
+///|
+fn GradientRows::new() -> GradientRows {
+  { rows: [], clips: [], longest: 0.0, }
+}
+
+///|
+fn GradientRows::clear(self : GradientRows) -> Unit {
+  self.rows.clear()
+  self.clips.clear()
+  self.longest = 0.0
+}
+
+///|
+/// A line of `vertices` vertices lying from `clip.0` to `clip.1` along its
+/// whole, `length` tiles long, as a row of its own.
+fn GradientRows::add(
+  self : GradientRows,
+  vertices : Int32,
+  clip : (Double, Double),
+  length : Double,
+) -> Unit {
+  let row = self.clips.length() / 2
+  for _ in 0..<vertices {
+    self.rows.push(row)
+  }
+  self.clips.push(clip.0)
+  self.clips.push(clip.1)
+  self.longest = @cmp.maximum(self.longest, length)
+}
+
+///|
+/// Writes a gradient line's progress for the last entry (docs/FORMATS.md,
+/// "Packed tile"); false without room.
+fn PackedTile::put_progress(
+  self : PackedTile,
+  lines : @tess.LineBuffers,
+  g : GradientRows,
+) -> Bool {
+  let n = lines.progress.length()
+  let rows = g.clips.length() / 2
+  let bytes = n * 8 + rows * 16 + 8
+  if self.layers == 0 || n != g.rows.length() || !self.reserve(bytes + 4) {
+    return false
+  }
+  let at = (self.len + 7) / 8 * 8
+  for i in 0..<n {
+    self.store.set_u32(
+      at + i * 8,
+      Float::from_double(lines.progress[i]).reinterpret_as_int(),
+    )
+    self.store.set_u32(
+      at + i * 8 + 4,
+      Float::from_double(g.rows[i].to_double()).reinterpret_as_int(),
+    )
+  }
+  let put_f64 = (o : Int32, v : Double) => {
+    let b = v.reinterpret_as_int64()
+    self.store.set_u32(o, b.to_int())
+    self.store.set_u32(o + 4, (b >> 32).to_int())
+  }
+  for i, v in g.clips {
+    put_f64(at + n * 8 + i * 8, v)
+  }
+  put_f64(at + n * 8 + rows * 16, g.longest)
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 60, at)
+  self.put_u32(e + 64, rows)
+  self.len = at + bytes
+  true
 }

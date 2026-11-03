@@ -3,18 +3,35 @@
 ## 現在の状況（2026-11-03）
 
 - **終わったもの**：Phase 0〜14、Phase 13 と Phase 14 の後のリファクタリングとセキュリティチェック（PR #43 と、この見直し）、Phase 14.1（測地線の計測）、14.2（断面図）、14.3（描画）、14.4（編集）、14.5（分割・結合）。これで Phase 14 の 5 段階がそろった。
-- **次**：Phase 15.4（本線）。並列 1 の 15.2 は PR を出した、並列 2 の 15.10 は完了（PR #56）。段階は下の「方針の更新：Phase 15」。
+- **次**：Phase 15.5（スプライト、`addImage`、模様）。15.2（PR #58）、15.10（PR #56）は完了。段階は下の「方針の更新：Phase 15」。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 82.9KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
-  | 表示ワーカー | 79.8KB | 100KB |
+  | 表示（メイン） | 84.4KB | 100KB（2026-11-03、ユーザー判断。80KB から引き上げ） |
+  | 表示ワーカー | 81.7KB | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 15.4：線のグラデーション（`line-gradient`、`lineMetrics`）（2026-11-03）
+
+状態：**完了**。
+
+- **GeoJSON タイラー**：geojson-vt 6.3.0 の line metrics を移植した。
+  - 線は 1 本ずつ地物になる（MultiLineString も分ける）。切った断片は、元の線のどこからどこまでかを持つ。
+  - タイルの地物は `geojsonvt_clip_start` / `geojsonvt_clip_end` を属性として持つ。
+  - `npm run geojson:golden` に lineMetrics の組を足した。切れ目の値まで比べて、8148 タイルで差は 0。
+- **スタイル**：`line-gradient` を読む。`["line-progress"]`（`Expr::LineProgress`）はほかのプロパティでは Invalid、データで変わるグラデーションも Invalid にした（MapLibre と同じ）。GeoJSON ソースの `lineMetrics` は boolean でなければ Invalid。
+- **ワーカー**：グラデーションのレイヤーは、頂点ごとに線の長さに対する割合を記録する。鋭い角の分割も MapLibre と同じ。さらに、線ごとの行とその切れ目、最も長い線の長さをパックする（`LAYER_ENTRY_WORDS` 15 → 17）。
+- **メインスレッド**：MapLibre の `renderColorRamp` を移植した（メッシュごとに作り、式が変われば作り直す。ステップの勾配は MapLibre と同じく線の長さで幅を決める）。描画は line_gradient シェーダー。
+  - 色の勾配の評価は `JsProps` の `progress` を通す。最初に別の `FeatureContext` の型を作ったところ、15.2 で大きくなった `Expr::eval` がもう 1 つ実体化され、メインが gzip で 24KB 増えた（84.4 → 108.6KB）。そのため、評価の型は 1 つに保つ。
+- **`npm run style:golden`**：新しい場面 `gradients`（補間で端が半透明のもの、ステップのもの、タイルの境界をまたぐ線）は平均 0.056 / p99 1。差は 1 区間の縁のアンチエイリアス（最大 17）で、色は一致。ほかの場面は変わらない。
+- example：東京駅の周りの散歩道を、グラデーションで描いた（「散歩道」グループ）。
+- 大きさ：メイン 82.9 → 84.4KB、表示ワーカー 79.8 → 81.7KB、GeoJSON ワーカー 26.5 → 27.4KB。
+- 未対応：`line-dasharray` との組み合わせ（MapLibre の line_gradient_sdf）は、グラデーションだけを描く。ベクトルタイル（line metrics のない線）は、タイルの中の線ごとに 0 から 1 で描く。
 
 ## Phase 15.3b：線の距離と破線（`line-dasharray`）（2026-11-03）
 

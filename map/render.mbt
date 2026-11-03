@@ -135,6 +135,49 @@ fn Map::background(self : Map) -> (Double, Double, Double) {
 }
 
 ///|
+/// Line mesh `m`'s color ramp for gradient `e` (MapLibre's `renderColorRamp`,
+/// made again when the expression changes); None without line progress.
+fn Map::gradient_of(
+  self : Map,
+  m : LayerMesh,
+  e : @style.Expr,
+) -> @render_webgl2.Gradient? {
+  guard m.clips is Some(clips) else { return None }
+  if m.gradient is Some((was, g)) {
+    if was == e {
+      return Some(g)
+    }
+    self.renderer.release_gradient(g)
+  }
+  let n = clips.length() - 1
+  let step = match e {
+    Step(_, _, _) => true
+    Assert(_, [Step(_, _, _)]) | Coerce(_, [Step(_, _, _)]) => true
+    _ => false
+  }
+  let width = @render_webgl2.ramp_width(
+    step~,
+    length=clips[n],
+    max_size=MAX_RAMP_WIDTH,
+  )
+  let rows = Array::makei(n, i => clips[i])
+  let pixels = @render_webgl2.color_ramp(rows, width, p => {
+    match e.eval(0.0, { ..JsProps::none(), progress: p, }) {
+      Color(c) => (c.r, c.g, c.b, c.a)
+      _ => (0.0, 0.0, 0.0, 0.0)
+    }
+  })
+  let g = self.renderer.upload_gradient(pixels, width, n / 2, nearest=step)
+  m.gradient = Some((e, g))
+  Some(g)
+}
+
+///|
+/// Widest color ramp: a size every WebGL2 implementation takes (its minimum
+/// `MAX_TEXTURE_SIZE` is 2048).
+const MAX_RAMP_WIDTH : Int32 = 2048
+
+///|
 /// A dash pattern: a list of numbers of at least 0.
 fn pattern_of(e : @style.Expr, zoom : Double) -> Array[Double]? {
   guard e.eval(zoom, JsProps::none()) is List(items) else { return None }
@@ -262,6 +305,18 @@ fn Map::draw_layer(
           height_scale~,
         )
       }
+    } else if m.kind == KIND_LINE &&
+      layer.gradient is Some(e) &&
+      self.gradient_of(m, e) is Some(g) {
+      self.draw_by_state(m, layer, p, zoom, p => {
+        self.renderer.draw_line_gradient(
+          m.mesh,
+          at,
+          self.slots(index, m, p, zoom),
+          dpr,
+          g,
+        )
+      })
     } else if m.kind == KIND_LINE {
       match dash {
         Some((entry, gamma_width)) => {
