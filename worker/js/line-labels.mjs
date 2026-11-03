@@ -79,7 +79,7 @@ export function checkMaxAngle(line, anchor, labelLength, windowSize, maxAngle) {
   return true;
 }
 
-function resample(line, offset, spacing, windowSize, maxAngle, labelLength, continued, atMiddle, extent) {
+function resample(line, offset, spacing, windowSize, maxAngle, labelLength, continued, atMiddle, extent, limit) {
   const half = labelLength / 2;
   const total = lineLength(line);
   let distance = 0;
@@ -98,28 +98,30 @@ function resample(line, offset, spacing, windowSize, maxAngle, labelLength, cont
       if (x >= 0 && x < extent && y >= 0 && y < extent && marked - half >= 0 && marked + half <= total) {
         const anchor = { ...round(x, y), angle, segment: i };
         if (!windowSize || checkMaxAngle(line, anchor, labelLength, windowSize, maxAngle)) anchors.push(anchor);
+        if (anchors.length >= limit) return anchors;
       }
     }
     distance += segment;
   }
   if (!atMiddle && !anchors.length && !continued) {
-    anchors = resample(line, distance / 2, spacing, windowSize, maxAngle, labelLength, continued, true, extent);
+    anchors = resample(line, distance / 2, spacing, windowSize, maxAngle, labelLength, continued, true, extent, limit);
   }
   return anchors;
 }
 
 /**
- * Anchors every `spacing` along `line` (MapLibre's `getAnchors`): `length` is the label's in
- * glyph units (24 a em), `boxScale` tile units per glyph unit, `maxAngle` in radians.
+ * Anchors every `spacing` along `line` (MapLibre's `getAnchors`), at most `limit`: `length` is the
+ * label's in glyph units (24 a em), `boxScale` tile units per glyph unit, `maxAngle` in radians.
  */
-export function getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, extent = EXTENT) {
+export function getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, extent = EXTENT, limit = Infinity) {
+  if (!(spacing > 0) || limit <= 0) return [];
   const windowSize = length > 0 ? (3 / 5) * 24 * boxScale : 0;
   const labelLength = length * boxScale;
   const first = line[0];
   const continued = first.x === 0 || first.x === extent || first.y === 0 || first.y === extent;
   if (spacing - labelLength < spacing / 4) spacing = labelLength + spacing / 4;
   const offset = !continued ? ((length / 2 + 24 * 2) * boxScale * overscaling) % spacing : ((spacing / 2) * overscaling) % spacing;
-  return resample(line, offset, spacing, windowSize, maxAngle, labelLength, continued, false, extent);
+  return resample(line, offset, spacing, windowSize, maxAngle, labelLength, continued, false, extent, limit);
 }
 
 /** The anchor at the middle of `line` if the label fits there (MapLibre's `getCenterAnchor`). */
@@ -233,16 +235,19 @@ export function lineAnchors(lines, text, length, layout, overscaling, seen, limi
   const boxScale = (tilePixelRatio * layout.size) / 24;
   const maxAngle = (layout.maxAngle / 180) * Math.PI;
   const out = [];
+  if (!(limit > 0)) return out;
   const inside = (a) => a.x >= 0 && a.x < EXTENT && a.y >= 0 && a.y < EXTENT;
   if (layout.placement === "line") {
     for (const line of clipLine(lines, 0, 0, EXTENT, EXTENT)) {
-      for (const anchor of getAnchors(line, spacing, maxAngle, length, boxScale, overscaling)) {
-        if (out.length >= limit) return out;
+      // Anchors are made only as far as the room left, so a long line cannot outrun the cap.
+      for (const anchor of getAnchors(line, spacing, maxAngle, length, boxScale, overscaling, EXTENT, limit - out.length)) {
         if (!tooClose(seen, text, spacing / 2, anchor) && inside(anchor)) out.push({ anchor, line });
+        if (out.length >= limit) return out;
       }
     }
   } else {
     for (const line of lines) {
+      if (out.length >= limit) return out;
       if (line.length < 2) continue;
       const anchor = getCenterAnchor(line, maxAngle, length, boxScale);
       if (anchor && inside(anchor)) out.push({ anchor, line });

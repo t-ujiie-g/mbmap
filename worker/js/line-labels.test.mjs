@@ -58,3 +58,14 @@ test("deeper tiles get anchors closer together in tile units", () => {
   assert.equal(at(2).length, 4);
   assert.ok(lineAnchors(lines, "x", 10, { ...layout, placement: "line-center" }, 1, new Map()).length === 1);
 });
+
+test("anchors stop at the limit and a spacing of zero gives none", () => {
+  const line = pts([100, 4096], [8000, 4096]);
+  assert.deepEqual(getAnchors(line, 2000, Math.PI / 4, 10, 8, 1, 8192, 2).map((a) => a.x), [524, 2524]);
+  assert.deepEqual(getAnchors(line, 0, Math.PI / 4, 10, 8, 1), []);
+  assert.deepEqual(getAnchors(line, -5, Math.PI / 4, 10, 8, 1), []);
+  const layout = { placement: "line", spacing: 250, maxAngle: 45, size: 12 };
+  assert.equal(lineAnchors([line], "x", 10, layout, 2, new Map(), 3).length, 3);
+  assert.equal(lineAnchors([line], "x", 10, layout, 2, new Map(), 0).length, 0);
+  assert.equal(lineAnchors([line, line], "x", 10, { ...layout, placement: "line-center" }, 1, new Map(), 1).length, 1);
+});
