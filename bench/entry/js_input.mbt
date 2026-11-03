@@ -48,6 +48,30 @@ pub fn geojson_tiler(
 }
 
 ///|
+/// `build_clusters` on the GeoJSON's UTF-8 Uint8Array.
+#export_name("geojson_clusters")
+pub fn geojson_clusters(
+  bytes : Bytes,
+  max_zoom : Int32,
+  min_points : Int32,
+  radius : Double,
+  extent : Int32,
+  wrap_buffer : Double,
+  wrap : Bool,
+) -> Int32 {
+  build_clusters(
+    bytes[:],
+    max_zoom,
+    min_points,
+    radius,
+    extent,
+    wrap_buffer,
+    wrap,
+    @tiler.Trig::moonbit(),
+  )
+}
+
+///|
 /// `read_only` on the GeoJSON's UTF-8 Uint8Array.
 #export_name("geojson_read")
 pub fn geojson_read(bytes : Bytes) -> Int32 {

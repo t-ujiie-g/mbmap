@@ -28,6 +28,14 @@ pub fn decode_mem_parts(Int32, Int32, Int32) -> Int32
 
 pub fn fill_hash_mem(Int32, Int32) -> Int32
 
+pub fn geojson_cluster(Int32, Int32, Int32, Int32) -> Bytes
+
+pub fn geojson_cluster_expansion(Int32) -> Int32
+
+pub fn geojson_cluster_hash(Int32, Int32, Int32, Int32) -> Int32
+
+pub fn geojson_clusters_mem(Int32, Int32, Int32, Int32, Double, Int32, Double, Int32) -> Int32
+
 pub fn geojson_read_mem(Int32, Int32) -> Int32
 
 pub fn geojson_tile(Int32, Int32, Int32) -> FixedArray[Int32]
