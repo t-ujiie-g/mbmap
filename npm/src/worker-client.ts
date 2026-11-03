@@ -30,6 +30,9 @@ export class WorkerClient {
       if (typeof msg.error === "string") call.reject(new Error(`mbmap: ${this.#name}: ${msg.error}`));
       else call.resolve(msg.value);
     };
+    // A worker that fails to load or run fails its calls rather than leaving them waiting.
+    w.onerror = (e: ErrorEvent) => this.#fail(e.message || "the worker failed");
+    w.onmessageerror = () => this.#fail("a message could not be read");
     w.postMessage({ type: "init", ...init(page) });
     this.#worker = w;
   }
@@ -46,9 +49,13 @@ export class WorkerClient {
 
   /** Stops the worker; pending calls reject. */
   terminate(): void {
+    this.#fail("terminated");
+  }
+
+  #fail(why: string): void {
     this.#worker?.terminate();
     this.#worker = null;
-    for (const p of this.#pending.values()) p.reject(new Error(`mbmap: ${this.#name}: terminated`));
+    for (const p of this.#pending.values()) p.reject(new Error(`mbmap: ${this.#name}: ${why}`));
     this.#pending.clear();
   }
 }

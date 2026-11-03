@@ -185,7 +185,7 @@ blocks.dispose();
   - 値は proj4js 2.22.0 と 1mm 未満で一致する（240 の座標系で黄金テストをしている）。proj4js が明らかに誤っているところ（`+R_A` の半径、正弦図法などの偽原点）は PROJ に合わせた。
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
 - `DemGrid.sample(positions)`：`[lng, lat]` ごとの標高（m）。セルの中心の間を双一次で補間する（GDAL の `-r bilinear` と同じ。黄金テストで 1e-8 m の桁まで一致）。格子の外と、データのないセルの隣は NaN。
-- `sampleDem(tiles, positions, { encoding, maxZoom, tileSize })`：`positions` を覆う標高タイルを、1 つの格子に収まるいちばん深いズーム（既定で 14 まで）で読み、標高を返す。
+- `sampleDem(tiles, positions, { encoding, maxZoom, tileSize })`：`positions` を覆う標高タイルを、1 つの格子に収まるいちばん深いズーム（既定で 14 まで、24 が上限）で読み、標高を返す。`tileSize` は 256〜4096。サーバーにないタイル（404）は、`loadDem` と同じく 0 m として扱う。1 つの格子に入りきらないほどのタイル（一辺 16 枚を超えるもの）は、取得する前に断る。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。
 
@@ -218,7 +218,7 @@ draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
 - 属性：`setProperties(id, { name: "区画A" })` で足す・変える（null でそのキーを消す。`mode` は変えない）。取り消せる。
 - 状態は `mode`、`selection`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
 - 操作は `setMode(mode)`、`select(id, add)`、`setProperties(id, properties)`、`deleteSelected()`、`merge()`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
-- 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回りにする（RFC 7946）。
+- 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回り、穴は時計回りにする（RFC 7946）。
 - 描くのは自前の GeoJSON ソース（既定の id は `mbmap-draw`）とレイヤーで、`setData` で更新する。描いている間はダブルクリックのズームを止める。
 
 ## 楕円体の上の計測 `mbmap/geodesic`

@@ -3,7 +3,8 @@
 // terra-draw's; shapes are drawn through a GeoJSON source of the controller's own.
 import type { Map } from "../index";
 import { Store, type Controller } from "../ui/controller";
-import { deleteVertex, insertVertex, insideRing, midpoints, moveVertex, nearestOnSegment, translate, vertices as verticesOf, type At } from "./edit";
+import { addOverlay } from "../ui/overlays";
+import { deleteVertex, hits, insertVertex, midpoints, moveVertex, snapOn, translate, vertices as verticesOf, type At } from "./edit";
 import { CIRCLE_STEPS, CLOSE_PIXELS, FREEHAND_PIXELS, enoughVertices, finished, geometryOf, rectangleRing, type DrawMode, type Position } from "./shapes";
 
 /** The modes: drawing one of the shapes, `"select"` to pick and edit them, `"split"` to draw a line that cuts them. */
@@ -64,9 +65,14 @@ export interface DrawOptions {
   precision?: number;
 }
 
+/**
+ * `setMode`; `select` (with `add`, toggles in the selection); `setProperties` and `deleteSelected` on
+ * the selection; `merge` it; `finish` or `cancel` the shape under way; `undo` (a vertex while drawing)
+ * and `redo`; `add`, `remove` and `clear` features. Changes to the features are one step to undo each.
+ */
 export interface Draw extends Controller<DrawState> {
   setMode(mode: EditMode | null): void;
-  select(id: string | null): void;
+  select(id: string | null, add?: boolean): void;
   setProperties(id: string, properties: Record<string, unknown>): void;
   deleteSelected(): void;
   merge(): Promise<void>;
@@ -91,9 +97,10 @@ class DrawStore extends Store<DrawState> implements Draw {
   #pointer: Position | null = null;
   #ring: Position[] | null = null;
   #ticket = 0;
-  /** Whether double-click and box zoom were on before a mode turned them off (Shift+click selects). */
   #zooms: [boolean, boolean] | null = null;
   #drag: { at: At | null; from: Position; before: DrawnFeature[]; pan: boolean } | null = null;
+  #drawn: [DrawnFeature[] | null, string[] | null] = [null, null];
+  #unlayer: (() => void) | null = null;
 
   constructor(map: Map, options: DrawOptions) {
     super({ mode: null, selected: null, selection: [], features: [], drawing: null, vertices: [], canUndo: false, canRedo: false });
@@ -114,6 +121,7 @@ class DrawStore extends Store<DrawState> implements Draw {
     this.#reset();
     if (mode) this.#layers();
     const map = this.#map;
+    // A mode turns double-click and box zoom off (Shift+click selects) and puts back what was on.
     const handlers = [map.doubleClickZoom, map.boxZoom];
     if (mode && !this.#zooms) {
       this.#zooms = [handlers[0].isEnabled(), handlers[1].isEnabled()];
@@ -142,6 +150,8 @@ class DrawStore extends Store<DrawState> implements Draw {
     if (!geometry || ids.length < 2) return;
     const parts = ids.map((id) => this.state.features.find((f) => f.id === id)!);
     const merged = await geometry.merge(parts);
+    // Nothing left (the shapes were degenerate), or they changed meanwhile.
+    if (!merged?.geometry || parts.some((f) => !this.state.features.includes(f))) return;
     const feature = this.#feature({ ...merged.properties, mode: modeOf(merged.geometry.type) }, finished(merged.geometry, this.#options.precision));
     const features = this.state.features.filter((f) => !ids.includes(f.id));
     this.#change([...features, feature]);
@@ -162,17 +172,18 @@ class DrawStore extends Store<DrawState> implements Draw {
         return this.#feature({ ...properties, mode: f.properties.mode }, finished(p.geometry, this.#options.precision));
       });
     });
-    if (features.length !== before.length) this.#change(features, before);
+    // An edit made while the worker cut wins: the cut is dropped.
+    if (features.length !== before.length && this.state.features === before) this.#change(features, before);
   }
 
   /** Merges `properties` into feature `id`'s (null removes a key); `mode` stays. */
   setProperties(id: string, properties: Record<string, unknown>): void {
-    this.#change(this.state.features.map((f) => {
-      if (f.id !== id) return f;
-      const next: Record<string, unknown> = { ...f.properties, ...properties, mode: f.properties.mode };
-      for (const [k, v] of Object.entries(properties)) if (v === null && k !== "mode") delete next[k];
-      return { ...f, properties: next as DrawnFeature["properties"] };
-    }));
+    const f = this.state.features.find((x) => x.id === id);
+    const next: Record<string, unknown> = { ...f?.properties, ...properties, mode: f?.properties.mode };
+    for (const [k, v] of Object.entries(properties)) if (v === null && k !== "mode") delete next[k];
+    // Nothing to keep when no value changes (a field left as it was).
+    if (!f || Object.keys({ ...next, ...f.properties }).every((k) => Object.is(next[k], f.properties[k]))) return;
+    this.#change(this.state.features.map((x) => (x === f ? { ...f, properties: next as DrawnFeature["properties"] } : x)));
   }
 
   deleteSelected(): void {
@@ -305,50 +316,19 @@ class DrawStore extends Store<DrawState> implements Draw {
 
   /** The topmost feature under `point`: a point or line within `CLOSE_PIXELS`, a polygon around it or near its edge. */
   #hit(point: { x: number; y: number }): DrawnFeature | undefined {
-    const near = (q: { x: number; y: number }) => Math.hypot(q.x - point.x, q.y - point.y) <= CLOSE_PIXELS;
-    return [...this.state.features].reverse().find((f) => {
-      const g = f.geometry;
-      const c = g.coordinates as any;
-      if (g.type === "Point") return near(this.#screen(c));
-      if (g.type === "MultiPoint") return c.some((p: Position) => near(this.#screen(p)));
-      const rs: Position[][] = g.type === "LineString" ? [c] : g.type === "MultiPolygon" ? c.flat() : c;
-      const area = g.type.endsWith("Polygon");
-      return rs.some((r) => {
-        const xy = r.map((p) => this.#screen(p));
-        return (area && insideRing(point, xy)) || xy.slice(1).some((b, i) => near(nearestOnSegment(point, xy[i], b)));
-      });
-    });
+    return [...this.state.features].reverse().find((f) => hits(f.geometry, point, (p) => this.#screen(p), CLOSE_PIXELS));
   }
 
   /** `at` moved onto a vertex or edge of the features but `exclude` within the snapping distance. */
   #snap(at: Position, point: { x: number; y: number }, exclude: string | null): Position {
     const o = this.#options.snapping;
     if (!o) return at;
-    const { vertices = true, lines = true, pixels = CLOSE_PIXELS } = o === true ? {} : o;
-    let best = pixels;
-    let snapped = at;
-    const consider = (q: { x: number; y: number }, to: () => Position) => {
-      const d = Math.hypot(q.x - point.x, q.y - point.y);
-      if (d <= best) [best, snapped] = [d, to()];
+    const targets = this.state.features.filter((f) => f.id !== exclude).map((f) => f.geometry);
+    const unproject = (q: { x: number; y: number }): Position => {
+      const ll = this.#map.unproject([q.x, q.y]);
+      return [ll.lng, ll.lat];
     };
-    const others = this.state.features.filter((f) => f.id !== exclude);
-    if (vertices) for (const f of others) for (const v of verticesOf(f.geometry)) consider(this.#screen(v.position), () => v.position);
-    if (snapped !== at || !lines) return snapped;
-    for (const f of others) {
-      if (f.geometry.type === "Point") continue;
-      const rs = f.geometry.type === "LineString" ? [f.geometry.coordinates as Position[]] : (f.geometry.coordinates as Position[][]);
-      for (const r of rs) {
-        const xy = r.map((p) => this.#screen(p));
-        for (let i = 1; i < xy.length; i++) {
-          const q = nearestOnSegment(point, xy[i - 1], xy[i]);
-          consider(q, () => {
-            const ll = this.#map.unproject([q.x, q.y]);
-            return [ll.lng, ll.lat];
-          });
-        }
-      }
-    }
-    return snapped;
+    return snapOn(targets, point, (p) => this.#screen(p), unproject, o === true ? {} : o) ?? at;
   }
 
   /** In `"select"` mode, a press on the selected feature's vertex, midpoint or body starts dragging it. */
@@ -421,61 +401,69 @@ class DrawStore extends Store<DrawState> implements Draw {
     const ticket = ++this.#ticket;
     const { distance } = await geodesic.inverse(center, edge);
     const ring = await geodesic.circle(center, distance, { steps: this.#options.steps ?? CIRCLE_STEPS });
-    if (ticket !== this.#ticket && !commit) return;
+    // A later move or click (or a cancel) has taken over.
+    if (ticket !== this.#ticket) return;
     if (commit) return this.#commit("circle", { type: "Polygon", coordinates: [ring] });
     this.#ring = ring;
     this.#show({});
   }
 
-  /** Sets `patch`, then the shape under way with the pointer, and draws both. */
+  /**
+   * Sets `patch` with the shape under way and draws: the features only when they or the selection
+   * changed, the sketch (the shape under way, its vertices, the selected shape's handles) each time.
+   */
   #show(patch: Partial<DrawState>): void {
-    this.set(patch);
-    const { mode, vertices, features } = this.state;
+    const { mode, vertices, features, selection } = { ...this.state, ...patch };
     let drawing: DrawState["drawing"] = null;
     const p = this.#pointer;
     if (mode && mode !== "select" && vertices.length > 0) {
-      const shape = mode === "split" ? "linestring" : mode;
       if (mode === "rectangle") drawing = p ? { type: "Polygon", coordinates: [rectangleRing(vertices[0], p)] } : null;
       else if (mode === "circle") drawing = this.#ring ? { type: "Polygon", coordinates: [this.#ring] } : null;
-      else drawing = geometryOf(shape, mode === "freehand" || !p ? vertices : [...vertices, p]);
+      else drawing = geometryOf(mode === "split" ? "linestring" : mode, mode === "freehand" || !p ? vertices : [...vertices, p]);
     }
-    this.set({ drawing, canUndo: this.#done.length > 0 || vertices.length > 0, canRedo: this.#undone.length > 0 });
-    const selection = this.state.selection;
-    const shown: object[] = features.map((f) => ({ ...f, properties: { ...f.properties, kind: selection.includes(f.id) ? "selected" : "feature" } }));
+    this.set({ ...patch, drawing, canUndo: this.#done.length > 0 || vertices.length > 0, canRedo: this.#undone.length > 0 });
+    const map = this.#map;
+    if (features !== this.#drawn[0] || selection !== this.#drawn[1]) {
+      this.#drawn = [features, selection];
+      const shown = features.map((f) => ({ ...f, properties: { ...f.properties, kind: selection.includes(f.id) ? "selected" : "feature" } }));
+      map.getSource(this.#id)?.setData?.({ type: "FeatureCollection", features: shown });
+    }
+    const point = (kind: string) => (coordinates: Position) => ({ type: "Feature", properties: { kind }, geometry: { type: "Point", coordinates } });
+    const sketch: object[] = drawing ? [{ type: "Feature", properties: { kind: "drawing" }, geometry: drawing }] : [];
     const sf = this.#selectedFeature();
     if (sf && /^(LineString|Polygon)$/.test(sf.geometry.type)) {
-      const handle = (kind: string) => (v: { position: Position }) => ({ type: "Feature", properties: { kind }, geometry: { type: "Point", coordinates: v.position } });
-      shown.push(...midpoints(sf.geometry).map(handle("midpoint")), ...verticesOf(sf.geometry).map(handle("vertex")));
+      sketch.push(...midpoints(sf.geometry).map((v) => point("midpoint")(v.position)), ...verticesOf(sf.geometry).map((v) => point("vertex")(v.position)));
     }
-    if (drawing) shown.push({ type: "Feature", properties: { kind: "drawing" }, geometry: drawing });
-    if (mode !== "freehand" && mode !== "select") for (const v of vertices) shown.push({ type: "Feature", properties: { kind: "vertex" }, geometry: { type: "Point", coordinates: v } });
-    this.#map.getSource(this.#id)?.setData?.({ type: "FeatureCollection", features: shown });
+    if (mode !== "freehand" && mode !== "select") sketch.push(...vertices.map(point("vertex")));
+    map.getSource(`${this.#id}-sketch`)?.setData?.({ type: "FeatureCollection", features: sketch });
   }
 
   #layers(): void {
-    const map = this.#map;
     const id = this.#id;
-    if (map.getSource(id)) return;
+    const sketch = `${id}-sketch`;
     const color = this.#options.color ?? "#3b6ed6";
     const selected = "#e4572e";
     const pick = ["case", ["==", ["get", "kind"], "selected"], selected, color];
-    const metadata = { "mbmap:overlay": true };
     const kind = (k: string) => ["==", ["get", "kind"], k];
     const point = ["==", ["geometry-type"], "Point"];
-    map.addSource(id, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-    map.addLayer({ id: `${id}-fill`, type: "fill", source: id, filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": pick, "fill-opacity": 0.2 }, metadata });
-    map.addLayer({ id: `${id}-line`, type: "line", source: id, filter: ["!=", ["geometry-type"], "Point"], paint: { "line-color": pick, "line-width": 2 }, metadata });
-    map.addLayer({ id: `${id}-point`, type: "circle", source: id, filter: ["all", point, ["any", kind("feature"), kind("selected")]], paint: { "circle-color": pick, "circle-radius": 6, "circle-stroke-color": "#fff", "circle-stroke-width": 2 }, metadata });
-    map.addLayer({ id: `${id}-midpoint`, type: "circle", source: id, filter: ["all", point, kind("midpoint")], paint: { "circle-color": selected, "circle-radius": 3, "circle-opacity": 0.6 }, metadata });
-    map.addLayer({ id: `${id}-vertex`, type: "circle", source: id, filter: ["all", point, kind("vertex")], paint: { "circle-color": "#fff", "circle-radius": 4, "circle-stroke-color": color, "circle-stroke-width": 2 }, metadata });
+    const area = ["==", ["geometry-type"], "Polygon"];
+    const edge = ["!=", ["geometry-type"], "Point"];
+    this.#unlayer ??= addOverlay(this.#map, [id, sketch], [
+      { id: `${id}-fill`, type: "fill", source: id, filter: area, paint: { "fill-color": pick, "fill-opacity": 0.2 } },
+      { id: `${id}-line`, type: "line", source: id, filter: edge, paint: { "line-color": pick, "line-width": 2 } },
+      { id: `${id}-point`, type: "circle", source: id, filter: point, paint: { "circle-color": pick, "circle-radius": 6, "circle-stroke-color": "#fff", "circle-stroke-width": 2 } },
+      { id: `${sketch}-fill`, type: "fill", source: sketch, filter: area, paint: { "fill-color": color, "fill-opacity": 0.2 } },
+      { id: `${sketch}-line`, type: "line", source: sketch, filter: edge, paint: { "line-color": color, "line-width": 2 } },
+      { id: `${sketch}-midpoint`, type: "circle", source: sketch, filter: ["all", point, kind("midpoint")], paint: { "circle-color": selected, "circle-radius": 3, "circle-opacity": 0.6 } },
+      { id: `${sketch}-vertex`, type: "circle", source: sketch, filter: ["all", point, kind("vertex")], paint: { "circle-color": "#fff", "circle-radius": 4, "circle-stroke-color": color, "circle-stroke-width": 2 } },
+    ]);
+    this.#drawn = [null, null];
   }
 
   #remove(): void {
     this.setMode(null);
-    const map = this.#map;
-    if (!map.getSource(this.#id)) return;
-    for (const l of ["vertex", "midpoint", "point", "line", "fill"]) map.removeLayer(`${this.#id}-${l}`);
-    map.removeSource(this.#id);
+    this.#unlayer?.();
+    this.#unlayer = null;
   }
 }
 

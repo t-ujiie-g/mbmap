@@ -20,16 +20,11 @@ fn parts_of(t : @geom.Table, f : Int32) -> Array[Part] {
     let rings = []
     for r in r0..<r1 {
       let (i0, i1) = t.points(r)
-      let ring = []
-      for i in i0..<i1 {
-        let pt = degree_int(t.coords[i * 2], t.coords[i * 2 + 1])
-        if ring.last() != Some(pt) {
-          ring.push(pt)
-        }
-      }
-      if ring.length() > 1 && ring[0] == ring[ring.length() - 1] {
-        ring.pop() |> ignore
-      }
+      let ring = deduped(
+        Array::makei(i1 - i0, i => {
+          degree_int(t.coords[(i0 + i) * 2], t.coords[(i0 + i) * 2 + 1])
+        }),
+      )
       if ring.length() >= 3 {
         rings.push(ring)
       }
@@ -270,10 +265,9 @@ fn split_line(
 }
 
 ///|
-/// Each feature of `a` split by the lines of `b`, its pieces as features with
-/// its properties: a polygon by the stretches of the lines that cross it from
-/// edge to edge (on Clipper's 1e-7 degree grid), a line where they cross it;
-/// points and features nothing cuts stay whole.
+/// Each feature of `a` split by the lines of `b` into features with its
+/// properties: polygons where a line crosses edge to edge (1e-7 degree grid),
+/// lines where they cross; the rest stays whole.
 pub fn split(a : @geom.Table, b : @geom.Table) -> @geom.Table {
   let lines = []
   let cuts = []

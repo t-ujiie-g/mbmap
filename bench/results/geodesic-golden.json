@@ -94,6 +94,11 @@
       "group": "circle",
       "cases": 1000,
       "identical": 1000
+    },
+    {
+      "group": "refused",
+      "cases": 4,
+      "identical": 4
     }
   ]
 }

@@ -1,6 +1,6 @@
 // Editing a drawn geometry: its vertices and the midpoints between them, a
-// vertex moved, inserted or deleted, the whole moved, and the nearest point of
-// a segment for snapping. Import-free, so that `npm test` can load it.
+// vertex moved, inserted or deleted, the whole moved, and hits and snapping on
+// screen. Import-free, so that `npm test` can load it.
 import type { Position } from "./shapes";
 
 export interface Geometry {
@@ -92,4 +92,67 @@ export function insideRing(p: { x: number; y: number }, ring: { x: number; y: nu
     if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
   }
   return inside;
+}
+
+type XY = { x: number; y: number };
+
+/** Every path of `g` with Multi geometries flattened: rings (closed), lines, and each point alone. */
+export function paths(g: Geometry): Position[][] {
+  const c = g.coordinates as any;
+  switch (g.type) {
+    case "Point":
+      return [[c]];
+    case "MultiPoint":
+      return c.map((p: Position) => [p]);
+    case "LineString":
+      return [c];
+    case "MultiPolygon":
+      return c.flat();
+    default:
+      return c;
+  }
+}
+
+/** Whether screen point `p` hits `g`: within `pixels` of a point or edge, or inside a polygon. */
+export function hits(g: Geometry, p: XY, project: (q: Position) => XY, pixels: number): boolean {
+  const near = (q: XY) => Math.hypot(q.x - p.x, q.y - p.y) <= pixels;
+  const area = g.type.endsWith("Polygon");
+  return paths(g).some((path) => {
+    const xy = path.map(project);
+    return near(xy[0]) || (area && insideRing(p, xy)) || xy.slice(1).some((b, i) => near(nearestOnSegment(p, xy[i], b)));
+  });
+}
+
+/**
+ * Where `p` snaps on `targets` within `pixels`: their nearest vertex (with `vertices`), else the
+ * nearest point of an edge (with `lines`, taken back by `unproject`); null for none.
+ */
+export function snapOn(
+  targets: Geometry[],
+  p: XY,
+  project: (q: Position) => XY,
+  unproject: (q: XY) => Position,
+  { vertices = true, lines = true, pixels = 40 }: { vertices?: boolean; lines?: boolean; pixels?: number },
+): Position | null {
+  let best = pixels;
+  let found: Position | null = null;
+  let edge: XY | null = null;
+  const all = targets.flatMap(paths);
+  for (const path of vertices ? all : []) {
+    for (const v of path) {
+      const q = project(v);
+      const d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d <= best) [best, found] = [d, v];
+    }
+  }
+  if (found || !lines) return found;
+  for (const path of all) {
+    const xy = path.map(project);
+    for (let i = 1; i < xy.length; i++) {
+      const q = nearestOnSegment(p, xy[i - 1], xy[i]);
+      const d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d <= best) [best, edge] = [d, q];
+    }
+  }
+  return edge && unproject(edge);
 }

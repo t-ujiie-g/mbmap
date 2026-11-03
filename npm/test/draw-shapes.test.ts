@@ -43,3 +43,12 @@ test("finished: multi geometries rounded too, unknown types kept", () => {
   const other = { type: "GeometryCollection", coordinates: [] };
   assert.equal(finished(other), other);
 });
+
+test("finished: holes clockwise, whatever way they came; precision kept to 0-15", () => {
+  const outer = [[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]];
+  const hole = [[1, 1], [2, 1], [2, 2], [1, 2], [1, 1]];
+  const want = { type: "Polygon", coordinates: [outer, [...hole].reverse()] };
+  assert.deepEqual(finished({ type: "Polygon", coordinates: [outer, hole] }), want);
+  assert.deepEqual(finished({ type: "Polygon", coordinates: [outer, [...hole].reverse()] }), want);
+  assert.deepEqual(finished({ type: "Point", coordinates: [0.123456, 1] }, 200), { type: "Point", coordinates: [0.123456, 1] });
+});
