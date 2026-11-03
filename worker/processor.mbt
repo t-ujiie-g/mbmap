@@ -335,9 +335,17 @@ fn TileProcessor::fill_layer(
       let group = groups.of(feature)
       let out = self.fill_buffers(group)
       let first = out.indices.length()
+      let edges = out.outline.length()
       let v0 = out.num_vertices()
       self.fill.add_polygons(g.coords[:], g.ring_ends[:], out)
-      self.track(index, group, i, first, out.indices.length())
+      self.track(
+        index,
+        group,
+        i,
+        first,
+        out.indices.length(),
+        outline=(edges, out.outline.length()),
+      )
       self.run(i, out.num_vertices() - v0)
     }
   }

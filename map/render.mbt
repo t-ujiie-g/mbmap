@@ -362,13 +362,14 @@ fn Map::draw_layer(
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_fill(m.mesh, at, self.slots(index, m, p, zoom))
       })
-      // Feature-state ranges index triangles: the outline takes the layer's paint.
       if layer.antialias {
-        self.renderer.draw_fill_outline(
-          m.mesh,
-          at,
-          self.slots(index, m, p, zoom),
-        )
+        self.draw_by_state(m, layer, p, zoom, outline=true, p => {
+          self.renderer.draw_fill_outline(
+            m.mesh,
+            at,
+            self.slots(index, m, p, zoom),
+          )
+        })
       }
     }
   }

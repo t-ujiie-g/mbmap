@@ -482,7 +482,7 @@ extern "js" fn gl_draw_outline(
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
   #|  gl.uniform2f(p.u_world, 2 / c.px[0], 2 / c.px[1]);
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.outline);
-  #|  gl.drawElements(gl.LINES, m.outlineCount, m.type, 0);
+  #|  gl.drawElements(gl.LINES, m.outlineRange ?? m.outlineCount, m.type, m.outlineOffset ?? 0);
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ibo);
   #|}
 

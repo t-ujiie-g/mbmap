@@ -455,39 +455,52 @@ pub fn Renderer::set_heights(
 }
 
 ///|
-extern "js" fn gl_set_range(mesh : Mesh, first : Int32, count : Int32) -> Unit =
-  #|(m, first, count) => {
-  #|  if (count < 0) { delete m.rangeOffset; delete m.rangeCount; return; }
-  #|  m.rangeOffset = first * (m.type === 0x1405 ? 4 : 2);
-  #|  m.rangeCount = count;
+extern "js" fn gl_set_range(
+  mesh : Mesh,
+  first : Int32,
+  count : Int32,
+  outline : Bool,
+) -> Unit =
+  #|(m, first, count, outline) => {
+  #|  const [o, n] = outline ? ["outlineOffset", "outlineRange"] : ["rangeOffset", "rangeCount"];
+  #|  if (count < 0) { delete m[o]; delete m[n]; return; }
+  #|  m[o] = first * (m.type === 0x1405 ? 4 : 2);
+  #|  m[n] = count;
   #|}
 
 ///|
-/// Makes fill, line, circle and extrusion draws of `mesh` take only indices
-/// `first..<first + count` (feature by feature drawing), until `whole_mesh`.
+/// Makes fill, line, circle and extrusion draws of `mesh` (its fill outline's,
+/// when `outline`) take only indices `first..<first + count` (feature by
+/// feature drawing), until `whole_mesh`.
 pub fn Renderer::set_range(
   _self : Renderer,
   mesh : Mesh,
   first : Int32,
   count : Int32,
+  outline~ : Bool = false,
 ) -> Unit {
-  gl_set_range(mesh, first, count)
+  gl_set_range(mesh, first, count, outline)
 }
 
 ///|
 /// Draws all of `mesh` again after `set_range`.
 pub fn Renderer::whole_mesh(_self : Renderer, mesh : Mesh) -> Unit {
-  gl_set_range(mesh, 0, -1)
+  gl_set_range(mesh, 0, -1, false)
+  gl_set_range(mesh, 0, -1, true)
 }
 
 ///|
-extern "js" fn gl_index_count(mesh : Mesh) -> Int32 =
-  #|(m) => m.count
+extern "js" fn gl_index_count(mesh : Mesh, outline : Bool) -> Int32 =
+  #|(m, outline) => outline ? (m.outlineCount ?? 0) : m.count
 
 ///|
-/// How many indices `mesh` holds.
-pub fn Renderer::index_count(_self : Renderer, mesh : Mesh) -> Int32 {
-  gl_index_count(mesh)
+/// How many indices `mesh` holds (those of its fill outline when `outline`).
+pub fn Renderer::index_count(
+  _self : Renderer,
+  mesh : Mesh,
+  outline~ : Bool = false,
+) -> Int32 {
+  gl_index_count(mesh, outline)
 }
 
 ///|

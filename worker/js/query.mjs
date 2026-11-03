@@ -94,8 +94,8 @@ export function readQueryResult(bytes, z, x, y) {
 
 /**
  * Feature ranges from the wasm (docs/FORMATS.md, "Feature ranges") by packed entry: each
- * feature id (as `String(id)`, how feature state keys it) to the `[first, count, ...]` indices of
- * its features (several features may share an id).
+ * feature id (as `String(id)`, how feature state keys it) to the `[first, count, outline first,
+ * outline count, ...]` indices of its features (several features may share an id).
  */
 export function readFeatureRanges(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -114,25 +114,25 @@ export function readFeatureRanges(bytes) {
         const key = String(id);
         let list = byId.get(key);
         if (!list) byId.set(key, (list = []));
-        list.push(view.getUint32(at, true), view.getUint32(at + 4, true));
+        for (let j = 0; j < 4; j++) list.push(view.getUint32(at + j * 4, true));
       }
-      at += 8;
+      at += 16;
     }
     out.set(entry, byId);
   }
   return out;
 }
 
-/** The ranges of features `ids` in a tile's `ranges`, per entry as [first, count, index in `ids`] triples. */
+/** The ranges of features `ids` in a tile's `ranges`, per entry as [first, count, outline first, outline count, index in `ids`]. */
 export function rangesOf(ranges, ids) {
   const out = [];
   for (const [entry, byId] of ranges) {
-    const triples = [];
+    const found = [];
     ids.forEach((id, k) => {
       const r = byId.get(id) ?? [];
-      for (let i = 0; i < r.length; i += 2) triples.push(r[i], r[i + 1], k);
+      for (let i = 0; i < r.length; i += 4) found.push(r[i], r[i + 1], r[i + 2], r[i + 3], k);
     });
-    if (triples.length > 0) out.push({ entry, ranges: triples });
+    if (found.length > 0) out.push({ entry, ranges: found });
   }
   return out;
 }

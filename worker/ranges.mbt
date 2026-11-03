@@ -8,6 +8,7 @@ fn TileProcessor::track(
   i : Int32,
   first : Int32,
   end : Int32,
+  outline~ : (Int32, Int32) = (0, 0),
 ) -> Unit {
   guard self.state_layers[index] && end > first else { return }
   while self.range_pool.length() <= group {
@@ -17,6 +18,8 @@ fn TileProcessor::track(
   r.push(i)
   r.push(first)
   r.push(end - first)
+  r.push(outline.0)
+  r.push(outline.1 - outline.0)
 }
 
 ///|
@@ -40,11 +43,12 @@ fn TileProcessor::flush_ranges(
   let r = self.range_pool[group]
   let w = self.ranges
   w.u32(entry)
-  w.u32(r.length() / 3)
-  for k = 0; k < r.length(); k = k + 3 {
+  w.u32(r.length() / 5)
+  for k = 0; k < r.length(); k = k + 5 {
     write_value(w, layer.id(r[k], promoted))
-    w.u32(r[k + 1])
-    w.u32(r[k + 2])
+    for j in 1..<5 {
+      w.u32(r[k + j])
+    }
   }
   self.range_entries += 1
   r.clear()

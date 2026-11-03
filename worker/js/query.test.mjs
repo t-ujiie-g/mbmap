@@ -63,15 +63,15 @@ test("readFeatureRanges keys features by String(id), several per id, and rangesO
   u32(2);
   u32(4); // entry 4: id 7 twice, then "a"
   u32(3);
-  u8(3); f64(7); u32(0); u32(6);
-  u8(3); f64(7); u32(12); u32(3);
-  u8(4); str("a"); u32(6); u32(6);
+  u8(3); f64(7); u32(0); u32(6); u32(0); u32(8);
+  u8(3); f64(7); u32(12); u32(3); u32(8); u32(4);
+  u8(4); str("a"); u32(6); u32(6); u32(0); u32(0);
   u32(5); // entry 5: a feature without id
   u32(1);
-  u8(0); u32(0); u32(3);
+  u8(0); u32(0); u32(3); u32(0); u32(0);
   const ranges = readFeatureRanges(new Uint8Array(bytes));
   assert.deepEqual([...ranges.keys()], [4, 5]);
-  assert.deepEqual(ranges.get(4).get("7"), [0, 6, 12, 3]);
+  assert.deepEqual(ranges.get(4).get("7"), [0, 6, 0, 8, 12, 3, 8, 4]);
   assert.equal(ranges.get(5).size, 0);
-  assert.deepEqual(rangesOf(ranges, ["a", "7", "x"]), [{ entry: 4, ranges: [6, 6, 0, 0, 6, 1, 12, 3, 1] }]);
+  assert.deepEqual(rangesOf(ranges, ["a", "7", "x"]), [{ entry: 4, ranges: [6, 6, 0, 0, 0, 0, 6, 0, 8, 1, 12, 3, 8, 4, 1] }]);
 });

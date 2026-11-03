@@ -203,8 +203,10 @@ test "source_features gives a source layer's features that pass the filter, laye
 
 ///|
 /// Feature ranges (docs/FORMATS.md, "Feature ranges") as (entry, id, first,
-/// count) records.
-fn ranges_of(b : Bytes) -> Array[(Int32, @style.Value, Int32, Int32)] {
+/// count, outline first, outline count) records.
+fn ranges_of(
+  b : Bytes,
+) -> Array[(Int32, @style.Value, Int32, Int32, Int32, Int32)] {
   let r = @core.ByteReader::new(b[:])
   let out = []
   for _ in 0..<r.u32() {
@@ -216,7 +218,9 @@ fn ranges_of(b : Bytes) -> Array[(Int32, @style.Value, Int32, Int32)] {
         _ => Null
       }
       let first = r.u32()
-      out.push((entry, id, first, r.u32()))
+      let count = r.u32()
+      let outline = r.u32()
+      out.push((entry, id, first, count, outline, r.u32()))
     }
   }
   out
@@ -242,6 +246,8 @@ test "feature_ranges lists each feature's indices in layers whose paint reads th
   assert_eq(ranges.map(r => r.0), [1, 2])
   assert_eq(ranges.map(r => (r.1, r.2)), [(Null, 0), (Null, 0)])
   assert_true(ranges.iter().all(r => r.3 > 0 && r.3 % 3 == 0))
+  // Lines and circles have no outline.
+  assert_true(ranges.iter().all(r => r.4 == 0 && r.5 == 0))
   // A style without state layers has none.
   let q = @worker.TileProcessor::from_utf8(@utf8.encode(query_style)[:])
   assert_true(q.process("a", query_tile()[:], 14))
@@ -260,6 +266,26 @@ test "query results carry promoted ids" {
   r.f64() |> ignore
   // No property "n": the id is null.
   assert_eq(r.u8(), @core.PROP_NULL)
+}
+
+///|
+test "a fill's ranges also cover its outline, so it follows the state too" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "lot", "type": "fill", "source": "a", "source-layer": "poly",
+    #|   "paint": {"fill-color": ["case", ["boolean", ["feature-state", "on"], false], "#f00", "#00f"]}}
+    #|]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", query_tile()[:], 14))
+  let ranges = ranges_of(p.feature_ranges())
+  assert_true(ranges.length() > 0)
+  // One edge (two indices) per point of each ring, from the start in order.
+  assert_eq((ranges[0].2, ranges[0].4), (0, 0))
+  assert_true(ranges.iter().all(r => r.5 > 0 && r.5 % 2 == 0))
+  for k in 1..<ranges.length() {
+    assert_eq(ranges[k].4, ranges[k - 1].4 + ranges[k - 1].5)
+  }
 }
 
 ///|

@@ -122,8 +122,8 @@ fn Map::state_layer(self : Map, index : Int32) -> Bool {
 }
 
 ///|
-/// A worker's answer: each entry's ranges of the features asked for, as
-/// (first index, count, index in the ids) triples.
+/// A worker's answer: each entry's ranges of the features asked for, as (first
+/// index, count, outline first, outline count, index in the ids).
 fn Map::on_ranges(self : Map, msg : JsValue) -> Unit {
   let part = get_int(msg, "id")
   guard self.waiting.get(part) is Some(Ranges(p)) else { return }
@@ -149,13 +149,20 @@ fn Map::on_ranges(self : Map, msg : JsValue) -> Unit {
         continue
       }
       let source_layer = self.style.layers[m.layer].source_layer
-      for k = 0; k + 2 < r.length(); k = k + 3 {
-        let id = p.ids.get(r[k + 2]).unwrap_or("")
+      for k = 0; k + 4 < r.length(); k = k + 5 {
+        let id = p.ids.get(r[k + 4]).unwrap_or("")
         if states.get(state_key(source_layer, id)) is Some(state) {
-          m.states.push((r[k], r[k + 1], state))
+          m.states.push({
+            first: r[k],
+            count: r[k + 1],
+            outline_first: r[k + 2],
+            outline_count: r[k + 3],
+            state,
+          })
         }
       }
-      m.states.sort_by((a, b) => a.0.compare(b.0))
+      // Features lie in the same order in the triangles and the outline.
+      m.states.sort_by((a, b) => a.first.compare(b.first))
     }
   }
   self.content_version += 1
@@ -173,6 +180,7 @@ fn Map::draw_by_state(
   layer : @style.StyleLayer,
   p : Paint,
   zoom : Double,
+  outline~ : Bool = false,
   draw : (Paint) -> Unit,
 ) -> Unit {
   if m.states.is_empty() {
@@ -183,20 +191,29 @@ fn Map::draw_by_state(
     Some(props) => props.obj
     None => js_null()
   }
-  let total = self.renderer.index_count(m.mesh)
+  let total = self.renderer.index_count(m.mesh, outline~)
+  let range = (first, count) => {
+    self.renderer.set_range(m.mesh, first, count, outline~)
+  }
   let mut at = 0
   for s in m.states {
-    let (first, count, state) = s
+    let (first, count) = if outline {
+      (s.outline_first, s.outline_count)
+    } else {
+      (s.first, s.count)
+    }
     if first > at {
-      self.renderer.set_range(m.mesh, at, first - at)
+      range(at, first - at)
       draw(p)
     }
-    self.renderer.set_range(m.mesh, first, count)
-    draw(paint_of(layer, zoom, { ..JsProps::none(), obj, state, }))
+    if count > 0 {
+      range(first, count)
+      draw(paint_of(layer, zoom, { ..JsProps::none(), obj, state: s.state, }))
+    }
     at = first + count
   }
   if at < total {
-    self.renderer.set_range(m.mesh, at, total - at)
+    range(at, total - at)
     draw(p)
   }
   self.renderer.whole_mesh(m.mesh)
