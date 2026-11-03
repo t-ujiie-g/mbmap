@@ -322,26 +322,83 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "void main() { if (outside()) discard; o = patternColor(v_pat, vec4(0.0), 1.0) * v_light; }",
   #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_height_factor", ...patternUniforms]);
-  #|  // MapLibre's hillshade.fragment.glsl, `standard` method, over the tile's
-  #|  // quad: v_pos runs 0-1 across the slopes texture, u_lat is the tile's north
-  #|  // and south latitude, u_light its azimuth (radians) and exaggeration.
+  #|  // MapLibre's hillshade.fragment.glsl over the tile's quad: v_tex runs 0-1 across the
+  #|  // slopes inside their border, u_lat is the tile's north and south latitude; u_method numbers
+  #|  // standard 0, combined 1, igor 2, multidirectional 3, basic 4; u_count lights.
   #|  const hillshade = program(
   #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_tex;" +
   #|    "void main() { v_pos = a_pos; v_tex = a_pos / 4096.0; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
-  #|    clip + "uniform sampler2D u_image; uniform vec2 u_lat; uniform vec2 u_light; uniform vec4 u_shadow;" +
-  #|    "uniform vec4 u_highlight; uniform vec4 u_accent; in vec2 v_tex; out vec4 o; const float PI = 3.141592653589793;" +
-  #|    "void main() { if (outside()) discard;" +
-  #|    "  float scale = cos(radians((u_lat.x - u_lat.y) * (1.0 - v_tex.y) + u_lat.y));" +
-  #|    "  vec2 deriv = (texture(u_image, v_tex).rg - 128.0 / 255.0) * 8.0 / scale;" +
-  #|    "  float azimuth = u_light.x + PI; float slope = atan(0.625 * length(deriv));" +
-  #|    "  float aspect = deriv.x != 0.0 ? atan(deriv.y, -deriv.x) : PI / 2.0 * (deriv.y > 0.0 ? 1.0 : -1.0);" +
-  #|    "  float intensity = u_light.y; float base = 1.875 - intensity * 1.75; float maxValue = 0.5 * PI;" +
-  #|    "  float scaled = intensity != 0.5 ? ((pow(base, slope) - 1.0) / (pow(base, maxValue) - 1.0)) * maxValue : slope;" +
-  #|    "  float k = clamp(intensity * 2.0, 0.0, 1.0); vec4 accent = (1.0 - cos(scaled)) * u_accent * k;" +
-  #|    "  float shade = abs(mod((aspect + azimuth) / PI + 0.5, 2.0) - 1.0);" +
-  #|    "  vec4 color = mix(u_shadow, u_highlight, shade) * sin(scaled) * k;" +
-  #|    "  o = accent * (1.0 - color.a) + color; }",
-  #|    ["u_matrix", "u_clip", "u_image", "u_lat", "u_light", "u_shadow", "u_highlight", "u_accent"]);
+  #|    clip + `uniform sampler2D u_image; uniform vec2 u_lat; uniform float u_exaggeration; uniform vec4 u_accent;
+  #|    uniform int u_method; uniform int u_count; uniform float u_altitudes[8]; uniform float u_azimuths[8];
+  #|    uniform vec4 u_shadows[8]; uniform vec4 u_highlights[8]; in vec2 v_tex; out vec4 o;
+  #|    const float PI = 3.141592653589793;
+  #|    float get_aspect(vec2 deriv) { return deriv.x != 0.0 ? atan(deriv.y, -deriv.x) : PI / 2.0 * (deriv.y > 0.0 ? 1.0 : -1.0); }
+  #|    void igor(vec2 deriv) {
+  #|      deriv = deriv * u_exaggeration * 2.0; float aspect = get_aspect(deriv); float azimuth = u_azimuths[0] + PI;
+  #|      float slope_stength = atan(length(deriv)) * 2.0/PI;
+  #|      float aspect_strength = 1.0 - abs(mod((aspect + azimuth) / PI + 0.5, 2.0) - 1.0);
+  #|      o = u_shadows[0] * (slope_stength * aspect_strength) + u_highlights[0] * (slope_stength * (1.0-aspect_strength)); }
+  #|    void standard(vec2 deriv) {
+  #|      float azimuth = u_azimuths[0] + PI; float slope = atan(0.625 * length(deriv)); float aspect = get_aspect(deriv);
+  #|      float intensity = u_exaggeration; float base = 1.875 - intensity * 1.75; float maxValue = 0.5 * PI;
+  #|      float scaledSlope = intensity != 0.5 ? ((pow(base, slope) - 1.0) / (pow(base, maxValue) - 1.0)) * maxValue : slope;
+  #|      float accent = cos(scaledSlope); vec4 accent_color = (1.0 - accent) * u_accent * clamp(intensity * 2.0, 0.0, 1.0);
+  #|      float shade = abs(mod((aspect + azimuth) / PI + 0.5, 2.0) - 1.0);
+  #|      vec4 shade_color = mix(u_shadows[0], u_highlights[0], shade) * sin(scaledSlope) * clamp(intensity * 2.0, 0.0, 1.0);
+  #|      o = accent_color * (1.0 - shade_color.a) + shade_color; }
+  #|    void basic(vec2 deriv) {
+  #|      deriv = deriv * u_exaggeration * 2.0; float azimuth = u_azimuths[0] + PI;
+  #|      float cos_az = cos(azimuth); float sin_az = sin(azimuth); float cos_alt = cos(u_altitudes[0]); float sin_alt = sin(u_altitudes[0]);
+  #|      float cang = (sin_alt - (deriv.y*cos_az*cos_alt - deriv.x*sin_az*cos_alt)) / sqrt(1.0 + dot(deriv, deriv));
+  #|      float shade = clamp(cang, 0.0, 1.0);
+  #|      o = shade > 0.5 ? u_highlights[0]*(2.0*shade - 1.0) : u_shadows[0]*(1.0 - 2.0*shade); }
+  #|    void multidirectional(vec2 deriv) {
+  #|      deriv = deriv * u_exaggeration * 2.0; o = vec4(0,0,0,0);
+  #|      for (int i = 0; i < 8; i++) {
+  #|        if (i >= u_count) break;
+  #|        float cos_alt = cos(u_altitudes[i]); float sin_alt = sin(u_altitudes[i]);
+  #|        float cos_az = -cos(u_azimuths[i]); float sin_az = -sin(u_azimuths[i]);
+  #|        float cang = (sin_alt - (deriv.y*cos_az*cos_alt - deriv.x*sin_az*cos_alt)) / sqrt(1.0 + dot(deriv, deriv));
+  #|        float shade = clamp(cang, 0.0, 1.0);
+  #|        if (shade > 0.5) o += u_highlights[i]*(2.0*shade - 1.0)/float(u_count);
+  #|        else o += u_shadows[i]*(1.0 - 2.0*shade)/float(u_count); } }
+  #|    void combined(vec2 deriv) {
+  #|      deriv = deriv * u_exaggeration * 2.0; float azimuth = u_azimuths[0] + PI;
+  #|      float cos_az = cos(azimuth); float sin_az = sin(azimuth); float cos_alt = cos(u_altitudes[0]); float sin_alt = sin(u_altitudes[0]);
+  #|      float cang = acos((sin_alt - (deriv.y*cos_az*cos_alt - deriv.x*sin_az*cos_alt)) / sqrt(1.0 + dot(deriv, deriv)));
+  #|      cang = clamp(cang, 0.0, PI/2.0);
+  #|      float shade = cang* atan(length(deriv)) * 4.0/PI/PI; float highlight = (PI/2.0-cang)* atan(length(deriv)) * 4.0/PI/PI;
+  #|      o = u_shadows[0]*shade + u_highlights[0]*highlight; }
+  #|    void main() { if (outside()) discard;
+  #|      highp vec2 size = vec2(textureSize(u_image, 0)); highp vec2 texturePos = (v_tex * (size - 2.0) + 1.0) / size;
+  #|      float scaleFactor = cos(radians((u_lat.x - u_lat.y) * (1.0 - v_tex.y) + u_lat.y));
+  #|      vec2 deriv = (texture(u_image, texturePos).rg - 128.0 / 255.0) * 8.0 / scaleFactor;
+  #|      if (u_method == 4) basic(deriv); else if (u_method == 1) combined(deriv); else if (u_method == 2) igor(deriv);
+  #|      else if (u_method == 3) multidirectional(deriv); else standard(deriv); }`,
+  #|    ["u_matrix", "u_clip", "u_image", "u_lat", "u_exaggeration", "u_accent", "u_method", "u_count", "u_altitudes",
+  #|     "u_azimuths", "u_shadows", "u_highlights"]);
+  #|  // MapLibre's color_relief shaders: elevations packed in the DEM tile's RGB (u_unpack; the
+  #|  // texture u_dimension wide with a border) colored between u_color_ramp_size stops.
+  #|  const colorRelief = program(
+  #|    "in vec2 a_pos; uniform mat4 u_matrix; uniform vec2 u_dimension; out vec2 v_pos; out vec2 v_tex;" +
+  #|    "void main() { v_pos = a_pos; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);" +
+  #|    "  highp vec2 epsilon = 2.0 / u_dimension; float scale = (u_dimension.x - 4.0) / u_dimension.x;" +
+  #|    "  v_tex = (a_pos / 4096.0) * scale + epsilon; }",
+  #|    clip + `uniform sampler2D u_image; uniform vec4 u_unpack; uniform sampler2D u_elevation_stops;
+  #|    uniform sampler2D u_color_stops; uniform int u_color_ramp_size; uniform float u_opacity; in vec2 v_tex; out vec4 o;
+  #|    float getElevation(vec2 coord) { vec4 data = texture(u_image, coord) * 255.0; data.a = -1.0; return dot(data, u_unpack); }
+  #|    float getElevationStop(int stop) {
+  #|      vec4 data = texelFetch(u_elevation_stops, ivec2(stop, 0), 0) * 255.0; data.a = -1.0; return dot(data, u_unpack); }
+  #|    void main() { if (outside()) discard;
+  #|      float el = getElevation(v_tex); int r = (u_color_ramp_size - 1); int l = 0;
+  #|      float el_l = getElevationStop(l); float el_r = getElevationStop(r);
+  #|      while (r - l > 1) {
+  #|        int m = (r + l) / 2; float el_m = getElevationStop(m);
+  #|        if (el < el_m) { r = m; el_r = el_m; } else { l = m; el_l = el_m; } }
+  #|      float x = (float(l) + (el - el_l) / (el_r - el_l) + 0.5)/float(u_color_ramp_size);
+  #|      o = u_opacity*texture(u_color_stops, vec2(x, 0)); }`,
+  #|    ["u_matrix", "u_clip", "u_dimension", "u_image", "u_unpack", "u_elevation_stops", "u_color_stops",
+  #|     "u_color_ramp_size", "u_opacity"]);
   #|  // MapLibre's raster shaders without the parent cross-fade: the quad's corners
   #|  // (u_top: top left, right; u_bottom: bottom left, right) warped by u_warp, the
   #|  // premultiplied image unpremultiplied, hue spun, saturated, contrasted and
@@ -454,8 +511,18 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
+  #|  // MapLibre's packDEMData of elevation v by unpack vector u into out at i (alpha 255); a
+  #|  // channel whose factor is a whole multiple of the smallest is cut out by integer division.
+  #|  const packDem = (v, u, out, i) => {
+  #|    const f = [u[0], u[1], u[2]].filter((x) => x !== 0), min = Math.min(...f), s = Math.round((v + u[3]) / min);
+  #|    for (let k = 0; k < 3; k++) {
+  #|      const r = u[k] / min, n = Math.round(r);
+  #|      out[i + k] = u[k] === 0 ? 0 : (Math.abs(r - n) < 1e-9 ? Math.floor(s / n) : Math.floor(s * min / u[k])) % 256;
+  #|    }
+  #|    out[i + 3] = 255;
+  #|  };
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 
@@ -505,6 +572,7 @@ extern "js" fn gl_upload(
 extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|(c, m) => {
   #|  if (m.elev) c.gl.deleteTexture(m.elev);
+  #|  if (m.relief) c.gl.deleteTexture(m.relief);
   #|  if (m.texture) { c.gl.deleteTexture(m.texture); return; }
   #|  c.gl.deleteVertexArray(m.vao); c.gl.deleteBuffer(m.vbo); c.gl.deleteBuffer(m.ibo);
   #|  if (m.outline) c.gl.deleteBuffer(m.outline);

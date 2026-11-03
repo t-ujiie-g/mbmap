@@ -1,5 +1,5 @@
 ///|
-/// A tile's slopes as a two-channel byte texture, filtered linearly.
+/// A tile's slopes (with their border) as a two-channel byte texture.
 extern "js" fn gl_upload_slopes(
   gl : Gl,
   slopes : JsBuffer,
@@ -10,12 +10,12 @@ extern "js" fn gl_upload_slopes(
   #|  const texture = gl.createTexture();
   #|  gl.bindTexture(gl.TEXTURE_2D, texture);
   #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, size, size, 0, gl.RG, gl.UNSIGNED_BYTE, new Uint8Array(slopes));
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, size + 2, size + 2, 0, gl.RG, gl.UNSIGNED_BYTE, new Uint8Array(slopes));
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  #|  return { texture, size, bytes: size * size * 2 };
+  #|  return { texture, size, bytes: (size + 2) * (size + 2) * 2 };
   #|}
 
 ///|
@@ -24,42 +24,164 @@ extern "js" fn gl_slopes_side(
   mesh : Mesh,
   side : Int32,
   slopes : Bytes,
+  border : Bool,
 ) -> Unit =
-  #|(c, m, side, slopes) => {
-  #|  const gl = c.gl, n = m.size;
+  #|(c, m, side, slopes, border) => {
+  #|  const gl = c.gl, n = m.size, near = border ? 0 : 1, far = border ? n + 1 : n;
   #|  gl.bindTexture(gl.TEXTURE_2D, m.texture);
   #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  #|  const [x, y, w, h] = [[0, 0, n, 1], [0, n - 1, n, 1], [0, 0, 1, n], [n - 1, 0, 1, n]][side];
+  #|  const [x, y, w, h] = [[1, near, n, 1], [1, far, n, 1], [near, 1, 1, n], [far, 1, 1, n]][side];
   #|  gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.RG, gl.UNSIGNED_BYTE, slopes);
   #|}
 
 ///|
-/// `lat_light` is the tile's north and south latitude, then the light's azimuth
-/// and exaggeration; colors are straight RGBA.
+/// `params`: the tile's north and south latitude, exaggeration, method, number
+/// of lights and whether to sample the nearest pixel; `angles` and `colors` as
+/// `Renderer::draw_hillshade` takes them.
 extern "js" fn gl_draw_hillshade(
   gl : Gl,
   mesh : Mesh,
   matrix : FixedArray[Double],
   clip : FixedArray[Double],
-  lat_light : FixedArray[Double],
-  shadow : FixedArray[Double],
-  highlight : FixedArray[Double],
+  params : FixedArray[Double],
+  angles : FixedArray[Double],
+  colors : FixedArray[Double],
   accent : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip, ll, shadow, highlight, accent) => {
-  #|  const gl = c.gl, p = c.hillshade;
-  #|  const pre = (loc, v) => gl.uniform4f(loc, v[0] * v[3], v[1] * v[3], v[2] * v[3], v[3]);
+  #|(c, m, matrix, clip, k, angles, colors, accent) => {
+  #|  const gl = c.gl, p = c.hillshade, n = k[4];
+  #|  const pre = (v, i) => [v[i] * v[i + 3], v[i + 1] * v[i + 3], v[i + 2] * v[i + 3], v[i + 3]];
+  #|  const lights = (at) => new Float32Array(Array.from({ length: n }, (_, i) => pre(colors, (i * 2 + at) * 4)).flat());
   #|  gl.useProgram(p.program);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
-  #|  gl.uniform2f(p.u_lat, ll[0], ll[1]);
-  #|  gl.uniform2f(p.u_light, ll[2], ll[3]);
-  #|  pre(p.u_shadow, shadow);
-  #|  pre(p.u_highlight, highlight);
-  #|  pre(p.u_accent, accent);
+  #|  gl.uniform2f(p.u_lat, k[0], k[1]);
+  #|  gl.uniform1f(p.u_exaggeration, k[2]);
+  #|  gl.uniform1i(p.u_method, k[3]);
+  #|  gl.uniform1i(p.u_count, n);
+  #|  gl.uniform1fv(p.u_azimuths, angles.filter((_, i) => i % 2 == 0));
+  #|  gl.uniform1fv(p.u_altitudes, angles.filter((_, i) => i % 2 == 1));
+  #|  gl.uniform4fv(p.u_shadows, lights(0));
+  #|  gl.uniform4fv(p.u_highlights, lights(1));
+  #|  gl.uniform4fv(p.u_accent, pre(accent, 0));
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, m.texture);
+  #|  const f = k[5] ? gl.NEAREST : gl.LINEAR;
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+  #|  gl.uniform1i(p.u_image, 0);
+  #|  gl.bindVertexArray(c.quad);
+  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|}
+
+///|
+/// A DEM tile's `heights` packed into RGB by `unpack` (MapLibre's `packDEMData`)
+/// with MapLibre's 2-pixel border repeating the edges, kept on the mesh.
+extern "js" fn gl_relief_heights(
+  gl : Gl,
+  mesh : Mesh,
+  heights : JsBuffer,
+  size : Int32,
+  unpack : FixedArray[Double],
+) -> Unit =
+  #|(c, m, heights, size, u) => {
+  #|  const gl = c.gl, stride = size + 4, data = new Uint8Array(stride * stride * 4);
+  #|  for (let y = 0; y < stride; y++) for (let x = 0; x < stride; x++) {
+  #|    const sx = Math.min(size - 1, Math.max(0, x - 2)), sy = Math.min(size - 1, Math.max(0, y - 2));
+  #|    c.packDem(heights[sy * size + sx], u, data, (y * stride + x) * 4);
+  #|  }
+  #|  m.relief = gl.createTexture();
+  #|  m.reliefSize = stride;
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.relief);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, stride, stride, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  #|  m.bytes += data.length;
+  #|}
+
+///|
+/// Copies into the border of a mesh's `gl_relief_heights` the pixels of the
+/// same-size tile (`dx`, `dy`) beside it, from its `heights` (MapLibre's
+/// `backfillBorder`).
+extern "js" fn gl_relief_border(
+  gl : Gl,
+  mesh : Mesh,
+  heights : JsBuffer,
+  size : Int32,
+  unpack : FixedArray[Double],
+  dx : Int32,
+  dy : Int32,
+) -> Unit =
+  #|(c, m, heights, size, u, dx, dy) => {
+  #|  const gl = c.gl, range = (d) => (d < 0 ? [-2, 0] : d > 0 ? [size, size + 2] : [0, size]);
+  #|  const [x0, x1] = range(dx), [y0, y1] = range(dy), w = x1 - x0, h = y1 - y0, data = new Uint8Array(w * h * 4);
+  #|  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++)
+  #|    c.packDem(heights[(y - dy * size) * size + x - dx * size], u, data, ((y - y0) * w + x - x0) * 4);
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.relief);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  #|  gl.texSubImage2D(gl.TEXTURE_2D, 0, x0 + 2, y0 + 2, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  #|}
+
+///|
+extern "js" fn gl_has_relief(mesh : Mesh) -> Bool =
+  #|(m) => m.relief != null
+
+///|
+/// Adds to `g`, a color relief's colors (`gl_upload_gradient`), its elevation
+/// `stops` packed by `unpack` as `gl_relief_heights` packs.
+extern "js" fn gl_relief_ramp(
+  gl : Gl,
+  g : Gradient,
+  stops : FixedArray[Double],
+  unpack : FixedArray[Double],
+) -> Unit =
+  #|(c, g, stops, u) => {
+  #|  const gl = c.gl, n = stops.length, data = new Uint8Array(n * 4);
+  #|  stops.forEach((v, i) => c.packDem(v, u, data, i * 4));
+  #|  const elevations = gl.createTexture();
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, elevations);
+  #|  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, n, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  #|  g.elevations = elevations;
+  #|  g.size = n;
+  #|}
+
+///|
+/// `k` is the opacity and whether to sample the nearest DEM pixel.
+extern "js" fn gl_draw_relief(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  ramp : Gradient,
+  unpack : FixedArray[Double],
+  k : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip, g, u, k) => {
+  #|  const gl = c.gl, p = c.colorRelief, f = k[1] ? gl.NEAREST : gl.LINEAR;
+  #|  gl.useProgram(p.program);
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform2f(p.u_dimension, m.reliefSize, m.reliefSize);
+  #|  gl.uniform4f(p.u_unpack, u[0], u[1], u[2], u[3]);
+  #|  gl.uniform1i(p.u_color_ramp_size, g.size);
+  #|  gl.uniform1f(p.u_opacity, k[0]);
+  #|  gl.activeTexture(gl.TEXTURE1);
+  #|  gl.bindTexture(gl.TEXTURE_2D, g.elevations);
+  #|  gl.uniform1i(p.u_elevation_stops, 1);
+  #|  gl.activeTexture(gl.TEXTURE2);
+  #|  gl.bindTexture(gl.TEXTURE_2D, g.texture);
+  #|  gl.uniform1i(p.u_color_stops, 2);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, m.relief);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
   #|  gl.uniform1i(p.u_image, 0);
   #|  gl.bindVertexArray(c.quad);
   #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

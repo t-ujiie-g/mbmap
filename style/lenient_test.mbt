@@ -19,7 +19,7 @@ let lenient_style : String =
   #|   {"id": "odd", "type": "fill", "source": "v", "source-layer": "a",
   #|    "filter": ["within", {}]},
   #|   {"id": "local", "type": "fill", "source": "f", "source-layer": "a"},
-  #|   {"id": "relief", "type": "color-relief", "source": "v"},
+  #|   {"id": "relief", "type": "model", "source": "v"},
   #|   {"id": "water", "type": "fill", "source": "v", "source-layer": "water",
   #|    "paint": {"fill-translate": [1, 2]}}]}
 

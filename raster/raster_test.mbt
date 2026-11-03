@@ -36,10 +36,14 @@ test "hillshade_slopes keeps flat ground at 128 and leans with the slope" {
   // up, y slope flat.
   let east = FixedArray::makei(n * n, i => (i % n).to_double() * 100.0)
   let e = @raster.hillshade_slopes(east, n, 15)
-  assert_true(e[(1 * n + 1) * 2] > b'\x80')
-  assert_eq(e[(1 * n + 1) * 2 + 1], b'\x80')
-  // The edge repeats its neighbor, so half the rise shows there.
-  assert_true(e[1 * n * 2] < e[(1 * n + 1) * 2])
+  // Pixel (x, y) of the tile is (x + 1, y + 1) past the border.
+  let at = (x : Int32, y : Int32) => ((y + 1) * (n + 2) + x + 1) * 2
+  assert_eq(e.length(), (n + 2) * (n + 2) * 2)
+  assert_true(e[at(1, 1)] > b'\x80')
+  assert_eq(e[at(1, 1) + 1], b'\x80')
+  // The edge repeats its own pixels, so half the rise shows there, none past it.
+  assert_true(e[at(0, 1)] < e[at(1, 1)])
+  assert_eq(e[at(-1, 1)], b'\x80')
   // Rising southward, and no data as 0 m.
   let south = FixedArray::makei(n * n, i => {
     if i == 0 {
@@ -49,8 +53,8 @@ test "hillshade_slopes keeps flat ground at 128 and leans with the slope" {
     }
   })
   let s = @raster.hillshade_slopes(south, n, 15)
-  assert_eq(s[(2 * n + 2) * 2], b'\x80')
-  assert_true(s[(2 * n + 2) * 2 + 1] > b'\x80')
+  assert_eq(s[at(2, 2)], b'\x80')
+  assert_true(s[at(2, 2) + 1] > b'\x80')
 }
 
 ///|
@@ -69,7 +73,8 @@ test "edge_slopes give a tile's border the slopes of the whole area" {
   }
   let edges = (tx : Int32, ty : Int32) => @raster.dem_edges(tile(tx, ty), n)
   let at = (x : Int32, y : Int32) => {
-    (big[(y * 2 * n + x) * 2], big[(y * 2 * n + x) * 2 + 1])
+    let i = ((y + 1) * (2 * n + 2) + x + 1) * 2
+    (big[i], big[i + 1])
   }
   let right = @raster.edge_slopes(edges(0, 0), edges(1, 0), 3, n, 16)
   let bottom = @raster.edge_slopes(edges(0, 0), edges(0, 1), 1, n, 16)
@@ -84,5 +89,6 @@ test "edge_slopes give a tile's border the slopes of the whole area" {
   }
   // Inside a tile, its own slopes already match.
   let own = @raster.hillshade_slopes(tile(0, 0), n, 16)
-  assert_eq((own[(2 * n + 2) * 2], own[(2 * n + 2) * 2 + 1]), at(2, 2))
+  let i = (3 * (n + 2) + 3) * 2
+  assert_eq((own[i], own[i + 1]), at(2, 2))
 }

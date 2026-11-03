@@ -183,7 +183,7 @@ fn TileProcessor::read_tile(
 /// of their zoom range are skipped, as MapLibre does).
 fn builds(sl : @style.StyleLayer, source : String, zoom : Double) -> Bool {
   sl.source == source &&
-  !(sl.kind is (Background | Hillshade | Raster)) &&
+  !(sl.kind is (Background | Hillshade | ColorRelief | Raster)) &&
   zoom >= sl.min_zoom.floor() &&
   zoom < sl.max_zoom
 }

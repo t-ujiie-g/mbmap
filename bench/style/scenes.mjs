@@ -1,5 +1,7 @@
 // The scenes of style/golden.mjs: a style, a camera and the differences allowed (per-channel mean
 // and 99th percentile, 0-255), set just above what was measured; `gap` names what mbmap lacks there.
+import { FUJI_DEM } from "../lib/fuji-terrain.mjs";
+
 const GSI = { type: "vector", tiles: ["{origin}/bench/fixtures/gsi-bvmap/{z}/{x}/{y}.pbf"], minzoom: 14, maxzoom: 14 };
 const TOKYO = { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 };
 const bg = { id: "bg", type: "background", paint: { "background-color": "#f5f3ee" } };
@@ -77,6 +79,13 @@ const IMAGES = style([
   tilted: { type: "image", url: fixture(14553, 6450), coordinates: [[139.768, 35.689], [139.785, 35.687], [139.79, 35.672], [139.765, 35.674]] },
   steep: { type: "image", url: fixture(14552, 6452), coordinates: [[139.758, 35.674], [139.762, 35.674], [139.778, 35.664], [139.744, 35.664]] },
 });
+
+// The Mt Fuji DEM as Terrarium (both engines read it), seen at zoom 11.8 so both draw its z12 tiles
+// as they are; the hillshade methods and color relief over it.
+const FUJI = { center: [138.7793, 35.3174], zoom: 11.8, bearing: 0, pitch: 0 };
+const dem = (layers) => style(layers, { dem: FUJI_DEM });
+const hillshade = (paint) => dem([{ id: "hillshade", type: "hillshade", source: "dem", paint }]);
+const RELIEF = ["interpolate", ["linear"], ["elevation"], 0, "#1a9641", 800, "#a6d96a", 1600, "#ffffbf", 2400, "#fdae61", 3200, "#d7191c", 3776, "rgba(255, 255, 255, 0.6)"];
 
 export const SCENES = {
   fills: {
@@ -355,5 +364,58 @@ export const SCENES = {
       paint: { "fill-extrusion-color": "#1e8c46", "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 40, 12], "fill-extrusion-opacity": 0.9 } }]),
     camera: { center: [139.7671, 35.6812], zoom: 15.5, bearing: 30, pitch: 50 },
     limits: { mean: 0.12, p99: 1 },
+  },
+  "hillshade-standard": {
+    style: hillshade({ "hillshade-exaggeration": 0.7, "hillshade-shadow-color": "#473b24", "hillshade-accent-color": "#5a4a2a" }),
+    camera: FUJI,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "hillshade-basic": {
+    style: hillshade({ "hillshade-method": "basic", "hillshade-illumination-altitude": 35, "hillshade-highlight-color": "rgba(255, 250, 230, 0.8)" }),
+    camera: FUJI,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "hillshade-combined": {
+    style: hillshade({ "hillshade-method": "combined", "hillshade-exaggeration": 0.8, "hillshade-illumination-direction": 300 }),
+    camera: FUJI,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "hillshade-igor": {
+    style: hillshade({ "hillshade-method": "igor", "hillshade-illumination-anchor": "map", "hillshade-shadow-color": "#2a3a5a" }),
+    camera: FUJI,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Four lights, colors and altitudes per light (a list shorter than the colors repeats its last).
+  "hillshade-multidirectional": {
+    style: hillshade({
+      "hillshade-method": "multidirectional",
+      "hillshade-illumination-direction": [270, 315, 0, 45],
+      "hillshade-illumination-altitude": [30, 30, 45],
+      "hillshade-highlight-color": ["#ffeedd", "#ffffff", "#ddeeff", "#ffffff"],
+      "hillshade-shadow-color": ["#552200", "#000000", "#002255", "#000000"],
+    }),
+    camera: FUJI,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // The light anchored to the viewport turns with the map; slopes sampled nearest.
+  "hillshade-turned": {
+    style: hillshade({ "hillshade-method": "basic", resampling: "nearest" }),
+    camera: { ...FUJI, bearing: 40 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Color relief (MapLibre's color_relief): a ramp over elevation with a translucent top stop, under
+  // a hillshade; then sampled nearest at its opacity.
+  "color-relief": {
+    style: dem([
+      { id: "relief", type: "color-relief", source: "dem", paint: { "color-relief-color": RELIEF } },
+      { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-method": "igor" } },
+    ]),
+    camera: FUJI,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "color-relief-nearest": {
+    style: dem([{ id: "relief", type: "color-relief", source: "dem", paint: { "color-relief-color": RELIEF, "color-relief-opacity": 0.7, resampling: "nearest" } }]),
+    camera: { ...FUJI, zoom: 11.95, bearing: -20 },
+    limits: { mean: 0.05, p99: 1 },
   },
 };

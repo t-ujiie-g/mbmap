@@ -261,7 +261,7 @@
     {
       "scene": "line-patterns",
       "ok": true,
-      "mean": 0.143,
+      "mean": 0.144,
       "p99": 1,
       "limits": {
         "mean": 0.2,
@@ -286,6 +286,86 @@
       "p99": 0,
       "limits": {
         "mean": 0.12,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "hillshade-standard",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "hillshade-basic",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "hillshade-combined",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "hillshade-igor",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "hillshade-multidirectional",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "hillshade-turned",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "color-relief",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "color-relief-nearest",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
         "p99": 1
       }
     }

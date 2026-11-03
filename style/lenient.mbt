@@ -7,8 +7,8 @@ let ignored_properties : Array[String] = [
   "circle-translate", "circle-translate-anchor", "text-translate", "text-translate-anchor",
   "icon-translate", "icon-translate-anchor", "circle-blur", "circle-pitch-scale",
   "circle-pitch-alignment", "symbol-avoid-edges", "symbol-z-order", "text-font",
-  "text-letter-spacing", "text-transform", "text-rotate", "text-opacity", "text-halo-blur",
-  "text-overlap", "icon-overlap", "hillshade-illumination-altitude",
+  "text-letter-spacing", "text-transform", "text-rotate", "text-halo-blur", "text-overlap",
+  "icon-overlap",
 ]
 
 ///|

@@ -164,6 +164,10 @@ pub struct Map {
   priv mut images_held : Bool
   /// Heatmap color ramps by `heatmap-color` expression.
   priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
+  /// Color relief ramps by `color-relief-color` and the DEM's encoding.
+  priv relief_ramps : Array[
+    (@style.Expr, @style.DemEncoding, @render_webgl2.Gradient),
+  ]
   priv media : Array[Media]
   priv mut custom : CustomRenderer
 }
@@ -285,6 +289,7 @@ pub fn Map::new(
     images_loading: false,
     images_held: false,
     ramps: [],
+    relief_ramps: [],
     media: [],
     custom: no_custom(),
   }

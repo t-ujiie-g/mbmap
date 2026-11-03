@@ -275,7 +275,7 @@ pub fn Map::query_rendered(
     for i, l in style.layers {
       if wanted[i] &&
         l.source == src.source.id &&
-        !(l.kind is (Symbol | Background | Hillshade | Raster)) {
+        !(l.kind is (Symbol | Background | Hillshade | ColorRelief | Raster)) {
         indices.push(i)
         extruded = extruded || l.kind is FillExtrusion
       }

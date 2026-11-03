@@ -7,6 +7,7 @@ priv struct JsProps {
   state : JsValue
   progress : Double
   density : Double
+  elevation : Double
 }
 
 ///|
@@ -16,6 +17,7 @@ fn JsProps::none() -> JsProps {
     state: js_null(),
     progress: @double.not_a_number,
     density: @double.not_a_number,
+    elevation: @double.not_a_number,
   }
 }
 
@@ -60,6 +62,12 @@ impl @style.FeatureContext for JsProps with fn line_progress(self) {
 /// The density a heatmap's color ramp is evaluated at (NaN elsewhere).
 impl @style.FeatureContext for JsProps with fn heatmap_density(self) {
   self.density
+}
+
+///|
+/// The elevation a color relief's ramp is evaluated at (NaN elsewhere).
+impl @style.FeatureContext for JsProps with fn elevation(self) {
+  self.elevation
 }
 
 ///|

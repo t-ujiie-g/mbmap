@@ -90,6 +90,7 @@ pub(all) enum Expr {
   Zoom
   LineProgress
   HeatmapDensity
+  Elevation
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -219,7 +220,7 @@ fn Compiler::key(self : Compiler, json : Json, path : String) -> String {
 /// The type `e` produces, as far as compiling can tell.
 fn Expr::static_type(self : Expr) -> Expected {
   match self {
-    Lit(Num(_)) | Zoom | LineProgress | HeatmapDensity => NumberType
+    Lit(Num(_)) | Zoom | LineProgress | HeatmapDensity | Elevation => NumberType
     Call(op, _) => op_type(op)
     Lit(Str(_)) | GeometryType => StringType
     Lit(Bool(_))
@@ -418,6 +419,7 @@ fn Compiler::compile_at(
     "zoom" => Zoom
     "line-progress" => LineProgress
     "heatmap-density" => HeatmapDensity
+    "elevation" => Elevation
     "pi" => Lit(Num(3.141592653589793))
     "e" => Lit(Num(2.718281828459045))
     "ln2" => Lit(Num(0.6931471805599453))

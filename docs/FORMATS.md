@@ -226,7 +226,8 @@ Out:
   `properties`; no hits if the tile is gone or the request is refused.
 - A `raster-dem` tile's message has one entry `{layer: -1, kind: 5, image, edges,
   elevations, size}`: `image` holds the slopes (`@raster.hillshade_slopes`, two
-  bytes per pixel of a `size` x `size` tile), `edges` (Float64Array) its border
+  bytes per pixel of a `size` x `size` tile with a pixel of border, rows of
+  `size + 2`), `edges` (Float64Array) its border
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
   height in meters (no data as 0), for its hillshade layers and terrain.
 

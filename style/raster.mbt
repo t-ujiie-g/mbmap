@@ -1,7 +1,7 @@
 ///|
 /// A raster layer's paint: `opacity`, `hue_rotate` (degrees), `brightness_min`,
 /// `brightness_max`, `saturation` and `contrast` (-1 to 1), and `nearest` for
-/// `raster-resampling: nearest`.
+/// `resampling` or `raster-resampling` `nearest`.
 pub struct RasterPaint {
   opacity : Expr
   hue_rotate : Expr
@@ -20,6 +20,7 @@ fn parse_raster(
   let number = (key : String, default : Double) => {
     paint_expr(paint, key, path, NumberType, Json::number(default))
   }
+  let nearest = resampling_nearest(paint, path)
   {
     opacity: number("raster-opacity", 1.0),
     hue_rotate: number("raster-hue-rotate", 0.0),
@@ -28,7 +29,7 @@ fn parse_raster(
     saturation: number("raster-saturation", 0.0),
     contrast: number("raster-contrast", 0.0),
     nearest: match string_or(paint, "raster-resampling", path, "linear") {
-      "linear" => false
+      "linear" => nearest
       "nearest" => true
       r =>
         raise Invalid(

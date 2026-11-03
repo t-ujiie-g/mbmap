@@ -107,8 +107,8 @@ fn ground(v : Double) -> Double {
 
 ///|
 /// MapLibre's hillshade_prepare of a `size` x `size` tile at zoom `z`: slopes east
-/// and south per pixel, two bytes around 128. Edge pixels repeat neighbors until
-/// `edge_slopes` redoes them; no data counts as 0 m.
+/// and south per pixel, two bytes around 128, with a pixel of border. Edges repeat
+/// the tile's own pixels until `edge_slopes` redoes them; no data counts as 0 m.
 pub fn hillshade_slopes(
   elev : FixedArray[Double],
   size : Int32,
@@ -122,9 +122,10 @@ pub fn hillshade_slopes(
     )
   }
   let scale = slope_scale(size, z, pow)
-  let out = FixedArray::make(size * size * 2, b'\x00')
-  for y in 0..<size {
-    for x in 0..<size {
+  let side = size + 2
+  let out = FixedArray::make(side * side * 2, b'\x00')
+  for y in -1..<=size {
+    for x in -1..<=size {
       let (sx, sy) = sobel(
         at(x - 1, y - 1),
         at(x, y - 1),
@@ -135,8 +136,8 @@ pub fn hillshade_slopes(
         at(x, y + 1),
         at(x + 1, y + 1),
       )
-      out[(y * size + x) * 2] = slope_byte(sx * scale)
-      out[(y * size + x) * 2 + 1] = slope_byte(sy * scale)
+      out[((y + 1) * side + x + 1) * 2] = slope_byte(sx * scale)
+      out[((y + 1) * side + x + 1) * 2 + 1] = slope_byte(sy * scale)
     }
   }
   Bytes::from_array(out[:])
