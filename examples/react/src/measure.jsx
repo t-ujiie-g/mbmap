@@ -5,12 +5,12 @@ import { measureActions, measuredRows } from "../../shared/measure.js";
 import { CHART, chartOf, distanceAt, profileRows, trackProfile } from "../../shared/profile.js";
 import { useController } from "./use-controller.js";
 
-export function Measure({ m }) {
+export function Measure({ m, beforeStart }) {
   const s = useController(m);
   return (
     <>
       <div id="measure" className="react-measure" role="toolbar" aria-label="計測">
-        {measureActions(m, s).map(([label, f, enabled], i) => (
+        {measureActions(m, s, beforeStart).map(([label, f, enabled], i) => (
           <button key={label} disabled={!enabled} aria-pressed={i < 2 ? s.mode === (i === 0 ? "distance" : "area") : undefined} onClick={f}>
             {label}
           </button>

@@ -337,6 +337,7 @@ async function showcase(page) {
   await page.waitForFunction(() => window.__hovered);
   const hovered = await page.evaluate(() => ({ id: window.__hovered, state: window.__map.getFeatureState({ source: "places", id: window.__hovered }) }));
   const measured = await measureChecks(page);
+  const drew = await drawChecks(page);
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
@@ -396,8 +397,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew }];
 }
 
 // Queries and mouse events on a GeoJSON source added to the npm example's map (CI has no tile
@@ -823,6 +824,53 @@ async function profileChecks(page, length) {
     s.elevations.length === s.path.length && s.elevations.every(Number.isFinite) && s.min <= s.max && s.error === null &&
     !pointed.hidden && pointed.transform === pointed.want && pointed.caption.includes("登り");
   return { ok, samples: s.distances.length, min: s.min, max: s.max, gain: s.gain, pointed };
+}
+
+// The showcase's drawing (mbmap/draw): a polygon closed on its first vertex, a line finished with
+// Enter, one cancelled with Escape, a circle by two clicks, undo and redo; measuring takes over.
+async function drawChecks(page) {
+  const state = () => page.evaluate(() => window.__draw.state);
+  const clicks = async (points) => {
+    for (const [x, y] of points) {
+      await page.mouse.click(x, y);
+      await page.waitForTimeout(350);
+    }
+  };
+  const before = await page.evaluate(() => JSON.stringify(window.__identify.state.point));
+  await page.click("#draw-modes button >> text=多角形");
+  await clicks([[420, 160], [650, 200], [560, 420], [424, 163]]);
+  const polygon = await state();
+  await page.click("#draw-modes button >> text=線");
+  await clicks([[450, 180], [620, 380]]);
+  await page.keyboard.press("Enter");
+  await clicks([[460, 200], [600, 300]]);
+  await page.keyboard.press("Escape");
+  const lines = await state();
+  await page.click("#draw-modes button >> text=円");
+  await clicks([[520, 300], [580, 300]]);
+  await page.waitForFunction(() => window.__draw.state.features.length === 3);
+  const circle = await state();
+  await page.click("#draw-actions button >> text=一つ戻す");
+  const undone = (await state()).features.length;
+  await page.click("#draw-actions button >> text=やり直す");
+  const redone = (await state()).features.length;
+  const after = await page.evaluate(() => JSON.stringify(window.__identify.state.point));
+  await page.click("#measure button >> text=距離");
+  const handed = await state();
+  await page.click("#measure button >> text=消す");
+  await page.click("#draw-actions button >> text=全部消す");
+  const end = await page.evaluate(() => ({ features: window.__draw.state.features.length, dblclick: window.__map.doubleClickZoom.isEnabled() }));
+  const ring = polygon.features[0]?.geometry.coordinates[0] ?? [];
+  let twice = 0;
+  for (let i = 0; i + 1 < ring.length; i++) twice += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+  const circleRing = circle.features[2]?.geometry.coordinates[0] ?? [];
+  const ok =
+    polygon.features.length === 1 && ring.length === 4 && twice > 0 && polygon.vertices.length === 0 &&
+    lines.features.length === 2 && lines.features[1].geometry.type === "LineString" && lines.features[1].geometry.coordinates.length === 2 && lines.vertices.length === 0 &&
+    circleRing.length === 65 && circle.features[2].properties.mode === "circle" &&
+    undone === 2 && redone === 3 && before === after &&
+    handed.mode === null && end.features === 0 && end.dblclick;
+  return { ok, polygon: ring.length, lines: lines.features.length, circle: circleRing.length, undone, redone, handed: handed.mode, end };
 }
 
 // Whether a pin's `translate(xpx, ypx)` puts it at the 800 x 600 page's centre.

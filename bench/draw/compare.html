@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>mbmap bench: drawing vs terra-draw</title>
+<link rel="stylesheet" href="/bench/node_modules/maplibre-gl/dist/maplibre-gl.css">
+<script type="importmap">
+  { "imports": { "terra-draw": "/bench/node_modules/terra-draw/dist/terra-draw.module.js" } }
+</script>
+<style>html, body { margin: 0; } #map { width: 800px; height: 600px; }</style>
+<div id="map"></div>
+<script type="module" src="./compare.mjs"></script>

@@ -107,6 +107,8 @@ function App() {
         <button id="marker" onClick={addMarker}>中心に印を置く</button>
         <button id="save" onClick={() => ref.current.map && saveImage(ref.current.map)}>画像を保存</button>
         {panel && <Legend c={panel.legend} />}
+        <h2>作図</h2>
+        {identify?.draw}
         <h2>計測</h2>
         {identify?.measure}
         <h2>断面図</h2>

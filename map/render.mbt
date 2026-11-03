@@ -279,6 +279,21 @@ fn Map::placement(
 }
 
 ///|
+/// The tiles of `src` the view covers at its zoom.
+fn Map::cover(self : Map, src : SourceTiles) -> Array[@core.TileId] {
+  let t = self.transform
+  let s = src.source
+  let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
+  if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
+    s.min_zoom.to_double() {
+    []
+  } else {
+    // Tiles outside the source's bounds are never asked for.
+    t.covering_tiles(s.min_zoom, z).filter(id => s.covers(id.z, id.x, id.y))
+  }
+}
+
+///|
 /// Per source: where its covering tiles' meshes go this frame (once for all
 /// of the source's layers), and whether every covering tile has settled.
 /// `load` asks for the tiles missing.
@@ -287,19 +302,11 @@ fn Map::draws(
   dpr : Double,
   load~ : Bool,
 ) -> (@hashmap.HashMap[String, Array[Draw]], Bool) {
-  let t = self.transform
   let mut settled = true
   let draws_of : @hashmap.HashMap[String, Array[Draw]] = @hashmap.HashMap([])
   for src in self.sources {
     let s = src.source
-    let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
-    let cover = if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
-      s.min_zoom.to_double() {
-      []
-    } else {
-      // Tiles outside the source's bounds are never asked for.
-      t.covering_tiles(s.min_zoom, z).filter(id => s.covers(id.z, id.x, id.y))
-    }
+    let cover = self.cover(src)
     if load {
       self.update_tiles(src, cover)
     }

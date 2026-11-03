@@ -20,6 +20,7 @@ pub struct Geodesic {
   f : Double
   // private fields
 }
+pub fn Geodesic::circle(Self, Double, Double, Double, Int32) -> FixedArray[Double]
 pub fn Geodesic::densify(Self, ArrayView[Double], Double, Int32) -> Array[Double]?
 pub fn Geodesic::direct(Self, Double, Double, Double, Double) -> Position
 pub fn Geodesic::inverse(Self, Double, Double, Double, Double, area? : Bool) -> Inverse

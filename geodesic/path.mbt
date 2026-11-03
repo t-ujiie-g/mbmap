@@ -62,3 +62,26 @@ pub fn Geodesic::densify(
   }
   Some(out)
 }
+
+///|
+/// A circle of `radius` meters around (`lng`, `lat`): `n` points at equal
+/// azimuths clockwise from north, then the first again, as lng, lat pairs.
+pub fn Geodesic::circle(
+  self : Geodesic,
+  lng : Double,
+  lat : Double,
+  radius : Double,
+  n : Int32,
+) -> FixedArray[Double] {
+  let out = FixedArray::make((n + 1) * 2, 0.0)
+  for i in 0..<n {
+    let p = self.direct(lat, lng, 360.0 * i.to_double() / n.to_double(), radius)
+    out[i * 2] = p.lon2
+    out[i * 2 + 1] = p.lat2
+  }
+  if n > 0 {
+    out[n * 2] = out[0]
+    out[n * 2 + 1] = out[1]
+  }
+  out
+}

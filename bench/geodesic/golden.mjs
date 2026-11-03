@@ -1,5 +1,5 @@
 // geodesic.wasm vs geographiclib-geodesic 2.2.0 on WGS 84 (inverse, direct, polygons, polylines,
-// densified paths); every number must be identical (Object.is).
+// densified paths, circles); every number must be identical (Object.is).
 // Usage: node geodesic/golden.mjs [--cases=N]; writes bench/results/geodesic-golden.json.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -115,6 +115,18 @@ for (let i = 0; i < CASES / 10; i++) {
   }
   input(coords);
   check("densify", `${step} ${coords.slice(0, 4).join(" ")}`, want, out(w.densify(step)));
+}
+
+// Circles: Direct at equal azimuths, closed.
+for (let i = 0; i < CASES / 20; i++) {
+  const [lng, lat, radius, n] = [between(-180, 180), between(-89, 89), 10 ** between(0, 7), 3 + Math.floor(rand() * 200)];
+  const want = [];
+  for (let k = 0; k < n; k++) {
+    const d = WGS84.Direct(lat, lng, (360 * k) / n, radius);
+    want.push(d.lon2, d.lat2);
+  }
+  want.push(want[0], want[1]);
+  check("circle", `${lng} ${lat} ${radius} ${n}`, want, out(w.circle(lng, lat, radius, n)));
 }
 
 const rows = Object.entries(results).map(([group, r]) => ({ group, ...r }));

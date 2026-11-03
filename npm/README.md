@@ -28,6 +28,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
 | `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読み込む（場所は `projWasmUrl` で変えられる） |
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ読み込む |
+| `dist/draw.js` | 見た目を持たない作図（`mbmap/draw`） |
 | `dist/geodesic.js`, `dist/geodesic-worker.js`, `dist/geodesic.wasm` | 楕円体の上の計測（`mbmap/geodesic`）の入口、Worker、wasm。初めて呼んだときに Worker を起こす |
 | `dist/worker.js` | タイル Worker（モジュール Worker） |
 | `dist/mbmap.wasm` | Worker が読む wasm-gc |
@@ -186,6 +187,28 @@ blocks.dispose();
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。
 
+## 作図 `mbmap/draw`
+
+```js
+import { createDraw } from "mbmap/draw";
+import * as geodesic from "mbmap/geodesic";
+
+const draw = createDraw(map, { geodesic });   // 円を描くときだけ geodesic が要る
+draw.setMode("polygon");                       // point、linestring、polygon、rectangle、circle、freehand、null
+draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
+```
+
+- クリックの仕方は terra-draw 1.37 に合わせた（`npm run draw:golden` で、同じクリックの結果を比べている）。
+  - 点：クリック。
+  - 線：クリックで頂点を置き、最後の頂点をもう一度クリック（40px 以内）で終わる。
+  - 多角形：最初か最後の頂点をクリックで閉じる。
+  - 矩形・円：2 回のクリック。円は楕円体の上の円（64 点）。
+  - フリーハンド：クリックで始め、動かすと 20px ごとに頂点を足し、クリックで閉じる。
+- 状態は `mode`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
+- 操作は `setMode(mode)`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
+- 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回りにする（RFC 7946）。
+- 描くのは自前の GeoJSON ソース（既定の id は `mbmap-draw`）とレイヤーで、`setData` で更新する。描いている間はダブルクリックのズームを止める。
+
 ## 楕円体の上の計測 `mbmap/geodesic`
 
 ```js
@@ -197,6 +220,7 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 ```
 
 - WGS84 の楕円体の上で計算する。GeographicLib（geographiclib-geodesic 2.2.0）の移植で、同じ JavaScript エンジンの上ではビット単位で同じ値になる（黄金テストで確かめている）。
+- `circle(center, radius, { steps })`：中心から `radius` m の円（既定 64 点、閉じた輪）。
 - `inverse(from, to)`：`distance`、`azimuth1`、`azimuth2`、`arc`、`area`（測地線と赤道の間の面積）。
 - `direct(from, azimuth, distance)`：`position`、`azimuth`、`arc`。
 - `measure(positions, { closed, step })`：線の長さ、または閉じた多角形の周囲と面積（反時計回りが正）、各頂点までの距離（`distances`）。`step` を渡すと、測地線に沿って `step` m ごとに点を足した `path` も返す（経度は ±180 を越えても続けて数える）。
