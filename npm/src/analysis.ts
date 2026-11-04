@@ -407,9 +407,14 @@ export async function mergeFeatures(features: Feature[], options: AnalysisOption
   return (await onFeatures(features, (d) => d.merge(), options))[0];
 }
 
+/** Rows in @geom.Table's byte form, as mbmap/data's `DataTable` gives them. */
+export interface TableSource {
+  tableBytes(): ArrayBuffer;
+}
+
 /**
- * Reads GeoJSON into the analysis worker: an object, its UTF-8 bytes, or an
- * http(s) URL (resolved against the page, fetched without credentials).
+ * Reads data into the analysis worker: GeoJSON as an object, its UTF-8 bytes, or an http(s) URL
+ * (resolved against the page, fetched without credentials), or a table read by mbmap/data.
  */
 export async function load(data: unknown, options: LoadOptions = {}): Promise<Dataset> {
   const crs = options.crs === undefined ? undefined : await crsArg(options.crs);
@@ -418,6 +423,11 @@ export async function load(data: unknown, options: LoadOptions = {}): Promise<Da
   let transfer: Transferable[] = [];
   if (typeof data === "string") {
     args = { url: httpUrl(data, document.baseURI, "analysis: data") };
+  } else if (typeof (data as TableSource | null)?.tableBytes === "function") {
+    const table = (data as TableSource).tableBytes();
+    if (!(table instanceof ArrayBuffer)) throw new Error("mbmap: analysis: tableBytes() must give an ArrayBuffer");
+    args = { table };
+    transfer = [table];
   } else {
     // Copied, so the caller's buffer stays usable after the transfer.
     const bytes =

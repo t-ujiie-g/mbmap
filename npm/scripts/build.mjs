@@ -1,5 +1,5 @@
-// Builds dist/: the facade, `<mb-map>`, the GeoJSON, analysis and geodesic
-// modules and their workers with their wasm. Usage: node scripts/build.mjs
+// Builds dist/: the facade, `<mb-map>`, the GeoJSON, analysis, geodesic and
+// data modules and their workers with their wasm. Usage: node scripts/build.mjs
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -19,6 +19,7 @@ run("moon", ["build", "analysis_worker", "--target", "wasm-gc", "--release"], RO
 run("moon", ["build", "geometry_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "proj_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geodesic_worker", "--target", "wasm-gc", "--release"], ROOT);
+run("moon", ["build", "data_worker", "--target", "wasm-gc", "--release"], ROOT);
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 
@@ -59,6 +60,8 @@ await build({ ...common, entryPoints: [path.join(PKG, "src/projstring.ts")], out
 await build({ ...common, entryPoints: [path.join(ROOT, "analysis_worker/js/worker.mjs")], outfile: path.join(DIST, "analysis-worker.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/geodesic.ts")], outfile: path.join(DIST, "geodesic.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geodesic_worker/js/worker.mjs")], outfile: path.join(DIST, "geodesic-worker.js") });
+await build({ ...common, entryPoints: [path.join(PKG, "src/data.ts")], outfile: path.join(DIST, "data.js") });
+await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js/worker.mjs")], outfile: path.join(DIST, "data-worker.js") });
 // The element imports the main entry rather than bundling a second copy of it.
 const mainEntry = { name: "main-entry", setup: (b) => b.onResolve({ filter: /^mbmap$/ }, () => ({ path: "./index.js", external: true })) };
 await build({ ...common, entryPoints: [path.join(ROOT, "element/element.ts")], outfile: path.join(DIST, "element.js"), plugins: [mainEntry] });
@@ -70,6 +73,7 @@ await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/analysis_worker/ana
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geometry_worker/geometry_worker.wasm"), path.join(DIST, "geometry.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"), path.join(DIST, "proj.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geodesic_worker/geodesic_worker.wasm"), path.join(DIST, "geodesic.wasm"));
+await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/data_worker/data_worker.wasm"), path.join(DIST, "data.wasm"));
 const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
 run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
 run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);

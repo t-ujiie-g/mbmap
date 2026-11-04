@@ -10,7 +10,7 @@ import buffer from "@turf/buffer";
 import union from "@turf/union";
 import intersect from "@turf/intersect";
 import { hostNumber } from "../../wasmio/js/host.mjs";
-import { tableToGeoJSON } from "../../analysis_worker/js/table.mjs";
+import { tableToGeoJSON } from "../../wasmio/js/table.mjs";
 import { ROOT } from "../lib/root.mjs";
 
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;

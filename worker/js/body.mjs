@@ -30,3 +30,16 @@ export async function readCapped(res, max = MAX_BODY_BYTES) {
   }
   return out;
 }
+
+// What a `transformRequest` may set on a fetch: string headers and a
+// credentials mode (none sent otherwise); anything else is left out.
+export function fetchInit(init, signal) {
+  const out = { signal, credentials: "omit" };
+  if (init && typeof init === "object") {
+    if (["omit", "same-origin", "include"].includes(init.credentials)) out.credentials = init.credentials;
+    if (init.headers && typeof init.headers === "object") {
+      out.headers = Object.fromEntries(Object.entries(init.headers).filter(([, v]) => typeof v === "string"));
+    }
+  }
+  return out;
+}

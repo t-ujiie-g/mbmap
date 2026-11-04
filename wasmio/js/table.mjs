@@ -1,5 +1,5 @@
 // A @geom.Table in its byte form (docs/FORMATS.md, "Table") as a GeoJSON
-// FeatureCollection.
+// FeatureCollection, or its row count and keys. Imports only values.mjs.
 
 import { readString, readValue } from "../../worker/js/values.mjs";
 
@@ -55,4 +55,19 @@ export function tableToGeoJSON(buffer) {
     return { type: "Feature", geometry: type ? { type, coordinates } : null, properties: Object.fromEntries(props[i]) };
   });
   return { type: "FeatureCollection", features };
+}
+
+// The feature count and the property keys of table bytes, read without the rest.
+export function tableInfo(buffer) {
+  const v = new DataView(buffer.buffer ?? buffer, buffer.byteOffset ?? 0, buffer.byteLength);
+  const bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  const [f, p, r, n, k] = [0, 4, 8, 12, 16].map((at) => v.getUint32(at, true));
+  let at = 20 + ((f + 3) & ~3) + (f + p + r) * 4 + n * 16;
+  const columns = [];
+  for (let i = 0; i < k; i++) {
+    const [s, next] = readString(v, bytes, at);
+    columns.push(s);
+    at = next;
+  }
+  return { length: f, columns };
 }
