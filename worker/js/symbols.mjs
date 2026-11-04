@@ -112,7 +112,9 @@ export class Glyphs {
 
 // setInt16 wraps around, so offsets past its range are clamped.
 const clamp16 = (v) => Math.max(-32768, Math.min(32767, Math.round(v)));
-const quarterPixels = (px) => clamp16(px * 4);
+// Glyph corners are kept in 16ths of a CSS px (docs/FORMATS.md "Symbol vertices").
+export const OFFSET_UNITS = 16;
+const offsetUnits = (px) => clamp16(px * OFFSET_UNITS);
 
 /**
  * MapLibre's `shapeIcon` and, with `icon-text-fit` (`fit` 1 width, 2 height, 3 both) around a text
@@ -359,11 +361,11 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
         if (color) colors.set([...color, 1], (n * 4 + c) * COLOR_BYTES);
         v.setInt16(o, Math.round(l.x), true);
         v.setInt16(o + 2, Math.round(l.y), true);
-        v.setInt16(o + 4, quarterPixels(cos * (cx - dx) - sin * cy), true);
-        v.setInt16(o + 6, quarterPixels(sin * (cx - dx) + cos * cy), true);
+        v.setInt16(o + 4, offsetUnits(cos * (cx - dx) - sin * cy), true);
+        v.setInt16(o + 6, offsetUnits(sin * (cx - dx) + cos * cy), true);
         v.setUint16(o + 8, local.get(q.cp), true);
         v.setUint16(o + 10, c, true);
-        v.setUint16(o + 12, Math.min(65535, Math.round(l.size * (q.scale ?? 1) * 16)), true);
+        v.setUint16(o + 12, Math.min(65535, Math.round(l.size * 16)), true);
       });
       indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * QUAD_INDICES);
     });

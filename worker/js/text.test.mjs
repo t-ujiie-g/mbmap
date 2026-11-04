@@ -19,9 +19,11 @@ test("a centered line puts its em boxes around the anchor", () => {
   const { quads, box } = layoutLabel("東京駅", 10, { lineHeight: 1 }, metrics);
   assert.deepEqual(round(box), [-15, -5, 15, 5]);
   assert.deepEqual(quads.map((q) => q.cp), [..."東京駅"].map((c) => c.codePointAt(0)));
-  // The ink box of the first glyph, padded by the SDF buffer.
-  const pad = (SDF_BUFFER * 10) / SDF_SIZE;
-  assert.deepEqual(round(bounds(quads[0])), round([-15 - pad, -5 - pad, -5 + pad, 5 + pad]));
+  // The ink box of the first glyph, padded by the SDF buffer and a pixel of the atlas; MapLibre's
+  // baseline is 22/24 em below the top of the line, the ink here 0.88 em above it.
+  const pad = ((SDF_BUFFER + 1) * 10) / SDF_SIZE;
+  const low = (22 / 24 - 0.88) * 10;
+  assert.deepEqual(round(bounds(quads[0])), round([-15 - pad, -5 - pad + low, -5 + pad, 5 + pad + low]));
 });
 
 test("anchors and offsets move the box; the anchor side sets the justification", () => {
@@ -74,11 +76,10 @@ test("formatted sections scale their glyphs, lines take their largest scale, and
   const sections = (aligns) => ({ scales: [2, 1, 1, 0.5], aligns });
   const { quads, box } = layoutLabel("ab\nc", 10, { lineHeight: 1 }, metrics, sections([0, 0, 0, 0]));
   assert.deepEqual(round(box), [-15, -12.5, 15, 12.5]);
-  assert.deepEqual(quads.map((q) => q.scale), [2, 1, 0.5]);
-  assert.deepEqual(round(quads.map((q) => bounds(q)[2] - bounds(q)[0])), round([20, 10, 5].map((w) => w + (2 * SDF_BUFFER * w) / SDF_SIZE)));
+  assert.deepEqual(round(quads.map((q) => bounds(q)[2] - bounds(q)[0])), round([20, 10, 5].map((w) => w + (2 * (SDF_BUFFER + 1) * w) / SDF_SIZE)));
   // `vertical-align: center` puts the smaller glyph half the difference of the em boxes higher.
   const centered = layoutLabel("ab\nc", 10, { lineHeight: 1 }, metrics, sections([0, 1, 0, 0])).quads;
   assert.equal(Math.round(bounds(quads[1])[1] - bounds(centered[1])[1]), 5);
   // Without sections, nothing changes.
-  assert.deepEqual(layoutLabel("ab", 10, {}, metrics).quads, layoutLabel("ab", 10, {}, metrics, { scales: [1, 1], aligns: [0, 0] }).quads.map(({ scale, k, ...q }) => q));
+  assert.deepEqual(layoutLabel("ab", 10, {}, metrics).quads, layoutLabel("ab", 10, {}, metrics, { scales: [1, 1], aligns: [0, 0] }).quads.map(({ k, ...q }) => q));
 });
