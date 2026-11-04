@@ -41,7 +41,7 @@ pub struct IconPaint {
   halo_color : Expr
   halo_width : Expr
   halo_blur : Expr
-  translate : (Double, Double)
+  translate : Expr
   translate_viewport : Bool
 }
 

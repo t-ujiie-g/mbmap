@@ -1,0 +1,155 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600",
+    "tiles": "openfreemap 20261101_080013_pt"
+  },
+  "results": [
+    {
+      "scene": "osm-bright-tokyo",
+      "ok": true,
+      "mean": 0.072,
+      "p99": 1,
+      "limits": {
+        "mean": 0.08,
+        "p99": 1
+      },
+      "gap": "thin dashed paths past the source's maxzoom: MapLibre lays the tile out again (sharp corners split by overscaling)"
+    },
+    {
+      "scene": "osm-bright-turned",
+      "ok": true,
+      "mean": 0.037,
+      "p99": 1,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "positron-tokyo",
+      "ok": true,
+      "mean": 0.007,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "positron-turned",
+      "ok": true,
+      "mean": 0.006,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "dark-matter-tokyo",
+      "ok": true,
+      "mean": 0.04,
+      "p99": 1,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "dark-matter-turned",
+      "ok": true,
+      "mean": 0.036,
+      "p99": 1,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "maptiler-basic-tokyo",
+      "ok": true,
+      "mean": 0.114,
+      "p99": 4,
+      "limits": {
+        "mean": 0.13,
+        "p99": 4
+      },
+      "gap": "thin dashed paths past the source's maxzoom: MapLibre lays the tile out again (sharp corners split by overscaling)"
+    },
+    {
+      "scene": "maptiler-basic-turned",
+      "ok": true,
+      "mean": 0.064,
+      "p99": 2,
+      "limits": {
+        "mean": 0.08,
+        "p99": 2
+      },
+      "gap": "thin dashed paths with bevel joins"
+    },
+    {
+      "scene": "ofm-liberty-tokyo",
+      "ok": true,
+      "mean": 0.102,
+      "p99": 2,
+      "limits": {
+        "mean": 0.12,
+        "p99": 2
+      },
+      "gap": "thin dashed paths past the source's maxzoom: MapLibre lays the tile out again (sharp corners split by overscaling)"
+    },
+    {
+      "scene": "ofm-liberty-turned",
+      "ok": true,
+      "mean": 0.108,
+      "p99": 2,
+      "limits": {
+        "mean": 0.12,
+        "p99": 2
+      },
+      "gap": "thin dashed paths"
+    },
+    {
+      "scene": "ofm-bright-tokyo",
+      "ok": true,
+      "mean": 0.04,
+      "p99": 1,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "ofm-bright-turned",
+      "ok": true,
+      "mean": 0.01,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "ofm-positron-tokyo",
+      "ok": true,
+      "mean": 0.007,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "ofm-positron-turned",
+      "ok": true,
+      "mean": 0.006,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    }
+  ]
+}

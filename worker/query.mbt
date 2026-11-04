@@ -88,9 +88,10 @@ fn read_query(r : @core.ByteReader) -> Query? {
 fn Query::translated(
   self : Query,
   sl : @style.StyleLayer,
-  trig : @core.Trig,
+  feature : FeatureRef,
 ) -> Query {
-  let (x, y) = sl.translate
+  let trig = feature.trig
+  let (x, y) = @style.translate_at(sl.translate, self.zoom, feature)
   if x == 0.0 && y == 0.0 {
     return self
   }
@@ -347,7 +348,7 @@ fn TileProcessor::hit(
     @core.TILE_EXTENT.to_double() / layer.extent().to_double(),
   )
   let zoom = query.zoom
-  let query = query.translated(sl, self.trig)
+  let query = query.translated(sl, feature)
   let q = query.polygon
   guard near_query(rings, query, pad, sl.kind is FillExtrusion) else {
     return None
@@ -457,13 +458,13 @@ fn TileProcessor::query_padding(
       features_of(sl.source_layer) is Some(layer) else {
       continue
     }
-    let (tx, ty) = sl.translate
+    let feature = self.feature_ref(layer)
+    let (tx, ty) = @style.translate_at(sl.translate, zoom, feature)
     let moved = (tx * tx + ty * ty).sqrt()
     if sl.kind is (Fill | FillExtrusion) {
       pad = @cmp.maximum(pad, moved)
       continue
     }
-    let feature = self.feature_ref(layer)
     for i in 0..<layer.length() {
       feature.index = i
       if passes(sl.filter, feature, tile_zoom) {

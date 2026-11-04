@@ -281,7 +281,13 @@ test "text-font takes a list of names or an expression; the other text propertie
   assert_eq(constant(t.transform), Str("uppercase"))
   assert_eq(constant(t.rotate), Num(45.0))
   assert_eq(constant(a.blur), Num(1.5))
-  assert_eq((a.translate, a.translate_viewport), ((1.0, 2.0), true))
+  assert_eq(
+    (
+      @style.translate_at(a.translate, 0.0, @style.NoFeature::{ }),
+      a.translate_viewport,
+    ),
+    ((1.0, 2.0), true),
+  )
   assert_true(
     s.layers[1].text.unwrap().font is Some(Assert(ArrayOf(StringType, -1), _)),
   )
@@ -315,7 +321,11 @@ test "*-overlap takes precedence over *-allow-overlap" {
   )
   let i = a.icon.unwrap()
   assert_eq((i.allow_overlap, i.cooperative), (false, true))
-  assert_eq(a.icon_paint.unwrap().translate, (3.0, -4.0))
+  assert_eq(
+    @style.translate_at(a.icon_paint.unwrap().translate, 0.0, @style.NoFeature::{
+    }),
+    (3.0, -4.0),
+  )
   let b = s.layers[1]
   assert_true(b.text.unwrap().allow_overlap && b.icon.unwrap().allow_overlap)
   assert_true(s.layers[2].text.unwrap().cooperative)

@@ -446,7 +446,7 @@ test "fill-extrusion layers read heights, the gradient and the light" {
   for
     c in [
       (
-        "\"paint\": {\"fill-extrusion-translate\": [\"literal\", [1, 0]]}}]}", "Unsupported",
+        "\"paint\": {\"fill-extrusion-translate\": [\"get\", \"t\"]}}]}", "Invalid",
         "layers[0].paint.fill-extrusion-translate",
       ),
       (
@@ -625,7 +625,10 @@ test "fills, lines, circles and extrusions read their translation and its anchor
       #|  {"id": "b", "type": "background"}]}
     ),
   )
-  assert_eq(s.layers.map(l => (l.translate, l.translate_viewport)), [
+  let at = (e : @style.Expr) => {
+    @style.translate_at(e, 0.0, @style.NoFeature::{ })
+  }
+  assert_eq(s.layers.map(l => (at(l.translate), l.translate_viewport)), [
     ((3.0, -4.0), false),
     ((1.0, 2.0), true),
     ((0.0, 5.0), false),
@@ -641,8 +644,8 @@ test "translations, anchors, alignments and data-driven blur are checked" {
       "{\"type\": \"fill\", \"paint\": {\"fill-translate\": 3}}", "Invalid", "layers[0].paint.fill-translate",
     ),
     (
-      "{\"type\": \"fill\", \"paint\": {\"fill-translate\": [\"literal\", [1, 2]]}}",
-      "Unsupported", "layers[0].paint.fill-translate",
+      "{\"type\": \"fill\", \"paint\": {\"fill-translate\": [\"get\", \"t\"]}}",
+      "Invalid", "layers[0].paint.fill-translate",
     ),
     (
       "{\"type\": \"line\", \"paint\": {\"line-translate-anchor\": \"up\"}}", "Invalid",
@@ -723,4 +726,23 @@ test "z-orders, avoid-edges and sort keys reading feature state are checked" {
     }
     assert_eq(got, (kind, where_))
   }
+}
+
+///|
+test "translations may follow the zoom, as MapLibre's legacy functions convert to" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [{"id": "f", "type": "fill", "paint": {"fill-translate":
+      #|  ["interpolate", ["linear"], ["zoom"], 14, ["literal", [0, 0]], 16, ["literal", [-2, -2]]]}}]}
+    ),
+  )
+  let e = s.layers[0].translate
+  let none = @style.NoFeature::{ }
+  assert_eq(@style.translate_at(e, 13.0, none), (0.0, 0.0))
+  assert_eq(@style.translate_at(e, 15.0, none), (-1.0, -1.0))
+  assert_eq(@style.translate_at(e, 18.0, none), (-2.0, -2.0))
+  assert_eq(
+    @style.translate_at(@style.Expr::Lit(Num(1.0)), 0.0, none),
+    (0.0, 0.0),
+  )
 }

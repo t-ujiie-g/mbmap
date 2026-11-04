@@ -7,26 +7,10 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { serve } from "../lib/serve.mjs";
 import { ROOT } from "../lib/root.mjs";
-import { PUBLIC_STYLES } from "./public-styles.mjs";
+import { PUBLIC_STYLES, loadPublicStyle as load } from "./public-styles.mjs";
 
 const only = process.argv.find((a) => a.startsWith("--style="))?.split("=")[1];
-const CACHE = path.join(ROOT, "bench/fixtures/styles");
 const NOWHERE = "https://tiles.invalid";
-
-// The pinned style, fetched once into bench/fixtures/styles/ and checked against its sha256.
-async function load(name, { url, sha256 }) {
-  const file = path.join(CACHE, `${name}.json`);
-  let bytes = await readFile(file).catch(() => null);
-  if (!bytes) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${name}: ${res.status} ${url}`);
-    bytes = Buffer.from(await res.arrayBuffer());
-  }
-  const hash = createHash("sha256").update(bytes).digest("hex");
-  if (hash !== sha256) throw new Error(`${name}: sha256 ${hash}, expected ${sha256}`);
-  await writeFile(file, bytes);
-  return JSON.parse(bytes.toString("utf8"));
-}
 
 // Sources as plain `tiles` templates (no TileJSON to wait for) on a host that never answers.
 function offline(style) {
@@ -40,7 +24,6 @@ function offline(style) {
   return { ...rest, sources };
 }
 
-await mkdir(CACHE, { recursive: true });
 const { server, origin } = await serve();
 const browser = await chromium.launch();
 const results = {};
