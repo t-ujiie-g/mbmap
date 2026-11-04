@@ -85,6 +85,13 @@ export function spriteImages(index: unknown, sheet: ImagePixels, prefix: string)
 }
 
 /** The sprites a style's `sprite` names: one URL (named "default"), or a list of `{id, url}`. */
+/** A sprite sheet's file: `suffix` and `ext` added to the path, before any query (MapLibre's `normalizeSpriteURL`). */
+export function spriteUrl(at: string, suffix: string, ext: string): string {
+  const u = new URL(at);
+  u.pathname += suffix + ext;
+  return u.href;
+}
+
 export function spriteList(sprite: unknown): { id: string; url: string }[] {
   if (typeof sprite === "string") return [{ id: "default", url: sprite }];
   if (!Array.isArray(sprite)) return [];

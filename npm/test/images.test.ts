@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { imageOptions, imagePixels, MAX_SPRITE_IMAGES, spriteImages, spriteList } from "../src/images.ts";
+import { imageOptions, imagePixels, MAX_SPRITE_IMAGES, spriteImages, spriteList, spriteUrl } from "../src/images.ts";
 
 const noCanvas = () => {
   throw new Error("no canvas in this test");
@@ -66,4 +66,10 @@ test("spriteList reads one URL or a list of ids and URLs", () => {
   assert.deepEqual(spriteList("https://x/sprite"), [{ id: "default", url: "https://x/sprite" }]);
   assert.deepEqual(spriteList([{ id: "a", url: "u" }, { id: 1 }]), [{ id: "a", url: "u" }]);
   assert.deepEqual(spriteList(undefined), []);
+});
+
+test("spriteUrl adds the suffix and extension to the path, keeping the query", () => {
+  assert.equal(spriteUrl("https://x/sprites/s", "@2x", ".json"), "https://x/sprites/s@2x.json");
+  assert.equal(spriteUrl("https://x/sprite?key=K", "", ".png"), "https://x/sprite.png?key=K");
+  assert.equal(spriteUrl("https://x/sprite?key=K#f", "@2x", ".json"), "https://x/sprite@2x.json?key=K#f");
 });

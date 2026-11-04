@@ -229,9 +229,9 @@ async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, ras
       let archive = archives.get(pm.archive);
       if (!archive) {
         if (archives.size >= MAX_ARCHIVES) archives.delete(archives.keys().next().value);
-        archives.set(pm.archive, (archive = new pmtiles.Archive(pm.archive, (u, o, l) => pmtiles.fetchRange(u, o, l))));
+        archives.set(pm.archive, (archive = new pmtiles.Archive(pm.archive, pmtiles.fetchRange)));
       }
-      bytes = await archive.tile(pm.z, pm.x, pm.y);
+      bytes = await archive.tile(pm.z, pm.x, pm.y, controller.signal);
       if (!bytes) {
         postMessage({ type: "tile", id, layers: [] });
         return;

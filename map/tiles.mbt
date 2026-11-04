@@ -61,7 +61,8 @@ fn Map::request_tile(
       self.workers[worker],
       request,
       tile_url(
-        tiles[request % tiles.length()],
+        // As MapLibre's `CanonicalTileID.url`: a tile always comes from one host, so caches hit.
+        tiles[(id.x + id.y) % tiles.length()],
         id.z,
         id.x,
         if src.source.tms {

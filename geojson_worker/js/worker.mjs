@@ -28,7 +28,19 @@ function input(wasm, bytes) {
 
 const isInt32 = (v) => Number.isInteger(v) && v >= -(2 ** 31) && v < 2 ** 31;
 
-async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties }, previous) {
+// The page's request transform for the data, checked as the display worker checks a tile's.
+function fetchInit(init) {
+  const out = { credentials: "omit" };
+  if (init && typeof init === "object") {
+    if (["omit", "same-origin", "include"].includes(init.credentials)) out.credentials = init.credentials;
+    if (init.headers && typeof init.headers === "object") {
+      out.headers = Object.fromEntries(Object.entries(init.headers).filter(([, v]) => typeof v === "string"));
+    }
+  }
+  return out;
+}
+
+async function load({ source, url, init, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties }, previous) {
   const withProperties = cluster && properties instanceof Uint8Array && properties.length > 0;
   if (withProperties && !propsReady) {
     if (typeof propsUrl !== "string") throw new Error("no module for cluster properties");
@@ -45,7 +57,7 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetric
   let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
   if (!data) {
     if (typeof url !== "string" || !/^https?:/.test(url)) throw new Error("data must be an http(s) URL");
-    const res = await fetch(url, { credentials: "omit" });
+    const res = await fetch(url, fetchInit(init));
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     data = await readCapped(res, MAX_INPUT_BYTES);
   }
