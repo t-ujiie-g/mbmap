@@ -1,7 +1,7 @@
 // GeoJSON sources, served by their own worker. `Map` imports this module only
 // for styles that have one.
 import { type ClusterQuery, clusterArgs, loadOptions, sameOptions } from "./geojson-options.ts";
-import { workerScriptUrl, wasmUrl } from "./urls.ts";
+import { httpUrl, workerScriptUrl, wasmUrl } from "./urls.ts";
 
 export type { ClusterQuery } from "./geojson-options.ts";
 
@@ -96,12 +96,14 @@ export function createGeoJSONTiles(
     if (typeof data === "string") {
       const given = new URL(data, base).href;
       const r = transform(given);
-      const url = new URL(r?.url ?? given, base);
-      if (!/^https?:$/.test(url.protocol)) {
-        onError(new Error(`mbmap: GeoJSON source ${s.id}: data must be an http(s) URL: ${url.href}`));
+      let url: string;
+      try {
+        url = httpUrl(r?.url ?? given, base, `GeoJSON source ${s.id}: data`);
+      } catch (err) {
+        onError(err as Error);
         return;
       }
-      worker.postMessage({ ...options, url: url.href, init: r ? { headers: r.headers, credentials: r.credentials } : undefined });
+      worker.postMessage({ ...options, url, init: r ? { headers: r.headers, credentials: r.credentials } : undefined });
     } else {
       const bytes = new TextEncoder().encode(JSON.stringify(data)).buffer;
       worker.postMessage({ ...options, bytes }, [bytes]);

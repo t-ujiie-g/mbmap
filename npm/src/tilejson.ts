@@ -1,6 +1,7 @@
 // Sources given by `url` (a TileJSON document, MapLibre's way): which documents a style
-// needs (tilejson-merge.ts merges them in once fetched). Import-free, for `npm test`.
+// needs (tilejson-merge.ts merges them in once fetched). Imports only urls.ts (by its extension), for `npm test`.
 import type { StyleSpecification } from "./style";
+import { PMTILES, httpUrl, pmtilesArchive } from "./urls.ts";
 
 const TYPES = new Set(["vector", "raster", "raster-dem"]);
 
@@ -13,10 +14,9 @@ export function tileJSONUrls(style: StyleSpecification, base: URL): Map<string, 
   for (const [id, s] of Object.entries(style.sources ?? {})) {
     const src = s as { type?: unknown; url?: unknown; tiles?: unknown };
     if (!TYPES.has(String(src?.type)) || typeof src.url !== "string" || Array.isArray(src.tiles)) continue;
-    const pmtiles = src.url.startsWith("pmtiles://");
-    const url = new URL(pmtiles ? src.url.slice(10) : src.url, base);
-    if (!/^https?:$/.test(url.protocol)) throw new Error(`mbmap: source "${id}": url must be http(s): ${url.href}`);
-    out.set(id, pmtiles ? `pmtiles://${url.href}` : url.href);
+    const archive = pmtilesArchive(src.url);
+    const url = httpUrl(archive ?? src.url, base, `source "${id}": url`);
+    out.set(id, archive === null ? url : PMTILES + url);
   }
   return out;
 }

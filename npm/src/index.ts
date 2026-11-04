@@ -11,6 +11,11 @@ import {
   type LngLatLike,
   type Limits,
   type PointLike,
+  MAX_PITCH,
+  MAX_ZOOM,
+  MIN_PITCH,
+  MIN_ZOOM,
+  checkLimits,
   fitArray,
   flyArray,
   limitsArray,
@@ -21,7 +26,9 @@ import {
 import type { ClusterQuery, GeoJSONSource, GeoJSONTiles } from "./geojson";
 import type { Media, UpdateImageOptions } from "./media";
 import type { CustomLayerInterface, CustomLayers } from "./custom";
-import { type GeoJSONFeature, orderRendered, queryPoints } from "./query";
+import { type GeoJSONFeature, orderRendered, queryArgs, queryLayers, queryPoints } from "./query";
+import { filterText as engineFilter, resolveTiles, splitGeoJSON } from "./engine-style";
+import { removeStateError, stateIdError, stateLayer } from "./feature-state";
 import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
 import { attributionsOf } from "./attribution";
@@ -41,14 +48,13 @@ import type {
   MapEvent,
   MapEventListener,
   StyleSwapOptions,
-  StyleWarning,
   PaintValues,
   ScreenPosition,
   ToBlobOptions,
   Tracker,
   Handler,
 } from "./types";
-import { httpUrl, resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
+import { httpUrl, pmtilesArchive, resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
 import type { ImageInput, StyleImageOptions } from "./images";
 import { StyleImages } from "./style-images";
 
@@ -121,18 +127,6 @@ function checkCamera(c: Camera): Camera {
   return c;
 }
 
-/** The style with tile URLs resolved against the style's own URL. */
-function resolveTiles(style: StyleSpecification, base: URL): StyleSpecification {
-  const sources = Object.fromEntries(
-    Object.entries(style.sources ?? {}).map(([id, s]) => {
-      const tiles = (s as { tiles?: unknown })?.tiles;
-      if (!Array.isArray(tiles)) return [id, s];
-      return [id, { ...(s as object), tiles: tiles.map((t) => (typeof t === "string" ? resolveTemplate(t, base) : t)) }];
-    }),
-  );
-  return { ...style, sources };
-}
-
 /** `legacy.js` once loaded; only styles with legacy filters or property functions load it. */
 let legacy: typeof import("./legacy") | null = null;
 let legacyLoading: Promise<unknown> | null = null;
@@ -145,24 +139,9 @@ function loadLegacy(): Promise<unknown> {
 /** `tilejson-merge.js` once loaded, with the first TileJSON document or PMTiles header fetched. */
 let tilejson: typeof import("./tilejson-merge") | null = null;
 
-/** A query's filter as the engine takes it: JSON text (empty for none), legacy filters converted. */
+/** A query's filter as the engine takes it, legacy filters converted once `legacy.js` has loaded. */
 function filterText(filter: unknown): string {
-  if (filter === undefined) return "";
-  return JSON.stringify(legacy && edit.isLegacyFilter(filter) ? legacy.convertFilter(filter) : filter);
-}
-
-/** The style's GeoJSON sources, and the style without their data (only their worker needs it). */
-function splitGeoJSON(style: StyleSpecification): [GeoJSONSource[], StyleSpecification] {
-  const found: GeoJSONSource[] = [];
-  const sources = Object.fromEntries(
-    Object.entries(style.sources ?? {}).map(([id, s]) => {
-      const spec = s as Record<string, unknown>;
-      if (spec?.type !== "geojson") return [id, s];
-      found.push({ id, spec });
-      return [id, { ...spec, data: null }];
-    }),
-  );
-  return [found, { ...style, sources }];
+  return engineFilter(filter, legacy && legacy.convertFilter);
 }
 
 export class Map {
@@ -225,10 +204,10 @@ export class Map {
     this.#container = container;
     this.#options = options;
     this.#limits = {
-      minZoom: options.minZoom ?? 0,
-      maxZoom: options.maxZoom ?? 22,
-      minPitch: options.minPitch ?? 0,
-      maxPitch: options.maxPitch ?? 85,
+      minZoom: options.minZoom ?? MIN_ZOOM,
+      maxZoom: options.maxZoom ?? MAX_ZOOM,
+      minPitch: options.minPitch ?? MIN_PITCH,
+      maxPitch: options.maxPitch ?? MAX_PITCH,
       maxBounds: options.maxBounds ? LngLatBounds.convert(options.maxBounds) : null,
     };
     const interactive = options.interactive ?? true;
@@ -340,7 +319,7 @@ export class Map {
 
   #withMedia(f: (m: Media) => void): void {
     if (this.#media) return f(this.#media);
-    this.#mediaLoading ??=import("./media.js").then(({ Media }) => {
+    this.#mediaLoading ??= import("./media.js").then(({ Media }) => {
       const on = (f: (m: engine.EngineMap) => void) => this.#engine && f(this.#engine);
       this.#media = new Media(
         {
@@ -391,9 +370,10 @@ export class Map {
   async #fetchDocuments(urls: string[]): Promise<void> {
     tilejson ??= await import("./tilejson-merge.js");
     await Promise.all(urls.map(async (url) => {
-      if (url.startsWith("pmtiles://")) {
+      const archive = pmtilesArchive(url);
+      if (archive !== null) {
         const { pmtilesDocument } = await import("./pmtiles.js");
-        this.#tilejson.set(url, await pmtilesDocument(url.slice(10)));
+        this.#tilejson.set(url, await pmtilesDocument(archive));
         return;
       }
       const res = await this.#fetch(url, "Source");
@@ -916,32 +896,11 @@ export class Map {
    * the workers hold the geometry. Rejects on a filter mbmap cannot evaluate.
    */
   queryRenderedFeatures(geometryOrOptions?: PointLike | [PointLike, PointLike] | QueryRenderedFeaturesOptions, options?: QueryRenderedFeaturesOptions): Promise<MapGeoJSONFeature[]> {
-    const isPoint = (g: unknown) => (Array.isArray(g) ? typeof g[0] === "number" : typeof (g as { x?: unknown })?.x === "number");
-    let o = options ?? {};
-    let geometry: [number, number] | [[number, number], [number, number]] | null = null;
-    if (geometryOrOptions !== undefined && (Array.isArray(geometryOrOptions) || isPoint(geometryOrOptions))) {
-      const pair = (q: PointLike): [number, number] => {
-        const p = toPoint(q);
-        return [p.x, p.y];
-      };
-      geometry = isPoint(geometryOrOptions)
-        ? pair(geometryOrOptions as PointLike)
-        : [pair((geometryOrOptions as [PointLike, PointLike])[0]), pair((geometryOrOptions as [PointLike, PointLike])[1])];
-    } else if (geometryOrOptions !== undefined) {
-      o = geometryOrOptions as QueryRenderedFeaturesOptions;
-    }
-    let layers: string[] | null = null;
-    if (o.layers !== undefined) {
-      if (!Array.isArray(o.layers) && !(o.layers instanceof Set)) {
-        this.#fail(new Error("mbmap: layers must be an Array or a Set of strings"));
-        return Promise.resolve([]);
-      }
-      layers = [...o.layers];
-      const missing = layers.find((id) => !this.getLayer(id));
-      if (missing !== undefined) {
-        this.#fail(new Error(`mbmap: the layer '${missing}' does not exist in the map's style and cannot be queried for features`));
-        return Promise.resolve([]);
-      }
+    const { geometry, options: o } = queryArgs(geometryOrOptions, options);
+    const layers = queryLayers(o.layers, (id) => !!this.getLayer(id));
+    if (layers instanceof Error) {
+      this.#fail(layers);
+      return Promise.resolve([]);
     }
     return this.#query(queryPoints(geometry, this.#canvas.clientWidth, this.#canvas.clientHeight), layers, o.filter);
   }
@@ -958,15 +917,12 @@ export class Map {
   /** The feature's source layer, checked as MapLibre does: required for vector sources. */
   #stateLayer(feature: FeatureIdentifier): string | null {
     const source = (this.#style && edit.sourceOf(this.#style, feature.source)) as { type?: unknown } | undefined;
-    if (!source) {
-      this.#fail(new Error(`mbmap: the source '${feature.source}' does not exist in the map's style`));
+    const layer = stateLayer(source, feature);
+    if (layer instanceof Error) {
+      this.#fail(layer);
       return null;
     }
-    if (source.type === "vector" && !feature.sourceLayer) {
-      this.#fail(new Error("mbmap: the sourceLayer parameter must be provided for vector source types"));
-      return null;
-    }
-    return source.type === "vector" ? (feature.sourceLayer as string) : "";
+    return layer;
   }
 
   #sendState(source: string, sourceLayer: string, id: string, state: Record<string, unknown> | null): void {
@@ -981,8 +937,9 @@ export class Map {
   setFeatureState(feature: FeatureIdentifier, state: Record<string, unknown>): this {
     const layer = this.#stateLayer(feature);
     if (layer === null) return this;
-    if (feature.id === undefined || feature.id === null || feature.id === "") {
-      this.#fail(new Error("mbmap: the feature id parameter must be provided and non-empty"));
+    const refused = stateIdError(feature);
+    if (refused) {
+      this.#fail(refused);
       return this;
     }
     const states = this.#stateMap(feature.source, layer);
@@ -1007,8 +964,9 @@ export class Map {
   removeFeatureState(target: FeatureIdentifier, key?: string): this {
     const layer = this.#stateLayer(target);
     if (layer === null) return this;
-    if (target.id === undefined && key !== undefined) {
-      this.#fail(new Error("mbmap: a feature id is required to remove its specific state property"));
+    const refused = removeStateError(target, key);
+    if (refused) {
+      this.#fail(refused);
       return this;
     }
     const states = this.#stateMap(target.source, layer);
@@ -1332,19 +1290,14 @@ export class Map {
 
   #setLimits(change: Partial<Limits>): this {
     const next = { ...this.#limits, ...change };
-    for (const v of [next.minZoom, next.maxZoom, next.minPitch, next.maxPitch]) {
-      if (!Number.isFinite(v)) throw new TypeError(`mbmap: zoom and pitch limits must be finite numbers: ${String(v)}`);
-    }
-    if (next.minZoom > next.maxZoom || next.minPitch > next.maxPitch || next.minZoom < 0 || next.maxZoom > 24 || next.minPitch < 0 || next.maxPitch > 85) {
-      throw new RangeError("mbmap: zoom limits must lie in 0-24 and pitch limits in 0-85, min not above max");
-    }
+    checkLimits(next);
     this.#limits = next;
     if (this.#engine) engine.map_set_limits(this.#engine, limitsArray(next));
     return this;
   }
 
   setMinZoom(zoom?: number | null): this {
-    return this.#setLimits({ minZoom: zoom ?? 0 });
+    return this.#setLimits({ minZoom: zoom ?? MIN_ZOOM });
   }
 
   /** With `constrained`, the zoom the camera can go down to here (the latitude limits and `maxBounds` raise it). */
@@ -1354,7 +1307,7 @@ export class Map {
   }
 
   setMaxZoom(zoom?: number | null): this {
-    return this.#setLimits({ maxZoom: zoom ?? 22 });
+    return this.#setLimits({ maxZoom: zoom ?? MAX_ZOOM });
   }
 
   getMaxZoom(): number {
@@ -1362,7 +1315,7 @@ export class Map {
   }
 
   setMinPitch(pitch?: number | null): this {
-    return this.#setLimits({ minPitch: pitch ?? 0 });
+    return this.#setLimits({ minPitch: pitch ?? MIN_PITCH });
   }
 
   getMinPitch(): number {
@@ -1370,7 +1323,7 @@ export class Map {
   }
 
   setMaxPitch(pitch?: number | null): this {
-    return this.#setLimits({ maxPitch: pitch ?? 85 });
+    return this.#setLimits({ maxPitch: pitch ?? MAX_PITCH });
   }
 
   getMaxPitch(): number {

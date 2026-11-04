@@ -29,6 +29,9 @@ declare module "mbmap-engine" {
   export function map_on_render(map: EngineMap, f: () => void): number;
   export function map_off(map: EngineMap, id: number): void;
   export function map_destroy(map: EngineMap): void;
+  /** Test hooks (bench/npm/pack-test.mjs, bench/labels): frames rendered, and the labels shown at the last placement. */
+  export function map_frame_count(map: EngineMap): number;
+  export function map_placed_labels(map: EngineMap): string;
   export function map_set_limits(map: EngineMap, limits: number[]): void;
   export function map_ease_to(map: EngineMap, target: number[], duration: number, easing: (t: number) => number, id: string): void;
   export function map_fly_to(map: EngineMap, target: number[], options: number[], easing: (t: number) => number): void;
@@ -45,7 +48,6 @@ declare module "mbmap-engine" {
   export function map_bounds(map: EngineMap): number[];
   export function map_camera_for_bounds(map: EngineMap, input: number[]): number[];
   export function map_set_handler(map: EngineMap, handler: number, enabled: boolean): void;
-  export function map_handler_enabled(map: EngineMap, handler: number): boolean;
   export function map_on_move_start(map: EngineMap, f: (e: Event | null) => void): number;
   export function map_on_move_end(map: EngineMap, f: (e: Event | null) => void): number;
   export function map_input_event(map: EngineMap): Event | null;
@@ -65,22 +67,9 @@ declare module "mbmap-engine" {
   export function map_set_custom_renderer(map: EngineMap, f: (id: string, prerender: boolean, numbers: number[]) => void): void;
   export function map_gl(map: EngineMap): WebGL2RenderingContext;
   export function map_trigger_repaint(map: EngineMap): void;
+  export type PaintValues = import("./types").PaintValues;
   /** One tile's hits: their layers' ids (-1 for a source query), feature indices, depths and GeoJSON features. */
-  export interface PaintValues {
-    color: number[];
-    width: number;
-    radius: number;
-    stroke: number[];
-    strokeWidth: number;
-    halo: number[];
-    haloWidth: number;
-  }
-  export interface TileResult {
-    z: number;
-    x: number;
-    y: number;
-    hits: { layer: string | number; index: number; distance: number; feature: import("./query").GeoJSONFeature }[];
-  }
+  export type TileResult = import("./query").TileResult;
   /** "" once sent (`done` gets each tile's hits), or why the query cannot run. */
   export function map_query_rendered(
     map: EngineMap,
@@ -92,8 +81,6 @@ declare module "mbmap-engine" {
   ): string;
   export function map_add_image(map: EngineMap, name: string, width: number, height: number, data: Uint8Array, pixelRatio: number, sdf: boolean): boolean;
   export function map_remove_image(map: EngineMap, name: string): boolean;
-  export function map_has_image(map: EngineMap, name: string): boolean;
-  export function map_image_names(map: EngineMap): string[];
   export function map_on_missing_image(map: EngineMap, f: (name: string) => void): void;
   export function map_hold_images(map: EngineMap, loading: boolean): void;
   export function map_set_feature_state(map: EngineMap, source: string, sourceLayer: string, id: string, state: Record<string, unknown> | null): void;

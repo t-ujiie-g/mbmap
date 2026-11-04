@@ -1,7 +1,7 @@
 // Builds dist/: the facade, `<mb-map>`, the GeoJSON, analysis and geodesic
 // modules and their workers with their wasm. Usage: node scripts/build.mjs
 import { execFileSync } from "node:child_process";
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -73,4 +73,13 @@ await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geodesic_worker/geo
 const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
 run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
 run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);
+// Relative imports in the declarations end in .js, which `moduleResolution: node16`
+// and `nodenext` require (the sources leave the extension out or write .ts).
+for (const file of await readdir(DIST, { recursive: true })) {
+  if (!file.endsWith(".d.ts")) continue;
+  const at = path.join(DIST, file);
+  const text = await readFile(at, "utf8");
+  const fixed = text.replace(/((?:from |import\()")(\.{1,2}\/[^"]*?)(\.ts)?"/g, (_, lead, spec) => `${lead}${spec}.js"`);
+  if (fixed !== text) await writeFile(at, fixed);
+}
 for (const f of ["LICENSE", "NOTICE"]) await copyFile(path.join(ROOT, f), path.join(PKG, f));

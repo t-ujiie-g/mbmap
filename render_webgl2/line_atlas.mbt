@@ -35,15 +35,15 @@ priv struct DashRange {
 ///|
 /// A port of MapLibre's `LineAtlas`: dash patterns as signed distance fields
 /// (128 at a dash's edge), one byte per pixel, each pattern written once.
-pub struct LineAtlas {
+struct LineAtlas {
   data : FixedArray[Byte]
-  priv entries : Array[(Array[Double], Bool, DashEntry?)]
-  priv mut next_row : Int32
-  priv mut dirty : Bool
+  entries : Array[(Array[Double], Bool, DashEntry?)]
+  mut next_row : Int32
+  mut dirty : Bool
 }
 
 ///|
-pub fn LineAtlas::new() -> LineAtlas {
+fn LineAtlas::new() -> LineAtlas {
   {
     data: FixedArray::make(LINE_ATLAS_WIDTH * LINE_ATLAS_HEIGHT, b'\x00'),
     entries: [],
@@ -55,7 +55,7 @@ pub fn LineAtlas::new() -> LineAtlas {
 ///|
 /// The pattern `dasharray` (dash, gap, … in line widths), with round ends when
 /// `round`; None once the atlas is full or past `MAX_DASH_PARTS` numbers.
-pub fn LineAtlas::dash(
+fn LineAtlas::dash(
   self : LineAtlas,
   dasharray : Array[Double],
   round : Bool,

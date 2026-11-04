@@ -11,7 +11,7 @@ pub struct Renderer {
 ///|
 /// None if the canvas cannot provide a WebGL2 context.
 pub fn Renderer::new(canvas : Canvas) -> Renderer? {
-  let gl = create_gl(canvas)
+  let gl = create_gl(canvas, @core.TILE_EXTENT)
   if is_null(gl) {
     None
   } else {
@@ -62,12 +62,6 @@ pub fn Renderer::upload(
 ///|
 pub fn Renderer::release(self : Renderer, mesh : Mesh) -> Unit {
   gl_release(self.gl, mesh)
-}
-
-///|
-/// GPU bytes held by a mesh.
-pub fn Mesh::byte_size(self : Mesh) -> Int32 {
-  mesh_bytes(self)
 }
 
 ///|

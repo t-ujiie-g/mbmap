@@ -4,6 +4,9 @@ import type { MapEvent, MapEventListener, MapEventType, MapGeoJSONFeature, MapMo
 
 type Point = { x: number; y: number };
 
+/** Pixels a press may move and still click (MapLibre's `clickTolerance`); mirrors `CLICK_TOLERANCE` in map/input.mbt. */
+export const CLICK_TOLERANCE = 3;
+
 interface LayerListener {
   type: MapMouseEventType;
   layers: string[];
@@ -99,13 +102,13 @@ export class Events {
   }
 
   /**
-   * A DOM mouse event on the canvas: the map's own (a click only after less than 3 px of movement),
+   * A DOM mouse event on the canvas: the map's own (a click only after less than `CLICK_TOLERANCE` px of movement),
    * then the layers' listeners once a query finds their features (`mouseenter` and `mouseleave`
    * follow `mousemove` and `mouseout`), as in MapLibre.
    */
   mouse(type: Exclude<MapMouseEventType, "mouseenter" | "mouseleave">, e: MouseEvent, p: Point): void {
     if (type === "mousedown") this.#mouseDown = p;
-    if (type === "click" && this.#mouseDown && Math.hypot(p.x - this.#mouseDown.x, p.y - this.#mouseDown.y) >= 3) return;
+    if (type === "click" && this.#mouseDown && Math.hypot(p.x - this.#mouseDown.x, p.y - this.#mouseDown.y) >= CLICK_TOLERANCE) return;
     this.#fire(this.#mouseEvent(type, e, p), this.#listeners.get(type) ?? []);
     if (type === "mouseout") {
       for (const l of this.#layers) {

@@ -41,11 +41,12 @@ extern "js" fn set_tab_index(c : @render_webgl2.Canvas) -> Unit =
   #|(c) => { if (!c.hasAttribute("tabindex")) c.setAttribute("tabindex", "0"); }
 
 ///|
-/// A dashed box drawn over the canvas while a box zoom is dragged; returns
-/// a function that moves it (x0, y0, x1, y1) and one that removes it.
-extern "js" fn zoom_box(
-  c : @render_webgl2.Canvas,
-) -> ((Double, Double, Double, Double) -> Unit, () -> Unit) =
+/// A dashed box drawn over the canvas while a box zoom is dragged.
+#external
+priv type ZoomBox
+
+///|
+extern "js" fn zoom_box(c : @render_webgl2.Canvas) -> ZoomBox =
   #|(c) => {
   #|  const el = document.createElement("div");
   #|  el.style.cssText = "position:absolute;pointer-events:none;box-sizing:border-box;border:2px dotted #202020;background:rgba(255,255,255,0.3)";
@@ -56,8 +57,23 @@ extern "js" fn zoom_box(
   #|    el.style.width = Math.abs(x1 - x0) + "px";
   #|    el.style.height = Math.abs(y1 - y0) + "px";
   #|  };
-  #|  return { _0: resize, _1: () => el.remove() };
+  #|  return { resize, remove: () => el.remove() };
   #|}
+
+///|
+/// Moves the box to span (x0, y0) to (x1, y1), CSS px.
+extern "js" fn ZoomBox::resize(
+  self : ZoomBox,
+  x0 : Double,
+  y0 : Double,
+  x1 : Double,
+  y1 : Double,
+) -> Unit =
+  #|(b, x0, y0, x1, y1) => b.resize(x0, y0, x1, y1)
+
+///|
+extern "js" fn ZoomBox::remove(self : ZoomBox) -> Unit =
+  #|(b) => b.remove()
 
 ///|
 /// Active pointers' positions, in the order they went down (pairs keep their
@@ -130,8 +146,8 @@ fn Map::on_pointer_move(self : Map, e : JsValue) -> Unit {
   guard self.pointer_index(id) is Some(i) else { return }
   let x = get_double(e, "offsetX")
   let y = get_double(e, "offsetY")
-  if self.box_start is Some((x0, y0, resize_box, _)) {
-    resize_box(x0, y0, x, y)
+  if self.box_start is Some((x0, y0, box)) {
+    box.resize(x0, y0, x, y)
     return
   }
   if !self.dragging {
@@ -344,8 +360,8 @@ fn Map::on_pointer_up(self : Map, e : JsValue) -> Unit {
   if !self.pointers.is_empty() {
     return
   }
-  if self.box_start is Some((x0, y0, _, remove)) {
-    remove()
+  if self.box_start is Some((x0, y0, box)) {
+    box.remove()
     self.box_start = None
     let x1 = get_double(e, "offsetX")
     let y1 = get_double(e, "offsetY")
@@ -459,8 +475,7 @@ fn Map::attach_input(self : Map) -> Unit {
         if event_bool(e, "shiftKey") &&
           get_int(e, "button") == 0 &&
           self.handler_enabled(BoxZoom) {
-          let (resize_box, remove) = zoom_box(c)
-          self.box_start = Some((x, y, resize_box, remove))
+          self.box_start = Some((x, y, zoom_box(c)))
         }
       }
       let id = get_int(e, "pointerId")

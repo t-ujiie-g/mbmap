@@ -11,14 +11,12 @@ extern "js" fn gl_draw_line(
 ) -> Unit =
   #|(c, m, matrix, clip, units, depth, dpr, blur) => {
   #|  const gl = c.gl, p = c.line;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
   #|  gl.uniform1f(p.u_blur, blur);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
 
 ///|
@@ -37,7 +35,6 @@ extern "js" fn gl_upload_distances(
   #|  gl.enableVertexAttribArray(13);
   #|  gl.vertexAttribPointer(13, 1, gl.UNSIGNED_SHORT, false, 2, 0);
   #|  gl.bindVertexArray(null);
-  #|  m.bytes += data.byteLength;
   #|}
 
 ///|
@@ -56,7 +53,6 @@ extern "js" fn gl_upload_offsets(
   #|  gl.enableVertexAttribArray(2);
   #|  gl.vertexAttribPointer(2, 2, gl.BYTE, false, 2, 0);
   #|  gl.bindVertexArray(null);
-  #|  m.bytes += data.byteLength;
   #|}
 
 ///|
@@ -76,7 +72,6 @@ extern "js" fn gl_upload_progress(
   #|  gl.enableVertexAttribArray(14);
   #|  gl.vertexAttribPointer(14, 2, gl.FLOAT, false, 8, 0);
   #|  gl.bindVertexArray(null);
-  #|  m.bytes += data.byteLength;
   #|}
 
 ///|
@@ -133,9 +128,7 @@ extern "js" fn gl_draw_line_gradient(
 ) -> Unit =
   #|(c, m, matrix, clip, units, depth, dpr, blur, g) => {
   #|  const gl = c.gl, p = c.lineGradient;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
@@ -144,7 +137,7 @@ extern "js" fn gl_draw_line_gradient(
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, g.texture);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
 
 ///|
@@ -172,10 +165,11 @@ extern "js" fn gl_dash_atlas(
   #|}
 
 ///|
-/// Draws a dashed line (see the `lineDash` program): `dash` and `floor` are
-/// its u_dash and u_floor.
+/// Draws a dashed line with `program` (`lineDash`, or `lineDashFeature` for
+/// dashes by feature): `dash` and `floor` are its u_dash and u_floor.
 extern "js" fn gl_draw_line_dash(
   gl : Gl,
+  program : String,
   mesh : Mesh,
   matrix : FixedArray[Double],
   clip : FixedArray[Double],
@@ -186,11 +180,9 @@ extern "js" fn gl_draw_line_dash(
   dash : FixedArray[Double],
   floor : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip, units, depth, dpr, blur, dash, floor) => {
-  #|  const gl = c.gl, p = c.lineDash;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|(c, name, m, matrix, clip, units, depth, dpr, blur, dash, floor) => {
+  #|  const gl = c.gl, p = c[name];
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
@@ -200,7 +192,7 @@ extern "js" fn gl_draw_line_dash(
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, c.dash);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
 
 ///|
@@ -231,37 +223,4 @@ extern "js" fn gl_upload_feature_dashes(
   #|  gl.enableVertexAttribArray(15);
   #|  gl.vertexAttribPointer(15, 4, gl.FLOAT, false, 16, 0);
   #|  gl.bindVertexArray(null);
-  #|  m.bytes += out.byteLength;
-  #|}
-
-///|
-/// Draws a line dashed by feature (see the `lineDashFeature` program): `dash` and
-/// `floor` are its u_dash and u_floor.
-extern "js" fn gl_draw_line_dash_feature(
-  gl : Gl,
-  mesh : Mesh,
-  matrix : FixedArray[Double],
-  clip : FixedArray[Double],
-  units : Double,
-  depth : Double,
-  dpr : Double,
-  blur : Double,
-  dash : FixedArray[Double],
-  floor : FixedArray[Double],
-) -> Unit =
-  #|(c, m, matrix, clip, units, depth, dpr, blur, dash, floor) => {
-  #|  const gl = c.gl, p = c.lineDashFeature;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
-  #|  gl.uniform1f(p.u_units, units);
-  #|  gl.uniform1f(p.u_depth, depth);
-  #|  gl.uniform1f(p.u_dpr, dpr);
-  #|  gl.uniform1f(p.u_blur, blur);
-  #|  gl.uniform4f(p.u_dash, dash[0], dash[1], dash[2], dash[3]);
-  #|  gl.uniform2f(p.u_floor, floor[0], floor[1]);
-  #|  gl.activeTexture(gl.TEXTURE0);
-  #|  gl.bindTexture(gl.TEXTURE_2D, c.dash);
-  #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}

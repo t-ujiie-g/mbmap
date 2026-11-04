@@ -60,8 +60,7 @@ extern "js" fn gl_draw_background_pattern(
 ) -> Unit =
   #|(c, matrix, opacity, color) => {
   #|  const gl = c.gl, p = c.backgroundPattern;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  c.place(p, matrix);
   #|  gl.uniform1f(p.u_opacity, opacity);
   #|  gl.uniform4f(p.u_color, color[0], color[1], color[2], color[3]);
   #|  gl.bindVertexArray(c.quad);
@@ -85,9 +84,7 @@ extern "js" fn gl_draw_line_pattern(
 ) -> Unit =
   #|(c, m, matrix, clip, units, depth, dpr, blur, u) => {
   #|  const gl = c.gl, p = c.linePattern;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform1f(p.u_units, units);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
@@ -100,5 +97,5 @@ extern "js" fn gl_draw_line_pattern(
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, c.patterns);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
