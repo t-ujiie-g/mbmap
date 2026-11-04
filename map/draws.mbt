@@ -28,13 +28,14 @@ fn Map::placement(
     None => (matrix, raster_matrix)
     Some(w) => (w.matrix.mul(matrix), w.matrix.mul(raster_matrix))
   }
+  let bounds = id.lnglat_bounds()
   {
     matrix,
     raster_matrix,
     units_per_pixel: 1.0 / (t.tile_scale(id, extent) * dpr),
     center_depth: t.center_depth(),
     clip: rect,
-    latitudes: (id.lnglat_bounds().max_y, id.lnglat_bounds().min_y),
+    latitudes: (bounds.max_y, bounds.min_y),
     pattern: pattern_tile(t, id),
   }
 }

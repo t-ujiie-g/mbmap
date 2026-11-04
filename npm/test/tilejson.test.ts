@@ -21,7 +21,7 @@ const style = () => ({
 
 test("tileJSONUrls lists the url sources without tiles, absolute and http(s) only", () => {
   assert.deepEqual([...tileJSONUrls(style(), base)], [["v", "https://example.com/tiles.json"], ["r", "https://other.org/r.json"]]);
-  assert.throws(() => tileJSONUrls({ version: 8, sources: { x: { type: "vector", url: "file:///etc/x.json" } }, layers: [] }, base), /url must be http\(s\)/);
+  assert.throws(() => tileJSONUrls({ version: 8, sources: { x: { type: "vector", url: "file:///etc/x.json" } }, layers: [] }, base), /url must be an http\(s\) URL/);
 });
 
 test("withTileJSON merges documents (the source's own keys win) and leaves out sources still loading", () => {

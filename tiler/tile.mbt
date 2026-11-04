@@ -2,10 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// One tile's features in tile units, laid out as docs/FORMATS.md's "Columnar
-/// tile" (`rows` are their table rows). Exteriors wind clockwise with y down and
-/// holes counterclockwise, as MVT wants. With line metrics, `clips` holds each
-/// feature's start and end along its line (shares of its length; NaN if none).
+/// One tile's features in tile units as docs/FORMATS.md's "Columnar tile" (`rows`:
+/// table rows), wound as MVT wants; `clips`: with line metrics, each feature's
+/// start and end as shares of its line's length (NaN if none).
 pub struct TileData {
   types : Array[Int32]
   rows : Array[Int32]
@@ -17,7 +16,7 @@ pub struct TileData {
 
 ///|
 /// A tile of the index: its features before transformation (world
-/// coordinates), what they came from (kept for drilling down later) and the
+/// coordinates, dropped once transformed), what they came from (kept for drilling down later) and the
 /// counts the index splits on.
 priv struct Tile {
   z : Int32
@@ -33,7 +32,7 @@ priv struct Tile {
   rows : Array[Int32]
   ring_ends : Array[Int32]
   point_ends : Array[Int32]
-  coords : Array[Double]
+  mut coords : Array[Double]
   clips : Array[Double]
   mut data : TileData?
 }
@@ -79,22 +78,29 @@ fn create_tile(
     tile.max_y = @cmp.maximum(tile.max_y, store.max_y[f])
     let rings_before = tile.point_ends.length()
     let kind = store.kind[f]
-    if kind == 1 {
-      let p = start(store.part_ends, f)
-      let r = start(store.ring_ends, p)
-      for i in start(store.point_ends, r)..<store.point_ends[r] {
+    if kind == @core.GEOM_POINTS {
+      let p = @geom.start_of(store.part_ends, f)
+      let r = @geom.start_of(store.ring_ends, p)
+      for i in @geom.start_of(store.point_ends, r)..<store.point_ends[r] {
         tile.coords.push(store.pts[i * 3])
         tile.coords.push(store.pts[i * 3 + 1])
         tile.num_points += 1
       }
-      if tile.coords.length() / 2 > last_or_zero(tile.point_ends) {
+      if tile.coords.length() / 2 > @geom.start_of_last(tile.point_ends) {
         tile.point_ends.push(tile.coords.length() / 2)
       }
     } else {
-      for p in start(store.part_ends, f)..<store.part_ends[f] {
-        let r0 = start(store.ring_ends, p)
+      for p in @geom.start_of(store.part_ends, f)..<store.part_ends[f] {
+        let r0 = @geom.start_of(store.ring_ends, p)
         for r in r0..<store.ring_ends[p] {
-          add_line(tile, store, r, tolerance, kind == 3, r == r0)
+          add_line(
+            tile,
+            store,
+            r,
+            tolerance,
+            kind == @core.GEOM_POLYGONS,
+            r == r0,
+          )
         }
       }
     }
@@ -104,8 +110,11 @@ fn create_tile(
       tile.ring_ends.push(tile.point_ends.length())
       if options.line_metrics {
         // geojson-vt's clip tags: a line's one slice, as shares of its length.
-        let r = start(store.ring_ends, start(store.part_ends, f))
-        if kind == 2 {
+        let r = @geom.start_of(
+          store.ring_ends,
+          @geom.start_of(store.part_ends, f),
+        )
+        if kind == @core.GEOM_LINES {
           tile.clips.push(store.from[r] / store.size[r])
           tile.clips.push(store.to[r] / store.size[r])
         } else {
@@ -130,7 +139,7 @@ fn add_line(
   outer : Bool,
 ) -> Unit {
   let sq_tolerance = tolerance * tolerance
-  let a = start(store.point_ends, r)
+  let a = @geom.start_of(store.point_ends, r)
   let b = store.point_ends[r]
   if tolerance > 0.0 &&
     store.size[r] < (if polygon { sq_tolerance } else { tolerance }) {
@@ -211,5 +220,7 @@ fn Tile::transform(self : Tile, extent : Int32) -> TileData {
     clips: self.clips,
   }
   self.data = Some(d)
+  // Only `data` is read from now on.
+  self.coords = []
   d
 }

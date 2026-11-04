@@ -15,8 +15,6 @@ pub const MAX_EXPR_DEPTH : Int32 = 32
 
 pub const MAX_EXPR_NODES : Int32 = 4096
 
-pub const MAX_HILLSHADE_LIGHTS : Int32 = 8
-
 pub const SLOT_COLOR : Int32 = 0
 
 pub const SLOT_GAP_WIDTH : Int32 = 4
@@ -54,8 +52,6 @@ pub fn parse_color(String) -> Color?
 pub fn read_cluster_properties(BytesView) -> Array[(String, Expr, Expr)]?
 
 pub fn read_expr(@core.ByteReader) -> Expr?
-
-pub fn state_defaults(Json) -> Map[String, Json]
 
 pub fn[C : FeatureContext] translate_at(Expr, Double, C) -> (Double, Double)
 

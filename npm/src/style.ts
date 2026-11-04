@@ -1,6 +1,8 @@
 // Edits of a style document as `addLayer`, `setPaintProperty` and the like make
 // them: each returns a new document or throws an Error naming what is wrong.
-// Import-free, so that `npm test` can load it.
+// Imports only camera.ts (by its extension), so that `npm test` can load it.
+
+import { MAX_ZOOM_LIMIT, MIN_ZOOM } from "./camera.ts";
 
 /** A MapLibre style document; anything mbmap cannot draw faithfully is an error. */
 export interface StyleSpecification {
@@ -154,7 +156,7 @@ export function getFilter(style: StyleSpecification, id: string): unknown {
 
 /** Shows layer `id` only from zoom `minzoom` up to `maxzoom`. */
 export function setLayerZoomRange(style: StyleSpecification, id: string, minzoom: number, maxzoom: number): StyleSpecification {
-  if (!(minzoom >= 0 && maxzoom <= 24 && minzoom <= maxzoom)) throw new RangeError("mbmap: a layer's zoom range must lie in 0-24, min not above max");
+  if (!(minzoom >= MIN_ZOOM && maxzoom <= MAX_ZOOM_LIMIT && minzoom <= maxzoom)) throw new RangeError("mbmap: a layer's zoom range must lie in 0-24, min not above max");
   return withLayer(style, id, (l) => ({ ...l, minzoom, maxzoom }));
 }
 
@@ -213,13 +215,16 @@ export function keepGeoJSONData(previous: StyleSpecification | null, next: Style
   return { ...next, sources };
 }
 
+/** The deepest expression nesting the engine takes; mirrors `MAX_EXPR_DEPTH` in style/expr.mbt. */
+export const MAX_EXPR_DEPTH = 32;
+
 /**
  * Whether `f` may be a legacy filter, which `legacy.ts` converts: MapLibre's `classifyFilter`,
  * except that `all` and `any` mixing legacy filters with expressions count (the converter keeps them).
  */
 export function isLegacyFilter(f: unknown, depth = 0): boolean {
-  // Deeper than the engine takes (MAX_EXPR_DEPTH): it rejects the filter with its path.
-  if (typeof f === "boolean" || f === undefined || depth > 32) return false;
+  // Deeper than the engine takes: it rejects the filter with its path.
+  if (typeof f === "boolean" || f === undefined || depth > MAX_EXPR_DEPTH) return false;
   if (!Array.isArray(f) || f.length === 0) return true;
   switch (f[0]) {
     case "has":

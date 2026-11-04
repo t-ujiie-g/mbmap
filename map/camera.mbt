@@ -96,7 +96,7 @@ pub fn Map::set_handler(self : Map, h : Handler, enabled : Bool) -> Unit {
 }
 
 ///|
-pub fn Map::handler_enabled(self : Map, h : Handler) -> Bool {
+fn Map::handler_enabled(self : Map, h : Handler) -> Bool {
   (self.handlers & h.bit()) != 0
 }
 

@@ -58,3 +58,24 @@ test "ByteReader fails sticky past the end and on fail()" {
   t.fail()
   assert_false(t.done())
 }
+
+///|
+test "ByteReader::remaining counts the bytes left and drops to 0 on failure" {
+  let r = @core.ByteReader::new(b"\x01\x02\x03\x04\x05"[:])
+  assert_eq(r.remaining(), 5)
+  assert_eq(r.u8(), 1)
+  assert_eq(r.remaining(), 4)
+  assert_eq(r.u32(), 0x05040302)
+  assert_eq(r.remaining(), 0)
+  let s = @core.ByteReader::new(b"\x01\x02"[:])
+  assert_eq(s.u32(), 0)
+  assert_eq(s.remaining(), 0)
+}
+
+///|
+test "clamp_i16 keeps values within the i16 range" {
+  assert_eq(@core.clamp_i16(40000), 32767)
+  assert_eq(@core.clamp_i16(-40000), -32768)
+  assert_eq(@core.clamp_i16(-5), -5)
+  assert_eq(@core.clamp_i16(32767), 32767)
+}

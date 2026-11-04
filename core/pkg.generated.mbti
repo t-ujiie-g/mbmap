@@ -10,7 +10,11 @@ pub const FIELD_OF_VIEW : Double = 0.6435011087932844
 
 pub const GEOMETRY_TYPE_KEY : String = "$type"
 
-pub const MAX_LATITUDE : Double = 85.051128779806604
+pub const GEOM_LINES : Int32 = 2
+
+pub const GEOM_POINTS : Int32 = 1
+
+pub const GEOM_POLYGONS : Int32 = 3
 
 pub const MAX_PITCH : Double = 85.0
 
@@ -32,13 +36,9 @@ pub const TILE_EXTENT : Int32 = 4096
 
 pub const TILE_SIZE : Double = 512.0
 
+pub fn clamp_i16(Int32) -> Int32
+
 pub fn json_string_text(BytesView) -> String
-
-pub fn mercator_x_from_lng(Double) -> Double
-
-pub fn mercator_y_from_lat(Double) -> Double
-
-pub fn normalize_bearing(Double, Double) -> Double
 
 pub fn parse_json(BytesView, slow_number? : (Int32, Int32) -> Double, max_depth? : Int32) -> Json raise JsonError
 
@@ -184,7 +184,6 @@ pub(all) struct LngLatBounds {
   east : Double
   north : Double
 } derive(Eq, @debug.Debug)
-pub fn LngLatBounds::empty() -> Self
 pub fn LngLatBounds::equal(Self, Self) -> Bool
 pub fn LngLatBounds::including(Self, LngLat) -> Self
 pub fn LngLatBounds::not_equal(Self, Self) -> Bool
@@ -268,7 +267,6 @@ pub fn Transform::fog_range(Self) -> (Double, Double)
 pub fn Transform::horizon(Self) -> Double
 pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
 pub fn Transform::max_pitch_scale_factor(Self) -> Double
-pub fn Transform::mercator_to_screen(Self, MercatorCoord) -> (Double, Double)
 pub fn Transform::new(Camera, Double, Double, limits? : Limits) -> Self
 pub fn Transform::occluded(Self, LngLat, Double, Terrain) -> Bool
 pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera

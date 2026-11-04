@@ -46,17 +46,17 @@ pub const PATTERN_ATLAS_MAX : Int32 = 4096
 /// The patterns (or, without `wrap`, icons) of a style in one texture, packed
 /// in shelves as they are first drawn. Positions never move, so the atlas only
 /// grows.
-pub struct PatternAtlas {
+struct PatternAtlas {
   mut height : Int32
   mut data : FixedArray[Byte]
-  priv wrap : Bool
-  priv positions : Map[String, PatternPosition]
-  priv shelves : Array[(Int32, Int32, Int32)]
-  priv mut dirty : Bool
+  wrap : Bool
+  positions : Map[String, PatternPosition]
+  shelves : Array[(Int32, Int32, Int32)]
+  mut dirty : Bool
 }
 
 ///|
-pub fn PatternAtlas::new(wrap~ : Bool = true) -> PatternAtlas {
+fn PatternAtlas::new(wrap~ : Bool = true) -> PatternAtlas {
   {
     height: 64,
     data: FixedArray::make(PATTERN_ATLAS_WIDTH * 64 * 4, b'\x00'),
@@ -70,7 +70,7 @@ pub fn PatternAtlas::new(wrap~ : Bool = true) -> PatternAtlas {
 ///|
 /// Puts `image` as `name`: over its pixels if it has their size, else in a new
 /// place (the old one is left unused, so meshes drawing it stay valid).
-pub fn PatternAtlas::put(
+fn PatternAtlas::put(
   self : PatternAtlas,
   name : String,
   image : StyleImage,
@@ -91,10 +91,7 @@ pub fn PatternAtlas::put(
 
 ///|
 /// Pattern `name`'s position, if added.
-pub fn PatternAtlas::get(
-  self : PatternAtlas,
-  name : String,
-) -> PatternPosition? {
+fn PatternAtlas::get(self : PatternAtlas, name : String) -> PatternPosition? {
   self.positions.get(name)
 }
 
@@ -108,7 +105,7 @@ fn PatternAtlas::take_dirty(self : PatternAtlas) -> Bool {
 
 ///|
 /// Forgets every pattern (when images are replaced or removed).
-pub fn PatternAtlas::clear(self : PatternAtlas) -> Unit {
+fn PatternAtlas::clear(self : PatternAtlas) -> Unit {
   self.positions.clear()
   self.shelves.clear()
   self.data = FixedArray::make(PATTERN_ATLAS_WIDTH * self.height * 4, b'\x00')
@@ -118,7 +115,7 @@ pub fn PatternAtlas::clear(self : PatternAtlas) -> Unit {
 ///|
 /// Adds `image` as pattern `name` and returns its position; None when it does
 /// not fit (wider than the atlas, or the atlas is full).
-pub fn PatternAtlas::add(
+fn PatternAtlas::add(
   self : PatternAtlas,
   name : String,
   image : StyleImage,

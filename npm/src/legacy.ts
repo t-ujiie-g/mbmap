@@ -1,6 +1,8 @@
 // Legacy filters and functions as expressions, ported from MapLibre's style-spec 26.5.0 (src/feature_filter/convert.ts,
 // src/function/convert.ts), BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
-// Loaded by the map only for a style that has them. Import-free for `npm test`.
+// Loaded by the map only for a style that has them. Imports only style.ts (by its extension) for `npm test`.
+
+import { MAX_EXPR_DEPTH } from "./style.ts";
 
 type Json = unknown;
 type Expression = unknown[];
@@ -171,7 +173,7 @@ export function isLegacyFilter(filter: Json): boolean {
 function classify(f: Json, depth = 0): number {
   if (typeof f === "boolean") return 2;
   // Deeper than the engine takes: left as an expression, which it rejects with its path.
-  if (depth > 32) return 0;
+  if (depth > MAX_EXPR_DEPTH) return 0;
   if (!Array.isArray(f) || f.length === 0) return 1;
   switch (f[0]) {
     case "has":

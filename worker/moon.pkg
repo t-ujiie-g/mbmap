@@ -22,6 +22,7 @@ options(
     "host_math.mbt": [ "wasm-gc" ],
     "store_array.mbt": [ "not", "wasm-gc" ],
     "budget_wbtest.mbt": [ "not", "wasm-gc" ],
+    "caps_wbtest.mbt": [ "not", "wasm-gc" ],
   },
   link: { "wasm-gc": { "export-memory-name": "memory" } },
 )

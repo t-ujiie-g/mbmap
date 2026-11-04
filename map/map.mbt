@@ -5,11 +5,9 @@ pub(all) suberror MapError {
 } derive(Debug)
 
 ///|
-/// `entry` is the mesh's index in the worker's packed tile; `owned` false when an
-/// earlier layer's; `paint` the group's paint at the zoom it was evaluated for;
-/// `vertex_paint` the layer's own per-vertex paint (also when the geometry is
-/// shared); `states` the ranges of features with a state, in index order;
-/// `clips` a gradient line's rows and ramp length, `gradient` its ramp and expression.
+/// `entry`: index in the worker's packed tile; `owned`: false when an earlier layer's; `paint`: the group's
+/// at the zoom it was evaluated for; `vertex_paint`: the layer's own, also over shared geometry; `states`:
+/// stated features' ranges in index order; `clips`, `gradient`: a gradient line's rows, ramp length and ramp.
 priv struct LayerMesh {
   entry : Int32
   mut states : Array[StateRange]
@@ -125,12 +123,7 @@ pub struct Map {
   priv mut rotating : Bool
   priv mut dragging : Bool
   priv mut press : (Double, Double)
-  priv mut box_start : (
-    Double,
-    Double,
-    (Double, Double, Double, Double) -> Unit,
-    () -> Unit,
-  )?
+  priv mut box_start : (Double, Double, ZoomBox)?
   priv cleanups : Array[() -> Unit]
   priv mut destroyed : Bool
   priv mut has_labels : Bool
@@ -372,24 +365,6 @@ pub fn Map::off(self : Map, id : Int32) -> Unit {
 /// Frames rendered so far.
 pub fn Map::frame_count(self : Map) -> Int32 {
   self.frame_count
-}
-
-///|
-/// GPU bytes held by loaded tiles.
-pub fn Map::gpu_bytes(self : Map) -> Int32 {
-  let mut n = 0
-  for src in self.sources {
-    for _, e in src.tiles {
-      if e.state is Ready(meshes) {
-        for m in meshes {
-          if m.owned {
-            n += m.mesh.byte_size()
-          }
-        }
-      }
-    }
-  }
-  n
 }
 
 ///|

@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 127997,
+      "bytes": 127832,
       "budget": 135000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1749,
+      "bytes": 1754,
       "budget": 5000
     },
     {
@@ -21,12 +21,12 @@
     },
     {
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
-      "bytes": 3592,
+      "bytes": 3603,
       "budget": 5000
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 1678,
+      "bytes": 1677,
       "budget": 2000
     },
     {
@@ -71,12 +71,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 80947,
+      "bytes": 80954,
       "budget": 100000
     },
     {
       "name": "labels (loaded by the display worker with the first tile that has them)",
-      "bytes": 9580,
+      "bytes": 9544,
       "budget": 10000
     },
     {
@@ -91,17 +91,17 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29435,
+      "bytes": 29502,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49198,
+      "bytes": 49221,
       "budget": 50000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3404,
+      "bytes": 3425,
       "budget": 5000
     },
     {
@@ -111,12 +111,12 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28059,
+      "bytes": 28067,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 41877,
+      "bytes": 41815,
       "budget": 50000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12026,
+      "bytes": 12018,
       "budget": 15000
     },
     {
@@ -176,7 +176,7 @@
     },
     {
       "name": "mbmap/ui createCoordinates alone",
-      "bytes": 928,
+      "bytes": 921,
       "budget": 2000
     },
     {

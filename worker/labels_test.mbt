@@ -17,9 +17,18 @@ test "symbol layers pack their points' labels with the layer's layout" {
   // The two points split into two groups by their color input; the square has
   // no label.
   assert_eq(p.out.layer_count(), 2)
-  assert_eq((entry(0, 1), entry(0, 5)), (@worker.KIND_SYMBOL, 0))
+  assert_eq(
+    (entry(0, @worker.ENTRY_KIND), entry(0, @worker.ENTRY_INDEX_COUNT)),
+    (@worker.KIND_SYMBOL, 0),
+  )
   assert_eq(props_of(b, 0), ["k=1"])
-  let r = @core.ByteReader::new(b[entry(0, 2):entry(0, 2) + entry(0, 3)])
+  let r = @core.ByteReader::new(
+    b[entry(0, @worker.ENTRY_VERTEX_OFFSET):entry(
+      0,
+      @worker.ENTRY_VERTEX_OFFSET,
+    ) +
+    entry(0, @worker.ENTRY_VERTEX_BYTES)],
+  )
   assert_eq((r.u8(), r.u8(), r.u8(), r.u8()), (3, 0, 0, 0))
   assert_eq([r.f64(), r.f64(), r.f64(), r.f64(), r.f64()], [
     0.0, 1.5, 10.0, 1.2, 2.0,
@@ -40,7 +49,13 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq((r.u8(), r.utf8()), (@core.PROP_STRING, "k="))
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
   // The other point lacks k: its text is "k=" and a null part.
-  let r2 = @core.ByteReader::new(b[entry(1, 2):entry(1, 2) + entry(1, 3)])
+  let r2 = @core.ByteReader::new(
+    b[entry(1, @worker.ENTRY_VERTEX_OFFSET):entry(
+      1,
+      @worker.ENTRY_VERTEX_OFFSET,
+    ) +
+    entry(1, @worker.ENTRY_VERTEX_BYTES)],
+  )
   for _ in 0..<66 {
     r2.u8() |> ignore
   }

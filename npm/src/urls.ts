@@ -7,12 +7,20 @@ export function httpUrl(url: string | URL, base: string | URL, what: string): st
   return u.href;
 }
 
+/** The scheme prefix of PMTiles archives in source URLs and tile templates. */
+export const PMTILES = "pmtiles://";
+
+/** The archive URL of a `pmtiles://` URL, or null for any other. */
+export function pmtilesArchive(url: string): string | null {
+  return url.startsWith(PMTILES) ? url.slice(PMTILES.length) : null;
+}
+
 /** A tile template resolved against `base`, its placeholders kept: http(s), or `pmtiles://` and an http(s) archive. */
 export function resolveTemplate(template: string, base: string | URL, what = "tiles"): string {
-  const pmtiles = template.startsWith("pmtiles://");
+  const archive = pmtilesArchive(template);
   // URL() percent-encodes the placeholders' braces.
-  const href = httpUrl(pmtiles ? template.slice(10) : template, base, what).replace(/%7B([zxy])%7D/g, "{$1}");
-  return pmtiles ? `pmtiles://${href}` : href;
+  const href = httpUrl(archive ?? template, base, what).replace(/%7B([zxy])%7D/g, "{$1}");
+  return archive === null ? href : PMTILES + href;
 }
 
 /** Same-origin http(s) only, so markup cannot start data:, blob: or foreign workers (AGENTS.md §8.3). */

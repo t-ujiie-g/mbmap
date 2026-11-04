@@ -15,7 +15,7 @@ extern "js" fn gl_upload_slopes(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  #|  return { texture, size, bytes: (size + 2) * (size + 2) * 2 };
+  #|  return { texture, size };
   #|}
 
 ///|
@@ -53,9 +53,7 @@ extern "js" fn gl_draw_hillshade(
   #|  const pre = (v, i) => [v[i] * v[i + 3], v[i + 1] * v[i + 3], v[i + 2] * v[i + 3], v[i + 3]];
   #|  const lights = (at) => new Float32Array(Array.from({ length: n }, (_, i) => pre(colors, (i * 2 + at) * 4)).flat());
   #|  gl.useProgram(p.program);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform2f(p.u_lat, k[0], k[1]);
   #|  gl.uniform1f(p.u_exaggeration, k[2]);
   #|  gl.uniform1i(p.u_method, k[3]);
@@ -98,7 +96,6 @@ extern "js" fn gl_relief_heights(
   #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, stride, stride, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  #|  m.bytes += data.length;
   #|}
 
 ///|
@@ -165,9 +162,7 @@ extern "js" fn gl_draw_relief(
   #|(c, m, matrix, clip, g, u, k) => {
   #|  const gl = c.gl, p = c.colorRelief, f = k[1] ? gl.NEAREST : gl.LINEAR;
   #|  gl.useProgram(p.program);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform2f(p.u_dimension, m.reliefSize, m.reliefSize);
   #|  gl.uniform4f(p.u_unpack, u[0], u[1], u[2], u[3]);
   #|  gl.uniform1i(p.u_color_ramp_size, g.size);
@@ -198,9 +193,8 @@ extern "js" fn gl_upload_raster(gl : Gl, image : JsBuffer) -> Mesh =
   #|  gl.generateMipmap(gl.TEXTURE_2D);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  #|  const bytes = image.width * image.height * 4 * 4 / 3;
   #|  image.close?.();
-  #|  return { texture, bytes };
+  #|  return { texture };
   #|}
 
 ///|
@@ -217,15 +211,13 @@ extern "js" fn gl_draw_raster(
   #|(c, m, matrix, clip, k, nearest) => {
   #|  const gl = c.gl, p = c.raster;
   #|  gl.useProgram(p.program);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform1f(p.u_opacity, k[0]);
   #|  gl.uniform2f(p.u_bright, k[1], k[2]);
   #|  gl.uniform1f(p.u_saturation, k[3]);
   #|  gl.uniform1f(p.u_contrast, k[4]);
   #|  gl.uniform3f(p.u_spin, k[5], k[6], k[7]);
-  #|  const q = m.quad, e = 4096;
+  #|  const q = m.quad, e = c.extent;
   #|  if (q) gl.uniform4f(p.u_top, q[0], q[1], q[2], q[3]), gl.uniform4f(p.u_bottom, q[6], q[7], q[4], q[5]), gl.uniform3f(p.u_warp, q[8], q[9], q[10]);
   #|  else gl.uniform4f(p.u_top, 0, 0, e, 0), gl.uniform4f(p.u_bottom, 0, e, e, e), gl.uniform3f(p.u_warp, 0, 0, 1);
   #|  gl.activeTexture(gl.TEXTURE0);
@@ -264,7 +256,6 @@ extern "js" fn gl_upload_picture(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   #|  const m = old ?? { texture, quad: null };
-  #|  m.bytes = w * h * 4;
   #|  return m;
   #|}
 

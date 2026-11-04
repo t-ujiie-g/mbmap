@@ -91,6 +91,14 @@ test "features without geometry have no measures" {
 }
 
 ///|
+test "a line feature without parts has no length" {
+  let b = @geom.TableBuilder::new()
+  b.end_feature(LineString)
+  let t = b.finish()
+  assert_eq(@analysis.length(t, @analysis.Trig::moonbit(), 0), 0.0)
+}
+
+///|
 test "contains_point counts the boundary as inside, holes as outside" {
   let sq = holed()
   let cases = [

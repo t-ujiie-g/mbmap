@@ -2,10 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// geojson-vt's options and defaults: tiles up to `index_max_zoom` (or
-/// `index_max_points`) are cut up front, the rest on demand; `tolerance` and
-/// `buffer` are in tile units; with `line_metrics`, line features tell where
-/// they lie along their line (`CLIP_START`, `CLIP_END`).
+/// geojson-vt's options and defaults: tiles to `index_max_zoom` (or `index_max_points`)
+/// cut up front, the rest on demand; `tolerance`, `buffer` in tile units; `line_metrics`
+/// tells line features where they lie along their line (`CLIP_START`, `CLIP_END`).
 pub(all) struct TilerOptions {
   max_zoom : Int32
   index_max_zoom : Int32
@@ -45,6 +44,10 @@ fn tile_key(z : Int32, x : Int32, y : Int32) -> Int64 {
 }
 
 ///|
+/// Deepest zoom tiles are cut at, geojson-vt's limit on `maxZoom`.
+pub const MAX_ZOOM : Int32 = 24
+
+///|
 /// Indexes `table`, whose coordinates are longitude and latitude (`trig`
 /// projects them; see `Trig`).
 pub fn Tiler::new(
@@ -52,7 +55,7 @@ pub fn Tiler::new(
   options~ : TilerOptions = TilerOptions::default(),
   trig~ : Trig = Trig::moonbit(),
 ) -> Tiler {
-  let max_zoom = @cmp.maximum(0, @cmp.minimum(24, options.max_zoom))
+  let max_zoom = @cmp.maximum(0, @cmp.minimum(MAX_ZOOM, options.max_zoom))
   let options = { ..options, max_zoom, }
   let t : Tiler = { options, tiles: Map([]), }
   let z = (1 << max_zoom).to_double() * options.extent.to_double()

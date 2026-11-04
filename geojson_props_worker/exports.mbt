@@ -30,7 +30,8 @@ pub fn set_properties() -> Int32 {
 }
 
 ///|
-/// `@geojson_tiles.load`, clusters taking the properties `set_properties` read last.
+/// `@geojson_tiles.load`, clusters taking the properties `set_properties` read
+/// since the last `load` (none if it was not called).
 #export_name("load")
 pub fn load(
   source : Int32,
@@ -43,6 +44,8 @@ pub fn load(
   cluster_radius : Double,
   cluster_min_points : Int32,
 ) -> Int32 {
+  let props = properties.val
+  properties.val = []
   @geojson_tiles.load(
     source,
     max_zoom,
@@ -53,7 +56,9 @@ pub fn load(
     cluster_max_zoom,
     cluster_radius,
     cluster_min_points,
-    properties?=match properties.val {
+    hooks.trig,
+    @wasmio.input_number,
+    properties?=match props {
       [] => None
       props =>
         Some(table => @cluster_props.cluster_properties(table, props, hooks~))

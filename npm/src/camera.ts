@@ -145,6 +145,16 @@ export function flyArray(o: FlyToOptions): number[] {
   return [num(o.duration), num(o.curve), num(o.speed), num(o.screenSpeed), num(o.maxDuration), num(o.minZoom)];
 }
 
+/**
+ * The default zoom and pitch ranges (`Transform::new` and `MAX_PITCH` in core/transform.mbt; element/parse.ts
+ * mirrors them) and the highest zoom a limit or a layer's range may take (the style spec's layer `maxzoom`).
+ */
+export const MIN_ZOOM = 0;
+export const MAX_ZOOM = 22;
+export const MAX_ZOOM_LIMIT = 24;
+export const MIN_PITCH = 0;
+export const MAX_PITCH = 85;
+
 /** Zoom and pitch ranges and the bounds the camera keeps to. */
 export interface Limits {
   minZoom: number;
@@ -152,6 +162,16 @@ export interface Limits {
   minPitch: number;
   maxPitch: number;
   maxBounds: LngLatBounds | null;
+}
+
+/** Throws unless the limits are finite, within `MIN_ZOOM`-`MAX_ZOOM_LIMIT` and `MIN_PITCH`-`MAX_PITCH`, min not above max. */
+export function checkLimits(l: Limits): void {
+  for (const v of [l.minZoom, l.maxZoom, l.minPitch, l.maxPitch]) {
+    if (!Number.isFinite(v)) throw new TypeError(`mbmap: zoom and pitch limits must be finite numbers: ${String(v)}`);
+  }
+  if (l.minZoom > l.maxZoom || l.minPitch > l.maxPitch || l.minZoom < MIN_ZOOM || l.maxZoom > MAX_ZOOM_LIMIT || l.minPitch < MIN_PITCH || l.maxPitch > MAX_PITCH) {
+    throw new RangeError("mbmap: zoom limits must lie in 0-24 and pitch limits in 0-85, min not above max");
+  }
 }
 
 export function limitsArray(l: Limits): number[] {

@@ -67,7 +67,7 @@ export interface Source {
 /**
  * Defaults: `center`, `zoom`, `bearing`, `pitch` 0; `workerCount` 0 (half the hardware threads, 1 to 4); `fontFamily` "sans-serif";
  * zoom 0-22, pitch 0-85; `attributionControl`, `interactive`, handlers true; `strict` false (else a `warning` names what is left out).
- * `workerUrl`, `wasmUrl` and the GeoJSON worker's are next to this module; `bounds` replaces `center` and `zoom` (README: the rest).
+ * Worker and wasm URLs (`geojsonPropertiesWasmUrl`: the module for `clusterProperties`) are next to this module; `bounds` replaces `center`, `zoom` (README: the rest).
  */
 export interface MapOptions {
   container: HTMLElement | string;
@@ -81,7 +81,6 @@ export interface MapOptions {
   wasmUrl?: string | URL;
   geojsonWorkerUrl?: string | URL;
   geojsonWasmUrl?: string | URL;
-  /** The GeoJSON worker's module with expressions, loaded for sources with `clusterProperties` (default `geojson-properties.wasm` next to the bundle). */
   geojsonPropertiesWasmUrl?: string | URL;
   fontFamily?: string;
   strict?: boolean;

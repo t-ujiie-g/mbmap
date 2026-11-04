@@ -111,12 +111,6 @@ pub fn map_frame_count(map : @map.Map) -> Int32 {
 }
 
 ///|
-#export_name("map_gpu_bytes")
-pub fn map_gpu_bytes(map : @map.Map) -> Int32 {
-  map.gpu_bytes()
-}
-
-///|
 #export_name("map_destroy")
 pub fn map_destroy(map : @map.Map) -> Unit {
   map.destroy()
@@ -313,12 +307,6 @@ pub fn map_set_handler(map : @map.Map, h : Int32, enabled : Bool) -> Unit {
   if h >= 0 && h < handlers.length() {
     map.set_handler(handlers[h], enabled)
   }
-}
-
-///|
-#export_name("map_handler_enabled")
-pub fn map_handler_enabled(map : @map.Map, h : Int32) -> Bool {
-  h >= 0 && h < handlers.length() && map.handler_enabled(handlers[h])
 }
 
 ///|
@@ -595,18 +583,6 @@ pub fn map_add_image(
 #export_name("map_remove_image")
 pub fn map_remove_image(map : @map.Map, name : String) -> Bool {
   map.remove_image(name)
-}
-
-///|
-#export_name("map_has_image")
-pub fn map_has_image(map : @map.Map, name : String) -> Bool {
-  map.has_image(name)
-}
-
-///|
-#export_name("map_image_names")
-pub fn map_image_names(map : @map.Map) -> Array[String] {
-  map.image_names()
 }
 
 ///|

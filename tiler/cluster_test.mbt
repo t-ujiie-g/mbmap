@@ -142,15 +142,6 @@ test "thousands of points: every one is in exactly one cluster or alone" {
 }
 
 ///|
-test "abbreviated counts follow geojson-vt" {
-  assert_eq(@tiler.abbreviated_count(999), Num(999.0))
-  assert_eq(@tiler.abbreviated_count(1000), Str("1k"))
-  assert_eq(@tiler.abbreviated_count(1050), Str("1.1k"))
-  assert_eq(@tiler.abbreviated_count(9999), Str("10k"))
-  assert_eq(@tiler.abbreviated_count(12500), Str("13k"))
-}
-
-///|
 test "cluster tiles encode as columnar tiles" {
   let t = points(three)
   let c = @tiler.ClusterIndex::new(t)

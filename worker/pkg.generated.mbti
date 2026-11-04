@@ -7,6 +7,52 @@ import {
 }
 
 // Values
+pub const ENTRY_DASHES_COUNT : Int32 = 22
+
+pub const ENTRY_DASHES_OFFSET : Int32 = 21
+
+pub const ENTRY_DISTANCES_COUNT : Int32 = 14
+
+pub const ENTRY_DISTANCES_OFFSET : Int32 = 13
+
+pub const ENTRY_INDEX_BYTES : Int32 = 6
+
+pub const ENTRY_INDEX_COUNT : Int32 = 5
+
+pub const ENTRY_INDEX_OFFSET : Int32 = 4
+
+pub const ENTRY_KEY_RUNS_COUNT : Int32 = 20
+
+pub const ENTRY_KEY_RUNS_OFFSET : Int32 = 19
+
+pub const ENTRY_KIND : Int32 = 1
+
+pub const ENTRY_LAYER : Int32 = 0
+
+pub const ENTRY_OFFSETS_COUNT : Int32 = 18
+
+pub const ENTRY_OFFSETS_OFFSET : Int32 = 17
+
+pub const ENTRY_OUTLINE_COUNT : Int32 = 12
+
+pub const ENTRY_OUTLINE_OFFSET : Int32 = 11
+
+pub const ENTRY_PAINT_BYTES : Int32 = 10
+
+pub const ENTRY_PAINT_OFFSET : Int32 = 9
+
+pub const ENTRY_PROGRESS_OFFSET : Int32 = 15
+
+pub const ENTRY_PROGRESS_ROWS : Int32 = 16
+
+pub const ENTRY_PROPS_BYTES : Int32 = 8
+
+pub const ENTRY_PROPS_OFFSET : Int32 = 7
+
+pub const ENTRY_VERTEX_BYTES : Int32 = 3
+
+pub const ENTRY_VERTEX_OFFSET : Int32 = 2
+
 pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 pub const FILL_VERTEX_BYTES : Int32 = 4

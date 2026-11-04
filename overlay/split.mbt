@@ -146,7 +146,13 @@ fn split_part(
   lines : Array[Array[@clipper.Point64]],
 ) -> Array[Part] {
   let pieces = [part.outer]
+  let (x0, y0, x1, y1) = path_box(part.outer)
   for line in lines {
+    // A line clear of the outer ring's box crosses none of the pieces.
+    let (lx0, ly0, lx1, ly1) = path_box(line)
+    if lx0 > x1 || x0 > lx1 || ly0 > y1 || y0 > ly1 {
+      continue
+    }
     let c = @clipper.Clipper64::new()
     c.add_open_subject([line])
     c.add_clip([part.outer, ..part.holes])
@@ -350,17 +356,7 @@ pub fn merge(t : @geom.Table) -> @geom.Table? {
   }
   let out = @geom.TableBuilder::new()
   let result_kind : @geom.GeomKind = match kind {
-    0 => {
-      let all = []
-      for f in 0..<t.length() {
-        for ring in normalized(shape_of(t, f, degree_int).polygons) {
-          all.push(ring)
-        }
-      }
-      polygon_kind(
-        add_tree(out, tree_of(@clipper.union(all, [], NonZero)), degree_xy),
-      )
-    }
+    0 => polygon_kind(add_tree(out, tree_of(region_of(t)), degree_xy))
     1 => {
       let paths : Array[Array[(Double, Double)]] = []
       for f in 0..<t.length() {

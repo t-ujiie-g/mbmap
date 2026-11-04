@@ -23,11 +23,9 @@ const ONE_EM : Double = 24.0
 const CLIP_BUFFER_PX : Double = 256.0
 
 ///|
-/// The labels along lines of a symbol mesh: `meta` (`LINE_FLOATS` per label),
-/// `lines` (x, y in tile units), each glyph's `offsets` along its line (glyph
-/// units, `ONE_EM` an em), and where each glyph quad is drawn (`glyphs`: x, y in
-/// tile units, angle), laid out for camera `laid` at placement round `laid_round`.
-/// `LineSet::along` leaves its point in `at_x`, `at_y` and `at_angle`.
+/// The labels along lines of a symbol mesh: `meta` (`LINE_FLOATS` per label), `lines` (x, y in tile
+/// units), glyph `offsets` along them (`ONE_EM` an em) and `glyphs` (x, y, angle) laid out for camera
+/// `laid` at round `laid_round`; `LineSet::along` leaves its point in `at_x`, `at_y`, `at_angle`.
 priv struct LineSet {
   meta : FixedArray[Double]
   lines : FixedArray[Double]
@@ -64,10 +62,9 @@ fn line_set(l : JsValue, quads : Int32) -> LineSet? {
 }
 
 ///|
-/// MapLibre's `placeGlyphAlongLine` in tile units: the point `offset` along the
-/// line of label `i` from its anchor (x, y), backwards with `flip`, and the
-/// line's angle there, left in `at_x`, `at_y`, `at_angle`; `path` gets the points
-/// walked past. False past the line's end.
+/// MapLibre's `placeGlyphAlongLine` in tile units: the point `offset` along label `i`'s line from its
+/// anchor (x, y), backwards with `flip`, and the angle there, left in `at_x`, `at_y`, `at_angle`;
+/// `path` gets the points walked past. False past the line's end.
 fn LineSet::along(
   self : LineSet,
   i : Int32,

@@ -155,7 +155,7 @@ test "layer metadata, defaults and duplicate names" {
   let road = tile.layers[0]
   assert_eq(
     (road.name, road.version, road.extent, road.length()),
-    ("road", 1, @mvt.DEFAULT_EXTENT, 2),
+    ("road", 1, 4096, 2),
   )
   let water = tile.layer("water").unwrap()
   assert_eq((water.version, water.extent, water.length()), (2, 8192, 0))
@@ -278,6 +278,25 @@ test "points, lines and closed polygons decode like loadGeometry" {
 }
 
 ///|
+test "parameters at the ends of the Int32 range decode exactly" {
+  let line = single_feature(
+    feature_bytes(geom_type=2, geometry=[
+      cmd(1, 1),
+      2147483647,
+      -2147483648,
+      cmd(2, 2),
+      -2147483647,
+      2147483647,
+      -2147483648,
+      0,
+    ]),
+  )
+  assert_eq(line.load_geometry(0), [
+    [(2147483647, -2147483648), (0, -1), (-2147483648, -1)],
+  ])
+}
+
+///|
 test "decode_geometry replaces the buffer contents on reuse" {
   let g = @mvt.Geometry::new()
   let a = single_feature(
@@ -393,5 +412,5 @@ test "tag_count and tag list a feature's tags in order, repeats included" {
 ///|
 test "a layer extent of 0 reads as the default" {
   let tile = @mvt.Tile::parse(tile_bytes([layer_bytes("l", extent=0)])[:])
-  assert_eq(tile.layers[0].extent, @mvt.DEFAULT_EXTENT)
+  assert_eq(tile.layers[0].extent, 4096)
 }

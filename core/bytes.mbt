@@ -19,6 +19,17 @@ pub const PROP_STRING : Int32 = 4
 pub const PROP_ABSENT : Int32 = 5
 
 ///|
+/// Feature type codes of the columnar tile (docs/FORMATS.md, "Columnar tile"),
+/// MVT's `GeomType` numbers: `GEOM_POINTS`, `GEOM_LINES`, `GEOM_POLYGONS`.
+pub const GEOM_POINTS : Int32 = 1
+
+///|
+pub const GEOM_LINES : Int32 = 2
+
+///|
+pub const GEOM_POLYGONS : Int32 = 3
+
+///|
 /// Little-endian bytes being written.
 pub struct ByteWriter {
   priv buf : Array[Byte]
@@ -43,8 +54,14 @@ pub fn ByteWriter::u32(self : ByteWriter, v : Int32) -> Unit {
 
 ///|
 /// `v` clamped to the i16 range.
+pub fn clamp_i16(v : Int32) -> Int32 {
+  @cmp.maximum(-32768, @cmp.minimum(32767, v))
+}
+
+///|
+/// `v` clamped to the i16 range.
 pub fn ByteWriter::i16(self : ByteWriter, v : Int32) -> Unit {
-  let c = @cmp.maximum(-32768, @cmp.minimum(32767, v))
+  let c = clamp_i16(v)
   self.buf.push(c.to_byte())
   self.buf.push((c >> 8).to_byte())
 }

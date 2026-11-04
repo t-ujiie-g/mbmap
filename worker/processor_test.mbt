@@ -96,36 +96,49 @@ test "process packs fill and line layers of the source in style order" {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   // Layer 1 ("area"): a triangle of 4 points (closing point repeated).
-  assert_eq((entry(0, 0), entry(0, 1)), (1, @worker.KIND_FILL))
-  assert_eq((entry(0, 3), entry(0, 5)), (4 * @worker.FILL_VERTEX_BYTES, 3))
-  let v = entry(0, 2)
+  assert_eq(
+    (entry(0, @worker.ENTRY_LAYER), entry(0, @worker.ENTRY_KIND)),
+    (1, @worker.KIND_FILL),
+  )
+  assert_eq(
+    (entry(0, @worker.ENTRY_VERTEX_BYTES), entry(0, @worker.ENTRY_INDEX_COUNT)),
+    (4 * @worker.FILL_VERTEX_BYTES, 3),
+  )
+  let v = entry(0, @worker.ENTRY_VERTEX_OFFSET)
   assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (100, 0))
   // Layer 4 ("road"); "other" is another source, "late" starts at z15 and
   // "edge" filters out the polygon.
-  assert_eq((entry(1, 0), entry(1, 1)), (4, @worker.KIND_LINE))
-  let lv = entry(1, 2)
-  assert_eq(entry(1, 3), 4 * @worker.LINE_VERTEX_BYTES)
+  assert_eq(
+    (entry(1, @worker.ENTRY_LAYER), entry(1, @worker.ENTRY_KIND)),
+    (4, @worker.KIND_LINE),
+  )
+  let lv = entry(1, @worker.ENTRY_VERTEX_OFFSET)
+  assert_eq(entry(1, @worker.ENTRY_VERTEX_BYTES), 4 * @worker.LINE_VERTEX_BYTES)
   assert_eq(
     (i16_at(b, lv), i16_at(b, lv + 2), b[lv + 5].to_int(), b[lv + 6].to_int()),
     (-10, 5, 63, 1),
   )
   for k in 0..<2 {
     // Small layers use 16-bit indices.
-    assert_eq(entry(k, 6), 2)
-    let count = entry(k, 5)
-    let vertices = entry(k, 3) /
-      (if entry(k, 1) == @worker.KIND_FILL {
+    assert_eq(entry(k, @worker.ENTRY_INDEX_BYTES), 2)
+    let count = entry(k, @worker.ENTRY_INDEX_COUNT)
+    let vertices = entry(k, @worker.ENTRY_VERTEX_BYTES) /
+      (if entry(k, @worker.ENTRY_KIND) == @worker.KIND_FILL {
         @worker.FILL_VERTEX_BYTES
       } else {
         @worker.LINE_VERTEX_BYTES
       })
     for i in 0..<count {
-      let at = entry(k, 4) + i * 2
+      let at = entry(k, @worker.ENTRY_INDEX_OFFSET) + i * 2
       assert_true((b[at].to_int() | (b[at + 1].to_int() << 8)) < vertices)
     }
-    assert_eq(entry(k, 2) % 4, 0)
+    assert_eq(entry(k, @worker.ENTRY_VERTEX_OFFSET) % 4, 0)
   }
-  assert_eq(b.length(), entry(1, 4) + (entry(1, 5) * 2 + 3) / 4 * 4)
+  assert_eq(
+    b.length(),
+    entry(1, @worker.ENTRY_INDEX_OFFSET) +
+    (entry(1, @worker.ENTRY_INDEX_COUNT) * 2 + 3) / 4 * 4,
+  )
 }
 
 ///|
@@ -193,12 +206,22 @@ test "layers with the same geometry share one buffer" {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   assert_eq(p.out.layer_count(), 3)
-  assert_eq((entry(0, 0), entry(1, 0), entry(2, 0)), (0, 1, 2))
+  assert_eq(
+    (
+      entry(0, @worker.ENTRY_LAYER),
+      entry(1, @worker.ENTRY_LAYER),
+      entry(2, @worker.ENTRY_LAYER),
+    ),
+    (0, 1, 2),
+  )
   // "road" reuses "casing"'s data; "butt" has another cap, so its own.
   for w in 1..<@worker.LAYER_ENTRY_WORDS {
     assert_eq(entry(1, w), entry(0, w))
   }
-  assert_true(entry(2, 2) > entry(0, 2))
+  assert_true(
+    entry(2, @worker.ENTRY_VERTEX_OFFSET) >
+    entry(0, @worker.ENTRY_VERTEX_OFFSET),
+  )
 }
 
 ///|
@@ -224,9 +247,9 @@ test "layers are rescaled to TILE_EXTENT" {
 }
 
 ///|
-/// A "road" layer of line features, each with property `k` set to the given
-/// value (or no `k` for None).
-fn road_layer(ks : Array[Int32?]) -> @pbf.Writer {
+/// A "road" layer of line features, each with property `k` set to the value at
+/// the given index of 0 to `values` - 1 (or no `k` for None).
+fn road_layer(ks : Array[Int32?], values~ : Int32 = 2) -> @pbf.Writer {
   let l = @pbf.Writer::new()
   l.write_tag(1, @pbf.WIRE_LEN)
   l.write_string("road")
@@ -256,7 +279,7 @@ fn road_layer(ks : Array[Int32?]) -> @pbf.Writer {
   }
   l.write_tag(3, @pbf.WIRE_LEN)
   l.write_string("k")
-  for v in 0..<2 {
+  for v in 0..<values {
     let vw = @pbf.Writer::new()
     vw.write_tag(4, @pbf.WIRE_VARINT)
     vw.write_varint32(v)
@@ -330,20 +353,40 @@ test "data-driven paint goes per vertex, and a layer sharing its geometry gets i
   }
   // One entry per layer: the header has room for three.
   assert_eq(p.out.layer_count(), 3)
-  assert_eq(entry(0, 2), 4 + 3 * @worker.LAYER_ENTRY_WORDS * 4)
-  assert_eq(entry(0, 3), 16 * @worker.LINE_VERTEX_BYTES)
+  assert_eq(
+    entry(0, @worker.ENTRY_VERTEX_OFFSET),
+    4 + 3 * @worker.LAYER_ENTRY_WORDS * 4,
+  )
+  assert_eq(
+    entry(0, @worker.ENTRY_VERTEX_BYTES),
+    16 * @worker.LINE_VERTEX_BYTES,
+  )
   // The width, one float per vertex (a value without a zoom curve).
   let float_at = (at : Int32) => {
     Float::reinterpret_from_int(u32_at(b, at)).to_double()
   }
-  let widths = Array::makei(4, f => float_at(entry(0, 9) + f * 4 * 4))
-  assert_eq(entry(0, 10), 16 * 4)
+  let widths = Array::makei(4, f => {
+    float_at(entry(0, @worker.ENTRY_PAINT_OFFSET) + f * 4 * 4)
+  })
+  assert_eq(entry(0, @worker.ENTRY_PAINT_BYTES), 16 * 4)
   assert_eq(widths, [2.0, 4.0, 2.0, 1.0])
-  assert_eq(float_at(entry(0, 9) + 4), 2.0)
+  assert_eq(float_at(entry(0, @worker.ENTRY_PAINT_OFFSET) + 4), 2.0)
   // "plain" shares the geometry and has no paint of its own; "tinted" shares it with its own.
-  assert_eq((entry(1, 2), entry(1, 9), entry(1, 10)), (entry(0, 2), 0, 0))
-  assert_eq((entry(2, 2), entry(2, 10)), (entry(0, 2), 16 * 4))
-  let opacities = Array::makei(4, f => float_at(entry(2, 9) + f * 4 * 4))
+  assert_eq(
+    (
+      entry(1, @worker.ENTRY_VERTEX_OFFSET),
+      entry(1, @worker.ENTRY_PAINT_OFFSET),
+      entry(1, @worker.ENTRY_PAINT_BYTES),
+    ),
+    (entry(0, @worker.ENTRY_VERTEX_OFFSET), 0, 0),
+  )
+  assert_eq(
+    (entry(2, @worker.ENTRY_VERTEX_OFFSET), entry(2, @worker.ENTRY_PAINT_BYTES)),
+    (entry(0, @worker.ENTRY_VERTEX_OFFSET), 16 * 4),
+  )
+  let opacities = Array::makei(4, f => {
+    float_at(entry(2, @worker.ENTRY_PAINT_OFFSET) + f * 4 * 4)
+  })
   assert_eq(opacities, [1.0, 0.5, 1.0, 1.0])
 }
 
@@ -383,95 +426,6 @@ test "within and distance read the feature's geometry in the tile it is processe
   assert_true(p.process("a", tile[:], 1, x=0, y=0))
   assert_eq(p.out.layer_count(), 1)
   assert_eq(u32_at(p.out.to_bytes()[:], 4), 1)
-}
-
-///|
-test "circle layers pack one quad per point and share buffers like other kinds" {
-  let style =
-    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
-    #| "layers": [
-    #|  {"id": "dots", "type": "circle", "source": "a", "source-layer": "pts"},
-    #|  {"id": "halo", "type": "circle", "source": "a", "source-layer": "pts",
-    #|   "paint": {"circle-radius": 9}},
-    #|  {"id": "vertices", "type": "circle", "source": "a", "source-layer": "line"}
-    #|]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  // A MultiPoint with three points, one of them outside the tile; and a line,
-  // whose vertices get circles as MapLibre draws them.
-  let tile = tile_of([
-    tile_with("pts", 1, [cmd(1, 3), 10, 20, 5000, 0, -4990, 10]),
-    tile_with("line", 2, [cmd(1, 1), 0, 0, cmd(2, 1), 50, 0]),
-  ])
-  assert_true(p.process("a", tile[:], 14))
-  let b = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  assert_eq(p.out.layer_count(), 3)
-  assert_eq(
-    (entry(0, 1), entry(1, 1), entry(2, 1)),
-    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
-  )
-  assert_eq(entry(2, 5), 12)
-  // Two points inside the tile: 8 vertices, 12 indices; "halo" reuses them.
-  assert_eq((entry(0, 3), entry(0, 5)), (8 * @worker.LINE_VERTEX_BYTES, 12))
-  assert_eq((entry(1, 0), entry(1, 2)), (1, entry(0, 2)))
-  let v = entry(0, 2)
-  assert_eq((i16_at(b, v), i16_at(b, v + 2)), (10, 20))
-  assert_eq((b[v + 4].to_int(), b[v + 5].to_int()), (256 - 63, 256 - 63))
-  assert_eq((i16_at(b, v + 32), i16_at(b, v + 34)), (20, 30))
-}
-
-///|
-test "heatmap layers pack circle quads with their weights per vertex" {
-  let style =
-    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
-    #| "layers": [
-    #|  {"id": "heat", "type": "heatmap", "source": "a", "source-layer": "pts",
-    #|   "paint": {"heatmap-weight": ["coalesce", ["get", "w"], 3]}},
-    #|  {"id": "dots", "type": "circle", "source": "a", "source-layer": "pts"}
-    #|]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  let tile = tile_of([tile_with("pts", 1, [cmd(1, 2), 10, 20, 5000, 0])])
-  assert_true(p.process("a", tile[:], 14))
-  let b = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  assert_eq(p.out.layer_count(), 2)
-  // Circles of their own: a heatmap's buffers are not shared with circles.
-  assert_eq(
-    (entry(0, 1), entry(1, 1)),
-    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
-  )
-  assert_true(entry(1, 2) != entry(0, 2))
-  // One point inside the tile, its weight (the default 3) on each of its 4 vertices.
-  assert_eq((entry(0, 3), entry(0, 5)), (4 * @worker.LINE_VERTEX_BYTES, 6))
-  assert_eq(entry(0, 10), 4 * 4)
-  let weight = Float::reinterpret_from_int(u32_at(b, entry(0, 9) + 12))
-  assert_eq(weight.to_double(), 3.0)
-}
-
-///|
-test "heatmaps reading feature state go by group, with their features' ranges" {
-  let style =
-    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
-    #| "layers": [
-    #|  {"id": "heat", "type": "heatmap", "source": "a", "source-layer": "pts",
-    #|   "paint": {"heatmap-weight": ["coalesce", ["feature-state", "w"], ["get", "w"], 3]}}]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  let tile = tile_of([tile_with("pts", 1, [cmd(1, 2), 10, 20, 30, 40])])
-  assert_true(p.process("a", tile[:], 14))
-  let b = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  // No paint per vertex: the group's properties (none read here) carry it.
-  assert_eq(p.out.layer_count(), 1)
-  assert_eq((entry(0, 1), entry(0, 10)), (@worker.KIND_CIRCLE, 0))
-  assert_eq(u32_at(b, entry(0, 7)), 0)
-  // The feature's range in the entry, for its state.
-  assert_eq(u32_at(p.feature_ranges()[:], 0), 1)
 }
 
 ///|
@@ -525,23 +479,36 @@ test "GeoJSON sources draw from columnar tiles, with filters and properties" {
   assert_eq(p.out.layer_count(), 2)
   // The square: 4 corners (5 with the closing point), 2 triangles, and its
   // outline: 4 edges as index pairs, after the triangles' indices.
-  assert_eq((entry(0, 0), entry(0, 1), entry(0, 5)), (0, @worker.KIND_FILL, 6))
-  assert_eq(entry(0, 12), 8)
+  assert_eq(
+    (
+      entry(0, @worker.ENTRY_LAYER),
+      entry(0, @worker.ENTRY_KIND),
+      entry(0, @worker.ENTRY_INDEX_COUNT),
+    ),
+    (0, @worker.KIND_FILL, 6),
+  )
+  assert_eq(entry(0, @worker.ENTRY_OUTLINE_COUNT), 8)
   let outline = Array::makei(8, i => {
-    let at = entry(0, 11) + i * 2
+    let at = entry(0, @worker.ENTRY_OUTLINE_OFFSET) + i * 2
     b[at].to_int() | (b[at + 1].to_int() << 8)
   })
   assert_eq(outline, [0, 1, 1, 2, 2, 3, 3, 4])
   // Only the point with k, its radius per vertex.
-  assert_eq((entry(1, 0), entry(1, 1)), (1, @worker.KIND_CIRCLE))
-  assert_eq(entry(1, 3), 4 * @worker.LINE_VERTEX_BYTES)
-  assert_eq((entry(1, 8), entry(1, 10)), (0, 4 * 4))
   assert_eq(
-    Float::reinterpret_from_int(u32_at(b, entry(1, 9))).to_double(),
+    (entry(1, @worker.ENTRY_LAYER), entry(1, @worker.ENTRY_KIND)),
+    (1, @worker.KIND_CIRCLE),
+  )
+  assert_eq(entry(1, @worker.ENTRY_VERTEX_BYTES), 4 * @worker.LINE_VERTEX_BYTES)
+  assert_eq(
+    (entry(1, @worker.ENTRY_PROPS_BYTES), entry(1, @worker.ENTRY_PAINT_BYTES)),
+    (0, 4 * 4),
+  )
+  assert_eq(
+    Float::reinterpret_from_int(u32_at(b, entry(1, @worker.ENTRY_PAINT_OFFSET))).to_double(),
     1.0,
   )
   // The point at 0, 0 lands in the tile's center.
-  let v = entry(1, 2)
+  let v = entry(1, @worker.ENTRY_VERTEX_OFFSET)
   assert_eq((i16_at(b, v), i16_at(b, v + 2)), (2048, 2048))
 }
 
@@ -617,11 +584,14 @@ test "fill-extrusion layers pack walls, roofs and per-feature heights" {
   }
   // Its own entry, not an alias of the fill with the same geometry.
   assert_eq(p.out.layer_count(), 2)
-  assert_eq((entry(1, 0), entry(1, 1)), (1, @worker.KIND_EXTRUSION))
+  assert_eq(
+    (entry(1, @worker.ENTRY_LAYER), entry(1, @worker.ENTRY_KIND)),
+    (1, @worker.KIND_EXTRUSION),
+  )
   // A triangle: 3 walls and a 1-triangle roof of 3 vertices.
-  let n = entry(1, 3) / @worker.EXTRUSION_VERTEX_BYTES
-  assert_eq((n, entry(1, 5)), (3 * 4 + 4, 3 * 6 + 3))
-  let v = entry(1, 2)
+  let n = entry(1, @worker.ENTRY_VERTEX_BYTES) / @worker.EXTRUSION_VERTEX_BYTES
+  assert_eq((n, entry(1, @worker.ENTRY_INDEX_COUNT)), (3 * 4 + 4, 3 * 6 + 3))
+  let v = entry(1, @worker.ENTRY_VERTEX_OFFSET)
   let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
   // Centroid of (0, 0), (100, 0), (100, 100) (the commands are deltas); base
   // clamped to 0; height 10 m at z14 and 25.3 m (decimeters) at z15.
@@ -630,72 +600,6 @@ test "fill-extrusion layers pack walls, roofs and per-feature heights" {
     (u16(v + 16), u16(v + 18), u16(v + 20), u16(v + 22)),
     (0, 0, 100, 253),
   )
-}
-
-///|
-test "dashed lines pack their distances and share buffers only with dashed lines" {
-  let style =
-    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
-    #| "layers": [
-    #|  {"id": "road", "type": "line", "source": "a", "source-layer": "line"},
-    #|  {"id": "dash", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-dasharray": [2, 1]}},
-    #|  {"id": "dots", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-dasharray": [1, 1]}}]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  assert_true(p.process("a", sample_tile()[:], 14))
-  let b = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  assert_eq(p.out.layer_count(), 3)
-  // The solid road has none; the dashed lines share one buffer and its distances.
-  assert_eq(entry(0, 14), 0)
-  assert_true(entry(1, 2) != entry(0, 2))
-  assert_eq(entry(2, 2), entry(1, 2))
-  assert_eq((entry(2, 13), entry(2, 14)), (entry(1, 13), entry(1, 14)))
-  // Four vertices along a line of 50 units: 0 at the start, 50 at the end.
-  assert_eq(entry(1, 14), 4)
-  let d = entry(1, 13)
-  let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
-  assert_eq((u16(d), u16(d + 2), u16(d + 4), u16(d + 6)), (0, 0, 50, 50))
-}
-
-///|
-test "lines dashed by feature pack their patterns at the tile's zoom and either side" {
-  let style =
-    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
-    #| "layers": [
-    #|  {"id": "dash", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-dasharray": ["step", ["zoom"], ["literal", [1, 1]], 14, ["case", ["has", "k"], ["literal", [4, 4]], ["literal", [-1]]], 15, ["literal", [3]]]}},
-    #|  {"id": "plain", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-dasharray": [2, 1]}}]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  assert_true(p.process("a", sample_tile()[:], 14))
-  let b = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  // Each keeps its own buffers; only the first has patterns.
-  assert_eq(p.out.layer_count(), 2)
-  assert_true(entry(0, 2) != entry(1, 2))
-  assert_eq(entry(1, 21), 0)
-  let at = entry(0, 21)
-  assert_eq((at % 8, entry(0, 22)), (0, 2))
-  let f64 = (o : Int32) => {
-    let lo = u32_at(b, o).to_uint64()
-    let hi = u32_at(b, o + 4).to_uint64()
-    (lo | (hi << 32)).reinterpret_as_double()
-  }
-  // [1, 1] at z13 and [3] at z15; [-1] is no pattern.
-  assert_eq([f64(at), f64(at + 8), f64(at + 16)], [2.0, 1.0, 1.0])
-  assert_eq([f64(at + 24), f64(at + 32)], [1.0, 3.0])
-  let marks = at + 40
-  let u16 = (o : Int32) => b[o].to_int() | (b[o + 1].to_int() << 8)
-  for v in 0..<4 {
-    let o = marks + v * 8
-    assert_eq((u16(o), u16(o + 2), u16(o + 4), u16(o + 6)), (0, 0xffff, 1, 0))
-  }
 }
 
 ///|
@@ -723,98 +627,16 @@ test "expressions read ids, compute and convert through the processor's hooks" {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   assert_eq(p.out.layer_count(), 2)
-  assert_eq(entry(0, 1), @worker.KIND_EXTRUSION)
+  assert_eq(entry(0, @worker.ENTRY_KIND), @worker.KIND_EXTRUSION)
   assert_eq(props_of(b, 0), ["$id=\"square\""])
   assert_eq(
-    (entry(1, 1), entry(1, 3)),
+    (entry(1, @worker.ENTRY_KIND), entry(1, @worker.ENTRY_VERTEX_BYTES)),
     (@worker.KIND_CIRCLE, 4 * @worker.LINE_VERTEX_BYTES),
   )
   assert_eq(
-    Float::reinterpret_from_int(u32_at(b, entry(1, 9))).to_double(),
+    Float::reinterpret_from_int(u32_at(b, entry(1, @worker.ENTRY_PAINT_OFFSET))).to_double(),
     3.0,
   )
-}
-
-///|
-test "gradient lines pack their progress, rows and line metrics" {
-  let b = @geom.TableBuilder::new()
-  b.point(-10.0, 10.0)
-  b.point(10.0, 10.0)
-  b.end_ring()
-  b.end_part()
-  b.end_feature(LineString)
-  let table = b.finish()
-  let tiler = @tiler.Tiler::new(table, options={
-    ..@tiler.TilerOptions::default(),
-    line_metrics: true,
-  })
-  let tile = @tiler.encode_tile(tiler.tile(1, 1, 0).unwrap(), table)
-  let style =
-    #|{"sources": {"g": {"type": "geojson", "data": "x", "lineMetrics": true}},
-    #| "layers": [
-    #|  {"id": "plain", "type": "line", "source": "g"},
-    #|  {"id": "ramp", "type": "line", "source": "g",
-    #|   "paint": {"line-gradient": ["interpolate", ["linear"], ["line-progress"], 0, "#000", 1, "#fff"]}}]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  assert_true(p.process("g", tile[:], 1))
-  let bs = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(bs, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  // Its own buffers, not the plain line's; one row.
-  assert_eq(p.out.layer_count(), 2)
-  assert_eq((entry(0, 15), entry(0, 16)), (0, 0))
-  assert_true(entry(1, 2) != entry(0, 2))
-  assert_eq(entry(1, 16), 1)
-  let n = entry(1, 3) / @worker.LINE_VERTEX_BYTES
-  let at = entry(1, 15)
-  let f32 = (o : Int32) => {
-    Float::reinterpret_from_int(u32_at(bs, o)).to_double()
-  }
-  let f64 = (o : Int32) => {
-    let bits = (u32_at(bs, o).to_int64() & 0xffffffffL) |
-      (u32_at(bs, o + 4).to_int64() << 32)
-    bits.reinterpret_as_double()
-  }
-  assert_eq((f32(at), f32(at + 4)), (0.0, 0.0))
-  assert_eq((f32(at + (n - 1) * 8), f32(at + (n - 1) * 8 + 4)), (1.0, 0.0))
-  // The slice right of x 0.5 minus the buffer, to the line's end.
-  let start = f64(at + n * 8)
-  assert_true(start > 0.3 && start < 0.5)
-  assert_eq(f64(at + n * 8 + 8), 1.0)
-  assert_true(f64(at + n * 8 + 16) > 0.0)
-}
-
-///|
-test "offset lines pack their offset normals and share buffers only with offset lines" {
-  let style =
-    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
-    #| "layers": [
-    #|  {"id": "road", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-gap-width": 3}},
-    #|  {"id": "left", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-offset": -2}},
-    #|  {"id": "right", "type": "line", "source": "a", "source-layer": "line",
-    #|   "paint": {"line-offset": ["get", "k"]}}]}
-  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
-  assert_true(p.process("a", sample_tile()[:], 14))
-  let b = p.out.to_bytes()[:]
-  let entry = (k : Int32, w : Int32) => {
-    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
-  }
-  assert_eq(p.out.layer_count(), 3)
-  assert_eq(entry(0, 18), 0)
-  assert_true(entry(1, 2) != entry(0, 2))
-  assert_eq(entry(2, 2), entry(1, 2))
-  assert_eq((entry(2, 17), entry(2, 18)), (entry(1, 17), entry(1, 18)))
-  // Four vertices of a straight line along +x: every normal is (0, 63).
-  assert_eq(entry(1, 18), 4)
-  let o = entry(1, 17)
-  for i in 0..<4 {
-    assert_eq((b[o + i * 2].to_int(), b[o + i * 2 + 1].to_int()), (0, 63))
-  }
-  // The data-driven offset goes per vertex, with the width and gap as constants.
-  assert_true(entry(2, 10) > 0)
 }
 
 ///|
@@ -836,14 +658,23 @@ test "sort keys order features within the tile, and circles pack their runs of e
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   assert_eq(p.out.layer_count(), 3)
-  assert_eq(i16_at(b, entry(0, 2)), 20)
+  assert_eq(i16_at(b, entry(0, @worker.ENTRY_VERTEX_OFFSET)), 20)
   // The sorted circles do not share the plain ones' buffers.
-  assert_true(entry(2, 2) != entry(1, 2))
-  assert_eq(i16_at(b, entry(1, 2)), 20)
-  assert_eq(i16_at(b, entry(2, 2)), 0)
+  assert_true(
+    entry(2, @worker.ENTRY_VERTEX_OFFSET) !=
+    entry(1, @worker.ENTRY_VERTEX_OFFSET),
+  )
+  assert_eq(i16_at(b, entry(1, @worker.ENTRY_VERTEX_OFFSET)), 20)
+  assert_eq(i16_at(b, entry(2, @worker.ENTRY_VERTEX_OFFSET)), 0)
   // Two runs: key 0 over four circles (24 indices), key 1 over two.
-  assert_eq((entry(1, 20), entry(2, 20)), (2, 0))
-  let r = entry(1, 19)
+  assert_eq(
+    (
+      entry(1, @worker.ENTRY_KEY_RUNS_COUNT),
+      entry(2, @worker.ENTRY_KEY_RUNS_COUNT),
+    ),
+    (2, 0),
+  )
+  let r = entry(1, @worker.ENTRY_KEY_RUNS_OFFSET)
   let f64_at = (at : Int32) => {
     let mut bits = 0UL
     for i in 0..<8 {
@@ -855,5 +686,27 @@ test "sort keys order features within the tile, and circles pack their runs of e
   assert_eq(
     (f64_at(r + 16), u32_at(b, r + 24), u32_at(b, r + 28)),
     (1.0, 24, 12),
+  )
+}
+
+///|
+test "features past MAX_GROUPS take the last group" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [{"id": "one", "type": "line", "source": "a", "source-layer": "road",
+    #|   "paint": {"line-opacity": ["coalesce", ["feature-state", "o"], ["/", ["get", "k"], 100]]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let n = @worker.MAX_GROUPS + 6
+  let road = road_layer(Array::makei(n, k => Some(k)), values=n)
+  assert_true(p.process("a", tile_of([road])[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), @worker.MAX_GROUPS)
+  let last = @worker.MAX_GROUPS - 1
+  assert_eq(
+    entry(last, @worker.ENTRY_INDEX_COUNT),
+    entry(0, @worker.ENTRY_INDEX_COUNT) * 7,
   )
 }

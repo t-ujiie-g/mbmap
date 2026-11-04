@@ -14,6 +14,12 @@ fn close(a : Double, b : Double) -> Bool {
 }
 
 ///|
+/// Screen point of a mercator position, through `project`.
+fn screen_of(t : @core.Transform, m : @core.MercatorCoord) -> (Double, Double) {
+  t.project(m.to_lnglat())
+}
+
+///|
 /// Cameras every view test runs with: flat, rotated, pitched, both, and one
 /// that sees the horizon.
 fn views() -> Array[@core.Camera] {
@@ -33,7 +39,7 @@ test "the screen center is the camera center and screen points round-trip" {
     let m = t.screen_to_mercator(400.0, 300.0)
     let c = tokyo().center.to_mercator()
     assert_true(close(m.x, c.x) && close(m.y, c.y))
-    let (x, y) = t.mercator_to_screen(t.screen_to_mercator(123.0, 456.0))
+    let (x, y) = screen_of(t, t.screen_to_mercator(123.0, 456.0))
     assert_true(close(x, 123.0) && close(y, 456.0))
   }
   assert_eq(
@@ -47,7 +53,7 @@ test "a flat view maps one world pixel to one CSS pixel" {
   let t = @core.Transform::new(tokyo(), 800.0, 600.0)
   let c = tokyo().center.to_mercator()
   let ws = t.world_size()
-  let (x, y) = t.mercator_to_screen({ x: c.x + 100.0 / ws, y: c.y - 50.0 / ws, })
+  let (x, y) = screen_of(t, { x: c.x + 100.0 / ws, y: c.y - 50.0 / ws, })
   assert_true(close(x, 500.0) && close(y, 250.0))
 }
 
@@ -81,7 +87,7 @@ test "bearing turns the map: at 90° east points up" {
   let t = @core.Transform::new({ ..tokyo(), bearing: 90.0, }, 800.0, 600.0)
   let c = tokyo().center.to_mercator()
   let ws = t.world_size()
-  let (x, y) = t.mercator_to_screen({ x: c.x + 100.0 / ws, y: c.y, })
+  let (x, y) = screen_of(t, { x: c.x + 100.0 / ws, y: c.y, })
   assert_true(close(x, 400.0) && close(y, 200.0))
 }
 
@@ -90,8 +96,8 @@ test "pitch shrinks what lies ahead and enlarges what is near" {
   let t = @core.Transform::new({ ..tokyo(), pitch: 60.0, }, 800.0, 600.0)
   let c = tokyo().center.to_mercator()
   let ws = t.world_size()
-  let (_, north) = t.mercator_to_screen({ x: c.x, y: c.y - 100.0 / ws, })
-  let (_, south) = t.mercator_to_screen({ x: c.x, y: c.y + 100.0 / ws, })
+  let (_, north) = screen_of(t, { x: c.x, y: c.y - 100.0 / ws, })
+  let (_, south) = screen_of(t, { x: c.x, y: c.y + 100.0 / ws, })
   // 100 px ahead (north) appear closer to the center than 100 px behind.
   assert_true(300.0 - north > 0.0 && 300.0 - north < south - 300.0)
 }
@@ -102,7 +108,7 @@ test "panning keeps the map point under the pointer" {
     let t = @core.Transform::new(camera, 800.0, 600.0)
     let grabbed = t.screen_to_mercator(100.0, 400.0)
     let moved = t.with_camera(t.panned(100.0, 400.0, 130.0, 380.0))
-    let (x, y) = moved.mercator_to_screen(grabbed)
+    let (x, y) = screen_of(moved, grabbed)
     assert_true((x - 130.0).abs() < 1.0e-3 && (y - 380.0).abs() < 1.0e-3)
   }
 }
@@ -118,7 +124,7 @@ test "zooming around a point keeps that point fixed" {
       (zoomed.camera.bearing, zoomed.camera.pitch),
       (camera.bearing, camera.pitch),
     )
-    let (x, y) = zoomed.mercator_to_screen(anchor)
+    let (x, y) = screen_of(zoomed, anchor)
     assert_true((x - 700.0).abs() < 1.0e-3 && (y - 450.0).abs() < 1.0e-3)
   }
 }
@@ -140,8 +146,9 @@ test "zoom, latitude and pitch are clamped, longitude and bearing wrap" {
   assert_eq(t.camera.zoom, 20.0)
   // Half a view (50 px, pitch aside as in MapLibre) stays south of MapLibre's
   // latitude limit, 85.051129°.
-  let y = @core.mercator_y_from_lat(t.camera.center.lat) * t.world_size()
-  let top = @core.mercator_y_from_lat(85.051129) * t.world_size()
+  let y = t.camera.center.to_mercator().y * t.world_size()
+  let top = ({ lng: 0.0, lat: 85.051129, } : @core.LngLat).to_mercator().y *
+    t.world_size()
   assert_true((y - 50.0 - top).abs() < 1.0e-3)
   assert_true(close(t.camera.center.lng, -170.0))
   assert_eq((t.camera.bearing, t.camera.pitch), (-90.0, @core.MAX_PITCH))
@@ -212,8 +219,8 @@ test "a flat view is covered by tiles of one zoom, nearest first" {
   for tile in tiles {
     assert_eq(tile.z, 14)
     let b = tile.mercator_bounds()
-    let (x0, y0) = t.mercator_to_screen({ x: b.min_x, y: b.min_y, })
-    let (x1, y1) = t.mercator_to_screen({ x: b.max_x, y: b.max_y, })
+    let (x0, y0) = screen_of(t, { x: b.min_x, y: b.min_y, })
+    let (x1, y1) = screen_of(t, { x: b.max_x, y: b.max_y, })
     assert_true(x1 > 0.0 && x0 < 800.0 && y1 > 0.0 && y0 < 600.0)
   }
   assert_true(tiles.length() >= 4 && tiles.length() <= 9)
@@ -278,7 +285,7 @@ test "the horizon comes on screen above 70 degrees and bounds the ground" {
   // Above the line is sky: its points take the ground at the line.
   let sky = t.screen_to_mercator(200.0, 10.0)
   assert_eq(sky, t.screen_to_mercator(200.0, line))
-  let (x, y) = t.mercator_to_screen(sky)
+  let (x, y) = screen_of(t, sky)
   assert_true((x - 200.0).abs() < 1.0e-6 && (y - line).abs() < 1.0e-6)
   // The ground ends about 6.6 camera distances ahead (LOD_DISTANCE 1.5 doubled
   // twice): 2 zoom levels below the center's. A source that starts at the
@@ -301,7 +308,7 @@ test "tile_matrix maps the tile's corners to their screen positions" {
     let b = tile.mercator_bounds()
     for corner in [(0, 0, b.min_x, b.min_y), (4096, 4096, b.max_x, b.max_y)] {
       let (u, v, mx, my) = corner
-      let (sx, sy) = t.mercator_to_screen({ x: mx, y: my, })
+      let (sx, sy) = screen_of(t, { x: mx, y: my, })
       let (x, y, _, w) = m.apply(u.to_double(), v.to_double(), 0.0, 1.0)
       assert_true((x / w - (sx / 400.0 - 1.0)).abs() < 1.0e-6)
       assert_true((y / w - (1.0 - sy / 300.0)).abs() < 1.0e-6)
@@ -358,7 +365,7 @@ test "keeping turns and tilts the map around a screen point" {
       }),
     )
     assert_eq(next.camera.pitch, 30.0)
-    let (x, y) = next.mercator_to_screen(anchor)
+    let (x, y) = screen_of(next, anchor)
     assert_true((x - 200.0).abs() < 1.0e-3 && (y - 400.0).abs() < 1.0e-3)
   }
 }

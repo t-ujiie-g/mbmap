@@ -1,6 +1,7 @@
 // Rendered-feature query results in MapLibre GL JS 6.16.0's order (query_features.ts,
 // style.ts), BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
-// Import-free, so that `npm test` can load it.
+// Imports only camera.ts (by its extension), so that `npm test` can load it.
+import { type PointLike, toPoint } from "./camera.ts";
 
 /** A GeoJSON feature as a query returns it. */
 export interface GeoJSONFeature {
@@ -19,7 +20,7 @@ export interface TileResult {
 }
 
 /** A query's screen geometry: one point, or a box as a closed ring (MapLibre's box query). */
-export function queryPoints(geometry: [number, number] | [[number, number], [number, number]] | null, width: number, height: number): number[] {
+export function queryPoints(geometry: QueryGeometry, width: number, height: number): number[] {
   if (geometry === null) return queryPoints([[0, 0], [width, height]], width, height);
   if (typeof geometry[0] === "number") return [geometry[0], geometry[1] as number];
   const [[x0, y0], [x1, y1]] = geometry as [[number, number], [number, number]];
@@ -76,4 +77,36 @@ export function orderRendered(tiles: TileResult[], layers: { id: string; type: s
     }
   }
   return out;
+}
+
+/** A query's screen geometry as `queryPoints` takes it: a point or a box, null for the whole map. */
+export type QueryGeometry = [number, number] | [[number, number], [number, number]] | null;
+
+/**
+ * `queryRenderedFeatures`'s arguments as MapLibre reads them: a point or a box (CSS pixels),
+ * then the options, which may also come alone.
+ */
+export function queryArgs<O extends object>(geometryOrOptions: PointLike | [PointLike, PointLike] | O | undefined, options: O | undefined): { geometry: QueryGeometry; options: Partial<O> } {
+  const isPoint = (g: unknown) => (Array.isArray(g) ? typeof g[0] === "number" : typeof (g as { x?: unknown })?.x === "number");
+  const pair = (q: PointLike): [number, number] => {
+    const p = toPoint(q);
+    return [p.x, p.y];
+  };
+  if (geometryOrOptions !== undefined && (Array.isArray(geometryOrOptions) || isPoint(geometryOrOptions))) {
+    const geometry: QueryGeometry = isPoint(geometryOrOptions)
+      ? pair(geometryOrOptions as PointLike)
+      : [pair((geometryOrOptions as [PointLike, PointLike])[0]), pair((geometryOrOptions as [PointLike, PointLike])[1])];
+    return { geometry, options: options ?? {} };
+  }
+  return { geometry: null, options: (geometryOrOptions as O | undefined) ?? options ?? {} };
+}
+
+/** The `layers` option as a list (null for all), or why it is refused: not an Array or Set, or naming a layer `has` lacks. */
+export function queryLayers(layers: unknown, has: (id: string) => boolean): string[] | null | Error {
+  if (layers === undefined) return null;
+  if (!Array.isArray(layers) && !(layers instanceof Set)) return new Error("mbmap: layers must be an Array or a Set of strings");
+  const list = [...(layers as Iterable<string>)];
+  const missing = list.find((id) => !has(id));
+  if (missing !== undefined) return new Error(`mbmap: the layer '${missing}' does not exist in the map's style and cannot be queried for features`);
+  return list;
 }

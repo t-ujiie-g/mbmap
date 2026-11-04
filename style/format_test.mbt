@@ -270,9 +270,6 @@ test "global-state takes the style's state defaults, or the state it is compiled
   let at = (i : Int32) => s.layers[i].opacity.eval(0.0, @style.NoFeature::{ })
   assert_eq(at(0), Num(0.3))
   assert_eq(at(1), Num(0.5))
-  let state = @style.state_defaults(@json.parse(style))
-  assert_eq(state.get("min"), Some(Json::number(3.0)))
-  assert_eq(state.get("none"), Some(Json::null()))
   let key = @json.parse("[\"global-state\", \"k\"]")
   let e = @style.with_global_state(
     Map::from_array([("k", Json::string("on"))]),

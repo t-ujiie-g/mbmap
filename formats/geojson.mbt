@@ -333,13 +333,6 @@ fn Parser::emit(self : Parser, g : GeomBuf) -> Bool {
     coords.push(v)
   }
   let end_ring = (end : Int32) => o.end_ring_at(base + end)
-  let start = (ends : Array[Int32], i : Int32) => {
-    if i == 0 {
-      0
-    } else {
-      ends[i - 1]
-    }
-  }
   match g.kind {
     Point | MultiPoint | LineString => {
       end_ring(g.coords.length() / 2)
@@ -358,7 +351,7 @@ fn Parser::emit(self : Parser, g : GeomBuf) -> Bool {
     }
     _ =>
       for poly in 0..<g.ends[1].length() {
-        for r in start(g.ends[1], poly)..<g.ends[1][poly] {
+        for r in @geom.start_of(g.ends[1], poly)..<g.ends[1][poly] {
           end_ring(g.ends[0][r])
         }
         o.end_part()

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { type GeoJSONFeature, orderRendered, queryPoints, type TileResult } from "../src/query.ts";
+import { type GeoJSONFeature, orderRendered, queryArgs, queryLayers, queryPoints, type TileResult } from "../src/query.ts";
 
 const f = (name: string): GeoJSONFeature => ({ type: "Feature", geometry: null, properties: { name } });
 const names = (xs: { feature: GeoJSONFeature }[]) => xs.map((x) => x.feature.properties.name);
@@ -9,6 +9,25 @@ test("queryPoints: a point, a box as a closed ring, the whole map by default", (
   assert.deepEqual(queryPoints([3, 4], 800, 600), [3, 4]);
   assert.deepEqual(queryPoints([[1, 2], [5, 6]], 800, 600), [1, 2, 5, 2, 5, 6, 1, 6, 1, 2]);
   assert.deepEqual(queryPoints(null, 800, 600), [0, 0, 800, 0, 800, 600, 0, 600, 0, 0]);
+});
+
+test("queryArgs: a point or box in either form, then options; options alone; nothing", () => {
+  const o = { layers: ["a"] };
+  assert.deepEqual(queryArgs([3, 4], o), { geometry: [3, 4], options: o });
+  assert.deepEqual(queryArgs({ x: 3, y: 4 }, undefined), { geometry: [3, 4], options: {} });
+  assert.deepEqual(queryArgs([[1, 2], { x: 5, y: 6 }], o), { geometry: [[1, 2], [5, 6]], options: o });
+  assert.deepEqual(queryArgs(o, { layers: ["ignored"] }), { geometry: null, options: o });
+  assert.deepEqual(queryArgs(undefined, o), { geometry: null, options: o });
+  assert.deepEqual(queryArgs(undefined, undefined), { geometry: null, options: {} });
+});
+
+test("queryLayers: null for all, a list from an Array or a Set, errors for anything else or a missing layer", () => {
+  const has = (id: string) => id !== "nope";
+  assert.equal(queryLayers(undefined, has), null);
+  assert.deepEqual(queryLayers(["a", "b"], has), ["a", "b"]);
+  assert.deepEqual(queryLayers(new Set(["a"]), has), ["a"]);
+  assert.match((queryLayers("a", has) as Error).message, /layers must be an Array or a Set/);
+  assert.match((queryLayers(["a", "nope"], has) as Error).message, /the layer 'nope' does not exist/);
 });
 
 test("orderRendered: top layer first, tiles by zoom, row, column, last drawn first, once per tile", () => {

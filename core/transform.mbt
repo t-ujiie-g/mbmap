@@ -284,6 +284,21 @@ pub fn Transform::world_size(self : Transform) -> Double {
 }
 
 ///|
+/// The points on the near and far planes (world pixels relative to the center)
+/// under the screen point (x, y): near x, y, z, then far x, y, z.
+fn Transform::screen_ray(
+  self : Transform,
+  x : Double,
+  y : Double,
+) -> (Double, Double, Double, Double, Double, Double) {
+  let nx = x / self.width * 2.0 - 1.0
+  let ny = 1.0 - y / self.height * 2.0
+  let (ax, ay, az, aw) = self.inverse.apply(nx, ny, -1.0, 1.0)
+  let (bx, by, bz, bw) = self.inverse.apply(nx, ny, 1.0, 1.0)
+  (ax / aw, ay / aw, az / aw, bx / bw, by / bw, bz / bw)
+}
+
+///|
 /// The ground point (world pixels relative to the center) under the screen
 /// point (x, y): where the ray through it meets the map plane. Points above the
 /// horizon line take the ground at the line.
@@ -293,12 +308,7 @@ fn Transform::ground(
   y : Double,
 ) -> (Double, Double) {
   let y = @cmp.maximum(y, self.height / 2.0 - self.horizon())
-  let nx = x / self.width * 2.0 - 1.0
-  let ny = 1.0 - y / self.height * 2.0
-  let (ax, ay, az, aw) = self.inverse.apply(nx, ny, -1.0, 1.0)
-  let (bx, by, bz, bw) = self.inverse.apply(nx, ny, 1.0, 1.0)
-  let (ax, ay, az) = (ax / aw, ay / aw, az / aw)
-  let (bx, by, bz) = (bx / bw, by / bw, bz / bw)
+  let (ax, ay, az, bx, by, bz) = self.screen_ray(x, y)
   if az == bz {
     return (0.0, 0.0)
   }
@@ -318,23 +328,6 @@ pub fn Transform::screen_to_mercator(
   let ws = self.world_size()
   let (px, py) = self.ground(x, y)
   { x: c.x + px / ws, y: c.y + py / ws, }
-}
-
-///|
-/// Screen point (CSS pixels) of a mercator position.
-pub fn Transform::mercator_to_screen(
-  self : Transform,
-  m : MercatorCoord,
-) -> (Double, Double) {
-  let c = self.camera.center.to_mercator()
-  let ws = self.world_size()
-  let (x, y, _, w) = self.view.apply(
-    (m.x - c.x) * ws,
-    (m.y - c.y) * ws,
-    0.0,
-    1.0,
-  )
-  ((x / w + 1.0) / 2.0 * self.width, (1.0 - y / w) / 2.0 * self.height)
 }
 
 ///|
@@ -446,7 +439,7 @@ pub fn Transform::tile_matrix(
     let (x, y) = (c.x * ws, c.y * ws)
     let x_shift = (self.width.to_int() % 2).to_double() / 2.0
     let y_shift = (self.height.to_int() % 2).to_double() / 2.0
-    let b = self.camera.bearing * @math.PI / 180.0
+    let b = radians(self.camera.bearing)
     let (cos, sin) = (@math.cos(b), @math.sin(-b))
     let dx = x - x.round() + cos * x_shift + sin * y_shift
     let dy = y - y.round() + cos * y_shift + sin * x_shift
