@@ -197,6 +197,30 @@ fn parse_text(
       path="\{path}.\{key}",
     )
   }
+  // MapLibre sorts by key unless the order is `viewport-y`.
+  let sort_key = match (layout.get("symbol-sort-key"), z_order) {
+    (None, _) | (_, ViewportY) => None
+    (Some(j), _) =>
+      Some(compile(j, expected=NumberType, path="\{path}.symbol-sort-key"))
+  }
+  // `text-font` is a list of names unless it is an expression (MapLibre's `isExpression`).
+  let font = match layout.get("text-font") {
+    None => None
+    Some(Array([String(op), ..] as items)) if !(op
+      is ("get" | "global-state" | "var")) &&
+      items.iter().all(j => j is String(_)) =>
+      Some(
+        Lit(
+          List(
+            items.map(j => if j is String(s) { Value::Str(s) } else { Null }),
+          ),
+        ),
+      )
+    Some(j) =>
+      Some(
+        compile(j, expected=ArrayOf(StringType, -1), path="\{path}.text-font"),
+      )
+  }
   {
     field: match layout.get("text-field") {
       None => []
@@ -236,30 +260,8 @@ fn parse_text(
           "not a list of horizontal and vertical",
         )
     },
-    // MapLibre sorts by key unless the order is `viewport-y`.
-    sort_key: match (layout.get("symbol-sort-key"), z_order) {
-      (None, _) | (_, ViewportY) => None
-      (Some(j), _) =>
-        Some(compile(j, expected=NumberType, path="\{path}.symbol-sort-key"))
-    },
-    font: match layout.get("text-font") {
-      None => None
-      // A list of names, unless it is an expression (MapLibre's `isExpression`).
-      Some(Array([String(op), ..] as items)) if !(op
-        is ("get" | "global-state" | "var")) &&
-        items.iter().all(j => j is String(_)) =>
-        Some(
-          Lit(
-            List(
-              items.map(j => if j is String(s) { Value::Str(s) } else { Null }),
-            ),
-          ),
-        )
-      Some(j) =>
-        Some(
-          compile(j, expected=ArrayOf(StringType, -1), path="\{path}.text-font"),
-        )
-    },
+    sort_key,
+    font,
     letter_spacing: layout_expr(
       "text-letter-spacing",
       NumberType,

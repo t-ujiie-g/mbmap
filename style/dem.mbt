@@ -21,7 +21,7 @@ pub(all) enum HillshadeMethod {
 
 ///|
 /// Most lights a hillshade layer may have (`hillshade-highlight-color` entries).
-pub const MAX_HILLSHADE_LIGHTS : Int32 = 8
+const MAX_HILLSHADE_LIGHTS : Int32 = 8
 
 ///|
 /// A hillshade layer's paint: per light (as many as `highlight` lists; shorter

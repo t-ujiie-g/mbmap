@@ -36,11 +36,9 @@ pub(all) enum Cap {
 } derive(Debug, Eq)
 
 ///|
-/// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout
-/// (`icon`, `icon_paint` with `icon-image`); `filter_id` shared by identically written
-/// filters (-1 for none); a fill's `antialias` draws its outline, `outline_color` (or its
-/// color); `radius` a circle's or heatmap's; `blur` a symbol's `text-halo-blur`; the rest
-/// are the Style Spec's of the same names (`translate_viewport`: `*-translate-anchor` viewport).
+/// One drawable layer, paint in CSS pixels, fields named as the Style Spec's: `text`, `icon`,
+/// `icon_paint` a symbol's (the last two with `icon-image`); `filter_id` shared by identically
+/// written filters (-1 none); `radius` a circle's or heatmap's; `blur` `text-halo-blur`.
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -87,9 +85,8 @@ pub struct StyleLayer {
 }
 
 ///|
-/// The drawable part of a MapLibre style: vector and GeoJSON sources, and
-/// the background, fill, line, circle and symbol layers in drawing order.
-/// Other source and layer types are skipped.
+/// The drawable part of a MapLibre style: its sources, its layers in drawing order
+/// (hidden ones and those that cannot be drawn left out), terrain, sky and light.
 pub struct Style {
   sources : Array[Source]
   layers : Array[StyleLayer]
@@ -330,6 +327,8 @@ fn parse_layer(
       }
     None => (None, None)
   }
+  // A heatmap's color is its ramp (`HeatmapPaint::color`).
+  let color_paint = if kind is Heatmap { Map([]) } else { paint }
   let layer : StyleLayer = {
     id: string_or(l, "id", path, ""),
     kind,
@@ -352,12 +351,7 @@ fn parse_layer(
     },
     filter_id,
     color: paint_expr(
-      // A heatmap's color is its ramp (`HeatmapPaint::color`).
-      if kind is Heatmap {
-        Map([])
-      } else {
-        paint
-      },
+      color_paint,
       "\{prefix}-color",
       ppath,
       ColorType,

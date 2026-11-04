@@ -866,7 +866,7 @@ pub fn[T] with_global_state(
 ///|
 /// MapLibre's global state of a style: each key of its `state` with its
 /// `default` (null without one).
-pub fn state_defaults(json : Json) -> Map[String, Json] {
+fn state_defaults(json : Json) -> Map[String, Json] {
   let out = Map([])
   if json is Object(root) && root.get("state") is Some(Object(state)) {
     for k, v in state {

@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 127992,
+      "bytes": 127893,
       "budget": 135000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1754,
+      "bytes": 1749,
       "budget": 5000
     },
     {
@@ -21,12 +21,12 @@
     },
     {
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
-      "bytes": 3603,
+      "bytes": 3592,
       "budget": 5000
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 1677,
+      "bytes": 1678,
       "budget": 2000
     },
     {
@@ -71,12 +71,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 80947,
+      "bytes": 80881,
       "budget": 100000
     },
     {
       "name": "labels (loaded by the display worker with the first tile that has them)",
-      "bytes": 9580,
+      "bytes": 9544,
       "budget": 10000
     },
     {
@@ -96,12 +96,12 @@
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49198,
+      "bytes": 49182,
       "budget": 50000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3425,
+      "bytes": 3404,
       "budget": 5000
     },
     {
@@ -176,7 +176,7 @@
     },
     {
       "name": "mbmap/ui createCoordinates alone",
-      "bytes": 921,
+      "bytes": 928,
       "budget": 2000
     },
     {
