@@ -71,7 +71,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - `raster` のソースとレイヤー。paint は `raster-opacity`、`raster-hue-rotate`、`raster-brightness-min`・`max`、`raster-saturation`、`raster-contrast`、`raster-resampling` に対応する。止まっているときは MapLibre と同じく画素の格子にそろえて描く。フェードはない。
   - `url` で TileJSON を指すソース（vector、raster、raster-dem）。TileJSON の `tiles`、`minzoom`、`maxzoom`、`bounds`、`attribution` などを読み、ソースに書いた値を優先する。`bounds` の外のタイルは要求しない。`scheme: "tms"` にも対応する。
   - PMTiles：`url: "pmtiles://https://…/x.pmtiles"`。プラグインは不要。ワーカーが範囲リクエストでディレクトリとタイルを読む。圧縮は none と gzip に対応する。サーバーは Range に対応している必要がある。
-  - `transformRequest`（オプションと `setTransformRequest`）：スタイル、TileJSON、タイルの要求の URL、ヘッダー、`credentials` を変えられる。既定では資格情報を送らない。PMTiles の範囲リクエストは対象外。
+  - `transformRequest`（オプションと `setTransformRequest`）：スタイル、TileJSON、GeoJSON の `data` の URL、タイルの要求の URL、ヘッダー、`credentials` を変えられる。既定では資格情報を送らない。PMTiles の範囲リクエストは対象外。
 - 地物の状態（feature-state）：`setFeatureState({ source, sourceLayer, id }, state)`、`getFeatureState`、`removeFeatureState(target, key?)`。
   - paint で `["feature-state", key]`（`boolean`・`number`・`string` で型をそろえる）を読むと、その地物だけその状態で描く。fill、line、circle、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
   - 地物の id は、タイルの id、GeoJSON の `id`、または source の `promoteId` が指すプロパティ。同じ id の地物はまとめて同じ状態になる。

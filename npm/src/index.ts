@@ -691,6 +691,7 @@ export class Map {
             (e) => this.#fail(e),
             { workerUrl: o.geojsonWorkerUrl, wasmUrl: o.geojsonWasmUrl, propertiesWasmUrl: o.geojsonPropertiesWasmUrl },
             (json) => engine.compile_cluster_properties(json),
+            (url) => this.#transform?.(url, "Source"),
           );
           return this.#geojson;
         },

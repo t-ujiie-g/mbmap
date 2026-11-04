@@ -62,3 +62,20 @@ test("splitTileUrl takes the archive and z/x/y of an http(s) pmtiles URL only", 
   assert.equal(splitTileUrl("pmtiles://file:///a.pmtiles/3/4/5"), null);
   assert.equal(splitTileUrl("https://x.org/3/4/5.pbf"), null);
 });
+
+test("an Archive whose header fetch failed asks again", async () => {
+  const header = Buffer.alloc(127);
+  header.write("PMTiles", 0, "ascii");
+  header[7] = 3;
+  let fail = true;
+  let fetches = 0;
+  const archive = new Archive("a", async (_, offset, length) => {
+    fetches++;
+    if (fail) throw new Error("offline");
+    return new Uint8Array(header.subarray(offset, offset + length));
+  });
+  await assert.rejects(archive.start(), /offline/);
+  fail = false;
+  assert.ok((await archive.start()).header);
+  assert.equal(fetches, 2);
+});

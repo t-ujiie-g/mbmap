@@ -37,7 +37,7 @@ export type ResourceType = "Style" | "Source" | "Tile" | "SpriteJSON" | "SpriteI
 /**
  * MapLibre's `transformRequest`: may change a request's `url`, add `headers` or send
  * `credentials` (none are sent otherwise). Return undefined to leave the request as it is.
- * PMTiles range requests are not passed through it.
+ * A GeoJSON source's `data` URL is asked about as `"Source"`; PMTiles range requests are not passed through it.
  */
 export type RequestTransformFunction = (
   url: string,

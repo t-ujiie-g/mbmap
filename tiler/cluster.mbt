@@ -137,6 +137,7 @@ pub struct ClusterIndex {
   priv trig : Trig
   priv properties : ClusterProperties?
   priv props : Array[Array[@geom.Prop]]
+  priv mut found : FixedArray[Int32]
 }
 
 ///|
@@ -164,6 +165,7 @@ pub fn ClusterIndex::new(
     trig,
     properties,
     props: [],
+    found: FixedArray::make(0, 0),
   }
   let mut set = convert(table, 0.0, trig)
   if options.wrap {
@@ -532,7 +534,11 @@ pub fn ClusterIndex::children(
   }
   let o = self.options
   let r = o.radius / (o.extent.to_double() * pow2(zoom - 1)) * SCALE
-  let found = FixedArray::make(tree.num_items, 0)
+  // Reused: leaves call this once per nested cluster.
+  if self.found.length() < tree.num_items {
+    self.found = FixedArray::make(tree.num_items, 0)
+  }
+  let found = self.found
   let n = tree.kd.within_into(
     tree.coords[origin * 2].to_double(),
     tree.coords[origin * 2 + 1].to_double(),

@@ -132,8 +132,8 @@ async function decompress(bytes, compression) {
 }
 
 /**
- * One archive at `url`, read through `fetchRange(url, offset, length)` (a Promise of the bytes):
- * its header and directories are cached, tiles fetched as asked.
+ * One archive at `url`, read through `fetchRange(url, offset, length, signal)` (a Promise of the
+ * bytes): its header and directories are cached until a fetch of them fails, tiles fetched as asked.
  */
 export class Archive {
   constructor(url, fetchRange) {
@@ -145,7 +145,12 @@ export class Archive {
 
   /** The header, and the first bytes it came with. */
   start() {
-    this.first ??= this.fetchRange(this.url, 0, FIRST_BYTES).then((bytes) => ({ bytes, header: parseHeader(bytes) }));
+    this.first ??= this.fetchRange(this.url, 0, FIRST_BYTES)
+      .then((bytes) => ({ bytes, header: parseHeader(bytes) }))
+      .catch((e) => {
+        this.first = null;
+        throw e;
+      });
     return this.first;
   }
 
@@ -159,14 +164,18 @@ export class Archive {
         const raw = offset + length <= bytes.length ? bytes.subarray(offset, offset + length) : await this.fetchRange(this.url, offset, length);
         return parseDirectory(await decompress(raw, header.internalCompression));
       })();
+      const settled = dir;
+      settled.catch(() => {
+        if (this.directories.get(key) === settled) this.directories.delete(key);
+      });
       if (this.directories.size >= MAX_DIRECTORIES) this.directories.delete(this.directories.keys().next().value);
       this.directories.set(key, dir);
     }
     return dir;
   }
 
-  /** Tile z/x/y's bytes, decompressed; null where the archive has none. */
-  async tile(z, x, y) {
+  /** Tile z/x/y's bytes, decompressed; null where the archive has none. `signal` cancels its data's fetch only. */
+  async tile(z, x, y, signal) {
     const { header } = await this.start();
     if (z < header.minZoom || z > header.maxZoom) return null;
     const id = tileId(z, x, y);
@@ -177,7 +186,7 @@ export class Archive {
       if (!entry) return null;
       if (entry.runLength > 0) {
         if (entry.length > MAX_PART_BYTES) throw new Error("PMTiles: tile too large");
-        const raw = await this.fetchRange(this.url, header.tileDataOffset + entry.offset, entry.length);
+        const raw = await this.fetchRange(this.url, header.tileDataOffset + entry.offset, entry.length, signal);
         return decompress(raw, header.tileCompression);
       }
       offset = header.leafDirectoryOffset + entry.offset;

@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 127989,
+      "bytes": 127997,
       "budget": 135000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1697,
+      "bytes": 1749,
       "budget": 5000
     },
     {
@@ -26,7 +26,7 @@
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 1657,
+      "bytes": 1678,
       "budget": 2000
     },
     {
@@ -71,7 +71,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 80952,
+      "bytes": 80947,
       "budget": 100000
     },
     {
@@ -81,7 +81,7 @@
     },
     {
       "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
-      "bytes": 1990,
+      "bytes": 2028,
       "budget": 3000
     },
     {
@@ -91,12 +91,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29313,
+      "bytes": 29435,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49055,
+      "bytes": 49198,
       "budget": 50000
     },
     {

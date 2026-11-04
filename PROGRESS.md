@@ -2,9 +2,9 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、下の節）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）と R2（正しさ、下の節）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（下の節）→ R2 正しさ → R3 重複・定数・分割・テスト → R4 文書。残りの指摘は「全体のレビュー（2026-11-04）」の節。
+  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（#93）→ R2 正しさ（下の節）→ R3 重複・定数・分割・テスト → R4 文書。残りの指摘は「全体のレビュー（2026-11-04）」の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -24,7 +24,16 @@
 
 8 つの範囲（style、表示ワーカー、map と描画、core〜tess、GeoJSON と分析、幾何・座標系・測地線、npm の窓口、道具と文書）を、読むだけのサブエージェントが §7・§8 の観点で全部読んだ。指摘を 4 本の PR に分けて直す。
 
-### R1：セキュリティ（このブランチ）
+### R2：正しさ（このブランチ）
+
+- キーつきのスプライト URL（`https://…/sprite?key=K`）は `?key=K@2x.json` になって読めなかった。MapLibre の `normalizeSpriteURL` と同じく、path に足す（`spriteUrl`、`npm/src/images.ts`）。
+- `*-sort-key` と `symbol-z-order` は描いているのに「まだ描かない」と警告が出ていた。`ignored_properties` には `symbol-avoid-edges` だけが残る。
+- 複数のホストを持つソースは要求の番号でホストを選んでいたため、同じタイルでも読み直すたびに別のホストになり、HTTP のキャッシュが効かなかった。MapLibre の `CanonicalTileID.url` と同じく `(x + y) % n` で選ぶ。
+- PMTiles のヘッダーやディレクトリの取得に一度失敗すると、そのアーカイブはそのセッションの間使えなかった。失敗したものは覚えない。取り消されたタイルは、タイルのデータの取得も止める（ヘッダーとディレクトリはほかのタイルと共有するので止めない）。
+- `ClusterIndex::children` は呼ぶたびに木全体の大きさの配列を確保していた。leaves は入れ子のクラスタごとに呼ぶので、大きなクラスタではワーカーが固まった。配列は使い回す。
+- GeoJSON の `data` の URL も `transformRequest`（`"Source"`、MapLibre と同じ）を通す。ヘッダーと `credentials` はワーカーがタイルと同じ形で確かめる。
+
+### R1：セキュリティ（#93）
 
 - **式のコンパイル**（高）：`coalesce` の型を求め直していたため、入れ子が 1 段深くなるたびにコンパイル時間が倍になっていた（20 段 90 ms、22 段 360 ms。`MAX_EXPR_DEPTH` の 31 段では数分）。`var` の共有では 3 倍ずつ。子の型は一度だけ求め、ノード数をコンパイルしながら数えて（`var` は束縛先の大きさで）`MAX_EXPR_NODES` を超えたらすぐ止める。
 - **表示ワーカーの出力の大きさ**（高）：テッセレーションの出力に上限がなく、詰めるとき（`MAX_PACKED_BYTES`）まで分からなかった。レイヤーごとの残り（`TileProcessor.budget`）を、地物の前は点の数の下限で、後は実際の頂点と index で減らす。線は丸い角で 1 点から多くの頂点を作るので、`LineBuffers::limit` で途中で止める。
@@ -43,13 +52,6 @@
 
 ### 残りの指摘
 
-- **R2（正しさ）**：
-  - キーつきのスプライト URL（`?key=`）が壊れる（`sprite.ts`、MapLibre は pathname に足す）。
-  - 描いている `*-sort-key` と `symbol-z-order` に「まだ描かない」と警告が出る（`lenient.mbt`）。
-  - 複数ホストのタイルを要求の番号で選ぶので、キャッシュが効かない（MapLibre は `(x + y) % n`）。
-  - PMTiles が失敗した取得を覚え続け、取り消しと `transformRequest` も効かない。
-  - `ClusterIndex::children` が呼ぶたびに木全体の大きさを確保する。
-  - GeoJSON の `data` の URL が `transformRequest` を通らない。
 - **R3（重複・定数・分割・テスト）**：
   - 使われない公開を外す。`map_gpu_bytes`、`map_handler_enabled`、`map_has_image`、`map_image_names`、`Transform::mercator_to_screen`、`clipper.Rect64`、`@tiler.abbreviated_count` など。`engine.d.ts` と `bundle/main` の食い違いも直す。
   - 定数にする。tess とシェーダの `4096`、詰めた項目の語の位置（packed.mbt と worker.mjs の `e + 28` など）、柱状タイルの型の番号、ズームの上限、`pmtiles://`、深さ 32、クリックの 3 px、`MAX_GEOJSON_BYTES`（= `MAX_INPUT_BYTES`）。

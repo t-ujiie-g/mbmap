@@ -24,8 +24,9 @@ export interface GeoJSONTiles {
 }
 
 /**
- * Starts the GeoJSON worker and loads `sources`, resolving data URLs against `base`; `compile` turns a source's
- * `clusterProperties` into what the worker's module with expressions (`geojson-properties.wasm`) reads.
+ * Starts the GeoJSON worker and loads `sources`, resolving data URLs against `base` and asking `transform`
+ * (the map's `transformRequest`, as `"Source"`) about them; `compile` turns a source's `clusterProperties`
+ * into what the worker's module with expressions (`geojson-properties.wasm`) reads.
  */
 export function createGeoJSONTiles(
   sources: GeoJSONSource[],
@@ -33,6 +34,7 @@ export function createGeoJSONTiles(
   onError: (error: Error) => void,
   urls: { workerUrl?: string | URL; wasmUrl?: string | URL; propertiesWasmUrl?: string | URL } = {},
   compile: (clusterProperties: string) => Uint8Array = () => new Uint8Array(0),
+  transform: (url: string) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined = () => undefined,
 ): GeoJSONTiles {
   const page = new URL(document.baseURI);
   const worker = new Worker(
@@ -92,12 +94,14 @@ export function createGeoJSONTiles(
     const options = { type: "load", source: n, ...loadOptions(s.spec), ...(p && p.length > 0 ? { properties: p } : {}) };
     const data = s.spec.data;
     if (typeof data === "string") {
-      const url = new URL(data, base);
+      const given = new URL(data, base).href;
+      const r = transform(given);
+      const url = new URL(r?.url ?? given, base);
       if (!/^https?:$/.test(url.protocol)) {
         onError(new Error(`mbmap: GeoJSON source ${s.id}: data must be an http(s) URL: ${url.href}`));
         return;
       }
-      worker.postMessage({ ...options, url: url.href });
+      worker.postMessage({ ...options, url: url.href, init: r ? { headers: r.headers, credentials: r.credentials } : undefined });
     } else {
       const bytes = new TextEncoder().encode(JSON.stringify(data)).buffer;
       worker.postMessage({ ...options, bytes }, [bytes]);

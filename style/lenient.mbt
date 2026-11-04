@@ -1,9 +1,7 @@
 ///|
 /// Properties of the Style Spec that are not drawn yet: a style using them
 /// is drawn without them, with a warning.
-let ignored_properties : Array[String] = [
-  "fill-sort-key", "line-sort-key", "circle-sort-key", "symbol-avoid-edges", "symbol-z-order",
-]
+let ignored_properties : Array[String] = ["symbol-avoid-edges"]
 
 ///|
 /// What a style uses that cannot be drawn. Strict, the first one raises;
