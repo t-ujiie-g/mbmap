@@ -18,7 +18,7 @@ export function anchorShares(code) {
   return [leftShare(name), topShare(name)];
 }
 
-// The em box's share above the baseline.
+// In columns, the em box's share above an upright glyph's baseline.
 const ASCENT = 0.88;
 // MapLibre's glyph units per em (`ONE_EM`), in which it breaks lines.
 const ONE_EM = 24;
@@ -63,9 +63,11 @@ export const JUSTIFY = ["auto", "left", "center", "right"];
 // MapLibre's baseline shift of a glyph against its line's top, as a share of the em box
 // left above it (`getVerticalAlignFactor`): bottom (the default), center, top.
 const ALIGN = [1, 0.5, 0];
-// MapLibre's `SHAPING_DEFAULT_OFFSET` in ems; with it, where our ASCENT puts the baseline.
+// MapLibre's `SHAPING_DEFAULT_OFFSET` in ems, and a glyph's baseline below its shaped y: its quad's top is
+// `topAdjustment` 27.5 (render/glyph_manager.ts) less the rect buffer 4 (`getGlyphQuads`) above the ink's top,
+// where ours has the SDF buffer and the atlas pixel (2 per unit at SDF_SIZE).
 const DEFAULT_OFFSET = 17 / ONE_EM;
-const BASELINE = ASCENT - 0.5 + DEFAULT_OFFSET;
+const BASELINE = (27.5 - 4 + (SDF_BUFFER + 1) / 2) / ONE_EM;
 
 // Lays `text` out at `size` px like MapLibre, letters `spacing` ems apart, in columns when `vertical` and it has
 // upright characters (`metrics(cp, i)` of the i-th code point at SDF_SIZE, `key` its glyph; `sections`, from `format`,
@@ -95,8 +97,9 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
   const y0 = -height * topShare(name) + offset[1] * size;
   const share = columns ? topShare(name) : leftShare(justify === "auto" ? name : justify);
   const quads = [];
-  // A glyph's padded bitmap against its pen and baseline, before any turn.
-  const rect = (m, s = 1) => [m.left * scale * s, -m.top * scale * s, (m.left + m.width) * scale * s, (m.height - m.top) * scale * s];
+  // A glyph's padded bitmap and its pixel of atlas padding (label/atlas.mbt `GLYPH_PADDING`) against its pen
+  // and baseline, before any turn.
+  const rect = (m, s = 1) => [(m.left - 1) * scale * s, -(m.top + 1) * scale * s, (m.left + m.width + 1) * scale * s, (m.height - m.top + 1) * scale * s];
   const inked = (m) => m.width > 2 * SDF_BUFFER && m.height > 2 * SDF_BUFFER;
   // An unturned glyph with its pen at x and its baseline at y.
   const standing = (cp, m, x, y, s) => {
@@ -113,7 +116,7 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
         const [cp, m, s] = [cps[k], metrics(cps[k], k), sc(k)];
         const baseline = y0 + top + shift + (tallest[i] - s) * ALIGN[sections?.aligns[k] ?? 0] * size + s * BASELINE * size;
         // `along`: the glyph's middle, where a label along a line puts it on the line.
-        if (inked(m)) quads.push({ ...standing(cp, m, pen, baseline, s), along: pen + (m.advance * scale * s) / 2, ...(sections ? { scale: s, k } : {}) });
+        if (inked(m)) quads.push({ ...standing(cp, m, pen, baseline, s), along: pen + (m.advance * scale * s) / 2, ...(sections ? { k } : {}) });
         pen += m.advance * scale * s + gap;
       }
       top += heights[i];

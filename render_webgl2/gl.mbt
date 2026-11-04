@@ -221,7 +221,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "uniform sampler2D u_image; uniform sampler2D u_ramp; uniform float u_opacity; in vec2 v_pos; out vec4 o;" +
   #|    "void main() { o = texture(u_ramp, vec2(texture(u_image, v_pos).r, 0.5)) * u_opacity; }",
   #|    ["u_image", "u_ramp", "u_opacity"]);
-  #|  // a_data: corner offset in quarter CSS px (y down), a_shift: the label's in CSS px;
+  #|  // a_data: corner offset in 16ths of a CSS px (y down), a_shift: the label's in CSS px;
   #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
   #|  // height (m); a_fill a format section's color where a_section is 1.
   #|  // The anchor in clip space and its visibility behind terrain (v_alpha).
@@ -258,10 +258,10 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    // by MapLibre's ratio for text pitched with the map; u_along is tile units per px.
   #|    "  if (u_along > 0.0) { float q = clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
   #|    "    float s = sin(a_glyph.z), k = cos(a_glyph.z);" +
-  #|    "    vec4 p = u_matrix * vec4(a_glyph.xy + mat2(k, s, -s, k) * a_data * 0.25 * q * u_along, a_ele * u_scale, 1.0);" +
+  #|    "    vec4 p = u_matrix * vec4(a_glyph.xy + mat2(k, s, -s, k) * a_data * 0.0625 * q * u_along, a_ele * u_scale, 1.0);" +
   #|    "    gl_Position = p; v_scale = a_size / 384.0 * q; v_gamma = p.w; return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
-  #|    "  vec2 off = (a_data * 0.25 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
+  #|    "  vec2 off = (a_data * 0.0625 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
   #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_scale = a_size / 384.0 * r; }",
   #|    sdf("r", "v_color", "in vec4 v_color; const bool u_sdf = true;"),
   #|    [...symbolUniforms, "u_fill_opacity"]);
