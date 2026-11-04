@@ -496,6 +496,7 @@ pub struct StyleLayer {
   pitch_with_map : Bool
   sort_key : Expr?
 }
+pub fn StyleLayer::feature_dashes(Self) -> Expr?
 pub fn StyleLayer::line_distances(Self) -> Bool
 pub fn StyleLayer::line_offsets(Self) -> Bool
 pub fn StyleLayer::paints_by_group(Self) -> Bool

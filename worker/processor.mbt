@@ -14,6 +14,7 @@ pub struct TileProcessor {
   priv extrusion_pool : Array[@tess.ExtrusionBuffers]
   priv line_pool : Array[@tess.LineBuffers]
   priv gradient_pool : Array[GradientRows]
+  priv dash_pool : Array[Dashes]
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
   priv place : @style.TileGeometry
@@ -52,6 +53,7 @@ pub fn TileProcessor::new(
     extrusion_pool: [],
     line_pool: [],
     gradient_pool: [],
+    dash_pool: [],
     label_pool: [],
     geometry: @mvt.Geometry::new(),
     place: @style.TileGeometry::new(),
@@ -162,7 +164,7 @@ fn passes(filter : @style.Expr?, feature : FeatureRef, zoom : Double) -> Bool {
 ///|
 /// Whether two layers produce identical buffers. Line extrusion is stored in
 /// half widths, so layers that differ only in paint (like a road and its
-/// casing) share one; layers sorted by a key keep their own.
+/// casing) share one; layers sorted by a key or dashed by feature keep their own.
 fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   // Extrusions carry their heights in their vertices.
   !(a.kind is (Symbol | FillExtrusion)) &&
@@ -172,6 +174,8 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   a.filter_id == b.filter_id &&
   a.sort_key is None &&
   b.sort_key is None &&
+  a.feature_dashes() is None &&
+  b.feature_dashes() is None &&
   (a.kind is (Fill | Circle | Heatmap) || a.same_line_layout(b))
 }
 

@@ -302,6 +302,19 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 16.6, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
+  // Dashes by feature (MapLibre's dasharray attributes): road classes, round ends, a pattern that
+  // fails (drawn solid by both), at a fractional zoom where edges are smoothed as zooming in.
+  "dashes-by-feature": {
+    style: style([
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round" },
+        paint: { "line-color": "#c06030", "line-width": ["match", ["get", "rdCtg"], [0, 1], 3, 1.5],
+          "line-dasharray": ["match", ["get", "rdCtg"], 0, ["literal", [3, 2]], 1, ["literal", [1, 1.5]], 2, ["literal", [2, 1, 0.5, 1]], ["literal", [0.5, 2]]] } },
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway",
+        paint: { "line-color": "#333333", "line-width": 2.5, "line-dasharray": ["case", [">", ["to-number", ["get", "snglDbl"], 0], 1], ["literal", [4, 1]], ["literal", [1, 3]]] } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 0, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
   expressions: {
     style: style([
       { id: "pt", type: "circle", source: "gsi", "source-layer": "label", filter: [">", ["to-number", ["get", "orgGILvl"]], 0],

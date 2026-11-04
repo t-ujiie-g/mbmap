@@ -195,6 +195,16 @@ extern "js" fn distances_of_layer(v : JsValue) -> JsValue =
   #|(v) => v.distances ?? null
 
 ///|
+/// How many dash patterns by feature a packed line layer has, -1 without them.
+extern "js" fn dash_pattern_count(v : JsValue) -> Int32 =
+  #|(v) => (Array.isArray(v.dashPatterns) && v.dashMarks ? v.dashPatterns.length : -1)
+
+///|
+/// Dash pattern `i` of a packed line layer (`dash_pattern_count`).
+extern "js" fn dash_pattern_at(v : JsValue, i : Int32) -> FixedArray[Double] =
+  #|(v, i) => v.dashPatterns[i].filter((x) => typeof x === "number")
+
+///|
 extern "js" fn console_warn(message : String) -> Unit =
   #|(m) => console.warn("[mbmap] " + m)
 

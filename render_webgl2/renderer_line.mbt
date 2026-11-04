@@ -109,6 +109,68 @@ pub fn Renderer::dash(
 }
 
 ///|
+/// Adds a line mesh's dash patterns by feature (docs/FORMATS.md, "Packed tile"):
+/// `patterns` as the atlas places them (None where it cannot), `marks` per vertex.
+pub fn Renderer::upload_feature_dashes(
+  self : Renderer,
+  mesh : Mesh,
+  patterns : Array[DashEntry?],
+  marks : JsBuffer,
+) -> Unit {
+  let entries = FixedArray::make(patterns.length() * 2, -1.0)
+  for k, p in patterns {
+    if p is Some(e) {
+      entries[k * 2] = (e.y * 64 + e.height).to_double()
+      entries[k * 2 + 1] = e.width
+    }
+  }
+  gl_upload_feature_dashes(self.gl, mesh, marks, entries)
+}
+
+///|
+/// `draw_line_dash` with each feature's patterns (`upload_feature_dashes`),
+/// their edges smoothed as zooming in (`zoom_in`: over the shorter of the pattern
+/// and the one a zoom out) or out.
+pub fn Renderer::draw_line_dash_by_feature(
+  self : Renderer,
+  mesh : Mesh,
+  at : Placement,
+  slots : PaintSlots,
+  dpr : Double,
+  blur~ : Double = 0.0,
+  zoom_in~ : Bool,
+  px_per_unit~ : Double,
+  floor_width~ : Double,
+  floor_t~ : Double,
+) -> Unit {
+  if self.atlas.take_dirty() {
+    gl_dash_atlas(self.gl, self.atlas.data, LINE_ATLAS_WIDTH, LINE_ATLAS_HEIGHT)
+  }
+  self.bind("lineDashFeature", mesh, slots, 6)
+  gl_draw_line_dash_feature(
+    self.gl,
+    mesh,
+    at.matrix.m,
+    at.clip,
+    at.units_per_pixel,
+    at.center_depth,
+    dpr,
+    blur * dpr,
+    [
+      px_per_unit,
+      1.0 / LINE_ATLAS_HEIGHT.to_double(),
+      1.0 / dpr,
+      if zoom_in {
+        1.0
+      } else {
+        0.0
+      },
+    ],
+    [floor_width, floor_t],
+  )
+}
+
+///|
 /// `draw_line` with dash pattern `entry` (MapLibre's line_sdf; `px_per_unit`: CSS
 /// px per tile unit at the integer zoom, `floor_width` the width there, or the
 /// width slot mixed `floor_t` when negative; edges smoothed over `gamma_width`).

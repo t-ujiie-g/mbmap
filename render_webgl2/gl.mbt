@@ -45,6 +45,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 13, "a_dist");
   #|    gl.bindAttribLocation(p, 14, "a_progress");
   #|    gl.bindAttribLocation(p, 15, "a_shift");
+  #|    gl.bindAttribLocation(p, 15, "a_dash");
   #|    gl.bindAttribLocation(p, 13, "a_glyph");
   #|    gl.bindAttribLocation(p, 5, "a_fill");
   #|    gl.bindAttribLocation(p, 14, "a_section");
@@ -92,6 +93,10 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // pattern's length u_dash.x, the atlas row u_dash.y spanning u_dash.z
   #|  // across the line, edges smoothed by u_dash.w; all in floor widths
   #|  // (u_floor.x, or the width slot mixed by u_floor.y when it is negative).
+  #|  // Dashes by feature (dash 2) take the row, height and width from a_dash (row
+  #|  // times 64 plus height, width, edge lengths zooming in and out; a negative
+  #|  // width draws solid), u_dash holding px per unit, 1 / atlas height, 1 / dpr
+  #|  // and whether to take the zooming-in edge.
   #|  // Gradients are MapLibre's line_gradient: the color at a_progress (share
   #|  // of the line, row of u_rows) in the ramp u_image, premultiplied.
   #|  // Line patterns are MapLibre's line_pattern: the image as tall as the floor
@@ -101,6 +106,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    paint + "in vec2 a_pos; in vec4 a_data; in vec2 a_offset; uniform mat4 u_matrix; uniform float u_units; uniform float u_dpr;" +
   #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out vec2 v_width; out float v_scale; out vec4 v_color;" +
   #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
+  #|    (dash === 2 ? "in vec4 a_dash; flat out float v_mode;" : "") +
   #|    (grad ? "in vec2 a_progress; uniform float u_rows; out vec2 v_uv; out float v_opacity;" : "") +
   #|    (pat ? "in float a_dist; uniform vec2 u_floor; out float v_dist; out float v_fw; out float v_opacity;" : "") +
   #|    "void main() { float aa = 0.5; float gap = at(a_stroke_opacity, 4) * u_dpr / 2.0;" +
@@ -110,8 +116,11 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "  vec2 off = at(a_stroke_width, 5) * u_dpr * a_offset / 63.0;" +
   #|    "  v_pos = a_pos + (off + a_data.xy / 63.0 * outset) * u_units; v_color = color();" +
   #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); v_edge = a_data.zw;" +
-  #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" +
-  #|      "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
+  #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
+  #|    (dash === 2 ? "  float row = floor(a_dash.x / 64.0); float h = a_dash.x - row * 64.0;" +
+  #|      "  float g = u_dash.w > 0.5 ? a_dash.z : a_dash.w; v_mode = a_dash.y < 0.0 ? 1.0 : a_dash.y == 0.0 || g <= 0.0 ? 2.0 : 0.0;" +
+  #|      "  v_tex = vec2(a_dist * u_dash.x / a_dash.y / fw, (a_data.z * -h / 2.0 + row + 0.5) * u_dash.y); v_gamma = u_dash.z / g / fw;" :
+  #|      dash ? "  v_tex = vec2(a_dist * u_dash.x / fw, a_data.z * u_dash.z + u_dash.y); v_gamma = u_dash.w / fw;" : "") +
   #|    (grad ? "  v_uv = vec2(a_progress.x, (a_progress.y + 0.5) / u_rows); v_opacity = at(a_opacity, 1);" : "") +
   #|    (pat ? "  v_dist = a_dist; v_opacity = at(a_opacity, 1);" +
   #|      "  v_fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
@@ -120,6 +129,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    // around round caps.
   #|    clip + "in vec4 v_color; in vec2 v_edge; in vec2 v_width; in float v_scale; uniform float u_blur; out vec4 o;" +
   #|    (dash ? "uniform sampler2D u_image; in vec2 v_tex; in float v_gamma;" : "") +
+  #|    (dash === 2 ? "flat in float v_mode;" : "") +
   #|    (grad ? "uniform sampler2D u_image; in vec2 v_uv; in float v_opacity;" : "") +
   #|    (pat ? "uniform sampler2D u_image; uniform vec4 u_pattern; uniform vec2 u_texsize; uniform vec2 u_size;" +
   #|      "uniform float u_along; in float v_dist; in float v_fw; in float v_opacity;" : "") +
@@ -130,10 +140,11 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|      "  vec4 c = v_color;") +
   #|    "  float d = length(v_edge) * v_width.x; float b = (u_blur + 1.0) * v_scale;" +
   #|    "  o = c * clamp(min(d - (v_width.y - b), v_width.x - d) / b, 0.0, 1.0);" +
+  #|    (dash === 2 ? "  if (v_mode > 1.5) discard; if (v_mode < 0.5)" : "") +
   #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
   #|    ["u_matrix", "u_units", "u_dpr", "u_depth", "u_clip", "u_t", "u_blur", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
   #|      ...(grad ? ["u_rows", "u_image"] : []), ...(pat ? ["u_floor", "u_image", "u_pattern", "u_texsize", "u_size", "u_along"] : [])]);
-  #|  const line = lineProgram(false, false, false), lineDash = lineProgram(true, false, false);
+  #|  const line = lineProgram(false, false, false), lineDash = lineProgram(true, false, false), lineDashFeature = lineProgram(2, false, false);
   #|  const lineGradient = lineProgram(false, true, false), linePattern = lineProgram(false, false, true);
   #|  // MapLibre's patterns (fill_pattern, fill_outline_pattern, background_pattern):
   #|  // tile units in CSS pixels at the integer zoom (u_units), offset by the tile's
@@ -539,7 +550,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    out[i + 3] = 255;
   #|  };
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
+  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
   #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
   #|}
 

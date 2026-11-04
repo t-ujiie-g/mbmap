@@ -307,9 +307,10 @@ fn Map::draw_layer(
   let zoom = self.transform.camera.zoom
   // Dashes and the width they are measured in are taken at the integer zoom.
   let floor_zoom = @cmp.maximum(0.0, zoom.floor())
+  let by_feature = layer.feature_dashes() is Some(_)
   let dash = match layer.dasharray {
-    Some(e) => self.dash_of(e, zoom, layer.cap is Round)
-    None => None
+    Some(e) if !by_feature => self.dash_of(e, zoom, layer.cap is Round)
+    _ => None
   }
   // Fill outlines go after every fill of the tile, as MapLibre draws them.
   let outlines : Array[() -> Unit] = []
@@ -391,6 +392,23 @@ fn Map::draw_layer(
           self.slots(index, m, p, zoom),
           dpr,
           pos,
+          floor_width~,
+          floor_t~,
+          blur=p.blur,
+        )
+      })
+    } else if m.kind == KIND_LINE && by_feature {
+      let (floor_width, floor_t) = self.floor_width(index, layer, m, zoom)
+      let px_per_unit = @math.pow(2.0, floor_zoom - zoom) /
+        (at.units_per_pixel * dpr)
+      self.draw_by_state(m, layer, p, zoom, p => {
+        self.renderer.draw_line_dash_by_feature(
+          m.mesh,
+          at,
+          self.slots(index, m, p, zoom),
+          dpr,
+          zoom_in=zoom > floor_zoom,
+          px_per_unit~,
           floor_width~,
           floor_t~,
           blur=p.blur,
