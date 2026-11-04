@@ -1,0 +1,129 @@
+{
+  "env": {
+    "node": "v22.23.4",
+    "papaparse": "5.7.0",
+    "betterknown": "1.2.0",
+    "wkx": "0.5.0",
+    "tiles": [
+      "14/14552/6451",
+      "14/14551/6450",
+      "14/14553/6452"
+    ]
+  },
+  "results": {
+    "csv cases": {
+      "cases": 31,
+      "rows": 55,
+      "identical": 28,
+      "bothRefuse": 3,
+      "differ": 0
+    },
+    "wkt cases": {
+      "cases": 30,
+      "rows": 31,
+      "identical": 30,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "wkt refused": {
+      "cases": 13,
+      "rows": 0,
+      "identical": 0,
+      "bothRefuse": 13,
+      "differ": 0
+    },
+    "wkb cases": {
+      "cases": 353,
+      "rows": 385,
+      "identical": 353,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "wkb hex cases": {
+      "cases": 352,
+      "rows": 384,
+      "identical": 352,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "wkb refused": {
+      "cases": 6,
+      "rows": 0,
+      "identical": 1,
+      "bothRefuse": 5,
+      "differ": 0
+    },
+    "gsi wkt": {
+      "cases": 2,
+      "rows": 57800,
+      "identical": 2,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "gsi wkb": {
+      "cases": 4,
+      "rows": 115600,
+      "identical": 4,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "gsi csv": {
+      "cases": 5,
+      "rows": 58748,
+      "identical": 5,
+      "bothRefuse": 0,
+      "differ": 0
+    }
+  },
+  "deviations": [
+    {
+      "group": "wkt",
+      "label": "POINT (1 2) trailing",
+      "why": "betterknown stops after one geometry; mbmap/data reads geometries to the end and refuses other text",
+      "ok": true
+    },
+    {
+      "group": "wkt",
+      "label": "POINT (1a 2)",
+      "why": "betterknown's parseFloat takes a number's prefix; mbmap/data refuses the field",
+      "ok": true
+    },
+    {
+      "group": "wkt",
+      "label": "POINT (1 2 3)",
+      "why": "betterknown refuses Z without a tag; mbmap/data takes 2 to 4 ordinates when untagged, as GDAL's older WKT writes them",
+      "ok": true
+    },
+    {
+      "group": "wkt",
+      "label": "<http://www.opengis.net/def/crs/epsg/0/4326>POINT (1 2)",
+      "why": "betterknown takes an OGC CRS URI prefix; mbmap/data does not",
+      "ok": true
+    },
+    {
+      "group": "wkb",
+      "label": "SRID 3857",
+      "why": "wkx keeps any SRID; mbmap/data refuses SRIDs other than 4326 (and 0)",
+      "ok": true
+    },
+    {
+      "group": "wkb",
+      "label": "byte order 2",
+      "why": "wkx reads any byte but 0 as little-endian",
+      "ok": true
+    },
+    {
+      "group": "wkb",
+      "label": "MultiPoint of a LineString",
+      "why": "wkx takes members of any type",
+      "ok": true
+    },
+    {
+      "group": "wkb",
+      "label": "trailing bytes",
+      "why": "wkx ignores bytes after the geometry; mbmap/data reads geometries to the end",
+      "ok": true
+    }
+  ],
+  "differ": 0
+}
