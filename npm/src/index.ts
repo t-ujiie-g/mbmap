@@ -447,6 +447,7 @@ export class Map {
       return;
     }
     this.#warn(rest);
+    const previous = this.#style;
     this.#style = next;
     this.#syncMedia(next);
     this.#images.loadSprite(next.sprite, this.#base);
@@ -456,6 +457,14 @@ export class Map {
     this.#drawn = rest;
     this.#showAttribution();
     this.#events.emit("styledata");
+    this.#sourceData(previous, next);
+  }
+
+  /** `sourcedata` for each source of `next` that `previous` lacks or had otherwise. */
+  #sourceData(previous: StyleSpecification | null, next: StyleSpecification): void {
+    for (const id of Object.keys(next.sources ?? {})) {
+      if (previous?.sources?.[id] !== next.sources[id]) this.#events.sourceData(id);
+    }
   }
 
   /** Runs `f` on the current style and draws what it gives; its errors fire `error`. */
@@ -581,9 +590,10 @@ export class Map {
 
   /** Source `id`; a GeoJSON one has `setData` to replace its data (an object or a URL) and the cluster queries. */
   getSource(id: string): Source | undefined {
-    const s = (this.#style && edit.sourceOf(this.#style, id)) as { type?: unknown } | undefined;
+    const s = (this.#style && edit.sourceOf(this.#style, id)) as { type?: unknown; promoteId?: unknown } | undefined;
     if (!s || typeof s.type !== "string") return undefined;
     const source: Source = { id, type: s.type };
+    if ("promoteId" in s) source.promoteId = edit.copy(s.promoteId);
     if (s.type === "geojson") {
       const ask =
         (op: ClusterQuery["op"]) =>
@@ -594,6 +604,14 @@ export class Map {
           });
       Object.assign(source, {
         setData: (data: unknown) => void this.#edit((st) => edit.setSourceData(st, id, data)),
+        getData: (): Promise<unknown> => {
+          const data = (this.#style && (edit.sourceOf(this.#style, id) as { data?: unknown } | undefined))?.data;
+          if (typeof data !== "string") return Promise.resolve(edit.copy(data));
+          return this.#fetch(httpUrl(data, this.#base, `GeoJSON source ${id}: data`), "Source").then((res) => {
+            if (!res.ok) throw new Error(`mbmap: GeoJSON source ${id}: HTTP ${res.status}`);
+            return res.json();
+          });
+        },
         getClusterExpansionZoom: ask("expansion"),
         getClusterChildren: ask("children"),
         getClusterLeaves: ask("leaves"),
@@ -742,6 +760,7 @@ export class Map {
     this.#drawn = resolved;
     this.#showAttribution();
     this.#events.emit("styledata");
+    this.#sourceData(null, style);
     if (o.bounds) this.fitBounds(o.bounds, { ...o.fitBoundsOptions, duration: 0 });
     for (const f of this.#callsBeforeStart.splice(0)) f();
   }

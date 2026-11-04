@@ -70,7 +70,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 
 - `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜85 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（場所は「配布物」）、`fontFamily`（ラベルの CSS フォントファミリー。既定 `sans-serif`）、`strict`（既定 false。true にすると、まだ描けない内容を含むスタイルを拒む）、`attributionControl`（既定 true。表示中のレイヤーと地形が使うソースの `attribution` を、MapLibre と同じ順で文字列として表示する）。
   - まだ描けないプロパティ・式・レイヤーは、既定ではそれを除いて描き（プロパティは既定値に戻し、描けないレイヤーとソースは外す）、コンソールと `warning` イベント（`warnings`：`{path, layer, message}` の一覧）で知らせる。`strict: true` のときと、値が不正なときは、スタイルがオブジェクトなら例外を投げ、URL なら `error` イベントになる。
-- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`render`（描画のたび）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`、`warning`（スタイルを描いたあと、除いた内容が変わったとき）、`styledata`（スタイルの読み込みと変更のたび）、`styleimagemissing`（タイルが使う画像がないとき。`id` にその名前。1 つの名前に 1 回）。カメラとマウスのイベントは下に。
+- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`render`（描画のたび）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`、`warning`（スタイルを描いたあと、除いた内容が変わったとき）、`styledata`（スタイルの読み込みと変更のたび）、`sourcedata`（その後に、加わったソースと変わったソースごとに。`sourceId` にソースの id、`dataType` は `"source"`。MapLibre と違い、タイルの読み込みでは出さない）、`styleimagemissing`（タイルが使う画像がないとき。`id` にその名前。1 つの名前に 1 回）。カメラとマウスのイベントは下に。
 - `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜85 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
 - カメラの移動（MapLibre と同じ計算。`npm run camera:golden` で MapLibre 6.16 の Camera と比べている）：
   - `easeTo(options)`（既定 500ms）、`flyTo(options)`（ズームアウトして戻る。`curve`、`speed`、`screenSpeed`、`maxDuration`、`minZoom`）、`panBy`、`panTo`、`zoomTo`、`zoomIn`、`zoomOut`、`rotateTo`、`resetNorth`、`resetNorthPitch`、`snapToNorth`、`stop()`。どれも `center`、`zoom`、`bearing`、`pitch`、`around`（その点を動かさない）、`offset`、`duration`、`easing`、`animate`、`essential`（OS の「視差効果を減らす」でもアニメーションする）を受け付ける。
@@ -87,7 +87,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 - スタイルの変更（MapLibre と同じ名前と引数）：
   - `setStyle(style, { transformStyle })`（オブジェクトか URL。`transformStyle(previous, next)` は MapLibre と同じく、前のスタイルと合わせて描くスタイルを作る）、`getStyle()`。前のスタイルと比べ、タイルの作り方が変わらないソースはタイルを残し、変わったソースは古いタイルを描いたまま読み直す。
   - `addLayer(layer, beforeId?)`、`removeLayer`、`moveLayer(id, beforeId?)`、`getLayer`、`getLayersOrder()`、`setPaintProperty`・`getPaintProperty`、`setLayoutProperty`・`getLayoutProperty`（`visibility` を含む）、`setFilter`・`getFilter`、`setLayerZoomRange`。
-  - `addSource(id, source)`、`removeSource(id)`（レイヤーや地形が使っている間は `error`）、`getSource(id)`（GeoJSON ソースは `setData(data)` でデータを差し替える。クラスタにしたソースは MapLibre と同じ `getClusterExpansionZoom(id)`、`getClusterChildren(id)`、`getClusterLeaves(id, limit, offset)` を持ち、Promise で答える。クラスタにしていないソースでは null になる）。
+  - `addSource(id, source)`、`removeSource(id)`（レイヤーや地形が使っている間は `error`）、`getSource(id)`（`promoteId` を持つ。GeoJSON ソースは `setData(data)` でデータを差し替え、`getData()` はデータの写しを Promise で返す（URL なら `transformRequest` を通して取得する）。クラスタにしたソースは MapLibre と同じ `getClusterExpansionZoom(id)`、`getClusterChildren(id)`、`getClusterLeaves(id, limit, offset)` を持ち、Promise で答える。クラスタにしていないソースでは null になる）。
   - `setTerrain`・`getTerrain`、`setSky`・`getSky`、`setLight`・`getLight`（null で外す）。
   - `getSource(id)` は、image・video・canvas のソースでは MapLibre と同じ `setCoordinates(corners)`（左上から時計回り）、`updateImage({ url, image, coordinates })`、`play()`・`pause()`、`getVideo()`・`getCanvas()` を持つ。
   - 描けないスタイルになる変更は `error` イベントを出し、元のスタイルのまま描き続ける。スタイルの読み込み前に呼ぶと例外になる。
@@ -157,6 +157,14 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
   - `measure` は `mbmap/geodesic` の `measure`、`elevation` は位置の配列から標高を返す関数（`mbmap/analysis` の `sampleDem` など）。そのため `mbmap/ui` は計算を含まない。
   - 状態は `positions`、`path`（測地線に沿って約 `samples` 個、既定 200）、`distances`、`elevations`、`length`、`min`、`max`、`gain`（登りの合計）、`loss`、`active`（指している点）、`loading`、`error`。
   - 操作は `setLine(positions)`、`highlight(distance)`（グラフの上のポインタなど。null で外す）、`clear()`。グラフと地図の上の印は作り手が描く。
+- `createAttributeTable(map, { source, sourceLayer, columns, searchColumns, filter, pageSize, locale, highlight, fitBoundsOptions })`：1 つのソースの地物の属性テーブル。
+  - 行は、GeoJSON ソースならデータ全部（`getSource(id).getData()`）、ベクタタイルのソースなら描いているタイルの地物（`querySourceFeatures`。`sourceLayer` が要る。id（`promoteId`）が同じものは 1 行にまとめ、ジオメトリはタイルごとの部分の GeometryCollection になる）。ソースの `sourcedata` で読み直し（ベクタタイルのソースは `idle` でも）、同じタスクの中の変更は 1 回にまとめる。
+  - 列は `columns`（既定は属性のキーを最初に現れた順に）。
+  - 状態は `columns`、`rows`（いまのページの行。各要素は `id`、`properties`、`geometry`）、`total`（全部の行の数）、`filtered`（絞り込んだあとの数）、`page`（0 から）、`pages`、`pageSize`（既定 50）、`sort`（`{ column, direction }` か null）、`query`、`selected`（選んでいる id。文字列）、`loading`、`error`。
+  - 操作は `setSort(column, direction?)`（向きを省くと昇順、同じ列ならその逆。null で元の順）、`setQuery(text)`、`setFilter(row => boolean)`、`setPageSize(n)`、`goTo(page)`・`next()`・`previous()`（範囲に収める）、`select(id, { add })`（`add` で選択に足す。選んでいれば外す）、`clear()`、`zoomTo(id, options)`（地物の範囲に `fitBounds`。既定は padding 40、maxZoom 17）、`refresh()`。
+  - 並べ替えは `Intl.Collator`（`locale`、数字は数として）で、数、文字列、値のないもの（null、undefined。向きによらず最後）の順。同じ値は元の順のまま。
+  - 絞り込みは `searchColumns`（既定は列）の値に `query` を含む行（`mbmap/search` と同じく全角半角、大文字小文字、カタカナとひらがなを区別しない）で、`filter` も満たすもの。
+  - 選んだ地物には feature-state（既定のキーは `selected`）を立てる。`cellText(value)` はセルの文字列（null は空、オブジェクトは JSON）。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 検索 `mbmap/search`

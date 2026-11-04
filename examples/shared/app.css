@@ -126,3 +126,12 @@ html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, sans-serif; colo
 #draw-fields input { font: inherit; padding: 3px 6px; border: 1px solid #bbb; border-radius: 4px; }
 .react-drawn li[aria-current="true"] { font-weight: bold; }
 .react-link { border: 0 !important; background: none !important; padding: 0 !important; margin: 0 !important; text-decoration: underline; }
+#table input { width: 100%; box-sizing: border-box; font: inherit; padding: 4px 8px; border: 1px solid #bbb; border-radius: 6px; }
+.attributes { width: 100%; margin: 4px 0; font-size: 12px; border-collapse: collapse; }
+.attributes th { text-align: left; }
+.attributes th button { font: inherit; font-weight: 600; padding: 1px 4px; border: 0; background: none; cursor: pointer; }
+.attributes td { padding: 2px 4px; border-top: 1px solid #eee; }
+.attributes tbody tr { cursor: pointer; }
+.attributes tr[aria-selected="true"] { background: #d1e5f0; }
+.table-pager { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.table-count { margin-left: auto; color: #666; }

@@ -2,9 +2,8 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：
-  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（#93）→ R2 正しさ（#94）→ R3 重複・定数・分割・テスト（#95）→ R4 文書（下の節）。R4 のあとは次の Phase の範囲をユーザーと決める（VISION §8）。M2 で測ってから決める性能の候補は「全体のレビュー（2026-11-04）」の節。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.1 → 17.6。17.7（属性テーブル）は独立なので並行して進める（下の「Phase 17」の節）。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -19,6 +18,67 @@
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.4KB ＋ ワーカー 28.1KB（geometry.wasm 41.9KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 17：データ形式（2026-11-04〜）
+
+範囲・段階・予算は 2026-11-04 にユーザーが決めた。完了条件は、形式ごとに既存の JS 実装との黄金テストが通り、形式ごとの予算に収まること。
+
+- **構成**：
+  - 入口は新しい `mbmap/data`（`data.js`、6KB）。分析ワーカー（28.1 / 30KB）と GeoJSON ワーカー（29.3 / 30KB）には読み手の入る余裕がないので、ワーカーも新しく作る。
+  - wasm は 3 つ：`data.wasm` 30KB（CSV、WKT/WKB、TopoJSON、Shapefile、FlatGeobuf、書き出し）、`xml.wasm` 20KB（KML/GPX と KML の書き出し、初めて使うときに読む）、`geotiff.wasm` 20KB（同じく遅れて読む）。
+  - 読んだデータは `@geom.Table` にし、地図の GeoJSON ソースにも `mbmap/analysis` の Dataset にもする。
+- **段階**：
+  - 17.1：土台と CSV（緯度経度の列、WKT の列）、WKT/WKB。比べる相手は papaparse 5.7.0、betterknown 1.2.0、wkx 0.5.0。
+  - 17.2：Shapefile（zip、DBF、`.prj`）と TopoJSON。shpjs 6.2.0、topojson-client 3.1.0。
+  - 17.3：FlatGeobuf（HTTP の範囲リクエストと R-tree）。flatgeobuf 4.6.1。
+  - 17.4：KML/KMZ と GPX。@tmcw/togeojson 7.1.3 と @xmldom/xmldom 0.9.12。
+  - 17.5：書き出し（GeoJSON、CSV、KML）。`JSON.stringify`、papaparse の `unparse`、@placemarkio/tokml 0.4.0。
+  - 17.6：GeoTIFF/COG。比べる相手は geotiff 3.0.5。
+    - a：読み込みと解析の Grid。
+    - b：3857 と 4326 の表示。
+    - c：proj.wasm での投影し直しによる、どの座標系でも描く表示（ユーザー判断）。
+  - 17.7：`mbmap/ui` の属性テーブルのコントローラ（並べ替え、絞り込み、ページ送り、選択を feature state に）。ほかと独立なので最初から並行して進める。
+- **決めたこと**（2026-11-04）：
+  - Shapefile は正しく読み、shpjs との違いは黄金テストで正規化して記録する。違いは 4 つ：外周は反時計回り、穴は内外判定で割り当てる、削除済みの行は飛ばす、日付は文字列。
+  - GeoTIFF の表示はどの座標系でも描く。
+  - そのほかは下調べの推奨どおり：
+    - 入れ子のプロパティは JSON の文字列。
+    - `.prj` の WKT は wkt-parser の TS ポートを遅れて読む。
+    - 書き出しは読み込みと同じモジュール。
+    - GeoTIFF の LERC と ZSTD はあとに回し、JPEG と WebP はブラウザで復号して許容範囲で比べる。
+- **下調べで分かったこと**：
+  - ワーカーには `DOMParser` がないので、KML と GPX には MoonBit の XML の字句解析が要る。比べる相手は togeojson と同じく xmldom にする。
+  - `DecompressionStream`（deflate、deflate-raw、gzip）は非同期なので、zip の中身や TIFF のタイルは JS で展開してから wasm に渡す。
+  - DBF の Shift_JIS は host の `TextDecoder` で読む。
+  - 書き出す数値は host の `String(x)` で表す。
+  - d3-dsv 3.0.2 は公開されたばかりなので使わない。
+
+### 17.7：属性テーブルのコントローラ（このブランチ）
+
+- **API**：`createAttributeTable(map, { source, sourceLayer?, columns?, searchColumns?, filter?, pageSize? = 50, locale?, highlight? = "selected" | false, fitBoundsOptions? })`。
+  - 状態：`columns`、`rows`（いまのページ）、`total`、`filtered`、`page`、`pages`、`pageSize`、`sort`、`query`、`selected`、`loading`、`error`。
+  - 操作：`setSort`、`setQuery`、`setFilter`、`setPageSize`、`goTo` / `next` / `previous`（範囲に収める）、`select(id, { add })`、`clear`、`zoomTo`（地物の範囲に `fitBounds`）、`refresh`。
+- **行**：
+  - GeoJSON ソースは `getData()` の全部、vector ソースは描いているタイルの `querySourceFeatures`。どちらも id（`promoteId` か地物の id）ごとに 1 行で、タイルに分かれた地物は GeometryCollection にまとめる。
+  - 並べ替えは `Intl.Collator`（`numeric: true`）。数、文字列、値なしの順で、同じ値は元の順を保つ。
+  - 絞り込みは mbmap/search と同じ畳み方（NFKC、大文字と小文字、カタカナとひらがな）。
+- **窓口に足したもの**（メインに +172 バイト）：
+  - `sourcedata` イベント（MapLibre と違い、タイルが読み込まれても出ない）。
+  - `getSource` の `promoteId`。
+  - GeoJSON ソースの `getData()`。`getStyle()` で全部をコピーせずにデータを読める。
+- **大きさ**（gzip -9）：
+  - `createAttributeTable` だけで 1,991 / 2,000 バイト。最初の版は 2,246 バイトだったので、行ごとの外接矩形をやめ（`zoomTo` で求める）、選択を文字列で持ち、ページ送りを簡単にした。
+  - `mbmap/ui` 全部で 6,876 → 8,282。メイン 127,832 → 128,004。
+  - `Store` や `normalize` が大きくなると 2KB を超える。
+- **例**：3 つのアプリに「地点の一覧」（名前と種別、6 行ずつ）。見出しで並べ替え、入力で絞り込み、行をクリックで選んで移動、Shift で追加。地点に `kind`（駅・名所・山）を足した。
+- **確認**：
+  - npm のテストは 192 件。
+  - pack test の `tableChecks` を 3 つのアプリで通した：並べ替え（`Intl.Collator("ja")` と比べる）、「名所」での絞り込み、半角「ﾀﾜｰ」で東京タワー、ページの範囲、選択と feature state、`setData` で行が増えること。
+  - `ui:golden` は変わらない。
+- **残したもの**：
+  - vector ソースは描いているタイルの分だけ。
+  - id のない地物はまとめられず、選べない。
+  - 例では、識別と表が同じ `selected` のキーを使う。
 
 ## 全体のレビュー（2026-11-04）
 

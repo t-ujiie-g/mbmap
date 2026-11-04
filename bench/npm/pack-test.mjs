@@ -16,6 +16,7 @@ import { controlChecks } from "./checks/controls.mjs";
 import { atCentre } from "./checks/pixels.mjs";
 import { queryChecks } from "./checks/query.mjs";
 import { searchChecks } from "./checks/search.mjs";
+import { tableChecks } from "./checks/table.mjs";
 import { stateChecks } from "./checks/state.mjs";
 import { styleChecks } from "./checks/style.mjs";
 import { tileSourceChecks } from "./checks/tile-sources.mjs";
@@ -431,6 +432,8 @@ async function showcase(page) {
   const controls = await controlChecks(page);
   crumb("searchChecks");
   const searched = await searchChecks(page);
+  crumb("tableChecks");
+  const tabled = await tableChecks(page);
   crumb("showcase: layers, marker, basemaps");
   // The 3D switch went through setStyle; layer groups hide through setLayoutProperty and markers go in with setData.
   const styled = await page.evaluate(async () => {
@@ -463,6 +466,10 @@ async function showcase(page) {
       ring: map.getLayer("radius-ring")?.type === "custom" && map.getLayersOrder().indexOf("radius-ring") === map.getLayersOrder().indexOf("places") - 1,
     };
   });
+  // The table lists the marker too: setData fired the places' sourcedata.
+  tabled.marked = await page
+    .waitForFunction((n) => window.__table.state.total === n + 1 && window.__table.state.rows.length > 0, tabled.initial.total, { timeout: 10_000 })
+    .then(() => true, () => false);
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
     identified.count >= 1 && identified.index === 0 && identified.selected === true &&
@@ -479,8 +486,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, measured, drew, edited, cut, clustered }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, measured, drew, edited, cut, clustered }];
 }
 
 async function engineStarted(page) {

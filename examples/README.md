@@ -26,6 +26,7 @@
 - 地図の上のコントロール（`mbmap/ui`）：ズーム、方位、ホーム、現在地（`createGeolocation`）、全画面、縮尺、出典の表示。
 - カメラの状態（経度・緯度・ズーム・方位・傾き）と、最寄りの原点の平面直角座標系での座標（`mbmap/analysis` の `transform`）。マウスの位置の座標を、度・度分秒・平面直角座標系・UTM で表示する（`createCoordinates`）。
 - クリックした地物の表示（`createIdentify`。`queryRenderedFeatures` で、いちばん上の地物のレイヤーと名前など。選んだ地点は `selected` の状態で強調する）。
+- 地点の属性テーブル（`createAttributeTable`）：見出しのクリックで並べ替え（名前・種別）、入力で絞り込み（全角半角・カタカナとひらがなを区別しない）、ページ送り。行のクリックで、その地点を `selected` の状態で強調して地図を合わせる（Shift で選択に足す）。印を置くと行が増える（`sourcedata`）。
 - 検索（`mbmap/search`）：座標（度、度分秒、平面直角座標系、UTM）と地点の名前。`?gsi-search=1` で国土地理院の地名検索を外部のプロバイダとして足す（利用条件は [npm/README.md](../npm/README.md) の検索の節）。
 - 作図（`mbmap/draw`）：点、線、多角形、矩形、円（`mbmap/geodesic` で楕円体の上の円）、フリーハンド、選択と編集、スナップ、分割と結合（`mbmap/analysis` の `splitFeatures`・`mergeFeatures`）、名前とメモの属性、取り消しとやり直し。
 - 計測（`createMeasurement` と `mbmap/geodesic` の `measure`）：距離と面積。距離を測り終えると、その線の断面図（`createProfile`。標高は `mbmap/analysis` の `sampleDem` で国土地理院の標高タイルから。グラフの上のポインタの位置は地図にも点で出る）。

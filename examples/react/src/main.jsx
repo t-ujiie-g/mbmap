@@ -11,6 +11,7 @@ import { MapControls } from "./controls.jsx";
 import { useIdentify } from "./identify.jsx";
 import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
 import { SearchBar } from "./search.jsx";
+import { AttributeTable } from "./table.jsx";
 import { hoverPlaces } from "../../shared/pick.js";
 import { keepRadiusRing } from "../../shared/ring.js";
 import { zoomIntoClusters } from "../../shared/stations.js";
@@ -117,6 +118,8 @@ function App() {
         {identify?.measure}
         <h2>断面図</h2>
         {identify?.profile}
+        <h2>地点の一覧</h2>
+        {map && <AttributeTable map={map} />}
         <h2>クリックした地物</h2>
         {identify?.picked}
         <h2>移動</h2>
