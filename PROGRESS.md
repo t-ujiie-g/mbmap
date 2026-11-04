@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.2 → 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は下の節。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.2 → 17.6（下の「Phase 17」の節）。17.4（KML/KMZ・GPX、別の `xml.wasm`）は 17.2 とほぼ独立なので並行して進める。17.7 は #97、17.1 は #98。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -29,7 +29,7 @@
   - 読んだデータは `@geom.Table` にし、地図の GeoJSON ソースにも `mbmap/analysis` の Dataset にもする。
 - **段階**：
   - 17.1：土台と CSV（緯度経度の列、WKT の列）、WKT/WKB。比べる相手は papaparse 5.7.0、betterknown 1.2.0、wkx 0.5.0。
-  - 17.2：Shapefile（zip、DBF、`.prj`）と TopoJSON。shpjs 6.2.0、topojson-client 3.1.0。
+  - 17.2：Shapefile（zip、DBF、`.prj`）と TopoJSON。shpjs 6.2.0、topojson-client 3.1.0。4326 以外の SRID（EWKT、EWKB、CSV）も、`.prj` と同じ座標変換で 4326 にする（2026-11-05 ユーザー判断）。
   - 17.3：FlatGeobuf（HTTP の範囲リクエストと R-tree）。flatgeobuf 4.6.1。
   - 17.4：KML/KMZ と GPX。@tmcw/togeojson 7.1.3 と @xmldom/xmldom 0.9.12。
   - 17.5：書き出し（GeoJSON、CSV、KML）。`JSON.stringify`、papaparse の `unparse`、@placemarkio/tokml 0.4.0。
@@ -53,7 +53,7 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.1：土台、CSV、WKT/WKB（このブランチ）
+### 17.1：土台、CSV、WKT/WKB（#98）
 
 - **入口とワーカー**：
   - `mbmap/data` の `read(input, options)` は URL・File/Blob・バイトを読み、`parse(text, { format })` は CSV・WKT・hex WKB の文字列を読む。どちらも `DataTable` を返す。
