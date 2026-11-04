@@ -53,6 +53,33 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
+### 17.7：属性テーブルのコントローラ（このブランチ）
+
+- **API**：`createAttributeTable(map, { source, sourceLayer?, columns?, searchColumns?, filter?, pageSize? = 50, locale?, highlight? = "selected" | false, fitBoundsOptions? })`。
+  - 状態：`columns`、`rows`（いまのページ）、`total`、`filtered`、`page`、`pages`、`pageSize`、`sort`、`query`、`selected`、`loading`、`error`。
+  - 操作：`setSort`、`setQuery`、`setFilter`、`setPageSize`、`goTo` / `next` / `previous`（範囲に収める）、`select(id, { add })`、`clear`、`zoomTo`（地物の範囲に `fitBounds`）、`refresh`。
+- **行**：
+  - GeoJSON ソースは `getData()` の全部、vector ソースは描いているタイルの `querySourceFeatures`。どちらも id（`promoteId` か地物の id）ごとに 1 行で、タイルに分かれた地物は GeometryCollection にまとめる。
+  - 並べ替えは `Intl.Collator`（`numeric: true`）。数、文字列、値なしの順で、同じ値は元の順を保つ。
+  - 絞り込みは mbmap/search と同じ畳み方（NFKC、大文字と小文字、カタカナとひらがな）。
+- **窓口に足したもの**（メインに +172 バイト）：
+  - `sourcedata` イベント（MapLibre と違い、タイルが読み込まれても出ない）。
+  - `getSource` の `promoteId`。
+  - GeoJSON ソースの `getData()`。`getStyle()` で全部をコピーせずにデータを読める。
+- **大きさ**（gzip -9）：
+  - `createAttributeTable` だけで 1,991 / 2,000 バイト。最初の版は 2,246 バイトだったので、行ごとの外接矩形をやめ（`zoomTo` で求める）、選択を文字列で持ち、ページ送りを簡単にした。
+  - `mbmap/ui` 全部で 6,876 → 8,282。メイン 127,832 → 128,004。
+  - `Store` や `normalize` が大きくなると 2KB を超える。
+- **例**：3 つのアプリに「地点の一覧」（名前と種別、6 行ずつ）。見出しで並べ替え、入力で絞り込み、行をクリックで選んで移動、Shift で追加。地点に `kind`（駅・名所・山）を足した。
+- **確認**：
+  - npm のテストは 192 件。
+  - pack test の `tableChecks` を 3 つのアプリで通した：並べ替え（`Intl.Collator("ja")` と比べる）、「名所」での絞り込み、半角「ﾀﾜｰ」で東京タワー、ページの範囲、選択と feature state、`setData` で行が増えること。
+  - `ui:golden` は変わらない。
+- **残したもの**：
+  - vector ソースは描いているタイルの分だけ。
+  - id のない地物はまとめられず、選べない。
+  - 例では、識別と表が同じ `selected` のキーを使う。
+
 ## 全体のレビュー（2026-11-04）
 
 8 つの範囲（style、表示ワーカー、map と描画、core〜tess、GeoJSON と分析、幾何・座標系・測地線、npm の窓口、道具と文書）を、読むだけのサブエージェントが §7・§8 の観点で全部読んだ。指摘を 4 本の PR に分けて直す。
