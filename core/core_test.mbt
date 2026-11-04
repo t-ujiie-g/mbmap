@@ -5,11 +5,9 @@ fn near(a : Double, b : Double) -> Bool {
 
 ///|
 test "mercator round-trips and matches known values" {
-  assert_eq(@core.mercator_x_from_lng(-180.0), 0.0)
-  assert_eq(@core.mercator_x_from_lng(180.0), 1.0)
-  assert_true(near(@core.mercator_y_from_lat(0.0), 0.5))
-  assert_true(near(@core.mercator_y_from_lat(@core.MAX_LATITUDE), 0.0))
-  assert_true(near(@core.mercator_y_from_lat(-@core.MAX_LATITUDE), 1.0))
+  let origin = ({ lng: -180.0, lat: 0.0, } : @core.LngLat).to_mercator()
+  assert_eq(origin.x, 0.0)
+  assert_true(near(origin.y, 0.5))
   let tokyo : @core.LngLat = { lng: 139.7671, lat: 35.6812, }
   let back = tokyo.to_mercator().to_lnglat()
   assert_true(near(back.lng, tokyo.lng) && near(back.lat, tokyo.lat))

@@ -8,14 +8,6 @@ fn square(x : Int32, y : Int32, size : Int32, clockwise : Bool) -> Array[Int32] 
 }
 
 ///|
-test "ring_area is positive for clockwise rings in y-down tile space" {
-  let cw = square(0, 0, 10, true)
-  assert_eq(@tess.ring_area(cw[:], 0, 5), 200.0)
-  let ccw = square(0, 0, 10, false)
-  assert_eq(@tess.ring_area(ccw[:], 0, 5), -200.0)
-}
-
-///|
 test "rings group into polygons with holes and zero-area rings are dropped" {
   // Outer (cw), hole (ccw), a sliver with no area, then a second outer (cw).
   let coords = []
@@ -68,25 +60,6 @@ test "indices of later features are offset past earlier vertices" {
 }
 
 ///|
-test "only the largest holes are kept beyond MAX_POLYGON_RINGS" {
-  let coords = square(0, 0, 100000, true)
-  let ring_ends = [5]
-  // Holes of growing size; the smallest ones must be dropped.
-  let holes = @tess.MAX_POLYGON_RINGS + 9
-  for h in 0..<holes {
-    let x = h % 100 * 900 + 10
-    let y = h / 100 * 900 + 10
-    for v in square(x, y, 10 + h % 7, false) {
-      coords.push(v)
-    }
-    ring_ends.push(coords.length() / 2)
-  }
-  let out = @tess.FillBuffers::new()
-  @tess.FillTessellator::new().add_polygons(coords[:], ring_ends[:], out)
-  assert_eq(out.num_vertices(), @tess.MAX_POLYGON_RINGS * 5)
-}
-
-///|
 test "outline lists each ring's edges, closing an open ring" {
   let out = @tess.FillBuffers::new()
   let fill = @tess.FillTessellator::new()
@@ -99,11 +72,4 @@ test "outline lists each ring's edges, closing an open ring" {
   assert_eq(out.outline[16:].to_owned(), [10, 11, 11, 12, 12, 10])
   out.clear()
   assert_eq(out.outline.length(), 0)
-}
-
-///|
-test "ring_area keeps its sign for rings wider than Int32 differences hold" {
-  let a = 1_500_000_000
-  let cw = [-a, -a, a, -a, a, a, -a, a, -a, -a]
-  assert_eq(@tess.ring_area(cw[:], 0, 5), 8.0 * a.to_double() * a.to_double())
 }

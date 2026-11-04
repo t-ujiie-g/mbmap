@@ -43,8 +43,14 @@ pub fn ByteWriter::u32(self : ByteWriter, v : Int32) -> Unit {
 
 ///|
 /// `v` clamped to the i16 range.
+pub fn clamp_i16(v : Int32) -> Int32 {
+  @cmp.maximum(-32768, @cmp.minimum(32767, v))
+}
+
+///|
+/// `v` clamped to the i16 range.
 pub fn ByteWriter::i16(self : ByteWriter, v : Int32) -> Unit {
-  let c = @cmp.maximum(-32768, @cmp.minimum(32767, v))
+  let c = clamp_i16(v)
   self.buf.push(c.to_byte())
   self.buf.push((c >> 8).to_byte())
 }

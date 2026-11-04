@@ -3,11 +3,9 @@
 // BSD 3-Clause License, Copyright (c) 2020, MapLibre contributors. See NOTICE.
 
 ///|
-/// Ints per extrusion vertex in `ExtrusionBuffers.vertices`: x, y, normal x
-/// (times 2^14, plus 1 on the top edge), normal y and z (times 2^14), the
-/// distance along the ring's walls (for patterns, rounded in MapLibre's
-/// 8192-unit tile whatever the source's extent; 0 on roofs), and the
-/// feature's centroid x, y (where terrain lifts it from).
+/// Ints per extrusion vertex: x, y, normal x (times 2^14, plus 1 on the top
+/// edge), normal y and z (times 2^14), the distance along the ring's walls (in
+/// `MAPLIBRE_EXTENT` units; 0 on roofs) and the feature's centroid x, y.
 pub const EXTRUSION_VERTEX_STRIDE : Int32 = 8
 
 ///|
@@ -61,15 +59,11 @@ pub fn ExtrusionTessellator::new() -> ExtrusionTessellator {
 const NORMAL_FACTOR : Double = 8192.0
 
 ///|
-/// MapLibre's tile extent, the unit of wall distances.
-const WALL_EXTENT : Double = 8192.0
-
-///|
-/// A wall distance in `WALL_EXTENT` units, rounded as MapLibre's `addVertex`
+/// A wall distance in `MAPLIBRE_EXTENT` units, rounded as MapLibre's `addVertex`
 /// and kept within Int16.
 fn wall_distance(along : Double, extent : Int32) -> Int32 {
   @cmp.minimum(
-    (along * WALL_EXTENT / extent.to_double()).round().to_int(),
+    (along * MAPLIBRE_EXTENT / extent.to_double()).round().to_int(),
     32767,
   )
 }
@@ -147,7 +141,7 @@ pub fn ExtrusionTessellator::add_polygons(
   ring_ends : ArrayView[Int32],
   heights : FixedArray[Double],
   out : ExtrusionBuffers,
-  extent~ : Int32 = 4096,
+  extent~ : Int32 = @core.TILE_EXTENT,
 ) -> Unit {
   let points = if ring_ends.length() == 0 {
     0
@@ -187,7 +181,7 @@ pub fn ExtrusionTessellator::add_polygons(
       continue
     }
     // Edges from each point back to the one before it, the closing one last;
-    // MapLibre starts the distance again past 32768 of its 8192-unit tile.
+    // MapLibre starts the distance again past 32768 units of its `MAPLIBRE_EXTENT`.
     let mut along = 0.0
     let restart = 4.0 * extent.to_double()
     for k in (start + 1)..<=end {
@@ -218,9 +212,13 @@ pub fn ExtrusionTessellator::add_polygons(
       let e2 = wall_distance(along, extent)
       out.vertex(x2, y2, normal, 0, centroid, heights, edge=e2)
       out.vertex(x2, y2, normal, 1, centroid, heights, edge=e2)
-      for k in [0, 2, 1, 1, 2, 3] {
-        out.indices.push(b + k)
-      }
+      let i = out.indices
+      i.push(b)
+      i.push(b + 2)
+      i.push(b + 1)
+      i.push(b + 1)
+      i.push(b + 2)
+      i.push(b + 3)
     }
   }
   let roof = self.roof

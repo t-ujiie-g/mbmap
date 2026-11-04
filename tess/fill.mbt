@@ -5,7 +5,7 @@
 ///|
 /// Most rings triangulated per polygon (outer ring plus largest holes), as in
 /// MapLibre's fill bucket: earcut slows down with many holes.
-pub const MAX_POLYGON_RINGS : Int32 = 500
+const MAX_POLYGON_RINGS : Int32 = 500
 
 ///|
 /// Fill geometry: `vertices` holds x, y pairs in tile units, `indices`
@@ -61,23 +61,6 @@ pub fn FillTessellator::new() -> FillTessellator {
 }
 
 ///|
-/// Signed area of the ring of points `[start, end)` of `coords` (x, y pairs),
-/// positive for clockwise rings in tile coordinates (y down).
-pub fn ring_area(
-  coords : ArrayView[Int32],
-  start : Int32,
-  end : Int32,
-) -> Double {
-  for i = start, j = end - 1, sum = 0.0; i < end; i = i + 1 {
-    let d = (coords[j * 2].to_double() - coords[i * 2].to_double()) *
-      (coords[i * 2 + 1].to_double() + coords[j * 2 + 1].to_double())
-    continue i + 1, i, sum + d
-  } nobreak {
-    sum
-  }
-}
-
-///|
 /// Tessellates one polygon feature's rings (as in `@mvt.Geometry`) into `out`,
 /// grouped like MapLibre's `classifyRings`: a ring wound like the first starts
 /// a polygon, others are its holes, zero-area rings are dropped.
@@ -128,7 +111,7 @@ fn FillTessellator::classify(
   let mut seen = false
   for r in 0..<n {
     let start = if r == 0 { 0 } else { ring_ends[r - 1] }
-    let area = ring_area(coords, start, ring_ends[r])
+    let area = signed_area(coords, start * 2, ring_ends[r] * 2)
     if area == 0.0 {
       continue
     }

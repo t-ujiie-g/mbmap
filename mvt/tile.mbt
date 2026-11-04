@@ -1,6 +1,6 @@
 ///|
 /// Extent used when a layer does not declare one.
-pub const DEFAULT_EXTENT : Int32 = 4096
+const DEFAULT_EXTENT : Int32 = 4096
 
 ///|
 pub(all) enum GeomType {

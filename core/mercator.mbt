@@ -1,6 +1,6 @@
 ///|
 /// Latitude limit of Web Mercator (the world is a square).
-pub const MAX_LATITUDE : Double = 85.051128779806604
+const MAX_LATITUDE : Double = 85.051128779806604
 
 ///|
 pub(all) struct LngLat {
@@ -17,13 +17,13 @@ pub(all) struct MercatorCoord {
 } derive(Debug, Eq)
 
 ///|
-pub fn mercator_x_from_lng(lng : Double) -> Double {
+fn mercator_x_from_lng(lng : Double) -> Double {
   (180.0 + lng) / 360.0
 }
 
 ///|
 /// Latitudes beyond `MAX_LATITUDE` map outside [0, 1].
-pub fn mercator_y_from_lat(lat : Double) -> Double {
+fn mercator_y_from_lat(lat : Double) -> Double {
   (
     180.0 -
     180.0 /

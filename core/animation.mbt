@@ -76,7 +76,7 @@ pub fn Bezier::at(self : Bezier, x : Double) -> Double {
 ///|
 /// `bearing` wrapped and moved by a turn toward `current`, so that easing
 /// between them takes the short way (MapLibre's `_normalizeBearing`).
-pub fn normalize_bearing(bearing : Double, current : Double) -> Double {
+fn normalize_bearing(bearing : Double, current : Double) -> Double {
   let mut b = wrap180(bearing)
   let diff = (b - current).abs()
   if (b - 360.0 - current).abs() < diff {
@@ -126,26 +126,20 @@ pub fn CameraTarget::new(
 }
 
 ///|
-/// An `ease_to` move: the camera at any fraction of it (`at`).
-pub struct Ease {
-  priv start : Transform
-  priv start_zoom : Double
-  priv end_zoom : Double
-  priv start_bearing : Double
-  priv end_bearing : Double
-  priv start_pitch : Double
-  priv end_pitch : Double
-  priv around : (LngLat, Double, Double)?
-  priv from : (Double, Double)
-  priv delta : (Double, Double)
-  priv point : (Double, Double)
+/// What `ease_to` and `fly_to` start from: the screen point the center goes to,
+/// the end camera, the start and the way to the end in world pixels, and the
+/// end bearing and pitch.
+priv struct Move {
+  point : (Double, Double)
+  to : Camera
+  from : (Double, Double)
+  delta : (Double, Double)
+  end_bearing : Double
+  end_pitch : Double
 }
 
 ///|
-/// A move from this camera to `target` that eases zoom, bearing and pitch
-/// together and slides the center along a path that speeds up when zooming
-/// (MapLibre's `easeTo`).
-pub fn Transform::ease_to(self : Transform, target : CameraTarget) -> Ease {
+fn Transform::move_to(self : Transform, target : CameraTarget) -> Move {
   let c = self.camera
   let point = (
     self.width / 2.0 + target.offset.0,
@@ -171,23 +165,56 @@ pub fn Transform::ease_to(self : Transform, target : CameraTarget) -> Ease {
   }).to_mercator()
   let tx = t.x
   {
-    start: self,
-    start_zoom: c.zoom,
-    end_zoom: to.zoom,
-    start_bearing: c.bearing,
+    point,
+    to,
+    from: (f.x * ws, f.y * ws),
+    delta: ((tx - f.x) * ws, (t.y - f.y) * ws),
     end_bearing: match target.bearing {
       Some(b) => normalize_bearing(b, c.bearing)
       None => c.bearing
     },
-    start_pitch: c.pitch,
     end_pitch: target.pitch.unwrap_or(c.pitch),
+  }
+}
+
+///|
+/// An `ease_to` move: the camera at any fraction of it (`at`).
+pub struct Ease {
+  priv start : Transform
+  priv start_zoom : Double
+  priv end_zoom : Double
+  priv start_bearing : Double
+  priv end_bearing : Double
+  priv start_pitch : Double
+  priv end_pitch : Double
+  priv around : (LngLat, Double, Double)?
+  priv from : (Double, Double)
+  priv delta : (Double, Double)
+  priv point : (Double, Double)
+}
+
+///|
+/// A move from this camera to `target` that eases zoom, bearing and pitch
+/// together and slides the center along a path that speeds up when zooming
+/// (MapLibre's `easeTo`).
+pub fn Transform::ease_to(self : Transform, target : CameraTarget) -> Ease {
+  let c = self.camera
+  let m = self.move_to(target)
+  {
+    start: self,
+    start_zoom: c.zoom,
+    end_zoom: m.to.zoom,
+    start_bearing: c.bearing,
+    end_bearing: m.end_bearing,
+    start_pitch: c.pitch,
+    end_pitch: m.end_pitch,
     around: target.around.map(a => {
       let (x, y) = self.project(a)
       (a, x, y)
     }),
-    from: (f.x * ws, f.y * ws),
-    delta: ((tx - f.x) * ws, (t.y - f.y) * ws),
-    point,
+    from: m.from,
+    delta: m.delta,
+    point: m.point,
   }
 }
 
@@ -286,30 +313,9 @@ pub fn Transform::fly_to(
   min_zoom? : Double,
 ) -> Flight? {
   let c = self.camera
-  let point = (
-    self.width / 2.0 + target.offset.0,
-    self.height / 2.0 + target.offset.1,
-  )
-  let at_offset = self.unproject(point.0, point.1)
-  let to = constrain_once(
-    {
-      ..c,
-      center: target.center.unwrap_or(at_offset),
-      zoom: target.zoom.unwrap_or(c.zoom),
-    },
-    self.limits,
-    self.width,
-    self.height,
-  )
-  let ws = self.world_size()
-  let f = at_offset.to_mercator()
-  let t = (if self.limits.bounds is None {
-    normalize_center(to.center, c.center)
-  } else {
-    to.center
-  }).to_mercator()
-  let tx = t.x
-  let delta = ((tx - f.x) * ws, (t.y - f.y) * ws)
+  let m = self.move_to(target)
+  let to = m.to
+  let delta = m.delta
   let u1 = (delta.0 * delta.0 + delta.1 * delta.1).sqrt()
   let scale_of_zoom = @math.pow(2.0, to.zoom - c.zoom)
   let requested = min_zoom.unwrap_or(self.limits.min_zoom)
@@ -356,16 +362,13 @@ pub fn Transform::fly_to(
     start_zoom: c.zoom,
     target: to,
     start_bearing: c.bearing,
-    end_bearing: match target.bearing {
-      Some(b) => normalize_bearing(b, c.bearing)
-      None => c.bearing
-    },
+    end_bearing: m.end_bearing,
     start_pitch: c.pitch,
-    end_pitch: target.pitch.unwrap_or(c.pitch),
-    from: (f.x * ws, f.y * ws),
+    end_pitch: m.end_pitch,
+    from: m.from,
     delta,
-    start_world: ws,
-    point,
+    start_world: self.world_size(),
+    point: m.point,
     rho,
     r0,
     length,

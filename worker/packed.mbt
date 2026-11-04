@@ -98,7 +98,7 @@ fn PackedTile::put_u32(self : PackedTile, at : Int32, v : Int32) -> Unit {
 
 ///|
 fn PackedTile::put_i16(self : PackedTile, at : Int32, v : Int32) -> Unit {
-  self.store.set_u16(at, @cmp.maximum(-32768, @cmp.minimum(32767, v)))
+  self.store.set_u16(at, @core.clamp_i16(v))
 }
 
 ///|

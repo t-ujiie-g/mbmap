@@ -14,7 +14,7 @@ pub(all) struct LngLatBounds {
 
 ///|
 /// The bounds holding nothing yet (`extend` grows them).
-pub fn LngLatBounds::empty() -> LngLatBounds {
+fn LngLatBounds::empty() -> LngLatBounds {
   {
     west: @double.infinity,
     south: @double.infinity,
@@ -83,12 +83,7 @@ fn Transform::ray_ground(
   x : Double,
   y : Double,
 ) -> MercatorCoord {
-  let nx = x / self.width * 2.0 - 1.0
-  let ny = 1.0 - y / self.height * 2.0
-  let (ax, ay, az, aw) = self.inverse.apply(nx, ny, -1.0, 1.0)
-  let (bx, by, bz, bw) = self.inverse.apply(nx, ny, 1.0, 1.0)
-  let (ax, ay, az) = (ax / aw, ay / aw, az / aw)
-  let (bx, by, bz) = (bx / bw, by / bw, bz / bw)
+  let (ax, ay, az, bx, by, bz) = self.screen_ray(x, y)
   let t = if az == bz { 0.0 } else { az / (az - bz) }
   let c = self.camera.center.to_mercator()
   let ws = self.world_size()

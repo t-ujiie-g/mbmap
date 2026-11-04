@@ -5,7 +5,7 @@
 pub fn add_points(
   coords : ArrayView[Int32],
   out : LineBuffers,
-  extent~ : Int32 = 4096,
+  extent~ : Int32 = @core.TILE_EXTENT,
 ) -> Unit {
   let s = EXTRUDE_SCALE
   for i in 0..<(coords.length() / 2) {
@@ -15,16 +15,32 @@ pub fn add_points(
       continue
     }
     let base = out.num_vertices()
-    for corner in [(-s, -s), (s, -s), (s, s), (-s, s)] {
-      out.vertices.push(x)
-      out.vertices.push(y)
-      out.vertices.push(corner.0)
-      out.vertices.push(corner.1)
-      out.vertices.push(0)
-      out.vertices.push(0)
-    }
-    for k in [0, 1, 2, 0, 2, 3] {
-      out.indices.push(base + k)
-    }
+    corner(out.vertices, x, y, -s, -s)
+    corner(out.vertices, x, y, s, -s)
+    corner(out.vertices, x, y, s, s)
+    corner(out.vertices, x, y, -s, s)
+    let i = out.indices
+    i.push(base)
+    i.push(base + 1)
+    i.push(base + 2)
+    i.push(base)
+    i.push(base + 2)
+    i.push(base + 3)
   }
+}
+
+///|
+fn corner(
+  v : Array[Int32],
+  x : Int32,
+  y : Int32,
+  ex : Int32,
+  ey : Int32,
+) -> Unit {
+  v.push(x)
+  v.push(y)
+  v.push(ex)
+  v.push(ey)
+  v.push(0)
+  v.push(0)
 }

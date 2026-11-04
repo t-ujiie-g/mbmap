@@ -34,12 +34,8 @@ priv struct Ray {
 
 ///|
 fn Transform::ray(self : Transform, x : Double, y : Double) -> Ray {
-  let nx = x / self.width * 2.0 - 1.0
-  let ny = 1.0 - y / self.height * 2.0
-  let (ax, ay, az, aw) = self.inverse.apply(nx, ny, -1.0, 1.0)
-  let (bx, by, bz, bw) = self.inverse.apply(nx, ny, 1.0, 1.0)
-  let near = (ax / aw, ay / aw, az / aw)
-  { near, delta: (bx / bw - near.0, by / bw - near.1, bz / bw - near.2), }
+  let (ax, ay, az, bx, by, bz) = self.screen_ray(x, y)
+  { near: (ax, ay, az), delta: (bx - ax, by - ay, bz - az), }
 }
 
 ///|

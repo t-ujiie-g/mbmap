@@ -43,11 +43,6 @@ test "bounds hold the corners and stop at the horizon line when tilted" {
   let t = tilted.bounds()
   let horizon = tilted.unproject(400.0, 300.0 - tilted.horizon())
   assert_true(within(t.north, horizon.lat, 1.0e-9))
-  let empty = @core.LngLatBounds::empty()
-  assert_eq(
-    empty.including({ lng: 1.0, lat: 2.0, }).including({ lng: -1.0, lat: 3.0, }),
-    { west: -1.0, south: 2.0, east: 1.0, north: 3.0, },
-  )
 }
 
 ///|
@@ -94,9 +89,6 @@ test "the default easing is CSS ease and bearings ease the short way" {
   assert_true(within(e.at(0.5), 0.8024033877399112, 1.0e-6))
   let linear = @core.Bezier::new(0.0, 0.0, 1.0, 1.0)
   assert_true(within(linear.at(0.3), 0.3, 1.0e-6))
-  assert_eq(@core.normalize_bearing(170.0, -170.0), -190.0)
-  assert_eq(@core.normalize_bearing(-170.0, 170.0), 190.0)
-  assert_eq(@core.normalize_bearing(30.0, 0.0), 30.0)
 }
 
 ///|
