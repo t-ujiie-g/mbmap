@@ -15,7 +15,7 @@ const DIST = path.join(PKG, "dist");
 // on; `references` the dist files its JS may import or load by URL.
 const ENTRIES = [
   { name: "mbmap", files: ["index.js"], budget: 135_000, references: ["./geojson.js", "./pmtiles.js", "./legacy.js", "./sprite.js", "./media.js", "./custom.js", "./export.js", "./tilejson-merge.js", "./worker.js", "./mbmap.wasm"] },
-  { name: "GeoJSON sources (loaded by mbmap when a style has one)", files: ["geojson.js"], budget: 5_000, references: ["./geojson-worker.js", "./geojson.wasm"] },
+  { name: "GeoJSON sources (loaded by mbmap when a style has one)", files: ["geojson.js"], budget: 5_000, references: ["./geojson-worker.js", "./geojson.wasm", "./geojson-properties.wasm"] },
   { name: "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)", files: ["pmtiles.js"], budget: 2_000, references: [] },
   { name: "legacy filters and functions (loaded by mbmap when a style has them)", files: ["legacy.js"], budget: 5_000, references: [] },
   { name: "sprite sheets (loaded by mbmap when a style has a sprite)", files: ["sprite.js"], budget: 2_000, references: [] },
@@ -32,6 +32,7 @@ const ENTRIES = [
   { name: "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)", files: ["worker-pmtiles.js"], budget: 3_000, references: [] },
   { name: "feature queries (loaded by the display worker with the first query)", files: ["worker-query.js"], budget: 1_500, references: [] },
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
+  { name: "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)", files: ["geojson-worker.js", "geojson-properties.wasm"], budget: 50_000, references: [] },
   { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./projstring.js", "./analysis-worker.js", "./analysis.wasm", "./geometry.wasm", "./proj.wasm"] },
   { name: "PROJ strings (loaded by mbmap/analysis on the first one)", files: ["projstring.js"], budget: 5_000, references: [] },
   { name: "analysis worker", files: ["analysis-worker.js", "analysis.wasm"], budget: 30_000, references: [] },

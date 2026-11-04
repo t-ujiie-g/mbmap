@@ -62,6 +62,12 @@ function points(count) {
 }
 const CLUSTERED = { pts: { type: "geojson", data: points(3000), cluster: true, clusterRadius: 40, clusterMaxZoom: 14 } };
 const isCluster = ["has", "point_count"];
+// The same points with cluster properties: the sum of i, whether any is a multiple of 50, the smallest i.
+const CLUSTER_PROPERTIES = { pts: { ...CLUSTERED.pts, clusterProperties: {
+  total: ["+", ["get", "i"]],
+  round: ["any", ["==", ["%", ["get", "i"], 50], 0]],
+  first: [["min", ["accumulated"], ["get", "first"]], ["get", "i"]],
+} } };
 const POINTS = { pts: { type: "geojson", data: points(3000) } };
 // Lines winding across tile borders around Tokyo Station, for line metrics: a zigzag and a loop.
 const zigzag = (lat) => Array.from({ length: 13 }, (_, i) => [139.70 + i * 0.012, lat + (i % 2) * 0.012]);
@@ -275,6 +281,20 @@ export const SCENES = {
         } },
       { id: "single", type: "circle", source: "pts", filter: ["!", isCluster], paint: { "circle-color": "#11b4da", "circle-radius": 3 } },
     ], CLUSTERED),
+    camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
+    limits: { mean: 0.07, p99: 1 },
+  },
+  // Cluster properties reduced in the GeoJSON worker (its module with expressions) drawn as color and size.
+  "cluster-properties": {
+    style: style([
+      { id: "clusters", type: "circle", source: "pts", filter: isCluster,
+        paint: {
+          "circle-color": ["case", ["get", "round"], "#e7298a", ["<", ["get", "first"], 100], "#f1a340", "#51bbd6"],
+          "circle-radius": ["min", 20, ["+", 4, ["/", ["get", "total"], 4000]]],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": 1,
+        } },
+      { id: "single", type: "circle", source: "pts", filter: ["!", isCluster], paint: { "circle-color": "#11b4da", "circle-radius": 3 } },
+    ], CLUSTER_PROPERTIES),
     camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },

@@ -1,0 +1,18 @@
+// The GeoJSON worker's wasm-gc module with expressions, for sources with
+// `clusterProperties` (loaded only for them): the exports of `geojson_worker`, and
+// `set_properties`. geojson_worker/js/worker.mjs is its glue too.
+
+import {
+  "t-ujiie-g/mbmap/cluster_props",
+  "t-ujiie-g/mbmap/geojson_tiles",
+  "t-ujiie-g/mbmap/style",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

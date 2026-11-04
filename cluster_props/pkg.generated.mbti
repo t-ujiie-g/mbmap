@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/cluster_props"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/style",
+  "t-ujiie-g/mbmap/tiler",
+}
+
+// Values
+pub fn cluster_properties(@geom.Table, Array[(String, @style.Expr, @style.Expr)], hooks? : Hooks) -> @tiler.ClusterProperties
+
+// Errors
+
+// Types and methods
+pub(all) struct Hooks {
+  trig : @core.Trig
+  number_text : (Double) -> String
+  text_number : (String) -> Double
+  intl : @style.Intl
+}
+pub fn Hooks::default() -> Self
+
+// Type aliases
+
+// Traits

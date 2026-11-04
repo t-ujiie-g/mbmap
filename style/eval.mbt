@@ -16,8 +16,15 @@ pub(open) trait FeatureContext {
   fn number_format(Self, Double, String?, String?, String?, Double?, Double?) -> String? = _
   fn collate(Self, String, String, Bool, Bool, String?) -> Double = _
   fn resolved_locale(Self, String?) -> String? = _
+  fn accumulated(Self) -> Value = _
   fn within(Self, Array[Array[Array[Double]]]) -> Bool = _
   fn distance(Self, Array[Shape]) -> Value = _
+}
+
+///|
+/// Null: the value so far is known only where cluster properties are reduced.
+impl FeatureContext with fn accumulated(_) {
+  Null
 }
 
 ///|
@@ -397,6 +404,7 @@ pub fn[C : FeatureContext] Expr::eval(
       go(out)
     }
     Call(op, args) => call(op, args, zoom, ctx)
+    Accumulated => ctx.accumulated()
     Within(polygons) => Bool(ctx.within(polygons))
     Distance(shapes) => ctx.distance(shapes)
   }
@@ -431,6 +439,7 @@ fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
     | LineProgress
     | HeatmapDensity
     | Elevation
+    | Accumulated
     | Within(_)
     | Distance(_)
     | FeatureState(_) => ()

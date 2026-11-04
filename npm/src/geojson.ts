@@ -23,12 +23,16 @@ export interface GeoJSONTiles {
   terminate(): void;
 }
 
-/** Starts the GeoJSON worker and loads `sources`, resolving data URLs against `base`. */
+/**
+ * Starts the GeoJSON worker and loads `sources`, resolving data URLs against `base`; `compile` turns a source's
+ * `clusterProperties` into what the worker's module with expressions (`geojson-properties.wasm`) reads.
+ */
 export function createGeoJSONTiles(
   sources: GeoJSONSource[],
   base: URL,
   onError: (error: Error) => void,
-  urls: { workerUrl?: string | URL; wasmUrl?: string | URL } = {},
+  urls: { workerUrl?: string | URL; wasmUrl?: string | URL; propertiesWasmUrl?: string | URL } = {},
+  compile: (clusterProperties: string) => Uint8Array = () => new Uint8Array(0),
 ): GeoJSONTiles {
   const page = new URL(document.baseURI);
   const worker = new Worker(
@@ -78,9 +82,14 @@ export function createGeoJSONTiles(
     fail(e.message || "the worker failed");
   };
   worker.onmessageerror = () => fail("a message could not be read");
-  worker.postMessage({ type: "init", wasm: wasmUrl(urls.wasmUrl ?? new URL("./geojson.wasm", import.meta.url), page) });
+  worker.postMessage({
+    type: "init",
+    wasm: wasmUrl(urls.wasmUrl ?? new URL("./geojson.wasm", import.meta.url), page),
+    propsWasm: wasmUrl(urls.propertiesWasmUrl ?? new URL("./geojson-properties.wasm", import.meta.url), page),
+  });
   const load = (s: GeoJSONSource, n: number) => {
-    const options = { type: "load", source: n, ...loadOptions(s.spec) };
+    const p = s.spec.cluster === true && s.spec.clusterProperties ? compile(JSON.stringify(s.spec.clusterProperties)) : null;
+    const options = { type: "load", source: n, ...loadOptions(s.spec), ...(p && p.length > 0 ? { properties: p } : {}) };
     const data = s.spec.data;
     if (typeof data === "string") {
       const url = new URL(data, base);

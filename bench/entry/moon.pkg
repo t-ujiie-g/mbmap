@@ -2,11 +2,13 @@
 
 import {
   "t-ujiie-g/mbmap/clipper",
+  "t-ujiie-g/mbmap/cluster_props",
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/mvt",
   "t-ujiie-g/mbmap/proj",
+  "t-ujiie-g/mbmap/style",
   "t-ujiie-g/mbmap/tess",
   "t-ujiie-g/mbmap/tiler",
   "moonbitlang/core/double",

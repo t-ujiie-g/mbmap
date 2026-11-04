@@ -135,11 +135,11 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
     match s.get("cluster") {
       None | Some(False) => ()
       Some(True) =>
-        if s.get("clusterProperties") is Some(_) {
-          raise Unsupported(
-            path="\{path}.clusterProperties",
-            "cluster properties",
-          )
+        match s.get("clusterProperties") {
+          Some(j) =>
+            compile_cluster_properties(j, path="\{path}.clusterProperties")
+            |> ignore
+          None => ()
         }
       Some(_) => raise Invalid(path="\{path}.cluster", "not a boolean")
     }

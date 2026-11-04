@@ -60,7 +60,17 @@ pub fn geojson_clusters(
   extent : Int32,
   wrap_buffer : Double,
   wrap : Bool,
+  properties : Bytes,
 ) -> Int32 {
+  let properties = if properties.length() == 0 {
+    None
+  } else {
+    let json = @core.parse_json(properties[:]) catch { _ => return -1 }
+    let compiled = @style.compile_cluster_properties(json) catch {
+      _ => return -1
+    }
+    Some(compiled)
+  }
   build_clusters(
     bytes[:],
     max_zoom,
@@ -70,8 +80,20 @@ pub fn geojson_clusters(
     wrap_buffer,
     wrap,
     @tiler.Trig::moonbit(),
+    properties?,
+    hooks={
+      ..@cluster_props.Hooks::default(),
+      number_text: js_number_text,
+      text_number: js_text_number,
+    },
   )
 }
+
+///|
+extern "js" fn js_number_text(x : Double) -> String = "String"
+
+///|
+extern "js" fn js_text_number(s : String) -> Double = "Number"
 
 ///|
 /// `read_only` on the GeoJSON's UTF-8 Uint8Array.

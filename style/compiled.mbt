@@ -320,6 +320,7 @@ fn StyleWriter::expr(self : StyleWriter, e : Expr) -> Unit {
       self.expr(b)
       self.expr(c)
     }
+    Accumulated => self.code(26)
     Within(polygons) => {
       self.code(24)
       self.w.u32(polygons.length())
@@ -774,6 +775,7 @@ fn StyleReader::expr(self : StyleReader, depth : Int32) -> Expr {
       Collate(op, a, b, self.expr(d))
     }
     24 => Within(self.list(() => self.rings()))
+    26 => Accumulated
     25 =>
       Distance(
         self.list(() => {
@@ -818,6 +820,39 @@ fn StyleReader::rings(self : StyleReader) -> Array[Array[Double]] {
     self.r.fail()
   }
   rings
+}
+
+///|
+/// Writes cluster properties (`compile_cluster_properties`) for the GeoJSON worker
+/// (docs/FORMATS.md "Compiled style"): a count, then per key its name and its map
+/// and reduce expressions.
+pub fn write_cluster_properties(props : Array[(String, Expr, Expr)]) -> Bytes {
+  let w = StyleWriter::{ w: @core.ByteWriter::new(), }
+  w.w.u32(props.length())
+  for p in props {
+    w.w.utf8(p.0)
+    w.expr(p.1)
+    w.expr(p.2)
+  }
+  w.w.to_bytes()
+}
+
+///|
+/// Reads what `write_cluster_properties` wrote; None if malformed or followed by more.
+pub fn read_cluster_properties(
+  bytes : BytesView,
+) -> Array[(String, Expr, Expr)]? {
+  let r = StyleReader::{ r: @core.ByteReader::new(bytes), left: 0, }
+  let props = r.list(() => {
+    let key = r.r.utf8()
+    let map = r.top()
+    (key, map, r.top())
+  })
+  if r.r.done() {
+    Some(props)
+  } else {
+    None
+  }
 }
 
 ///|

@@ -54,6 +54,8 @@ declare module "mbmap-engine" {
   export function map_set_style(map: EngineMap, style: string, strict: boolean): string;
   /** What the current style leaves out: path, message, path, ... */
   export function map_warnings(map: EngineMap): string[];
+  /** A GeoJSON source's `clusterProperties` (JSON text) compiled for its worker; empty if they cannot be. */
+  export function compile_cluster_properties(json: string): Uint8Array;
   export function map_reload_source(map: EngineMap, id: string): void;
   /** Shows `picture` (null for nothing) for image, video or canvas source `id`, placed by `quad` (media.ts `quadOf`). */
   export function map_set_media(map: EngineMap, id: string, picture: TexImageSource | null, quad: number[]): void;

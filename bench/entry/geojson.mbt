@@ -169,10 +169,15 @@ fn build_clusters(
   slow_number~ : (Int32, Int32) -> Double = (s, e) => {
     @core.strconv_number(bytes[s:e])
   },
+  properties? : Array[(String, @style.Expr, @style.Expr)],
+  hooks~ : @cluster_props.Hooks = @cluster_props.Hooks::default(),
 ) -> Int32 {
   let table = @formats.read_geojson(bytes, slow_number~) catch {
     _ => return -1
   }
+  let properties = properties.map(p => {
+    @cluster_props.cluster_properties(table, p, hooks~)
+  })
   let options : @tiler.ClusterOptions = {
     ..@tiler.ClusterOptions::default(),
     max_zoom,
@@ -182,7 +187,16 @@ fn build_clusters(
     wrap,
   }
   current_clusters.val = Some(
-    (table, @tiler.ClusterIndex::new(table, options~, wrap_buffer~, trig~)),
+    (
+      table,
+      @tiler.ClusterIndex::new(
+        table,
+        options~,
+        wrap_buffer~,
+        trig~,
+        properties?,
+      ),
+    ),
   )
   table.length()
 }

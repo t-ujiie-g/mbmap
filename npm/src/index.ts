@@ -685,10 +685,13 @@ export class Map {
         ({ createGeoJSONTiles }) => {
           if (this.#removed) return null;
           const o = this.#options;
-          this.#geojson = createGeoJSONTiles(this.#geojsonSources, this.#base, (e) => this.#fail(e), {
-            workerUrl: o.geojsonWorkerUrl,
-            wasmUrl: o.geojsonWasmUrl,
-          });
+          this.#geojson = createGeoJSONTiles(
+            this.#geojsonSources,
+            this.#base,
+            (e) => this.#fail(e),
+            { workerUrl: o.geojsonWorkerUrl, wasmUrl: o.geojsonWasmUrl, propertiesWasmUrl: o.geojsonPropertiesWasmUrl },
+            (json) => engine.compile_cluster_properties(json),
+          );
           return this.#geojson;
         },
         (err: unknown) => {

@@ -3,9 +3,9 @@
 // Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// geojson-vt's cluster options (`SuperclusterOptions`; no `map`/`reduce`):
-/// zooms clustered on, the points a cluster needs, its `radius` in units of
-/// a tile `extent` wide, and the kd-tree's `node_size`.
+/// geojson-vt's cluster options (`SuperclusterOptions`, `map` and `reduce` aside): zooms
+/// clustered on, the points a cluster needs, its `radius` in units of a tile `extent`
+/// wide, and the kd-tree's `node_size`.
 pub(all) struct ClusterOptions {
   min_zoom : Int32
   max_zoom : Int32
@@ -30,6 +30,16 @@ pub fn ClusterOptions::default() -> ClusterOptions {
 }
 
 ///|
+/// geojson-vt's `map` and `reduce` as MapLibre makes them from `clusterProperties`:
+/// `map` gives a point's (its table row's) value of each of `keys`, `reduce` merges a
+/// point's or cluster's values (the second) into a cluster's (the first, in place).
+pub(all) struct ClusterProperties {
+  keys : Array[String]
+  map : (Int32) -> Array[@geom.Prop]
+  reduce : (Array[@geom.Prop], Array[@geom.Prop]) -> Unit
+}
+
+///|
 /// The highest zoom clustered on: a cluster id keeps its zoom in five bits.
 const MAX_CLUSTER_ZOOM : Int32 = 30
 
@@ -42,8 +52,8 @@ const MAX_INTEGER : Double = 2147483647.0
 
 ///|
 /// The per-item values in a tree's `data`, `STRIDE` apart: the last zoom it
-/// was processed at, its point index or cluster id, its parent cluster id
-/// and its point count.
+/// was processed at, its point index or cluster id, its parent cluster id,
+/// its point count and a cluster's properties (an index, -1 for none).
 const OFFSET_ZOOM : Int32 = 0
 
 ///|
@@ -56,7 +66,10 @@ const OFFSET_PARENT : Int32 = 2
 const OFFSET_NUM : Int32 = 3
 
 ///|
-const STRIDE : Int32 = 4
+const OFFSET_PROP : Int32 = 4
+
+///|
+const STRIDE : Int32 = 5
 
 ///|
 fn encode_coord(c : Double) -> Double {
@@ -100,14 +113,16 @@ priv struct ClusterTree {
 }
 
 ///|
-/// A point (its table `row`, `count` 1) or a cluster (row -1, its id and point
-/// count), at `x` and `y` in tile units in a tile, else longitude and latitude.
+/// A point (its table `row`, `count` 1) or a cluster (row -1, its id, point
+/// count and `properties`' values), at `x` and `y` in tile units in a tile, else
+/// longitude and latitude.
 pub struct ClusterFeature {
   x : Double
   y : Double
   row : Int32
   cluster_id : Int32
   count : Int32
+  props : Array[(String, @geom.Prop)]
 }
 
 ///|
@@ -120,6 +135,8 @@ pub struct ClusterIndex {
   priv ys : Array[Double]
   priv rows : Array[Int32]
   priv trig : Trig
+  priv properties : ClusterProperties?
+  priv props : Array[Array[@geom.Prop]]
 }
 
 ///|
@@ -131,6 +148,7 @@ pub fn ClusterIndex::new(
   options~ : ClusterOptions = ClusterOptions::default(),
   wrap_buffer~ : Double = 64.0 / 4096.0,
   trig~ : Trig = Trig::moonbit(),
+  properties? : ClusterProperties,
 ) -> ClusterIndex {
   let options = {
     ..options,
@@ -144,6 +162,8 @@ pub fn ClusterIndex::new(
     ys: [],
     rows: [],
     trig,
+    properties,
+    props: [],
   }
   let mut set = convert(table, 0.0, trig)
   if options.wrap {
@@ -193,6 +213,7 @@ fn ClusterIndex::create_trees(self : ClusterIndex) -> Unit {
     data[k + OFFSET_ID] = i
     data[k + OFFSET_PARENT] = -1
     data[k + OFFSET_NUM] = 1
+    data[k + OFFSET_PROP] = -1
     num_items += 1
   }
   for _ in 0..<(o.max_zoom + 2) {
@@ -289,6 +310,8 @@ fn ClusterIndex::cluster(
       let mut wx = x.to_double() * origin.to_double()
       let mut wy = y.to_double() * origin.to_double()
       let id = (index << 5) + (zoom + 1) + self.xs.length()
+      let mut merged : Array[@geom.Prop]? = None
+      let mut prop_index = -1
       for n in 0..<found {
         let j = neighbors[n]
         let k = j * STRIDE
@@ -300,6 +323,19 @@ fn ClusterIndex::cluster(
         wx += coords[j * 2].to_double() * count
         wy += coords[j * 2 + 1].to_double() * count
         data[k + OFFSET_PARENT] = id
+        if self.properties is Some(p) {
+          let acc = match merged {
+            Some(a) => a
+            None => {
+              let a = self.values(data, i).copy()
+              prop_index = self.props.length()
+              self.props.push(a)
+              merged = Some(a)
+              a
+            }
+          }
+          (p.reduce)(acc, self.values(data, k))
+        }
       }
       data[i + OFFSET_PARENT] = id
       next_coords[next * 2] = js_round(wx / num_points.to_double())
@@ -309,6 +345,7 @@ fn ClusterIndex::cluster(
       next_data[k + OFFSET_ID] = id
       next_data[k + OFFSET_PARENT] = -1
       next_data[k + OFFSET_NUM] = num_points
+      next_data[k + OFFSET_PROP] = prop_index
       next += 1
     } else {
       next_coords[next * 2] = x
@@ -332,6 +369,39 @@ fn ClusterIndex::cluster(
     }
   }
   next
+}
+
+///|
+/// The values of an item for `reduce`: a cluster's own, a point's mapped (its
+/// `map`; geojson-vt's private `map`).
+fn ClusterIndex::values(
+  self : ClusterIndex,
+  data : FixedArray[Int32],
+  i : Int32,
+) -> Array[@geom.Prop] {
+  if data[i + OFFSET_NUM] > 1 {
+    return self.props[data[i + OFFSET_PROP]]
+  }
+  match self.properties {
+    Some(p) => (p.map)(self.rows[data[i + OFFSET_ID]])
+    None => []
+  }
+}
+
+///|
+/// A cluster's properties by key (none without `ClusterProperties`).
+fn ClusterIndex::props_of(
+  self : ClusterIndex,
+  data : FixedArray[Int32],
+  i : Int32,
+) -> Array[(String, @geom.Prop)] {
+  guard self.properties is Some(p) &&
+    data[i + OFFSET_NUM] > 1 &&
+    data[i + OFFSET_PROP] >= 0 else {
+    return []
+  }
+  let values = self.props[data[i + OFFSET_PROP]]
+  p.keys.mapi((k, key) => (key, values[k]))
 }
 
 ///|
@@ -432,6 +502,7 @@ fn ClusterIndex::add_tile_features(
       row,
       cluster_id,
       count: tree.data[k + OFFSET_NUM],
+      props: self.props_of(tree.data, k),
     })
   }
 }
@@ -476,15 +547,16 @@ pub fn ClusterIndex::children(
       continue
     }
     if tree.data[k + OFFSET_NUM] > 1 {
-      children.push(
-        self.lng_lat(
+      children.push({
+        ..self.lng_lat(
           decode_coord(tree.coords[c * 2]),
           decode_coord(tree.coords[c * 2 + 1]),
           -1,
           tree.data[k + OFFSET_ID],
           tree.data[k + OFFSET_NUM],
         ),
-      )
+        props: self.props_of(tree.data, k),
+      })
     } else {
       let p = tree.data[k + OFFSET_ID]
       children.push(self.lng_lat(self.xs[p], self.ys[p], self.rows[p], -1, 1))
@@ -514,6 +586,7 @@ fn ClusterIndex::lng_lat(
     row,
     cluster_id,
     count,
+    props: [],
   }
 }
 

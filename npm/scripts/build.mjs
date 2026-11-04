@@ -14,6 +14,7 @@ const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit" 
 run("moon", ["build", "bundle/main", "--target", "js", "--release"], ROOT);
 run("moon", ["build", "worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geojson_worker", "--target", "wasm-gc", "--release"], ROOT);
+run("moon", ["build", "geojson_props_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "analysis_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geometry_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "proj_worker", "--target", "wasm-gc", "--release"], ROOT);
@@ -64,6 +65,7 @@ await build({ ...common, entryPoints: [path.join(ROOT, "element/element.ts")], o
 // No wasm-opt: it made the wasm-gc worker slower in every browser (AGENTS.md §4).
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/worker/worker.wasm"), path.join(DIST, "mbmap.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geojson_worker/geojson_worker.wasm"), path.join(DIST, "geojson.wasm"));
+await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geojson_props_worker/geojson_props_worker.wasm"), path.join(DIST, "geojson-properties.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/analysis_worker/analysis_worker.wasm"), path.join(DIST, "analysis.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geometry_worker/geometry_worker.wasm"), path.join(DIST, "geometry.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"), path.join(DIST, "proj.wasm"));

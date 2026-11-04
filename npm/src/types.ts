@@ -81,6 +81,8 @@ export interface MapOptions {
   wasmUrl?: string | URL;
   geojsonWorkerUrl?: string | URL;
   geojsonWasmUrl?: string | URL;
+  /** The GeoJSON worker's module with expressions, loaded for sources with `clusterProperties` (default `geojson-properties.wasm` next to the bundle). */
+  geojsonPropertiesWasmUrl?: string | URL;
   fontFamily?: string;
   strict?: boolean;
   globalState?: Record<string, unknown>;

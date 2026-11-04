@@ -73,6 +73,7 @@ pub extend NoFeature with FeatureContext::{
   number_format,
   collate,
   resolved_locale,
+  accumulated,
   within,
   distance,
 }
