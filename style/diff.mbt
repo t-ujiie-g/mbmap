@@ -27,6 +27,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.min_zoom == other.min_zoom &&
   self.max_zoom == other.max_zoom &&
   self.filter == other.filter &&
+  self.sort_key == other.sort_key &&
   self.text == other.text &&
   self.icon.map(i => i.layout) == other.icon.map(i => i.layout) &&
   self.extrusion == other.extrusion &&

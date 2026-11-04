@@ -97,6 +97,9 @@ let justifies : FixedArray[TextJustify] = [Auto, Left, Center, Right]
 let placements : FixedArray[SymbolPlacement] = [Point, Line, LineCenter]
 
 ///|
+let z_orders : FixedArray[SymbolZOrder] = [Auto, ViewportY, Source]
+
+///|
 let fits : FixedArray[IconTextFit] = [NoFit, Width, Height, Both]
 
 ///|
@@ -375,6 +378,7 @@ fn StyleWriter::text(self : StyleWriter, t : TextLayout) -> Unit {
   self.opt_expr(t.font)
   self.exprs([t.letter_spacing, t.transform, t.rotate])
   self.flag(t.cooperative)
+  self.code(code_of(z_orders, t.z_order))
 }
 
 ///|
@@ -462,6 +466,7 @@ fn StyleWriter::layer(self : StyleWriter, l : StyleLayer) -> Unit {
   self.flag(l.translate_viewport)
   self.flag(l.scale_with_map)
   self.flag(l.pitch_with_map)
+  self.opt_expr(l.sort_key)
 }
 
 ///|
@@ -827,6 +832,7 @@ fn StyleReader::text(self : StyleReader) -> TextLayout {
       (Lit(Null), Lit(Null), Lit(Null))
     }
   }
+  let cooperative = self.flag()
   {
     field,
     size,
@@ -849,7 +855,8 @@ fn StyleReader::text(self : StyleReader) -> TextLayout {
     letter_spacing,
     transform,
     rotate,
-    cooperative: self.flag(),
+    cooperative,
+    z_order: self.from(z_orders, Auto),
   }
 }
 
@@ -971,6 +978,7 @@ fn StyleReader::layer(self : StyleReader) -> StyleLayer {
   let translate = self.pair()
   let translate_viewport = self.flag()
   let scale_with_map = self.flag()
+  let pitch_with_map = self.flag()
   {
     id,
     kind,
@@ -1012,7 +1020,8 @@ fn StyleReader::layer(self : StyleReader) -> StyleLayer {
     translate,
     translate_viewport,
     scale_with_map,
-    pitch_with_map: self.flag(),
+    pitch_with_map,
+    sort_key: self.opt_expr(),
   }
 }
 

@@ -24,6 +24,7 @@ priv struct LayerMesh {
   ground : ExtrusionGround?
   dem : DemTile?
   clips : FixedArray[Double]?
+  key_runs : FixedArray[Double]?
   mut gradient : (@style.Expr, @render_webgl2.Gradient)?
 }
 

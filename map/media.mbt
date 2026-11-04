@@ -152,6 +152,7 @@ fn Map::media_draw(
     ground: None,
     dem: None,
     clips: None,
+    key_runs: None,
     gradient: None,
   }
   let q = m.quad

@@ -731,3 +731,44 @@ test "offset lines pack their offset normals and share buffers only with offset 
   // The data-driven offset goes per vertex, with the width and gap as constants.
   assert_true(entry(2, 10) > 0)
 }
+
+///|
+test "sort keys order features within the tile, and circles pack their runs of equal keys" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "line", "type": "line", "source": "a", "source-layer": "road",
+    #|   "layout": {"line-sort-key": ["get", "k"]}},
+    #|  {"id": "dots", "type": "circle", "source": "a", "source-layer": "road",
+    #|   "layout": {"circle-sort-key": ["get", "k"]}},
+    #|  {"id": "plain", "type": "circle", "source": "a", "source-layer": "road"}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  // k = 1, 0 and none (0): sorted, ties in tile order, the second, third, first.
+  let tile = tile_of([road_layer([Some(1), Some(0), None])])
+  assert_true(p.process("a", tile[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  assert_eq(p.out.layer_count(), 3)
+  assert_eq(i16_at(b, entry(0, 2)), 20)
+  // The sorted circles do not share the plain ones' buffers.
+  assert_true(entry(2, 2) != entry(1, 2))
+  assert_eq(i16_at(b, entry(1, 2)), 20)
+  assert_eq(i16_at(b, entry(2, 2)), 0)
+  // Two runs: key 0 over four circles (24 indices), key 1 over two.
+  assert_eq((entry(1, 20), entry(2, 20)), (2, 0))
+  let r = entry(1, 19)
+  let f64_at = (at : Int32) => {
+    let mut bits = 0UL
+    for i in 0..<8 {
+      bits = bits | (b[at + i].to_uint64() << (i * 8))
+    }
+    bits.reinterpret_as_double()
+  }
+  assert_eq((f64_at(r), u32_at(b, r + 8), u32_at(b, r + 12)), (0.0, 0, 24))
+  assert_eq(
+    (f64_at(r + 16), u32_at(b, r + 24), u32_at(b, r + 28)),
+    (1.0, 24, 12),
+  )
+}

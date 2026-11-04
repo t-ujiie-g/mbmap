@@ -57,6 +57,16 @@ const SCENES = {
     ),
     camera: { center: tokyo, zoom: 15 },
   },
+  // `symbol-z-order`: viewport-y places from the bottom of the turned screen up and drops the sort
+  // key; source keeps the key.
+  "z-order-viewport-y": {
+    style: style(label("l", { "text-max-width": 8, "symbol-z-order": "viewport-y", "symbol-sort-key": ["get", "annoCtg"] })),
+    camera: { center: [139.7645, 35.6795], zoom: 15.4, bearing: 30 },
+  },
+  "z-order-source": {
+    style: style(label("l", { "text-max-width": 8, "symbol-z-order": "source", "symbol-sort-key": ["-", 0, ["get", "annoCtg"]], "symbol-avoid-edges": true })),
+    camera: { center: tokyo, zoom: 15 },
+  },
   ...contourScenes(),
   ...iconScenes(),
   ...expressionScenes(),

@@ -31,13 +31,19 @@ pub(all) enum SymbolPlacement {
 } derive(Debug, Eq)
 
 ///|
-/// A symbol layer's text layout: `field` is `text-field` as parts to join; sizes in CSS pixels,
-/// `offset`, `max_width`, `line_height` and `letter_spacing` in ems, `rotate` in degrees; `vertical`
-/// the first `text-writing-mode`, `sort_key` the `symbol-sort-key`, `font` the `text-font` (None for
-/// the map's font). `variable` holds the anchors to try in order with their offsets in ems
-/// (`text-variable-anchor-offset`); such labels are shaped centered, `offset` 0. Along lines:
-/// `spacing` (px), `max_angle` (degrees), `keep_upright`. `text-overlap` `always` is
-/// `allow_overlap`, `cooperative` its own flag.
+/// How a symbol layer's labels are ordered (`symbol-z-order`): `Auto` by the
+/// sort key if any, else as `ViewportY` when they may overlap; `Source` as the
+/// features come.
+pub(all) enum SymbolZOrder {
+  Auto
+  ViewportY
+  Source
+} derive(Debug, Eq)
+
+///|
+/// A symbol layer's text layout, its Style Spec properties by name (sizes in CSS px,
+/// lengths in ems, angles in degrees; `font` None for the map's font, `variable` the
+/// anchors with their offsets, `cooperative` a `text-overlap` of `cooperative`).
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
@@ -61,6 +67,7 @@ pub struct TextLayout {
   transform : Expr
   rotate : Expr
   cooperative : Bool
+  z_order : SymbolZOrder
 } derive(Eq)
 
 ///|
@@ -121,6 +128,13 @@ fn parse_text(
   layout : Map[String, Json],
   path : String,
 ) -> TextLayout raise StyleError {
+  let z_order = match string_or(layout, "symbol-z-order", path, "auto") {
+    "auto" => SymbolZOrder::Auto
+    "viewport-y" => ViewportY
+    "source" => Source
+    z => raise Invalid(path="\{path}.symbol-z-order", "unknown order \{z}")
+  }
+  bool_or(layout, "symbol-avoid-edges", path, false) |> ignore
   let placement = match string_or(layout, "symbol-placement", path, "point") {
     "point" => SymbolPlacement::Point
     "line" => Line
@@ -218,9 +232,10 @@ fn parse_text(
           "not a list of horizontal and vertical",
         )
     },
-    sort_key: match layout.get("symbol-sort-key") {
-      None => None
-      Some(j) =>
+    // MapLibre sorts by key unless the order is `viewport-y`.
+    sort_key: match (layout.get("symbol-sort-key"), z_order) {
+      (None, _) | (_, ViewportY) => None
+      (Some(j), _) =>
         Some(compile(j, expected=NumberType, path="\{path}.symbol-sort-key"))
     },
     font: match layout.get("text-font") {
@@ -248,6 +263,7 @@ fn parse_text(
     ),
     transform: layout_expr("text-transform", StringType, Json::string("none")),
     rotate: layout_expr("text-rotate", NumberType, Json::number(0.0)),
+    z_order,
   }
 }
 

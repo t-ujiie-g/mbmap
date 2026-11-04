@@ -2,17 +2,17 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り）、16.5（文字）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り、#86）、16.3（並び順、#87）、16.5（文字）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 16.3、16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
+  1. 16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
 - **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` / `fill-translate` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 122.6KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 70.8KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 123.9KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 71.7KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
@@ -43,6 +43,20 @@
 - **MapLibre との違い**：既定のフォントスタックとかなの `localIdeographFontFamily`（上）、`font-faces`（スタイルのフォントファイル）は読まない、続け書きの判定は BMP だけ、点のラベルの字の 0.5 px のずれ（上）。
 - **残したもの**：点のラベルの字の位置を MapLibre の `getGlyphQuads` の数え方に合わせる（labels:golden の箱は変えずに）、ズームで変わる `*-translate`、`text-variable-anchor` と `text-writing-mode` での `text-rotate` の縦書きの扱い（MapLibre は縦の形に 90° 足す）。
 - **本線で測ってほしいもの**：`worker:browser`（ラベルの項目の語が増え、書体ごとの TinySDF）、`render --labels`（文字の 1 パス化で描画が減る）。
+
+- 16.3（#87）と合わせて（gzip -9）：表示（メイン）123,940 バイト、表示ワーカー 71,714 バイト、`worker-labels.js` 9,561 バイト。
+
+## Phase 16.3：並び順（2026-11-04）
+
+状態：**完了**。
+
+- **`fill-sort-key`、`line-sort-key`、`circle-sort-key`**（地物ごとの式も）：MapLibre の bucket と同じく、タイルの地物をキー（タイルのズームで評価）の小さい順に、同じキーはタイルの順のまま並べてから三角形にする（`TileProcessor::feature_order`、`@core.stable_order`）。キーのあるレイヤーは、ほかのレイヤーとバッファを共有しない。
+- **円はタイルをまたいで**：MapLibre の draw_circle はキーの同じ続き（segment）をすべてのタイルから集めてキーの順に描く。ワーカーが円のレイヤーの続きを（キー、最初の index、index の数）としてパックし（項目の 19・20 語目、`LAYER_ENTRY_WORDS` は 21 に）、主スレッドが集めて並べ、範囲ごとに描く（`Map::draw_circles_by_key`）。feature-state を読む円はタイルごとのまま。
+- **`symbol-z-order`**：`viewport-y` はキーを使わず（MapLibre の `sortFeaturesByKey` が偽）、タイルごとにラベルを回した画面の下から置く（`getSortedSymbolIndexes`：8192 単位のアンカーを `-bearing` で回した y を `Math.round`、同じなら地物の index の大きい方が先）。重なってよいラベル（`*-allow-overlap` か `*-ignore-placement`）は、`viewport-y` か「`auto` でキーなし」のとき、その順に上から描く（`sortFeaturesByY`、向きが変わるたびに並べ直す）。`source` はキーがあればキー順。線に沿ったラベルは描く順を並べ替えない（MapLibre は並べる）。
+- **`symbol-avoid-edges`**：MapLibre 6.16 は読むだけで使わない（`symbol_style_layer_properties` にあるだけ）ので、同じく型だけ確かめて何もしない。
+- **確認**（クラウドの SwiftShader）：`style:golden` に `sort-keys`（建物・道路・タイルの境をまたぐ大きな円）を足し、平均 0.101 / p99 1（限度 0.12 / 1。8 を超える画素の差は 0）。`labels:golden` に `z-order-viewport-y`（30° 回してキーあり）と `z-order-source`（負のキー、`symbol-avoid-edges`）を足し、全場面一致。`query:golden` 447 / 447。
+- **大きさ**（gzip -9）：表示（メイン）120,984 → 122,401 バイト（+1,417）、表示ワーカー 68,398 → 69,418 バイト（+1,020）。並べ替えは core の汎用の sort の代わりに小さな安定なマージソート（`@core.stable_order`）にした（ワーカーで約 −0.3KB）。キーの比較で `Expr` の等価を使うと派生した比較がワーカーに入り +1.6KB だったので、キーのあるレイヤーは共有しないことにした。
+- **本線で測ってほしいもの**：なし（キーのないレイヤーの手順は変わらない。項目の語が 2 つ増えた）。
 
 ## Phase 16.6：式（2026-11-04）
 

@@ -17,7 +17,9 @@ fn TileProcessor::line_layer(
   let join = join_of(sl.join)
   let cap = cap_of(sl.cap)
   let gradient = sl.gradient is Some(_)
-  for i in 0..<layer.length() {
+  let order = self.feature_order(sl, layer, zoom, self.keys)
+  for k in 0..<layer.length() {
+    let i = order.map_or(k, o => o[k])
     feature.index = i
     let ty = layer.geom_type(i)
     if (ty is LineString || ty is Polygon) && passes(sl.filter, feature, zoom) {

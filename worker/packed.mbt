@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 19
+pub const LAYER_ENTRY_WORDS : Int32 = 21
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -323,6 +323,37 @@ fn PackedTile::add_extruded(
   }
   self.put_indices(istart, lines.indices, index_bytes)
   self.put_distances(lines.distances) && self.put_offsets(lines.offsets)
+}
+
+///|
+/// Writes a circle layer's runs of equal sort keys for the last entry: per run
+/// its key (f64), first index and index count (u32s), up to `end` indices; false
+/// without room.
+fn PackedTile::put_key_runs(
+  self : PackedTile,
+  runs : Array[(Double, Int32)],
+  end : Int32,
+) -> Bool {
+  if runs.is_empty() {
+    return true
+  }
+  if !self.reserve(runs.length() * 16 + 4) {
+    return false
+  }
+  let at = (self.len + 7) / 8 * 8
+  for k, r in runs {
+    let next = if k + 1 < runs.length() { runs[k + 1].1 } else { end }
+    let bits = r.0.reinterpret_as_uint64()
+    self.store.set_u32(at + k * 16, bits.to_int())
+    self.store.set_u32(at + k * 16 + 4, (bits >> 32).to_int())
+    self.store.set_u32(at + k * 16 + 8, r.1)
+    self.store.set_u32(at + k * 16 + 12, next - r.1)
+  }
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 76, at)
+  self.put_u32(e + 80, runs.length())
+  self.len = at + runs.length() * 16
+  true
 }
 
 ///|

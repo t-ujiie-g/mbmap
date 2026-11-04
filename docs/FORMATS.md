@@ -38,7 +38,9 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   end (f64s, MapLibre's `lineClips`; 0 and 1 without line metrics), then the
   longest line in tiles (f64), and for offset lines the byte offset and vertex count
   of their offset normals (two i8 per vertex, `@tess.EXTRUDE_SCALE` per unit:
-  MapLibre's `a_offset_normal`; shared with the geometry).
+  MapLibre's `a_offset_normal`; shared with the geometry), and for circle layers with
+  a sort key the byte offset (8-aligned) and count of their runs of equal keys: per
+  run the key (f64), first index and index count (u32s).
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
   same data (layers with the same geometry). Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
@@ -228,7 +230,8 @@ Out:
   symbol entries without labels are left out). Buffers are transferred, never copied;
   `shared` is the position in `layers` of an earlier entry whose buffers it reuses (or -1); `props`
   the group properties (or null). Line entries add `distances`, `progress`, `clips`
-  and `offsets` ("Packed tile"; null when absent). Symbol entries add `labels`, `codepoints`
+  and `offsets`, circle entries `keyRuns` (Float64Array of key, first index, index
+  count per run) ("Packed tile"; null when absent). Symbol entries add `labels`, `codepoints`
   (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`, and with icons
   `icon` and `missing` ("Symbol vertices"). `glyphs` are the
   SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
@@ -295,7 +298,7 @@ is a u8 0 or 1; an optional item is a flag, then the item if 1.
   u8 join and cap, f64 miter and round limits, antialias flag, optional outline
   color, dash array, gradient and pattern; Exprs gap width, offset and blur, f64 x and
   y translate (CSS px), flags translate-anchor viewport, circle pitch-scale map and
-  circle pitch-alignment map. A text layout is `TextLayout`'s fields
+  circle pitch-alignment map, optional sort key (`fill-`, `line-`, `circle-sort-key`). A text layout is `TextLayout`'s fields
   in order (Expr arrays and pairs as above, the variable anchors as u32 count and
   (u8 anchor, f64, f64)); an icon layout `IconLayout`'s without `layout`.
   Hillshade, color relief and raster paint, terrain, sky and light are drawn on

@@ -165,6 +165,54 @@ fn Map::halo_apart(
 }
 
 ///|
+/// Draws a circle layer with a sort key as MapLibre does: every tile's runs of
+/// equal keys together, in key order (tiles, then runs, in order on ties).
+fn Map::draw_circles_by_key(
+  self : Map,
+  index : Int32,
+  layer : @style.StyleLayer,
+  shared : Paint,
+  draws : Array[Draw],
+  dpr : Double,
+) -> Unit {
+  let zoom = self.transform.camera.zoom
+  let runs : Array[(Double, Draw, LayerMesh, Int32, Int32)] = []
+  for d in draws {
+    for m in d.meshes {
+      guard m.layer == index && m.kind == KIND_CIRCLE else { continue }
+      match m.key_runs {
+        Some(r) if m.states.is_empty() =>
+          for k in 0..<(r.length() / 3) {
+            runs.push(
+              (r[k * 3], d, m, r[k * 3 + 1].to_int(), r[k * 3 + 2].to_int()),
+            )
+          }
+        _ => self.draw_layer(index, layer, shared, d.id, d.at, [m], dpr)
+      }
+    }
+  }
+  let keys = runs.map(r => r.0)
+  for k in @core.stable_order(keys[:]) {
+    let (_, d, m, first, count) = runs[k]
+    let at = self.translated(d.at, layer, d.id)
+    let p = mesh_paint(m, layer, shared, zoom)
+    self.renderer.set_range(m.mesh, first, count)
+    self.renderer.draw_circle(
+      m.mesh,
+      at,
+      self.slots(index, m, p, zoom),
+      dpr,
+      scale_with_map=layer.scale_with_map,
+      pitch_with_map=layer.pitch_with_map,
+      blur=p.blur,
+    )
+  }
+  for r in runs {
+    self.renderer.whole_mesh(r.2.mesh)
+  }
+}
+
+///|
 /// Draws `index`'s extrusion meshes of one tile, raised onto terrain if any.
 fn Map::draw_extrusions(
   self : Map,
@@ -563,6 +611,10 @@ fn Map::draw_frame(
       continue
     }
     let draws = draws_of.get(layer.source).unwrap_or([])
+    if layer.kind is Circle && layer.sort_key is Some(_) {
+      self.draw_circles_by_key(index, layer, shared, draws, dpr)
+      continue
+    }
     self.draw_icons(index, layer, draws, dpr, height_scale)
     for d in draws {
       self.draw_layer(
