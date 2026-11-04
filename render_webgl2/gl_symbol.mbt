@@ -134,8 +134,7 @@ extern "js" fn gl_draw_symbols(
   #|  if (m.count === 0 || !c.atlas) return;
   #|  const gl = c.gl, p = c.symbol, pre = (loc, v) => gl.uniform4f(loc, v[0] * v[3], v[1] * v[3], v[2] * v[3], v[3]);
   #|  gl.useProgram(p.program);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  c.place(p, matrix);
   #|  gl.uniform1f(p.u_along, m.glyph ? along : 0);
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
   #|  gl.uniform1f(p.u_dpr, dpr);
@@ -164,7 +163,7 @@ extern "js" fn gl_draw_symbols(
   #|    gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
   #|  }
   #|  gl.uniform3f(p.u_halo, hasHalo && !u[2] ? u[0] : 0, u[1], 1);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
 
 ///|
@@ -183,8 +182,7 @@ extern "js" fn gl_draw_icons(
   #|  if (m.count === 0 || !c.icons) return;
   #|  const gl = c.gl, p = c.icon, pre = (loc, v) => gl.uniform4f(loc, v[0] * v[3], v[1] * v[3], v[2] * v[3], v[3]);
   #|  gl.useProgram(p.program);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  c.place(p, matrix);
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
   #|  ["u_dpr", "u_center", "u_scale", "u_size", "u_persp", "u_pitch", "u_rotate", "u_angle", "u_units", "u_opacity", "u_sdf"]
   #|    .forEach((name, i) => (i === 4 || i === 5 || i === 6 || i === 10 ? gl.uniform1i(p[name], u[i]) : gl.uniform1f(p[name], u[i])));

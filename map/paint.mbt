@@ -100,11 +100,9 @@ impl @style.FeatureContext for JsProps with fn geometry_type(self) {
 }
 
 ///|
-/// A layer's paint values for one draw: colors are straight RGBA (`r`, `g`,
-/// `b`, `a` with the opacity in; `color` and `opacity` apart, as the shaders'
-/// slots take them); `width` a line's, `radius` a circle's or heatmap's, `weight`
-/// a heatmap's, the stroke a circle's (0 and transparent for other kinds);
-/// `pattern` the image a fill or background repeats, at the integer zoom.
+/// A layer's paint for one draw, colors straight RGBA (`r`..`a` with the opacity in; `color` and `opacity`
+/// apart, as the shaders' slots take them): `width` a line's, `radius` a circle's or heatmap's, `weight` a
+/// heatmap's, the stroke a circle's (else 0, transparent); `pattern` a fill's or background's image.
 priv struct Paint {
   r : Double
   g : Double

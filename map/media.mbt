@@ -1,8 +1,7 @@
 ///|
-/// What image, video or canvas source `id` shows: its `picture` (JS null for
-/// none) placed by `quad` (`Map::set_media`) over `tile`, uploaded into `mesh`
-/// once and again when `dirty`, and every frame while `playing` (a video
-/// playing, a canvas animating).
+/// What image, video or canvas source `id` shows: its `picture` (JS null for none) placed by `quad`
+/// (`Map::set_media`) over `tile`, uploaded into `mesh` once, again when `dirty`, and every frame
+/// while `playing` (a video playing, a canvas animating).
 priv struct Media {
   id : String
   mut picture : @render_webgl2.Picture
@@ -51,11 +50,9 @@ pub fn Map::set_media(
 }
 
 ///|
-/// Places source `id`'s picture by `quad`, as MapLibre's `ImageSource`
-/// computes it (`npm/src/media.ts` `quadOf`): the tile z, x, y holding it, its
-/// top left, top right, bottom right and bottom left corners in that tile's
-/// `@core.TILE_EXTENT` units, the warp's two perspective terms and its blend,
-/// 1 to draw it over a grid, and its Mercator bounds; empty for nowhere.
+/// Places source `id`'s picture by `quad` (`npm/src/media.ts` `quadOf`, MapLibre's `ImageSource`): tile z, x, y,
+/// corners (top left, top right, bottom right, bottom left) in its `@core.TILE_EXTENT` units, the warp's two
+/// perspective terms and blend, 1 to draw over a grid, and the Mercator bounds; empty for nowhere.
 pub fn Map::set_media_quad(
   self : Map,
   id : String,

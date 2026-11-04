@@ -38,10 +38,9 @@ pub fn Map::trigger_repaint(self : Map) -> Unit {
 }
 
 ///|
-/// What a custom layer is drawn with: MapLibre's `modelViewProjectionMatrix`
-/// and `projectionMatrix` (16 numbers each, through the export window if any),
-/// the field of view in radians, the near and far planes, the world size in
-/// pixels and the pixels per meter.
+/// What a custom layer is drawn with: MapLibre's `modelViewProjectionMatrix` and `projectionMatrix`
+/// (16 numbers each, through the export window if any), the field of view in radians, the near and
+/// far planes, the world size in pixels and the pixels per meter.
 fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
   let t = self.transform
   let (p, near, far) = t.projection()

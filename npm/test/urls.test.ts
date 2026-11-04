@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { httpUrl, resolveTemplate, wasmUrl, workerScriptUrl } from "../src/urls.ts";
+import { PMTILES, httpUrl, pmtilesArchive, resolveTemplate, wasmUrl, workerScriptUrl } from "../src/urls.ts";
 
 const base = new URL("https://example.com/styles/style.json");
 
@@ -42,4 +42,9 @@ test("wasm loads only from http(s) URLs", () => {
   for (const bad of ["data:application/wasm;base64,AA==", "file:///x.wasm"]) {
     assert.throws(() => wasmUrl(bad, base), /http\(s\)/);
   }
+});
+
+test("pmtilesArchive: the archive URL after the pmtiles:// prefix, null without it", () => {
+  assert.equal(pmtilesArchive(PMTILES + "https://example.com/a.pmtiles"), "https://example.com/a.pmtiles");
+  assert.equal(pmtilesArchive("https://example.com/a.pmtiles"), null);
 });

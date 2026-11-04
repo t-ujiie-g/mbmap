@@ -368,7 +368,7 @@ pub type Provider
 
 ///|
 /// No provider (JS null).
-pub fn no_provider() -> Provider {
+fn no_provider() -> Provider {
   null_provider()
 }
 

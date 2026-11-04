@@ -19,8 +19,10 @@ type Gl
 
 ///|
 /// The WebGL2 context with its programs; JS null if WebGL2 is unavailable.
-extern "js" fn create_gl(canvas : Canvas) -> Gl =
-  #|(canvas) => {
+/// `extent` is `@core.TILE_EXTENT`.
+extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
+  #|(canvas, E) => {
+  #|  const EF = E.toFixed(1);
   #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: true, premultipliedAlpha: true });
   #|  if (!gl) return null;
   #|  const compile = (type, src) => {
@@ -74,9 +76,6 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "void main() { v_pos = a_pos; v_color = color(); gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
   #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
   #|    ["u_matrix", "u_clip", "u_t"]);
-  #|  // Extrusion is in tile units (u_units device pixels at the center's depth
-  #|  // u_depth), so lines thin with distance; the last pixel of the half width
-  #|  // v_half, taken at the vertex's own depth, fades out (MapLibre's gamma scale).
   #|  // MapLibre's fill outline: 1 px lines along ring edges, faded by the pixel's
   #|  // distance to the line's position (u_world: the drawing buffer's size).
   #|  const fillOutline = program(
@@ -86,6 +85,9 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    clip + "in vec2 v_line; in vec4 v_color; out vec4 o;" +
   #|    "void main() { if (outside()) discard; o = v_color * (1.0 - smoothstep(0.0, 1.0, length(v_line - gl_FragCoord.xy))); }",
   #|    ["u_matrix", "u_clip", "u_t", "u_world"]);
+  #|  // Extrusion is in tile units (u_units device pixels at the center's depth
+  #|  // u_depth), so lines thin with distance; the half width's last pixel, taken
+  #|  // at the vertex's own depth, fades out (MapLibre's gamma scale).
   #|  // MapLibre's line: outset and inset (device px) from the width and the gap width
   #|  // (slot 4), moved along a_offset by the offset (slot 5); edges fade over the blur
   #|  // u_blur and a pixel, scaled to the vertex's depth (v_scale).
@@ -355,7 +357,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  // standard 0, combined 1, igor 2, multidirectional 3, basic 4; u_count lights.
   #|  const hillshade = program(
   #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_tex;" +
-  #|    "void main() { v_pos = a_pos; v_tex = a_pos / 4096.0; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    "void main() { v_pos = a_pos; v_tex = a_pos / " + EF + "; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
   #|    clip + `uniform sampler2D u_image; uniform vec2 u_lat; uniform float u_exaggeration; uniform vec4 u_accent;
   #|    uniform int u_method; uniform int u_count; uniform float u_altitudes[8]; uniform float u_azimuths[8];
   #|    uniform vec4 u_shadows[8]; uniform vec4 u_highlights[8]; in vec2 v_tex; out vec4 o;
@@ -411,7 +413,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "in vec2 a_pos; uniform mat4 u_matrix; uniform vec2 u_dimension; out vec2 v_pos; out vec2 v_tex;" +
   #|    "void main() { v_pos = a_pos; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);" +
   #|    "  highp vec2 epsilon = 2.0 / u_dimension; float scale = (u_dimension.x - 4.0) / u_dimension.x;" +
-  #|    "  v_tex = (a_pos / 4096.0) * scale + epsilon; }",
+  #|    "  v_tex = (a_pos / " + EF + ") * scale + epsilon; }",
   #|    clip + `uniform sampler2D u_image; uniform vec4 u_unpack; uniform sampler2D u_elevation_stops;
   #|    uniform sampler2D u_color_stops; uniform int u_color_ramp_size; uniform float u_opacity; in vec2 v_tex; out vec4 o;
   #|    float getElevation(vec2 coord) { vec4 data = texture(u_image, coord) * 255.0; data.a = -1.0; return dot(data, u_unpack); }
@@ -434,7 +436,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  const raster = program(
   #|    "in vec2 a_pos; uniform mat4 u_matrix; uniform vec4 u_top; uniform vec4 u_bottom; uniform vec3 u_warp;" +
   #|    "out vec2 v_pos; out vec3 v_tex;" +
-  #|    "void main() { vec2 f = a_pos / 4096.0;" +
+  #|    "void main() { vec2 f = a_pos / " + EF + ";" +
   #|    "  vec2 bilinear = mix(mix(u_top.xy, u_top.zw, f.x), mix(u_bottom.xy, u_bottom.zw, f.x), f.y);" +
   #|    "  float d = dot(u_warp.xy, f) + 1.0;" +
   #|    "  vec2 across = u_top.zw - u_top.xy + u_warp.x * u_top.zw, down = u_bottom.xy - u_top.xy + u_warp.y * u_bottom.xy;" +
@@ -455,13 +457,13 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  const quad = gl.createVertexArray();
   #|  gl.bindVertexArray(quad);
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-  #|  gl.bufferData(gl.ARRAY_BUFFER, new Int16Array([0, 0, 4096, 0, 0, 4096, 4096, 4096]), gl.STATIC_DRAW);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, new Int16Array([0, 0, E, 0, 0, E, E, E]), gl.STATIC_DRAW);
   #|  gl.enableVertexAttribArray(0);
   #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
   #|  gl.bindVertexArray(null);
   #|  // 16 x 16 quads over a tile, for warped pictures (MapLibre's subdivided quad).
   #|  const imageGrid = gl.createVertexArray(), gv = [], gi = [];
-  #|  for (let y = 0; y <= 16; y++) for (let x = 0; x <= 16; x++) gv.push(x * 256, y * 256);
+  #|  for (let y = 0; y <= 16; y++) for (let x = 0; x <= 16; x++) gv.push(x * E / 16, y * E / 16);
   #|  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
   #|    const a = y * 17 + x;
   #|    gi.push(a, a + 17, a + 1, a + 1, a + 17, a + 18);
@@ -481,7 +483,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform sampler2D u_elev; uniform float u_scale;" +
   #|    "uniform float u_skirt; uniform vec3 u_dem; uniform vec2 u_fog; out vec2 v_uv; out float v_fog;" +
   #|    "float h(ivec2 p) { ivec2 n = textureSize(u_elev, 0) - 1; return texelFetch(u_elev, clamp(p, ivec2(0), n), 0).r; }" +
-  #|    "void main() { v_uv = a_pos / 4096.0;" +
+  #|    "void main() { v_uv = a_pos / " + EF + ";" +
   #|    "  vec2 t = (u_dem.xy + v_uv * u_dem.z) * vec2(textureSize(u_elev, 0)) - 0.5;" +
   #|    "  ivec2 i = ivec2(floor(t)); vec2 f = t - floor(t);" +
   #|    "  float e = mix(mix(h(i), h(i + ivec2(1, 0)), f.x), mix(h(i + ivec2(0, 1)), h(i + ivec2(1, 1)), f.x), f.y);" +
@@ -512,7 +514,7 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|  const empty = gl.createVertexArray();
   #|  // The grid: 65 x 65 vertices, then a skirt vertex under each edge vertex.
   #|  const N = 64, verts = [], data = [], idx = [];
-  #|  for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) { verts.push(x * 4096 / N, y * 4096 / N); data.push(0, 0, 0, 0); }
+  #|  for (let y = 0; y <= N; y++) for (let x = 0; x <= N; x++) { verts.push(x * E / N, y * E / N); data.push(0, 0, 0, 0); }
   #|  const edge = [];
   #|  for (let i = 0; i <= N; i++) edge.push(i, N * (N + 1) + i, i * (N + 1), i * (N + 1) + N);
   #|  const skirtOf = new Map();
@@ -550,8 +552,17 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    out[i + 3] = 255;
   #|  };
   #|  // Reused for every draw, so WebGL does not convert an array each time.
-  #|  return { gl, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
-  #|    atlas: null, mat: new Float32Array(16), px: [0, 0], size: [1, 1] };
+  #|  const mat = new Float32Array(16);
+  #|  // Sets a program's u_matrix and, if given, its u_clip.
+  #|  const place = (p, matrix, clip) => {
+  #|    mat.set(matrix);
+  #|    gl.uniformMatrix4fv(p.u_matrix, false, mat);
+  #|    if (clip) gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  };
+  #|  // Draws a mesh's triangles, or the part `set_range` picked.
+  #|  const draw = (m) => gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  return { gl, extent: E, place, draw, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
+  #|    atlas: null, px: [0, 0], size: [1, 1] };
   #|}
 
 ///|
@@ -593,7 +604,7 @@ extern "js" fn gl_upload(
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  const type = indexBytes === 2 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT;
-  #|  return { vao, vbo, ibo, count, type, bytes: vertices.byteLength + indices.byteLength };
+  #|  return { vao, vbo, ibo, count, type };
   #|}
 
 ///|
@@ -708,10 +719,8 @@ extern "js" fn gl_draw_fill(
 ) -> Unit =
   #|(c, name, m, matrix, clip) => {
   #|  const gl = c.gl, p = c[name];
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.place(p, matrix, clip);
+  #|  c.draw(m);
   #|}
 
 ///|
@@ -727,7 +736,6 @@ extern "js" fn gl_upload_outline(
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.outline);
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   #|  m.outlineCount = count;
-  #|  m.bytes += indices.byteLength;
   #|}
 
 ///|
@@ -743,9 +751,7 @@ extern "js" fn gl_draw_outline(
   #|(c, name, m, matrix, clip) => {
   #|  const gl = c.gl, p = c[name];
   #|  if (!m.outline) return;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform2f(p.u_world, 2 / c.px[0], 2 / c.px[1]);
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.outline);
   #|  gl.drawElements(gl.LINES, m.outlineRange ?? m.outlineCount, m.type, m.outlineOffset ?? 0);
@@ -765,9 +771,7 @@ extern "js" fn gl_draw_circle(
 ) -> Unit =
   #|(c, m, matrix, clip, depth, dpr, units, look) => {
   #|  const gl = c.gl, p = c.circle;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform2f(p.u_px, c.px[0], c.px[1]);
   #|  gl.uniform1f(p.u_depth, depth);
   #|  gl.uniform1f(p.u_dpr, dpr);
@@ -775,17 +779,13 @@ extern "js" fn gl_draw_circle(
   #|  gl.uniform1i(p.u_scale, look[0]);
   #|  gl.uniform1i(p.u_pitch, look[1]);
   #|  gl.uniform1f(p.u_blur, look[2]);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
 
 ///|
 /// Uses `program` and binds `mesh`'s vertex array with `slots`.
 extern "js" fn gl_use(gl : Gl, program : String, mesh : Mesh) -> Unit =
   #|(c, name, m) => { c.gl.useProgram(c[name].program); c.gl.bindVertexArray(m.vao); }
-
-///|
-extern "js" fn mesh_bytes(mesh : Mesh) -> Int32 =
-  #|(m) => m.bytes
 
 ///|
 /// An offscreen draw target: a framebuffer with a color texture.

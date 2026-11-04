@@ -147,8 +147,9 @@ pub fn Renderer::draw_line_dash_by_feature(
     gl_dash_atlas(self.gl, self.atlas.data, LINE_ATLAS_WIDTH, LINE_ATLAS_HEIGHT)
   }
   self.bind("lineDashFeature", mesh, slots, 6)
-  gl_draw_line_dash_feature(
+  gl_draw_line_dash(
     self.gl,
+    "lineDashFeature",
     mesh,
     at.matrix.m,
     at.clip,
@@ -197,6 +198,7 @@ pub fn Renderer::draw_line_dash(
   let h = LINE_ATLAS_HEIGHT.to_double()
   gl_draw_line_dash(
     self.gl,
+    "lineDash",
     mesh,
     at.matrix.m,
     at.clip,

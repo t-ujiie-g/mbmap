@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LngLatBounds, fitArray, flyArray, limitsArray, targetArray, toPadding } from "../src/camera.ts";
+import { LngLatBounds, MAX_PITCH, MAX_ZOOM_LIMIT, checkLimits, fitArray, flyArray, limitsArray, targetArray, toPadding } from "../src/camera.ts";
 
 test("LngLatBounds converts the shapes MapLibre takes", () => {
   for (const b of [[[139, 35], [140, 36]], [139, 35, 140, 36], [{ lng: 139, lat: 35 }, { lng: 140, lat: 36 }]] as const) {
@@ -34,4 +34,13 @@ test("padding, limits and fits take the engine's layout", () => {
   assert.deepEqual(limitsArray({ minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 85, maxBounds: new LngLatBounds(1, 2, 3, 4) }).slice(4), [1, 2, 3, 4]);
   const fit = fitArray(new LngLatBounds(1, 2, 3, 4), { padding: 20, bearing: 45, offset: [1, 2], maxZoom: 9 });
   assert.deepEqual(fit, [1, 2, 3, 4, 45, 20, 20, 20, 20, 1, 2, 9]);
+});
+
+test("checkLimits takes ranges inside zoom 0-24 and pitch 0-85, min not above max", () => {
+  const ok = { minZoom: 0, maxZoom: MAX_ZOOM_LIMIT, minPitch: 0, maxPitch: MAX_PITCH, maxBounds: null };
+  checkLimits(ok);
+  assert.throws(() => checkLimits({ ...ok, maxZoom: MAX_ZOOM_LIMIT + 1 }), /zoom limits must lie in 0-24 and pitch limits in 0-85/);
+  assert.throws(() => checkLimits({ ...ok, maxPitch: MAX_PITCH + 1 }), RangeError);
+  assert.throws(() => checkLimits({ ...ok, minZoom: 5, maxZoom: 4 }), RangeError);
+  assert.throws(() => checkLimits({ ...ok, minPitch: NaN }), /must be finite numbers: NaN/);
 });

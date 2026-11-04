@@ -29,6 +29,8 @@ extern "js" fn gl_heatmap_begin(gl : Gl, scale : Double) -> Unit =
   #|    c.heatFloat ??= gl.getExtension("EXT_color_buffer_float") != null;
   #|    t = c.heat = (c.heatFloat && make(gl.RGBA16F)) || make(gl.RGBA8);
   #|  }
+  #|  // Neither target can be drawn into: the layer is left out.
+  #|  if (!t) return;
   #|  gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
   #|  gl.viewport(0, 0, w, h);
   #|  gl.clearColor(0, 0, 0, 0);
@@ -46,11 +48,11 @@ extern "js" fn gl_draw_heatmap(
 ) -> Unit =
   #|(c, m, matrix, extrude, intensity) => {
   #|  const gl = c.gl, p = c.heatmap;
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  if (!c.heat) return;
+  #|  c.place(p, matrix);
   #|  gl.uniform1f(p.u_extrude, extrude);
   #|  gl.uniform1f(p.u_intensity, intensity);
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|}
 
 ///|
@@ -66,7 +68,7 @@ extern "js" fn gl_heatmap_end(
   #|  gl.bindFramebuffer(gl.FRAMEBUFFER, from.fb);
   #|  gl.viewport(vp[0], vp[1], vp[2], vp[3]);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  #|  if (opacity <= 0) return;
+  #|  if (opacity <= 0 || !c.heat) return;
   #|  gl.useProgram(p.program);
   #|  gl.activeTexture(gl.TEXTURE1);
   #|  gl.bindTexture(gl.TEXTURE_2D, ramp.texture);

@@ -16,7 +16,6 @@ extern "js" fn gl_add_elevations(
   #|  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, size, size, 0, gl.RED, gl.FLOAT, data);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  #|  m.bytes += size * size * 4;
   #|}
 
 ///|
@@ -96,8 +95,7 @@ extern "js" fn gl_draw_terrain(
   #|  if (!m.elev) return;
   #|  const gl = c.gl, p = c.terrain;
   #|  gl.useProgram(p.program);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  c.place(p, matrix);
   #|  gl.uniform1f(p.u_scale, scale);
   #|  gl.uniform1f(p.u_skirt, skirt);
   #|  gl.uniform3f(p.u_dem, dem[0], dem[1], dem[2]);
@@ -208,7 +206,7 @@ extern "js" fn gl_upload_extrusion(
   #|  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   #|  gl.bindVertexArray(null);
   #|  const type = indexBytes === 2 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT;
-  #|  return { vao, vbo, ibo, ele, vertices: n, count, type, bytes: vertices.byteLength + indices.byteLength };
+  #|  return { vao, vbo, ibo, ele, vertices: n, count, type };
   #|}
 
 ///|
@@ -264,9 +262,7 @@ extern "js" fn gl_draw_extrusion(
   #|  const gl = c.gl, p = c[name];
   #|  gl.useProgram(p.program);
   #|  if (p.u_height_factor) gl.uniform1f(p.u_height_factor, heights[3]);
-  #|  c.mat.set(matrix);
-  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
-  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  c.place(p, matrix, clip);
   #|  gl.uniform3f(p.u_color, color[0], color[1], color[2]);
   #|  gl.uniform1f(p.u_opacity, opacity);
   #|  gl.uniform3f(p.u_lightpos, light[0], light[1], light[2]);
@@ -286,7 +282,7 @@ extern "js" fn gl_draw_extrusion(
   #|    gl.stencilFunc(gl.EQUAL, 0, 0xff);
   #|    gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
   #|  }
-  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|  c.draw(m);
   #|  gl.colorMask(true, true, true, true);
   #|  gl.disable(gl.STENCIL_TEST);
   #|  gl.disable(gl.DEPTH_TEST);

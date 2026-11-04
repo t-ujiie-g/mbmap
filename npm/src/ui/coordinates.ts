@@ -73,14 +73,12 @@ export function utm(transform: Transform, digits = 0): CoordinateSystem {
 }
 
 class CoordinatesStore extends Store<CoordinatesState> {
-  #map: Map;
   #systems: CoordinateSystem[];
   #next: { lngLat: LngLat; source: "pointer" | "center" } | null = null;
   #running = false;
 
   constructor(map: Map, options: CoordinatesOptions) {
     super({ lngLat: null, source: "center", values: [] });
-    this.#map = map;
     this.#systems = options.systems ?? [degrees(), degreesMinutesSeconds()];
     const center = () => {
       if (this.state.source === "center") void this.#show(map.getCenter(), "center");

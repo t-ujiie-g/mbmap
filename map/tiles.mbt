@@ -235,172 +235,187 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
       }
       self.finish(request, None)
     }
-    "tile" => {
-      self.take_glyphs(msg)
-      let request = get_int(msg, "id")
-      guard self.requests.get(request) is Some(_) else { return }
-      let meshes : Array[LayerMesh] = []
-      for i in 0..<layers_of(msg) {
-        let l = layer_at(msg, i)
-        let shared = get_int(l, "shared")
-        let kind = get_int(l, "kind")
-        let (mesh, labels) = if kind == KIND_RASTER {
-          (self.renderer.upload_raster(buffer_of(l, "image")), None)
-        } else if kind == KIND_HILLSHADE {
-          let mesh = self.renderer.upload_slopes(
-            buffer_of(l, "image"),
-            get_int(l, "size"),
-          )
-          if self.is_terrain_source(request) {
-            self.renderer.add_elevations(
-              mesh,
-              buffer_of(l, "elevations"),
-              get_int(l, "size"),
-            )
-            // Labels stand on terrain: look their heights up again.
-            self.dem_version += 1
-            self.labels_dirty = true
-          }
-          (mesh, None)
-        } else if kind == KIND_SYMBOL {
-          let (mesh, labels) = self.symbol_mesh(l)
-          (mesh, Some(labels))
-        } else if shared >= 0 && shared < meshes.length() {
-          (meshes[shared].mesh, None)
-        } else if kind == KIND_EXTRUSION {
-          (
-            self.renderer.upload_extrusion(
-              buffer_of(l, "vertices"),
-              buffer_of(l, "indices"),
-              get_int(l, "count"),
-              get_int(l, "indexBytes"),
-            ),
-            None,
-          )
-        } else {
-          let mesh = self.renderer.upload(
-            kind != KIND_FILL,
-            buffer_of(l, "vertices"),
-            buffer_of(l, "indices"),
-            get_int(l, "count"),
-            get_int(l, "indexBytes"),
-          )
-          if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
-            self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
-          }
-          let patterns = dash_pattern_count(l)
-          if kind == KIND_LINE && patterns >= 0 {
-            let li = get_int(l, "layer")
-            let round = li >= 0 &&
-              li < self.style.layers.length() &&
-              self.style.layers[li].cap is Round
-            let entries = Array::makei(patterns, k => {
-              let p = dash_pattern_at(l, k)
-              self.renderer.dash(Array::makei(p.length(), i => p[i]), round)
-            })
-            self.renderer.upload_feature_dashes(
-              mesh,
-              entries,
-              buffer_of(l, "dashMarks"),
-            )
-          }
-          if kind == KIND_LINE && !is_null_value(offsets_of_layer(l)) {
-            self.renderer.upload_offsets(mesh, buffer_of(l, "offsets"))
-          }
-          if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
-            self.renderer.upload_progress(mesh, buffer_of(l, "progress"))
-          }
-          if kind == KIND_FILL && get_int(l, "outlineCount") > 0 {
-            self.renderer.upload_outline(
-              mesh,
-              buffer_of(l, "outline"),
-              get_int(l, "outlineCount"),
-            )
-          }
-          (mesh, None)
-        }
-        let props = props_or_null(l)
-        meshes.push({
-          entry: get_int(l, "entry"),
-          states: [],
-          layer: get_int(l, "layer"),
-          kind,
-          mesh,
-          owned: shared < 0,
-          props: if is_null_value(props) {
-            None
-          } else {
-            Some({
-              obj: props,
-              state: js_null(),
-              progress: @double.not_a_number,
-              density: @double.not_a_number,
-              elevation: @double.not_a_number,
-            })
-          },
-          paint: None,
-          vertex_paint: if is_null_value(paint_of_layer(l)) {
-            None
-          } else {
-            Some(self.renderer.upload_paint(buffer_of(l, "paint")))
-          },
-          labels,
-          ground: if kind == KIND_EXTRUSION {
-            Some({
-              runs: @render_webgl2.extrusion_runs(buffer_of(l, "vertices")),
-              at: 0,
-            })
-          } else {
-            None
-          },
-          clips: if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
-            Some(self.ramp_clips(request, f64_array(buffer_of(l, "clips"))))
-          } else {
-            None
-          },
-          key_runs: if is_null_value(key_runs_of_layer(l)) {
-            None
-          } else {
-            Some(f64_array(buffer_of(l, "keyRuns")))
-          },
-          gradient: None,
-          dem: if kind == KIND_HILLSHADE {
-            let heights = buffer_of(l, "elevations")
-            let range = height_range(heights)
-            Some({
-              edges: f64_array(buffer_of(l, "edges")),
-              heights,
-              size: get_int(l, "size"),
-              lowest: range[0],
-              highest: range[1],
-            })
-          } else {
-            None
-          },
-        })
-      }
-      let at = self.requests.get(request)
-      self.finish(request, Some(meshes))
-      // Stated features of the new tile, drawn by state once the worker says where.
-      if at is Some((source, key)) &&
-        self.source_tiles(source) is Some(src) &&
-        src.tiles.get(key) is Some(entry) &&
-        self.feature_states.get(src.source.id) is Some(states) &&
-        states.length() > 0 {
-        self.ask_ranges(src, entry)
-      }
-      if at is Some((source, key)) &&
-        self.source_tiles(source) is Some(src) &&
-        src.tiles.get(key) is Some(entry) &&
-        dem_of(meshes) is Some(_) {
-        self.stitch_dem(src, entry.id)
-        self.border_relief(src, entry.id)
-      }
-    }
+    "tile" => self.on_tile(msg)
     "query" => self.on_query(msg)
     "ranges" => self.on_ranges(msg)
     "error" => console_warn("worker: \{get_string(msg, "message")}")
     _ => ()
+  }
+}
+
+///|
+/// A worker's answer to tile request `id`: its layers' meshes.
+fn Map::on_tile(self : Map, msg : JsValue) -> Unit {
+  self.take_glyphs(msg)
+  let request = get_int(msg, "id")
+  guard self.requests.get(request) is Some(_) else { return }
+  let meshes : Array[LayerMesh] = []
+  for i in 0..<layers_of(msg) {
+    meshes.push(self.layer_mesh(request, layer_at(msg, i), meshes))
+  }
+  let at = self.requests.get(request)
+  self.finish(request, Some(meshes))
+  // Stated features of the new tile, drawn by state once the worker says where.
+  if at is Some((source, key)) &&
+    self.source_tiles(source) is Some(src) &&
+    src.tiles.get(key) is Some(entry) &&
+    self.feature_states.get(src.source.id) is Some(states) &&
+    states.length() > 0 {
+    self.ask_ranges(src, entry)
+  }
+  if at is Some((source, key)) &&
+    self.source_tiles(source) is Some(src) &&
+    src.tiles.get(key) is Some(entry) &&
+    dem_of(meshes) is Some(_) {
+    self.stitch_dem(src, entry.id)
+    self.border_relief(src, entry.id)
+  }
+}
+
+///|
+/// The mesh of tile layer `l` of `request`'s answer; a layer whose buffers are
+/// `shared` with an earlier one of `meshes` uses its mesh.
+fn Map::layer_mesh(
+  self : Map,
+  request : Int32,
+  l : JsValue,
+  meshes : Array[LayerMesh],
+) -> LayerMesh {
+  let shared = get_int(l, "shared")
+  let kind = get_int(l, "kind")
+  let (mesh, labels) = if kind == KIND_RASTER {
+    (self.renderer.upload_raster(buffer_of(l, "image")), None)
+  } else if kind == KIND_HILLSHADE {
+    let mesh = self.renderer.upload_slopes(
+      buffer_of(l, "image"),
+      get_int(l, "size"),
+    )
+    if self.is_terrain_source(request) {
+      self.renderer.add_elevations(
+        mesh,
+        buffer_of(l, "elevations"),
+        get_int(l, "size"),
+      )
+      // Labels stand on terrain: look their heights up again.
+      self.dem_version += 1
+      self.labels_dirty = true
+    }
+    (mesh, None)
+  } else if kind == KIND_SYMBOL {
+    let (mesh, labels) = self.symbol_mesh(l)
+    (mesh, Some(labels))
+  } else if shared >= 0 && shared < meshes.length() {
+    (meshes[shared].mesh, None)
+  } else if kind == KIND_EXTRUSION {
+    (
+      self.renderer.upload_extrusion(
+        buffer_of(l, "vertices"),
+        buffer_of(l, "indices"),
+        get_int(l, "count"),
+        get_int(l, "indexBytes"),
+      ),
+      None,
+    )
+  } else {
+    let mesh = self.renderer.upload(
+      kind != KIND_FILL,
+      buffer_of(l, "vertices"),
+      buffer_of(l, "indices"),
+      get_int(l, "count"),
+      get_int(l, "indexBytes"),
+    )
+    if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
+      self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
+    }
+    let patterns = dash_pattern_count(l)
+    if kind == KIND_LINE && patterns >= 0 {
+      let li = get_int(l, "layer")
+      let round = li >= 0 &&
+        li < self.style.layers.length() &&
+        self.style.layers[li].cap is Round
+      let entries = Array::makei(patterns, k => {
+        let p = dash_pattern_at(l, k)
+        self.renderer.dash(Array::makei(p.length(), i => p[i]), round)
+      })
+      self.renderer.upload_feature_dashes(
+        mesh,
+        entries,
+        buffer_of(l, "dashMarks"),
+      )
+    }
+    if kind == KIND_LINE && !is_null_value(offsets_of_layer(l)) {
+      self.renderer.upload_offsets(mesh, buffer_of(l, "offsets"))
+    }
+    if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
+      self.renderer.upload_progress(mesh, buffer_of(l, "progress"))
+    }
+    if kind == KIND_FILL && get_int(l, "outlineCount") > 0 {
+      self.renderer.upload_outline(
+        mesh,
+        buffer_of(l, "outline"),
+        get_int(l, "outlineCount"),
+      )
+    }
+    (mesh, None)
+  }
+  let props = props_or_null(l)
+  {
+    entry: get_int(l, "entry"),
+    states: [],
+    layer: get_int(l, "layer"),
+    kind,
+    mesh,
+    owned: shared < 0,
+    props: if is_null_value(props) {
+      None
+    } else {
+      Some({
+        obj: props,
+        state: js_null(),
+        progress: @double.not_a_number,
+        density: @double.not_a_number,
+        elevation: @double.not_a_number,
+      })
+    },
+    paint: None,
+    vertex_paint: if is_null_value(paint_of_layer(l)) {
+      None
+    } else {
+      Some(self.renderer.upload_paint(buffer_of(l, "paint")))
+    },
+    labels,
+    ground: if kind == KIND_EXTRUSION {
+      Some({
+        runs: @render_webgl2.extrusion_runs(buffer_of(l, "vertices")),
+        at: 0,
+      })
+    } else {
+      None
+    },
+    clips: if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
+      Some(self.ramp_clips(request, f64_array(buffer_of(l, "clips"))))
+    } else {
+      None
+    },
+    key_runs: if is_null_value(key_runs_of_layer(l)) {
+      None
+    } else {
+      Some(f64_array(buffer_of(l, "keyRuns")))
+    },
+    gradient: None,
+    dem: if kind == KIND_HILLSHADE {
+      let heights = buffer_of(l, "elevations")
+      let range = height_range(heights)
+      Some({
+        edges: f64_array(buffer_of(l, "edges")),
+        heights,
+        size: get_int(l, "size"),
+        lowest: range[0],
+        highest: range[1],
+      })
+    } else {
+      None
+    },
   }
 }
 

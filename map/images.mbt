@@ -49,17 +49,6 @@ pub fn Map::remove_image(self : Map, name : String) -> Bool {
 }
 
 ///|
-pub fn Map::has_image(self : Map, name : String) -> Bool {
-  self.images.get(name) is Some(_)
-}
-
-///|
-/// The names of the style's images.
-pub fn Map::image_names(self : Map) -> Array[String] {
-  self.images.iter().map(e => e.0).collect()
-}
-
-///|
 /// Calls `f` with the name of an image the style asks for but lacks, once per
 /// name until it is added (MapLibre's `styleimagemissing`).
 pub fn Map::on_missing_image(self : Map, f : (String) -> Unit) -> Unit {
