@@ -73,6 +73,7 @@ npm run draw:many         # pointer moves while drawing over 2000 shapes with mb
 npm run draw:setdata      # setData latency (frames until a moved vertex is on screen), mbmap vs MapLibre
 npm run geodesic:golden   # geodesic.wasm vs geographiclib-geodesic 2.2.0: inverse, direct, polygons, densified paths (must stay all identical)
 npm run geometry:node     # dissolve / buffer / clip on GSI buildings vs Turf.js
+npm run split             # the module-split measurement behind "one wasm per entry" (bench/split; rerun when revisiting that granularity)
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style); node render/run.mjs --labels adds the label layers, --line-labels contour labels along lines
 npm run example           # serve the repo on 127.0.0.1:8080 (the dev pages bench/pages/{basic,terrain} need only this)
 npm run examples          # also pack npm/ into examples/{html,element,react} and bench/npm/pages/ (bench/npm/prepare.mjs), then serve /examples/
@@ -124,7 +125,7 @@ How the user works with agents (standing instructions; they hold in every sessio
 
 ## 4. Architecture
 
-Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← worker`, `core ← geom ← formats/tiler ← geojson_tiles ← geojson_worker`, `style/tiler ← cluster_props ← geojson_props_worker` (the GeoJSON module with expressions), `geom ← analysis ← analysis_worker`, `geom/clipper ← overlay ← geometry_worker`, `proj ← proj_worker`, `core ← geodesic ← geodesic_worker` and `core ← render_webgl2 ← map ← (npm, element) ← adapters`. Nothing under `map/` may depend on a UI framework.
+Dependency direction (never reverse): `core ← pbf ← mvt ← tess/style ← worker`, `core ← geom ← formats/tiler ← geojson_tiles ← geojson_worker`, `style/tiler ← cluster_props ← geojson_props_worker` (the GeoJSON module with expressions), `geom ← analysis ← analysis_worker`, `geom/clipper ← overlay ← geometry_worker`, `proj ← proj_worker`, `core ← geodesic ← geodesic_worker`, `core ← render_webgl2 ← map ← bundle/main ← (npm, element) ← adapters`, and the wasm-gc-only `wasmio ← (geojson_tiles, *_worker entries)`. Nothing under `map/` may depend on a UI framework.
 Planned data/analysis/3D packages (VISION §3) ship as separate npm entry points with their own lazily loaded wasm and size budgets: `map` must never import them, and they exchange data with the display only through columnar (GeoArrow-compatible) buffers. Granularity (decided in Phase 6.5): one wasm module per entry, run in its own lazily started worker; split a feature group into its own module once its own code exceeds ~20KB gzip (each module duplicates ~6KB of core: trig, int formatting). Never link analysis into the display worker. A new entry or module needs a row in `npm/scripts/size.mjs`.
 
 - `core`, `pbf`, `mvt`, `tess`, `style` are pure MoonBit and must pass tests on every backend.
