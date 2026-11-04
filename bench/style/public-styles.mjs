@@ -1,6 +1,11 @@
 // Public MapLibre styles read by `npm run style:compat`, pinned by commit and sha256.
 // Designs: OpenMapTiles styles CC-BY 4.0 © OpenMapTiles (code BSD-3-Clause); OpenFreeMap styles
 // derive from them (MIT); MapLibre demotiles BSD-3-Clause. See bench/fixtures/README.md.
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { ROOT } from "../lib/root.mjs";
+
 const gh = (repo, commit, file) => `https://raw.githubusercontent.com/${repo}/${commit}/${file}`;
 const OMT = (name, commit) => gh(`openmaptiles/${name}-gl-style`, commit, "style.json");
 const OFM = (name) => gh("hyperknot/openfreemap-styles", "006ea5796803ba2df4330888836cb0a8f17473b4", `styles/${name}/style.json`);
@@ -15,3 +20,21 @@ export const PUBLIC_STYLES = {
   "ofm-positron": { url: OFM("positron"), sha256: "3c983bbe247bb116cbfd5192422ea3c8a5d3230362657aac65cdf8c546f8e913" },
   demotiles: { url: gh("maplibre/demotiles", "601ae60796ceceda2cbd2ed3d2ea92d17a84be4b", "style.json"), sha256: "dd86fd257f9895da23b7da5dac62829a0b25ab458f71b06a3e06857b076caf06" },
 };
+
+const CACHE = path.join(ROOT, "bench/fixtures/styles");
+
+// The pinned style `name`, fetched once into bench/fixtures/styles/ and checked against its sha256.
+export async function loadPublicStyle(name, { url, sha256 } = PUBLIC_STYLES[name]) {
+  const file = path.join(CACHE, `${name}.json`);
+  let bytes = await readFile(file).catch(() => null);
+  if (!bytes) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${name}: ${res.status} ${url}`);
+    bytes = Buffer.from(await res.arrayBuffer());
+  }
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  if (hash !== sha256) throw new Error(`${name}: sha256 ${hash}, expected ${sha256}`);
+  await mkdir(CACHE, { recursive: true });
+  await writeFile(file, bytes);
+  return JSON.parse(bytes.toString("utf8"));
+}

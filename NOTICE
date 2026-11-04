@@ -555,3 +555,15 @@ Test / benchmark data (continued):
   国土地理院 標準地図 (GSI Japan, std)
   https://maps.gsi.go.jp/development/ichiran.html
   Used under the GSI content terms of use (国土地理院コンテンツ利用規約).
+- bench/fixtures/styles/ (downloaded, not committed): public MapLibre styles read by
+  bench/style/compat.mjs and bench/style/public.mjs, pinned by sha256 in
+  bench/style/public-styles.mjs. OpenMapTiles styles (OSM Bright, Positron, Dark Matter,
+  MapTiler Basic): design CC-BY 4.0 © OpenMapTiles, code BSD-3-Clause. OpenFreeMap styles
+  (liberty, bright, positron): MIT. MapLibre demotiles: BSD-3-Clause.
+- bench/fixtures/sprites/ (downloaded, not committed): those styles' sprites, from the
+  OpenMapTiles style repositories' gh-pages branches (CC-BY 4.0 © OpenMapTiles) and
+  OpenFreeMap (ofm_f384, MIT).
+- bench/fixtures/ofm-planet/ (downloaded, not committed): OpenFreeMap vector tiles
+  (OpenMapTiles schema, build 20261101_080013_pt) of the GSI fixtures' area.
+  © OpenMapTiles, Data © OpenStreetMap contributors (ODbL 1.0,
+  https://www.openstreetmap.org/copyright). Served by https://openfreemap.org.

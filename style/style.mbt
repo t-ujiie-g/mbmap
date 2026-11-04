@@ -79,7 +79,7 @@ pub struct StyleLayer {
   gap_width : Expr
   offset : Expr
   blur : Expr
-  translate : (Double, Double)
+  translate : Expr
   translate_viewport : Bool
   scale_with_map : Bool
   pitch_with_map : Bool
@@ -319,7 +319,7 @@ fn parse_layer(
   let (translate, translate_viewport) = match kind {
     Fill | Line | Circle | FillExtrusion | Symbol =>
       parse_translate(paint, "\{prefix}-translate", ppath)
-    _ => ((0.0, 0.0), false)
+    _ => (no_translate(), false)
   }
   let text = if kind is Symbol { Some(parse_text(layout, lpath)) } else { None }
   let (icon, icon_paint) = match text {
@@ -627,15 +627,43 @@ fn parse_translate(
   paint : Map[String, Json],
   key : String,
   path : String,
-) -> ((Double, Double), Bool) raise StyleError {
+) -> (Expr, Bool) raise StyleError {
   let t = match paint.get(key) {
-    None => (0.0, 0.0)
-    Some(Array([Number(x, ..), Number(y, ..)])) => (x, y)
-    Some(Array([String(_), ..])) =>
-      raise Unsupported(path="\{path}.\{key}", "expressions")
+    None => no_translate()
+    Some(Array([Number(x, ..), Number(y, ..)])) => Lit(List([Num(x), Num(y)]))
+    Some(Array([String(_), ..]) as j) => {
+      let e = compile(j, expected=ArrayOf(NumberType, 2), path="\{path}.\{key}")
+      if data_driven(e) || e.reads_state() {
+        raise Invalid(path="\{path}.\{key}", "data expressions not supported")
+      }
+      e
+    }
     Some(_) => raise Invalid(path="\{path}.\{key}", "not [x, y]")
   }
   (t, alignment(paint, "\{key}-anchor", path) == "viewport")
+}
+
+///|
+fn no_translate() -> Expr {
+  Lit(List([Num(0.0), Num(0.0)]))
+}
+
+///|
+/// A `*-translate` at `zoom` in CSS px (MapLibre's style-spec allows zoom
+/// curves only), or (0, 0) when it gives no pair of numbers.
+pub fn[C : FeatureContext] translate_at(
+  e : Expr,
+  zoom : Double,
+  ctx : C,
+) -> (Double, Double) {
+  let v = match e {
+    Lit(v) => v
+    _ => e.eval(zoom, ctx)
+  }
+  match v {
+    List([Num(x), Num(y)]) => (x, y)
+    _ => (0.0, 0.0)
+  }
 }
 
 ///|

@@ -88,7 +88,20 @@ test "bevel and over-limit miter joins fill the outer corner with one triangle" 
   // The arms' quads sum to both arms' length times width (their inner-corner
   // overlap counted twice); the fill adds half a corner square.
   let expected = (1000.0 + 500.0) * 20.0 + 10.0 * 10.0 / 2.0
-  let bevel = extrude([0, 0, 1000, 0, 1000, 500], join=Bevel)
+  // Below the miter limit (2 by default) MapLibre draws a bevel join as a miter.
+  let points = [0, 0, 1000, 0, 1000, 500]
+  let mitered = extrude(points, join=Bevel)
+  assert_eq(mitered.num_vertices(), 6)
+  assert_true(near(line_area(mitered, 10.0), (1000.0 + 500.0) * 20.0))
+  let bevel = @tess.LineBuffers::new()
+  @tess.LineTessellator::new().add_line(
+    points[:],
+    0,
+    3,
+    bevel,
+    join=Bevel,
+    miter_limit=1.2,
+  )
   assert_valid(bevel)
   assert_true(near(line_area(bevel, 10.0), expected))
   // A hairpin's miter is far over the limit, so it falls back to a bevel.

@@ -53,6 +53,6 @@ if [ "$browser" = 1 ]; then
   (cd bench && npx playwright install --with-deps chromium)
 fi
 if [ "$fixtures" = 1 ]; then
-  npm --prefix bench run fixtures || echo "setup: fixtures not fetched (is cyberjapandata.gsi.go.jp reachable?); goldens and pack tests need them" >&2
+  NODE_USE_ENV_PROXY=1 npm --prefix bench run fixtures || echo "setup: fixtures not fetched (is cyberjapandata.gsi.go.jp reachable?); goldens and pack tests need them" >&2
 fi
 echo "setup: done"

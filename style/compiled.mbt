@@ -502,7 +502,7 @@ fn StyleWriter::layer(self : StyleWriter, l : StyleLayer) -> Unit {
   self.expr(l.gap_width)
   self.expr(l.offset)
   self.expr(l.blur)
-  self.pair(l.translate)
+  self.expr(l.translate)
   self.flag(l.translate_viewport)
   self.flag(l.scale_with_map)
   self.flag(l.pitch_with_map)
@@ -1024,7 +1024,7 @@ fn StyleReader::icon_paint(self : StyleReader) -> IconPaint {
       halo_color: none,
       halo_width: none,
       halo_blur: none,
-      translate: (0.0, 0.0),
+      translate: no_translate(),
       translate_viewport: false,
     }
   }
@@ -1034,7 +1034,7 @@ fn StyleReader::icon_paint(self : StyleReader) -> IconPaint {
     halo_color,
     halo_width,
     halo_blur,
-    translate: (0.0, 0.0),
+    translate: no_translate(),
     translate_viewport: false,
   }
 }
@@ -1089,7 +1089,7 @@ fn StyleReader::layer(self : StyleReader) -> StyleLayer {
   let gap_width = self.top()
   let offset = self.top()
   let blur = self.top()
-  let translate = self.pair()
+  let translate = self.top()
   let translate_viewport = self.flag()
   let scale_with_map = self.flag()
   let pitch_with_map = self.flag()
