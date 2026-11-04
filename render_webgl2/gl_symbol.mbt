@@ -83,14 +83,16 @@ extern "js" fn gl_show(
   col : Int32,
   shown : FixedArray[Bool],
   variant : FixedArray[Int32],
+  order : FixedArray[Int32],
 ) -> Unit =
-  #|(c, m, labels, stride, col, shown, variant) => {
+  #|(c, m, labels, stride, col, shown, variant, order) => {
   #|  const gl = c.gl;
   #|  let n = 0;
   #|  for (let i = 0; i < shown.length; i++) if (shown[i]) n += labels[i * stride + col + 2];
   #|  const out = new m.all.constructor(n);
   #|  let at = 0;
-  #|  for (let i = 0; i < shown.length; i++) {
+  #|  for (let k = 0; k < shown.length; k++) {
+  #|    const i = order.length ? order[k] : k;
   #|    if (!shown[i]) continue;
   #|    const r = i * stride + col, count = labels[r + 2], first = labels[r + 1] + Math.min(variant[i], labels[r] - 1) * count;
   #|    out.set(m.all.subarray(first, first + count), at);

@@ -197,6 +197,22 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: 25, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
+  // Sort keys: fills and lines in key order within each tile, circles across tiles (large ones
+  // overlapping tile borders), all against tile order.
+  "sort-keys": {
+    style: style([
+      { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+        layout: { "fill-sort-key": ["-", 0, ["get", "ftCode"]] },
+        paint: { "fill-color": ["match", ["get", "ftCode"], 3103, "#d7191c", "#2b83ba"], "fill-opacity": 0.6 } },
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-sort-key": ["get", "rdCtg"] },
+        paint: { "line-color": ["match", ["get", "rdCtg"], 0, "#e8a33b", 1, "#555555", "#9aa0a6"], "line-width": 5 } },
+      { id: "pt", type: "circle", source: "gsi", "source-layer": "label", layout: { "circle-sort-key": ["get", "annoCtg"] },
+        paint: { "circle-radius": 28, "circle-color": ["interpolate", ["linear"], ["get", "annoCtg"], 400, "#1a9641", 900, "#7a4fb0"],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.5, bearing: 0, pitch: 0 },
+    limits: { mean: 0.12, p99: 1 },
+  },
   // Every layer kind's `*-translate`, anchored to the map or to the turned viewport.
   translate: {
     style: style([

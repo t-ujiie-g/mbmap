@@ -178,6 +178,11 @@ extern "js" fn progress_of_layer(v : JsValue) -> JsValue =
   #|(v) => v.progress ?? null
 
 ///|
+/// A packed circle layer's runs of equal sort keys (a Float64Array), or null.
+extern "js" fn key_runs_of_layer(v : JsValue) -> JsValue =
+  #|(v) => v.keyRuns ?? null
+
+///|
 /// A packed line layer's offset normals (an ArrayBuffer), or null.
 extern "js" fn offsets_of_layer(v : JsValue) -> JsValue =
   #|(v) => v.offsets ?? null

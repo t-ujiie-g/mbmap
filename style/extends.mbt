@@ -143,3 +143,9 @@ pub extend Section with @debug.Debug::{to_repr}
 
 ///|
 pub extend Section with Eq::{not_equal, equal}
+
+///|
+pub extend SymbolZOrder with @debug.Debug::{to_repr}
+
+///|
+pub extend SymbolZOrder with Eq::{not_equal, equal}

@@ -5,6 +5,9 @@ const KIND_SYMBOL : Int32 = 4
 ///|
 /// Columns of a label's floats in a symbol entry's `labels` (docs/FORMATS.md
 /// "Symbol vertices"); mirrored in worker/js/symbols.mjs.
+const LABEL_X : Int32 = 0
+
+///|
 const LABEL_Y : Int32 = 1
 
 ///|
@@ -95,6 +98,8 @@ priv struct LabelSet {
   mut drawn : Int32
   mut changed : Bool
   mut moved : Bool
+  mut order : FixedArray[Int32]
+  mut sorted_at : Double
 }
 
 ///|
@@ -175,6 +180,8 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
       drawn: -1,
       changed: false,
       moved: false,
+      order: [],
+      sorted_at: @double.not_a_number,
     },
   )
 }
@@ -228,6 +235,7 @@ priv struct Pending {
   mesh : LayerMesh
   set : LabelSet
   mut next : Int32
+  order : FixedArray[Int32]
 }
 
 ///|
@@ -258,6 +266,7 @@ fn Map::place_labels(
       continue
     }
     let pending = []
+    let by_y = layer.text is Some({ z_order: ViewportY, .. })
     let draws = draws_of.get(layer.source).unwrap_or([])
     for d in placement_order(draws) {
       for m in d.meshes {
@@ -285,12 +294,22 @@ fn Map::place_labels(
             )
           }
         }
-        pending.push({ draw: d, mesh: m, set: s, next: 0, })
+        // MapLibre places a `viewport-y` layer's labels from the bottom up.
+        let order = if by_y {
+          y_order(s, -t.camera.bearing * @math.PI / 180.0)
+        } else {
+          []
+        }
+        pending.push({ draw: d, mesh: m, set: s, next: 0, order, })
       }
     }
     let by_key = layer.text is Some(text) && text.sort_key is Some(_)
     while next_label(pending, by_key) is Some(p) {
-      let i = p.next
+      let i = if p.order.is_empty() {
+        p.next
+      } else {
+        p.order[p.set.count - 1 - p.next]
+      }
       p.next += 1
       // MapLibre lays labels out in tiles of the display zoom, 512 px and
       // 8192 units wide, deeper than the source's (`overscaling`).
@@ -317,8 +336,21 @@ fn Map::place_labels(
       }
       self.place_label(grid, p.draw.at, p.set, i, height_scale, unit)
     }
+    let sorts = sorts_by_y(layer)
     for p in pending {
       let s = p.set
+      // Labels that may overlap are drawn from the top of the screen down.
+      if sorts && s.line is None {
+        let angle = -t.camera.bearing * @math.PI / 180.0
+        if s.sorted_at != angle {
+          s.order = y_order(s, angle)
+          s.sorted_at = angle
+          s.changed = true
+          if s.icon is Some(ic) {
+            ic.changed = true
+          }
+        }
+      }
       if s.changed {
         self.renderer.show(
           p.mesh.mesh,
@@ -327,6 +359,7 @@ fn Map::place_labels(
           s.shown,
           s.variant,
           col=LABEL_LAYOUTS,
+          order=s.order,
         )
       }
       if s.moved {
@@ -347,6 +380,7 @@ fn Map::place_labels(
             ic.shown,
             s.variant,
             col=ICON_LAYOUTS,
+            order=s.order,
           )
         }
         // With `icon-text-fit` the icon moves with its text.
@@ -368,6 +402,38 @@ fn Map::place_labels(
   self.labels_dirty = false
   self.placed_camera = Some(t.camera)
   self.placed_at = now()
+}
+
+///|
+/// Whether a symbol layer's labels are drawn in screen y order (MapLibre's
+/// `sortFeaturesByY`): ordered by `viewport-y`, or `auto` without a sort key, and
+/// allowed to overlap.
+fn sorts_by_y(layer : @style.StyleLayer) -> Bool {
+  guard layer.text is Some(t) else { return false }
+  let by_y = t.z_order is ViewportY || (t.z_order is Auto && t.sort_key is None)
+  let overlap = t.allow_overlap ||
+    t.ignore_placement ||
+    (match layer.icon {
+      Some(i) => i.allow_overlap || i.ignore_placement
+      None => false
+    })
+  by_y && overlap
+}
+
+///|
+/// MapLibre's `getSortedSymbolIndexes`: labels by their anchors' y on the map
+/// turned by `angle` (in its 8192-unit tiles, rounded as `Math.round`), the later
+/// feature first on ties.
+fn y_order(s : LabelSet, angle : Double) -> FixedArray[Int32] {
+  let sin = @math.sin(angle)
+  let cos = @math.cos(angle)
+  let at = (i : Int32, col : Int32) => f32_at(s.labels, i * LABEL_FLOATS + col)
+  // Rounded y first, then the feature index backwards (below 2^24).
+  let keys = Array::makei(s.count, i => {
+    let y = (sin * 2.0 * at(i, LABEL_X) + cos * 2.0 * at(i, LABEL_Y) + 0.5).floor()
+    y * 16777216.0 - at(i, LABEL_FEATURE)
+  })
+  @core.stable_order(keys[:])
 }
 
 ///|

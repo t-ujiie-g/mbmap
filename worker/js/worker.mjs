@@ -7,7 +7,7 @@ import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 import { readString, readValue } from "./values.mjs";
 
-const LAYER_ENTRY_WORDS = 19; // worker/packed.mbt
+const LAYER_ENTRY_WORDS = 21; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
@@ -119,8 +119,8 @@ function unpack(packed) {
     if (paint) transfer.push(paint);
     const shared = byOffset.get(e(2));
     if (shared !== undefined) {
-      const { vertices, indices, outline, distances, progress, clips, offsets } = layers[shared];
-      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets });
+      const { vertices, indices, outline, distances, progress, clips, offsets, keyRuns } = layers[shared];
+      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets, keyRuns });
       continue;
     }
     const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
@@ -131,6 +131,18 @@ function unpack(packed) {
     if (distances) transfer.push(distances);
     const offsets = e(18) > 0 ? packed.slice(e(17), e(17) + e(18) * 2).buffer : null;
     if (offsets) transfer.push(offsets);
+    // A circle layer's runs of equal sort keys: (key, first index, index count) each.
+    let keyRuns = null;
+    if (e(20) > 0) {
+      const runs = new DataView(packed.buffer, packed.byteOffset + e(19), e(20) * 16);
+      keyRuns = new Float64Array(e(20) * 3);
+      for (let r = 0; r < e(20); r++) {
+        keyRuns[r * 3] = runs.getFloat64(r * 16, true);
+        keyRuns[r * 3 + 1] = runs.getUint32(r * 16 + 8, true);
+        keyRuns[r * 3 + 2] = runs.getUint32(r * 16 + 12, true);
+      }
+      transfer.push(keyRuns.buffer);
+    }
     // A gradient line's progress (f32 share and row per vertex: 8 bytes, as its vertices), then its rows' clips and longest line (f64s).
     let progress = null, clips = null;
     if (e(15) > 0) {
@@ -141,7 +153,7 @@ function unpack(packed) {
     }
     // `shared` names a position in `layers` (skipped symbol entries have none).
     byOffset.set(e(2), layers.length);
-    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets });
+    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets, keyRuns });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };
