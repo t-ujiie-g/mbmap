@@ -62,7 +62,7 @@ const prefetchSymbols = (symbols) => {
 function hasSymbols(packed) {
   const view = new DataView(packed.buffer, packed.byteOffset, packed.byteLength);
   for (let k = view.getUint32(0, true) - 1; k >= 0; k--) {
-    if (view.getUint32(4 + (k * LAYER_ENTRY_WORDS + 1) * 4, true) === KIND_SYMBOL) return true;
+    if (view.getUint32(4 + (k * LAYER_ENTRY_WORDS + 1) * 4, true) === KIND_SYMBOL) return true; // word 1: kind
   }
   return false;
 }
@@ -99,45 +99,47 @@ function unpack(packed) {
   const transfer = [];
   const byOffset = new Map();
   for (let k = 0; k < count; k++) {
-    const e = (i) => view.getUint32(4 + (k * LAYER_ENTRY_WORDS + i) * 4, true);
-    const props = e(8) > 0 ? decodeProps(packed.subarray(e(7), e(7) + e(8))) : null;
-    if (e(1) === KIND_SYMBOL) {
+    // The entry's words in worker/packed.mbt `ENTRY_*` order (worker/js/mirror.test.mjs checks it).
+    const [layer, kind, vertexOffset, vertexBytes, indexOffset, indexCount, indexBytes, propsOffset, propsBytes, paintOffset, paintBytes, outlineOffset, outlineCount, distancesOffset, distancesCount, progressOffset, progressRows, offsetsOffset, offsetsCount, keyRunsOffset, keyRunsCount, dashesOffset, dashesCount] =
+      Array.from({ length: LAYER_ENTRY_WORDS }, (_, i) => view.getUint32(4 + (k * LAYER_ENTRY_WORDS + i) * 4, true));
+    const props = propsBytes > 0 ? decodeProps(packed.subarray(propsOffset, propsOffset + propsBytes)) : null;
+    if (kind === KIND_SYMBOL) {
       if (!canDrawGlyphs) {
         if (!warned) postMessage({ type: "error", message: "labels need OffscreenCanvas" });
         warned = true;
         continue;
       }
-      const s = symbols.buildSymbols(packed.subarray(e(2), e(2) + e(3)), glyphs, images);
+      const s = symbols.buildSymbols(packed.subarray(vertexOffset, vertexOffset + vertexBytes), glyphs, images);
       if (s.count === 0 && !(s.icon?.count > 0) && !s.missing?.length) continue;
-      layers.push({ entry: k, layer: e(0), kind: e(1), shared: -1, props, ...s });
+      layers.push({ entry: k, layer, kind, shared: -1, props, ...s });
       transfer.push(s.vertices, s.indices, s.labels.buffer, s.codepoints.buffer);
       if (s.colors) transfer.push(s.colors);
       if (s.icon) transfer.push(s.icon.vertices, s.icon.indices);
       continue;
     }
     // The layer's own per-vertex paint, also over shared geometry.
-    const paint = e(10) > 0 ? packed.slice(e(9), e(9) + e(10)).buffer : null;
+    const paint = paintBytes > 0 ? packed.slice(paintOffset, paintOffset + paintBytes).buffer : null;
     if (paint) transfer.push(paint);
-    const shared = byOffset.get(e(2));
+    const shared = byOffset.get(vertexOffset);
     if (shared !== undefined) {
       const { vertices, indices, outline, distances, progress, clips, offsets, keyRuns } = layers[shared];
-      layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets, keyRuns });
+      layers.push({ entry: k, layer, kind, vertices, indices, count: indexCount, indexBytes, shared, props, paint, outline, outlineCount, distances, progress, clips, offsets, keyRuns });
       continue;
     }
-    const vertices = packed.slice(e(2), e(2) + e(3)).buffer;
-    const indices = packed.slice(e(4), e(4) + e(5) * e(6)).buffer;
-    const outline = e(12) > 0 ? packed.slice(e(11), e(11) + e(12) * e(6)).buffer : null;
+    const vertices = packed.slice(vertexOffset, vertexOffset + vertexBytes).buffer;
+    const indices = packed.slice(indexOffset, indexOffset + indexCount * indexBytes).buffer;
+    const outline = outlineCount > 0 ? packed.slice(outlineOffset, outlineOffset + outlineCount * indexBytes).buffer : null;
     if (outline) transfer.push(outline);
-    const distances = e(14) > 0 ? packed.slice(e(13), e(13) + e(14) * 2).buffer : null;
+    const distances = distancesCount > 0 ? packed.slice(distancesOffset, distancesOffset + distancesCount * 2).buffer : null;
     if (distances) transfer.push(distances);
-    const offsets = e(18) > 0 ? packed.slice(e(17), e(17) + e(18) * 2).buffer : null;
+    const offsets = offsetsCount > 0 ? packed.slice(offsetsOffset, offsetsOffset + offsetsCount * 2).buffer : null;
     if (offsets) transfer.push(offsets);
     // A circle layer's runs of equal sort keys: (key, first index, index count) each.
     let keyRuns = null;
-    if (e(20) > 0) {
-      const runs = new DataView(packed.buffer, packed.byteOffset + e(19), e(20) * 16);
-      keyRuns = new Float64Array(e(20) * 3);
-      for (let r = 0; r < e(20); r++) {
+    if (keyRunsCount > 0) {
+      const runs = new DataView(packed.buffer, packed.byteOffset + keyRunsOffset, keyRunsCount * 16);
+      keyRuns = new Float64Array(keyRunsCount * 3);
+      for (let r = 0; r < keyRunsCount; r++) {
         keyRuns[r * 3] = runs.getFloat64(r * 16, true);
         keyRuns[r * 3 + 1] = runs.getUint32(r * 16 + 8, true);
         keyRuns[r * 3 + 2] = runs.getUint32(r * 16 + 12, true);
@@ -146,31 +148,31 @@ function unpack(packed) {
     }
     // A line's dash patterns by feature: per pattern its count and numbers (f64s), then four u16s per vertex.
     let dashPatterns = null, dashMarks = null;
-    if (e(21) > 0) {
+    if (dashesOffset > 0) {
       const numbers = new DataView(packed.buffer, packed.byteOffset);
-      let at = e(21);
+      let at = dashesOffset;
       dashPatterns = [];
-      for (let p = 0; p < e(22); p++) {
+      for (let p = 0; p < dashesCount; p++) {
         const n = numbers.getFloat64(at, true);
         const pattern = [];
         for (let i = 0; i < n; i++) pattern.push(numbers.getFloat64(at + 8 + i * 8, true));
         dashPatterns.push(pattern);
         at += 8 + n * 8;
       }
-      dashMarks = packed.slice(at, at + (e(3) / 8) * 8).buffer;
+      dashMarks = packed.slice(at, at + (vertexBytes / 8) * 8).buffer;
       transfer.push(dashMarks);
     }
     // A gradient line's progress (f32 share and row per vertex: 8 bytes, as its vertices), then its rows' clips and longest line (f64s).
     let progress = null, clips = null;
-    if (e(15) > 0) {
-      const end = e(15) + e(3);
-      progress = packed.slice(e(15), end).buffer;
-      clips = new Float64Array(packed.slice(end, end + e(16) * 16 + 8).buffer);
+    if (progressOffset > 0) {
+      const end = progressOffset + vertexBytes;
+      progress = packed.slice(progressOffset, end).buffer;
+      clips = new Float64Array(packed.slice(end, end + progressRows * 16 + 8).buffer);
       transfer.push(progress, clips.buffer);
     }
     // `shared` names a position in `layers` (skipped symbol entries have none).
-    byOffset.set(e(2), layers.length);
-    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets, keyRuns, dashPatterns, dashMarks });
+    byOffset.set(vertexOffset, layers.length);
+    layers.push({ entry: k, layer, kind, vertices, indices, count: indexCount, indexBytes, shared: -1, props, paint, outline, outlineCount, distances, progress, clips, offsets, keyRuns, dashPatterns, dashMarks });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };

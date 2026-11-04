@@ -33,7 +33,7 @@ const PLACEMENTS = ["point", "line", "line-center"];
 export const LINE_LEVELS = 3;
 // Most labels along lines one entry keeps, all levels together: a small `symbol-spacing`
 // over long lines would make them without bound (AGENTS.md §8.2).
-export const MAX_LINE_LABELS = 4096;
+const MAX_LINE_LABELS = 4096;
 // Floats per label in an entry's `lineLabels`; mirrored as LINE_FLOATS in map/line_labels.mbt.
 export const LINE_FLOATS = 6;
 // MapLibre's tile units per `@core.TILE_EXTENT` unit (4096).
@@ -42,12 +42,11 @@ const TO_EXTENT = EXTENT / 4096;
 export const MAX_LABEL_CHARS = 256;
 // Most glyphs a worker keeps, and draws for one tile; past them characters are
 // left blank, so a tile cannot make it draw without bound.
-export const MAX_GLYPHS = 4096;
+const MAX_GLYPHS = 4096;
+const MAX_NEW_GLYPHS_PER_TILE = 1024;
 // Most missing image names one entry reports.
 const MAX_MISSING = 64;
-export const MAX_NEW_GLYPHS_PER_TILE = 1024;
 const BLANK = { advance: SDF_SIZE / 2, left: 0, top: 0, width: 0, height: 0 };
-
 
 // Most fonts a worker draws glyphs with (worker/labels.mbt `MAX_FONTS`); past them the map's own.
 const MAX_FONTS = 32;

@@ -6,7 +6,7 @@ let anchor_names : Array[String] = [
 ]
 
 ///|
-let anchor_values : Array[TextAnchor] = [
+let anchor_values : FixedArray[TextAnchor] = [
   Center,
   Left,
   Right,
@@ -22,7 +22,7 @@ let anchor_values : Array[TextAnchor] = [
 let justify_names : Array[String] = ["auto", "left", "center", "right"]
 
 ///|
-let justify_values : Array[TextJustify] = [Auto, Left, Center, Right]
+let justify_values : FixedArray[TextJustify] = [Auto, Left, Center, Right]
 
 ///|
 fn anchor_of(j : Json, path : String) -> TextAnchor raise StyleError {

@@ -39,6 +39,77 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 pub const LAYER_ENTRY_WORDS : Int32 = 23
 
 ///|
+/// Word indices in a layer entry (docs/FORMATS.md, "Packed tile"); mirrored by the
+/// names `unpack` in worker/js/worker.mjs gives them.
+pub const ENTRY_LAYER : Int32 = 0
+
+///|
+pub const ENTRY_KIND : Int32 = 1
+
+///|
+pub const ENTRY_VERTEX_OFFSET : Int32 = 2
+
+///|
+pub const ENTRY_VERTEX_BYTES : Int32 = 3
+
+///|
+pub const ENTRY_INDEX_OFFSET : Int32 = 4
+
+///|
+pub const ENTRY_INDEX_COUNT : Int32 = 5
+
+///|
+pub const ENTRY_INDEX_BYTES : Int32 = 6
+
+///|
+pub const ENTRY_PROPS_OFFSET : Int32 = 7
+
+///|
+pub const ENTRY_PROPS_BYTES : Int32 = 8
+
+///|
+pub const ENTRY_PAINT_OFFSET : Int32 = 9
+
+///|
+pub const ENTRY_PAINT_BYTES : Int32 = 10
+
+///|
+pub const ENTRY_OUTLINE_OFFSET : Int32 = 11
+
+///|
+pub const ENTRY_OUTLINE_COUNT : Int32 = 12
+
+///|
+pub const ENTRY_DISTANCES_OFFSET : Int32 = 13
+
+///|
+pub const ENTRY_DISTANCES_COUNT : Int32 = 14
+
+///|
+pub const ENTRY_PROGRESS_OFFSET : Int32 = 15
+
+///|
+pub const ENTRY_PROGRESS_ROWS : Int32 = 16
+
+///|
+pub const ENTRY_OFFSETS_OFFSET : Int32 = 17
+
+///|
+pub const ENTRY_OFFSETS_COUNT : Int32 = 18
+
+///|
+pub const ENTRY_KEY_RUNS_OFFSET : Int32 = 19
+
+///|
+pub const ENTRY_KEY_RUNS_COUNT : Int32 = 20
+
+///|
+pub const ENTRY_DASHES_OFFSET : Int32 = 21
+
+///|
+pub const ENTRY_DASHES_COUNT : Int32 = 22
+
+///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
 pub const MAX_PACKED_BYTES : Int32 = 64 * 1024 * 1024
 
@@ -97,6 +168,32 @@ fn PackedTile::put_u32(self : PackedTile, at : Int32, v : Int32) -> Unit {
 }
 
 ///|
+fn PackedTile::put_f64(self : PackedTile, at : Int32, v : Double) -> Unit {
+  let b = v.reinterpret_as_int64()
+  self.store.set_u32(at, b.to_int())
+  self.store.set_u32(at + 4, (b >> 32).to_int())
+}
+
+///|
+/// Byte offset of word `word` of entry `k`.
+fn entry_at(k : Int32, word : Int32) -> Int32 {
+  4 + (k * LAYER_ENTRY_WORDS + word) * 4
+}
+
+///|
+/// Sets the last entry's words `word` and `word` + 1, an offset and its count.
+fn PackedTile::put_last_range(
+  self : PackedTile,
+  word : Int32,
+  at : Int32,
+  count : Int32,
+) -> Unit {
+  let e = entry_at(self.layers - 1, word)
+  self.put_u32(e, at)
+  self.put_u32(e + 4, count)
+}
+
+///|
 fn PackedTile::put_i16(self : PackedTile, at : Int32, v : Int32) -> Unit {
   self.store.set_u16(at, @cmp.maximum(-32768, @cmp.minimum(32767, v)))
 }
@@ -119,7 +216,7 @@ fn PackedTile::begin(self : PackedTile, max_layers : Int32) -> Unit {
   self.len = 0
   self.layers = 0
   self.overflow = false
-  let header = 4 + max_layers * LAYER_ENTRY_WORDS * 4
+  let header = entry_at(max_layers, 0)
   if self.reserve(header) {
     self.store.zero(0, header)
     self.len = header
@@ -142,14 +239,14 @@ fn PackedTile::entry(
   }
   let vstart = self.len
   let istart = vstart + vertex_bytes
-  let e = 4 + self.layers * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e, style_layer)
-  self.put_u32(e + 4, kind)
-  self.put_u32(e + 8, vstart)
-  self.put_u32(e + 12, vertex_bytes)
-  self.put_u32(e + 16, istart)
-  self.put_u32(e + 20, index_count)
-  self.put_u32(e + 24, index_bytes)
+  let e = entry_at(self.layers, 0)
+  self.put_u32(e + ENTRY_LAYER * 4, style_layer)
+  self.put_u32(e + ENTRY_KIND * 4, kind)
+  self.put_u32(e + ENTRY_VERTEX_OFFSET * 4, vstart)
+  self.put_u32(e + ENTRY_VERTEX_BYTES * 4, vertex_bytes)
+  self.put_u32(e + ENTRY_INDEX_OFFSET * 4, istart)
+  self.put_u32(e + ENTRY_INDEX_COUNT * 4, index_count)
+  self.put_u32(e + ENTRY_INDEX_BYTES * 4, index_bytes)
   self.layers += 1
   self.put_u32(0, self.layers)
   self.len = istart + (index_count * index_bytes + 3) / 4 * 4
@@ -206,9 +303,7 @@ fn PackedTile::add_fill(
   }
   let at = self.len
   self.put_indices(at, lines, index_bytes)
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 44, at)
-  self.put_u32(e + 48, lines.length())
+  self.put_last_range(ENTRY_OUTLINE_OFFSET, at, lines.length())
   self.len = at + (lines.length() * index_bytes + 3) / 4 * 4
   true
 }
@@ -343,15 +438,11 @@ fn PackedTile::put_key_runs(
   let at = (self.len + 7) / 8 * 8
   for k, r in runs {
     let next = if k + 1 < runs.length() { runs[k + 1].1 } else { end }
-    let bits = r.0.reinterpret_as_uint64()
-    self.store.set_u32(at + k * 16, bits.to_int())
-    self.store.set_u32(at + k * 16 + 4, (bits >> 32).to_int())
+    self.put_f64(at + k * 16, r.0)
     self.store.set_u32(at + k * 16 + 8, r.1)
     self.store.set_u32(at + k * 16 + 12, next - r.1)
   }
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 76, at)
-  self.put_u32(e + 80, runs.length())
+  self.put_last_range(ENTRY_KEY_RUNS_OFFSET, at, runs.length())
   self.len = at + runs.length() * 16
   true
 }
@@ -374,9 +465,7 @@ fn PackedTile::put_offsets(self : PackedTile, o : Array[Int32]) -> Bool {
       (o[i * 2] & 0xff) | ((o[i * 2 + 1] & 0xff) << 8),
     )
   }
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 68, at)
-  self.put_u32(e + 72, o.length() / 2)
+  self.put_last_range(ENTRY_OFFSETS_OFFSET, at, o.length() / 2)
   self.len = at + bytes
   true
 }
@@ -393,9 +482,7 @@ fn PackedTile::put_dashes(self : PackedTile, d : Dashes) -> Bool {
   let at = (self.len + 7) / 8 * 8
   let mut o = at
   let put_f64 = (v : Double) => {
-    let b = v.reinterpret_as_int64()
-    self.store.set_u32(o, b.to_int())
-    self.store.set_u32(o + 4, (b >> 32).to_int())
+    self.put_f64(o, v)
     o += 8
   }
   for p in d.patterns {
@@ -405,9 +492,7 @@ fn PackedTile::put_dashes(self : PackedTile, d : Dashes) -> Bool {
   for i, m in d.marks {
     self.store.set_u16(o + i * 2, m)
   }
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 84, at)
-  self.put_u32(e + 88, d.patterns.length())
+  self.put_last_range(ENTRY_DASHES_OFFSET, at, d.patterns.length())
   self.len = o + (d.marks.length() * 2 + 3) / 4 * 4
   true
 }
@@ -427,9 +512,7 @@ fn PackedTile::put_distances(self : PackedTile, d : Array[Int32]) -> Bool {
   for i, v in d {
     self.store.set_u16(at + i * 2, v)
   }
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 52, at)
-  self.put_u32(e + 56, d.length())
+  self.put_last_range(ENTRY_DISTANCES_OFFSET, at, d.length())
   self.len = at + bytes
   true
 }
@@ -459,16 +542,16 @@ fn PackedTile::add_alias(
   style_layer : Int32,
   of : Int32,
 ) -> Unit {
-  let src = 4 + of * LAYER_ENTRY_WORDS * 4
-  let dst = 4 + self.layers * LAYER_ENTRY_WORDS * 4
-  self.put_u32(dst, style_layer)
+  let k = self.layers
+  let e = entry_at(k, 0)
+  self.put_u32(e + ENTRY_LAYER * 4, style_layer)
   // The geometry, its group's properties, outline, distances and offset
   // normals; per-vertex paint is each layer's own.
   for w in 1..<LAYER_ENTRY_WORDS {
-    self.put_u32(dst + w * 4, self.store.get_u32(src + w * 4))
+    self.put_u32(e + w * 4, self.store.get_u32(entry_at(of, w)))
   }
-  self.put_u32(dst + 36, 0)
-  self.put_u32(dst + 40, 0)
+  self.put_u32(e + ENTRY_PAINT_OFFSET * 4, 0)
+  self.put_u32(e + ENTRY_PAINT_BYTES * 4, 0)
   self.layers += 1
   self.put_u32(0, self.layers)
 }
@@ -485,9 +568,7 @@ fn PackedTile::set_props(self : PackedTile, props : Bytes) -> Unit {
   for i, b in props {
     self.store.set_u8(at + i, b.to_int())
   }
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 28, at)
-  self.put_u32(e + 32, props.length())
+  self.put_last_range(ENTRY_PROPS_OFFSET, at, props.length())
   self.len = (at + props.length() + 3) / 4 * 4
 }
 
@@ -503,9 +584,7 @@ fn PackedTile::begin_paint(self : PackedTile, words : Int32) -> Int32? {
     return None
   }
   let at = self.len
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 36, at)
-  self.put_u32(e + 40, words * 4)
+  self.put_last_range(ENTRY_PAINT_OFFSET, at, words * 4)
   self.len = at + words * 4
   Some(at)
 }
@@ -535,18 +614,11 @@ fn PackedTile::put_progress(
       Float::from_double(g.rows[i].to_double()).reinterpret_as_int(),
     )
   }
-  let put_f64 = (o : Int32, v : Double) => {
-    let b = v.reinterpret_as_int64()
-    self.store.set_u32(o, b.to_int())
-    self.store.set_u32(o + 4, (b >> 32).to_int())
-  }
   for i, v in g.clips {
-    put_f64(at + n * 8 + i * 8, v)
+    self.put_f64(at + n * 8 + i * 8, v)
   }
-  put_f64(at + n * 8 + rows * 16, g.longest)
-  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
-  self.put_u32(e + 60, at)
-  self.put_u32(e + 64, rows)
+  self.put_f64(at + n * 8 + rows * 16, g.longest)
+  self.put_last_range(ENTRY_PROGRESS_OFFSET, at, rows)
   self.len = at + bytes
   true
 }
