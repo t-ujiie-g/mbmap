@@ -45,14 +45,16 @@ export type RequestTransformFunction = (
 ) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
 
 /**
- * What `getSource` gives, with MapLibre's members for its type: GeoJSON `setData` and cluster queries (null without
+ * What `getSource` gives, with MapLibre's members for its type: its `promoteId`; GeoJSON `setData`, `getData` (a copy of the data, fetched if a URL) and cluster queries (null without
  * clustering; `limit` 10 by default, Infinity for all); image, video and canvas `setCoordinates` (corners clockwise from the
  * top left), `updateImage`, `play` and `pause` (a playing canvas is redrawn every frame), `getVideo`, `getCanvas`.
  */
 export interface Source {
   id: string;
   type: string;
+  promoteId?: unknown;
   setData?(data: unknown): void;
+  getData?(): Promise<unknown>;
   getClusterExpansionZoom?(clusterId: number): Promise<number | null>;
   getClusterChildren?(clusterId: number): Promise<GeoJSONFeature[] | null>;
   getClusterLeaves?(clusterId: number, limit?: number, offset?: number): Promise<GeoJSONFeature[] | null>;
@@ -122,6 +124,7 @@ export type MapEventType =
   | MapMouseEventType
   | "load"
   | "styledata"
+  | "sourcedata"
   | "styleimagemissing"
   | "render"
   | "idle"
@@ -141,9 +144,9 @@ export type MapEventType =
   | "pitchend";
 
 /**
- * `load` fires at the first drawn view, `render` after each frame, `idle` when the map settles;
- * camera events as MapLibre's (`originalEvent`: a gesture's DOM event). Mouse events carry the `point`
- * (CSS pixels), its `lngLat` and their `features`; `styleimagemissing` the `id` of a missing image; `warning` the `warnings`.
+ * `load` fires at the first drawn view, `render` after each frame, `idle` when the map settles; camera events as MapLibre's (`originalEvent`: a gesture's DOM event).
+ * Mouse events carry the `point` (CSS pixels), its `lngLat` and their `features`; `styleimagemissing` the `id` of a missing image; `warning` the `warnings`;
+ * `sourcedata` (after `styledata`) the `sourceId` of a source added or changed (new data, a new style), `dataType` `"source"`.
  */
 export interface MapEvent {
   type: MapEventType;
@@ -155,6 +158,8 @@ export interface MapEvent {
   features?: MapGeoJSONFeature[];
   id?: string;
   warnings?: StyleWarning[];
+  sourceId?: string;
+  dataType?: "source";
 }
 
 /** Something the style uses that is not drawn: where (`layers[3].paint.line-blur`), its layer's id, and why. */

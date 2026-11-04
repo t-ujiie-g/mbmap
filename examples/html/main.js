@@ -10,6 +10,7 @@ import { mountDraw } from "../shared/draw.js";
 import { identifyWhenIdle, mountMeasurement } from "../shared/measure.js";
 import { hoverPlaces, mountIdentify } from "../shared/pick.js";
 import { keepRadiusRing } from "../shared/ring.js";
+import { mountTable } from "../shared/table.js";
 import { zoomIntoClusters } from "../shared/stations.js";
 import { mountProfile } from "../shared/profile.js";
 import { DESTINATIONS } from "../shared/places.js";
@@ -42,6 +43,7 @@ mountControls(map, document.body);
 const panel = panelControllers(map, () => mode, () => places);
 map.once("load").then(() => mountPanel(panel));
 mountSearch(map, () => places);
+mountTable(map);
 
 // The style changes in place: tiles of what stays alike are kept.
 function setMode(next) {

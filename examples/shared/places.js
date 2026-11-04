@@ -1,5 +1,5 @@
 // Places the showcase flies to, and major stations and landmarks as a
-// GeoJSON layer (positions rounded to about 10 m).
+// GeoJSON layer (positions rounded to about 10 m; `kind` 駅, 名所 or 山).
 
 /** Buttons: where each goes (with `?local=1`, only Tokyo Station has tiles). */
 export const DESTINATIONS = [
@@ -34,7 +34,9 @@ const POINTS = [
   ["博多駅", 130.4207, 33.5897],
 ];
 
+const kindOf = (name) => (name.endsWith("駅") ? "駅" : name === "富士山" ? "山" : "名所");
+
 export const PLACES = {
   type: "FeatureCollection",
-  features: POINTS.map(([name, lng, lat]) => ({ type: "Feature", properties: { name }, geometry: { type: "Point", coordinates: [lng, lat] } })),
+  features: POINTS.map(([name, lng, lat]) => ({ type: "Feature", properties: { name, kind: kindOf(name) }, geometry: { type: "Point", coordinates: [lng, lat] } })),
 };

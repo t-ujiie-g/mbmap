@@ -21,6 +21,14 @@ test("a click fires only after less than CLICK_TOLERANCE px of movement since th
   assert.deepEqual(clicks[0].lngLat, { lng: 12.5, lat: 10 });
 });
 
+test("sourceData fires sourcedata with the source's id", () => {
+  const events = new Events(target, () => Promise.resolve([]));
+  const fired: MapEvent[] = [];
+  events.on("sourcedata", (e) => fired.push(e));
+  events.sourceData("places");
+  assert.deepEqual(fired.map((e) => [e.type, e.sourceId, e.dataType]), [["sourcedata", "places", "source"]]);
+});
+
 test("once without a listener returns a Promise of the next event, then stops listening", async () => {
   const events = new Events(target, () => Promise.resolve([]));
   const next = events.once("idle");
