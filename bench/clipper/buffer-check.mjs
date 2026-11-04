@@ -24,7 +24,7 @@ const out = (e, n) => {
   if (n < 0) throw new Error(new TextDecoder().decode(out(e, -n)));
   return new Uint8Array(e.memory.buffer.slice(e.output_addr(), e.output_addr() + n));
 };
-const { tableToGeoJSON } = await import("../../analysis_worker/js/table.mjs");
+const { tableToGeoJSON } = await import("../../wasmio/js/table.mjs");
 
 function buffer(feature, meters) {
   put(a, new TextEncoder().encode(JSON.stringify(feature)));

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker bench/worker/compile_entry analysis_worker geometry_worker proj_worker geodesic_worker --release --target wasm-gc && moon build bundle/main bench/expr --release --target js && npm --prefix bench run opt",
+    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker bench/worker/compile_entry analysis_worker geometry_worker proj_worker geodesic_worker data_worker --release --target wasm-gc && moon build bundle/main bench/expr --release --target js && npm --prefix bench run opt",
     "opt": "node backend/opt.mjs",
     "test": "node --test lib/*.test.mjs",
     "fixtures": "node maplibre/fetch-tiles.mjs",
@@ -43,6 +43,7 @@
     "proj:node": "npm run build:moon && node proj/node.mjs",
     "buffer:check": "npm run build:moon && node clipper/buffer-check.mjs",
     "geodesic:golden": "npm run build:moon && node geodesic/golden.mjs",
+    "data:golden": "cd .. && moon build data_worker --release --target wasm-gc && cd bench && node data/golden.mjs",
     "draw:setdata": "npm --prefix ../npm run build && node draw/run.mjs",
     "style:golden": "npm --prefix ../npm run build && node style/golden.mjs",
     "style:public": "npm --prefix ../npm run build && node style/public.mjs",
@@ -66,16 +67,19 @@
     "@turf/distance": "7.4.0",
     "@turf/length": "7.4.0",
     "@turf/points-within-polygon": "7.4.0",
+    "betterknown": "1.2.0",
     "binaryen": "132.0.0",
     "earcut": "3.2.4",
     "esbuild": "0.28.2",
     "flatbush": "4.6.2",
     "maplibre-gl": "6.16.0",
+    "papaparse": "5.7.0",
     "pbf": "5.1.2",
     "playwright": "1.64.1",
     "pmtiles": "4.5.0",
     "terra-draw": "1.37.0",
-    "terra-draw-maplibre-gl-adapter": "1.5.0"
+    "terra-draw-maplibre-gl-adapter": "1.5.0",
+    "wkx": "0.5.0"
   },
   "dependencies": {
     "@turf/buffer": "7.4.0",

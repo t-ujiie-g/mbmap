@@ -40,6 +40,8 @@ const ENTRIES = [
   { name: "coordinate systems (loaded by the analysis worker on first use)", files: ["proj.wasm"], budget: 25_000, references: [] },
   { name: "mbmap/geodesic", files: ["geodesic.js"], budget: 2_000, references: ["./geodesic-worker.js", "./geodesic.wasm"] },
   { name: "geodesic worker", files: ["geodesic-worker.js", "geodesic.wasm"], budget: 15_000, references: [] },
+  { name: "mbmap/data", files: ["data.js"], budget: 6_000, references: ["./data-worker.js", "./data.wasm"] },
+  { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 30_000, references: [] },
 ];
 
 const failures = [];

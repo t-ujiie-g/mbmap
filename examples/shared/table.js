@@ -1,7 +1,5 @@
-// The places as an attribute table from `mbmap/ui`: sorted by a column's
-// header, filtered by a query, paged, and a row's click selecting the place
-// (highlighted through the places layer's `selected` feature state) and
-// fitting the map to it.
+// The places as an attribute table from `mbmap/ui`: sorted by header, filtered, paged; a row's
+// click selects the place (the places layer's `selected` feature state) and fits the map to it.
 import { cellText, createAttributeTable } from "mbmap/ui";
 
 /** Each column's key and heading. */

@@ -2,7 +2,7 @@
 // docs/FORMATS.md ("Display worker messages", "Packed tile").
 
 import { hostText } from "../../wasmio/js/host.mjs";
-import { readCapped } from "./body.mjs";
+import { fetchInit, readCapped } from "./body.mjs";
 import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 import { readString, readValue } from "./values.mjs";
@@ -201,19 +201,6 @@ async function demPixels(bytes) {
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
   return { size, rgba: new Uint8Array(ctx.getImageData(0, 0, size, size).data.buffer) };
-}
-
-// What a `transformRequest` may set on a tile fetch: string headers and a
-// credentials mode; anything else is left out.
-function fetchInit(init, signal) {
-  const out = { signal, credentials: "omit" };
-  if (init && typeof init === "object") {
-    if (["omit", "same-origin", "include"].includes(init.credentials)) out.credentials = init.credentials;
-    if (init.headers && typeof init.headers === "object") {
-      out.headers = Object.fromEntries(Object.entries(init.headers).filter(([, v]) => typeof v === "string"));
-    }
-  }
-  return out;
 }
 
 async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, raster }) {

@@ -4,7 +4,7 @@
 import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
 import { checkImageSize, decodeImage } from "../../worker/js/imagesize.mjs";
-import { tableToGeoJSON } from "./table.mjs";
+import { tableToGeoJSON } from "../../wasmio/js/table.mjs";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -59,8 +59,8 @@ function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
 
-async function load({ url, bytes, crs }) {
-  let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : null;
+async function load({ url, bytes, table, crs }) {
+  let data = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : table instanceof ArrayBuffer ? new Uint8Array(table) : null;
   if (!data) {
     check(typeof url === "string" && /^https?:/.test(url));
     const res = await fetch(url, { credentials: "omit" });
@@ -68,7 +68,7 @@ async function load({ url, bytes, crs }) {
     data = await readCapped(res, MAX_INPUT_BYTES);
   }
   input(data);
-  const dataset = counted(wasm.load());
+  const dataset = counted(table instanceof ArrayBuffer ? wasm.load_table() : wasm.load());
   if (isLonLat(crs)) return { dataset, features: wasm.feature_count(dataset) };
   // Coordinates in another CRS: kept as longitude and latitude.
   try {

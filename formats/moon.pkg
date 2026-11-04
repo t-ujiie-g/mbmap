@@ -1,10 +1,12 @@
-// Readers that turn interchange formats into `@geom.Table`s. Pure MoonBit,
-// tested on every backend.
+// Readers that turn interchange formats (GeoJSON, CSV, WKT, WKB) into
+// `@geom.Table`s. Pure MoonBit, tested on every backend.
 
 import {
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
+  "moonbitlang/core/double",
 }
 
 import {
@@ -13,3 +15,7 @@ import {
   "moonbitlang/core/double",
   "moonbitlang/core/encoding/utf8",
 } for "test"
+
+import {
+  "moonbitlang/core/encoding/utf8",
+} for "wbtest"

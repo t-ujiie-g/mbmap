@@ -1,6 +1,5 @@
-// Public styles vs MapLibre GL JS 6.16.0 pixel by pixel on tiles of their schema for the GSI area
-// (z14): OpenMapTiles' (style/public-styles.mjs) on OpenFreeMap's, Protomaps basemaps' flavors on a
-// Protomaps build; symbol layers (labels:golden's) and the low-zoom shaded relief left out.
+// Public styles vs MapLibre GL JS 6.16.0 pixel by pixel on tiles of their schema for the GSI area (z14),
+// symbol layers and the low-zoom shaded relief left out (AGENTS §1 `style:public`).
 // node style/public.mjs [--scene=name] [--shots=dir]; writes bench/results/style-public.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";

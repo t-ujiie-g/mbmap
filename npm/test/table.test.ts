@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { tableToGeoJSON } from "../../analysis_worker/js/table.mjs";
+import { tableInfo, tableToGeoJSON } from "../../wasmio/js/table.mjs";
 
 // A table in @geom.Table's byte form (docs/FORMATS.md, "Table"), written by hand.
 function tableBytes(): Uint8Array {
@@ -37,4 +37,9 @@ test("tableToGeoJSON turns table bytes into features with their properties", () 
   assert.equal(Object.hasOwn(poly.properties, "__proto__"), true);
   assert.equal(Object.getPrototypeOf(poly.properties), Object.prototype);
   assert.equal(points.properties["__proto__"], true);
+});
+
+test("tableInfo reads the feature count and the keys alone", () => {
+  assert.deepEqual(tableInfo(tableBytes()), { length: 3, columns: ["name", "__proto__"] });
+  assert.deepEqual(tableInfo(tableBytes().buffer), { length: 3, columns: ["name", "__proto__"] });
 });

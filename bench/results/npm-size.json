@@ -71,7 +71,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 80745,
+      "bytes": 80748,
       "budget": 100000
     },
     {
@@ -81,7 +81,7 @@
     },
     {
       "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
-      "bytes": 2028,
+      "bytes": 2029,
       "budget": 3000
     },
     {
@@ -101,7 +101,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3425,
+      "bytes": 3481,
       "budget": 5000
     },
     {
@@ -111,7 +111,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28067,
+      "bytes": 28102,
       "budget": 30000
     },
     {
@@ -133,6 +133,16 @@
       "name": "geodesic worker",
       "bytes": 12018,
       "budget": 15000
+    },
+    {
+      "name": "mbmap/data",
+      "bytes": 2435,
+      "budget": 6000
+    },
+    {
+      "name": "data worker",
+      "bytes": 17170,
+      "budget": 30000
     },
     {
       "name": "mbmap/ui createAttribution alone",
