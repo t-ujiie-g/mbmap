@@ -2,9 +2,9 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）と R2（正しさ、下の節）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、下の節）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（#93）→ R2 正しさ（下の節）→ R3 重複・定数・分割・テスト → R4 文書。残りの指摘は「全体のレビュー（2026-11-04）」の節。
+  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（#93）→ R2 正しさ（#94）→ R3 重複・定数・分割・テスト（下の節）→ R4 文書。残りの指摘は「全体のレビュー（2026-11-04）」の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -24,7 +24,62 @@
 
 8 つの範囲（style、表示ワーカー、map と描画、core〜tess、GeoJSON と分析、幾何・座標系・測地線、npm の窓口、道具と文書）を、読むだけのサブエージェントが §7・§8 の観点で全部読んだ。指摘を 4 本の PR に分けて直す。
 
-### R2：正しさ（このブランチ）
+### R3：重複・定数・分割・テスト（このブランチ）
+
+4 つの範囲を、それぞれ自分の worktree のサブエージェントが並行して直し、ひとつのブランチにまとめた（AGENTS §2 "Parallel work"。クラウドの `isolation: "worktree"` でも動いた）。
+
+- **使われない公開を外した**：
+  - エンジンの export `map_gpu_bytes`、`map_handler_enabled`、`map_has_image`、`map_image_names`（と `Map::gpu_bytes` などの裏側）。`map_frame_count` と `map_placed_labels` はテスト用として `engine.d.ts` に書いた。
+  - `Transform::mercator_to_screen`、`ring_area`（earcut の `signed_area` を使う）、`clipper.Rect64`。
+  - 非公開にしたもの：`normalize_bearing` などの core の 5 つ、`Earcut`、`DEFAULT_EXTENT`、`state_defaults`、`MAX_HILLSHADE_LIGHTS`、`LineAtlas`、`PatternAtlas`、`abbreviated_count`、`MAX_GRID_SIDE`。
+  - 消したもの：`MAX_GEOJSON_BYTES`（`@wasmio.MAX_INPUT_BYTES` と同じ値）と、`symbols.mjs` の使われない export。
+- **定数**：
+  - 詰めたタイルの項目の語の位置は `ENTRY_*`（worker/packed.mbt）。worker.mjs は同じ順の名前で読む。
+  - コンパイル済みスタイルの式のタグは `EXPR_*`（値は変えていない）。
+  - 柱状タイルの形の番号は `@core.GEOM_*`、tiler のズームの上限は `MAX_ZOOM`。
+  - 描画の `4096` は `create_gl` に渡す `TILE_EXTENT` に、tess の `4096` / `512` は `TILE_EXTENT` / `TILE_SIZE` に。
+  - 窓口のズームとピッチの上限は camera.ts、`pmtiles://` は urls.ts、式の深さは style.ts、クリックの 3 px は events.ts。
+  - アンカーの表は一つに、i16 の切り詰めは `@core.clamp_i16` に。
+- **重複**：
+  - 画面の光線（core の 3 か所）は `screen_ray`。終わり方の違いは残した。
+  - `ease_to` と `fly_to` の前置き、破線の描画 2 つ、gl の行列と描画の前置き（`place` / `draw`）。
+  - overlay の合体 3 つは `region_of` に。`host_number` と `slow_number` は `@wasmio.input_number` に。
+  - 分析ワーカーの `readValue` は values.mjs から読む。f64 の書き手と、http(s) の確認もまとめた。
+- **ファイルの分割**（中身はそのまま移した）：
+  - earcut（穴の扱い、z-order）、tess の線（`Emitter`）、`compiled.mbt`（書き手と読み手）。
+  - worker（fills、circles、query_geometry、テスト）、map のラベル（箱、`placed_labels`）、map の描画（ラスタ）。
+  - `ClusterIndex`（問い合わせ）、flatqueue、geodesic の級数。
+  - `index.ts` のテストできる部分（engine-style.ts、feature-state.ts、query.ts）。
+- **テスト**：
+  - JS と MoonBit で写した定数（`KIND_*`、`LAYER_ENTRY_WORDS`、`ENTRY_*`、ラベルの列）を突き合わせる `worker/js/mirror.test.mjs`。
+  - `events.ts`、`geojson_tiles`（wasm-gc）、map の純粋な計算、ワーカーの上限（`MAX_GROUPS`、`MAX_FONTS`、`MAX_FEATURE_DASHES`）、`ByteReader::remaining`、Int32 の端の座標。
+  - npm のテストは 164 → 184。
+- **小さな直し**：
+  - `zoom_box` がコンパイラのタプルの JS の形に頼っていた件。
+  - 浮動小数のターゲットも RGBA8 も描けないときの heatmap。
+  - `geojson_props_worker` の `properties` を load ごとに消す。
+  - 部分のない地物の `length`。
+  - パッケージの exports に `geojson-properties.wasm` と `worker-*.js` を足した。
+  - `dist/*.d.ts` の相対 import を `.js` にした（`moduleResolution: nodenext` で解決できる）。
+- **ホットパスの変更**（**M2 で測ってほしい**、`tess:node`、`tess:browser`、`worker:browser`）：
+  - 円の点ごと、押し出しの壁ごとの配列リテラルをやめた。
+  - 線の `Emitter` を使い回す。
+  - ワーカーの `put_i16` は `@core.clamp_i16` を呼ぶ（wasm-gc でインライン化されるか）。
+- **試して戻したもの**：
+  - map の `VertexPaint::position` に host の `pow` を渡す：メインが 17 バイト増えた（`js_trig` は `Trig::moonbit()` で、`@math.pow` はもともと入っている）。
+  - worker.mjs の `ENTRY` オブジェクト：+179 バイト。名前つきの局所変数にした。
+  - 定数を埋め込んだテンプレート文字列は esbuild が畳まず、文字列のままのほうが小さかった。
+- **残したもの**：
+  - `join_lines` の O(n²)：出力が走査の順で決まるため。
+  - `css_number`：CSS と JSON で数の書き方が違うため。
+  - `media.ts` の http(s) の確認：pack test がその文を見ているため。
+  - `glyph_key` と `ramp_clips` のテスト：`Map` 全体が要るため。
+- **大きさ**（gzip -9、R3 の前 → 後）：
+  - 減ったもの：表示（メイン）127,997 → 127,832（−165）、ラベル 9,580 → 9,544、幾何 41,877 → 41,815、測地線ワーカー 12,026 → 12,018。
+  - 増えたもの：表示ワーカー 80,947 → 80,954、GeoJSON ワーカー 29,435 → 29,502、式を持つ GeoJSON ワーカー 49,198 → 49,221、分析ワーカー 28,059 → 28,067。
+- **既知の問題**：`npm:pack` の `style` の確認（タイルの要求数、31 と 35）は、クラウドでは main でも 3 回に 1〜2 回落ちる。2 回続けた `setPaintProperty` の間に描画のフレームがはさまるかどうかで変わる。
+
+### R2：正しさ（#94）
 
 - キーつきのスプライト URL（`https://…/sprite?key=K`）は `?key=K@2x.json` になって読めなかった。MapLibre の `normalizeSpriteURL` と同じく、path に足す（`spriteUrl`、`npm/src/images.ts`）。
 - `*-sort-key` と `symbol-z-order` は描いているのに「まだ描かない」と警告が出ていた。`ignored_properties` には `symbol-avoid-edges` だけが残る。
@@ -52,18 +107,19 @@
 
 ### 残りの指摘
 
-- **R3（重複・定数・分割・テスト）**：
-  - 使われない公開を外す。`map_gpu_bytes`、`map_handler_enabled`、`map_has_image`、`map_image_names`、`Transform::mercator_to_screen`、`clipper.Rect64`、`@tiler.abbreviated_count` など。`engine.d.ts` と `bundle/main` の食い違いも直す。
-  - 定数にする。tess とシェーダの `4096`、詰めた項目の語の位置（packed.mbt と worker.mjs の `e + 28` など）、柱状タイルの型の番号、ズームの上限、`pmtiles://`、深さ 32、クリックの 3 px、`MAX_GEOJSON_BYTES`（= `MAX_INPUT_BYTES`）。
-  - 重複をまとめる。画面の光線（core の 3 か所）、`ease_to` と `fly_to`、破線の描画 2 つ、overlay の合体のループ 3 つ、`host_number` と `slow_number`、`readValue` の写し、アンカーの表、`css_number`、http(s) の確認。
-  - 分割する。`compiled.mbt`（書き手と読み手）、`earcut.mbt`、`map/labels.mbt`、`geodesic.mbt`、`tess/line.mbt`、`render.mbt`、`worker/query.mbt`、`tiler/cluster.mbt`、`processor.mbt`、`npm/src/index.ts`（テストできる部分を外に出す）。
-  - テストの穴を埋める。`geojson_tiles`、map の純粋な計算（`same_layers`、`placement_order`、`fits_box` など）、`events.ts`、ワーカーの各上限、pmtiles の上限、写した `KIND_*` が同じかの確認。
+- **R3 で手を付けなかったもの**：pmtiles の上限（`fetchRange` の大きさ、ディレクトリの深さ）の単体テスト。
 - **R4（文書）**：
   - docs/FORMATS.md：Compiled style（translate の Expr、`Accumulated` のタグ、text の 3 つの式）、Display worker messages（`paint`、`outline`、`dashPatterns` など）、Packed tile（`KIND_SYMBOL`、語の表）、CRS の節に紛れた段落。
   - AGENTS §4 の食い違い：format の `text-font` / `text-color`、地形のキャッシュ、`slow_number` の持ち主、`<mb-map>` の大きさ。
   - 各 README（npm：対応するスタイル、遅れて読むファイル、`worker-*.js` の置き場所。bench：コマンドの一覧。ルート：パッケージの表。examples）。
   - NOTICE：MapLibre から写したアトラス、color ramp、heatmap、シェーダ、`media.ts`、`custom.ts`、アイコン。
-  - `package.json` の exports（`geojson-properties.wasm`、`worker-*.js`）、`.d.ts` の拡張子、長いコメント。
+  - R3 で変わったもの：
+    - FORMATS「Packed tile」の語は `ENTRY_*`、「Compiled style」のタグは `EXPR_*`（書き手と読み手は `compiled_writer.mbt` と `compiled_reader.mbt`）、「Columnar tile」の形の番号は `@core.GEOM_*`。
+    - AGENTS §1：npm test のモジュールは camera.ts、urls.ts、style.ts を拡張子つきで読める。
+    - AGENTS §4：
+      - 新しいファイル（engine-style.ts、feature-state.ts、fills.mbt、circles.mbt、query_geometry.mbt）。
+      - `@wasmio.input_number`、`geojson_tiles.load` が `trig` と `slow_number` を受け取ること。
+      - mirror.test.mjs、`.d.ts` の後処理、消した export。
 - **M2 で測ってから**（性能の候補。クラウドでは測れない）：
   - 描画ごとに約 20 個のオブジェクトを作り、毎回 `useProgram` を呼んでいる（`npm run render`）。
   - 起動時に約 32 のシェーダを同期でコンパイルしている（初回描画）。
