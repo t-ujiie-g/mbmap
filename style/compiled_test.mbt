@@ -214,7 +214,7 @@ test "every expression and value kind survives write_expr and read_expr" {
       (1.0, Zoom),
       (2.0, Id),
     ]),
-    Interpolate(Exponential(1.5), Hcl, Zoom, []),
+    Interpolate(Exponential(1.5), Hcl, Zoom, [(3.0, Zoom)]),
     Step(Zoom, Id, [(3.0, Zoom)]),
     FeatureState("hover"),
     Assert(ArrayOf(ArrayOf(NumberType, 2), -1), [Get("a")]),
@@ -283,6 +283,7 @@ test "read_expr refuses unknown tags, short input and huge counts" {
       expr_bytes(Within([[[1.0, 2.0, 3.0]]]))[:],
       expr_bytes(Within([[]]))[:],
       expr_bytes(Distance([Line([])]))[:],
+      expr_bytes(Interpolate(Exponential(1.0), Rgb, Zoom, []))[:],
       b"\x01\x19\x01\x00\x00\x00\x07"[:],
     ] {
     let r = @core.ByteReader::new(bad)

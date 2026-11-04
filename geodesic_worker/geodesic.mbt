@@ -69,7 +69,7 @@ pub fn densify(step : Double) -> Int32 {
   let coords = @wasmio.input_f64s()
   match wgs84.densify(coords[:], step, MAX_PATH_POINTS) {
     Some(path) => @wasmio.write_f64s(FixedArray::from_array(path))
-    None => @wasmio.fail_with("too many points along the path")
+    None => @wasmio.fail_with("invalid path or too many points along it")
   }
 }
 

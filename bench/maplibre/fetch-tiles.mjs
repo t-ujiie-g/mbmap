@@ -1,7 +1,7 @@
 // Downloads the bench tile sets (GSI, and OpenFreeMap's and Protomaps' for the public styles) and the
 // public styles' sprites, and verifies each against its bench/fixtures/<set>.manifest.json (see
 // bench/fixtures/README.md); --update rewrites the manifests.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { PMTiles } from "pmtiles";
@@ -100,12 +100,14 @@ for (const set of SETS) {
       if (!buf || (expected && hash(buf) !== expected)) {
         buf = set.pmtiles ? await fromArchive(set.pmtiles, job) : await download(job.url, `${set.name} ${key}`);
         await mkdir(path.dirname(file), { recursive: true });
-        await writeFile(file, buf);
+        // Only bytes the manifest pins (or --update accepts) go where goldens read them.
+        if (!expected || update || hash(buf) === expected) await writeFile(file, buf);
+        else await rm(file, { force: true });
       }
       const sha256 = hash(buf);
       if (expected && expected !== sha256) {
         mismatches++;
-        console.warn(`${set.name} ${key}: upstream content changed (sha256 ${sha256})`);
+        console.warn(`${set.name} ${key}: upstream content changed (sha256 ${sha256})${update ? "" : "; not kept"}`);
       }
       entries[key] = { bytes: buf.length, sha256 };
     }

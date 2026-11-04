@@ -207,6 +207,7 @@ test "densify splits edges into steps and unrolls longitudes" {
   assert_true(g.densify(view([0, 0, 10, 0]), 1, 1000) is None)
   assert_true(g.densify(view([0, 0, 1, 0]), 0, 1000) is None)
   assert_true(g.densify(view([0, 0, 1, 0, 2, 0]), 1.0e6, 2) is None)
+  assert_true(g.densify(view([0, 0, 0.0 / 0.0, 0]), 1000, 1000) is None)
 }
 
 ///|

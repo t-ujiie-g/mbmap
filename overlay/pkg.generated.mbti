@@ -7,7 +7,13 @@ import {
 }
 
 // Values
+pub const MAX_BUFFER_POINTS : Int32 = 10_000_000
+
+pub const MAX_COORDINATE : Double = 1.0e9
+
 pub fn buffer(@geom.Table, Double, mode? : BufferMode, join? : @clipper.JoinType, cap? : @clipper.EndType, arc_tolerance? : Double) -> @geom.Table
+
+pub fn buffer_refusal(Double, mode~ : BufferMode, arc_tolerance~ : Double) -> String?
 
 pub fn clip(@geom.Table, @geom.Table) -> @geom.Table
 
@@ -18,6 +24,8 @@ pub fn erase(@geom.Table, @geom.Table) -> @geom.Table
 pub fn intersect(@geom.Table, @geom.Table) -> @geom.Table
 
 pub fn merge(@geom.Table) -> @geom.Table?
+
+pub fn refusal(@geom.Table, geodesic? : Bool) -> String?
 
 pub fn split(@geom.Table, @geom.Table) -> @geom.Table
 

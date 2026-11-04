@@ -389,3 +389,9 @@ test "tag_count and tag list a feature's tags in order, repeats included" {
   assert_eq(l.tag(0, 1), ("a", String("x")))
   assert_eq(l.tag(0, 2), ("b", String("x")))
 }
+
+///|
+test "a layer extent of 0 reads as the default" {
+  let tile = @mvt.Tile::parse(tile_bytes([layer_bytes("l", extent=0)])[:])
+  assert_eq(tile.layers[0].extent, @mvt.DEFAULT_EXTENT)
+}

@@ -46,3 +46,10 @@ test("clusterArgs refuses ids past int32, fractions and negative limits", () => 
   assert.throws(() => clusterArgs({ op: "leaves", cluster: 1, limit: 2.5 }), /bad limit/);
   assert.throws(() => clusterArgs({ op: "leaves", cluster: 1, offset: -1 }), /bad offset/);
 });
+
+test("loadOptions keeps maxzoom, buffer and tolerance within the style's ranges", () => {
+  const o = loadOptions({ type: "geojson", data: {}, maxzoom: 99, buffer: 1e9, tolerance: -1 });
+  assert.deepEqual([o.maxzoom, o.buffer, o.tolerance], [24, 512, 0]);
+  const n = loadOptions({ type: "geojson", data: {}, maxzoom: NaN, buffer: Infinity, tolerance: NaN });
+  assert.deepEqual([n.maxzoom, n.buffer, n.tolerance], [18, 128, 0.375]);
+});

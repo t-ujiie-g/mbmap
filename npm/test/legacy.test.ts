@@ -104,3 +104,14 @@ test("filters nested past the engine's depth are left to it, without deep recurs
   assert.equal(legacyIsLegacy(deep), false);
   assert.equal(convertFilter(deep as never), deep);
 });
+
+test("property names like Object.prototype's keys pass through convertStyle untouched", () => {
+  const style = JSON.parse(
+    '{"version": 8, "sources": {}, "layers": [{"id": "a", "type": "line", "paint": {"constructor": {"stops": [[0, 1]]}, "__proto__": {"stops": [[0, 2]]}, "line-width": {"stops": [[0, 3]]}}}]}',
+  ) as StyleSpecification;
+  const paint = (convertStyle(style).layers[0] as { paint: Record<string, unknown> }).paint;
+  assert.deepEqual(Object.keys(paint).sort(), ["__proto__", "constructor", "line-width"]);
+  assert.equal(Object.getPrototypeOf(paint), Object.prototype);
+  assert.deepEqual(convertFilter(["==", "__proto__", 1]), ["==", ["get", "__proto__"], 1]);
+  assert.deepEqual(convertFilter(["any", ["<", "constructor", 1]]), ["any", ["case", ["==", ["typeof", ["get", "constructor"]], "number"], ["<", ["get", "constructor"], 1], false]]);
+});

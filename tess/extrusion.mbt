@@ -200,8 +200,8 @@ pub fn ExtrusionTessellator::add_polygons(
       if boundary_edge(x1, y1, x2, y2, extent) {
         continue
       }
-      let dx = (x1 - x2).to_double()
-      let dy = (y1 - y2).to_double()
+      let dx = x1.to_double() - x2.to_double()
+      let dy = y1.to_double() - y2.to_double()
       let len = (dx * dx + dy * dy).sqrt()
       if len == 0.0 {
         continue

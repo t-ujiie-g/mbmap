@@ -38,6 +38,16 @@ pub fn load(
   cluster_min_points : Int32,
   properties? : (@geom.Table) -> @tiler.ClusterProperties,
 ) -> Int32 {
+  // The style's ranges (style/source.mbt), which the facade clamps to.
+  if !(max_zoom >= 0 &&
+    max_zoom <= 24 &&
+    buffer >= 0.0 &&
+    buffer <= 512.0 &&
+    tolerance >= 0.0 &&
+    tolerance < 1.0e9 &&
+    cluster_max_zoom <= 30) {
+    return @wasmio.fail_with("source options out of range")
+  }
   let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number=(s, e) => {
     host_number(@wasmio.PAGE + s, e - s)
   }) catch {

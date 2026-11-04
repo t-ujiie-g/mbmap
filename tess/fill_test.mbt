@@ -100,3 +100,10 @@ test "outline lists each ring's edges, closing an open ring" {
   out.clear()
   assert_eq(out.outline.length(), 0)
 }
+
+///|
+test "ring_area keeps its sign for rings wider than Int32 differences hold" {
+  let a = 1_500_000_000
+  let cw = [-a, -a, a, -a, a, a, -a, a, -a, -a]
+  assert_eq(@tess.ring_area(cw[:], 0, 5), 8.0 * a.to_double() * a.to_double())
+}

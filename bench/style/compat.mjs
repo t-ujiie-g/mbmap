@@ -31,7 +31,7 @@ const results = {};
 try {
   // Protomaps basemaps' styles are generated (5.7.2, the light flavor in Japanese).
   const protomaps = { version: 8, glyphs: "https://glyphs.invalid/{fontstack}/{range}.pbf",
-    sources: { protomaps: { type: "vector", tiles: [] } }, layers: layers("protomaps", namedFlavor("light"), { lang: "ja" }) };
+    sources: { protomaps: { type: "vector", tiles: ["https://tiles.invalid/{z}/{x}/{y}.pbf"] } }, layers: layers("protomaps", namedFlavor("light"), { lang: "ja" }) };
   const styles = [...Object.keys(PUBLIC_STYLES).map((name) => [name, () => load(name)]), ["protomaps-light", async () => protomaps]];
   for (const [name, get] of styles) {
     if (only && name !== only) continue;

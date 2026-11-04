@@ -56,11 +56,36 @@ pub struct LineBuffers {
   distances : Array[Int32]
   progress : Array[Double]
   offsets : Array[Int32]
+  priv mut max_length : Int32
 }
 
 ///|
 pub fn LineBuffers::new() -> LineBuffers {
-  { vertices: [], indices: [], distances: [], progress: [], offsets: [], }
+  {
+    vertices: [],
+    indices: [],
+    distances: [],
+    progress: [],
+    offsets: [],
+    max_length: 0x7fffffff,
+  }
+}
+
+///|
+/// Stops `add_line` once the buffers hold more than `n` vertices (`full`):
+/// a few points of a hostile tile can make millions of vertices.
+pub fn LineBuffers::limit(self : LineBuffers, n : Int32) -> Unit {
+  self.max_length = if n > 0x7fffffff / LINE_VERTEX_STRIDE {
+    0x7fffffff
+  } else {
+    n * LINE_VERTEX_STRIDE
+  }
+}
+
+///|
+/// Whether the buffers hold more vertices than their `limit`.
+pub fn LineBuffers::full(self : LineBuffers) -> Bool {
+  self.vertices.length() > self.max_length
 }
 
 ///|
@@ -70,6 +95,7 @@ pub fn LineBuffers::clear(self : LineBuffers) -> Unit {
   self.distances.clear()
   self.progress.clear()
   self.offsets.clear()
+  self.max_length = 0x7fffffff
 }
 
 ///|
@@ -131,8 +157,8 @@ pub fn LineTessellator::add_line(
   let mut total = 0.0
   for i in 0..<segments {
     let j = (i + 1) % n
-    let dx = (self.xs[j] - self.xs[i]).to_double()
-    let dy = (self.ys[j] - self.ys[i]).to_double()
+    let dx = self.xs[j].to_double() - self.xs[i].to_double()
+    let dy = self.ys[j].to_double() - self.ys[i].to_double()
     total += (dx * dx + dy * dy).sqrt()
   }
   let n = if dashed || progress {
@@ -176,6 +202,9 @@ pub fn LineTessellator::add_line(
     let first = emitter.pair(xs[0], ys[0], nx[0], ny[0])
     let mut prev = first
     for i in 1..<n {
+      if out.full() {
+        return
+      }
       emitter.advance(xs[i - 1], ys[i - 1], xs[i], ys[i])
       prev = emitter.join_at(
         xs[i],
@@ -221,6 +250,9 @@ pub fn LineTessellator::add_line(
   )
   emitter.cap_extension(xs[0], ys[0], nx[0], ny[0], cap, prev, start=true)
   for i in 1..<(n - 1) {
+    if out.full() {
+      return
+    }
     emitter.advance(xs[i - 1], ys[i - 1], xs[i], ys[i])
     prev = emitter.join_at(
       xs[i],
@@ -290,8 +322,8 @@ fn LineTessellator::compute_normals(
   self.ny.clear()
   for i in 0..<segments {
     let j = (i + 1) % n
-    let dx = (self.xs[j] - self.xs[i]).to_double()
-    let dy = (self.ys[j] - self.ys[i]).to_double()
+    let dx = self.xs[j].to_double() - self.xs[i].to_double()
+    let dy = self.ys[j].to_double() - self.ys[i].to_double()
     let len = (dx * dx + dy * dy).sqrt()
     self.nx.push(-dy / len)
     self.ny.push(dx / len)
@@ -327,8 +359,8 @@ fn LineTessellator::split_corners(
   cy.clear()
   // A point `offset` from (x, y) toward (tx, ty), on MapLibre's rounding.
   let toward = (x : Int32, y : Int32, tx : Int32, ty : Int32) => {
-    let dx = (tx - x).to_double()
-    let dy = (ty - y).to_double()
+    let dx = tx.to_double() - x.to_double()
+    let dy = ty.to_double() - y.to_double()
     let len = (dx * dx + dy * dy).sqrt()
     if len > 2.0 * offset {
       let k = offset / len
@@ -339,8 +371,8 @@ fn LineTessellator::split_corners(
   // MapLibre moves a point toward the corner by the rounded difference.
   let before = (x : Int32, y : Int32) => {
     let k = cx.length() - 1
-    let dx = (x - cx[k]).to_double()
-    let dy = (y - cy[k]).to_double()
+    let dx = x.to_double() - cx[k].to_double()
+    let dy = y.to_double() - cy[k].to_double()
     let len = (dx * dx + dy * dy).sqrt()
     if len > 2.0 * offset {
       let f = offset / len
@@ -458,8 +490,8 @@ fn Emitter::advance(
   y1 : Int32,
 ) -> Unit {
   if self.dashed || self.progress {
-    let dx = (x1 - x0).to_double()
-    let dy = (y1 - y0).to_double()
+    let dx = x1.to_double() - x0.to_double()
+    let dy = y1.to_double() - y0.to_double()
     let d = (dx * dx + dy * dy).sqrt()
     self.whole += d
     self.along += d

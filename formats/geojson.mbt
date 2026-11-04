@@ -9,6 +9,14 @@ pub const MAX_GEOJSON_DEPTH : Int32 = 64
 pub const MAX_GEOJSON_KEYS : Int32 = 4096
 
 ///|
+/// Most points and most property cells (features times keys, as `finish` pads
+/// every column) in GeoJSON input (AGENTS.md §8.2).
+pub const MAX_GEOJSON_POINTS : Int32 = 20_000_000
+
+///|
+pub const MAX_GEOJSON_CELLS : Int32 = 32_000_000
+
+///|
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
 } derive(Debug)
@@ -31,6 +39,17 @@ pub fn read_geojson(
     @core.strconv_number(bytes[s:e])
   },
 ) -> @geom.Table raise GeoJSONError {
+  read_points(bytes, slow_number, MAX_GEOJSON_POINTS)
+}
+
+///|
+/// `read_geojson` rejecting input with more than `max_points` points. Not an
+/// optional argument of it: a second one links its default `slow_number`.
+fn read_points(
+  bytes : BytesView,
+  slow_number : (Int32, Int32) -> Double,
+  max_points : Int32,
+) -> @geom.Table raise GeoJSONError {
   let p : Parser = {
     b: bytes,
     slow_number,
@@ -40,6 +59,7 @@ pub fn read_geojson(
     out: @geom.TableBuilder::new(),
     keys: [],
     next_key: 0,
+    max_points,
   }
   p.feature_like()
   if p.error is None && p.peek() != -1 {
@@ -63,6 +83,7 @@ priv struct Parser {
   out : @geom.TableBuilder
   keys : Array[(Int32, Int32, String)]
   mut next_key : Int32
+  max_points : Int32
 }
 
 ///|
@@ -174,6 +195,11 @@ fn Parser::coordinates(self : Parser, g : GeomBuf, level : Int32) -> Unit {
       let v = self.number()
       if n < 2 {
         g.coords.push(v)
+      }
+      if n == 1 &&
+        self.out.table.coords.length() + g.coords.length() > 2 * self.max_points {
+        // A constant message: printing `max_points` would link integer formatting.
+        self.fail("too many points")
       }
       n += 1
       if !self.next_or_close() {
@@ -415,7 +441,11 @@ fn Parser::feature_like(self : Parser) -> Unit {
     }
     self.out.end_feature(kind, id~)
   }
-  if self.out.table.columns.length() > MAX_GEOJSON_KEYS {
+  let t = self.out.table
+  if t.columns.length() > MAX_GEOJSON_KEYS {
     self.fail("more than \{MAX_GEOJSON_KEYS} property keys")
+  } else if t.length().to_double() * t.columns.length().to_double() >
+    MAX_GEOJSON_CELLS.to_double() {
+    self.fail("more than \{MAX_GEOJSON_CELLS} property cells")
   }
 }

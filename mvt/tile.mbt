@@ -132,7 +132,12 @@ fn parse_layer(
         parse_feature_header(r, ids, types, geoms, tags, tag_offsets, check)
       LAYER_KEY => keys.push(r.read_string())
       LAYER_VALUE => values.push(parse_value(r))
-      LAYER_EXTENT => extent = r.read_varint32()
+      // Everything downstream divides by it.
+      LAYER_EXTENT =>
+        extent = match r.read_varint32() {
+          e if e > 0 => e
+          _ => DEFAULT_EXTENT
+        }
       _ => r.skip(t)
     }
   }

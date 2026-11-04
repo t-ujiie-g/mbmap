@@ -190,9 +190,9 @@ async function demPixels(bytes) {
   checkImageSize(bytes, MAX_DEM_SIZE, "DEM tile");
   const bitmap = await decodeImage(new Blob([bytes]));
   const size = bitmap.width;
-  if (bitmap.height !== size || size > MAX_DEM_SIZE) {
+  if (bitmap.height !== size || size < 2 || size > MAX_DEM_SIZE) {
     bitmap.close();
-    throw new Error(`DEM tile is ${size} x ${bitmap.height}, not square up to ${MAX_DEM_SIZE}`);
+    throw new Error(`DEM tile is ${size} x ${bitmap.height}, not square from 2 up to ${MAX_DEM_SIZE}`);
   }
   if (demCanvas?.width !== size) demCanvas = new OffscreenCanvas(size, size);
   const ctx = demCanvas.getContext("2d", { willReadFrequently: true });

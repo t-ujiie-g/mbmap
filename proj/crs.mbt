@@ -209,6 +209,7 @@ pub struct Crs {
 pub fn Crs::new(d : Definition, trig~ : Trig = Trig::moonbit()) -> Crs? {
   let m = trig
   guard d.a > 0.0 &&
+    d.a < 1.0e300 &&
     d.b > 0.0 &&
     d.b <= d.a &&
     (d.to_meter.is_nan() || d.to_meter > 0.0) &&

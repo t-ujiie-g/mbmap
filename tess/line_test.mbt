@@ -336,3 +336,23 @@ test "at a join every vertex takes the miter vector, capped at twice the normal"
   }
   assert_eq(hairpin[2], (0, 63))
 }
+
+///|
+test "a limited buffer stops a line soon after passing its limit, and clear lifts it" {
+  let zigzag = []
+  for i in 0..<200 {
+    zigzag.push(i * 10)
+    zigzag.push(if i % 2 == 0 { 0 } else { 10 })
+  }
+  let whole = extrude(zigzag, join=Round).num_vertices()
+  let out = @tess.LineBuffers::new()
+  out.limit(50)
+  let t = @tess.LineTessellator::new()
+  t.add_line(zigzag[:], 0, 200, out, join=Round)
+  assert_true(out.full())
+  assert_true(out.num_vertices() > 50 && out.num_vertices() < whole / 2)
+  out.clear()
+  assert_false(out.full())
+  t.add_line(zigzag[:], 0, 200, out, join=Round)
+  assert_eq(out.num_vertices(), whole)
+}

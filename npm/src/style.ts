@@ -87,7 +87,7 @@ export function invalidCustomLayer(layer: { id?: unknown; render?: unknown; rend
 export function addLayer(style: StyleSpecification, layer: LayerSpecification, beforeId?: string): StyleSpecification {
   if (typeof layer?.id !== "string" || typeof layer.type !== "string") throw new Error("mbmap: a layer needs an id and a type");
   if (getLayer(style, layer.id)) throw new Error(`mbmap: the style already has a layer "${layer.id}"`);
-  if (layer.type !== "background" && layer.type !== "custom" && !(typeof layer.source === "string" && layer.source in style.sources)) {
+  if (layer.type !== "background" && layer.type !== "custom" && !(typeof layer.source === "string" && hasSource(style, layer.source))) {
     throw new Error(`mbmap: layer "${layer.id}": the style has no source "${String(layer.source)}"`);
   }
   const next = [...layers(style)];
@@ -112,10 +112,9 @@ export function moveLayer(style: StyleSpecification, id: string, beforeId?: stri
 
 function setProperty(style: StyleSpecification, id: string, group: "paint" | "layout", name: string, value: unknown): StyleSpecification {
   return withLayer(style, id, (l) => {
-    const props = { ...l[group] };
-    if (value === undefined || value === null) delete props[name];
-    else props[name] = copy(value);
-    return { ...l, [group]: props };
+    // Entries and spreads define keys, so `__proto__` stays a key rather than a prototype.
+    const props = Object.fromEntries(Object.entries(l[group] ?? {}).filter(([k]) => k !== name));
+    return { ...l, [group]: value === undefined || value === null ? props : { ...props, [name]: copy(value) } };
   });
 }
 
@@ -154,15 +153,30 @@ export function setLayerZoomRange(style: StyleSpecification, id: string, minzoom
   return withLayer(style, id, (l) => ({ ...l, minzoom, maxzoom }));
 }
 
+/** Sets own key `key` of `o` (an assignment to `__proto__` would set its prototype instead). */
+export function setOwn(o: object, key: string, value: unknown): void {
+  Object.defineProperty(o, key, { value, writable: true, enumerable: true, configurable: true });
+}
+
+/** Whether the style has source `id` (own keys only: `toString` is no source). */
+export function hasSource(style: StyleSpecification, id: string): boolean {
+  return Object.hasOwn(style.sources, id);
+}
+
+/** Source `id` of the style, or undefined. */
+export function sourceOf(style: StyleSpecification, id: string): unknown {
+  return hasSource(style, id) ? style.sources[id] : undefined;
+}
+
 export function addSource(style: StyleSpecification, id: string, source: unknown): StyleSpecification {
-  if (id in style.sources) throw new Error(`mbmap: the style already has a source "${id}"`);
+  if (hasSource(style, id)) throw new Error(`mbmap: the style already has a source "${id}"`);
   if (typeof (source as { type?: unknown })?.type !== "string") throw new Error(`mbmap: source "${id}" needs a type`);
   return { ...style, sources: { ...style.sources, [id]: copy(source) } };
 }
 
 /** Removes source `id`; throws while a layer or the terrain uses it, as MapLibre refuses to. */
 export function removeSource(style: StyleSpecification, id: string): StyleSpecification {
-  if (!(id in style.sources)) throw new Error(`mbmap: the style has no source "${id}"`);
+  if (!hasSource(style, id)) throw new Error(`mbmap: the style has no source "${id}"`);
   const user = layers(style).find((l) => l.source === id);
   if (user) throw new Error(`mbmap: source "${id}" is used by layer "${user.id}"`);
   if ((style.terrain as { source?: unknown } | undefined)?.source === id) throw new Error(`mbmap: source "${id}" is used by the terrain`);
@@ -172,7 +186,7 @@ export function removeSource(style: StyleSpecification, id: string): StyleSpecif
 
 /** Replaces the GeoJSON `data` of source `id`. */
 export function setSourceData(style: StyleSpecification, id: string, data: unknown): StyleSpecification {
-  const source = style.sources[id] as { type?: unknown } | undefined;
+  const source = sourceOf(style, id) as { type?: unknown } | undefined;
   if (source?.type !== "geojson") throw new Error(`mbmap: source "${id}" is not a GeoJSON source`);
   return { ...style, sources: { ...style.sources, [id]: { ...source, data: copy(data) } } };
 }
@@ -186,9 +200,9 @@ export function keepGeoJSONData(previous: StyleSpecification | null, next: Style
   const sources = { ...next.sources };
   for (const [id, s] of Object.entries(sources)) {
     const src = s as { type?: unknown; data?: unknown };
-    const old = previous.sources[id] as { type?: unknown; data?: unknown } | undefined;
+    const old = sourceOf(previous, id) as { type?: unknown; data?: unknown } | undefined;
     if (src?.type === "geojson" && old?.type === "geojson" && old.data !== src.data && JSON.stringify(old.data) === JSON.stringify(src.data)) {
-      sources[id] = { ...src, data: old.data };
+      setOwn(sources, id, { ...src, data: old.data });
     }
   }
   return { ...next, sources };

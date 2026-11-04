@@ -141,6 +141,9 @@ test "points out of a projection's reach and bad definitions give None" {
     @proj.Crs::new(@proj.Definition::new(Omerc, 6378137.0, 6356752.3)) is None,
   )
   assert_true(@proj.Crs::new(@proj.Definition::new(LongLat, 0.0, 0.0)) is None)
+  assert_true(
+    @proj.Crs::new(@proj.Definition::new(LongLat, 1.0 / 0.0, 6356752.3)) is None,
+  )
   let zone = @proj.Definition::new(Utm, 6378137.0, 6356752.3)
   zone.zone = 61
   assert_true(@proj.Crs::new(zone) is None)
@@ -180,6 +183,8 @@ test "decode reads the slots docs/FORMATS.md lays out and refuses others" {
   )
   assert_true(@proj.Definition::decode(s[:33]) is None)
   s[4] = 2.0
+  assert_true(@proj.Definition::decode(s[:]) is None)
+  s[4] = 3.5
   assert_true(@proj.Definition::decode(s[:]) is None)
   s[4] = 0.0
   s[0] = 27.0

@@ -1,6 +1,6 @@
 // TileJSON documents merged into their sources, loaded with the first style that has one.
 // Import-free but for tilejson.ts, so that `npm test` can load it.
-import type { StyleSpecification } from "./style";
+import { setOwn, type StyleSpecification } from "./style.ts";
 import { withoutSources } from "./tilejson.ts";
 
 /** The TileJSON keys a source takes, as MapLibre's `loadTileJson` picks them; the source's own win. */
@@ -32,7 +32,7 @@ export function withTileJSON(
     if (Array.isArray(merged.tiles)) {
       merged.tiles = merged.tiles.map((t) => (typeof t === "string" ? resolve(t, new URL(url)) : t));
     }
-    sources[id] = merged;
+    setOwn(sources, id, merged);
   }
   return withoutSources({ ...style, sources }, pending);
 }

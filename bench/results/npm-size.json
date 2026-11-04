@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 127695,
+      "bytes": 127989,
       "budget": 135000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1656,
+      "bytes": 1697,
       "budget": 5000
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
-      "bytes": 3564,
+      "bytes": 3592,
       "budget": 5000
     },
     {
@@ -46,7 +46,7 @@
     },
     {
       "name": "TileJSON merging (loaded by mbmap with the first source given by url)",
-      "bytes": 411,
+      "bytes": 462,
       "budget": 1000
     },
     {
@@ -71,7 +71,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 80559,
+      "bytes": 80952,
       "budget": 100000
     },
     {
@@ -91,12 +91,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29119,
+      "bytes": 29313,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 48878,
+      "bytes": 49055,
       "budget": 50000
     },
     {
@@ -111,17 +111,17 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 27915,
+      "bytes": 28059,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 41267,
+      "bytes": 41877,
       "budget": 50000
     },
     {
       "name": "coordinate systems (loaded by the analysis worker on first use)",
-      "bytes": 21662,
+      "bytes": 21681,
       "budget": 25000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12014,
+      "bytes": 12026,
       "budget": 15000
     },
     {

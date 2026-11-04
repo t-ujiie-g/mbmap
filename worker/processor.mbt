@@ -31,6 +31,7 @@ pub struct TileProcessor {
   priv range_pool : Array[Array[Int32]]
   priv ranges : @core.ByteWriter
   priv mut range_entries : Int32
+  priv mut budget : Double
   priv mut error : String
 }
 
@@ -76,6 +77,7 @@ pub fn TileProcessor::new(
     range_pool: [],
     ranges: @core.ByteWriter::new(),
     range_entries: 0,
+    budget: 0.0,
     error: "",
   }
 }
@@ -289,6 +291,7 @@ pub fn TileProcessor::process(
       continue
     }
     self.runs.clear()
+    self.budget = MAX_PACKED_BYTES.to_double()
     let entries = self.out.layer_count()
     let ok = match sl.kind {
       Fill => self.fill_layer(index, sl, layer, zoom, groups)
@@ -306,10 +309,42 @@ pub fn TileProcessor::process(
     }
   }
   if self.out.overflowed() {
-    self.error = "tile exceeds \{MAX_PACKED_BYTES} bytes"
-    return false
+    return self.exceeds()
   }
   true
+}
+
+///|
+/// Fails the tile as too big.
+fn TileProcessor::exceeds(self : TileProcessor) -> Bool {
+  self.error = "tile exceeds \{MAX_PACKED_BYTES} bytes"
+  false
+}
+
+///|
+/// Whether a layer's next feature, `points` that pack into at least `bytes`
+/// each, may still fit a tile; checked before it is tessellated, so a hostile
+/// tile stops before all of it is. Sets the error when not.
+fn TileProcessor::may_fit(
+  self : TileProcessor,
+  points : Int32,
+  bytes : Int32,
+) -> Bool {
+  points.to_double() * bytes.to_double() <= self.budget || self.exceeds()
+}
+
+///|
+/// Takes a feature's `vertices` of `bytes` each and `indices` (at least 2 bytes
+/// each) from the layer's budget; false, with the error set, past it.
+fn TileProcessor::spend(
+  self : TileProcessor,
+  vertices : Int32,
+  bytes : Int32,
+  indices : Int32,
+) -> Bool {
+  self.budget -= vertices.to_double() * bytes.to_double() +
+    2.0 * indices.to_double()
+  self.budget >= 0.0 || self.exceeds()
 }
 
 ///|
@@ -391,7 +426,17 @@ fn TileProcessor::fill_layer(
       let first = out.indices.length()
       let edges = out.outline.length()
       let v0 = out.num_vertices()
+      if !self.may_fit(g.num_points(), FILL_VERTEX_BYTES) {
+        return false
+      }
       self.fill.add_polygons(g.coords[:], g.ring_ends[:], out)
+      if !self.spend(
+          out.num_vertices() - v0,
+          FILL_VERTEX_BYTES,
+          out.indices.length() - first + out.outline.length() - edges,
+        ) {
+        return false
+      }
       self.track(
         index,
         group,
@@ -473,6 +518,10 @@ fn TileProcessor::extrusion_layer(
       let group = groups.of(feature)
       let out = self.extrusion_buffers(group)
       let first = out.indices.length()
+      let v0 = out.num_vertices()
+      if !self.may_fit(g.num_points(), EXTRUSION_VERTEX_BYTES) {
+        return false
+      }
       self.extrusion.add_polygons(
         g.coords[:],
         g.ring_ends[:],
@@ -480,6 +529,13 @@ fn TileProcessor::extrusion_layer(
         out,
         extent=layer.extent(),
       )
+      if !self.spend(
+          out.num_vertices() - v0,
+          EXTRUSION_VERTEX_BYTES,
+          out.indices.length() - first,
+        ) {
+        return false
+      }
       self.track(index, group, i, first, out.indices.length())
     }
   }
@@ -537,11 +593,21 @@ fn TileProcessor::circle_layer(
         }
       }
       let v0 = out.num_vertices()
+      if !self.may_fit(4 * g.num_points(), LINE_VERTEX_BYTES) {
+        return false
+      }
       @tess.add_points(
         g.coords[:g.num_points() * 2],
         out,
         extent=layer.extent(),
       )
+      if !self.spend(
+          out.num_vertices() - v0,
+          LINE_VERTEX_BYTES,
+          out.indices.length() - first,
+        ) {
+        return false
+      }
       self.track(index, group, i, first, out.indices.length())
       self.run(i, out.num_vertices() - v0)
     }
@@ -600,7 +666,11 @@ fn TileProcessor::write_paint(
   for k = 1; k < runs.length(); k = k + 2 {
     vertices += runs[k]
   }
-  guard self.out.begin_paint(vertices * words) is Some(at) else { return false }
+  // Their product may pass Int32: compare first.
+  guard vertices <= MAX_PACKED_BYTES / 4 / @cmp.maximum(words, 1) &&
+    self.out.begin_paint(vertices * words) is Some(at) else {
+    return self.exceeds()
+  }
   let scratch = FixedArray::make(words, 0)
   let feature = self.feature_ref(layer)
   let mut w = at

@@ -132,7 +132,8 @@ pub fn json_string_text(s : BytesView) -> String {
     }
     sb.write_string(utf8_lossy(s[run:i]))
     let c = if i + 1 < end { s[i + 1] } else { b' ' }
-    i += 2
+    // A lone `\` at the end steps past it only.
+    i = @cmp.minimum(i + 2, end)
     match c {
       b'"' => sb.write_char('"')
       b'\\' => sb.write_char('\\')

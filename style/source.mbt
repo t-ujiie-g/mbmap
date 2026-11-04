@@ -156,7 +156,7 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       kind: GeoJSON,
       tiles: [],
       min_zoom: 0,
-      max_zoom: number_or(s, "maxzoom", path, 18.0).to_int(),
+      max_zoom: source_zoom(s, "maxzoom", path, 18.0),
       tile_size: 512,
       encoding: Mapbox,
       buffer: buffer.to_int(),
@@ -192,6 +192,9 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
   guard s.get("tiles") is Some(Array(urls)) else {
     raise Unsupported(path~, "only sources with `tiles` are supported")
   }
+  if urls.is_empty() {
+    raise Invalid(path="\{path}.tiles", "empty")
+  }
   let tiles = []
   for u in urls {
     guard u is String(url) else {
@@ -206,12 +209,17 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
   if !(tile_size is (128 | 256 | 512)) {
     raise Unsupported(path="\{path}.tileSize", "only 128, 256 and 512")
   }
+  let min_zoom = source_zoom(s, "minzoom", path, 0.0)
+  let max_zoom = source_zoom(s, "maxzoom", path, 22.0)
+  if min_zoom > max_zoom {
+    raise Invalid(path="\{path}.minzoom", "above maxzoom")
+  }
   Some({
     id,
     kind,
     tiles,
-    min_zoom: number_or(s, "minzoom", path, 0.0).to_int(),
-    max_zoom: number_or(s, "maxzoom", path, 22.0).to_int(),
+    min_zoom,
+    max_zoom,
     tile_size,
     encoding: if kind is RasterDem {
       parse_encoding(s, path)
@@ -251,4 +259,21 @@ fn fetchable(url : String) -> Bool {
     }
   }
   true
+}
+
+///|
+/// Deepest zoom tiles are asked for; a source going deeper is read as going this deep.
+const MAX_SOURCE_ZOOM : Int32 = 24
+
+///|
+/// A source's `minzoom` or `maxzoom` as a tile zoom: 0 or more, at most `MAX_SOURCE_ZOOM`.
+fn source_zoom(
+  s : Map[String, Json],
+  key : String,
+  path : String,
+  default : Double,
+) -> Int32 raise StyleError {
+  let z = number_or(s, key, path, default)
+  guard z >= 0.0 else { raise Invalid(path="\{path}.\{key}", "not a zoom") }
+  @cmp.minimum(z, MAX_SOURCE_ZOOM.to_double()).to_int()
 }

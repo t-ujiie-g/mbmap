@@ -148,8 +148,9 @@ const PROPERTIES: Record<string, Json[]> = {
 };
 
 function specOf(name: string): Spec | undefined {
+  // Own keys only: `constructor` or `__proto__` would find Object's.
+  if (!Object.hasOwn(PROPERTIES, name)) return undefined;
   const row = PROPERTIES[name];
-  if (!row) return undefined;
   const [type, def, interpolated, a, b] = row as [string, Json, number, Json, Json];
   return {
     type,
@@ -205,7 +206,7 @@ function classify(f: Json, depth = 0): number {
 }
 
 /** MapLibre's `convertFilter`: a legacy filter as an expression (others unchanged). */
-export function convertFilter(filter: Json, types: Types = {}): Json {
+export function convertFilter(filter: Json, types: Types = Object.create(null)): Json {
   if (classify(filter) !== 1) return filter;
   if (!filter) return true;
   const f = filter as Json[];
@@ -223,7 +224,7 @@ export function convertFilter(filter: Json, types: Types = {}): Json {
       return [
         "any",
         ...f.slice(1).map((c) => {
-          const t: Types = {};
+          const t: Types = Object.create(null);
           const child = convertFilter(c, t);
           const checks = typeChecks(t);
           return checks === true ? child : ["case", checks, child, false];
@@ -421,9 +422,10 @@ export function convertTokenString(s: string): Json {
 export function convertStyle<T extends { layers: unknown[] }>(style: T): T {
   const props = (o: unknown) => {
     if (!isFunction(o)) return o;
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(o)) out[k] = isFunction(v) && !k.endsWith("-transition") ? (convertFunction(v, k) ?? v) : v;
-    return out;
+    // `fromEntries` defines keys, so `__proto__` stays a key rather than a prototype.
+    return Object.fromEntries(
+      Object.entries(o).map(([k, v]) => [k, isFunction(v) && !k.endsWith("-transition") ? (convertFunction(v, k) ?? v) : v]),
+    );
   };
   const layers = style.layers.map((l) => {
     if (!isFunction(l)) return l;

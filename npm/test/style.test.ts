@@ -112,3 +112,21 @@ test("withState hands the engine the values as defaults, and leaves a style alon
   assert.equal(edit.withState(s, {}), s);
   assert.deepEqual(s.state, { a: { default: 1 } });
 });
+
+test("sources and properties named like Object.prototype's keys are plain keys", () => {
+  const base = JSON.parse('{"version": 8, "sources": {"__proto__": {"type": "vector", "tiles": ["https://x/{z}/{x}/{y}.pbf"]}}, "layers": []}') as StyleSpecification;
+  assert.equal(edit.hasSource(base, "__proto__"), true);
+  assert.equal(edit.hasSource(base, "toString"), false);
+  const added = edit.addSource(base, "toString", { type: "geojson", data: {} });
+  assert.equal((edit.sourceOf(added, "toString") as { type: string }).type, "geojson");
+  assert.throws(() => edit.removeSource(base, "constructor"), /no source "constructor"/);
+  assert.throws(
+    () => edit.addLayer(base, { id: "l", type: "line", source: "constructor" } as never),
+    /no source "constructor"/,
+  );
+  const withLayer = edit.addLayer(base, { id: "l", type: "line", source: "__proto__" } as never);
+  const painted = edit.setPaintProperty(withLayer, "l", "__proto__", 1);
+  const paint = edit.getLayer(painted, "l")!.paint as Record<string, unknown>;
+  assert.deepEqual(Object.keys(paint), ["__proto__"]);
+  assert.equal(Object.getPrototypeOf(paint), Object.prototype);
+});

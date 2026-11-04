@@ -413,3 +413,28 @@ test "js_number reads what JavaScript's Number reads" {
     assert_true(x == c.1 || (x.is_nan() && c.1.is_nan()), msg="\{c.0}: \{x}")
   }
 }
+
+///|
+test "nested coalesce compiles in linear time and shared vars stop at MAX_EXPR_NODES" {
+  let deep = "[\"coalesce\", ".repeat(30) +
+    "[\"get\", \"a\"]" +
+    ", [\"get\", \"b\"]]".repeat(30)
+  let e = @style.compile(@json.parse(deep), expected=NumberType)
+  assert_true(e is Assert(NumberType, _))
+  let b = StringBuilder()
+  for i in 0..<20 {
+    b.write_string(
+      "[\"let\", \"v\{i + 1}\", [\"coalesce\", [\"var\", \"v\{i}\"], [\"var\", \"v\{i}\"], [\"var\", \"v\{i}\"]], ",
+    )
+  }
+  let text = "[\"let\", \"v0\", [\"get\", \"a\"], " +
+    b.to_string() +
+    "[\"var\", \"v20\"]" +
+    "]".repeat(21)
+  try @style.compile(@json.parse(text)) catch {
+    @style.Invalid(m, ..) => assert_true(m.contains("\{@style.MAX_EXPR_NODES}"))
+    _ => fail("unexpected error")
+  } noraise {
+    _ => fail("expected Invalid")
+  }
+}

@@ -10,8 +10,10 @@ const INT32_MAX = 2 ** 31 - 1;
 
 /** The options the worker loads a source with, derived as MapLibre's GeoJSONSource does (`clusterMaxZoom` 0 or unset means `maxzoom` - 1). */
 export function loadOptions(spec: Record<string, unknown>) {
-  const num = (v: unknown, d: number) => (typeof v === "number" ? v : d);
-  const maxzoom = num(spec.maxzoom, 18);
+  const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const within = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  // The style's ranges (style/source.mbt): the engine refuses a source past them, the worker never sees one.
+  const maxzoom = within(num(spec.maxzoom, 18), 0, 24);
   const clusterMaxZoom = num(spec.clusterMaxZoom, 0);
   const cluster =
     spec.cluster === true
@@ -21,7 +23,11 @@ export function loadOptions(spec: Record<string, unknown>) {
           minPoints: Math.min(INT32_MAX, Math.ceil(Math.max(2, num(spec.clusterMinPoints, 0) || 2))),
         }
       : null;
-  return { maxzoom, buffer: num(spec.buffer, 128), tolerance: num(spec.tolerance, 0.375), lineMetrics: spec.lineMetrics === true, cluster };
+  return {
+    maxzoom,
+    buffer: within(num(spec.buffer, 128), 0, 512),
+    tolerance: Math.max(0, num(spec.tolerance, 0.375)),
+    lineMetrics: spec.lineMetrics === true, cluster };
 }
 
 /** Whether two specifications load the same: the same data (by identity), options and cluster properties. */

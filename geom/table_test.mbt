@@ -111,6 +111,15 @@ test "to_bytes and from_bytes round-trip a table; malformed bytes are None" {
     @geom.Table::from_bytes(Bytes::from_array(backwards)[:]).map(t => t.length()),
     None,
   )
+  // An empty part (its ring end at 32) or ring (its point end at 36).
+  for at in [32, 36] {
+    let empty = bytes.to_array()
+    empty[at] = b'\x00'
+    assert_eq(
+      @geom.Table::from_bytes(Bytes::from_array(empty)[:]).map(t => t.length()),
+      None,
+    )
+  }
 }
 
 ///|

@@ -163,7 +163,7 @@ pub fn compile(
   expected~ : Expected = AnyType,
   path~ : String = "",
 ) -> Expr raise StyleError {
-  let c = { scope: [], error: None, collator: expected is AnyType, }
+  let c = { scope: [], error: None, collator: expected is AnyType, nodes: 0, }
   let e = c.compile(json, expected, path, 0)
   if c.error is Some(err) {
     raise err
@@ -187,12 +187,14 @@ fn Expr::size(self : Expr, budget : Int32, depth : Int32) -> Int32 {
 }
 
 ///|
-/// Compiling state: the `let` bindings in scope (innermost last) and the first
-/// error, after which nothing more is compiled.
+/// Compiling state: the `let` bindings in scope (innermost last) with their
+/// sizes, the first error, after which nothing more is compiled, and the nodes
+/// compiled so far with `var`s counted as what they stand for.
 priv struct Compiler {
-  scope : Array[(String, Expr)]
+  scope : Array[(String, Expr, Int32)]
   mut error : StyleError?
   mut collator : Bool
+  mut nodes : Int32
 }
 
 ///|
@@ -273,11 +275,12 @@ fn Expr::static_type(self : Expr) -> Expected {
     Interpolate(_, _, _, _) => ColorType
     Coalesce(es) => {
       let t = es[0].static_type()
-      if es.iter().all(e => e.static_type() == t) {
-        t
-      } else {
-        AnyType
+      for e in es[1:] {
+        if e.static_type() != t {
+          return AnyType
+        }
       }
+      t
     }
     _ => AnyType
   }
@@ -325,6 +328,11 @@ fn Compiler::compile(
   depth : Int32,
   annotated~ : Bool = true,
 ) -> Expr {
+  // Counted as it goes: types are read off the tree, so it must stay small.
+  self.nodes += 1
+  if self.nodes > MAX_EXPR_NODES {
+    return self.fail(Invalid(path~, "more than \{MAX_EXPR_NODES} expressions"))
+  }
   let e = self.compile_at(json, expected, path, depth)
   let actual = e.static_type()
   match (expected, actual) {
@@ -688,7 +696,19 @@ fn Compiler::compile_at(
           return self.fail(Invalid(path=sub(path, i), "not a variable name"))
         }
         self.collator = true
-        bound.push((name, arg(i + 1, AnyType)))
+        let e = arg(i + 1, AnyType)
+        let left = e.size(MAX_EXPR_NODES, 0)
+        bound.push(
+          (
+            name,
+            e,
+            if left < 0 {
+              MAX_EXPR_NODES
+            } else {
+              MAX_EXPR_NODES - left
+            },
+          ),
+        )
       }
       let k = self.scope.length()
       self.scope.append(bound)
@@ -706,6 +726,12 @@ fn Compiler::compile_at(
       let name = self.key(items[1], sub(path, 1))
       for i = self.scope.length() - 1; i >= 0; i = i - 1 {
         if self.scope[i].0 == name {
+          self.nodes += self.scope[i].2 - 1
+          if self.nodes > MAX_EXPR_NODES {
+            return self.fail(
+              Invalid(path~, "more than \{MAX_EXPR_NODES} expressions"),
+            )
+          }
           return self.scope[i].1
         }
       }
