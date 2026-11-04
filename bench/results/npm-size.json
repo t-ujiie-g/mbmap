@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 127003,
+      "bytes": 127695,
       "budget": 135000
     },
     {
@@ -71,7 +71,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 80114,
+      "bytes": 80559,
       "budget": 100000
     },
     {
@@ -96,7 +96,7 @@
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 48888,
+      "bytes": 48878,
       "budget": 50000
     },
     {

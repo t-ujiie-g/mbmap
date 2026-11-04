@@ -7,6 +7,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { serve } from "../lib/serve.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { layers, namedFlavor } from "@protomaps/basemaps";
 import { PUBLIC_STYLES, loadPublicStyle as load } from "./public-styles.mjs";
 
 const only = process.argv.find((a) => a.startsWith("--style="))?.split("=")[1];
@@ -28,9 +29,13 @@ const { server, origin } = await serve();
 const browser = await chromium.launch();
 const results = {};
 try {
-  for (const [name, entry] of Object.entries(PUBLIC_STYLES)) {
+  // Protomaps basemaps' styles are generated (5.7.2, the light flavor in Japanese).
+  const protomaps = { version: 8, glyphs: "https://glyphs.invalid/{fontstack}/{range}.pbf",
+    sources: { protomaps: { type: "vector", tiles: [] } }, layers: layers("protomaps", namedFlavor("light"), { lang: "ja" }) };
+  const styles = [...Object.keys(PUBLIC_STYLES).map((name) => [name, () => load(name)]), ["protomaps-light", async () => protomaps]];
+  for (const [name, get] of styles) {
     if (only && name !== only) continue;
-    const style = offline(await load(name, entry));
+    const style = offline(await get());
     const page = await browser.newPage();
     await page.route("**/*", (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
     await page.goto(`${origin}/bench/style/compat.html`);

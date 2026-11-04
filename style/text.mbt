@@ -41,9 +41,9 @@ pub(all) enum SymbolZOrder {
 } derive(Debug, Eq)
 
 ///|
-/// A symbol layer's text layout, its Style Spec properties by name (sizes in CSS px,
-/// lengths in ems, angles in degrees; `font` None for the map's font, `variable` the
-/// anchors with their offsets, `cooperative` a `text-overlap` of `cooperative`).
+/// A symbol layer's text layout by Style Spec name (CSS px, ems, degrees; `font` None for
+/// the map's font, `variable` and `variable_stops` as `variable_at` reads them,
+/// `cooperative` a `text-overlap` of `cooperative`).
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
@@ -55,9 +55,10 @@ pub struct TextLayout {
   offset : (Double, Double)
   justify : TextJustify
   variable : Array[(TextAnchor, Double, Double)]
+  variable_stops : Array[(Double, Array[(TextAnchor, Double, Double)])]
   max_width : Double
   line_height : Double
-  padding : Double
+  padding : Expr
   allow_overlap : Bool
   ignore_placement : Bool
   vertical : Bool
@@ -176,7 +177,9 @@ fn parse_text(
     None => None
     Some(_) => Some(number_or(layout, "text-radial-offset", path, 0.0))
   }
-  let variable = variable_anchors(layout, path, offset, radial)
+  let (variable, variable_stops) = variable_anchors(
+    layout, path, offset, radial,
+  )
   let offset = match (variable, radial) {
     ([_, ..], _) => (0.0, 0.0)
     ([], Some(r)) => variable_offset(anchor, r, 0.0, radial=true)
@@ -216,9 +219,10 @@ fn parse_text(
     offset,
     justify: justify_values[j],
     variable,
+    variable_stops,
     max_width: number_or(layout, "text-max-width", path, 10.0),
     line_height: number_or(layout, "text-line-height", path, 1.2),
-    padding: number_or(layout, "text-padding", path, 2.0),
+    padding: zoom_number(layout, "text-padding", path, 2.0),
     allow_overlap,
     cooperative,
     ignore_placement: bool_or(layout, "text-ignore-placement", path, false),
@@ -370,4 +374,40 @@ pub fn font_face(stack : String) -> (String, String, String) {
     "normal"
   }
   (family.to_string(), weight, style)
+}
+
+///|
+/// The variable anchors at `zoom` (a tile's zoom, where MapLibre evaluates layout).
+pub fn TextLayout::variable_at(
+  self : TextLayout,
+  zoom : Double,
+) -> Array[(TextAnchor, Double, Double)] {
+  let mut out = self.variable
+  for s in self.variable_stops {
+    if zoom >= s.0 {
+      out = s.1
+    }
+  }
+  out
+}
+
+///|
+/// A number property that may change with zoom but not by feature (MapLibre
+/// evaluates such layout once per tile); other expressions are `Unsupported`.
+fn zoom_number(
+  layout : Map[String, Json],
+  key : String,
+  path : String,
+  default : Double,
+) -> Expr raise StyleError {
+  match layout.get(key) {
+    None => Lit(Num(default))
+    Some(j) => {
+      let e = compile(j, expected=NumberType, path="\{path}.\{key}")
+      if data_driven(e) || e.reads_state() {
+        raise Unsupported(path="\{path}.\{key}", "data expressions")
+      }
+      e
+    }
+  }
 }

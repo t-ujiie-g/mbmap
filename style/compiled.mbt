@@ -392,6 +392,19 @@ fn StyleWriter::sides(
 }
 
 ///|
+fn StyleWriter::anchors(
+  self : StyleWriter,
+  list : Array[(TextAnchor, Double, Double)],
+) -> Unit {
+  self.w.u32(list.length())
+  for v in list {
+    self.code(code_of(anchors, v.0))
+    self.w.f64(v.1)
+    self.w.f64(v.2)
+  }
+}
+
+///|
 fn StyleWriter::text(self : StyleWriter, t : TextLayout) -> Unit {
   self.exprs(t.field)
   self.expr(t.size)
@@ -402,15 +415,15 @@ fn StyleWriter::text(self : StyleWriter, t : TextLayout) -> Unit {
   self.code(code_of(anchors, t.anchor))
   self.pair(t.offset)
   self.code(code_of(justifies, t.justify))
-  self.w.u32(t.variable.length())
-  for v in t.variable {
-    self.code(code_of(anchors, v.0))
-    self.w.f64(v.1)
-    self.w.f64(v.2)
+  self.anchors(t.variable)
+  self.w.u32(t.variable_stops.length())
+  for s in t.variable_stops {
+    self.w.f64(s.0)
+    self.anchors(s.1)
   }
   self.w.f64(t.max_width)
   self.w.f64(t.line_height)
-  self.w.f64(t.padding)
+  self.expr(t.padding)
   self.flag(t.allow_overlap)
   self.flag(t.ignore_placement)
   self.flag(t.vertical)
@@ -428,7 +441,7 @@ fn StyleWriter::icon(self : StyleWriter, i : IconLayout) -> Unit {
   self.expr(i.rotate)
   self.code(code_of(anchors, i.anchor))
   self.pair(i.offset)
-  self.sides(i.padding)
+  self.expr(i.padding)
   for
     b in [
       i.allow_overlap,
@@ -916,6 +929,17 @@ fn StyleReader::sides(self : StyleReader) -> (Double, Double, Double, Double) {
 }
 
 ///|
+fn StyleReader::anchors(
+  self : StyleReader,
+) -> Array[(TextAnchor, Double, Double)] {
+  self.list(() => {
+    let a = self.from(anchors, Center)
+    let x = self.r.f64()
+    (a, x, self.r.f64())
+  })
+}
+
+///|
 fn StyleReader::text(self : StyleReader) -> TextLayout {
   let field = self.exprs()
   let size = self.top()
@@ -926,14 +950,14 @@ fn StyleReader::text(self : StyleReader) -> TextLayout {
   let anchor = self.from(anchors, Center)
   let offset = self.pair()
   let justify = self.from(justifies, Center)
-  let variable = self.list(() => {
-    let a = self.from(anchors, Center)
-    let x = self.r.f64()
-    (a, x, self.r.f64())
+  let variable = self.anchors()
+  let variable_stops = self.list(() => {
+    let z = self.r.f64()
+    (z, self.anchors())
   })
   let max_width = self.r.f64()
   let line_height = self.r.f64()
-  let padding = self.r.f64()
+  let padding = self.top()
   let allow_overlap = self.flag()
   let ignore_placement = self.flag()
   let vertical = self.flag()
@@ -958,6 +982,7 @@ fn StyleReader::text(self : StyleReader) -> TextLayout {
     offset,
     justify,
     variable,
+    variable_stops,
     max_width,
     line_height,
     padding,
@@ -981,7 +1006,7 @@ fn StyleReader::icon(self : StyleReader) -> IconLayout {
   let rotate = self.top()
   let anchor = self.from(anchors, Center)
   let offset = self.pair()
-  let padding = self.sides()
+  let padding = self.top()
   let allow_overlap = self.flag()
   let ignore_placement = self.flag()
   let optional = self.flag()

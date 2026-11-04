@@ -100,21 +100,43 @@ fn variable_offset(
 }
 
 ///|
+/// `names`' anchors with offsets from `text-radial-offset` (if given) or
+/// `text-offset`, as MapLibre's `getTextVariableAnchorOffset`.
+fn anchors_of(
+  names : Array[Json],
+  path : String,
+  offset : (Double, Double),
+  radial : Double?,
+) -> Array[(TextAnchor, Double, Double)] raise StyleError {
+  names.map(j => {
+    let a = anchor_of(j, path)
+    let (x, y) = match radial {
+      Some(r) => variable_offset(a, r, 0.0, radial=true)
+      None => variable_offset(a, offset.0, offset.1, radial=false)
+    }
+    (a, x, y)
+  })
+}
+
+///|
 /// `text-variable-anchor-offset`, or `text-variable-anchor` with offsets from
-/// `text-radial-offset` (if given) or `text-offset`, as MapLibre's
-/// `getTextVariableAnchorOffset`; empty without either.
+/// `text-radial-offset` (if given) or `text-offset`: the anchors below the first
+/// zoom stop and from each stop on (a `step` over zoom); empty without either.
 fn variable_anchors(
   layout : Map[String, Json],
   path : String,
   offset : (Double, Double),
   radial : Double?,
-) -> Array[(TextAnchor, Double, Double)] raise StyleError {
-  let out = []
+) -> (
+  Array[(TextAnchor, Double, Double)],
+  Array[(Double, Array[(TextAnchor, Double, Double)])],
+) raise StyleError {
   let p = "\{path}.text-variable-anchor-offset"
   match layout.get("text-variable-anchor-offset") {
     None => ()
     // A literal starts with an anchor name, an expression with its operator.
     Some(Array([String(first), ..] as list)) if anchor_names.contains(first) => {
+      let out = []
       for i = 0; i < list.length(); i = i + 2 {
         guard list.get(i + 1) is Some(Array([Number(x, ..), Number(y, ..)])) else {
           raise Invalid(path=p, "not anchors and offsets")
@@ -122,26 +144,41 @@ fn variable_anchors(
         let a = anchor_of(list[i], p)
         out.push((a, x, y + (2.0 * a.align().1 - 1.0) * BASELINE_OFFSET))
       }
-      return out
+      return (out, [])
     }
     Some(_) => raise Unsupported(path=p, "expressions")
   }
-  match layout.get("text-variable-anchor") {
-    None => ()
-    Some(Array(names)) =>
-      for j in names {
-        let a = anchor_of(j, "\{path}.text-variable-anchor")
-        let (x, y) = match radial {
-          Some(r) => variable_offset(a, r, 0.0, radial=true)
-          None => variable_offset(a, offset.0, offset.1, radial=false)
-        }
-        out.push((a, x, y))
-      }
-    Some(_) =>
-      raise Invalid(
-        path="\{path}.text-variable-anchor",
-        "not a list of anchors",
-      )
+  let p = "\{path}.text-variable-anchor"
+  let literal = (j : Json) => {
+    match j {
+      Array([String("literal"), Array(names)]) if names.length() > 0 =>
+        anchors_of(names, p, offset, radial)
+      _ => raise Unsupported(path=p, "expressions")
+    }
   }
-  out
+  match layout.get("text-variable-anchor") {
+    None => ([], [])
+    Some(Array([String("step"), Array([String("zoom")]), first, .. stops])) => {
+      guard stops.length() % 2 == 0 else {
+        raise Invalid(path=p, "not a step over zoom")
+      }
+      let out = []
+      for i = 0; i < stops.length(); i = i + 2 {
+        let last = match out.last() {
+          Some((z, _)) => z
+          None => -@double.infinity
+        }
+        guard stops[i] is Number(z, ..) && z > last else {
+          raise Invalid(path=p, "stops not in ascending order")
+        }
+        out.push((z, literal(stops[i + 1])))
+      }
+      (literal(first), out)
+    }
+    // A literal starts with an anchor name, an expression with its operator.
+    Some(Array([String(first), ..])) if !anchor_names.contains(first) =>
+      raise Unsupported(path=p, "expressions")
+    Some(Array(names)) => (anchors_of(names, p, offset, radial), [])
+    Some(_) => raise Invalid(path=p, "not a list of anchors")
+  }
 }

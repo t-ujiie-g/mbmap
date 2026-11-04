@@ -7,7 +7,8 @@
     "ofm-liberty",
     "ofm-bright",
     "ofm-positron",
-    "demotiles"
+    "demotiles",
+    "protomaps-light"
   ],
   "rows": [
     {
@@ -26,14 +27,14 @@
       "styles": "positron 2, dark-matter 2"
     },
     {
+      "kind": "layout.text-rotation-alignment: along lines",
+      "total": 3,
+      "styles": "positron 1, dark-matter 1, protomaps-light 1"
+    },
+    {
       "kind": "paint.fill-antialias: expressions",
       "total": 2,
       "styles": "osm-bright 1, ofm-bright 1"
-    },
-    {
-      "kind": "layout.text-rotation-alignment: along lines",
-      "total": 2,
-      "styles": "positron 1, dark-matter 1"
     }
   ],
   "results": {
@@ -201,6 +202,15 @@
     },
     "demotiles": {
       "warnings": []
+    },
+    "protomaps-light": {
+      "warnings": [
+        {
+          "path": "layers[64].layout.text-rotation-alignment",
+          "layer": "roads_shields",
+          "message": "along lines"
+        }
+      ]
     }
   }
 }

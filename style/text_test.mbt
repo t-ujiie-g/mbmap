@@ -25,8 +25,8 @@ test "symbol layers read text layout and halo, with MapLibre's defaults" {
   assert_eq(b.field, [Get("a"), Lit(Str("-")), Get("b")])
   assert_eq(constant(b.size), Num(16.0))
   assert_eq(
-    (b.anchor, b.offset, b.max_width, b.line_height, b.padding),
-    (Center, (0.0, 0.0), 10.0, 1.2, 2.0),
+    (b.anchor, b.offset, b.max_width, b.line_height, constant(b.padding)),
+    (Center, (0.0, 0.0), 10.0, 1.2, Num(2.0)),
   )
   assert_eq(
     constant(s.layers[1].halo_color),
@@ -116,6 +116,21 @@ test "variable anchors as expressions are unsupported, unknown ones invalid" {
     (
       "{\"text-variable-anchor-offset\": [\"top\", [0, 1], \"left\"]}", "layers[0].layout.text-variable-anchor-offset",
       false,
+    ),
+    (
+      "{\"text-variable-anchor\": [\"get\", \"a\"]}", "layers[0].layout.text-variable-anchor",
+      true,
+    ),
+    (
+      "{\"text-variable-anchor\": [\"step\", [\"zoom\"], [\"literal\", [\"top\"]], 8, [\"get\", \"a\"]]}",
+      "layers[0].layout.text-variable-anchor", true,
+    ),
+    (
+      "{\"text-variable-anchor\": [\"step\", [\"zoom\"], [\"literal\", [\"top\"]], 8, [\"literal\", [\"left\"]], 6, [\"literal\", [\"top\"]]]}",
+      "layers[0].layout.text-variable-anchor", false,
+    ),
+    (
+      "{\"text-padding\": [\"get\", \"p\"]}", "layers[0].layout.text-padding", true,
     ),
     (
       "{\"text-variable-anchor\": [\"top\", \"middle\"]}", "layers[0].layout.text-variable-anchor",
@@ -362,4 +377,24 @@ test "font_face sniffs MapLibre's weight and style from the first name" {
     ("'游ゴシック'", "", "normal"),
   )
   assert_eq(@style.font_face("+ +"), ("'\\+\\ \\+'", "", "normal"))
+}
+
+///|
+test "variable anchors step over zoom; text-padding interpolates by zoom" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [{"id": "a", "type": "symbol", "layout": {"text-radial-offset": 1,
+      #|  "text-variable-anchor": ["step", ["zoom"], ["literal", ["top", "left"]], 8, ["literal", ["center"]], 12, ["literal", ["right"]]],
+      #|  "text-padding": ["interpolate", ["linear"], ["zoom"], 5, 2, 8, 8]}}]}
+    ),
+  )
+  let t = s.layers[0].text.unwrap()
+  let b = 1.0 - 0.2916666666666667
+  assert_eq(t.anchor, Center)
+  assert_eq(t.variable_at(7.0), [(Top, 0.0, b), (Left, 1.0, 0.0)])
+  assert_eq(t.variable_at(8.0), [(Center, 0.0, 0.0)])
+  assert_eq(t.variable_at(14.0), [(Right, -1.0, 0.0)])
+  assert_eq(t.padding.eval(6.5, @style.NoFeature::{ }), Num(5.0))
+  let c = @style.Style::from_compiled(s.to_compiled())
+  assert_true(c.layers[0].text.unwrap() == t)
 }

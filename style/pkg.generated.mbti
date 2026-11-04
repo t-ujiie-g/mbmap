@@ -47,6 +47,8 @@ pub fn geometry_within(Array[Array[Array[Double]]], String, TileGeometry, @core.
 
 pub fn js_number(String) -> Double
 
+pub fn[C : FeatureContext] padding_at(Expr, Double, C) -> (Double, Double, Double, Double)
+
 pub fn parse_color(String) -> Color?
 
 pub fn read_cluster_properties(BytesView) -> Array[(String, Expr, Expr)]?
@@ -221,7 +223,7 @@ pub struct IconLayout {
   rotate : Expr
   anchor : TextAnchor
   offset : (Double, Double)
-  padding : (Double, Double, Double, Double)
+  padding : Expr
   allow_overlap : Bool
   ignore_placement : Bool
   optional : Bool
@@ -577,9 +579,10 @@ pub struct TextLayout {
   offset : (Double, Double)
   justify : TextJustify
   variable : Array[(TextAnchor, Double, Double)]
+  variable_stops : Array[(Double, Array[(TextAnchor, Double, Double)])]
   max_width : Double
   line_height : Double
-  padding : Double
+  padding : Expr
   allow_overlap : Bool
   ignore_placement : Bool
   vertical : Bool
@@ -593,6 +596,7 @@ pub struct TextLayout {
 } derive(Eq)
 pub fn TextLayout::equal(Self, Self) -> Bool
 pub fn TextLayout::not_equal(Self, Self) -> Bool
+pub fn TextLayout::variable_at(Self, Double) -> Array[(TextAnchor, Double, Double)]
 
 pub(all) struct TileGeometry {
   mut z : Int32

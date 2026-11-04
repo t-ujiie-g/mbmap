@@ -1,9 +1,10 @@
-// Downloads the bench tile sets (GSI, and OpenFreeMap's for the public styles) and the public styles'
-// sprites, and verifies each against its bench/fixtures/<set>.manifest.json (see
+// Downloads the bench tile sets (GSI, and OpenFreeMap's and Protomaps' for the public styles) and the
+// public styles' sprites, and verifies each against its bench/fixtures/<set>.manifest.json (see
 // bench/fixtures/README.md); --update rewrites the manifests.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { PMTiles } from "pmtiles";
 import { ROOT } from "../lib/root.mjs";
 
 export const TILES = { z: 14, x: [14549, 14555], y: [6449, 6453] };
@@ -34,6 +35,11 @@ const SETS = [
     url: "https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf",
     attribution: "OpenFreeMap © OpenMapTiles Data from OpenStreetMap",
   },
+  {
+    name: "protomaps", ext: "pbf", ...TILES,
+    pmtiles: "https://build.protomaps.com/20261103.pmtiles",
+    attribution: "Protomaps © OpenStreetMap contributors",
+  },
   { name: "sprites", files: sprites(), attribution: "OpenMapTiles styles (CC-BY 4.0), OpenFreeMap sprites (MIT)" },
 ];
 
@@ -50,6 +56,21 @@ function sprites() {
   return files;
 }
 const update = process.argv.includes("--update");
+const archives = new Map();
+
+async function download(url, what) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${what}: HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// A tile read from a PMTiles archive by range requests, decompressed.
+async function fromArchive(url, { z, x, y }) {
+  if (!archives.has(url)) archives.set(url, new PMTiles(url));
+  const tile = await archives.get(url).getZxy(z, x, y);
+  if (!tile) throw new Error(`${url}: no tile ${z}/${x}/${y}`);
+  return Buffer.from(tile.data);
+}
 const hash = (b) => createHash("sha256").update(b).digest("hex");
 
 let failed = false;
@@ -65,7 +86,8 @@ for (const set of SETS) {
     for (let x = set.x[0]; x <= set.x[1]; x++)
       for (let y = set.y[0]; y <= set.y[1]; y++) {
         const key = `${set.z}/${x}/${y}`;
-        jobs.push({ key, file: path.join(dir, `${key}.${set.ext}`), url: set.url.replace("{z}", set.z).replace("{x}", x).replace("{y}", y) });
+        const url = set.url?.replace("{z}", set.z).replace("{x}", x).replace("{y}", y);
+        jobs.push({ key, file: path.join(dir, `${key}.${set.ext}`), url, z: set.z, x, y });
       }
   }
   const entries = {};
@@ -76,9 +98,7 @@ for (const set of SETS) {
       let buf = await readFile(file).catch(() => null);
       const expected = manifest?.tiles?.[key]?.sha256;
       if (!buf || (expected && hash(buf) !== expected)) {
-        const res = await fetch(job.url);
-        if (!res.ok) throw new Error(`${set.name} ${key}: HTTP ${res.status}`);
-        buf = Buffer.from(await res.arrayBuffer());
+        buf = set.pmtiles ? await fromArchive(set.pmtiles, job) : await download(job.url, `${set.name} ${key}`);
         await mkdir(path.dirname(file), { recursive: true });
         await writeFile(file, buf);
       }
@@ -90,12 +110,19 @@ for (const set of SETS) {
       entries[key] = { bytes: buf.length, sha256 };
     }
   };
-  await Promise.all([worker(), worker(), worker(), worker()]);
+  // A set that cannot be fetched (a Protomaps build is kept for a while only) leaves the others to go on.
+  try {
+    await Promise.all([worker(), worker(), worker(), worker()]);
+  } catch (e) {
+    console.error(`${set.name}: not fetched (${e.message})`);
+    failed = true;
+    continue;
+  }
   if (!manifest || update) {
     const tiles = Object.fromEntries(Object.entries(entries).sort());
     const total = Object.values(tiles).reduce((a, t) => a + t.bytes, 0);
     await writeFile(manifestPath, JSON.stringify({
-      source: set.url ?? "see bench/maplibre/fetch-tiles.mjs",
+      source: set.url ?? set.pmtiles ?? "see bench/maplibre/fetch-tiles.mjs",
       attribution: set.attribution,
       fetched: new Date().toISOString().slice(0, 10),
       totalBytes: total,

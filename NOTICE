@@ -567,3 +567,10 @@ Test / benchmark data (continued):
   (OpenMapTiles schema, build 20261101_080013_pt) of the GSI fixtures' area.
   © OpenMapTiles, Data © OpenStreetMap contributors (ODbL 1.0,
   https://www.openstreetmap.org/copyright). Served by https://openfreemap.org.
+- bench/fixtures/protomaps/ (downloaded, not committed): Protomaps vector tiles
+  (Protomaps basemap schema, daily build 20261103) of the GSI fixtures' area.
+  Data © OpenStreetMap contributors (ODbL 1.0, https://www.openstreetmap.org/copyright).
+  Served by https://build.protomaps.com.
+- @protomaps/basemaps 5.7.2 (bench devDependency, not shipped): builds the Protomaps
+  styles compared by bench/style/public.mjs and compat.mjs. BSD-3-Clause,
+  © The Protomaps Authors.

@@ -9,8 +9,8 @@ pub(all) enum IconTextFit {
 
 ///|
 /// A symbol layer's icon layout (`layout` as written: equal ones make the same tiles): `image`
-/// as parts of a name, `rotate` in degrees, `offset` in px at size 1, paddings top, right, bottom,
-/// left (px), alignments resolved from `auto`; overlap modes as `TextLayout`'s.
+/// as parts of a name, `rotate` in degrees, `offset` in px at size 1, `padding` as `padding_at`
+/// reads it, `text_fit_padding` top, right, bottom, left (px), alignments resolved from `auto`; overlap modes as `TextLayout`'s.
 pub struct IconLayout {
   layout : Json
   image : Array[Expr]
@@ -18,7 +18,7 @@ pub struct IconLayout {
   rotate : Expr
   anchor : TextAnchor
   offset : (Double, Double)
-  padding : (Double, Double, Double, Double)
+  padding : Expr
   allow_overlap : Bool
   ignore_placement : Bool
   optional : Bool
@@ -73,6 +73,43 @@ fn padding_of(
     v[if n >= 3 { 2 } else { 0 }],
     v[if n == 4 { 3 } else if n >= 2 { 1 } else { 0 }],
   )
+}
+
+///|
+/// `icon-padding` as a literal, or an expression over zoom giving one number
+/// for all sides; others are `Unsupported`.
+fn padding_expr(
+  obj : Map[String, Json],
+  key : String,
+  path : String,
+  default : Double,
+) -> Expr raise StyleError {
+  match obj.get(key) {
+    Some(Array([String(_), ..])) => zoom_number(obj, key, path, default)
+    _ => {
+      let (t, r, b, l) = padding_of(obj, key, path, default)
+      Lit(List([Num(t), Num(r), Num(b), Num(l)]))
+    }
+  }
+}
+
+///|
+/// A padding (`padding_expr`) at `zoom` as top, right, bottom, left; 2 px a side
+/// when it gives no number.
+pub fn[C : FeatureContext] padding_at(
+  e : Expr,
+  zoom : Double,
+  ctx : C,
+) -> (Double, Double, Double, Double) {
+  let v = match e {
+    Lit(v) => v
+    _ => e.eval(zoom, ctx)
+  }
+  match v {
+    List([Num(t), Num(r), Num(b), Num(l)]) => (t, r, b, l)
+    Num(n) if n == n => (n, n, n, n)
+    _ => (2.0, 2.0, 2.0, 2.0)
+  }
 }
 
 ///|
@@ -176,7 +213,7 @@ fn parse_icon(
         rotate: exprs[1],
         anchor,
         offset,
-        padding: padding_of(layout, "icon-padding", path, 2.0),
+        padding: padding_expr(layout, "icon-padding", path, 2.0),
         allow_overlap,
         cooperative,
         ignore_placement: flags[0],

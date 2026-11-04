@@ -57,6 +57,7 @@
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
     "@maplibre/geojson-vt": "6.3.0",
+    "@protomaps/basemaps": "5.7.2",
     "@turf/area": "7.4.0",
     "@turf/bbox": "7.4.0",
     "@turf/boolean-point-in-polygon": "7.4.0",

@@ -15,13 +15,14 @@ cli.moonbitlang.com
 cyberjapandata.gsi.go.jp
 tiles.openfreemap.org
 raw.githubusercontent.com
+build.protomaps.com
 cdn.playwright.dev
 playwright.download.prss.microsoft.com
 ```
 
 - `cli.moonbitlang.com`：MoonBit のツールチェーン（`scripts/toolchain.env` で版と sha256 を固定）
 - `cyberjapandata.gsi.go.jp`：ベンチと黄金テストのフィクスチャ（国土地理院のタイル。manifest の sha256 と照合する）
-- `tiles.openfreemap.org`、`raw.githubusercontent.com`：公開スタイルの比較（`npm run style:public`）に使うタイルとスプライト（manifest の sha256 と照合する）。Node の `fetch` はプロキシを読まないので `NODE_USE_ENV_PROXY=1` を付ける（`scripts/setup.sh` は付けている）
+- `tiles.openfreemap.org`、`raw.githubusercontent.com`、`build.protomaps.com`：公開スタイルの比較（`npm run style:public`）に使うタイルとスプライト（manifest の sha256 と照合する）。Node の `fetch` はプロキシを読まないので `NODE_USE_ENV_PROXY=1` を付ける（`scripts/setup.sh` は付けている）
 - Playwright の 2 つ：黄金テストと npm パッケージのテストで使う Chromium
 
 GitHub と npm は既定の一覧に入っている。

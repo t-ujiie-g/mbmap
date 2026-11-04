@@ -1,16 +1,18 @@
-// The OpenMapTiles-schema public styles (style/public-styles.mjs) drawn by mbmap and MapLibre GL JS
-// 6.16.0 on OpenFreeMap's tiles of the GSI area (bench/fixtures/ofm-planet, z14) with their own
-// sprites, pixel by pixel; labels are compared by labels:golden, so symbol layers are left out, and
-// the low-zoom shaded-relief raster is too. node style/public.mjs [--scene=name] [--shots=dir];
-// writes bench/results/style-public.json.
+// Public styles vs MapLibre GL JS 6.16.0 pixel by pixel on tiles of their schema for the GSI area
+// (z14): OpenMapTiles' (style/public-styles.mjs) on OpenFreeMap's, Protomaps basemaps' flavors on a
+// Protomaps build; symbol layers (labels:golden's) and the low-zoom shaded relief left out.
+// node style/public.mjs [--scene=name] [--shots=dir]; writes bench/results/style-public.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ROOT } from "../lib/root.mjs";
 import { compareScenes } from "./compare.mjs";
+import { layers, namedFlavor } from "@protomaps/basemaps";
 import { loadPublicStyle } from "./public-styles.mjs";
 
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
-const TILES = { type: "vector", tiles: ["{origin}/bench/fixtures/ofm-planet/{z}/{x}/{y}.pbf"], minzoom: 14, maxzoom: 14 };
+const fixture = (set) => ({ type: "vector", tiles: [`{origin}/bench/fixtures/${set}/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 });
+const TILES = fixture("ofm-planet");
+const FLAVORS = ["light", "dark", "white", "grayscale", "black"];
 // Each style's sprite in bench/fixtures/sprites/ (maptiler-basic draws no images).
 const STYLES = { "osm-bright": "osm-bright", positron: "positron", "dark-matter": "dark-matter", "maptiler-basic": "maptiler-basic",
   "ofm-liberty": "ofm", "ofm-bright": "ofm", "ofm-positron": "ofm" };
@@ -26,6 +28,7 @@ const LIMITS = {
   "maptiler-basic-turned": { mean: 0.08, p99: 2, gap: "thin dashed paths with bevel joins" },
   "ofm-liberty-tokyo": { mean: 0.12, p99: 2, gap: DASHES },
   "ofm-liberty-turned": { mean: 0.12, p99: 2, gap: "thin dashed paths" },
+  "protomaps-black-tokyo": { mean: 0.06, p99: 1 },
 };
 
 function local(style, sprite) {
@@ -48,6 +51,18 @@ for (const [name, sprite] of Object.entries(STYLES)) {
     scenes[key] = { style, camera, limits, ...(gap ? { gap } : {}) };
   }
 }
+for (const flavor of FLAVORS) {
+  const style = {
+    version: 8,
+    sources: { protomaps: fixture("protomaps") },
+    layers: layers("protomaps", namedFlavor(flavor), { lang: "ja" }).filter((l) => l.type !== "symbol"),
+  };
+  for (const [view, camera] of Object.entries(CAMERAS)) {
+    const key = `protomaps-${flavor}-${view}`;
+    const { gap, ...limits } = LIMITS[key] ?? { mean: 0.05, p99: 1 };
+    scenes[key] = { style, camera, limits, ...(gap ? { gap } : {}) };
+  }
+}
 const only = arg("scene");
 const results = await compareScenes(scenes, { only, shots: arg("shots"), dir: "bench/dist/style-public" });
-if (!only) await writeFile(path.join(ROOT, "bench/results/style-public.json"), `${JSON.stringify({ env: { maplibre: "6.16.0", browser: "chromium", viewport: "800x600", tiles: "openfreemap 20261101_080013_pt" }, results }, null, 2)}\n`);
+if (!only) await writeFile(path.join(ROOT, "bench/results/style-public.json"), `${JSON.stringify({ env: { maplibre: "6.16.0", browser: "chromium", viewport: "800x600", tiles: "openfreemap 20261101_080013_pt, protomaps 20261103" }, results }, null, 2)}\n`);

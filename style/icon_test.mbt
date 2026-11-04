@@ -20,7 +20,10 @@ test "symbol layers read icon layout and paint, with MapLibre's defaults" {
   assert_eq(a.size.feature_inputs(), (["s"], false))
   assert_eq(a.anchor, Bottom)
   assert_eq(a.offset, (1.0, -2.0))
-  assert_eq(a.padding, (1.0, 2.0, 1.0, 2.0))
+  assert_eq(
+    @style.padding_at(a.padding, 0.0, @style.NoFeature::{ }),
+    (1.0, 2.0, 1.0, 2.0),
+  )
   assert_true(a.allow_overlap && a.optional && a.text_optional)
   assert_false(a.ignore_placement)
   // `icon-pitch-alignment: auto` follows the rotation alignment.
@@ -32,7 +35,10 @@ test "symbol layers read icon layout and paint, with MapLibre's defaults" {
   assert_true(p.opacity is Lit(Num(0.5)))
   let b = s.layers[1].icon.unwrap()
   assert_eq(b.image, [Get("n")])
-  assert_eq(b.padding, (3.0, 3.0, 3.0, 3.0))
+  assert_eq(
+    @style.padding_at(b.padding, 0.0, @style.NoFeature::{ }),
+    (3.0, 3.0, 3.0, 3.0),
+  )
   assert_eq((b.anchor, b.offset, b.text_fit), (Center, (0.0, 0.0), NoFit))
   assert_false(b.rotate_with_map || b.pitch_with_map || b.keep_upright)
   assert_true(s.layers[1].icon_paint.unwrap().halo_width is Lit(Num(0.0)))
@@ -112,4 +118,25 @@ test "icons along lines turn and lie with the line unless set upright" {
   assert_true(a.rotate_with_map && a.pitch_with_map)
   let b = s.layers[1].icon.unwrap()
   assert_false(b.rotate_with_map || b.pitch_with_map)
+}
+
+///|
+test "icon-padding interpolates by zoom, one number for all sides" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [{"id": "a", "type": "symbol", "layout": {"icon-image": "x",
+      #|  "icon-padding": ["interpolate", ["linear"], ["zoom"], 0, 0, 8, 4]}}]}
+    ),
+  )
+  let i = s.layers[0].icon.unwrap()
+  assert_eq(
+    @style.padding_at(i.padding, 2.0, @style.NoFeature::{ }),
+    (1.0, 1.0, 1.0, 1.0),
+  )
+  let c = @style.Style::from_compiled(s.to_compiled())
+  assert_eq(
+    @style.padding_at(c.layers[0].icon.unwrap().padding, 8.0, @style.NoFeature::{
+    }),
+    (4.0, 4.0, 4.0, 4.0),
+  )
 }

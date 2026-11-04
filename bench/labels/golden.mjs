@@ -125,6 +125,16 @@ function textScenes() {
       ),
       camera: { center: tokyo, zoom: 14.6 },
     },
+    "zoom-layout": {
+      style: style(label("l", {
+        "text-variable-anchor": ["step", ["zoom"], ["literal", ["top", "bottom"]], 13.5, ["literal", ["left", "right", "top"]], 14.5, ["literal", ["center"]]],
+        "text-radial-offset": 0.5,
+        "text-padding": ["interpolate", ["linear"], ["zoom"], 12, 0, 16, 16],
+        "icon-image": "dot",
+        "icon-padding": ["interpolate", ["linear"], ["zoom"], 12, 0, 16, 12],
+      })),
+      camera: { center: tokyo, zoom: 14.6 },
+    },
     "icon-overlap": {
       style: style(
         { id: "s", type: "symbol", source: "gsi", "source-layer": "symbol", layout: { "icon-image": "box", "icon-overlap": "cooperative" } },
