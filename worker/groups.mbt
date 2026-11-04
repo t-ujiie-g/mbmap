@@ -26,6 +26,7 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
         sl.opacity,
         sl.halo_color,
         sl.halo_width,
+        sl.blur,
         ..sl.icon_paint.map_or([], p => p.exprs()),
       ]
     // Base and height go into the vertices instead.

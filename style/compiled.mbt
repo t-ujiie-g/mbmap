@@ -375,6 +375,9 @@ fn StyleWriter::text(self : StyleWriter, t : TextLayout) -> Unit {
   self.flag(t.ignore_placement)
   self.flag(t.vertical)
   self.opt_expr(t.sort_key)
+  self.opt_expr(t.font)
+  self.exprs([t.letter_spacing, t.transform, t.rotate])
+  self.flag(t.cooperative)
   self.code(code_of(z_orders, t.z_order))
 }
 
@@ -400,6 +403,7 @@ fn StyleWriter::icon(self : StyleWriter, i : IconLayout) -> Unit {
   }
   self.code(code_of(fits, i.text_fit))
   self.sides(i.text_fit_padding)
+  self.flag(i.cooperative)
 }
 
 ///|
@@ -820,6 +824,15 @@ fn StyleReader::text(self : StyleReader) -> TextLayout {
   let ignore_placement = self.flag()
   let vertical = self.flag()
   let sort_key = self.opt_expr()
+  let font = self.opt_expr()
+  let (letter_spacing, transform, rotate) = match self.exprs() {
+    [a, b, c] => (a, b, c)
+    _ => {
+      self.r.fail()
+      (Lit(Null), Lit(Null), Lit(Null))
+    }
+  }
+  let cooperative = self.flag()
   {
     field,
     size,
@@ -838,6 +851,11 @@ fn StyleReader::text(self : StyleReader) -> TextLayout {
     ignore_placement,
     vertical,
     sort_key,
+    font,
+    letter_spacing,
+    transform,
+    rotate,
+    cooperative,
     z_order: self.from(z_orders, Auto),
   }
 }
@@ -875,6 +893,7 @@ fn StyleReader::icon(self : StyleReader) -> IconLayout {
     keep_upright,
     text_fit,
     text_fit_padding: self.sides(),
+    cooperative: self.flag(),
   }
 }
 
@@ -891,9 +910,19 @@ fn StyleReader::icon_paint(self : StyleReader) -> IconPaint {
       halo_color: none,
       halo_width: none,
       halo_blur: none,
+      translate: (0.0, 0.0),
+      translate_viewport: false,
     }
   }
-  { color, opacity, halo_color, halo_width, halo_blur, }
+  {
+    color,
+    opacity,
+    halo_color,
+    halo_width,
+    halo_blur,
+    translate: (0.0, 0.0),
+    translate_viewport: false,
+  }
 }
 
 ///|

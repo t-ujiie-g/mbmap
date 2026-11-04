@@ -73,3 +73,20 @@ test "reset empties the grid and resizes it" {
   g.insert(350.0, 250.0, 380.0, 280.0)
   assert_true(g.hits(370.0, 270.0, 390.0, 290.0))
 }
+
+///|
+test "cooperative hits meet only boxes and circles of symbols that never overlap" {
+  let g = @label.Grid::new(200.0, 200.0)
+  g.insert(10.0, 10.0, 20.0, 20.0, never=false)
+  g.insert_circle(100.0, 100.0, 5.0, never=false)
+  assert_true(g.hits(15.0, 15.0, 30.0, 30.0))
+  assert_false(g.hits(15.0, 15.0, 30.0, 30.0, cooperative=true))
+  assert_false(g.hits_circle(102.0, 100.0, 3.0, cooperative=true))
+  g.insert(40.0, 40.0, 50.0, 50.0)
+  g.insert_circle(150.0, 150.0, 5.0)
+  assert_true(g.hits(45.0, 45.0, 60.0, 60.0, cooperative=true))
+  assert_true(g.hits_circle(152.0, 150.0, 3.0, cooperative=true))
+  g.reset(200.0, 200.0)
+  g.insert(10.0, 10.0, 20.0, 20.0)
+  assert_true(g.hits(15.0, 15.0, 30.0, 30.0, cooperative=true))
+}

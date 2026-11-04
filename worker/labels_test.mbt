@@ -28,26 +28,26 @@ test "symbol layers pack their points' labels with the layer's layout" {
   // px apart, 45° at most along lines.
   assert_eq((r.u8(), r.u8()), (2, 0))
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
-  // No icon.
-  assert_eq(r.u8(), 0)
+  // No icon, no fonts but the map's.
+  assert_eq((r.u8(), r.u8()), (0, 0))
   assert_eq(r.u32(), 1)
   assert_eq(
-    (r.u32(), r.i16(), r.i16(), r.f64(), r.f64(), r.u32()),
-    (0, 2048, 2048, 10.0, 0.0, 2),
+    (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
+    (0, 2048, 2048, 10.0, 0.0),
   )
+  // The map's font, no transform, letter spacing or rotation.
+  assert_eq((r.u8(), r.u8(), r.f64(), r.f64(), r.u32()), (0, 0, 0.0, 0.0, 2))
   assert_eq((r.u8(), r.utf8()), (@core.PROP_STRING, "k="))
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
   // The other point lacks k: its text is "k=" and a null part.
   let r2 = @core.ByteReader::new(b[entry(1, 2):entry(1, 2) + entry(1, 3)])
-  for _ in 0..<65 {
+  for _ in 0..<66 {
     r2.u8() |> ignore
   }
   assert_eq(r2.u32(), 1)
-  r2.u32() |> ignore
-  r2.i16() |> ignore
-  r2.i16() |> ignore
-  r2.f64() |> ignore
-  r2.f64() |> ignore
+  for _ in 0..<42 {
+    r2.u8() |> ignore
+  }
   assert_eq(r2.u32(), 2)
   r2.u8() |> ignore
   assert_eq(r2.utf8(), "k=")
@@ -65,7 +65,7 @@ test "labels whose text has no value are left out" {
   let b = p.out.to_bytes()[:]
   assert_eq(p.out.layer_count(), 1)
   let at = u32_at(b, 4 + 2 * 4)
-  assert_eq(u32_at(b, at + 65), 1)
+  assert_eq(u32_at(b, at + 66), 1)
 }
 
 ///|
@@ -84,17 +84,24 @@ test "formatted text-fields pack their sections with scale and vertical align" {
   let b = p.out.to_bytes()[:]
   let at = u32_at(b, 4 + 2 * 4)
   let r = @core.ByteReader::new(b[at + 65:])
+  // The second section's font, as its face's style, weight and family.
+  assert_eq((r.u8(), r.utf8()), (1, "normal\n\nA"))
   // The point without k fails its number-format, so has no label.
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
     (0, 2048, 2048, 16.0, 0.0),
   )
+  r.u8() |> ignore
+  r.u8() |> ignore
+  r.f64() |> ignore
+  r.f64() |> ignore
   assert_eq((r.u32(), r.u8(), r.u32()), (1, 6, 2))
-  assert_eq((r.utf8(), r.f64(), r.u8()), ("n1", 1.5, 0))
+  // Sections: text, scale, vertical align, font (255 the label's) and color.
+  assert_eq((r.utf8(), r.f64(), r.u8(), r.u8(), r.u8()), ("n1", 1.5, 0, 255, 0))
   assert_eq(r.utf8(), "!")
   assert_true(r.f64().is_nan())
-  assert_eq(r.u8(), 2)
+  assert_eq((r.u8(), r.u8(), r.u8()), (2, 1, 0))
 }
 
 ///|
@@ -112,10 +119,13 @@ test "labels along lines carry their features' lines" {
     r.u8() |> ignore
   }
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (2, 0, 100.0, 30.0))
-  assert_eq(r.u8(), 0)
+  assert_eq((r.u8(), r.u8()), (0, 0))
   // The square of the tile is its one line feature, a ring of 5 points.
   assert_eq(r.u32(), 1)
   assert_eq((r.u32(), r.i16(), r.i16(), r.f64(), r.f64()), (2, 0, 0, 16.0, 0.0))
+  for _ in 0..<18 {
+    r.u8() |> ignore
+  }
   assert_eq((r.u32(), r.u8(), r.utf8()), (1, @core.PROP_STRING, "a"))
   assert_eq((r.u32(), r.u32()), (1, 5))
 }
@@ -139,8 +149,8 @@ test "variable anchors follow the layout, each with its offset in ems" {
   assert_eq((r.u8(), r.f64(), r.f64()), (1, 2.0, 0.0))
   assert_eq((r.u8(), r.f64(), r.f64()), (3, 0.0, 2.0 - 7.0 / 24.0))
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
-  // No icon.
-  assert_eq(r.u8(), 0)
+  // No icon, no fonts.
+  assert_eq((r.u8(), r.u8()), (0, 0))
   assert_eq(r.u32(), 1)
 }
 
@@ -161,8 +171,8 @@ test "vertical writing and sort keys reach the labels" {
   }
   assert_eq((r.u8(), r.u8()), (2, 0))
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (0, 1, 250.0, 45.0))
-  // No icon.
-  assert_eq(r.u8(), 0)
+  // No icon, no fonts.
+  assert_eq((r.u8(), r.u8()), (0, 0))
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
@@ -194,14 +204,44 @@ test "icons pack their layout, then each label's image parts, size one zoom deep
   assert_eq(Array::makei(10, _ => r.f64()), [
     1.0, 2.0, 1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0,
   ])
-  assert_eq(r.u32(), 1)
+  assert_eq((r.u8(), r.u32()), (0, 1))
   // No text, then the image's parts, its size at zoom 1 and its rotation.
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
     (0, 2048, 2048, 16.0, 0.0),
   )
+  for _ in 0..<18 {
+    r.u8() |> ignore
+  }
   assert_eq(r.u32(), 0)
   assert_eq((r.u32(), r.u8(), r.utf8()), (2, @core.PROP_STRING, "shop-"))
   assert_eq((r.u8(), r.f64()), (@core.PROP_NUMBER, 1.0))
   assert_eq((r.f64(), r.f64()), (2.0, 30.0))
+}
+
+///|
+test "labels carry their font, case, letter spacing and rotation, and sections their font and color" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "t", "type": "symbol", "source": "g", "filter": ["has", "k"],
+    #|   "layout": {"text-field": ["format", "a", {"text-color": "#ff0000", "text-font": ["literal", ["B Italic"]]}],
+    #|              "text-font": ["case", ["==", ["get", "k"], 1], ["literal", ["Noto Sans Bold", "X"]], ["literal", ["Y"]]],
+    #|              "text-transform": "uppercase", "text-letter-spacing": 0.1, "text-rotate": ["*", ["get", "k"], 30]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let r = @core.ByteReader::new(b[u32_at(b, 4 + 2 * 4) + 64:])
+  assert_eq(r.u8(), 0)
+  assert_eq(
+    (r.u8(), r.utf8(), r.utf8()),
+    (2, "normal\n700\nNoto Sans Bold,X", "italic\n\nB Italic"),
+  )
+  assert_eq(r.u32(), 1)
+  for _ in 0..<24 {
+    r.u8() |> ignore
+  }
+  assert_eq((r.u8(), r.u8(), r.f64(), r.f64()), (1, 1, 0.1, 30.0))
+  assert_eq((r.u32(), r.u8(), r.u32()), (1, 6, 1))
+  assert_eq((r.utf8(), r.f64().is_nan(), r.u8(), r.u8()), ("a", true, 0, 2))
+  assert_eq(Array::makei(5, _ => r.u8()), [1, 255, 0, 0, 255])
 }

@@ -80,5 +80,5 @@ test("formatted sections scale their glyphs, lines take their largest scale, and
   const centered = layoutLabel("ab\nc", 10, { lineHeight: 1 }, metrics, sections([0, 1, 0, 0])).quads;
   assert.equal(Math.round(bounds(quads[1])[1] - bounds(centered[1])[1]), 5);
   // Without sections, nothing changes.
-  assert.deepEqual(layoutLabel("ab", 10, {}, metrics).quads, layoutLabel("ab", 10, {}, metrics, { scales: [1, 1], aligns: [0, 0] }).quads.map(({ scale, ...q }) => q));
+  assert.deepEqual(layoutLabel("ab", 10, {}, metrics).quads, layoutLabel("ab", 10, {}, metrics, { scales: [1, 1], aligns: [0, 0] }).quads.map(({ scale, k, ...q }) => q));
 });

@@ -367,9 +367,15 @@ pub fn Renderer::upload_symbols(
   indices : JsBuffer,
   index_bytes : Int32,
   rects : FixedArray[Int32],
+  colors~ : JsBuffer = undefined_buffer(),
 ) -> Mesh {
-  gl_upload_symbols(self.gl, vertices, indices, index_bytes, rects)
+  gl_upload_symbols(self.gl, vertices, indices, index_bytes, rects, colors)
 }
+
+///|
+/// No buffer (JS undefined).
+extern "js" fn undefined_buffer() -> JsBuffer =
+  #|() => undefined
 
 ///|
 /// Shows the labels of a symbol mesh whose flag is set, each in its layout
@@ -403,9 +409,9 @@ pub fn Renderer::set_shifts(
 }
 
 ///|
-/// Draws a symbol mesh's shown labels: the halo first, then the text, smaller
-/// in the distance, raised by their heights (`set_heights`) times
-/// `height_scale` and faded out behind terrain drawn by `begin_depth`.
+/// Draws a symbol mesh's shown labels with MapLibre's symbol_sdf (colors straight RGBA with `opacity`
+/// in, which `format` sections' colors also take; the halo in a pass first if `two_pass`), raised by
+/// `set_heights` times `height_scale` and faded behind terrain drawn by `begin_depth`.
 pub fn Renderer::draw_symbols(
   self : Renderer,
   mesh : Mesh,
@@ -414,6 +420,10 @@ pub fn Renderer::draw_symbols(
   color : FixedArray[Double],
   halo : FixedArray[Double],
   halo_width : Double,
+  halo_blur~ : Double = 0.0,
+  two_pass~ : Bool = true,
+  opacity~ : Double = 1.0,
+  gamma_scale~ : Double = 1.0,
   height_scale~ : Double = 0.0,
 ) -> Unit {
   gl_draw_symbols(
@@ -423,7 +433,17 @@ pub fn Renderer::draw_symbols(
     dpr,
     color,
     halo,
-    halo_width,
+    [
+      halo_width,
+      halo_blur,
+      if two_pass {
+        1.0
+      } else {
+        0.0
+      },
+      opacity,
+      gamma_scale,
+    ],
     at.center_depth,
     height_scale,
     at.units_per_pixel * dpr,

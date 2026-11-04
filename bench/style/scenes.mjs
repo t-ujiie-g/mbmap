@@ -35,6 +35,12 @@ const LINE_ICONS = {
   ]),
   sprite: SPRITE,
 };
+// GSI labels with a little Latin in them (so fonts' weights show) drawn with MapLibre's symbol_sdf.
+const TEXT = (layout = {}, paint = {}) => style([
+  { id: "labels", type: "symbol", source: "gsi", "source-layer": "label",
+    layout: { "text-field": ["concat", "St ", ["get", "knj"]], "text-font": ["Noto Sans Bold"], "text-size": 13, "text-max-width": 8, ...layout },
+    paint: { "text-color": "#1d3557", "text-halo-color": "#ffffff", "text-halo-width": 1.5, "text-halo-blur": 1, ...paint } },
+]);
 const PATTERN_LAYERS = [
   { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-pattern": "dots" } },
   { id: "building", type: "fill", source: "gsi", "source-layer": "building",
@@ -345,6 +351,43 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: -20, pitch: 0 },
     dpr: 2,
     limits: { mean: 0.05, p99: 1 },
+  },
+  // Text (MapLibre's symbol_sdf): a wide blurred halo in a pass of its own; a thin one with the
+  // text, translucent, spaced, turned and moved; format sections' colors and fonts; along lines
+  // (where glyphs lie as MapLibre's, so the halo and its blur are compared); on a 2x screen.
+  text: {
+    style: TEXT(),
+    camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 },
+    limits: { mean: 3.4, p99: 80 },
+    gap: "point text lies about 0.5 px up and left of MapLibre's (glyph layout of worker/js/text.mjs)",
+  },
+  "text-thin-halo": {
+    style: TEXT({ "text-letter-spacing": 0.1, "text-rotate": ["match", ["get", "annoCtg"], 412, 20, -10], "text-transform": "uppercase" },
+      { "text-halo-width": 0.8, "text-halo-blur": 0.5, "text-opacity": 0.7, "text-translate": [6, -4] }),
+    camera: { center: [139.7645, 35.6795], zoom: 15.4, bearing: 30, pitch: 0 },
+    limits: { mean: 1.2, p99: 45 },
+    gap: "point text lies about 0.5 px up and left of MapLibre's (glyph layout of worker/js/text.mjs)",
+  },
+  "text-format": {
+    style: TEXT({ "text-field": ["format", ["get", "knj"], { "text-color": "#c1121f", "text-font": ["literal", ["Noto Sans Regular"]] }, "\n", {}, "St", { "font-scale": 0.8 }] },
+      { "text-halo-width": 1, "text-halo-blur": 0 }),
+    camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 },
+    limits: { mean: 2.0, p99: 64 },
+    gap: "point text lies about 0.5 px up and left of MapLibre's (glyph layout of worker/js/text.mjs)",
+  },
+  "text-lines": {
+    style: style([{ id: "c", type: "symbol", source: "gsi", "source-layer": "contour",
+      layout: { "symbol-placement": "line", "text-field": "{alti}m", "text-font": ["Noto Sans Italic"], "text-size": 12, "text-letter-spacing": 0.2 },
+      paint: { "text-color": "#8a6d3b", "text-halo-color": "#fffbe6", "text-halo-width": 2, "text-halo-blur": 1.5 } }]),
+    camera: { center: [139.702, 35.664], zoom: 14.6, bearing: -15, pitch: 45 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  "text-2x": {
+    style: TEXT({}, { "text-halo-width": 1, "text-halo-blur": 0.8 }),
+    camera: { center: [139.7671, 35.6812], zoom: 15.3, bearing: 0, pitch: 0 },
+    dpr: 2,
+    limits: { mean: 3.1, p99: 112 },
+    gap: "point text lies about 0.5 px up and left of MapLibre's (glyph layout of worker/js/text.mjs)",
   },
   // Patterns from a sprite (MapLibre's fill_pattern, fill_outline_pattern, background_pattern):
   // a constant and a per-feature pattern, an outline in the pattern and one in a color, a

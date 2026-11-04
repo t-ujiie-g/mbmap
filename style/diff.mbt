@@ -16,6 +16,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
       l.halo_width,
       l.gap_width,
       l.offset,
+      l.blur,
       ..l.icon_paint.map_or([], p => p.exprs()),
     ].map(e => e.feature_inputs())
   }

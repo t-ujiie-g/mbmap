@@ -46,6 +46,8 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    gl.bindAttribLocation(p, 14, "a_progress");
   #|    gl.bindAttribLocation(p, 15, "a_shift");
   #|    gl.bindAttribLocation(p, 13, "a_glyph");
+  #|    gl.bindAttribLocation(p, 5, "a_fill");
+  #|    gl.bindAttribLocation(p, 14, "a_section");
   #|    // The paint slots (@style.SLOT_*), from a layer's per-vertex paint or a constant.
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
@@ -221,42 +223,54 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    ["u_image", "u_ramp", "u_opacity"]);
   #|  // a_data: corner offset in quarter CSS px (y down), a_shift: the label's in CSS px;
   #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
-  #|  // height (m). SDF edge at 0.75, falling 1/16 per glyph px (TinySDF radius 16 at 48 px).
+  #|  // height (m); a_fill a format section's color where a_section is 1.
   #|  // The anchor in clip space and its visibility behind terrain (v_alpha).
   #|  const symbolBase = "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; in vec3 a_glyph;" +
   #|    "uniform mat4 u_matrix; uniform float u_along;" +
   #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
-  #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha;" +
+  #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha; out float v_gamma;" +
   #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
   #|    "  return 1.0 - clamp(-d * 500.0, 0.0, 1.0); }" +
   #|    "vec4 anchor() { vec4 c = u_matrix * vec4(a_pos, a_ele * u_scale, 1.0); v_alpha = 1.0;" +
   #|    "  if (u_occlude) { vec3 f = c.xyz / c.w; v_alpha = visible(f);" +
   #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
   #|    "  v_tex = a_tex / u_atlas; return c; }";
-  #|  const symbolUniforms = ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_along", "u_glyphs", "u_color"];
+  #|  const symbolUniforms = ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_along", "u_glyphs", "u_color",
+  #|    "u_halo_color", "u_halo", "u_opacity", "u_gamma_scale"];
+  #|  // MapLibre's symbol_sdf fragment: the SDF's edge at 0.75 (d its `channel`), 1/8 per glyph px at
+  #|  // v_scale (its fontScale), smoothed by v_gamma over u_gamma_scale; u_halo: width, blur, plain.
+  #|  const sdf = (channel, color, head) => head +
+  #|    "uniform sampler2D u_glyphs; uniform vec4 u_halo_color; uniform vec3 u_halo;" +
+  #|    "uniform float u_dpr; uniform float u_opacity; uniform float u_gamma_scale; in vec2 v_tex; in float v_scale; in float v_alpha;" +
+  #|    "in float v_gamma; out vec4 o;" +
+  #|    "void main() { vec4 t = texture(u_glyphs, v_tex); float a = u_opacity * v_alpha; if (!u_sdf) { o = t * a; return; }" +
+  #|    "  float e = 0.105 / u_dpr, g = e / (v_scale * u_gamma_scale) * v_gamma, d = t." + channel + ";" +
+  #|    "  vec4 f = a * smoothstep(0.75 - g, 0.75 + g, d) * " + color + "; o = f;" +
+  #|    "  if (u_halo.x > 0.0) { float gh = (u_halo.y * 1.19 / 8.0 + e) / (v_scale * u_gamma_scale) * v_gamma;" +
+  #|    "    float he = (6.0 - u_halo.x / v_scale) / 8.0;" +
+  #|    "    float ah = min(smoothstep(he - gh, he + gh, d), 1.0 - smoothstep(0.75, 0.75 + 2.0 * gh, d));" +
+  #|    "    vec4 h = a * ah * u_halo_color; o = u_halo.z > 0.0 ? f + (1.0 - f.a) * h : h; } }";
   #|  const symbol = program(
-  #|    symbolBase + "void main() { vec4 c = anchor();" +
+  #|    symbolBase + "in vec4 a_fill; in float a_section; uniform vec4 u_color; uniform float u_fill_opacity; out vec4 v_color;" +
+  #|    "void main() { vec4 c = anchor(); v_color = a_section > 0.5 ? vec4(a_fill.rgb * a_fill.a, a_fill.a) * u_fill_opacity : u_color; v_gamma = 1.0;" +
   #|    "  if (v_alpha < 0.1 || (u_along > 0.0 && a_glyph.x < -1e8)) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
   #|    // Along a line: the glyph at a_glyph (tile units, angle), lying on the map, sized
   #|    // by MapLibre's ratio for text pitched with the map; u_along is tile units per px.
   #|    "  if (u_along > 0.0) { float q = clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
   #|    "    float s = sin(a_glyph.z), k = cos(a_glyph.z);" +
   #|    "    vec4 p = u_matrix * vec4(a_glyph.xy + mat2(k, s, -s, k) * a_data * 0.25 * q * u_along, a_ele * u_scale, 1.0);" +
-  #|    "    gl_Position = p; v_scale = a_size / 16.0 * q * u_dpr / 48.0 * u_center / p.w; return; }" +
+  #|    "    gl_Position = p; v_scale = a_size / 384.0 * q; v_gamma = p.w; return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
   #|    "  vec2 off = (a_data * 0.25 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
-  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_scale = a_size / 16.0 * r * u_dpr / 48.0; }",
-  #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform float u_halo; in vec2 v_tex; in float v_scale;" +
-  #|    "in float v_alpha; out vec4 o;" +
-  #|    "void main() { float d = (0.75 - texture(u_glyphs, v_tex).r) * 16.0 * v_scale;" +
-  #|    "  o = u_color * v_alpha * clamp(u_halo + 0.5 - d, 0.0, 1.0); }",
-  #|    [...symbolUniforms, "u_halo"]);
+  #|    "  gl_Position = vec4(c.xy + off * c.w, c.z, c.w); v_scale = a_size / 384.0 * r; }",
+  #|    sdf("r", "v_color", "in vec4 v_color; const bool u_sdf = true;"),
+  #|    [...symbolUniforms, "u_fill_opacity"]);
   #|  // MapLibre's symbol_icon and, for SDF icons, symbol_sdf: a_data a corner at size 1 in 32nds of a
   #|  // px, a_size the size times 128 unless u_size is set; u_angle turns icons pitched with the map
   #|  // (u_units tile units per px), u_rotate turns the others with it. u_halo: width, blur, plain.
   #|  const icon = program(
   #|    symbolBase + "uniform float u_size; uniform bool u_persp; uniform bool u_pitch; uniform bool u_rotate; uniform float u_angle;" +
-  #|    "uniform float u_units; out float v_gamma;" +
+  #|    "uniform float u_units;" +
   #|    "void main() { vec4 c = anchor(); bool along = u_along > 0.0;" +
   #|    "  if (v_alpha < 0.1 || (along && a_glyph.x < -1e8)) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
   #|    "  float size = u_size >= 0.0 ? u_size : a_size / 128.0; vec2 off = a_data / 32.0;" +
@@ -271,18 +285,8 @@ extern "js" fn create_gl(canvas : Canvas) -> Gl =
   #|    "    off = mat2(k, -s, s, k) * off; }" +
   #|    "  gl_Position = vec4(c.xy + (off + a_shift * r) * u_dpr * u_px * vec2(1.0, -1.0) * c.w, c.z, c.w);" +
   #|    "  v_scale = size; v_gamma = 1.0; }",
-  #|    "uniform sampler2D u_glyphs; uniform vec4 u_color; uniform vec4 u_halo_color; uniform vec3 u_halo; uniform bool u_sdf;" +
-  #|    "uniform float u_dpr; uniform float u_opacity; uniform float u_gamma_scale; in vec2 v_tex; in float v_scale; in float v_alpha;" +
-  #|    "in float v_gamma; out vec4 o;" +
-  #|    "void main() { vec4 t = texture(u_glyphs, v_tex); float a = u_opacity * v_alpha; if (!u_sdf) { o = t * a; return; }" +
-  #|    "  float e = 0.105 / u_dpr, g = e / (v_scale * u_gamma_scale) * v_gamma, d = t.a;" +
-  #|    "  vec4 f = a * smoothstep(0.75 - g, 0.75 + g, d) * u_color; o = f;" +
-  #|    "  if (u_halo.x > 0.0) { float gh = (u_halo.y * 1.19 / 8.0 + e) / (v_scale * u_gamma_scale) * v_gamma;" +
-  #|    "    float he = (6.0 - u_halo.x / v_scale) / 8.0;" +
-  #|    "    float ah = min(smoothstep(he - gh, he + gh, d), 1.0 - smoothstep(0.75, 0.75 + 2.0 * gh, d));" +
-  #|    "    vec4 h = a * ah * u_halo_color; o = u_halo.z > 0.0 ? f + (1.0 - f.a) * h : h; } }",
-  #|    [...symbolUniforms, "u_halo_color", "u_halo", "u_sdf", "u_opacity", "u_gamma_scale", "u_size", "u_persp", "u_pitch",
-  #|     "u_rotate", "u_angle", "u_units"]);
+  #|    sdf("a", "u_color", "uniform vec4 u_color; uniform bool u_sdf;"),
+  #|    [...symbolUniforms, "u_sdf", "u_size", "u_persp", "u_pitch", "u_rotate", "u_angle", "u_units"]);
   #|  // MapLibre's fill_extrusion shaders; vertices as in docs/FORMATS.md, a_ele the
   #|  // ground (m) under the centroid times u_ground (0 without terrain, which also
   #|  // skips the 10 m basement), u_scale world pixels per meter.
@@ -595,6 +599,7 @@ extern "js" fn gl_release(gl : Gl, mesh : Mesh) -> Unit =
   #|  if (m.ele) c.gl.deleteBuffer(m.ele);
   #|  if (m.shift) c.gl.deleteBuffer(m.shift);
   #|  if (m.glyph) c.gl.deleteBuffer(m.glyph);
+  #|  if (m.colored) c.gl.deleteBuffer(m.colored);
   #|}
 
 ///|

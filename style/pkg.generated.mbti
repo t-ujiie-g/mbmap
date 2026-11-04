@@ -35,6 +35,8 @@ pub const SLOT_WEIGHT : Int32 = 1
 
 pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
 
+pub fn font_face(String) -> (String, String, String)
+
 pub fn js_number(String) -> Double
 
 pub fn parse_color(String) -> Color?
@@ -211,6 +213,7 @@ pub struct IconLayout {
   keep_upright : Bool
   text_fit : IconTextFit
   text_fit_padding : (Double, Double, Double, Double)
+  cooperative : Bool
 }
 
 pub struct IconPaint {
@@ -219,6 +222,8 @@ pub struct IconPaint {
   halo_color : Expr
   halo_width : Expr
   halo_blur : Expr
+  translate : (Double, Double)
+  translate_viewport : Bool
 }
 pub fn IconPaint::exprs(Self) -> Array[Expr]
 
@@ -547,6 +552,11 @@ pub struct TextLayout {
   ignore_placement : Bool
   vertical : Bool
   sort_key : Expr?
+  font : Expr?
+  letter_spacing : Expr
+  transform : Expr
+  rotate : Expr
+  cooperative : Bool
   z_order : SymbolZOrder
 } derive(Eq)
 pub fn TextLayout::equal(Self, Self) -> Bool

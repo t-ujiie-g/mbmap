@@ -28,17 +28,18 @@ extern "js" fn gl_glyph(
   #|}
 
 ///|
-/// Uploads glyph quads after turning each vertex's glyph index and corner into
-/// atlas pixels from `rects` (x, y, width, height per glyph index). Nothing is
-/// drawn until `gl_show`.
+/// Uploads glyph quads after turning each vertex's glyph index and corner into atlas pixels from
+/// `rects` (x, y, width, height per glyph index), with the `format` sections' colors if any
+/// (docs/FORMATS.md "Symbol vertices"). Nothing is drawn until `gl_show`.
 extern "js" fn gl_upload_symbols(
   gl : Gl,
   vertices : JsBuffer,
   indices : JsBuffer,
   index_bytes : Int32,
   rects : FixedArray[Int32],
+  colors : JsBuffer,
 ) -> Mesh =
-  #|(c, vertices, indices, indexBytes, rects) => {
+  #|(c, vertices, indices, indexBytes, rects, colors) => {
   #|  const gl = c.gl;
   #|  const v = new DataView(vertices);
   #|  for (let o = 0; o < vertices.byteLength; o += 16) {
@@ -65,13 +66,22 @@ extern "js" fn gl_upload_symbols(
   #|  gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength / 16 * 4, gl.DYNAMIC_DRAW);
   #|  gl.enableVertexAttribArray(4);
   #|  gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 4, 0);
+  #|  const colored = colors && gl.createBuffer();
+  #|  if (colored) {
+  #|    gl.bindBuffer(gl.ARRAY_BUFFER, colored);
+  #|    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+  #|    gl.enableVertexAttribArray(5);
+  #|    gl.vertexAttribPointer(5, 4, gl.UNSIGNED_BYTE, true, 8, 0);
+  #|    gl.enableVertexAttribArray(14);
+  #|    gl.vertexAttribPointer(14, 1, gl.UNSIGNED_BYTE, false, 8, 4);
+  #|  }
   #|  const ibo = gl.createBuffer();
   #|  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
   #|  gl.bindVertexArray(null);
   #|  const all = indexBytes === 2 ? new Uint16Array(indices) : new Uint32Array(indices);
   #|  const type = indexBytes === 2 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT;
-  #|  return { vao, vbo, ibo, ele, vertices: vertices.byteLength / 16, all, count: 0, type,
-  #|    bytes: vertices.byteLength + indices.byteLength };
+  #|  return { vao, vbo, ibo, ele, vertices: vertices.byteLength / 16, all, count: 0, type, colored,
+  #|    bytes: vertices.byteLength + indices.byteLength + (colors?.byteLength ?? 0) };
   #|}
 
 ///|
@@ -105,9 +115,9 @@ extern "js" fn gl_show(
   #|}
 
 ///|
-/// `color` and `halo` are straight RGBA; `halo_width` is in device pixels;
-/// `center` is the screen center's clip w; `scale` turns the anchors'
-/// elevations (meters) into world pixels.
+/// `u`: halo width and blur (CSS px), a halo pass of its own, opacity, gamma scale (as
+/// `Renderer::draw_symbols`); `center` is the screen center's clip w; `scale` turns the
+/// anchors' elevations (meters) into world pixels.
 extern "js" fn gl_draw_symbols(
   gl : Gl,
   mesh : Mesh,
@@ -115,14 +125,14 @@ extern "js" fn gl_draw_symbols(
   dpr : Double,
   color : FixedArray[Double],
   halo : FixedArray[Double],
-  halo_width : Double,
+  u : FixedArray[Double],
   center : Double,
   scale : Double,
   along : Double,
 ) -> Unit =
-  #|(c, m, matrix, dpr, color, halo, haloWidth, center, scale, along) => {
+  #|(c, m, matrix, dpr, color, halo, u, center, scale, along) => {
   #|  if (m.count === 0 || !c.atlas) return;
-  #|  const gl = c.gl, p = c.symbol;
+  #|  const gl = c.gl, p = c.symbol, pre = (loc, v) => gl.uniform4f(loc, v[0] * v[3], v[1] * v[3], v[2] * v[3], v[3]);
   #|  gl.useProgram(p.program);
   #|  c.mat.set(matrix);
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
@@ -131,6 +141,9 @@ extern "js" fn gl_draw_symbols(
   #|  gl.uniform1f(p.u_dpr, dpr);
   #|  gl.uniform1f(p.u_center, center);
   #|  gl.uniform1f(p.u_scale, scale);
+  #|  gl.uniform1f(p.u_opacity, 1);
+  #|  gl.uniform1f(p.u_fill_opacity, u[3]);
+  #|  gl.uniform1f(p.u_gamma_scale, m.glyph ? u[4] : 1);
   #|  const occlude = !!c.depth?.ready;
   #|  gl.uniform1i(p.u_occlude, occlude ? 1 : 0);
   #|  gl.activeTexture(gl.TEXTURE2);
@@ -140,16 +153,17 @@ extern "js" fn gl_draw_symbols(
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindTexture(gl.TEXTURE_2D, c.atlas);
   #|  gl.uniform1i(p.u_glyphs, 0);
+  #|  pre(p.u_color, color);
+  #|  pre(p.u_halo_color, halo);
   #|  gl.bindVertexArray(m.vao);
   #|  if (!m.shift) gl.vertexAttrib2f(15, 0, 0);
-  #|  // The halo goes under the whole layer's text of this tile, then the text.
-  #|  if (haloWidth > 0 && halo[3] > 0) {
-  #|    gl.uniform4f(p.u_color, halo[0] * halo[3], halo[1] * halo[3], halo[2] * halo[3], halo[3]);
-  #|    gl.uniform1f(p.u_halo, haloWidth);
+  #|  if (!m.colored) gl.vertexAttrib1f(14, 0);
+  #|  const hasHalo = u[0] > 0;
+  #|  if (hasHalo && u[2]) {
+  #|    gl.uniform3f(p.u_halo, u[0], u[1], 0);
   #|    gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
   #|  }
-  #|  gl.uniform4f(p.u_color, color[0] * color[3], color[1] * color[3], color[2] * color[3], color[3]);
-  #|  gl.uniform1f(p.u_halo, 0);
+  #|  gl.uniform3f(p.u_halo, hasHalo && !u[2] ? u[0] : 0, u[1], 1);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 

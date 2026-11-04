@@ -372,7 +372,8 @@ fn Map::place_line_label(
       circles[k + 1] = cy
       in_grid = in_grid ||
         grid.inside(cx - radius, cy - radius, cx + radius, cy + radius)
-      if !s.allow_overlap && grid.hits_circle(cx, cy, radius) {
+      if !s.allow_overlap &&
+        grid.hits_circle(cx, cy, radius, cooperative=s.cooperative) {
         collided = true
         break
       }
@@ -386,11 +387,13 @@ fn Map::place_line_label(
 
 ///|
 /// Places label `i` of `s` along its line: its text by its circles, then its
-/// icon's box laid on the map (`fits_on_map`), shown jointly as on points.
+/// icon's box laid on the map (`fits_on_map`, by `icon_at`), shown jointly as on
+/// points.
 fn Map::place_line_symbol(
   self : Map,
   grid : @label.Grid,
   at : @render_webgl2.Placement,
+  icon_at : @render_webgl2.Placement,
   s : LabelSet,
   l : LineSet,
   i : Int32,
@@ -415,7 +418,7 @@ fn Map::place_line_symbol(
   let mut place_icon = false
   if icon is Some(ic) {
     place_icon = visible &&
-      self.fits_on_map(grid, at, s, i, z, tile_px, unit, ic.allow_overlap)
+      self.fits_on_map(grid, icon_at, s, i, z, tile_px, unit, ic)
     let (text, icon) = joint(ic, has_text, place_text, place_icon)
     place_text = text
     place_icon = icon
@@ -432,7 +435,7 @@ fn Map::place_line_symbol(
     for k = 0; k < circles.length(); k = k + 3 {
       let (cx, cy, r) = (circles[k], circles[k + 1], circles[k + 2])
       if !s.ignore_placement {
-        grid.insert_circle(cx, cy, r)
+        grid.insert_circle(cx, cy, r, never=!(s.allow_overlap || s.cooperative))
       }
       b[o] = @cmp.minimum(b[o], cx - r - VIEWPORT_PADDING)
       b[o + 1] = @cmp.minimum(b[o + 1], cy - r - VIEWPORT_PADDING)
@@ -463,7 +466,7 @@ fn Map::fits_on_map(
   z : Double,
   tile_px : Double,
   unit : Double,
-  overlap : Bool,
+  ic : IconSet,
 ) -> Bool {
   let t = self.transform
   let row = i * LABEL_FLOATS
@@ -498,7 +501,8 @@ fn Map::fits_on_map(
       y1 = @cmp.maximum(y1, sy)
     }
   }
-  guard grid.inside(x0, y0, x1, y1) && (overlap || !grid.hits(x0, y0, x1, y1)) else {
+  guard grid.inside(x0, y0, x1, y1) &&
+    (ic.allow_overlap || !grid.hits(x0, y0, x1, y1, cooperative=ic.cooperative)) else {
     return false
   }
   let b = i * BOX_FLOATS + 4

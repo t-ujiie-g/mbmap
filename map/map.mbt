@@ -138,6 +138,8 @@ pub struct Map {
   priv mut content_version : Int32
   priv atlas : @label.Atlas
   priv mut atlas_full : Bool
+  priv fonts : @hashmap.HashMap[String, Int32]
+  priv tile_fonts : Array[Int32]
   priv mut labels_dirty : Bool
   priv mut dem_version : Int32
   priv mut placed_camera : @core.Camera?
@@ -270,6 +272,8 @@ pub fn Map::new(
       @render_webgl2.ATLAS_SIZE,
     ),
     atlas_full: false,
+    fonts: @hashmap.HashMap([]),
+    tile_fonts: [],
     labels_dirty: false,
     dem_version: 0,
     placed_camera: None,
