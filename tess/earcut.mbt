@@ -239,7 +239,7 @@ fn Earcut::equals(self : Earcut, a : Int32, b : Int32) -> Bool {
 ///|
 fn signed_area(data : ArrayView[Int32], start : Int32, end : Int32) -> Double {
   for i = start, j = end - 2, sum = 0.0; i < end; i = i + 2 {
-    let d = (data[j] - data[i]).to_double() *
+    let d = (data[j].to_double() - data[i].to_double()) *
       (data[i + 1].to_double() + data[j + 1].to_double())
     continue i + 2, i, sum + d
   } nobreak {

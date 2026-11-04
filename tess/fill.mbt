@@ -69,7 +69,7 @@ pub fn ring_area(
   end : Int32,
 ) -> Double {
   for i = start, j = end - 1, sum = 0.0; i < end; i = i + 1 {
-    let d = (coords[j * 2] - coords[i * 2]).to_double() *
+    let d = (coords[j * 2].to_double() - coords[i * 2].to_double()) *
       (coords[i * 2 + 1].to_double() + coords[j * 2 + 1].to_double())
     continue i + 1, i, sum + d
   } nobreak {

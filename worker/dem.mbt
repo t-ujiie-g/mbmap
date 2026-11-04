@@ -26,7 +26,8 @@ pub fn TileProcessor::dem_tile(
     self.error = "no DEM source \{source}"
     return None
   }
-  if size <= 0 || size > 1024 || rgba.length() != size * size * 4 {
+  // `dem_edges` reads two pixels a side.
+  if size < 2 || size > 1024 || rgba.length() != size * size * 4 {
     self.error = "DEM tile is not \{size} x \{size} RGBA"
     return None
   }

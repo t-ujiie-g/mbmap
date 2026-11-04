@@ -596,6 +596,8 @@ test "dem_tile reads a raster-dem source's tiles and refuses others" {
   assert_eq(p.error(), "no DEM source \{v}")
   assert_eq(p.dem_tile(d, rgba[:4], 2, 14), None)
   assert_eq(p.error(), "DEM tile is not 2 x 2 RGBA")
+  assert_eq(p.dem_tile(d, rgba[:4], 1, 14), None)
+  assert_eq(p.error(), "DEM tile is not 1 x 1 RGBA")
 }
 
 ///|

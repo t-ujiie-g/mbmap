@@ -24,14 +24,17 @@ fn finish(t : @geom.Table) -> Int32 {
 /// The input's first table (`len` bytes, or all of it if -1) and the rest.
 fn tables(len : Int32) -> (@geom.Table, @geom.Table?)? {
   let input = @wasmio.input_bytes()
+  let usable = (t : @geom.Table) => @overlay.refusal(t) is None
   if len < 0 {
-    return @geom.Table::from_bytes(input[:]).map(t => (t, None))
+    return @geom.Table::from_bytes(input[:]).filter(usable).map(t => (t, None))
   }
   if len > input.length() {
     return None
   }
   guard @geom.Table::from_bytes(input[:len]) is Some(a) &&
-    @geom.Table::from_bytes(input[len:]) is Some(b) else {
+    @geom.Table::from_bytes(input[len:]) is Some(b) &&
+    usable(a) &&
+    usable(b) else {
     return None
   }
   Some((a, Some(b)))
@@ -50,12 +53,9 @@ pub fn buffer(
   arc_tolerance : Double,
 ) -> Int32 {
   guard tables(-1) is Some((t, _)) else {
-    return @wasmio.fail_with("malformed table")
+    return @wasmio.fail_with("malformed table or coordinates")
   }
-  if meters.is_nan() ||
-    meters.is_inf() ||
-    arc_tolerance.is_nan() ||
-    arc_tolerance < 0.0 {
+  if arc_tolerance.is_nan() || arc_tolerance < 0.0 {
     return @wasmio.fail_with("invalid distance")
   }
   let join : @clipper.JoinType = match join {
@@ -70,6 +70,13 @@ pub fn buffer(
     _ => Round
   }
   let mode : @overlay.BufferMode = if mode == 1 { Planar } else { Geodesic }
+  let refused = match @overlay.buffer_refusal(meters, mode~, arc_tolerance~) {
+    None => @overlay.refusal(t, geodesic=mode is Geodesic)
+    why => why
+  }
+  if refused is Some(why) {
+    return @wasmio.fail_with(why)
+  }
   finish(@overlay.buffer(t, meters, mode~, join~, cap~, arc_tolerance~))
 }
 
@@ -78,7 +85,7 @@ pub fn buffer(
 #export_name("dissolve")
 pub fn dissolve() -> Int32 {
   guard tables(-1) is Some((t, _)) else {
-    return @wasmio.fail_with("malformed table")
+    return @wasmio.fail_with("malformed table or coordinates")
   }
   finish(@overlay.dissolve(t))
 }
@@ -89,7 +96,7 @@ pub fn dissolve() -> Int32 {
 #export_name("overlay")
 pub fn overlay(len_a : Int32, op : Int32) -> Int32 {
   guard tables(len_a) is Some((a, Some(b))) else {
-    return @wasmio.fail_with("malformed tables")
+    return @wasmio.fail_with("malformed tables or coordinates")
   }
   match op {
     0 => finish(@overlay.clip(a, b))
@@ -105,7 +112,7 @@ pub fn overlay(len_a : Int32, op : Int32) -> Int32 {
 #export_name("merge")
 pub fn merge() -> Int32 {
   guard tables(-1) is Some((t, _)) else {
-    return @wasmio.fail_with("malformed table")
+    return @wasmio.fail_with("malformed table or coordinates")
   }
   match @overlay.merge(t) {
     Some(m) => finish(m)

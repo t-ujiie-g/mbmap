@@ -34,6 +34,7 @@ test "json_string_text resolves escapes and replaces what is not text" {
     "a\"b\\c/d\né\u{41}",
   )
   assert_eq(@core.json_string_text(b"\\uzzzz\\q"[:]), "\u{FFFD}\u{FFFD}")
+  assert_eq(@core.json_string_text(b"ab\\"[:]), "ab\u{FFFD}")
 }
 
 ///|

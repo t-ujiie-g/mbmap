@@ -626,7 +626,8 @@ fn StyleReader::flag(self : StyleReader) -> Bool {
 ///|
 fn[T] StyleReader::list(self : StyleReader, item : () -> T) -> Array[T] {
   let n = self.count()
-  let out = Array(capacity=n)
+  // Sized as the bytes say only up to a point: every nesting level reserves its own.
+  let out = Array(capacity=@cmp.minimum(n, 64))
   for _ in 0..<n {
     guard self.r.ok() else { break }
     out.push(item())
@@ -757,7 +758,12 @@ fn StyleReader::expr(self : StyleReader, depth : Int32) -> Expr {
       }
       let space = self.from(spaces, Rgb)
       let input = self.expr(d)
-      Interpolate(how, space, input, self.stops(d))
+      let stops = self.stops(d)
+      // Evaluation reads the first stop.
+      if stops.is_empty() {
+        self.r.fail()
+      }
+      Interpolate(how, space, input, stops)
     }
     18 => {
       let input = self.expr(d)

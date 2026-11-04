@@ -601,7 +601,7 @@ export class Map {
 
   /** Source `id`; a GeoJSON one has `setData` to replace its data (an object or a URL) and the cluster queries. */
   getSource(id: string): Source | undefined {
-    const s = this.#style?.sources[id] as { type?: unknown } | undefined;
+    const s = (this.#style && edit.sourceOf(this.#style, id)) as { type?: unknown } | undefined;
     if (!s || typeof s.type !== "string") return undefined;
     const source: Source = { id, type: s.type };
     if (s.type === "geojson") {
@@ -626,8 +626,8 @@ export class Map {
       };
       // The style keeps what MapLibre's `serialize` gives.
       const keep = (key: string, value: unknown) => {
-        const now = this.#style?.sources[id];
-        if (now) this.#style!.sources[id] = { ...now, [key]: value };
+        const now = this.#style && edit.sourceOf(this.#style, id);
+        if (now) edit.setOwn(this.#style!.sources, id, { ...now, [key]: value });
       };
       Object.assign(source, {
         setCoordinates: (c: number[][]) => {
@@ -956,7 +956,7 @@ export class Map {
 
   /** The feature's source layer, checked as MapLibre does: required for vector sources. */
   #stateLayer(feature: FeatureIdentifier): string | null {
-    const source = this.#style?.sources[feature.source] as { type?: unknown } | undefined;
+    const source = (this.#style && edit.sourceOf(this.#style, feature.source)) as { type?: unknown } | undefined;
     if (!source) {
       this.#fail(new Error(`mbmap: the source '${feature.source}' does not exist in the map's style`));
       return null;

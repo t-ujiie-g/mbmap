@@ -2,23 +2,75 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（下の節）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、下の節）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. Phase 16 の完了の判定（`style:compat` の警告の残り 28 件を段階案の外として残すか）と、Phase 16 で足したもののリファクタリング・セキュリティチェック（AGENTS §7、§8）。
+  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（下の節）→ R2 正しさ → R3 重複・定数・分割・テスト → R4 文書。残りの指摘は「全体のレビュー（2026-11-04）」の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 127.7KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 80.6KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
-  | GeoJSON ソース | 1.7KB ＋ ワーカー 29.1KB（`clusterProperties` のあるソースは式を持つワーカー 48.9KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
-  | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
+  | 表示（メイン） | 128.0KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 81.0KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | GeoJSON ソース | 1.7KB ＋ ワーカー 29.3KB（`clusterProperties` のあるソースは式を持つワーカー 49.1KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
+  | `mbmap/ui` | 6.9KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+  | `mbmap/analysis` | 3.4KB ＋ ワーカー 28.1KB（geometry.wasm 41.9KB） | 5KB ＋ 30KB（50KB） |
+
+## 全体のレビュー（2026-11-04）
+
+8 つの範囲（style、表示ワーカー、map と描画、core〜tess、GeoJSON と分析、幾何・座標系・測地線、npm の窓口、道具と文書）を、読むだけのサブエージェントが §7・§8 の観点で全部読んだ。指摘を 4 本の PR に分けて直す。
+
+### R1：セキュリティ（このブランチ）
+
+- **式のコンパイル**（高）：`coalesce` の型を求め直していたため、入れ子が 1 段深くなるたびにコンパイル時間が倍になっていた（20 段 90 ms、22 段 360 ms。`MAX_EXPR_DEPTH` の 31 段では数分）。`var` の共有では 3 倍ずつ。子の型は一度だけ求め、ノード数をコンパイルしながら数えて（`var` は束縛先の大きさで）`MAX_EXPR_NODES` を超えたらすぐ止める。
+- **表示ワーカーの出力の大きさ**（高）：テッセレーションの出力に上限がなく、詰めるとき（`MAX_PACKED_BYTES`）まで分からなかった。レイヤーごとの残り（`TileProcessor.budget`）を、地物の前は点の数の下限で、後は実際の頂点と index で減らす。線は丸い角で 1 点から多くの頂点を作るので、`LineBuffers::limit` で途中で止める。
+- **頂点ごとの paint の大きさ**（高）：`vertices * words` が Int32 で負に回り込むと `reserve` を通り、予約の外に書けた（線形メモリの中）。掛ける前に比べる。
+- **幾何の入口**（高）：バッファの距離と `arcTolerance` に上限がなく（1 回で数十億点）、無限大や巨大な座標で分割のループが 2^31 回になり、Clipper の整数を超えうる。`@overlay.refusal`（有限、±1e9 以内。測地線のバッファは経緯度で、辺の分割が 1,000 万点まで）と `buffer_refusal`（測地線 2e7 m、平面 1e9、許容誤差は距離の 1e-6 以上）を幾何ワーカーの入口で。
+- **GeoJSON**：点 2,000 万（`MAX_GEOJSON_POINTS`）とプロパティの枠 3,200 万（地物 × キー、`MAX_GEOJSON_CELLS`）まで。クラスタ id が 2^26 点で回り込む件も、これで届かない。ソースの `buffer`（0〜512）、`tolerance`（0 以上）、`maxzoom`（0〜24）を窓口（`loadOptions`）とワーカー（`geojson_tiles`）の両方で。
+- **スタイル**：ソースの `minzoom` / `maxzoom` は 0 以上（24 を超えれば 24、min が max を超えれば Invalid）。空の `tiles` は Invalid（`% 0` で描画ループが止まっていた）。コンパイル済みの形の読み手は stops の空の補間を拒み、配列の確保を 64 までに抑える。
+- **タイルと DEM**：MVT の `extent` が 0 以下なら 4096 として読む。DEM は 2 × 2 以上（MoonBit と JS の両方）。tess の座標の差は Double で（2^31 離れると輪の向きが反転していた）。
+- **`Table::from_bytes`**：空の部分と空の輪を拒み、数の上限を厳しく（地物 5 バイト、キー 4 バイト）。
+- **窓口の JS**：`__proto__`、`constructor`、`toString` などのキー（ソース名、プロパティ名、旧式のフィルタ）を自分のキーとして扱う（`Object.hasOwn`、`Object.fromEntries`、`setOwn`）。それまではスタイル全体が TypeError で落ちたり、値が黙って消えたりした（全体のプロトタイプの汚染は起きない）。
+- **小さなもの**：`json_string_text` の末尾の `\`（panic）、PROJ の定義の `towgs84` の数が整数か、長半径が有限か、測地線の経路の NaN のエラー文。
+- **道具**：`worker:browser` が使う `bench/worker/compile_entry` を `build:moon` で作る（新しい複製では動かず、古い環境では古いコンパイラのまま動いていた）。`fetch-tiles` はハッシュの合うバイトだけを置く（合わなければ消す）。
+- **大きさ**（gzip -9）：表示（メイン）127,695 → 127,989 バイト（+294）、表示ワーカー 80,559 → 80,952（+393）、GeoJSON ワーカー 29,119 → 29,313、式を持つ GeoJSON ワーカー 48,878 → 49,055、分析ワーカー 27,915 → 28,059、幾何 41,267 → 41,877、TileJSON の取り込み 411 → 462。
+  - `read_geojson` に省略できる引数（点の上限）を足すと、既定の `slow_number`（core の strconv）がモジュールに入り、GeoJSON ワーカーと分析ワーカーがそれぞれ約 24KB 増えた。上限は内部の `read_points` の引数にした。エラー文に Double を埋め込んでも浮動小数の表示が入る（幾何ワーカーで約 4KB）ので、文は定数にした。
+- **依存**：`npm audit` は bench、npm、examples/react とも 0 件。版はすべて exact、CI は `npm ci`、actions は SHA で固定、`setup.sh` は sha256 を照合する。Dependabot と GitHub Advisory はクラウドのセッションから読めない（**ユーザーに確認をお願いする**）。
+
+### 残りの指摘
+
+- **R2（正しさ）**：
+  - キーつきのスプライト URL（`?key=`）が壊れる（`sprite.ts`、MapLibre は pathname に足す）。
+  - 描いている `*-sort-key` と `symbol-z-order` に「まだ描かない」と警告が出る（`lenient.mbt`）。
+  - 複数ホストのタイルを要求の番号で選ぶので、キャッシュが効かない（MapLibre は `(x + y) % n`）。
+  - PMTiles が失敗した取得を覚え続け、取り消しと `transformRequest` も効かない。
+  - `ClusterIndex::children` が呼ぶたびに木全体の大きさを確保する。
+  - GeoJSON の `data` の URL が `transformRequest` を通らない。
+- **R3（重複・定数・分割・テスト）**：
+  - 使われない公開を外す。`map_gpu_bytes`、`map_handler_enabled`、`map_has_image`、`map_image_names`、`Transform::mercator_to_screen`、`clipper.Rect64`、`@tiler.abbreviated_count` など。`engine.d.ts` と `bundle/main` の食い違いも直す。
+  - 定数にする。tess とシェーダの `4096`、詰めた項目の語の位置（packed.mbt と worker.mjs の `e + 28` など）、柱状タイルの型の番号、ズームの上限、`pmtiles://`、深さ 32、クリックの 3 px、`MAX_GEOJSON_BYTES`（= `MAX_INPUT_BYTES`）。
+  - 重複をまとめる。画面の光線（core の 3 か所）、`ease_to` と `fly_to`、破線の描画 2 つ、overlay の合体のループ 3 つ、`host_number` と `slow_number`、`readValue` の写し、アンカーの表、`css_number`、http(s) の確認。
+  - 分割する。`compiled.mbt`（書き手と読み手）、`earcut.mbt`、`map/labels.mbt`、`geodesic.mbt`、`tess/line.mbt`、`render.mbt`、`worker/query.mbt`、`tiler/cluster.mbt`、`processor.mbt`、`npm/src/index.ts`（テストできる部分を外に出す）。
+  - テストの穴を埋める。`geojson_tiles`、map の純粋な計算（`same_layers`、`placement_order`、`fits_box` など）、`events.ts`、ワーカーの各上限、pmtiles の上限、写した `KIND_*` が同じかの確認。
+- **R4（文書）**：
+  - docs/FORMATS.md：Compiled style（translate の Expr、`Accumulated` のタグ、text の 3 つの式）、Display worker messages（`paint`、`outline`、`dashPatterns` など）、Packed tile（`KIND_SYMBOL`、語の表）、CRS の節に紛れた段落。
+  - AGENTS §4 の食い違い：format の `text-font` / `text-color`、地形のキャッシュ、`slow_number` の持ち主、`<mb-map>` の大きさ。
+  - 各 README（npm：対応するスタイル、遅れて読むファイル、`worker-*.js` の置き場所。bench：コマンドの一覧。ルート：パッケージの表。examples）。
+  - NOTICE：MapLibre から写したアトラス、color ramp、heatmap、シェーダ、`media.ts`、`custom.ts`、アイコン。
+  - `package.json` の exports（`geojson-properties.wasm`、`worker-*.js`）、`.d.ts` の拡張子、長いコメント。
+- **M2 で測ってから**（性能の候補。クラウドでは測れない）：
+  - 描画ごとに約 20 個のオブジェクトを作り、毎回 `useProgram` を呼んでいる（`npm run render`）。
+  - 起動時に約 32 のシェーダを同期でコンパイルしている（初回描画）。
+  - `setData` のたびにスタイル全体をコンパイルし直す。凡例やレイヤー一覧があると、ポインタが動くたびに `getStyle()` で深くコピーする（`draw:setdata`）。
+  - ワーカーがグリフをすべて覚えたうえでコピーしている（約 15MB）。
+  - tess の点ごとの配列リテラル（`worker:browser`）。
+  - style の評価の `Match` と `Step`。
+  - overlay の merge と split が O(n²)。
+  - R1 の上限の確認（地物ごとに 1〜2 回の比較）が `worker:browser` に出ないことも確かめる。
 
 ## Phase 16.8：公開スタイルの突き合わせ（Protomaps）（2026-11-04）
 

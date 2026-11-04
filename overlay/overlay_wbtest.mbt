@@ -288,3 +288,40 @@ test "merge unites polygons, joins lines end to end and gathers points" {
   )
   assert_true(merge(table([])) is None)
 }
+
+///|
+test "refusal keeps out coordinates Clipper cannot hold and edges that split too far" {
+  let ok = table([(Polygon, [square(0.0, 0.0, 1.0)], "a")])
+  assert_eq(refusal(ok), None)
+  assert_eq(refusal(ok, geodesic=true), None)
+  let far = table([(LineString, [[(0.0, 0.0), (2.0e9, 0.0)]], "a")])
+  assert_true(refusal(far) is Some(_))
+  let inf = table([(Point, [[(1.0 / 0.0, 0.0)]], "a")])
+  assert_true(refusal(inf) is Some(_))
+  let planar = table([(Point, [[(5.0e8, 1.0e6)]], "a")])
+  assert_eq(refusal(planar), None)
+  assert_true(refusal(planar, geodesic=true) is Some(_))
+  let long = []
+  for i in 0..<400 {
+    long.push((if i % 2 == 0 { -179.0 } else { 179.0 }, 0.0))
+  }
+  assert_true(
+    refusal(table([(LineString, [long], "a")]), geodesic=true) is Some(_),
+  )
+}
+
+///|
+test "buffer_refusal bounds the distance and the arc tolerance" {
+  assert_eq(buffer_refusal(1000.0, mode=Geodesic, arc_tolerance=0.0), None)
+  assert_eq(buffer_refusal(-1000.0, mode=Geodesic, arc_tolerance=0.01), None)
+  assert_true(
+    buffer_refusal(3.0e7, mode=Geodesic, arc_tolerance=0.0) is Some(_),
+  )
+  assert_eq(buffer_refusal(3.0e7, mode=Planar, arc_tolerance=0.0), None)
+  assert_true(
+    buffer_refusal(0.0 / 0.0, mode=Planar, arc_tolerance=0.0) is Some(_),
+  )
+  assert_true(
+    buffer_refusal(1000.0, mode=Geodesic, arc_tolerance=1.0e-9) is Some(_),
+  )
+}

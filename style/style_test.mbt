@@ -746,3 +746,32 @@ test "translations may follow the zoom, as MapLibre's legacy functions convert t
     (0.0, 0.0),
   )
 }
+
+///|
+test "source zooms lie in 0-24 and tiles may not be empty" {
+  let s = @style.Style::parse(
+    "{\"sources\": {\"v\": {\"type\": \"vector\", \"tiles\": [\"https://x/{z}/{x}/{y}.pbf\"], \"minzoom\": 2, \"maxzoom\": 30}}, \"layers\": []}",
+  )
+  let v = s.source("v").unwrap()
+  assert_eq((v.min_zoom, v.max_zoom), (2, 24))
+  for
+    c in [
+      ("\"tiles\": []", "sources.v.tiles"),
+      ("\"tiles\": [\"https://x\"], \"minzoom\": -1", "sources.v.minzoom"),
+      (
+        "\"tiles\": [\"https://x\"], \"minzoom\": 9, \"maxzoom\": 8", "sources.v.minzoom",
+      ),
+    ] {
+    let text = "{\"sources\": {\"v\": {\"type\": \"vector\", \{c.0}}}, \"layers\": []}"
+    try @style.Style::parse(text, strict=true) catch {
+      Invalid(path~, _) => assert_eq(path, c.1)
+      e => fail("unexpected \{e.message()}")
+    } noraise {
+      _ => fail("expected \{text} to be invalid")
+    }
+  }
+  let g = @style.Style::parse(
+    "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"maxzoom\": 99}}, \"layers\": []}",
+  )
+  assert_eq(g.source("g").unwrap().max_zoom, 24)
+}

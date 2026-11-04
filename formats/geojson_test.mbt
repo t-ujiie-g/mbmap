@@ -196,3 +196,23 @@ test "long numbers go to slow_number with their offsets; NaN rejects them" {
     _ => fail("expected NaN to reject the number")
   }
 }
+
+///|
+test "input past the property-cell limit is rejected" {
+  let keys = Array::makei(@formats.MAX_GEOJSON_KEYS, i => "\"k\{i}\": 1")
+  let empty = "{\"type\": \"Feature\", \"geometry\": null, \"properties\": null}"
+  let rows = @formats.MAX_GEOJSON_CELLS / @formats.MAX_GEOJSON_KEYS + 1
+  let text = "{\"type\": \"FeatureCollection\", \"features\": [" +
+    "{\"type\": \"Feature\", \"geometry\": null, \"properties\": {" +
+    keys.join(",") +
+    "}}," +
+    Array::make(rows, empty).join(",") +
+    "]}"
+  try read(text) catch {
+    @formats.Malformed(_) as e =>
+      assert_true(e.message().has_suffix("property cells"))
+    e => fail("unexpected \{Repr(e)}")
+  } noraise {
+    _ => fail("expected the cell limit to apply")
+  }
+}

@@ -104,7 +104,7 @@ fn PackedTile::put_i16(self : PackedTile, at : Int32, v : Int32) -> Unit {
 ///|
 /// Converts a coordinate of a layer with `extent` units to `TILE_EXTENT` units.
 fn rescale(v : Int32, extent : Int32) -> Int32 {
-  if extent == @core.TILE_EXTENT || extent <= 0 {
+  if extent == @core.TILE_EXTENT {
     v
   } else {
     (v.to_double() * @core.TILE_EXTENT.to_double() / extent.to_double())
@@ -495,9 +495,11 @@ fn PackedTile::set_props(self : PackedTile, props : Bytes) -> Unit {
 /// Makes room for the last entry's per-vertex paint, `words` u32s, and returns
 /// where to write them; None without room (overflow is flagged).
 fn PackedTile::begin_paint(self : PackedTile, words : Int32) -> Int32? {
-  if self.layers == 0 ||
-    words > MAX_PACKED_BYTES / 4 ||
-    !self.reserve(words * 4) {
+  if self.layers == 0 || words < 0 || words > MAX_PACKED_BYTES / 4 {
+    self.overflow = true
+    return None
+  }
+  if !self.reserve(words * 4) {
     return None
   }
   let at = self.len

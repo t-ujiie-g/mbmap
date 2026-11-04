@@ -7,9 +7,13 @@ import {
 }
 
 // Values
+pub const MAX_GEOJSON_CELLS : Int32 = 32_000_000
+
 pub const MAX_GEOJSON_DEPTH : Int32 = 64
 
 pub const MAX_GEOJSON_KEYS : Int32 = 4096
+
+pub const MAX_GEOJSON_POINTS : Int32 = 20_000_000
 
 pub fn read_geojson(BytesView, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise GeoJSONError
 

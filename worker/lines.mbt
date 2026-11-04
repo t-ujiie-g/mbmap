@@ -36,6 +36,11 @@ fn TileProcessor::line_layer(
       let first = out.indices.length()
       let v0 = out.num_vertices()
       let clip = if gradient { clip_of(feature) } else { (0.0, 1.0) }
+      if !self.may_fit(2 * g.num_points(), LINE_VERTEX_BYTES) {
+        return false
+      }
+      // A round join makes many vertices of one point: stop once past the budget.
+      out.limit(v0 + (self.budget / LINE_VERTEX_BYTES.to_double()).to_int() + 1)
       for r in 0..<g.num_rings() {
         let before = out.num_vertices()
         self.line.add_line(
@@ -62,6 +67,16 @@ fn TileProcessor::line_layer(
             layer.extent().to_double(),
           )
         }
+      }
+      if out.full() {
+        return self.exceeds()
+      }
+      if !self.spend(
+          out.num_vertices() - v0,
+          LINE_VERTEX_BYTES,
+          out.indices.length() - first,
+        ) {
+        return false
       }
       if feature_dashes is Some(e) {
         self.dashes(group).add(e, zoom, feature, out.num_vertices() - v0)

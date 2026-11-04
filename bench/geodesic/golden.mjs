@@ -135,7 +135,7 @@ check("refused", "circle of 0 points", ["invalid circle"], [fails(w.circle(0, 0,
 check("refused", "circle of 5000 points", ["invalid circle"], [fails(w.circle(0, 0, 100, 5000))]);
 check("refused", "circle of 3e7 m", ["invalid circle"], [fails(w.circle(0, 0, 3e7, 8))]);
 input([0, 0, 90, 0]);
-check("refused", "densify past 1e6 points", ["too many points along the path"], [fails(w.densify(1))]);
+check("refused", "densify past 1e6 points", ["invalid path or too many points along it"], [fails(w.densify(1))]);
 
 const rows = Object.entries(results).map(([group, r]) => ({ group, ...r }));
 console.table(rows);

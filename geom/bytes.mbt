@@ -110,18 +110,19 @@ pub fn Table::from_bytes(b : BytesView) -> Table? {
   let rings = r.u32()
   let pts = r.u32()
   let k = r.u32()
-  // A feature takes at least a byte, an end four, a point sixteen.
+  // A feature takes at least five bytes (its kind and end), a part or ring an
+  // end, a point sixteen, a key its length.
   if !r.ok() ||
     f < 0 ||
     p < 0 ||
     rings < 0 ||
     pts < 0 ||
     k < 0 ||
-    f > n ||
+    f > n / 5 ||
     p > n / 4 ||
     rings > n / 4 ||
     pts > n / 16 ||
-    k > n {
+    k > n / 4 {
     return None
   }
   let t = Table::new()
@@ -131,21 +132,22 @@ pub fn Table::from_bytes(b : BytesView) -> Table? {
     t.ids.push(None)
   }
   r.pad4()
-  // Ends must grow and stay within the next level's count.
-  let ends = (count : Int32, limit : Int32, into : Array[Int32]) => {
+  // Ends must grow and stay within the next level's count; parts and rings are
+  // never empty (`TableBuilder` drops empty ones, and readers index their first).
+  let ends = (count : Int32, limit : Int32, into : Array[Int32], empty : Bool) => {
     let mut last = 0
     for _ in 0..<count {
       let e = r.u32()
-      if e < last || e > limit {
+      if e < last || (e == last && !empty) || e > limit {
         r.fail()
       }
       last = e
       into.push(e)
     }
   }
-  ends(f, p, t.part_ends)
-  ends(p, rings, t.ring_ends)
-  ends(rings, pts, t.point_ends)
+  ends(f, p, t.part_ends, true)
+  ends(p, rings, t.ring_ends, false)
+  ends(rings, pts, t.point_ends, false)
   if !r.ok() {
     return None
   }

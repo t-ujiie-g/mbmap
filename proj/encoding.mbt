@@ -43,6 +43,7 @@ pub fn Definition::decode(s : ArrayView[Double]) -> Definition? {
   let index = s[0].to_int()
   let count = s[4].to_int()
   guard index.to_double() == s[0] &&
+    count.to_double() == s[4] &&
     index >= 0 &&
     index < methods.length() &&
     (count == 0 || count == 3 || count == 7) else {
