@@ -29,6 +29,11 @@ fn paint_inputs(sl : @style.StyleLayer) -> (Array[String], Bool) {
         sl.blur,
         ..sl.icon_paint.map_or([], p => p.exprs()),
       ]
+    Heatmap =>
+      match sl.heatmap {
+        Some(h) => [sl.radius, h.weight]
+        None => [sl.radius]
+      }
     // Base and height go into the vertices instead.
     _ => [sl.color, sl.opacity]
   }

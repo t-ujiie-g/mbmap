@@ -100,9 +100,9 @@ pub(all) enum Op {
 } derive(Debug, Eq)
 
 ///|
-/// A compiled MapLibre expression (the subset this engine supports). Compiling resolves
-/// `let`, `var` (its bound expression) and `global-state` (its value in the style's `state`);
-/// `Collate` is a comparison with a collator, the last Expr.
+/// A compiled MapLibre expression (the subset this engine supports). Compiling resolves `let`,
+/// `var` and `global-state` (its value in the style's `state`); `Collate` compares with the
+/// collator last, `Within` holds polygons as rings of longitude, latitude pairs.
 pub(all) enum Expr {
   Lit(Value)
   Get(String)
@@ -113,6 +113,7 @@ pub(all) enum Expr {
   LineProgress
   HeatmapDensity
   Elevation
+  Accumulated
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -128,6 +129,8 @@ pub(all) enum Expr {
   Coerce(Expected, Array[Expr])
   Call(Op, Array[Expr])
   Collate(CmpOp, Expr, Expr, Expr)
+  Within(Array[Array[Array[Double]]])
+  Distance(Array[Shape])
 } derive(Debug, Eq)
 
 ///|
@@ -244,7 +247,12 @@ fn Compiler::key(self : Compiler, json : Json, path : String) -> String {
 /// The type `e` produces, as far as compiling can tell.
 fn Expr::static_type(self : Expr) -> Expected {
   match self {
-    Lit(Num(_)) | Zoom | LineProgress | HeatmapDensity | Elevation => NumberType
+    Lit(Num(_))
+    | Zoom
+    | LineProgress
+    | HeatmapDensity
+    | Elevation
+    | Distance(_) => NumberType
     Call(op, _) => op_type(op)
     Lit(Str(_)) | GeometryType => StringType
     Lit(Bool(_))
@@ -254,6 +262,7 @@ fn Expr::static_type(self : Expr) -> Expected {
     | Any(_)
     | Compare(_, _, _)
     | Collate(_, _, _, _)
+    | Within(_)
     | In(_, _) => BoolType
     Lit(Color(_)) => ColorType
     Assert(t, _) | Coerce(t, _) => t
@@ -332,7 +341,8 @@ fn Compiler::compile(
 /// (-1 for any).
 fn arity(op : String) -> (Int32, Int32, Int32) {
   match op {
-    "id" | "geometry-type" | "zoom" | "pi" | "e" | "ln2" => (0, 0, -1)
+    "id" | "geometry-type" | "zoom" | "pi" | "e" | "ln2" | "accumulated" =>
+      (0, 0, -1)
     "literal"
     | "feature-state"
     | "!"
@@ -343,6 +353,8 @@ fn arity(op : String) -> (Int32, Int32, Int32) {
     | "collator"
     | "global-state"
     | "resolved-locale"
+    | "within"
+    | "distance"
     | "is-supported-script" => (1, 1, -1)
     "get" | "has" => (1, 2, -1)
     "in" | "number-format" => (2, 2, -1)
@@ -461,6 +473,7 @@ fn Compiler::compile_at(
     "line-progress" => LineProgress
     "heatmap-density" => HeatmapDensity
     "elevation" => Elevation
+    "accumulated" => Accumulated
     "pi" => Lit(Num(3.141592653589793))
     "e" => Lit(Num(2.718281828459045))
     "ln2" => Lit(Num(0.6931471805599453))
@@ -588,6 +601,19 @@ fn Compiler::compile_at(
       }
       Assert(AnyType, [Lit(v)])
     }
+    "within" =>
+      match within_polygons(items[1]) {
+        Some(p) => Within(p)
+        None =>
+          self.fail(
+            Invalid(path~, "within needs a GeoJSON polygon or multipolygon"),
+          )
+      }
+    "distance" =>
+      match distance_shapes(items[1]) {
+        Some(s) => Distance(s)
+        None => self.fail(Invalid(path~, "distance needs a GeoJSON geometry"))
+      }
     "in" => In(arg(1, AnyType), arg(2, AnyType))
     "match" => {
       let cases = []
@@ -896,4 +922,35 @@ fn op_of(name : String) -> (Op, Int32, Int32)? {
     }
   }
   Some((op, min, max))
+}
+
+///|
+/// A GeoJSON source's `clusterProperties` as MapLibre's GeoJSON worker takes them: per
+/// key its map expression and reduce expression (an operator's name `op` stands for
+/// `[op, ["accumulated"], ["get", key]]`).
+pub fn compile_cluster_properties(
+  json : Json,
+  path~ : String = "",
+) -> Array[(String, Expr, Expr)] raise StyleError {
+  guard json is Object(o) else { raise Invalid(path~, "not an object") }
+  let out = []
+  for key, v in o {
+    let at = "\{path}.\{key}"
+    guard v is Array([operator, map]) else {
+      raise Invalid(path=at, "not [operator, map expression]")
+    }
+    let reduce = match operator {
+      String(op) =>
+        Json::array([
+          Json::string(op),
+          Json::array([Json::string("accumulated")]),
+          Json::array([Json::string("get"), Json::string(key)]),
+        ])
+      j => j
+    }
+    out.push(
+      (key, compile(map, path="\{at}[1]"), compile(reduce, path="\{at}[0]")),
+    )
+  }
+  out
 }

@@ -28,6 +28,7 @@ pub struct ClusterFeature {
   row : Int32
   cluster_id : Int32
   count : Int32
+  props : Array[(String, @geom.Prop)]
 }
 
 pub struct ClusterIndex {
@@ -36,7 +37,7 @@ pub struct ClusterIndex {
 pub fn ClusterIndex::children(Self, Int32) -> Array[ClusterFeature]?
 pub fn ClusterIndex::expansion_zoom(Self, Int32) -> Int32
 pub fn ClusterIndex::leaves(Self, Int32, limit? : Int32, offset? : Int32) -> Array[ClusterFeature]?
-pub fn ClusterIndex::new(@geom.Table, options? : ClusterOptions, wrap_buffer? : Double, trig? : @core.Trig) -> Self
+pub fn ClusterIndex::new(@geom.Table, options? : ClusterOptions, wrap_buffer? : Double, trig? : @core.Trig, properties? : ClusterProperties) -> Self
 pub fn ClusterIndex::tile(Self, Int32, Int32, Int32) -> Array[ClusterFeature]?
 
 pub(all) struct ClusterOptions {
@@ -49,6 +50,12 @@ pub(all) struct ClusterOptions {
   wrap : Bool
 }
 pub fn ClusterOptions::default() -> Self
+
+pub(all) struct ClusterProperties {
+  keys : Array[String]
+  map : (Int32) -> Array[@geom.Prop]
+  reduce : (Array[@geom.Prop], Array[@geom.Prop]) -> Unit
+}
 
 pub struct TileData {
   types : Array[Int32]

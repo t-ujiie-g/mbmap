@@ -16,6 +16,28 @@ pub(open) trait FeatureContext {
   fn number_format(Self, Double, String?, String?, String?, Double?, Double?) -> String? = _
   fn collate(Self, String, String, Bool, Bool, String?) -> Double = _
   fn resolved_locale(Self, String?) -> String? = _
+  fn accumulated(Self) -> Value = _
+  fn within(Self, Array[Array[Array[Double]]]) -> Bool = _
+  fn distance(Self, Array[Shape]) -> Value = _
+}
+
+///|
+/// Null: the value so far is known only where cluster properties are reduced.
+impl FeatureContext with fn accumulated(_) {
+  Null
+}
+
+///|
+/// False: a feature's geometry is known only where tiles are read
+/// (`geometry_within`), as MapLibre's `within` without a canonical tile.
+impl FeatureContext with fn within(_, _) {
+  false
+}
+
+///|
+/// NaN: as `within`, for `geometry_distance`.
+impl FeatureContext with fn distance(_, _) {
+  Num(@double.not_a_number)
 }
 
 ///|
@@ -382,6 +404,9 @@ pub fn[C : FeatureContext] Expr::eval(
       go(out)
     }
     Call(op, args) => call(op, args, zoom, ctx)
+    Accumulated => ctx.accumulated()
+    Within(polygons) => Bool(ctx.within(polygons))
+    Distance(shapes) => ctx.distance(shapes)
   }
 }
 
@@ -414,6 +439,9 @@ fn Expr::each_child(self : Expr, f : (Expr) -> Unit) -> Unit {
     | LineProgress
     | HeatmapDensity
     | Elevation
+    | Accumulated
+    | Within(_)
+    | Distance(_)
     | FeatureState(_) => ()
     Not(a) => f(a)
     All(es)
@@ -461,7 +489,8 @@ pub const FEATURE_ID_KEY : String = "$id"
 
 ///|
 /// Property names the expression reads (`FEATURE_ID_KEY` for the id), and
-/// whether it reads the geometry type: the feature data a value depends on.
+/// whether it reads the geometry (its type, `within`, `distance`): the feature
+/// data a value depends on.
 pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
   let keys = []
   let mut geometry = false
@@ -469,7 +498,7 @@ pub fn Expr::feature_inputs(self : Expr) -> (Array[String], Bool) {
     match e {
       Get(k) | Has(k) => if !keys.contains(k) { keys.push(k) }
       Id => if !keys.contains(FEATURE_ID_KEY) { keys.push(FEATURE_ID_KEY) }
-      GeometryType => geometry = true
+      GeometryType | Within(_) | Distance(_) => geometry = true
       _ => e.each_child(visit)
     }
   }
@@ -490,6 +519,13 @@ fn Expr::any(self : Expr, pred : (Expr) -> Bool) -> Bool {
   }
   visit(self)
   found
+}
+
+///|
+/// Whether the expression reads the feature's geometry itself (`within`,
+/// `distance`), known only where tiles are read.
+pub fn Expr::reads_geometry(self : Expr) -> Bool {
+  self.any(e => e is (Within(_) | Distance(_)))
 }
 
 ///|

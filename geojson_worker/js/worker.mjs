@@ -1,16 +1,26 @@
-// Glue around the wasm-gc build of `geojson_worker`; messages are in
-// docs/FORMATS.md ("GeoJSON worker messages").
+// Glue around the wasm-gc builds of `geojson_worker` and, for sources with
+// clusterProperties, `geojson_props_worker`; messages are in docs/FORMATS.md
+// ("GeoJSON worker messages").
 
-import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { hostNumber, hostText, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
 import { readClusterFeatures } from "./features.mjs";
 
 const decoder = new TextDecoder();
-let wasm = null;
 let ready = null;
+let propsUrl = null;
+let propsReady = null;
 const loads = new Map();
+// The module each source was loaded into.
+const modules = new Map();
 
-function input(bytes) {
+function instantiate(url, host) {
+  let exports = null;
+  const imports = { Math, host: { ...host, number: hostNumber(() => exports.memory) } };
+  return WebAssembly.instantiateStreaming(fetch(url), imports).then(({ instance }) => (exports = instance.exports));
+}
+
+function input(wasm, bytes) {
   const addr = wasm.prepare_input(bytes.length);
   if (addr < 0) throw new Error(`GeoJSON too large (${bytes.length} bytes)`);
   new Uint8Array(wasm.memory.buffer, addr, bytes.length).set(bytes);
@@ -18,10 +28,17 @@ function input(bytes) {
 
 const isInt32 = (v) => Number.isInteger(v) && v >= -(2 ** 31) && v < 2 ** 31;
 
-async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster }, previous) {
-  await ready;
+async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties }, previous) {
+  const withProperties = cluster && properties instanceof Uint8Array && properties.length > 0;
+  if (withProperties && !propsReady) {
+    if (typeof propsUrl !== "string") throw new Error("no module for cluster properties");
+    propsReady = instantiate(propsUrl, hostText());
+  }
+  const wasm = await (withProperties ? propsReady : ready);
   // A source loaded again keeps the order of its loads.
   await previous?.catch(() => {});
+  modules.get(source)?.unload(source);
+  modules.set(source, wasm);
   if (cluster && !(isInt32(cluster.maxZoom) && typeof cluster.radius === "number" && cluster.radius >= 0 && cluster.radius < Infinity && isInt32(cluster.minPoints))) {
     throw new Error("malformed cluster options");
   }
@@ -32,7 +49,11 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetric
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     data = await readCapped(res, MAX_INPUT_BYTES);
   }
-  input(data);
+  if (withProperties) {
+    input(wasm, properties);
+    if (wasm.set_properties() < 0) throw new Error("malformed cluster properties");
+  }
+  input(wasm, data);
   const c = cluster ?? { maxZoom: 0, radius: 0, minPoints: 0 };
   const n = wasm.load(source, maxzoom, buffer, tolerance, lineMetrics === true ? 1 : 0, cluster ? 1 : 0, c.maxZoom, c.radius, c.minPoints);
   if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), -n)));
@@ -40,7 +61,8 @@ async function load({ source, url, bytes, maxzoom, buffer, tolerance, lineMetric
 }
 
 function tile({ id, source, z, x, y }) {
-  const n = wasm.tile(source, z, x, y);
+  const wasm = modules.get(source);
+  const n = wasm ? wasm.tile(source, z, x, y) : -1;
   if (n < 0) throw new Error("source not loaded");
   if (n === 0) return postMessage({ type: "tile", id, bytes: null });
   const bytes = new Uint8Array(wasm.memory.buffer, wasm.output_addr(), n).slice().buffer;
@@ -49,7 +71,8 @@ function tile({ id, source, z, x, y }) {
 
 // The answer to a cluster query: null for a source that does not cluster.
 function cluster({ source, op, cluster: id, limit, offset }) {
-  const clustered = wasm.clustered(source);
+  const wasm = modules.get(source);
+  const clustered = wasm ? wasm.clustered(source) : -1;
   if (clustered < 0) throw new Error("source not loaded");
   if (clustered === 0) return null;
   if (op === "expansion") return wasm.cluster_expansion_zoom(source, id);
@@ -66,9 +89,8 @@ const validCluster = (msg) =>
 onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready) {
-    const host = { number: hostNumber(() => wasm.memory) };
-    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })
-      .then(({ instance }) => { wasm = instance.exports; });
+    propsUrl = msg.propsWasm;
+    ready = instantiate(msg.wasm, {});
   } else if (msg?.type === "load" && ready && Number.isInteger(msg.source)) {
     const done = load(msg, loads.get(msg.source));
     loads.set(msg.source, done);
@@ -79,7 +101,10 @@ onmessage = (e) => {
   } else if (msg?.type === "unload" && Number.isInteger(msg.source)) {
     const done = loads.get(msg.source);
     loads.delete(msg.source);
-    done?.catch(() => {}).then(() => wasm.unload(msg.source));
+    done?.catch(() => {}).then(() => {
+      modules.get(msg.source)?.unload(msg.source);
+      modules.delete(msg.source);
+    });
   } else if (msg?.type === "cluster" && validCluster(msg)) {
     const done = loads.get(msg.source) ?? Promise.reject(new Error("source not loaded"));
     done.then(() => cluster(msg)).then(

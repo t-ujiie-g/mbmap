@@ -367,6 +367,13 @@ pub fn map_set_style(
 }
 
 ///|
+/// `@map.compile_cluster_properties`, for the GeoJSON worker.
+#export_name("compile_cluster_properties")
+pub fn compile_cluster_properties(text : String) -> Bytes {
+  @map.compile_cluster_properties(text)
+}
+
+///|
 /// What the current style uses that is not drawn: path, message, path, ...
 #export_name("map_warnings")
 pub fn map_warnings(map : @map.Map) -> Array[String] {

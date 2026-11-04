@@ -1,4 +1,8 @@
 ///|
+/// Largest GeoJSON accepted (AGENTS.md §8.2: limit the size before tiling).
+pub const MAX_GEOJSON_BYTES : Int32 = 256 * 1024 * 1024
+
+///|
 /// The JSON number at `[addr, addr + len)` of linear memory, by the host's
 /// `Number()`: correctly rounded like strconv, which it keeps out of the module.
 fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
@@ -19,10 +23,9 @@ priv enum Index {
 let sources : Map[Int32, (@geom.Table, Index)] = Map([])
 
 ///|
-/// Reads the input GeoJSON as source `source` with its options (pixels; 1 for
-/// `line_metrics` and `cluster`, docs/FORMATS.md). Returns the feature count, or minus
-/// the length of a UTF-8 error message at `output_addr`.
-#export_name("load")
+/// Reads the input GeoJSON as source `source` with its options (pixels; 1 for `line_metrics`
+/// and `cluster`, docs/FORMATS.md; `properties` for clusters). Returns the feature count, or
+/// minus the length of a UTF-8 error message at `output_addr`.
 pub fn load(
   source : Int32,
   max_zoom : Int32,
@@ -33,6 +36,7 @@ pub fn load(
   cluster_max_zoom : Int32,
   cluster_radius : Double,
   cluster_min_points : Int32,
+  properties? : (@geom.Table) -> @tiler.ClusterProperties,
 ) -> Int32 {
   let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number=(s, e) => {
     host_number(@wasmio.PAGE + s, e - s)
@@ -51,7 +55,15 @@ pub fn load(
       extent: @core.TILE_EXTENT,
     }
     let wrap_buffer = buffer.to_double() / @core.TILE_EXTENT.to_double()
-    Clusters(@tiler.ClusterIndex::new(table, options~, wrap_buffer~, trig~))
+    Clusters(
+      @tiler.ClusterIndex::new(
+        table,
+        options~,
+        wrap_buffer~,
+        trig~,
+        properties?=properties.map(f => f(table)),
+      ),
+    )
   } else {
     let options : @tiler.TilerOptions = {
       ..@tiler.TilerOptions::default(),
@@ -70,7 +82,6 @@ pub fn load(
 /// Cuts tile (z, x, y) of source `source` and writes it, encoded, at
 /// `output_addr`. Returns its length, 0 if the source has no features
 /// there, -1 if the source is not loaded or -2 if memory ran out.
-#export_name("tile")
 pub fn tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
   guard sources.get(source) is Some((table, index)) else { return -1 }
   @wasmio.clear_input()
@@ -93,7 +104,6 @@ pub fn tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
 ///|
 /// Whether source `source` clusters its points: 1 if so, 0 if not, -1 if
 /// it is not loaded.
-#export_name("clustered")
 pub fn clustered(source : Int32) -> Int32 {
   match sources.get(source) {
     Some((_, Clusters(_))) => 1
@@ -105,7 +115,6 @@ pub fn clustered(source : Int32) -> Int32 {
 ///|
 /// The zoom at which cluster `id` of source `source` breaks apart (0 if the
 /// source does not cluster; see `clustered`).
-#export_name("cluster_expansion_zoom")
 pub fn cluster_expansion_zoom(source : Int32, id : Int32) -> Int32 {
   match sources.get(source) {
     Some((_, Clusters(c))) => c.expansion_zoom(id)
@@ -130,7 +139,6 @@ fn write_features(
 
 ///|
 /// The children of cluster `id` of source `source`, as `write_features`.
-#export_name("cluster_children")
 pub fn cluster_children(source : Int32, id : Int32) -> Int32 {
   write_features(source, c => c.children(id))
 }
@@ -138,7 +146,6 @@ pub fn cluster_children(source : Int32, id : Int32) -> Int32 {
 ///|
 /// Up to `limit` (none if negative) of the points of cluster `id` of source
 /// `source` after the first `offset`, as `write_features`.
-#export_name("cluster_leaves")
 pub fn cluster_leaves(
   source : Int32,
   id : Int32,
@@ -151,7 +158,6 @@ pub fn cluster_leaves(
 ///|
 /// Forgets source `source` (it left the style or was loaded again under
 /// another number).
-#export_name("unload")
 pub fn unload(source : Int32) -> Unit {
   sources.remove(source)
 }

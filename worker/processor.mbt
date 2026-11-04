@@ -14,8 +14,11 @@ pub struct TileProcessor {
   priv extrusion_pool : Array[@tess.ExtrusionBuffers]
   priv line_pool : Array[@tess.LineBuffers]
   priv gradient_pool : Array[GradientRows]
+  priv dash_pool : Array[Dashes]
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
+  priv place : @style.TileGeometry
+  priv scratch : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
   priv vertex_paint : Array[Array[@style.VertexPaint]]
   priv runs : Array[Int32]
@@ -50,8 +53,11 @@ pub fn TileProcessor::new(
     extrusion_pool: [],
     line_pool: [],
     gradient_pool: [],
+    dash_pool: [],
     label_pool: [],
     geometry: @mvt.Geometry::new(),
+    place: @style.TileGeometry::new(),
+    scratch: @mvt.Geometry::new(),
     inputs: style.layers.map(l => {
       if per_vertex(l) {
         ([], false)
@@ -158,7 +164,7 @@ fn passes(filter : @style.Expr?, feature : FeatureRef, zoom : Double) -> Bool {
 ///|
 /// Whether two layers produce identical buffers. Line extrusion is stored in
 /// half widths, so layers that differ only in paint (like a road and its
-/// casing) share one; layers sorted by a key keep their own.
+/// casing) share one; layers sorted by a key or dashed by feature keep their own.
 fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   // Extrusions carry their heights in their vertices.
   !(a.kind is (Symbol | FillExtrusion)) &&
@@ -168,6 +174,8 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   a.filter_id == b.filter_id &&
   a.sort_key is None &&
   b.sort_key is None &&
+  a.feature_dashes() is None &&
+  b.feature_dashes() is None &&
   (a.kind is (Fill | Circle | Heatmap) || a.same_line_layout(b))
 }
 
@@ -228,15 +236,18 @@ fn builds(sl : @style.StyleLayer, source : String, zoom : Double) -> Bool {
 }
 
 ///|
-/// Packs every layer of the style drawing from tile `bytes` of `source` at zoom
-/// `z` into `out`, in style order (layers out of their zoom range are skipped,
-/// as MapLibre does). False on a malformed tile or an oversized result.
+/// Packs every layer of the style drawing from tile `bytes` of `source` (tile `z`, `x`,
+/// `y`) into `out`, in style order (layers out of their zoom range are skipped, as
+/// MapLibre does). False on a malformed tile or an oversized result.
 pub fn TileProcessor::process(
   self : TileProcessor,
   source : String,
   bytes : BytesView,
   z : Int32,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
 ) -> Bool {
+  self.locate(z, x, y)
   guard self.read_tile(source, bytes) is Some(features_of) else { return false }
   let style_layers = self.style.layers
   let zoom = z.to_double()
@@ -299,6 +310,19 @@ pub fn TileProcessor::process(
     return false
   }
   true
+}
+
+///|
+/// Sets the canonical tile the next features are read in.
+fn TileProcessor::locate(
+  self : TileProcessor,
+  z : Int32,
+  x : Int32,
+  y : Int32,
+) -> Unit {
+  self.place.z = z
+  self.place.x = x
+  self.place.y = y
 }
 
 ///|

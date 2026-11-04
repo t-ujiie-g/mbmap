@@ -70,7 +70,8 @@ let cluster_keys : Array[String] = [
 ]
 
 ///|
-/// Property `key` of `f`: a point's from `table`, a cluster's its own.
+/// Property `key` of `f`: a point's from `table`, a cluster's its own (then its
+/// cluster properties').
 fn cluster_prop(
   f : ClusterFeature,
   key : String,
@@ -84,7 +85,7 @@ fn cluster_prop(
     "cluster_id" => Some(Num(f.cluster_id.to_double()))
     "point_count" => Some(Num(f.count.to_double()))
     "point_count_abbreviated" => Some(abbreviated_count(f.count))
-    _ => None
+    _ => f.props.search_by(p => p.0 == key).map(k => f.props[k].1)
   }
 }
 
@@ -108,6 +109,13 @@ pub fn encode_cluster_tile(
   let keys = table.columns
     .filter(c => fs.iter().any(f => f.row >= 0 && c.values[f.row] is Some(_)))
     .map(c => c.name)
+  for f in fs {
+    for p in f.props {
+      if !keys.contains(p.0) {
+        keys.push(p.0)
+      }
+    }
+  }
   if fs.iter().any(f => f.row < 0) {
     for k in cluster_keys {
       if !keys.contains(k) {
@@ -170,6 +178,11 @@ pub fn encode_cluster_features(
         }
       }
     } else {
+      for p in f.props {
+        if !cluster_keys.contains(p.0) {
+          props.push(p)
+        }
+      }
       for k in cluster_keys {
         props.push((k, cluster_prop(f, k, table).unwrap()))
       }

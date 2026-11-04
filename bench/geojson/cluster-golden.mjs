@@ -1,8 +1,9 @@
 // Golden test: tiler's ClusterIndex must give geojson-vt's ClusterTileIndex tiles (ids and properties
-// too) and expansion zooms, children and leaves of the clusters they show (js build in full, wasm-gc
-// by hash against it). Usage: node geojson/cluster-golden.mjs
+// too), expansion zooms, children and leaves (js in full, wasm-gc by hash; clusterProperties in js
+// only, reduced as MapLibre's GeoJSON worker does). Usage: node geojson/cluster-golden.mjs
 import { readFile } from "node:fs/promises";
 import { GeoJSONVT } from "@maplibre/geojson-vt";
+import { createExpression } from "@maplibre/maplibre-gl-style-spec";
 import { readClusterFeatures } from "../../geojson_worker/js/features.mjs";
 import { readString, readValue } from "../../worker/js/values.mjs";
 import { loadEntry } from "../lib/entry.mjs";
@@ -18,7 +19,47 @@ const OPTION_SETS = {
   defaults: { buffer: 64, wrap: true, cluster: { maxZoom: 16, minPoints: 2, radius: 40, extent: 512 } },
   wide: { buffer: 1024, wrap: true, cluster: { maxZoom: 12, minPoints: 5, radius: 960, extent: 4096 } },
   noWrap: { buffer: 1024, wrap: false, cluster: { maxZoom: 17, minPoints: 2, radius: 400, extent: 4096 } },
+  properties: {
+    buffer: 1024, wrap: true, cluster: { maxZoom: 17, minPoints: 2, radius: 400, extent: 4096 },
+    properties: {
+      sum: ["+", ["get", "n"]],
+      most: ["max", ["coalesce", ["get", "n"], -1]],
+      count: [["+", ["accumulated"], ["get", "count"]], 1],
+      anyOk: ["any", ["==", ["get", "ok"], true]],
+      kinds: [["case", ["<", ["length", ["string", ["accumulated"], ""]], 12], ["concat", ["accumulated"], ["get", "kinds"]], ["accumulated"]], ["get", "kind"]],
+      n: [["min", ["accumulated"], ["get", "n"]], ["*", ["get", "n"], 2]],
+    },
+  },
 };
+
+// MapLibre's `getSuperclusterOptions` (src/source/geojson_worker_source.ts) for geojson-vt.
+function clusterFunctions(clusterProperties) {
+  const mapExpressions = {};
+  const reduceExpressions = {};
+  const globals = { accumulated: null, zoom: 0 };
+  const feature = { properties: null };
+  const keys = Object.keys(clusterProperties);
+  for (const key of keys) {
+    const [operator, mapExpression] = clusterProperties[key];
+    mapExpressions[key] = createExpression(mapExpression, `sources.s.clusterProperties.${key}[1]`).value;
+    reduceExpressions[key] = createExpression(typeof operator === "string" ? [operator, ["accumulated"], ["get", key]] : operator, `sources.s.clusterProperties.${key}[0]`).value;
+  }
+  return {
+    map: (pointProperties) => {
+      feature.properties = pointProperties;
+      const properties = {};
+      for (const key of keys) properties[key] = mapExpressions[key].evaluate(globals, feature);
+      return properties;
+    },
+    reduce: (accumulated, clusterProperties) => {
+      feature.properties = clusterProperties;
+      for (const key of keys) {
+        globals.accumulated = accumulated[key];
+        accumulated[key] = reduceExpressions[key].evaluate(globals, feature);
+      }
+    },
+  };
+}
 
 // Seeded points over the world, half of them in clumps, some past ±180 and
 // near the poles, a few at the same place.
@@ -135,9 +176,12 @@ for (const [name, data] of Object.entries(datasets)) {
   const addr = gc.copyIn(text);
   for (const [setName, o] of Object.entries(OPTION_SETS)) {
     const c = o.cluster;
-    const ref = new GeoJSONVT(data, { maxZoom: 18, extent: 4096, buffer: o.buffer, wrap: o.wrap, cluster: true, clusterOptions: { ...c, log: false, generateId: false } });
+    const fns = o.properties ? clusterFunctions(o.properties) : {};
+    const ref = new GeoJSONVT(data, { maxZoom: 18, extent: 4096, buffer: o.buffer, wrap: o.wrap, cluster: true, clusterOptions: { ...c, ...fns, log: false, generateId: false } });
     const wrapBuffer = o.buffer / 4096;
-    const n = mbt.geojson_clusters(text, c.maxZoom, c.minPoints, c.radius, c.extent, wrapBuffer, o.wrap);
+    const props = o.properties ? new TextEncoder().encode(JSON.stringify(o.properties)) : new Uint8Array(0);
+    const n = mbt.geojson_clusters(text, c.maxZoom, c.minPoints, c.radius, c.extent, wrapBuffer, o.wrap, props);
+    const hashed = (args, bytes) => o.properties || gc.exports.geojson_cluster_hash(...args) === hash(bytes);
     const m = gc.exports.geojson_clusters_mem(addr, text.length, c.maxZoom, c.minPoints, c.radius, c.extent, wrapBuffer, o.wrap ? 1 : 0);
     if (n !== data.features.length || m !== n) {
       fail(`${name}/${setName}: read ${n} (js) and ${m} (wasm-gc) features, expected ${data.features.length}`);
@@ -151,7 +195,7 @@ for (const [name, data] of Object.entries(datasets)) {
       counts.tiles++;
       counts.features += want?.features.length ?? 0;
       for (const f of want?.features ?? []) if (f.tags?.cluster) ids.add(f.id);
-      if (!sameTile(want, readColumnTile(bytes)) || gc.exports.geojson_cluster_hash(0, z, x, y) !== hash(bytes)) {
+      if (!sameTile(want, readColumnTile(bytes)) || !hashed([0, z, x, y], bytes)) {
         fail(`${name}/${setName} tile ${z}/${x}/${y} differs`);
       }
     }
@@ -170,7 +214,7 @@ for (const [name, data] of Object.entries(datasets)) {
       ];
       for (const [want, args] of queries) {
         const bytes = mbt.geojson_cluster(...args);
-        if (!sameFeatures(attempt(want), bytes) || gc.exports.geojson_cluster_hash(...args) !== hash(bytes)) {
+        if (!sameFeatures(attempt(want), bytes) || !hashed(args, bytes)) {
           fail(`${name}/${setName} ${args[0] === 1 ? "children" : `leaves (${args[2]}, ${args[3]})`} of ${id} differ`);
         }
       }

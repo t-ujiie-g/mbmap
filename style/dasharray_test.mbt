@@ -28,15 +28,24 @@ test "line-dasharray takes plain arrays and zoom expressions" {
 }
 
 ///|
-test "data-driven dashes are Unsupported" {
-  try
-    dash_layer(
-      "{\"line-dasharray\": [\"case\", [\"has\", \"k\"], [\"literal\", [1, 1]], [\"literal\", [2, 1]]]}",
-    )
-  catch {
-    Unsupported(path~, _) => assert_eq(path, "layers[0].paint.line-dasharray")
-    Invalid(_, ..) => fail("unexpected Invalid")
-  } noraise {
-    _ => fail("expected Unsupported")
+test "data-driven dashes go by feature, except with feature state or drawn by groups" {
+  let by_feature = dash_layer(
+    "{\"line-dasharray\": [\"case\", [\"has\", \"k\"], [\"literal\", [1, 1]], [\"literal\", [2, 1]]]}",
+  )
+  assert_true(by_feature.feature_dashes() is Some(_))
+  assert_true(
+    dash_layer("{\"line-dasharray\": [2, 1]}").feature_dashes() is None,
+  )
+  for
+    bad in [
+      "{\"line-dasharray\": [\"case\", [\"==\", [\"feature-state\", \"h\"], true], [\"literal\", [1, 1]], [\"literal\", [2, 1]]]}",
+      "{\"line-dasharray\": [\"case\", [\"has\", \"k\"], [\"literal\", [1, 1]], [\"literal\", [2, 1]]], \"line-opacity\": [\"feature-state\", \"o\"]}",
+    ] {
+    try dash_layer(bad) catch {
+      Unsupported(path~, _) => assert_eq(path, "layers[0].paint.line-dasharray")
+      Invalid(_, ..) => fail("unexpected Invalid")
+    } noraise {
+      _ => fail("expected Unsupported")
+    }
   }
 }

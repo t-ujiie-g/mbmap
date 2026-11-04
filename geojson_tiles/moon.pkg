@@ -1,0 +1,12 @@
+// What both GeoJSON worker modules do: read GeoJSON sources into tilers and cut
+// their tiles as encoded columnar tiles (`@tiler.encode_tile`) for the display worker.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/formats",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/wasmio",
+  "t-ujiie-g/mbmap/tiler",
+}
+
+supported_targets = "+wasm-gc"

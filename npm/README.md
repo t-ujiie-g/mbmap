@@ -24,6 +24,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/ui.js` | 見た目を持たない UI のコントローラ（`mbmap/ui`） |
 | `dist/search.js` | 見た目を持たない検索（GeoSearch、`mbmap/search`） |
 | `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
+| `dist/geojson-properties.wasm` | 式を持つ GeoJSON の wasm。`clusterProperties` のあるソースがあるときだけ Worker が読み込む |
 | `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
 | `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読み込む（場所は `projWasmUrl` で変えられる） |
@@ -258,7 +259,7 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 
 ## 対応するスタイル
 
-background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`。`clusterProperties` は未対応）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較（`collator` つきも）、`in` `match` `case` `coalesce` `interpolate` `step`、`format`（`font-scale`、`vertical-align`、区切りごとの `text-font` と `text-color`）、`number-format`、`split` `join`、`resolved-locale`、`is-supported-script`（MapLibre 6.16 と同じく常に true）、`global-state` など。数の書式と文字列の照合はブラウザの `Intl` で行う。未対応のものは、JSON 上の場所付きの警告を出して除く（`strict` ではエラー）。黙って無視はしない。
+background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`、`clusterProperties`。`clusterProperties` のあるソースは、式を持つ別の wasm `geojson-properties.wasm`（`geojsonPropertiesWasmUrl` で場所を渡せる）で読む）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較（`collator` つきも）、`in` `match` `case` `coalesce` `interpolate` `step`、`format`（`font-scale`、`vertical-align`、区切りごとの `text-font` と `text-color`）、`number-format`、`split` `join`、`resolved-locale`、`is-supported-script`（MapLibre 6.16 と同じく常に true）、`global-state`、`within` と `distance`（フィルタ、レイアウト、fill・line・circle・heatmap の地物ごとの paint。記号や押し出しの paint、feature-state を読むレイヤーの paint では未対応）、`accumulated`（`clusterProperties` の reduce で）など。地物ごとの `line-dasharray`、heatmap の feature-state にも対応。数の書式と文字列の照合はブラウザの `Intl` で行う。未対応のものは、JSON 上の場所付きの警告を出して除く（`strict` ではエラー）。黙って無視はしない。
 
 線の `line-offset`・`line-gap-width`（地物ごとの式も）と `line-blur`（ズームの式まで）、円の `circle-blur`（ズームの式まで）・`circle-pitch-scale`・`circle-pitch-alignment`、fill / line / circle / fill-extrusion の `*-translate`（定数の `[x, y]`）と `*-translate-anchor` を MapLibre と同じに描き、`queryRenderedFeatures` もそれに合わせて当たりを判定する。`fill-sort-key`・`line-sort-key`・`circle-sort-key`（円はタイルをまたいでキーの順に描く）と `symbol-z-order` も MapLibre と同じ。`text-translate` と `icon-translate` は未対応。
 

@@ -100,12 +100,22 @@ test "heatmap-density only in heatmap-color, which reads nothing else" {
   } noraise {
     _ => fail("expected Invalid")
   }
-  try heatmap_style("{\"heatmap-weight\": [\"feature-state\", \"w\"]}") catch {
-    Unsupported(path~, _) => assert_eq(path, "layers[0].paint")
-    Invalid(_, ..) => fail("unexpected Invalid")
-  } noraise {
-    _ => fail("expected Unsupported")
+}
+
+///|
+test "heatmap weights and radii reading feature state are drawn by group" {
+  for
+    paint in [
+      "{\"heatmap-weight\": [\"feature-state\", \"w\"]}", "{\"heatmap-radius\": [\"coalesce\", [\"feature-state\", \"r\"], 10]}",
+    ] {
+    let layer = heatmap_style(paint).layers[0]
+    assert_true(layer.reads_state())
+    assert_true(layer.paints_by_group())
+    assert_eq(layer.vertex_paint().length(), 0)
   }
+  assert_true(
+    !heatmap_style("{\"heatmap-weight\": [\"get\", \"w\"]}").layers[0].reads_state(),
+  )
 }
 
 ///|

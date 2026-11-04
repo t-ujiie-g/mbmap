@@ -7,7 +7,7 @@ import { checkImageSize, decodeImage } from "./imagesize.mjs";
 import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 import { readString, readValue } from "./values.mjs";
 
-const LAYER_ENTRY_WORDS = 21; // worker/packed.mbt
+const LAYER_ENTRY_WORDS = 23; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
@@ -144,6 +144,22 @@ function unpack(packed) {
       }
       transfer.push(keyRuns.buffer);
     }
+    // A line's dash patterns by feature: per pattern its count and numbers (f64s), then four u16s per vertex.
+    let dashPatterns = null, dashMarks = null;
+    if (e(21) > 0) {
+      const numbers = new DataView(packed.buffer, packed.byteOffset);
+      let at = e(21);
+      dashPatterns = [];
+      for (let p = 0; p < e(22); p++) {
+        const n = numbers.getFloat64(at, true);
+        const pattern = [];
+        for (let i = 0; i < n; i++) pattern.push(numbers.getFloat64(at + 8 + i * 8, true));
+        dashPatterns.push(pattern);
+        at += 8 + n * 8;
+      }
+      dashMarks = packed.slice(at, at + (e(3) / 8) * 8).buffer;
+      transfer.push(dashMarks);
+    }
     // A gradient line's progress (f32 share and row per vertex: 8 bytes, as its vertices), then its rows' clips and longest line (f64s).
     let progress = null, clips = null;
     if (e(15) > 0) {
@@ -154,7 +170,7 @@ function unpack(packed) {
     }
     // `shared` names a position in `layers` (skipped symbol entries have none).
     byOffset.set(e(2), layers.length);
-    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets, keyRuns });
+    layers.push({ entry: k, layer: e(0), kind: e(1), vertices, indices, count: e(5), indexBytes: e(6), shared: -1, props, paint, outline, outlineCount: e(12), distances, progress, clips, offsets, keyRuns, dashPatterns, dashMarks });
     transfer.push(vertices, indices);
   }
   return { layers, transfer };
@@ -198,12 +214,12 @@ function fetchInit(init, signal) {
   return out;
 }
 
-async function loadTile({ id, url, init, bytes: given, source, z, dem, raster }) {
+async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, raster }) {
   const controller = new AbortController();
   pending.set(id, controller);
   try {
     let bytes;
-    if (!Number.isInteger(source) || !Number.isInteger(z)) throw new Error("malformed tile message");
+    if (![source, z, x, y].every(Number.isInteger)) throw new Error("malformed tile message");
     const pmtiles = !(given instanceof ArrayBuffer) && typeof url === "string" && url.startsWith("pmtiles://") ? await loadPmtiles() : null;
     const pm = pmtiles?.splitTileUrl(url);
     if (controller.signal.aborted) return;
@@ -258,7 +274,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
     }
     await imagesReady;
     if (controller.signal.aborted) return;
-    let packed = withInput(bytes, () => wasm.process_tile(source, z));
+    let packed = withInput(bytes, () => wasm.process_tile(source, z, x, y));
     const featureRanges = () => readFeatureRanges(withInput(new Uint8Array(0), () => wasm.feature_ranges()));
     let ranges = null;
     if (!symbols && canDrawGlyphs && hasSymbols(packed)) {
@@ -296,7 +312,7 @@ function query({ id, kind, tile, source, z, x, y, request }) {
     input.set(new Uint8Array(request.buffer, request.byteOffset, request.byteLength), bytes.length);
     const run = kind === "features" ? wasm.source_features : wasm.query_tile;
     try {
-      hits = queries.readQueryResult(withInput(input, () => run(source, z, bytes.length)), z, x, y);
+      hits = queries.readQueryResult(withInput(input, () => run(source, z, bytes.length, x, y)), z, x, y);
     } catch (err) {
       postMessage({ type: "error", message: String(err?.message ?? err) });
     }

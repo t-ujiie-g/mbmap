@@ -32,6 +32,7 @@ pub fn StyleLayer::same_tiles(self : StyleLayer, other : StyleLayer) -> Bool {
   self.icon.map(i => i.layout) == other.icon.map(i => i.layout) &&
   self.extrusion == other.extrusion &&
   self.same_line_layout(other) &&
+  self.feature_dashes() == other.feature_dashes() &&
   self.reads_state() == other.reads_state() &&
   self.paints_by_group() == other.paints_by_group() &&
   self.pattern.map(p => p.feature_inputs()) ==
@@ -74,6 +75,11 @@ pub fn StyleLayer::reads_state(self : StyleLayer) -> Bool {
         self.stroke_color,
         self.stroke_opacity,
       ]
+    Heatmap =>
+      match self.heatmap {
+        Some(h) => [self.radius, h.weight]
+        None => [self.radius]
+      }
     _ => []
   }
   exprs.iter().any(e => e.reads_state())
@@ -100,6 +106,16 @@ pub fn StyleLayer::same_line_layout(
 /// for dashes and patterns.
 pub fn StyleLayer::line_distances(self : StyleLayer) -> Bool {
   self.kind is Line && (self.dasharray is Some(_) || self.pattern is Some(_))
+}
+
+///|
+/// A line layer's `line-dasharray` when it is data-driven: the worker packs each
+/// feature's patterns (docs/FORMATS.md, "Packed tile").
+pub fn StyleLayer::feature_dashes(self : StyleLayer) -> Expr? {
+  match self.dasharray {
+    Some(e) if self.kind is Line && data_driven(e) => Some(e)
+    _ => None
+  }
 }
 
 ///|

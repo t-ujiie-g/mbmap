@@ -9,6 +9,8 @@ import {
 // Values
 pub const FEATURE_ID_KEY : String = "$id"
 
+pub const GEOMETRY_EXTENT : Int32 = 8192
+
 pub const MAX_EXPR_DEPTH : Int32 = 32
 
 pub const MAX_EXPR_NODES : Int32 = 4096
@@ -35,11 +37,19 @@ pub const SLOT_WEIGHT : Int32 = 1
 
 pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
 
+pub fn compile_cluster_properties(Json, path? : String) -> Array[(String, Expr, Expr)] raise StyleError
+
 pub fn font_face(String) -> (String, String, String)
+
+pub fn geometry_distance(Array[Shape], String, TileGeometry, @core.Trig) -> Value
+
+pub fn geometry_within(Array[Array[Array[Double]]], String, TileGeometry, @core.Trig) -> Bool
 
 pub fn js_number(String) -> Double
 
 pub fn parse_color(String) -> Color?
+
+pub fn read_cluster_properties(BytesView) -> Array[(String, Expr, Expr)]?
 
 pub fn read_expr(@core.ByteReader) -> Expr?
 
@@ -50,6 +60,8 @@ pub fn[C : FeatureContext] translate_at(Expr, Double, C) -> (Double, Double)
 pub fn vertex_paint_words(Array[VertexPaint]) -> Int32
 
 pub fn[T] with_global_state(Map[String, Json], () -> T raise StyleError) -> T raise StyleError
+
+pub fn write_cluster_properties(Array[(String, Expr, Expr)]) -> Bytes
 
 pub fn write_expr(@core.ByteWriter, Expr?) -> Unit
 
@@ -141,6 +153,7 @@ pub(all) enum Expr {
   LineProgress
   HeatmapDensity
   Elevation
+  Accumulated
   Not(Expr)
   All(Array[Expr])
   Any(Array[Expr])
@@ -156,11 +169,14 @@ pub(all) enum Expr {
   Coerce(Expected, Array[Expr])
   Call(Op, Array[Expr])
   Collate(CmpOp, Expr, Expr, Expr)
+  Within(Array[Array[Array[Double]]])
+  Distance(Array[Shape])
 } derive(Eq, @debug.Debug)
 pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
 pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
 pub fn Expr::not_equal(Self, Self) -> Bool
+pub fn Expr::reads_geometry(Self) -> Bool
 pub fn Expr::reads_state(Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
@@ -289,7 +305,9 @@ pub struct Light {
 
 pub(all) struct NoFeature {
 }
+pub fn NoFeature::accumulated(Self) -> Value
 pub fn NoFeature::collate(Self, String, String, Bool, Bool, String?) -> Double
+pub fn NoFeature::distance(Self, Array[Shape]) -> Value
 pub fn NoFeature::elevation(Self) -> Double
 pub fn NoFeature::geometry_type(Self) -> String
 pub fn NoFeature::heatmap_density(Self) -> Double
@@ -302,6 +320,7 @@ pub fn NoFeature::resolved_locale(Self, String?) -> String?
 pub fn NoFeature::state(Self, String) -> Value?
 pub fn NoFeature::text_number(Self, String) -> Double
 pub fn NoFeature::trig(Self) -> @core.Trig
+pub fn NoFeature::within(Self, Array[Array[Array[Double]]]) -> Bool
 pub impl FeatureContext for NoFeature
 
 pub(all) enum Op {
@@ -380,6 +399,16 @@ pub(all) struct Section {
 pub fn Section::equal(Self, Self) -> Bool
 pub fn Section::not_equal(Self, Self) -> Bool
 pub fn Section::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Shape {
+  Point(Double, Double)
+  Line(Array[Double])
+  Polygon(Array[Array[Double]])
+  Other
+} derive(Eq, @debug.Debug)
+pub fn Shape::equal(Self, Self) -> Bool
+pub fn Shape::not_equal(Self, Self) -> Bool
+pub fn Shape::to_repr(Self) -> @debug.Repr
 
 pub struct Sky {
   sky : Expr
@@ -477,6 +506,7 @@ pub struct StyleLayer {
   pitch_with_map : Bool
   sort_key : Expr?
 }
+pub fn StyleLayer::feature_dashes(Self) -> Expr?
 pub fn StyleLayer::line_distances(Self) -> Bool
 pub fn StyleLayer::line_offsets(Self) -> Bool
 pub fn StyleLayer::paints_by_group(Self) -> Bool
@@ -564,6 +594,15 @@ pub struct TextLayout {
 pub fn TextLayout::equal(Self, Self) -> Bool
 pub fn TextLayout::not_equal(Self, Self) -> Bool
 
+pub(all) struct TileGeometry {
+  mut z : Int32
+  mut x : Int32
+  mut y : Int32
+  coords : Array[Int32]
+  ring_ends : Array[Int32]
+}
+pub fn TileGeometry::new() -> Self
+
 pub(all) enum Value {
   Null
   Bool(Bool)
@@ -609,4 +648,7 @@ pub(open) trait FeatureContext {
   fn number_format(Self, Double, String?, String?, String?, Double?, Double?) -> String? = _
   fn collate(Self, String, String, Bool, Bool, String?) -> Double = _
   fn resolved_locale(Self, String?) -> String? = _
+  fn accumulated(Self) -> Value = _
+  fn within(Self, Array[Array[Array[Double]]]) -> Bool = _
+  fn distance(Self, Array[Shape]) -> Value = _
 }

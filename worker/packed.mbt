@@ -36,7 +36,7 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
-pub const LAYER_ENTRY_WORDS : Int32 = 21
+pub const LAYER_ENTRY_WORDS : Int32 = 23
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
@@ -378,6 +378,37 @@ fn PackedTile::put_offsets(self : PackedTile, o : Array[Int32]) -> Bool {
   self.put_u32(e + 68, at)
   self.put_u32(e + 72, o.length() / 2)
   self.len = at + bytes
+  true
+}
+
+///|
+/// Writes a line's dash patterns by feature for the last entry (8-aligned): per
+/// pattern its count and numbers as f64s, then four u16s per vertex; false without
+/// room.
+fn PackedTile::put_dashes(self : PackedTile, d : Dashes) -> Bool {
+  let numbers = d.patterns.fold(init=0, (n, p) => n + 1 + p.length())
+  if self.layers == 0 || !self.reserve(numbers * 8 + d.marks.length() * 2 + 8) {
+    return false
+  }
+  let at = (self.len + 7) / 8 * 8
+  let mut o = at
+  let put_f64 = (v : Double) => {
+    let b = v.reinterpret_as_int64()
+    self.store.set_u32(o, b.to_int())
+    self.store.set_u32(o + 4, (b >> 32).to_int())
+    o += 8
+  }
+  for p in d.patterns {
+    put_f64(p.length().to_double())
+    p.each(put_f64)
+  }
+  for i, m in d.marks {
+    self.store.set_u16(o + i * 2, m)
+  }
+  let e = 4 + (self.layers - 1) * LAYER_ENTRY_WORDS * 4
+  self.put_u32(e + 84, at)
+  self.put_u32(e + 88, d.patterns.length())
+  self.len = o + (d.marks.length() * 2 + 3) / 4 * 4
   true
 }
 

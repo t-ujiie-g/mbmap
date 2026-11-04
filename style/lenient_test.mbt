@@ -15,9 +15,9 @@ let lenient_style : String =
   #|   "f": {"type": "vector", "tiles": ["file:///tiles/{z}/{x}/{y}.pbf"]}},
   #| "layers": [
   #|   {"id": "road", "type": "line", "source": "v", "source-layer": "road",
-  #|    "paint": {"line-color": ["distance", {"type": "Point", "coordinates": [0, 0]}], "line-width": 3}},
+  #|    "paint": {"line-color": ["get", "c", ["literal", {}]], "line-width": 3}},
   #|   {"id": "odd", "type": "fill", "source": "v", "source-layer": "a",
-  #|    "filter": ["within", {}]},
+  #|    "filter": ["has", "k", ["literal", {}]]},
   #|   {"id": "local", "type": "fill", "source": "f", "source-layer": "a"},
   #|   {"id": "relief", "type": "model", "source": "v"},
   #|   {"id": "water", "type": "fill", "source": "v", "source-layer": "water",

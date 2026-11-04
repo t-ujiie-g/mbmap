@@ -202,3 +202,66 @@ extern "js" fn gl_draw_line_dash(
   #|  gl.uniform1i(p.u_image, 0);
   #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
+
+///|
+/// Adds a line mesh's dashes by feature as `a_dash` (see the `lineDashFeature`
+/// program): `marks` four u16s per vertex naming patterns of `entries` (row times
+/// 64 plus height, and width each; a width of -1 where the atlas has none).
+extern "js" fn gl_upload_feature_dashes(
+  gl : Gl,
+  mesh : Mesh,
+  marks : JsBuffer,
+  entries : FixedArray[Double],
+) -> Unit =
+  #|(c, m, data, entries) => {
+  #|  const gl = c.gl, marks = new Uint16Array(data), n = marks.length / 4, out = new Float32Array(n * 4);
+  #|  // MapLibre's dasharray attributes are Uint16s, so a pattern's length is truncated there.
+  #|  const width = (k) => (k * 2 + 1 < entries.length && entries[k * 2 + 1] >= 0 ? Math.trunc(entries[k * 2 + 1]) & 0xffff : -1);
+  #|  for (let i = 0; i < n; i++) {
+  #|    const lo = marks[i * 4], mid = marks[i * 4 + 1], hi = marks[i * 4 + 2], w = width(mid);
+  #|    out[i * 4] = w < 0 ? 0 : entries[mid * 2];
+  #|    out[i * 4 + 1] = w;
+  #|    out[i * 4 + 2] = width(lo) < 0 ? w : Math.min(w, width(lo));
+  #|    out[i * 4 + 3] = width(hi) < 0 ? w : Math.min(w, width(hi));
+  #|  }
+  #|  gl.bindVertexArray(m.vao);
+  #|  m.dashes = gl.createBuffer();
+  #|  gl.bindBuffer(gl.ARRAY_BUFFER, m.dashes);
+  #|  gl.bufferData(gl.ARRAY_BUFFER, out, gl.STATIC_DRAW);
+  #|  gl.enableVertexAttribArray(15);
+  #|  gl.vertexAttribPointer(15, 4, gl.FLOAT, false, 16, 0);
+  #|  gl.bindVertexArray(null);
+  #|  m.bytes += out.byteLength;
+  #|}
+
+///|
+/// Draws a line dashed by feature (see the `lineDashFeature` program): `dash` and
+/// `floor` are its u_dash and u_floor.
+extern "js" fn gl_draw_line_dash_feature(
+  gl : Gl,
+  mesh : Mesh,
+  matrix : FixedArray[Double],
+  clip : FixedArray[Double],
+  units : Double,
+  depth : Double,
+  dpr : Double,
+  blur : Double,
+  dash : FixedArray[Double],
+  floor : FixedArray[Double],
+) -> Unit =
+  #|(c, m, matrix, clip, units, depth, dpr, blur, dash, floor) => {
+  #|  const gl = c.gl, p = c.lineDashFeature;
+  #|  c.mat.set(matrix);
+  #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
+  #|  gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|  gl.uniform1f(p.u_units, units);
+  #|  gl.uniform1f(p.u_depth, depth);
+  #|  gl.uniform1f(p.u_dpr, dpr);
+  #|  gl.uniform1f(p.u_blur, blur);
+  #|  gl.uniform4f(p.u_dash, dash[0], dash[1], dash[2], dash[3]);
+  #|  gl.uniform2f(p.u_floor, floor[0], floor[1]);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.bindTexture(gl.TEXTURE_2D, c.dash);
+  #|  gl.uniform1i(p.u_image, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
+  #|}

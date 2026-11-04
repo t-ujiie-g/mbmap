@@ -26,7 +26,7 @@ export async function styleChecks(page, requests) {
     map.removeSource("gsi");
     // Unsupported, so drawn at its default width with a warning; then put back.
     const before = map.getPaintProperty("road", "line-width");
-    map.setPaintProperty("road", "line-width", ["accumulated"]);
+    map.setPaintProperty("road", "line-width", ["properties"]);
     const width = map.getPaintProperty("road", "line-width");
     map.setPaintProperty("road", "line-width", before);
     await new Promise((r) => setTimeout(r, 0));
@@ -57,8 +57,8 @@ export async function styleChecks(page, requests) {
     errors.out.length === 2 &&
     /no layer "nope"/.test(errors.out[0]) &&
     /used by layer "road"/.test(errors.out[1]) &&
-    errors.warned.some((w) => w.layer === "road" && /paint\.line-width$/.test(w.path) && w.message === "expression accumulated") &&
-    errors.width?.[0] === "accumulated" &&
+    errors.warned.some((w) => w.layer === "road" && /paint\.line-width$/.test(w.path) && w.message === "expression properties") &&
+    errors.width?.[0] === "properties" &&
     JSON.stringify(errors.order) === JSON.stringify(["background", "road", "waterarea", "structurea"]) &&
     near(red, [255, 0, 0]) &&
     read?.bg === "#00ff00" &&

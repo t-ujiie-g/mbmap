@@ -25,6 +25,9 @@ test("sameOptions compares the data by identity and the options by value", () =>
   assert.equal(sameOptions({ data, maxzoom: 18 }, { data }), true);
   assert.equal(sameOptions({ data }, { data: { ...data } }), false);
   assert.equal(sameOptions({ data }, { data, cluster: true }), false);
+  const sum = { sum: ["+", ["get", "n"]] };
+  assert.equal(sameOptions({ data, cluster: true, clusterProperties: sum }, { data, cluster: true, clusterProperties: { ...sum } }), true);
+  assert.equal(sameOptions({ data, cluster: true, clusterProperties: sum }, { data, cluster: true }), false);
   assert.equal(sameOptions({ data: "a.json" }, { data: "a.json", attribution: "x" }), true);
 });
 

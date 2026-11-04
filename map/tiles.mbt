@@ -72,6 +72,8 @@ fn Map::request_tile(
       ),
       src.index,
       id.z,
+      id.x,
+      id.y,
       src.source.kind is RasterDem,
       src.source.kind is Raster,
       self.transform_request,
@@ -90,7 +92,15 @@ fn Map::request_tile(
     if is_null_value(bytes) {
       self.finish(request, Some([]))
     } else {
-      post_tile_bytes(self.workers[worker], request, bytes, src.index, id.z)
+      post_tile_bytes(
+        self.workers[worker],
+        request,
+        bytes,
+        src.index,
+        id.z,
+        id.x,
+        id.y,
+      )
     }
   })
 }
@@ -276,6 +286,22 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           )
           if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
             self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
+          }
+          let patterns = dash_pattern_count(l)
+          if kind == KIND_LINE && patterns >= 0 {
+            let li = get_int(l, "layer")
+            let round = li >= 0 &&
+              li < self.style.layers.length() &&
+              self.style.layers[li].cap is Round
+            let entries = Array::makei(patterns, k => {
+              let p = dash_pattern_at(l, k)
+              self.renderer.dash(Array::makei(p.length(), i => p[i]), round)
+            })
+            self.renderer.upload_feature_dashes(
+              mesh,
+              entries,
+              buffer_of(l, "dashMarks"),
+            )
           }
           if kind == KIND_LINE && !is_null_value(offsets_of_layer(l)) {
             self.renderer.upload_offsets(mesh, buffer_of(l, "offsets"))

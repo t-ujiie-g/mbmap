@@ -50,7 +50,7 @@ extern "js" fn gl_draw_heatmap(
   #|  gl.uniformMatrix4fv(p.u_matrix, false, c.mat);
   #|  gl.uniform1f(p.u_extrude, extrude);
   #|  gl.uniform1f(p.u_intensity, intensity);
-  #|  gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
+  #|  gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|}
 
 ///|

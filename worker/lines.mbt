@@ -17,6 +17,10 @@ fn TileProcessor::line_layer(
   let join = join_of(sl.join)
   let cap = cap_of(sl.cap)
   let gradient = sl.gradient is Some(_)
+  let feature_dashes = sl.feature_dashes()
+  for d in self.dash_pool {
+    d.clear()
+  }
   let order = self.feature_order(sl, layer, zoom, self.keys)
   for k in 0..<layer.length() {
     let i = order.map_or(k, o => o[k])
@@ -59,6 +63,9 @@ fn TileProcessor::line_layer(
           )
         }
       }
+      if feature_dashes is Some(e) {
+        self.dashes(group).add(e, zoom, feature, out.num_vertices() - v0)
+      }
       self.track(index, group, i, first, out.indices.length())
       self.run(i, out.num_vertices() - v0)
     }
@@ -69,6 +76,7 @@ fn TileProcessor::line_layer(
       let entry = self.out.layer_count()
       if !self.out.add_line(index, b, extent=layer.extent()) ||
         (gradient && !self.out.put_progress(b, self.gradient_rows(g))) ||
+        (feature_dashes is Some(_) && !self.out.put_dashes(self.dashes(g))) ||
         !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }
@@ -79,6 +87,95 @@ fn TileProcessor::line_layer(
     }
   }
   true
+}
+
+///|
+fn TileProcessor::dashes(self : TileProcessor, g : Int32) -> Dashes {
+  while self.dash_pool.length() <= g {
+    self.dash_pool.push(Dashes::new())
+  }
+  self.dash_pool[g]
+}
+
+///|
+/// Most patterns one entry's features may have, and most numbers in one; the
+/// rest draw solid.
+const MAX_FEATURE_DASHES : Int32 = 1024
+
+///|
+const MAX_FEATURE_DASH_PARTS : Int32 = 64
+
+///|
+/// No pattern: the line is drawn solid.
+const NO_DASH : Int32 = 0xffff
+
+///|
+/// A line layer's dash patterns by feature (MapLibre's `dashDependencies`): the
+/// distinct `patterns` and, per vertex, the pattern at the tile's zoom minus
+/// one, at it and plus one (four u16s, the last 0).
+priv struct Dashes {
+  patterns : Array[Array[Double]]
+  marks : Array[Int32]
+}
+
+///|
+fn Dashes::new() -> Dashes {
+  { patterns: [], marks: [], }
+}
+
+///|
+fn Dashes::clear(self : Dashes) -> Unit {
+  self.patterns.clear()
+  self.marks.clear()
+}
+
+///|
+/// The index of the pattern `e` gives `feature` at `zoom`, or `NO_DASH`.
+fn Dashes::index(
+  self : Dashes,
+  e : @style.Expr,
+  zoom : Double,
+  feature : FeatureRef,
+) -> Int32 {
+  guard e.eval(zoom, feature) is List(items) &&
+    items.length() <= MAX_FEATURE_DASH_PARTS else {
+    return NO_DASH
+  }
+  let pattern = []
+  for v in items {
+    guard v is Num(n) && n >= 0.0 && n < @double.infinity else {
+      return NO_DASH
+    }
+    pattern.push(n)
+  }
+  match self.patterns.search(pattern) {
+    Some(k) => k
+    None if self.patterns.length() < MAX_FEATURE_DASHES => {
+      self.patterns.push(pattern)
+      self.patterns.length() - 1
+    }
+    None => NO_DASH
+  }
+}
+
+///|
+/// Records `feature`'s patterns for its `n` vertices.
+fn Dashes::add(
+  self : Dashes,
+  e : @style.Expr,
+  zoom : Double,
+  feature : FeatureRef,
+  n : Int32,
+) -> Unit {
+  let lo = self.index(e, zoom - 1.0, feature)
+  let mid = self.index(e, zoom, feature)
+  let hi = self.index(e, zoom + 1.0, feature)
+  for _ in 0..<n {
+    self.marks.push(lo)
+    self.marks.push(mid)
+    self.marks.push(hi)
+    self.marks.push(0)
+  }
 }
 
 ///|

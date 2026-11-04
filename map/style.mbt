@@ -194,3 +194,13 @@ pub fn Map::reload_source(self : Map, id : String) -> Unit {
 pub fn Map::warnings(self : Map) -> Array[@style.StyleError] {
   self.style.warnings
 }
+
+///|
+/// A GeoJSON source's `clusterProperties` (JSON text) compiled for the GeoJSON worker
+/// (`@style.write_cluster_properties`); empty if they cannot be.
+pub fn compile_cluster_properties(text : String) -> Bytes {
+  let props = @style.compile_cluster_properties(parse_json(text)) catch {
+    _ => return b""
+  }
+  @style.write_cluster_properties(props)
+}

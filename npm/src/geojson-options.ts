@@ -24,9 +24,13 @@ export function loadOptions(spec: Record<string, unknown>) {
   return { maxzoom, buffer: num(spec.buffer, 128), tolerance: num(spec.tolerance, 0.375), lineMetrics: spec.lineMetrics === true, cluster };
 }
 
-/** Whether two specifications load the same: the same data (by identity) and options. */
+/** Whether two specifications load the same: the same data (by identity), options and cluster properties. */
 export function sameOptions(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-  return a.data === b.data && JSON.stringify(loadOptions(a)) === JSON.stringify(loadOptions(b));
+  return (
+    a.data === b.data &&
+    JSON.stringify(loadOptions(a)) === JSON.stringify(loadOptions(b)) &&
+    JSON.stringify(a.clusterProperties) === JSON.stringify(b.clusterProperties)
+  );
 }
 
 /**

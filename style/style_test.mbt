@@ -63,7 +63,7 @@ test "unsupported expressions are reported with their path, not ignored" {
   let cases = [
     (
       (
-        #|{"layers": [{"id": "a", "type": "line", "paint": {"line-width": ["accumulated"]}}]}
+        #|{"layers": [{"id": "a", "type": "line", "paint": {"line-width": ["properties"]}}]}
       ),
       "layers[0].paint.line-width",
     ),
@@ -241,8 +241,8 @@ test "GeoJSON sources keep MapLibre's options; their data stays outside" {
         "sources.g.cluster",
       ),
       (
-        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"cluster\": true, \"clusterProperties\": {}}}, \"layers\": []}",
-        "sources.g.clusterProperties",
+        "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"cluster\": true, \"clusterProperties\": {\"x\": 1}}}, \"layers\": []}",
+        "sources.g.clusterProperties.x",
       ),
       (
         "{\"sources\": {\"g\": {\"type\": \"geojson\", \"data\": {}, \"clusterRadius\": -1}}, \"layers\": []}",

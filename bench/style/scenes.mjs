@@ -62,6 +62,12 @@ function points(count) {
 }
 const CLUSTERED = { pts: { type: "geojson", data: points(3000), cluster: true, clusterRadius: 40, clusterMaxZoom: 14 } };
 const isCluster = ["has", "point_count"];
+// The same points with cluster properties: the sum of i, whether any is a multiple of 50, the smallest i.
+const CLUSTER_PROPERTIES = { pts: { ...CLUSTERED.pts, clusterProperties: {
+  total: ["+", ["get", "i"]],
+  round: ["any", ["==", ["%", ["get", "i"], 50], 0]],
+  first: [["min", ["accumulated"], ["get", "first"]], ["get", "i"]],
+} } };
 const POINTS = { pts: { type: "geojson", data: points(3000) } };
 // Lines winding across tile borders around Tokyo Station, for line metrics: a zigzag and a loop.
 const zigzag = (lat) => Array.from({ length: 13 }, (_, i) => [139.70 + i * 0.012, lat + (i % 2) * 0.012]);
@@ -115,6 +121,21 @@ export const SCENES = {
       ]),
       state: { buildingColor: { default: "#b48ccc" } },
     },
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // within in a filter and distance in per-vertex paint, on the features' geometry in their tiles.
+  "within-distance": {
+    style: style([
+      { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+        filter: ["within", { type: "Polygon", coordinates: [[[139.762, 35.678], [139.771, 35.677], [139.772, 35.685], [139.764, 35.684], [139.762, 35.678]]] }],
+        paint: { "fill-color": "#c98f5a" } },
+      { id: "road", type: "line", source: "gsi", "source-layer": "road",
+        paint: { "line-color": ["interpolate", ["linear"], ["distance", { type: "Point", coordinates: [139.7671, 35.6812] }], 0, "#d7191c", 800, "#2b83ba"],
+          "line-width": ["case", ["within", { type: "MultiPolygon", coordinates: [[[[139.762, 35.676], [139.768, 35.676], [139.768, 35.681], [139.762, 35.681], [139.762, 35.676]]], [[[139.769, 35.682], [139.774, 35.682], [139.774, 35.686], [139.769, 35.686], [139.769, 35.682]]]] }], 4, 1.5] } },
+      { id: "label", type: "circle", source: "gsi", "source-layer": "label",
+        paint: { "circle-radius": ["max", 2, ["-", 8, ["/", ["distance", { type: "LineString", coordinates: [[139.755, 35.67], [139.78, 35.69]] }], 100]]], "circle-color": "#333333" } },
+    ]),
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
   },
@@ -263,6 +284,20 @@ export const SCENES = {
     camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },
+  // Cluster properties reduced in the GeoJSON worker (its module with expressions) drawn as color and size.
+  "cluster-properties": {
+    style: style([
+      { id: "clusters", type: "circle", source: "pts", filter: isCluster,
+        paint: {
+          "circle-color": ["case", ["get", "round"], "#e7298a", ["<", ["get", "first"], 100], "#f1a340", "#51bbd6"],
+          "circle-radius": ["min", 20, ["+", 4, ["/", ["get", "total"], 4000]]],
+          "circle-stroke-color": "#ffffff", "circle-stroke-width": 1,
+        } },
+      { id: "single", type: "circle", source: "pts", filter: ["!", isCluster], paint: { "circle-color": "#11b4da", "circle-radius": 3 } },
+    ], CLUSTER_PROPERTIES),
+    camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
+    limits: { mean: 0.07, p99: 1 },
+  },
   // Dashes (MapLibre's line_sdf over the line atlas): a railway's white dashes over its casing, butt
   // and round dash ends, boundaries; at a fractional zoom the pattern is measured at the integer one.
   dashes: {
@@ -285,6 +320,19 @@ export const SCENES = {
         paint: { "line-color": ["match", ["get", "rdCtg"], [0, 1], "#e8a33b", "#9aa0a6"], "line-width": 3, "line-dasharray": [1, 1] } },
     ]),
     camera: { center: [139.7671, 35.6812], zoom: 16.6, bearing: 0, pitch: 0 },
+    limits: { mean: 0.05, p99: 1 },
+  },
+  // Dashes by feature (MapLibre's dasharray attributes): road classes, round ends, a pattern that
+  // fails (drawn solid by both), at a fractional zoom where edges are smoothed as zooming in.
+  "dashes-by-feature": {
+    style: style([
+      { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round" },
+        paint: { "line-color": "#c06030", "line-width": ["match", ["get", "rdCtg"], [0, 1], 3, 1.5],
+          "line-dasharray": ["match", ["get", "rdCtg"], 0, ["literal", [3, 2]], 1, ["literal", [1, 1.5]], 2, ["literal", [2, 1, 0.5, 1]], ["literal", [0.5, 2]]] } },
+      { id: "rail", type: "line", source: "gsi", "source-layer": "railway",
+        paint: { "line-color": "#333333", "line-width": 2.5, "line-dasharray": ["case", [">", ["to-number", ["get", "snglDbl"], 0], 1], ["literal", [4, 1]], ["literal", [1, 3]]] } },
+    ]),
+    camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
   expressions: {
@@ -414,6 +462,22 @@ export const SCENES = {
           "heatmap-opacity": 0.85,
         } },
     ], POINTS),
+    camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
+    limits: { mean: 0.5, p99: 5 },
+    gap: "GeoJSON tiles of extent 4096 (MapLibre's 8192) move points up to 1/16 px, about 1% of the density",
+  },
+  // Weights and radii from feature state (set on both maps before the shot, `states`), the rest at
+  // their defaults: drawn by group and state range.
+  "heatmap-state": {
+    style: style([
+      { id: "heat", type: "heatmap", source: "pts",
+        paint: {
+          "heatmap-weight": ["coalesce", ["feature-state", "w"], 0.3],
+          "heatmap-radius": ["coalesce", ["feature-state", "r"], 12],
+          "heatmap-opacity": 0.85,
+        } },
+    ], { pts: { ...POINTS.pts, promoteId: "i" } }),
+    states: Array.from({ length: 150 }, (_, k) => [{ source: "pts", id: k * 20 + 1 }, { w: 2, r: 30 }]),
     camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
     limits: { mean: 0.5, p99: 5 },
     gap: "GeoJSON tiles of extent 4096 (MapLibre's 8192) move points up to 1/16 px, about 1% of the density",

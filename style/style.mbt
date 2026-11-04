@@ -543,9 +543,6 @@ fn parse_layer(
   if layer.heatmap is Some(h) {
     others.push(h.weight)
     others.push(h.intensity)
-    if layer.radius.reads_state() || h.weight.reads_state() {
-      raise Unsupported(path=ppath, "feature-state in heatmap paint")
-    }
   }
   // And `heatmap-density` in `heatmap-color` only.
   if others.iter().any(e => e.reads_heatmap_density()) ||
@@ -564,6 +561,24 @@ fn parse_layer(
     layer.gradient.map_or(false, e => e.reads_elevation()) {
     raise Invalid(path~, "elevation is only allowed in color-relief-color")
   }
+  if layer.feature_dashes() is Some(_) && layer.paints_by_group() {
+    raise Unsupported(
+      path="\{ppath}.line-dasharray",
+      "data-driven dashes in layers drawn by groups",
+    )
+  }
+  // The main thread evaluates paint drawn by groups without the geometry.
+  if kind is (Symbol | FillExtrusion) || layer.paints_by_group() {
+    for key, j in paint {
+      if !(key is ("fill-extrusion-base" | "fill-extrusion-height")) &&
+        reads_geometry_json(j, 0) {
+        raise Unsupported(
+          path="\{ppath}.\{key}",
+          "within and distance in paint drawn by groups",
+        )
+      }
+    }
+  }
   if kind is ColorRelief {
     return Some({
       ..layer,
@@ -574,8 +589,20 @@ fn parse_layer(
 }
 
 ///|
-/// `line-dasharray`: an array of numbers, or an expression of zoom giving one
-/// (MapLibre's cross-faded property; data-driven dashes are not supported).
+/// Whether the expression `json` uses `within` or `distance` (`depth` bounds
+/// the walk as compiling does).
+fn reads_geometry_json(json : Json, depth : Int32) -> Bool {
+  match json {
+    Array([String("within" | "distance"), ..]) => true
+    Array(items) if depth <= MAX_EXPR_DEPTH =>
+      items.iter().any(j => reads_geometry_json(j, depth + 1))
+    _ => false
+  }
+}
+
+///|
+/// `line-dasharray`: an array of numbers, or an expression giving one (MapLibre's
+/// cross-faded property; feature-state is not supported).
 fn parse_dasharray(
   paint : Map[String, Json],
   path : String,
@@ -588,8 +615,8 @@ fn parse_dasharray(
     Some(j) => j
   }
   let e = compile(json, path~)
-  if data_driven(e) || e.reads_state() {
-    raise Unsupported(path~, "data-driven dashes")
+  if e.reads_state() {
+    raise Unsupported(path~, "feature-state in dashes")
   }
   Some(e)
 }

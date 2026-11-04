@@ -4,6 +4,7 @@
 import {
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/style",
+  "moonbitlang/core/double",
   "moonbitlang/core/json",
 }
 

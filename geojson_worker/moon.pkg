@@ -1,13 +1,9 @@
-// The GeoJSON worker's wasm-gc module: reads GeoJSON sources into tilers and
-// cuts their tiles as encoded columnar tiles (`@tiler.encode_tile`) for the
-// display worker. js/worker.mjs is its glue.
+// The GeoJSON worker's wasm-gc module: `@geojson_tiles` exported. js/worker.mjs is
+// its glue (and that of `geojson_props_worker`, the module with expressions).
 
 import {
-  "t-ujiie-g/mbmap/core",
-  "t-ujiie-g/mbmap/formats",
-  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/geojson_tiles",
   "t-ujiie-g/mbmap/wasmio",
-  "t-ujiie-g/mbmap/tiler",
 }
 
 supported_targets = "+wasm-gc"

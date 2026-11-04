@@ -63,7 +63,7 @@ const checks = {
       const missing = new Map({ container: div, style: "/bench/npm/pages/npm/missing.json" });
       const styleError = (await missing.once("error")).error.message;
       missing.remove();
-      const unsupported = { version: 8, sources: {}, layers: [{ id: "x", type: "line", paint: { "line-width": ["accumulated"] } }] };
+      const unsupported = { version: 8, sources: {}, layers: [{ id: "x", type: "line", paint: { "line-width": ["properties"] } }] };
       const lenient = new Map({ container: div, style: unsupported });
       const warned = (await lenient.once("warning")).warnings;
       lenient.remove();
@@ -106,8 +106,8 @@ const checks = {
       r.attribution === ATTRIBUTION &&
       r.canvas &&
       r.styleError === "mbmap: style: HTTP 404" &&
-      r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression accumulated" &&
-      JSON.stringify(r.warned) === JSON.stringify([{ path: "layers[0].paint.line-width", layer: "x", message: "expression accumulated" }]) &&
+      r.thrown === "mbmap: style: layers[0].paint.line-width: unsupported: expression properties" &&
+      JSON.stringify(r.warned) === JSON.stringify([{ path: "layers[0].paint.line-width", layer: "x", message: "expression properties" }]) &&
       r.lazy &&
       r.workerRefused.startsWith("mbmap: the worker must be a same-origin http(s) URL") &&
       r.leftovers === 0;
@@ -504,7 +504,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression accumulated|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|missing required method/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression properties|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|missing required method/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);

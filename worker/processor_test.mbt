@@ -362,6 +362,30 @@ test "property filters select features" {
 }
 
 ///|
+test "within and distance read the feature's geometry in the tile it is processed as" {
+  // A polygon over 0-10°E, 0-10°N and a line near the south-west corner of its tile.
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "in", "type": "line", "source": "a", "source-layer": "line",
+    #|   "filter": ["within", {"type": "Polygon", "coordinates": [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]}]},
+    #|  {"id": "near", "type": "line", "source": "a", "source-layer": "line",
+    #|   "filter": ["<", ["distance", {"type": "Point", "coordinates": [-170, 1]}], 1000000]}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let tile = tile_of([
+    tile_with("line", 2, [cmd(1, 1), 100, 4000, cmd(2, 1), 50, 0]),
+  ])
+  // Tile 1/1/0 holds 0-180°E, 0-85°N: the line is within, far from 170°W.
+  assert_true(p.process("a", tile[:], 1, x=1, y=0))
+  assert_eq(p.out.layer_count(), 1)
+  assert_eq(u32_at(p.out.to_bytes()[:], 4), 0)
+  // Tile 1/0/0 holds 180°W-0: the same line lies outside, near 170°W.
+  assert_true(p.process("a", tile[:], 1, x=0, y=0))
+  assert_eq(p.out.layer_count(), 1)
+  assert_eq(u32_at(p.out.to_bytes()[:], 4), 1)
+}
+
+///|
 test "circle layers pack one quad per point and share buffers like other kinds" {
   let style =
     #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
@@ -426,6 +450,28 @@ test "heatmap layers pack circle quads with their weights per vertex" {
   assert_eq(entry(0, 10), 4 * 4)
   let weight = Float::reinterpret_from_int(u32_at(b, entry(0, 9) + 12))
   assert_eq(weight.to_double(), 3.0)
+}
+
+///|
+test "heatmaps reading feature state go by group, with their features' ranges" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "heat", "type": "heatmap", "source": "a", "source-layer": "pts",
+    #|   "paint": {"heatmap-weight": ["coalesce", ["feature-state", "w"], ["get", "w"], 3]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let tile = tile_of([tile_with("pts", 1, [cmd(1, 2), 10, 20, 30, 40])])
+  assert_true(p.process("a", tile[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  // No paint per vertex: the group's properties (none read here) carry it.
+  assert_eq(p.out.layer_count(), 1)
+  assert_eq((entry(0, 1), entry(0, 10)), (@worker.KIND_CIRCLE, 0))
+  assert_eq(u32_at(b, entry(0, 7)), 0)
+  // The feature's range in the entry, for its state.
+  assert_eq(u32_at(p.feature_ranges()[:], 0), 1)
 }
 
 ///|
@@ -611,6 +657,43 @@ test "dashed lines pack their distances and share buffers only with dashed lines
   let d = entry(1, 13)
   let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
   assert_eq((u16(d), u16(d + 2), u16(d + 4), u16(d + 6)), (0, 0, 50, 50))
+}
+
+///|
+test "lines dashed by feature pack their patterns at the tile's zoom and either side" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "dash", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-dasharray": ["step", ["zoom"], ["literal", [1, 1]], 14, ["case", ["has", "k"], ["literal", [4, 4]], ["literal", [-1]]], 15, ["literal", [3]]]}},
+    #|  {"id": "plain", "type": "line", "source": "a", "source-layer": "line",
+    #|   "paint": {"line-dasharray": [2, 1]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  assert_true(p.process("a", sample_tile()[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  // Each keeps its own buffers; only the first has patterns.
+  assert_eq(p.out.layer_count(), 2)
+  assert_true(entry(0, 2) != entry(1, 2))
+  assert_eq(entry(1, 21), 0)
+  let at = entry(0, 21)
+  assert_eq((at % 8, entry(0, 22)), (0, 2))
+  let f64 = (o : Int32) => {
+    let lo = u32_at(b, o).to_uint64()
+    let hi = u32_at(b, o + 4).to_uint64()
+    (lo | (hi << 32)).reinterpret_as_double()
+  }
+  // [1, 1] at z13 and [3] at z15; [-1] is no pattern.
+  assert_eq([f64(at), f64(at + 8), f64(at + 16)], [2.0, 1.0, 1.0])
+  assert_eq([f64(at + 24), f64(at + 32)], [1.0, 3.0])
+  let marks = at + 40
+  let u16 = (o : Int32) => b[o].to_int() | (b[o + 1].to_int() << 8)
+  for v in 0..<4 {
+    let o = marks + v * 8
+    assert_eq((u16(o), u16(o + 2), u16(o + 4), u16(o + 6)), (0, 0xffff, 1, 0))
+  }
 }
 
 ///|
