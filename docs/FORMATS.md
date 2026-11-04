@@ -22,50 +22,54 @@ payload:
 
 What the display worker writes for a tile, read by `worker/js/worker.mjs`:
 
-- u32 entry count, then `LAYER_ENTRY_WORDS` u32s per entry: style layer index, kind
-  (`KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3 also for heatmaps, `KIND_EXTRUSION` 6),
-  vertex byte offset and length,
-  index byte offset, index count, bytes per index (2 up to 65536 vertices, else 4),
-  group properties byte offset and length (0 if none), per-vertex paint byte offset
-  and length (0 if none; an entry sharing another's geometry has its own), and for
-  fills the outline's index byte offset and count (pairs of vertex indices, one per
-  ring edge, in the entry's index size), and for dashed lines the byte offset and
-  count of their distances (u16 per vertex: the distance from the line's start in
-  `@core.TILE_EXTENT` units, MapLibre's `linesofar` halved, starting again from 0
-  past `@tess.MAX_LINE_DISTANCE`; shared with the geometry), and for gradient lines
-  the byte offset (8-aligned) and row count of their progress: per vertex an f32
-  share of its line's length and an f32 row, then per row its line's clip start and
-  end (f64s, MapLibre's `lineClips`; 0 and 1 without line metrics), then the
-  longest line in tiles (f64), and for offset lines the byte offset and vertex count
-  of their offset normals (two i8 per vertex, `@tess.EXTRUDE_SCALE` per unit:
-  MapLibre's `a_offset_normal`; shared with the geometry), and for circle layers with
-  a sort key the byte offset (8-aligned) and count of their runs of equal keys: per
-  run the key (f64), first index and index count (u32s), and for lines dashed by
-  feature (a data-driven `line-dasharray`) the byte offset (8-aligned) and count of
-  their patterns: per pattern its number count and numbers (f64s; at most 1024
-  patterns of 64 numbers), then per vertex four u16s, the patterns at the tile's
-  zoom minus one, at it and plus one (MapLibre's `dashDependencies`; 0xffff none,
-  drawn solid) and 0. Such entries never share geometry.
+- u32 entry count, then `LAYER_ENTRY_WORDS` (23) u32s per entry, the header sized for
+  the most entries the tile may have (`MAX_GROUPS` for a grouped layer). Kinds:
+  `KIND_FILL` 1, `KIND_LINE` 2, `KIND_CIRCLE` 3 (also heatmaps), `KIND_SYMBOL` 4
+  ("Labels"), `KIND_EXTRUSION` 6. An entry's words, by their `ENTRY_*` names
+  (`worker/js/worker.mjs` `unpack` names them in this order, and
+  `worker/js/mirror.test.mjs` checks it); a range left out is 0 and 0:
+
+  | word | `ENTRY_` | value |
+  |---|---|---|
+  | 0 | `LAYER` | style layer index |
+  | 1 | `KIND` | kind |
+  | 2, 3 | `VERTEX_OFFSET`, `VERTEX_BYTES` | vertex byte offset and length (padded to 4) |
+  | 4, 5 | `INDEX_OFFSET`, `INDEX_COUNT` | index byte offset and count |
+  | 6 | `INDEX_BYTES` | bytes per index: 2 up to 65536 vertices, else 4 |
+  | 7, 8 | `PROPS_OFFSET`, `PROPS_BYTES` | group properties' byte offset and length |
+  | 9, 10 | `PAINT_OFFSET`, `PAINT_BYTES` | per-vertex paint ("Vertex paint") byte offset and length; an entry sharing another's geometry has its own |
+  | 11, 12 | `OUTLINE_OFFSET`, `OUTLINE_COUNT` | fills: the outline's index byte offset and count (pairs of vertex indices, one per ring edge, in the entry's index size) |
+  | 13, 14 | `DISTANCES_OFFSET`, `DISTANCES_COUNT` | dashed lines: their distances, u16 per vertex, the distance from the line's start in `@core.TILE_EXTENT` units (MapLibre's `linesofar` halved, starting again from 0 past `@tess.MAX_LINE_DISTANCE`) |
+  | 15, 16 | `PROGRESS_OFFSET`, `PROGRESS_ROWS` | gradient lines (8-aligned): per vertex an f32 share of its line's length and an f32 row, then per row its line's clip start and end (f64s, MapLibre's `lineClips`; 0 and 1 without line metrics), then the longest line in tiles (f64) |
+  | 17, 18 | `OFFSETS_OFFSET`, `OFFSETS_COUNT` | offset lines: their offset normals per vertex, two i8 (`@tess.EXTRUDE_SCALE` per unit, MapLibre's `a_offset_normal`) |
+  | 19, 20 | `KEY_RUNS_OFFSET`, `KEY_RUNS_COUNT` | circles with a sort key (8-aligned): per run of equal keys the key (f64), first index and index count (u32s) |
+  | 21, 22 | `DASHES_OFFSET`, `DASHES_COUNT` | lines dashed by feature, a data-driven `line-dasharray` (8-aligned): per pattern its number count and numbers (f64s; at most 1024 patterns of 64 numbers), then per vertex four u16s, the patterns at the tile's zoom minus one, at it and plus one (MapLibre's `dashDependencies`; 0xffff none, drawn solid) and 0. Such entries never share geometry |
+
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
-  same data (layers with the same geometry). Fill vertices are x, y as i16
+  same data (layers with the same geometry): an alias copies every word of the entry
+  it shares but the paint's. Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
   along as i8 (`LINE_VERTEX_BYTES` 8). Extrusion vertices
   (`EXTRUSION_VERTEX_BYTES` 24) are x, y, normal x, y, z (times 2^14; x's lowest
   bit set on the top edge), the distance along the ring's walls (0 on roofs;
   MapLibre's `edgeDistance` halved), and the feature's centroid x, y as i16, then its
   base and height at the tile's zoom and one deeper as u16 decimeters (0 to
-  6553.5 m). Coordinates are in `@core.TILE_EXTENT` units.
+  6553.5 m). Coordinates are in `@core.TILE_EXTENT` units. A symbol entry's vertex
+  range holds its labels and it has no indices.
 - Group properties: u32 count, then per entry a key (UTF-8) and a property value.
   The geometry type goes under `$type` (`@core.GEOMETRY_TYPE_KEY`) and the feature
   id, when paint reads `["id"]`, under `$id` (`@style.FEATURE_ID_KEY`). The glue
   decodes them into prototype-less objects.
+- A tile is at most `MAX_PACKED_BYTES` (64 MiB); a bigger one is rejected.
 
 ## Vertex paint (`style/vertex_paint.mbt`, written by `worker/processor.mbt`)
 
 The data-driven paint of fill, line, circle and heatmap layers that do not read feature
 state, per vertex in the order of the layer's vertices: for each property of
-`@style.StyleLayer::vertex_paint` (slot order: color, opacity, width or radius, stroke
-color, stroke opacity, stroke width; a heatmap's weight takes the opacity slot), its value at each zoom stop of its top-level zoom
+`@style.StyleLayer::vertex_paint` (in the order of the `@style.SLOT_*` slots: color,
+opacity, width or radius, stroke color, stroke opacity, stroke width; a fill's outline
+color takes the stroke color slot, a line's gap width and offset the stroke opacity and
+width slots, a heatmap's weight the opacity slot and its radius the size slot), its value at each zoom stop of its top-level zoom
 curve (one value when it has none), each a u32 word: a color as RGBA bytes (red in the
 lowest byte, straight alpha), a number as a 32-bit float. Both sides derive the layout
 from the style, so the packed tile carries only the bytes; the renderer points each
@@ -166,14 +170,16 @@ places it for each frame like a single glyph at the anchor.
 A GeoJSON source's tile, from the GeoJSON worker to a display worker:
 
 - u32 counts: features F, rings R, points P, keys K;
-- F type bytes (1 points, 2 lines, 3 polygons), padded to 4;
+- F type bytes (`@core.GEOM_POINTS` 1, `GEOM_LINES` 2, `GEOM_POLYGONS` 3, MVT's
+  `GeomType` numbers), padded to 4;
 - F u32 feature ring ends, R u32 ring point ends (a points feature's points are
   one ring);
 - P x, y pairs as i16 (clamped), padded to 4;
 - K keys (UTF-8), then per key, per feature, a property value;
 - per feature, its id as a property value (absent without one).
 
-Only keys some feature of the tile has are written. A clustered source's tile has a
+Only keys some feature of the tile has are written; with line metrics
+`@tiler.CLIP_START` and `CLIP_END` come last (absent where a feature has none). A clustered source's tile has a
 feature per point or cluster; a cluster's id is its cluster id, and its properties
 are those of "Cluster features".
 
@@ -194,23 +200,23 @@ In:
 
 - `{type: "init", wasm, style, symbols, font}`: the wasm URL, the style ("Compiled
   style", a Uint8Array), whether it has symbol layers (the label code is then loaded
-  ahead of the first tile) and the CSS font family labels are drawn in. The wasm imports
+  ahead of the first tile) and the CSS font family labels are drawn in. The wasm is
+  instantiated with `{host, Math}`: the host's `Math` (`worker/host_math.mbt`) and
   `hostText`'s (`wasmio/js/host.mjs`) `host.text_char`, `text_number`,
   `number_text` and `text_code` for the expressions' `Number(string)` and
   `String(number)`, a UTF-16 code unit per call, and `host.intl(op, flags, x, y, z, la,
   lb)` for `Intl` (`number-format`, collators): its strings are the text, the first two
   `la` and `lb` code units long (`worker/linear_memory.mbt` `host_intl`).
-- `{type: "tile", id, url, source, z, x, y}`: fetch and process a vector tile (`source`
-  is the index in the style's sources; `x` and `y` place features for `within` and
-  `distance`, and every tile message carries them).
-- `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),
-  decode its pixels and send its slopes.
-- `{type: "tile", id, url, source, z, raster: true}`: fetch a raster tile and send
-  it as an ImageBitmap (premultiplied).
-- Any fetched tile may carry `init`, what the map's `transformRequest` gave: string
-  `headers` and a `credentials` mode (else none are sent). A `url` of the form
-  `pmtiles://<archive URL>/z/x/y` is read from that PMTiles archive with range
-  requests (`worker/js/pmtiles.mjs`).
+- `{type: "tile", id, url, init, source, z, x, y, dem, raster}`: fetch and process a
+  tile (`source` is the index in the style's sources; `x` and `y` place features for
+  `within` and `distance`; `source`, `z`, `x` and `y` must be integers). With neither
+  flag a vector tile; with `dem: true` a `raster-dem` tile (PNG), whose pixels are
+  decoded into slopes; with `raster: true` a raster tile, sent as an ImageBitmap
+  (premultiplied). `init` is what the map's `transformRequest` gave (never for a
+  `pmtiles://` URL): string `headers` and a `credentials` mode (else none are sent).
+  Other URLs must be http(s). A `url` of the form `pmtiles://<archive URL>/z/x/y` is
+  read from that PMTiles archive with range requests (`worker/js/pmtiles.mjs`, at most
+  16 archives open).
 - `{type: "tile", id, bytes, source, z, x, y}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
@@ -234,90 +240,120 @@ Out:
   are then made with the previous one). Messages without an integer `id` are ignored;
   after a failed init, tiles get `tile-error` and queries and ranges empty answers.
 - `{type: "tile", id, layers, glyphs, fonts}`: per entry `{entry, layer, kind, vertices,
-  indices, count, indexBytes, shared, props}` (`entry` its index in the packed tile;
-  symbol entries without labels are left out). Buffers are transferred, never copied;
-  `shared` is the position in `layers` of an earlier entry whose buffers it reuses (or -1); `props`
-  the group properties (or null). Line entries add `distances`, `progress`, `clips`
-  and `offsets`, circle entries `keyRuns` (Float64Array of key, first index, index
-  count per run) ("Packed tile"; null when absent). Symbol entries add `labels`, `codepoints`
-  (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`, and with icons
-  `icon` and `missing` ("Symbol vertices"). `glyphs` are the
+  indices, count, indexBytes, shared, props, paint}` (`entry` its index in the packed
+  tile; symbol entries with no label, icon or missing image are left out). Buffers are transferred,
+  never copied; `shared` is the position in `layers` of an earlier entry whose buffers
+  it reuses (or -1); `props` the group properties (or null); `paint` the entry's own
+  per-vertex paint (an ArrayBuffer, also over shared geometry). Then, from "Packed
+  tile" (null when absent): `outline` and `outlineCount` (the fill outline's indices),
+  `distances`, `progress` (8 bytes per vertex), `clips` (Float64Array of the rows'
+  clips, then the longest line) and `offsets`; `keyRuns` (Float64Array of key, first
+  index, index count per run); and for lines dashed by feature `dashPatterns` (an array
+  of number arrays) and `dashMarks` (four u16s per vertex). Symbol entries add
+  `labels`, `codepoints` (Uint32Array), `anchors`, `justify`, `allowOverlap`,
+  `ignorePlacement` and `padding`, `colors` with section colors, `lineLabels`,
+  `lines`, `glyphOffsets` and `keepUpright` along lines, and with icons `icon` and
+  `missing` ("Symbol vertices"). `glyphs` are the
   SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
   byte per pixel, TinySDF at 48 px with a 6 px buffer; `cp` a glyph key as in
   `codepoints`): each is sent once per worker, so the main thread takes them even
   from tiles it no longer wants. `fonts` are the worker's faces, "" first for the map's
-  own font; the main thread numbers them for its atlas.
+  own font; the main thread numbers them for its atlas. A tile the server does not
+  have (404, 204, or missing from a PMTiles archive) is `{type: "tile", id, layers: []}`.
 - `{type: "tile-error", id, message}`.
-- A raster tile's message has one entry `{entry: 0, layer: -1, kind: 7, image}`,
-  `image` an ImageBitmap (transferred) for every raster layer of the source.
+- A raster tile's message has one entry `{entry: 0, layer: -1, kind: 7, image}` (kind
+  `KIND_RASTER` of `map/tiles.mbt`), `image` an ImageBitmap (transferred) for every
+  raster layer of the source.
 - `{type: "ranges", id, entries}`: per packed entry with any of the ids,
-  `{entry, ranges}`, `ranges` holding (first index, index count, position in
-  `ids`) triples; none if the tile is gone.
+  `{entry, ranges}`, `ranges` holding (first index, index count, outline first index,
+  outline index count, position in `ids`) quintuples ("Feature ranges"); none if the
+  tile is gone.
 - `{type: "query", id, hits}`: the query's records ("Query result") as
   `{layer, index, distance, feature}`, `feature` a GeoJSON feature in
   longitude and latitude (@mapbox/vector-tile's `toGeoJSON`) with prototype-less
-  `properties`; no hits if the tile is gone or the request is refused.
+  `properties`; no hits if the tile is gone or the request is refused (an `error`
+  message says why it was refused).
 - A `raster-dem` tile's message has one entry `{layer: -1, kind: 5, image, edges,
-  elevations, size}`: `image` holds the slopes (`@raster.hillshade_slopes`, two
-  bytes per pixel of a `size` x `size` tile with a pixel of border, rows of
-  `size + 2`), `edges` (Float64Array) its border
+  elevations, size}` (kind `KIND_HILLSHADE` of `map/tiles.mbt`): `image` holds the
+  slopes (`@raster.hillshade_slopes`, two bytes per pixel of a `size` x `size` tile
+  with a pixel of border, rows of `size + 2`; `size` from 2 to 1024), `edges` (Float64Array, 8 × `size`) its border
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
   height in meters (no data as 0), for its hillshade layers and terrain.
 
-## Feature ranges (`worker/processor.mbt`, read by `worker/js/ranges.mjs`)
+## Feature ranges (`worker/ranges.mbt`, read by `worker/js/ranges.mjs`)
 
 What `feature_ranges` gives after `process_tile`, for the entries of layers whose
 paint reads the feature state (kept by the worker glue, never sent whole): u32
 entry count, then per entry u32 packed entry index, u32 feature count and per
-feature its id as a property value (the source's `promoteId` property, or the
-tile's id; null without one), u32 first index and u32 index count, then the same of
+feature its id as a property value (the source's `promoteId` property for the
+layer, or the tile's or GeoJSON id; a boolean as 0 or 1, null without one), u32 first index and u32 index count, then the same of
 its fill outline's indices (0 and 0 for other kinds).
 
-## Compiled style (`style/compiled.mbt`, written by `map`, read by `worker`)
+## Compiled style (`style/compiled_writer.mbt`, read by `style/compiled_reader.mbt`)
 
 The style as the main thread compiled it (`Style::to_compiled`), so display workers
-never parse JSON or compile expressions. Enumerations are a u8, their variants'
-index in declaration order (`LayerKind`, `SourceKind`, `TextAnchor`, ...); a flag
-is a u8 0 or 1; an optional item is a flag, then the item if 1.
+never parse JSON or compile expressions (`Style::from_compiled`). Tags and tables are in
+`style/compiled.mbt`. An enumeration is a u8, its index in its table there (`layer_kinds`,
+`source_kinds`, `placements`, `z_orders`, `fits`, `joins`, `caps`, `spaces`, `ops`,
+`cmp_ops`; `anchor_values` and `justify_values` in `style/anchor.mbt`), and a reader
+fails on an index past it; a flag is a u8 0 or 1; an optional item is a flag, then the
+item if 1; a list is a u32 count and its items; a pair or four sides are 2 or 4 f64.
 
-- Value: a "Property values" tag and payload (0 to 4), 6 a color (4 f64, straight
-  RGBA 0 to 1), 7 a list (u32 count, values), 8 `Failed` (also written for a formatted
-  text or a collator, which only expressions make).
+- Value: a "Property values" tag and payload (0 to 4), then `VALUE_COLOR` 6 a color
+  (4 f64, straight RGBA 0 to 1), `VALUE_LIST` 7 a list of values, `VALUE_FAILED` 8
+  `Failed` (also written for a formatted text or a collator, which only expressions
+  make).
 - Expected: u8 0 any, 1 color, 2 number, 3 boolean, 4 string, 5 array: its item
   Expected and u32 length (-1 any).
-- Expr: u8 tag, `Expr`'s variant index (24 `Within`, 25 `Distance` and 26
-  `Accumulated` come after `Collate`, 23), then its fields in order: values, UTF-8
-  keys, nested Exprs; `Within` is u32 polygon count, per polygon u32 ring count, per
-  ring u32 count and f64 longitude, latitude pairs (at least one); `Distance` u32 count
-  and per geometry u8 0 a point (two f64), 1 a line (as a ring), 2 a polygon (as
-  `Within`'s) or 3 another type; an array is u32 count and items, a stop f64 input and Expr,
-  a `match` arm its labels (values) and Expr, a `case` arm two Exprs;
-  `Interpolate` is u8 0 exponential (f64 base) or 1 cubic Bézier (4 f64), u8
-  color space, input and stops; `Compare`, `Collate` and `Call` lead with their operator's
-  u8, and a `Call` must have as many arguments as `compile` gives its operator (`Format`
-  five per section). An expression may have at most `MAX_EXPR_NODES` nodes (values
+- Expr: u8 tag, the `EXPR_*` constant of its variant: 0 `Lit`, 1 `Get`, 2 `Has`, 3 `Id`,
+  4 `GeometryType`, 5 `Zoom`, 6 `LineProgress`, 7 `HeatmapDensity`, 8 `Elevation`,
+  9 `Not`, 10 `All`, 11 `Any`, 12 `Compare`, 13 `In`, 14 `Match`, 15 `Case`,
+  16 `Coalesce`, 17 `Interpolate`, 18 `Step`, 19 `FeatureState`, 20 `Assert`,
+  21 `Coerce`, 22 `Call`, 23 `Collate`, 24 `Within`, 25 `Distance`, 26 `Accumulated`.
+  Then its fields in order: values, UTF-8 keys, nested Exprs; an Expr array is a list,
+  a stop f64 input and Expr, a `match` arm its labels (a list of values) and Expr, a
+  `case` arm two Exprs. `Interpolate` is u8 0 exponential (f64 base) or 1 cubic Bézier
+  (4 f64), u8 color space, input and stops (at least one); `Step` input, first output
+  and stops; `Assert` and `Coerce` an Expected and an Expr array; `Compare`, `Collate`
+  and `Call` lead with their operator's u8, and a `Call` must have as many arguments as
+  `compile` gives its operator (`Format` five per section). Coordinates are a list of
+  f64s (an even count, at least one longitude, latitude pair) and a polygon a list of
+  at least one ring of them: `Within` is a list of polygons; `Distance` a list of
+  geometries, each u8 0 a point (two f64), 1 a line (coordinates), 2 a polygon or 3
+  another type. A whole expression may have at most `MAX_EXPR_NODES` nodes (values
   included) and 4 × `MAX_EXPR_DEPTH` levels; a reader refuses more.
 - Source: UTF-8 id, u8 kind, u32 min zoom, max zoom, tile size, the DEM encoding
-  (u8 mapbox, terrarium, gsi, or 3 custom with 4 f64), u32 buffer, f64 tolerance,
-  `promoteId` (u8 0 feature id, 1 a property's UTF-8 name, 2 u32 count of source
-  layer and property UTF-8 pairs). Tile URLs, bounds and scheme stay on the main
-  thread.
+  (u8 0 mapbox, 1 terrarium, 2 gsi, or 3 custom with 4 f64), u32 buffer, f64
+  tolerance, `promoteId` (u8 0 feature id, 1 a property's UTF-8 name, 2 u32 count of
+  source layer and property UTF-8 pairs). Tile URLs, bounds and scheme stay on the
+  main thread.
 - Layer: UTF-8 id, u8 kind, UTF-8 source and source layer, f64 min and max zoom,
   optional filter, u32 `filter_id`; Exprs color, opacity, width, radius, stroke
-  width, color and opacity, halo color and width; optional text layout, icon
-  layout, icon paint (u32 5 and `IconPaint::exprs`), extrusion (height, base,
-  vertical-gradient flag) and heatmap paint (u32 3: weight, intensity, color);
-  u8 join and cap, f64 miter and round limits, antialias flag, optional outline
-  color, dash array, gradient and pattern; Exprs gap width, offset and blur, f64 x and
-  y translate (CSS px), flags translate-anchor viewport, circle pitch-scale map and
-  circle pitch-alignment map, optional sort key (`fill-`, `line-`, `circle-sort-key`). A text layout is `TextLayout`'s fields
-  in order (Expr arrays and pairs as above, the variable anchors as u32 count and
-  (u8 anchor, f64, f64)); an icon layout `IconLayout`'s without `layout`.
-  Hillshade, color relief and raster paint, terrain, sky and light are drawn on
-  the main thread and left out.
-- The style: u32 count and sources, u32 count and layers, nothing after.
+  width, stroke color, stroke opacity, halo color and halo width; optional text
+  layout, icon layout, icon paint (an Expr array of 5, `IconPaint::exprs`: color,
+  opacity, halo color, width and blur), extrusion (Exprs height and base, flag
+  vertical gradient) and heatmap paint (an Expr array of 3: weight, intensity,
+  color); u8 join and cap, f64 miter and round limits, flag antialias, optional
+  Exprs outline color, dash array, gradient and pattern; Exprs gap width, offset,
+  blur and translate (`*-translate`, as `@style.translate_at` reads it); flags
+  translate-anchor viewport, circle pitch-scale map and circle pitch-alignment map;
+  optional sort key (`fill-`, `line-`, `circle-sort-key`). Hillshade, color relief
+  and raster paint, terrain, sky and light are drawn on the main thread and left out.
+- Text layout (`TextLayout`): Expr array field, Expr size, u8 placement, f64 spacing
+  and max angle, flag keep upright, u8 anchor, pair offset, u8 justify, the variable
+  anchors (a list of u8 anchor and f64 offset x, y), `variable_stops` (a list of f64
+  zoom and such an anchor list), f64 max width and line height, Expr padding, flags
+  allow overlap, ignore placement and vertical, optional Exprs sort key and font, an
+  Expr array of 3 (letter spacing, transform, rotate), flag cooperative and u8 z order.
+- Icon layout (`IconLayout`, without its `layout` JSON): Expr array image, Exprs size
+  and rotate, u8 anchor, pair offset, Expr padding, flags allow overlap, ignore
+  placement, optional, text optional, rotate with map, pitch with map and keep
+  upright, u8 text fit, four sides text fit padding, flag cooperative.
+- The style: a list of sources, a list of layers, nothing after.
+- Query filters are one optional Expr (`write_expr`, `read_expr`).
 - Cluster properties (`write_cluster_properties`, written by `map` for the GeoJSON
-  worker): u32 count, then per key its UTF-8 name and its map and reduce Exprs.
+  worker, `read_cluster_properties`): a list of keys, each its UTF-8 name and its map
+  and reduce Exprs, nothing after.
 
 ## Query (`map/query.mbt`, read by `worker/query.mbt`)
 
@@ -350,15 +386,24 @@ a vector tile keeps its first place and last value, as a JS object does.
 In:
 
 - `{type: "init", wasm, propsWasm}`: the module, and the one with expressions
-  (`geojson_props_worker`) instantiated for the first source with cluster properties
-  (its imports add `hostText`'s, as the display worker's).
-- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties}`: `source` is a
-  number naming the source; `url` is fetched without credentials, `bytes` is the
-  GeoJSON as UTF-8; the options are MapLibre's GeoJSON source options in pixels.
+  (`geojson_props_worker`) instantiated for the first source with cluster properties.
+  Both import `Math` and `host.number` (`hostNumber`, for numbers past the reader's
+  fast path); the one with expressions adds `hostText`'s, as the display worker's.
+- `{type: "load", source, url, init | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties}`:
+  `source` is an integer naming the source; `url` (http(s)) is fetched with `init`,
+  what the map's `transformRequest` gave, checked as a tile's (string `headers` and a
+  `credentials` mode, else none are sent), up to `MAX_INPUT_BYTES` (256 MiB);
+  `bytes` is the GeoJSON as UTF-8 (an ArrayBuffer). The reader takes at most
+  `@formats.MAX_GEOJSON_POINTS` points, `MAX_GEOJSON_KEYS` keys,
+  `MAX_GEOJSON_CELLS` property cells (features times keys) and `MAX_GEOJSON_DEPTH`
+  levels of nesting. The options are MapLibre's GeoJSON source options in pixels,
+  in the style's ranges (`geojson_tiles/tiles.mbt` `load`; else the load fails):
+  `maxzoom` 0 to 24 (`@tiler.MAX_ZOOM`), `buffer` 0 to 512, `tolerance` 0 or more.
   With `lineMetrics` (a boolean) each line feature of a tile has `geojsonvt_clip_start`
   and `geojsonvt_clip_end` (`@tiler.CLIP_START`, `CLIP_END`).
   `cluster` is null, or `{maxZoom, radius, minPoints}` as MapLibre's GeoJSONSource
-  derives them (`npm/src/geojson.ts`); its tiles then hold points and clusters.
+  derives them (`npm/src/geojson.ts`; `maxZoom` and `minPoints` int32s, `maxZoom` at
+  most 30, `radius` finite and not negative); its tiles then hold points and clusters.
   `properties`, with `cluster`, is its `clusterProperties` as "Compiled style"'s
   cluster properties (a Uint8Array); such a source goes to the module with expressions.
   Loading a number again replaces its data once the earlier load has finished.
@@ -377,6 +422,10 @@ Out:
   points (from "Cluster features"); null if the source does not cluster. Or
   `{type: "cluster", id, error}` (no such cluster, source not loaded).
 
+The main thread's `map` asks for GeoJSON tiles through a provider (`map/dom.mbt`
+`Provider`, served by `npm/src/geojson.ts`): `(source id, z, x, y) =>
+Promise<ArrayBuffer | null>`.
+
 ## Cluster features (`tiler/encode.mbt`, read by `geojson_worker/js/features.mjs`)
 
 u32 feature count, then per feature: f64 longitude and latitude, its id as a
@@ -390,8 +439,9 @@ cluster properties' (reduced values) then `cluster`, `cluster_id`, `point_count`
 In:
 
 - `{type: "init", wasm, geometry, proj}`: the analysis, geometry and
-  coordinate system wasm URLs (the last two are fetched on their first use;
-  proj.wasm is instantiated with `{ Math }`).
+  coordinate system wasm URLs (the last two are fetched on their first use). The
+  analysis module imports `Math` and `host.number` (`hostNumber`), proj.wasm only
+  `Math`, the geometry module nothing.
 - `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments
   (no argument may be named `op`):
   - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8),
@@ -418,6 +468,15 @@ In:
     given, decoded into a FeatureCollection (`analysis_worker/js/table.mjs`);
   - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to`): the
     pairs in `to`, NaN where a point is out of the projection's reach.
+
+Out:
+
+- `{type: "result", id, value}`: `{dataset, features}` for `load` and the geometry
+  calls, a FeatureCollection for `toGeoJSON`, `{grid, width, height, bounds}` for
+  `loadDem` (`bounds` west, south, east, north of the tiles mosaicked), null for
+  `dispose`, a Uint8Array for `gridHillshade`, else a Float64Array or Int32Array
+  (transferred). `collect` gives count, numeric count and sum per polygon.
+- `{type: "result", id, error}`.
 
 Datasets cross to the coordinate system module (proj_worker) as their
 coordinates only: `coords_out(dataset)` writes them as f64 x, y pairs,
@@ -464,15 +523,3 @@ not given.
 | 26–28 | `x_0`, `y_0`, `k_0` (or `k`) |
 | 29 | `zone` |
 | 30–33 | `south`, `no_uoff` (or `no_off`), `no_rot`, `czech` (1 or 0) |
-
-Out:
-
-- `{type: "result", id, value}`: `{dataset, features}` for `load` and the geometry
-  calls, a FeatureCollection for `toGeoJSON`, `{grid, width,
-  height, bounds}` for `loadDem`, null for
-  `dispose`, else a Float64Array or Int32Array (transferred). `collect` gives
-  count, numeric count and sum per polygon.
-- `{type: "result", id, error}`.
-
-The main thread's `map` asks for GeoJSON tiles through a provider (`map/dom.mbt`
-`Provider`): `(source id, z, x, y) => Promise<ArrayBuffer | null>`.
