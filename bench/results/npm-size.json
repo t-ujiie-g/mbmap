@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 123940,
+      "bytes": 123945,
       "budget": 135000
     },
     {
@@ -76,7 +76,7 @@
     },
     {
       "name": "labels (loaded by the display worker with the first tile that has them)",
-      "bytes": 9561,
+      "bytes": 9582,
       "budget": 10000
     },
     {

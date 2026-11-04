@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSymbols, iconBox, iconCorners, LABEL_FLOATS, MAX_LABEL_CHARS, shapeIcon, SYMBOL_VERTEX_BYTES } from "./symbols.mjs";
+import { buildSymbols, iconBox, iconCorners, LABEL_FLOATS, MAX_LABEL_CHARS, OFFSET_UNITS, shapeIcon, SYMBOL_VERTEX_BYTES } from "./symbols.mjs";
 import { SDF_BUFFER, SDF_SIZE } from "./text.mjs";
 
 // A label's icon columns without an icon: no box, one layout, no indices.
 const NO_ICON = [0, 0, 0, 0, 1, 0, 0];
 
-// Every glyph a full em with ink, drawn by nothing (no OffscreenCanvas needed).
+// Every glyph a full em with ink, drawn by nothing (no OffscreenCanvas needed), centered on its
+// line by MapLibre's baseline (22/24 em below the line's top).
 const glyphs = {
-  metrics: () => ({ advance: SDF_SIZE, left: -SDF_BUFFER, top: SDF_SIZE * 0.88 + SDF_BUFFER, width: SDF_SIZE + 2 * SDF_BUFFER, height: SDF_SIZE + 2 * SDF_BUFFER }),
+  metrics: () => ({ advance: SDF_SIZE, left: -SDF_BUFFER, top: (SDF_SIZE * 22) / 24 + SDF_BUFFER, width: SDF_SIZE + 2 * SDF_BUFFER, height: SDF_SIZE + 2 * SDF_BUFFER }),
 };
 
 // A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
@@ -108,9 +109,10 @@ test("labels become glyph quads with their anchors, offsets, glyph indices and b
   assert.equal(s.count, 12);
   const v = new DataView(s.vertices);
   const vertex = (n) => [0, 2, 4, 6, 8, 10, 12].map((o) => (o < 8 ? v.getInt16 : v.getUint16).call(v, n * SYMBOL_VERTEX_BYTES + o, true));
-  // The second glyph's third corner: glyph 1, corner 2, size 10 px in 1/16 px.
-  const pad = Math.round(((SDF_BUFFER * 10) / SDF_SIZE) * 4);
-  assert.deepEqual(vertex(6), [100, 200, 40 + pad, 20 + pad, 1, 2, 160]);
+  // The second glyph's third corner (padded by the SDF buffer and an atlas pixel): glyph 1, corner 2,
+  // size 10 px in 1/16 px.
+  const pad = ((SDF_BUFFER + 1) * 10) / SDF_SIZE;
+  assert.deepEqual(vertex(6), [100, 200, Math.round((10 + pad) * OFFSET_UNITS), Math.round((5 + pad) * OFFSET_UNITS), 1, 2, 160]);
   assert.deepEqual([...new Uint16Array(s.indices)].slice(0, 6), [0, 1, 2, 0, 2, 3]);
 });
 
@@ -141,9 +143,9 @@ test("variable anchors: a multi-line label once per justification, a single line
   assert.equal(s.count, (9 + 2) * 6);
   // "c" starts the second line at the left, the middle and the right.
   const v = new DataView(s.vertices);
-  const left = (quad) => v.getInt16(quad * 4 * SYMBOL_VERTEX_BYTES + 4, true) / 4;
-  const pad = (SDF_BUFFER * 10) / SDF_SIZE;
-  assert.deepEqual([2, 5, 8].map(left), [-10 - pad, -5 - pad, 0 - pad]);
+  const left = (quad) => v.getInt16(quad * 4 * SYMBOL_VERTEX_BYTES + 4, true);
+  const pad = ((SDF_BUFFER + 1) * 10) / SDF_SIZE;
+  assert.deepEqual([2, 5, 8].map(left), [-10, -5, 0].map((x) => Math.round((x - pad) * OFFSET_UNITS)));
 });
 
 test("labels along lines: an instance per anchor and level, glyphs about their own middles", () => {
@@ -156,8 +158,8 @@ test("labels along lines: an instance per anchor and level, glyphs about their o
   assert.deepEqual([...s.lineLabels], [0, 0, 0, 2, 0, 10, 1, 0, 0, 2, 2, 10, 2, 0, 0, 2, 4, 10]);
   assert.deepEqual([...s.glyphOffsets], [-12, 12, -12, 12, -12, 12]);
   const v = new DataView(s.vertices);
-  const pad = Math.round(((SDF_BUFFER * 10) / SDF_SIZE) * 4);
-  assert.deepEqual([v.getInt16(0, true), v.getInt16(4, true), v.getInt16(SYMBOL_VERTEX_BYTES * 4 + 4, true)], [2025, -20 - pad, -20 - pad]);
+  const corner = Math.round((-5 - ((SDF_BUFFER + 1) * 10) / SDF_SIZE) * OFFSET_UNITS);
+  assert.deepEqual([v.getInt16(0, true), v.getInt16(4, true), v.getInt16(SYMBOL_VERTEX_BYTES * 4 + 4, true)], [2025, corner, corner]);
 });
 
 test("icons are shaped against their anchor and offset, padded and turned for collisions", () => {
@@ -214,8 +216,8 @@ test("text-transform, letter spacing and text-rotate shape the text as MapLibre'
   assert.deepEqual([...s.labels.slice(2, 6)].map((x) => Math.round(x * 1000) / 1000), [-5, -12.5, 5, 12.5]);
   const v = new DataView(s.vertices);
   // The first glyph's top-left corner (-12.5 - pad, -5 - pad px) turned to (5 + pad, -12.5 - pad).
-  const pad = (SDF_BUFFER * 10) / SDF_SIZE;
-  assert.deepEqual([4, 6].map((o) => v.getInt16(o, true)), [Math.round((5 + pad) * 4), Math.round((-12.5 - pad) * 4)]);
+  const pad = ((SDF_BUFFER + 1) * 10) / SDF_SIZE;
+  assert.deepEqual([4, 6].map((o) => v.getInt16(o, true)), [Math.round((5 + pad) * OFFSET_UNITS), Math.round((-12.5 - pad) * OFFSET_UNITS)]);
   const plain = buildSymbols(entry([[0, 0, 10, ["ab"], 0, [], null, { transform: 2, spacing: 0.5 }]]), glyphs);
   assert.deepEqual([...plain.labels.slice(2, 6)], [-12.5, -5, 12.5, 5]);
   // Joined scripts are never spaced apart.

@@ -2,7 +2,7 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り、#86）、16.3（並び順、#87）、16.5（文字）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り、#86）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置。
 - **次**（2026-11-04 にユーザーが決めた順）：
   1. 16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
 - **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` / `fill-translate` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
@@ -18,6 +18,22 @@
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## 点のラベルの字の位置（16.5 の残り、2026-11-04）
+
+状態：**完了**（ズームで変わる `*-translate` と縦書きの `text-rotate` は残した。下）。
+
+- **原因**：字の縦の位置。MapLibre の `getGlyphQuads` は、その場で描いたグリフ（`GlyphManager._createGlyph`：`top = glyphTop / 2 - 27.5`）の四角形を字形の上端から `GLYPH_PBF_BORDER + 1 = 4` 単位上に置くので、基線は整形の y から 27/24 em 下になる。`worker/js/text.mjs` は「em の 0.88 が基線より上」として 1.0883 em 下に置いていて、0.0367 em（13 px で 0.48 px）上にあった。横は合っていた（`leftAdjustment` 0.5 と四角形の余白がちょうど打ち消し合う）。`BASELINE` を MapLibre の数え方の 27/24 em にした（縦書きの列は変えていない）。
+- ほかに見つけて直したもの：
+  - 字の四隅を 1/4 px から 1/16 px で持つ（`OFFSET_UNITS`。MapLibre は 1/32 グリフ単位で、13 px なら 1/59 px）。範囲はアンカーから ±2048 px。
+  - グリフのアトラスに MapLibre の `GlyphAtlas` と同じく 1 px の余白を周りに置き、四角形はその余白まで覆う（`label.Atlas` の `GLYPH_PADDING`）。ぼかした縁取りが SDF の端で切れなくなる。
+  - `format` の `font-scale` を SDF の鋭さ（ガンマと縁取りの幅）に掛けない。MapLibre の symbol_sdf はラベルの大きさだけを使う（16.6 で掛けたのを戻した）。
+- **確認**（クラウドの SwiftShader）：`npm run style:golden` の点のラベル（mean / p99）：`text` 3.253 / 74 → 0.174 / 6、`text-thin-halo` 1.085 / 39 → 0.073 / 3、`text-format` 1.828 / 58 → 0.163 / 6、`text-2x` 2.948 / 106 → 0.175 / 6、`text-lines` 0.024 / 0 → 0.002 / 0。画像全体のずれは 1/32 px 刻みで 0 になった。残りは字ごとに ±0.05 px ほどのずれと濃さの差で、原因は分かっていない。限度を測った値のすぐ上（0.2 / 7 など）にし、`gap` を外した。`npm run labels:golden` は全場面一致（箱の差 0）。結果の JSON は Linux のフォントなので戻した。
+- **大きさ**（gzip -9）：表示（メイン）123,940 → 123,945 バイト、`worker-labels.js` 9,561 → 9,582 バイト（予算 10KB まで 418 バイト）、表示ワーカーは変わらない。
+- **残したもの**：
+  - ズームで変わる `*-translate`：値は `StyleLayer` の定数の組で、コンパイル済みの形でワーカーにも渡り（クエリの余白と当たり判定）、変えると style/・worker/ に触る。式（16.8）の作業と重なるので後に回した。
+  - `text-writing-mode` 縦と `text-variable-anchor`：`text-rotate` がなくても、縦書きに可変アンカーを組み合わせると MapLibre と箱が最大 48 px 違う（MapLibre は 2 列に折るのに mbmap は 1 列のままのラベルがある）。`labels:golden` の `same` は箱の差を見ないので、そういう場面を足すと一致のまま `boxDiff` が出る。+90° の扱いはこの後で（mbmap は列の形で箱を回すので、列の箱が MapLibre の縦の形を 90° 回したものと同じなら回し方は同じになる）。
+- **本線で測ってほしいもの**：`style:golden` の文字の場面（Mac の GPU で）。性能は変わらない見込み。
 
 ## Phase 16.5：文字（2026-11-04）
 

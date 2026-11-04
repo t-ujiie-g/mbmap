@@ -1,14 +1,15 @@
 ///|
-test "the atlas packs glyphs in shelves and keeps each glyph's place" {
-  let a = @label.Atlas::new(20, 10)
-  assert_eq(a.place(1, 8, 4), Some((0, 0)))
-  assert_eq(a.place(2, 8, 4), Some((9, 0)))
+test "the atlas packs glyphs in shelves, padded, and keeps each glyph's place" {
+  let a = @label.Atlas::new(20, 12)
+  // Bitmaps go a pixel inside their rectangles.
+  assert_eq(a.place(1, 8, 4), Some((1, 1)))
+  assert_eq(a.place(2, 8, 4), Some((11, 1)))
   // Too wide for the first shelf: a new one below it.
-  assert_eq(a.place(3, 8, 3), Some((0, 5)))
+  assert_eq(a.place(3, 8, 3), Some((1, 7)))
   assert_eq(a.place(1, 8, 4), None)
-  assert_eq(a.rect(2), Some((9, 0, 8, 4)))
+  assert_eq(a.rect(2), Some((10, 0, 10, 6)))
   // A short glyph takes the shortest shelf it fits.
-  assert_eq(a.place(4, 2, 2), Some((9, 5)))
+  assert_eq(a.place(4, 2, 2), Some((11, 7)))
   assert_eq(a.place(5, 8, 8), None)
   assert_eq(a.place(6, 0, 3), None)
   assert_eq(a.rect(5), None)
