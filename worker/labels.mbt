@@ -53,13 +53,16 @@ fn Labels::bytes(
   self : Labels,
   t : @style.TextLayout,
   icon : @style.IconLayout?,
+  zoom : Double,
+  feature : FeatureRef,
 ) -> Bytes {
   let h = @core.ByteWriter::new()
   h.u8(t.anchor.code())
   h.u8(if t.allow_overlap { 1 } else { 0 })
   h.u8(if t.ignore_placement { 1 } else { 0 })
   h.u8(if t.vertical { 1 } else { 0 })
-  for v in [t.offset.0, t.offset.1, t.max_width, t.line_height, t.padding] {
+  let padding = number_or(t.padding, zoom, feature, 2.0)
+  for v in [t.offset.0, t.offset.1, t.max_width, t.line_height, padding] {
     h.f64(v)
   }
   h.u8(
@@ -70,9 +73,10 @@ fn Labels::bytes(
       Right => 3
     },
   )
-  let tries = @cmp.minimum(t.variable.length(), 255)
+  let variable = t.variable_at(zoom)
+  let tries = @cmp.minimum(variable.length(), 255)
   h.u8(tries)
-  for v in t.variable[:tries] {
+  for v in variable[:tries] {
     h.u8(v.0.code())
     h.f64(v.1)
     h.f64(v.2)
@@ -111,7 +115,7 @@ fn Labels::bytes(
         Both => 3
       },
     )
-    let (pt, pr, pb, pl) = i.padding
+    let (pt, pr, pb, pl) = @style.padding_at(i.padding, zoom, feature)
     let (ft, fr, fb, fl) = i.text_fit_padding
     for v in [i.offset.0, i.offset.1, pt, pr, pb, pl, ft, fr, fb, fl] {
       h.f64(v)
@@ -405,7 +409,7 @@ fn TileProcessor::symbol_layer(
   for g in 0..<groups.count() {
     let l = self.labels(g)
     if l.count > 0 {
-      if !self.out.add_labels(index, l.bytes(text, sl.icon)) {
+      if !self.out.add_labels(index, l.bytes(text, sl.icon, zoom, feature)) {
         return false
       }
       if groups.active {

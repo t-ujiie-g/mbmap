@@ -3,7 +3,7 @@
     "maplibre": "6.16.0",
     "browser": "chromium",
     "viewport": "800x600",
-    "tiles": "openfreemap 20261101_080013_pt"
+    "tiles": "openfreemap 20261101_080013_pt, protomaps 20261103"
   },
   "results": [
     {
@@ -146,6 +146,106 @@
       "ok": true,
       "mean": 0.006,
       "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-light-tokyo",
+      "ok": true,
+      "mean": 0.012,
+      "p99": 1,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-light-turned",
+      "ok": true,
+      "mean": 0.006,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-dark-tokyo",
+      "ok": true,
+      "mean": 0.022,
+      "p99": 1,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-dark-turned",
+      "ok": true,
+      "mean": 0.011,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-white-tokyo",
+      "ok": true,
+      "mean": 0.007,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-white-turned",
+      "ok": true,
+      "mean": 0.004,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-grayscale-tokyo",
+      "ok": true,
+      "mean": 0.01,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-grayscale-turned",
+      "ok": true,
+      "mean": 0.005,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-black-tokyo",
+      "ok": true,
+      "mean": 0.051,
+      "p99": 1,
+      "limits": {
+        "mean": 0.06,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "protomaps-black-turned",
+      "ok": true,
+      "mean": 0.025,
+      "p99": 1,
       "limits": {
         "mean": 0.05,
         "p99": 1

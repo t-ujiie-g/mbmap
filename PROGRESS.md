@@ -2,23 +2,49 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（下の節）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 16.8 の Protomaps（下の節）。
-- **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
+  1. Phase 16 の完了の判定（`style:compat` の警告の残り 28 件を段階案の外として残すか）と、Phase 16 で足したもののリファクタリング・セキュリティチェック（AGENTS §7、§8）。
+- **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 127.0KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 80.1KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 127.7KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 80.6KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 1.7KB ＋ ワーカー 29.1KB（`clusterProperties` のあるソースは式を持つワーカー 48.9KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16.8：公開スタイルの突き合わせ（Protomaps）（2026-11-04）
+
+状態：**完了**。
+
+- **依存**：`@protomaps/basemaps` 5.7.2（bench の devDependency、exact。配布物には入らない）。BSD-3-Clause、The Protomaps Authors（protomaps/basemaps）。依存なし、install スクリプトなし、`npm audit` 0 件。スタイルを `layers("protomaps", namedFlavor(f), { lang: "ja" })` で作る（公式の作り方。JSON を写すより版がはっきりする）。NOTICE に書いた。
+- **フィクスチャ**（`bench/fixtures/protomaps`、35 タイル、約 4MB）：Protomaps の日ごとのビルド `20261103.pmtiles` から、`pmtiles`（bench に既にある 4.5.0）の範囲リクエストで GSI と同じ z14 の 7×5 を取り、manifest の sha256 で固定。日ごとのビルドはしばらくで消えるので、取れない組があってもほかの組は続けて取る（`fetch-tiles.mjs`）。クラウドのネットワークに `build.protomaps.com` を足した（docs/CLOUD.md、AGENTS §9）。
+- **`npm run style:public`** に 5 つの flavor（light、dark、white、grayscale、black）× 2 カメラ（z15、z14.6・25°）を足した。記号レイヤーは外す（OpenMapTiles 系と同じ）。結果（クラウドの SwiftShader、平均 / p99）：
+
+  | flavor | z15 | z14.6・25° |
+  |---|---|---|
+  | light | 0.012 / 1 | 0.006 / 0 |
+  | dark | 0.022 / 1 | 0.011 / 0 |
+  | white | 0.007 / 0 | 0.004 / 0 |
+  | grayscale | 0.01 / 0 | 0.005 / 0 |
+  | black | 0.051 / 1 | 0.025 / 1 |
+
+  black の z15 だけ限度を 0.06 にした（暗い地に細い道の縁の差が目立つ）。
+- **見つけて直したもの**（`style:compat` で Protomaps のスタイルは拒まれていた）：
+  - `text-variable-anchor` の式（`places_locality` の `["step", ["zoom"], ["literal", [...]], 8, ["literal", ["center"]]]`）が「not an anchor」で不正扱いになり、スタイルごと拒まれていた。ズームの `step` で `literal` の組を返すものは読む（`TextLayout.variable_stops`、`variable_at`）。ほかの式は `Unsupported`。
+  - ズームで変わる `text-padding` と `icon-padding`（一つの数）：式として持ち、ワーカーがタイルのズームで評価する（MapLibre もレイアウトはタイルのズームで評価する）。地物で変わる式は `Unsupported`。
+  - `labels:golden` に場面 `zoom-layout`（3 つともズームで変わる。z14.6 で、z14 と z15 で値が違うよう段を置いた）を足し、MapLibre と一致（101 ラベル、箱の差 0）。全 56 場面一致。
+- `style:compat`：Protomaps light の警告は 1（`roads_shields` の線に沿った `text-rotation-alignment: viewport`。段階案の外）。
+- **MapLibre との違い**：ソースの maxzoom を超えて拡大したタイル（z15 以上で z14 のタイル）では、MapLibre はタイルを読み直してそのズームでレイアウトを評価するが、mbmap は z14 で評価する（`text-size` などほかのレイアウトと同じ）。
+- **大きさ**（gzip -9）：表示（メイン）127,003 → 127,695 バイト（+692：アンカーの段と余白の式の読み取りと書き出し）、表示ワーカー 80,114 → 80,559 バイト（+445：余白の評価、段の読み取り）。
+- **本線で測ってほしいもの**：`style:public`（Protomaps を含めて）と `labels:golden` を M2 の GPU とフォントで。
 
 ## Phase 16.6 の残り（2026-11-04）
 
@@ -48,7 +74,7 @@
 
 ## Phase 16.8：公開スタイルの突き合わせ（OpenMapTiles 系）（2026-11-04）
 
-状態：**OpenMapTiles 系の 7 本は完了**。Protomaps は次の段（`@protomaps/basemaps` でスタイルを作るので、依存を足す確認から）。
+状態：**OpenMapTiles 系の 7 本は完了**。Protomaps は上の節。
 
 - **`npm run style:public`**（`bench/style/public.mjs`）：OpenMapTiles スキーマの公開スタイル 7 本（osm-bright、positron、dark-matter、maptiler-basic、ofm-liberty、ofm-bright、ofm-positron）を、OpenFreeMap のタイル（ビルド `20261101_080013_pt`、GSI と同じ東京駅周辺の z14 7×5、約 20MB）と各スタイルのスプライトで、mbmap と MapLibre 6.16 に描かせて画素で比べる。ラベルは `labels:golden` の担当なので記号レイヤーは外し、低ズームの陰影のラスタ（`ne2_shaded`）も外す。カメラは z15（回転なし）と z14.6（25° 回転）。フィクスチャは manifest の sha256 で固定（`ofm-planet`、`sprites`。`npm run fixtures` が取る）。比べる部分は `bench/style/compare.mjs` に切り出し、`style:golden` と共通にした。
 - **見つけて直したもの**：
