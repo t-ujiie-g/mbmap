@@ -54,6 +54,8 @@ pub fn polygon_hits_polygons(Array[(Double, Double)], Array[Array[(Double, Doubl
 
 pub fn read_json_number(BytesView, Int32, (Int32, Int32) -> Double) -> (Double, Int32)
 
+pub fn stable_order(ArrayView[Double]) -> FixedArray[Int32]
+
 pub fn strconv_number(BytesView) -> Double
 
 pub fn tile_containing(MercatorCoord, Int32) -> TileId?

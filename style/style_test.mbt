@@ -669,3 +669,58 @@ test "translations, anchors, alignments and data-driven blur are checked" {
     assert_eq(got, (kind, where_))
   }
 }
+
+///|
+test "fills, lines and circles read their sort keys; symbols their z-order" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "f", "type": "fill", "layout": {"fill-sort-key": ["get", "k"]}},
+      #|  {"id": "l", "type": "line", "layout": {"line-sort-key": 2}},
+      #|  {"id": "c", "type": "circle", "layout": {"circle-sort-key": ["get", "k"]}},
+      #|  {"id": "b", "type": "background"},
+      #|  {"id": "s", "type": "symbol", "layout": {"symbol-sort-key": 1, "symbol-z-order": "source",
+      #|   "symbol-avoid-edges": true}},
+      #|  {"id": "y", "type": "symbol", "layout": {"symbol-sort-key": 1, "symbol-z-order": "viewport-y"}},
+      #|  {"id": "a", "type": "symbol"}]}
+    ),
+  )
+  assert_eq(s.layers[0].sort_key, Some(Assert(NumberType, [Get("k")])))
+  assert_eq(s.layers[1].sort_key, Some(Lit(Num(2.0))))
+  assert_true(s.layers[2].sort_key is Some(_))
+  assert_eq(s.layers[3].sort_key, None)
+  let text = (i : Int32) => s.layers[i].text.unwrap()
+  assert_eq((text(4).z_order, text(4).sort_key), (Source, Some(Lit(Num(1.0)))))
+  // MapLibre does not sort a `viewport-y` layer by key.
+  assert_eq((text(5).z_order, text(5).sort_key), (ViewportY, None))
+  assert_eq(text(6).z_order, Auto)
+}
+
+///|
+test "z-orders, avoid-edges and sort keys reading feature state are checked" {
+  let cases = [
+    (
+      "{\"type\": \"symbol\", \"layout\": {\"symbol-z-order\": \"up\"}}", "Invalid",
+      "layers[0].layout.symbol-z-order",
+    ),
+    (
+      "{\"type\": \"symbol\", \"layout\": {\"symbol-avoid-edges\": 1}}", "Invalid",
+      "layers[0].layout.symbol-avoid-edges",
+    ),
+    (
+      "{\"type\": \"line\", \"layout\": {\"line-sort-key\": [\"feature-state\", \"k\"]}}",
+      "Invalid", "layers[0].layout.line-sort-key",
+    ),
+  ]
+  for c in cases {
+    let (layer, kind, where_) = c
+    let got = try {
+      @style.Style::parse("{\"layers\": [\{layer}]}") |> ignore
+      ("none", "")
+    } catch {
+      Invalid(path~, _) => ("Invalid", path)
+      Unsupported(path~, _) => ("Unsupported", path)
+    }
+    assert_eq(got, (kind, where_))
+  }
+}

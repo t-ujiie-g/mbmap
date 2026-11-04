@@ -83,6 +83,7 @@ pub struct StyleLayer {
   translate_viewport : Bool
   scale_with_map : Bool
   pitch_with_map : Bool
+  sort_key : Expr?
 }
 
 ///|
@@ -490,6 +491,20 @@ fn parse_layer(
     translate_viewport,
     scale_with_map: kind is Circle &&
     alignment(paint, "circle-pitch-scale", ppath) == "map",
+    sort_key: match (kind, layout.get("\{prefix}-sort-key")) {
+      (Fill | Line | Circle, Some(j)) => {
+        let path = "\{lpath}.\{prefix}-sort-key"
+        let e = compile(j, expected=NumberType, path~)
+        if e.reads_state() {
+          raise Invalid(
+            path~,
+            "feature-state is only allowed in paint properties",
+          )
+        }
+        Some(e)
+      }
+      _ => None
+    },
     pitch_with_map: kind is Circle &&
     alignment(paint, "circle-pitch-alignment", ppath, default="viewport") ==
     "map",
@@ -509,7 +524,7 @@ fn parse_layer(
     layer.offset,
     layer.blur,
   ]
-  for e in [layer.filter, layer.dasharray, layer.outline_color] {
+  for e in [layer.filter, layer.dasharray, layer.outline_color, layer.sort_key] {
     if e is Some(e) {
       others.push(e)
     }

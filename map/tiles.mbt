@@ -331,6 +331,11 @@ fn Map::on_message(self : Map, msg : JsValue) -> Unit {
           } else {
             None
           },
+          key_runs: if is_null_value(key_runs_of_layer(l)) {
+            None
+          } else {
+            Some(f64_array(buffer_of(l, "keyRuns")))
+          },
           gradient: None,
           dem: if kind == KIND_HILLSHADE {
             let heights = buffer_of(l, "elevations")

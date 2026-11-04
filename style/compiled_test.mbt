@@ -25,7 +25,7 @@ let compiled_style : String =
   #|    "paint": {"line-gradient": ["interpolate-lab", ["linear"], ["line-progress"], 0, "red", 1, "blue"]}},
   #|   {"id": "pat", "type": "fill", "source": "v", "source-layer": "water",
   #|    "paint": {"fill-pattern": ["concat", "p-", ["to-string", ["get", "k"]]]}},
-  #|   {"id": "c", "type": "circle", "source": "g",
+  #|   {"id": "c", "type": "circle", "source": "g", "layout": {"circle-sort-key": ["get", "r"]},
   #|    "paint": {"circle-radius": ["+", 1, ["*", 2, ["sqrt", ["abs", ["number", ["get", "r"], 4]]]]],
   #|              "circle-color": ["to-color", ["get", "col"], "black"],
   #|              "circle-stroke-width": ["max", 1, ["round", ["/", ["zoom"], 3]]],
@@ -43,7 +43,8 @@ let compiled_style : String =
   #|               "symbol-placement": "line", "symbol-spacing": 120, "text-max-angle": 30,
   #|               "text-keep-upright": false,
   #|               "text-justify": "right", "text-max-width": 7, "text-line-height": 1.5, "text-padding": 3,
-  #|               "text-allow-overlap": true, "text-ignore-placement": true, "symbol-sort-key": ["get", "rank"]},
+  #|               "text-allow-overlap": true, "text-ignore-placement": true, "symbol-sort-key": ["get", "rank"],
+  #|               "symbol-z-order": "source"},
   #|    "paint": {"text-color": "#333", "text-halo-color": "white", "text-halo-width": 1.5}},
   #|   {"id": "i", "type": "symbol", "source": "g",
   #|    "layout": {"text-field": "{k}", "text-variable-anchor": ["top", "bottom-right"], "text-writing-mode": ["vertical"],
@@ -127,6 +128,7 @@ test "a compiled style reads back as the layers and sources workers use" {
       (b.scale_with_map, b.pitch_with_map),
       (a.scale_with_map, a.pitch_with_map),
     )
+    assert_eq(b.sort_key, a.sort_key)
     assert_true(b.same_line_layout(a))
     assert_eq(b.reads_state(), a.reads_state())
     assert_eq(b.paints_by_group(), a.paints_by_group())

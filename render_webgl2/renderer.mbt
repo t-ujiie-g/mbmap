@@ -374,7 +374,7 @@ pub fn Renderer::upload_symbols(
 ///|
 /// Shows the labels of a symbol mesh whose flag is set, each in its layout
 /// `variant`: label `i` owns as many layouts as `labels[i * stride + col]`, each
-/// of the index count two floats after, from the index between.
+/// of the index count two floats after, from the index between; in `order`, if given.
 pub fn Renderer::show(
   self : Renderer,
   mesh : Mesh,
@@ -383,8 +383,9 @@ pub fn Renderer::show(
   shown : FixedArray[Bool],
   variant : FixedArray[Int32],
   col~ : Int32,
+  order~ : FixedArray[Int32] = [],
 ) -> Unit {
-  gl_show(self.gl, mesh, labels, stride, col, shown, variant)
+  gl_show(self.gl, mesh, labels, stride, col, shown, variant, order)
 }
 
 ///|

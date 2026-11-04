@@ -19,6 +19,8 @@ pub struct TileProcessor {
   priv inputs : Array[(Array[String], Bool)]
   priv vertex_paint : Array[Array[@style.VertexPaint]]
   priv runs : Array[Int32]
+  priv keys : Array[Double]
+  priv key_runs : Array[(Double, Int32)]
   priv text_number : (String) -> Double
   priv number_text : (Double) -> String
   priv intl : @style.Intl
@@ -59,6 +61,8 @@ pub fn TileProcessor::new(
     }),
     vertex_paint: style.layers.map(l => l.vertex_paint()),
     runs: [],
+    keys: [],
+    key_runs: [],
     text_number,
     number_text,
     intl,
@@ -154,7 +158,7 @@ fn passes(filter : @style.Expr?, feature : FeatureRef, zoom : Double) -> Bool {
 ///|
 /// Whether two layers produce identical buffers. Line extrusion is stored in
 /// half widths, so layers that differ only in paint (like a road and its
-/// casing) share one.
+/// casing) share one; layers sorted by a key keep their own.
 fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   // Extrusions carry their heights in their vertices.
   !(a.kind is (Symbol | FillExtrusion)) &&
@@ -162,7 +166,30 @@ fn same_geometry(a : @style.StyleLayer, b : @style.StyleLayer) -> Bool {
   a.source == b.source &&
   a.source_layer == b.source_layer &&
   a.filter_id == b.filter_id &&
+  a.sort_key is None &&
+  b.sort_key is None &&
   (a.kind is (Fill | Circle | Heatmap) || a.same_line_layout(b))
+}
+
+///|
+/// The order `sl` takes `layer`'s features in: by its sort key (evaluated at
+/// `zoom`), ties in tile order, as MapLibre's buckets sort them; None for tile
+/// order. `keys` gets each feature's key.
+fn TileProcessor::feature_order(
+  self : TileProcessor,
+  sl : @style.StyleLayer,
+  layer : Features,
+  zoom : Double,
+  keys : Array[Double],
+) -> FixedArray[Int32]? {
+  guard sl.sort_key is Some(e) else { return None }
+  let feature = self.feature_ref(layer)
+  keys.clear()
+  for i in 0..<layer.length() {
+    feature.index = i
+    keys.push(number_at(e, zoom, feature))
+  }
+  Some(@core.stable_order(keys[:]))
 }
 
 ///|
@@ -323,8 +350,10 @@ fn TileProcessor::fill_layer(
   for b in self.fill_pool {
     b.clear()
   }
+  let order = self.feature_order(sl, layer, zoom, self.keys)
   let feature = self.feature_ref(layer)
-  for i in 0..<layer.length() {
+  for k in 0..<layer.length() {
+    let i = order.map_or(k, o => o[k])
     feature.index = i
     // As MapLibre's fill bucket: lines are filled as rings too.
     if layer.geom_type(i) is (Polygon | LineString) &&
@@ -458,8 +487,14 @@ fn TileProcessor::circle_layer(
   for b in self.line_pool {
     b.clear()
   }
+  let order = self.feature_order(sl, layer, zoom, self.keys)
+  // Runs of equal sort keys (key, first index, count), drawn across tiles in
+  // key order as MapLibre's segments are.
+  let runs = self.key_runs
+  runs.clear()
   let feature = self.feature_ref(layer)
-  for i in 0..<layer.length() {
+  for k in 0..<layer.length() {
+    let i = order.map_or(k, o => o[k])
     feature.index = i
     // As MapLibre's circle bucket: a circle at every vertex of any geometry.
     if !(layer.geom_type(i) is Unknown) && passes(sl.filter, feature, zoom) {
@@ -470,6 +505,13 @@ fn TileProcessor::circle_layer(
       let group = groups.of(feature)
       let out = self.line_buffers(group)
       let first = out.indices.length()
+      if order is Some(_) && !groups.active {
+        let key = self.keys[i]
+        match runs.last() {
+          Some(r) if r.0 == key => ()
+          _ => runs.push((key, first))
+        }
+      }
       let v0 = out.num_vertices()
       @tess.add_points(
         g.coords[:g.num_points() * 2],
@@ -485,6 +527,7 @@ fn TileProcessor::circle_layer(
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
       if !self.out.add_circles(index, b, extent=layer.extent()) ||
+        !self.out.put_key_runs(runs, b.indices.length()) ||
         !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }

@@ -468,6 +468,7 @@ pub struct StyleLayer {
   translate_viewport : Bool
   scale_with_map : Bool
   pitch_with_map : Bool
+  sort_key : Expr?
 }
 pub fn StyleLayer::line_distances(Self) -> Bool
 pub fn StyleLayer::line_offsets(Self) -> Bool
@@ -485,6 +486,15 @@ pub(all) enum SymbolPlacement {
 pub fn SymbolPlacement::equal(Self, Self) -> Bool
 pub fn SymbolPlacement::not_equal(Self, Self) -> Bool
 pub fn SymbolPlacement::to_repr(Self) -> @debug.Repr
+
+pub(all) enum SymbolZOrder {
+  Auto
+  ViewportY
+  Source
+} derive(Eq, @debug.Debug)
+pub fn SymbolZOrder::equal(Self, Self) -> Bool
+pub fn SymbolZOrder::not_equal(Self, Self) -> Bool
+pub fn SymbolZOrder::to_repr(Self) -> @debug.Repr
 
 pub struct Terrain {
   source : String
@@ -537,6 +547,7 @@ pub struct TextLayout {
   ignore_placement : Bool
   vertical : Bool
   sort_key : Expr?
+  z_order : SymbolZOrder
 } derive(Eq)
 pub fn TextLayout::equal(Self, Self) -> Bool
 pub fn TextLayout::not_equal(Self, Self) -> Bool
