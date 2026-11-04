@@ -40,7 +40,12 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   of their offset normals (two i8 per vertex, `@tess.EXTRUDE_SCALE` per unit:
   MapLibre's `a_offset_normal`; shared with the geometry), and for circle layers with
   a sort key the byte offset (8-aligned) and count of their runs of equal keys: per
-  run the key (f64), first index and index count (u32s).
+  run the key (f64), first index and index count (u32s), and for lines dashed by
+  feature (a data-driven `line-dasharray`) the byte offset (8-aligned) and count of
+  their patterns: per pattern its number count and numbers (f64s; at most 1024
+  patterns of 64 numbers), then per vertex four u16s, the patterns at the tile's
+  zoom minus one, at it and plus one (MapLibre's `dashDependencies`; 0xffff none,
+  drawn solid) and 0. Such entries never share geometry.
 - 4-byte aligned vertex and index data at those offsets. Entries may point at the
   same data (layers with the same geometry). Fill vertices are x, y as i16
   (`FILL_VERTEX_BYTES` 4); line and circle vertices add extrusion x, y, side and
@@ -193,8 +198,9 @@ In:
   `String(number)`, a UTF-16 code unit per call, and `host.intl(op, flags, x, y, z, la,
   lb)` for `Intl` (`number-format`, collators): its strings are the text, the first two
   `la` and `lb` code units long (`worker/linear_memory.mbt` `host_intl`).
-- `{type: "tile", id, url, source, z}`: fetch and process a vector tile (`source` is
-  the index in the style's sources).
+- `{type: "tile", id, url, source, z, x, y}`: fetch and process a vector tile (`source`
+  is the index in the style's sources; `x` and `y` place features for `within` and
+  `distance`, and every tile message carries them).
 - `{type: "tile", id, url, source, z, dem: true}`: fetch a `raster-dem` tile (PNG),
   decode its pixels and send its slopes.
 - `{type: "tile", id, url, source, z, raster: true}`: fetch a raster tile and send
@@ -203,7 +209,7 @@ In:
   `headers` and a `credentials` mode (else none are sent). A `url` of the form
   `pmtiles://<archive URL>/z/x/y` is read from that PMTiles archive with range
   requests (`worker/js/pmtiles.mjs`).
-- `{type: "tile", id, bytes, source, z}`: process a tile already loaded (a GeoJSON
+- `{type: "tile", id, bytes, source, z, x, y}`: process a tile already loaded (a GeoJSON
   source's columnar tile, an ArrayBuffer).
 - `{type: "cancel", id}`.
 - `{type: "style", style, symbols}`: the compiled style tiles asked for from now on are
@@ -277,8 +283,12 @@ is a u8 0 or 1; an optional item is a flag, then the item if 1.
   text or a collator, which only expressions make).
 - Expected: u8 0 any, 1 color, 2 number, 3 boolean, 4 string, 5 array: its item
   Expected and u32 length (-1 any).
-- Expr: u8 tag, `Expr`'s variant index, then its fields in order: values, UTF-8
-  keys, nested Exprs; an array is u32 count and items, a stop f64 input and Expr,
+- Expr: u8 tag, `Expr`'s variant index (24 `Within`, 25 `Distance` and 26
+  `Accumulated` come after `Collate`, 23), then its fields in order: values, UTF-8
+  keys, nested Exprs; `Within` is u32 polygon count, per polygon u32 ring count, per
+  ring u32 count and f64 longitude, latitude pairs (at least one); `Distance` u32 count
+  and per geometry u8 0 a point (two f64), 1 a line (as a ring), 2 a polygon (as
+  `Within`'s) or 3 another type; an array is u32 count and items, a stop f64 input and Expr,
   a `match` arm its labels (values) and Expr, a `case` arm two Exprs;
   `Interpolate` is u8 0 exponential (f64 base) or 1 cubic Bézier (4 f64), u8
   color space, input and stops; `Compare`, `Collate` and `Call` lead with their operator's
@@ -304,6 +314,8 @@ is a u8 0 or 1; an optional item is a flag, then the item if 1.
   Hillshade, color relief and raster paint, terrain, sky and light are drawn on
   the main thread and left out.
 - The style: u32 count and sources, u32 count and layers, nothing after.
+- Cluster properties (`write_cluster_properties`, written by `map` for the GeoJSON
+  worker): u32 count, then per key its UTF-8 name and its map and reduce Exprs.
 
 ## Query (`map/query.mbt`, read by `worker/query.mbt`)
 
@@ -335,14 +347,18 @@ a vector tile keeps its first place and last value, as a JS object does.
 
 In:
 
-- `{type: "init", wasm}`.
-- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster}`: `source` is a
+- `{type: "init", wasm, propsWasm}`: the module, and the one with expressions
+  (`geojson_props_worker`) instantiated for the first source with cluster properties
+  (its imports add `hostText`'s, as the display worker's).
+- `{type: "load", source, url | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties}`: `source` is a
   number naming the source; `url` is fetched without credentials, `bytes` is the
   GeoJSON as UTF-8; the options are MapLibre's GeoJSON source options in pixels.
   With `lineMetrics` (a boolean) each line feature of a tile has `geojsonvt_clip_start`
   and `geojsonvt_clip_end` (`@tiler.CLIP_START`, `CLIP_END`).
   `cluster` is null, or `{maxZoom, radius, minPoints}` as MapLibre's GeoJSONSource
   derives them (`npm/src/geojson.ts`); its tiles then hold points and clusters.
+  `properties`, with `cluster`, is its `clusterProperties` as "Compiled style"'s
+  cluster properties (a Uint8Array); such a source goes to the module with expressions.
   Loading a number again replaces its data once the earlier load has finished.
 - `{type: "unload", source}`: forgets the source.
 - `{type: "tile", id, source, z, x, y}`: waits until the source has loaded.
@@ -363,8 +379,9 @@ Out:
 
 u32 feature count, then per feature: f64 longitude and latitude, its id as a
 property value (a cluster's is its cluster id), u32 property count and per
-property a key (UTF-8) and a property value. A cluster's properties are
-`cluster`, `cluster_id`, `point_count` and `point_count_abbreviated`.
+property a key (UTF-8) and a property value. A cluster's properties are its
+cluster properties' (reduced values) then `cluster`, `cluster_id`, `point_count` and
+`point_count_abbreviated`, which win over a cluster property of the same name.
 
 ## Analysis worker messages (`analysis_worker/js/worker.mjs`)
 

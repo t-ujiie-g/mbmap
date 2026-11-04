@@ -2,22 +2,48 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り、#86）、16.3（並び順、#87）、16.5（文字）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
+  1. 16.8。
 - **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` / `fill-translate` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 123.9KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 71.7KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 126.8KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 80.0KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | GeoJSON ソース | 1.7KB ＋ ワーカー 29.1KB（`clusterProperties` のあるソースは式を持つワーカー 48.9KB） | 5KB ＋ 30KB（50KB、仮） |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16.6 の残り（2026-11-04）
+
+状態：**完了**（下の「MapLibre との違い」「残したもの」を除く）。
+
+- **`within`**（style-spec 26.5.0 の `within.ts` と `geometry_util.ts` を写した）：引数は GeoJSON の Polygon・MultiPolygon、それを持つ Feature、FeatureCollection（Polygon と MultiPolygon だけを集める）。点と線の地物だけが対象で、多角形の地物は false（MapLibre と同じ）。経緯度を正準タイルの座標（`getTileCoordinates`、`Math.round`）にし、点と線を世界一周分ずらして箱を合わせる（`updatePoint`）ところまで同じ。
+- **`distance`**（`distance.ts`、`cheap_ruler.ts`、`classify_rings.ts`、tinyqueue 3.0.0）：Point・LineString・Polygon と Multi・Feature・FeatureCollection。分割統治のキュー（大きい距離が先に出る `compareDistPair`）、範囲の分け方、点 100・線 50 未満での総当たり、多角形どうしの箱の判定まで写した。MapLibre が例外を投げるところ（点のない地物など）は評価エラー（`Failed`）。
+- **地物の形の通り道**：`FeatureContext` に `within` と `distance`（既定は false と NaN。MapLibre で正準タイルがないときと同じ）。表示ワーカーの `FeatureRef` が地物を MapLibre の `loadGeometry` と同じく 8192 単位（`@style.GEOMETRY_EXTENT`、四捨五入、15 ビットに丸め）で読み、タイルの x・y と一緒に渡す。タイルのメッセージに `x` と `y` を足し（`process_tile` / `query_tile` / `source_features` の引数も）、フィルタ、レイアウト、頂点ごとの paint、ソート、クエリで効く。計算は host の `Math`（表示ワーカー）。
+  - 主スレッドで組ごとに評価する paint（記号の paint、押し出しの色、feature-state を読むレイヤー）では形がないので、`within` / `distance` を含むプロパティは `Unsupported`（警告を出して除く）。MapLibre も feature-state を更新した地物では正準タイルなしで評価する（false / NaN）ので、そこを合わせるより拒むことにした。
+  - 式の主スレッドの束（`main`）にはコンパイルと読み書きだけが入り、`within` / `distance` の計算はワーカーにだけ入る（`FeatureContext` の既定の実装が呼ばないため）。
+- **地物ごとの `line-dasharray`**：MapLibre の `addLineDashDependencies` と同じく、地物ごとにタイルのズーム −1・0・+1 で模様を評価する。ワーカーは項目ごとに模様の表と頂点ごとの u16 × 4（docs/FORMATS.md「Packed tile」、項目の 22・23 語目。`LAYER_ENTRY_WORDS` 21 → 23）を書き、主スレッドが模様を線のアトラスに入れて頂点ごとの `a_dash`（行 × 64 ＋ 高さ、幅、拡大中・縮小中の縁の長さ）を作る（`lineDashFeature`）。幅は MapLibre の `a_dasharray_*` が Uint16 なので切り捨てる（`[1, 1.5]` は長さ 2 として描かれる。合わせないと破線の周期が 1.25 倍違った）。地物ごとの破線のレイヤーはバッファを共有しない。feature-state を読む破線と、組ごとに描くレイヤーの地物ごとの破線は `Unsupported`。
+- **`accumulated` と `clusterProperties`**：MapLibre の `getSuperclusterOptions` と同じく、演算子の名前は `[op, ["accumulated"], ["get", key]]`、map はズーム 0 で点のプロパティを、reduce はもう一方の値をプロパティとして読む。結果の NaN・エラー・色・配列は null（MapLibre の `StyleExpression.evaluate` の既定値。色と配列は MapLibre ではそのまま残る）。
+  - 主スレッドがコンパイルして（エンジンの `compile_cluster_properties`）二進形式で GeoJSON ワーカーに送る（docs/FORMATS.md「Compiled style」）。`tiler` の `ClusterIndex` は geojson-vt と同じく 5 語ごとのデータとクラスタのプロパティの表を持ち、`@tiler.ClusterProperties`（map / reduce の関数）で集計する。式の評価は新しいパッケージ `cluster_props`。
+  - **式を持つ GeoJSON の wasm を別に**した：式の評価（`Expr::eval`、読み手、色や文字列の演算、host の `Number` / `String` / `Intl`、`wasmio/text.mbt`）を GeoJSON ワーカーに入れると 25.6KB → 44.5KB（gzip -9）で予算 30KB を超えるため。`clusterProperties` のあるソースだけ `geojson-properties.wasm`（`geojson_props_worker`）で読み、ほかは今までの `geojson.wasm`（`geojson_worker`）。どちらも処理は移した `geojson_tiles` を包む。Worker の JS は同じで、ソースごとにどちらのモジュールかを覚える。大きさの表に行を足した（予算は仮に 50KB。**ユーザーの判断がほしい**）。
+- **heatmap の feature-state**：`heatmap-weight` と `heatmap-radius` が feature-state を読むと、円と同じく組ごと（ワーカーが読む値で組を分け、地物の範囲を記録）に詰め、主スレッドが状態の範囲ごとに重みと半径を変えて核を足す。
+- **大きさ**（gzip -9、main 91a4719 からの差）：表示（メイン）123,940 → 126,809 バイト（+2,869：式 3 つのコンパイルと書き出し、地物ごとの破線の描画、`compile_cluster_properties`）、表示ワーカー 71,714 → 79,967 バイト（+8,253：`distance` 約 4.4KB、`within` 約 1.9KB、地物ごとの破線、x・y）、GeoJSON ワーカー 27,606 → 29,119 バイト（+1,513：`ClusterIndex` のプロパティの扱い。予算 30KB まで 881 バイト）、式を持つ GeoJSON ワーカー 48,888 バイト（新しい行）。`distance` は組の配列（タプル）で書いたので、平らな配列にすれば縮む見込み（未着手）。
+- **確認**（クラウドの SwiftShader）：
+  - `npm run expression:golden`：式 262（新しく 19：`within` 7、`distance` 12。地物に `loadGeometry` と同じ形と正準タイルを持たせ、MapLibre の評価に canonical を渡す。host の `Math` で計算）で **差 0**、問題 0。`within` は 209〜1119 / 1879 地物が true、`distance` は 0 の地物も正の地物もある（空の比較でないことを確かめた）。
+  - `npm run cluster:golden`：`clusterProperties` の組（合計、最大、数、`any`、文字列の連結、元のキーを上書きするもの。MapLibre の `getSuperclusterOptions` を geojson-vt に渡したものと比べる）を足し、6663 タイル、18161 クラスタ、94855 問い合わせで **差 0**（`clusterProperties` は js ビルドだけ。wasm-gc はハッシュ比較から外した）。
+  - `npm run style:golden`：新しい場面 4 つ：`within-distance`（`within` のフィルタ、`distance` と `within` の頂点ごとの paint）平均 0.037 / p99 1、`dashes-by-feature`（道路の種別ごとの模様、丸い端、拡大中の縁）0.001 / 0、`cluster-properties`（集計した値で色と大きさ）0.047 / 1、`heatmap-state`（両方の地図に同じ feature-state を設定してから撮る。場面に `states` を足した）0.345 / 4（heatmap の場面の限度 0.5 / 5）。既存の場面は `heatmap`（0.567 / 8）と `extrusion-patterns`（0.215 / 1）が限度を少し超えるほかは通る（この 2 つは main でも同じ SwiftShader の差。破線・線・円・クラスタの場面は変わらない）。結果の JSON は戻した。
+  - その他：`labels:golden` 全 55 場面一致（結果の JSON は戻した）、`query:golden` 447 / 447 一致、`geojson:golden` 8148 タイルで差 0、`npm:pack` は `style` の確認（タイルの要求数。この環境では main でも落ちる）のほかは通る。pack test と `checks/` の「未対応の式」の例を `["accumulated"]` から `["properties"]` に替えた。
+  - MoonBit のテスト（全ターゲット）：`style/geometry_test.mbt`（`within` / `distance` の値、引数の誤り、組ごとの paint の拒否）、`style/cluster_test.mbt`、`style/dasharray_test.mbt`、`style/heatmap_test.mbt`、コンパイル済みの形の往復と拒否（新しいタグ 24〜26）、`cluster_props`、worker（タイルの x・y で `within` / `distance` が変わること、地物ごとの破線の詰め方、heatmap の組と範囲）。`npm test`（`sameOptions` が `clusterProperties` を比べる）。
+- **MapLibre との違い**：GeoJSON ソースのタイルは 4096 単位なので、`within` / `distance` は 8192 単位の MapLibre と境目で 1 単位ずれうる（MVT は 4096 → 8192 が 2 倍なので同じ）。地物ごとの破線はタイルのズームで評価するので、ソースの maxzoom を超えて拡大したタイルでは、ズームにもよる模様の式が MapLibre（表示ズームで読み直す）と違いうる。`clusterProperties` のキーは JSON の順（MapLibre の `Object.keys` は整数のようなキーを先にする）。`distance` の座標は ±10^6 度まで（cheap-ruler の折り返しの繰り返しを有限にするため。MapLibre は上限なし）。
+- **残したもの**：組ごとに描く paint（記号、押し出しの色、feature-state を読むレイヤー）の `within` / `distance`、feature-state を読む破線、組ごとに描くレイヤーの地物ごとの破線、`format` の画像の区切り（16.6 から）。
+- **本線で測ってほしいもの**：`labels:golden` と `style:golden` の結果（Mac のフォントと GPU で。結果の JSON は戻した）、`worker:browser`（`within` / `distance` のないスタイルの手順は変わらない。項目の語が 2 つ増えた）、`render`。
 
 ## Phase 16.5：文字（2026-11-04）
 

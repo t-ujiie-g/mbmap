@@ -34,7 +34,7 @@ export async function queryChecks(page) {
     const unknown = await map.queryRenderedFeatures({ layers: ["nope"] });
     map.off("error", f);
     let refused = "";
-    await map.queryRenderedFeatures({ filter: ["accumulated"] }).catch((e) => (refused = e.message));
+    await map.queryRenderedFeatures({ filter: ["properties"] }).catch((e) => (refused = e.message));
     const source = await map.querySourceFeatures("q");
     window.__events = [];
     map.on("click", (e) => window.__events.push(["click", Math.round(e.point.x), Math.round(e.point.y), e.lngLat.lng > 139]));
@@ -76,7 +76,7 @@ export async function queryChecks(page) {
     found.outside === 0 &&
     JSON.stringify(found.box) === JSON.stringify(["q-spot", "q-road"]) &&
     found.unknown === 0 && /'nope' does not exist/.test(found.errors[0] ?? "") &&
-    /unsupported: expression accumulated/.test(found.refused) &&
+    /unsupported: expression properties/.test(found.refused) &&
     // The square spans two tiles, and each gives its part, as MapLibre's do.
     JSON.stringify([...new Set(found.source)]) === JSON.stringify([1, 2, 3]) &&
     clicks.length === 1 && clicks[0][1] === 220 && clicks[0][2] === 380 && clicks[0][3] &&
