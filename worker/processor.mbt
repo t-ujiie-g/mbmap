@@ -16,6 +16,8 @@ pub struct TileProcessor {
   priv gradient_pool : Array[GradientRows]
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
+  priv place : @style.TileGeometry
+  priv scratch : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
   priv vertex_paint : Array[Array[@style.VertexPaint]]
   priv runs : Array[Int32]
@@ -52,6 +54,8 @@ pub fn TileProcessor::new(
     gradient_pool: [],
     label_pool: [],
     geometry: @mvt.Geometry::new(),
+    place: @style.TileGeometry::new(),
+    scratch: @mvt.Geometry::new(),
     inputs: style.layers.map(l => {
       if per_vertex(l) {
         ([], false)
@@ -228,15 +232,18 @@ fn builds(sl : @style.StyleLayer, source : String, zoom : Double) -> Bool {
 }
 
 ///|
-/// Packs every layer of the style drawing from tile `bytes` of `source` at zoom
-/// `z` into `out`, in style order (layers out of their zoom range are skipped,
-/// as MapLibre does). False on a malformed tile or an oversized result.
+/// Packs every layer of the style drawing from tile `bytes` of `source` (tile `z`, `x`,
+/// `y`) into `out`, in style order (layers out of their zoom range are skipped, as
+/// MapLibre does). False on a malformed tile or an oversized result.
 pub fn TileProcessor::process(
   self : TileProcessor,
   source : String,
   bytes : BytesView,
   z : Int32,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
 ) -> Bool {
+  self.locate(z, x, y)
   guard self.read_tile(source, bytes) is Some(features_of) else { return false }
   let style_layers = self.style.layers
   let zoom = z.to_double()
@@ -299,6 +306,19 @@ pub fn TileProcessor::process(
     return false
   }
   true
+}
+
+///|
+/// Sets the canonical tile the next features are read in.
+fn TileProcessor::locate(
+  self : TileProcessor,
+  z : Int32,
+  x : Int32,
+  y : Int32,
+) -> Unit {
+  self.place.z = z
+  self.place.x = x
+  self.place.y = y
 }
 
 ///|

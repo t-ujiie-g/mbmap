@@ -118,6 +118,21 @@ export const SCENES = {
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
   },
+  // within in a filter and distance in per-vertex paint, on the features' geometry in their tiles.
+  "within-distance": {
+    style: style([
+      { id: "building", type: "fill", source: "gsi", "source-layer": "building",
+        filter: ["within", { type: "Polygon", coordinates: [[[139.762, 35.678], [139.771, 35.677], [139.772, 35.685], [139.764, 35.684], [139.762, 35.678]]] }],
+        paint: { "fill-color": "#c98f5a" } },
+      { id: "road", type: "line", source: "gsi", "source-layer": "road",
+        paint: { "line-color": ["interpolate", ["linear"], ["distance", { type: "Point", coordinates: [139.7671, 35.6812] }], 0, "#d7191c", 800, "#2b83ba"],
+          "line-width": ["case", ["within", { type: "MultiPolygon", coordinates: [[[[139.762, 35.676], [139.768, 35.676], [139.768, 35.681], [139.762, 35.681], [139.762, 35.676]]], [[[139.769, 35.682], [139.774, 35.682], [139.774, 35.686], [139.769, 35.686], [139.769, 35.682]]]] }], 4, 1.5] } },
+      { id: "label", type: "circle", source: "gsi", "source-layer": "label",
+        paint: { "circle-radius": ["max", 2, ["-", 8, ["/", ["distance", { type: "LineString", coordinates: [[139.755, 35.67], [139.78, 35.69]] }], 100]]], "circle-color": "#333333" } },
+    ]),
+    camera: TOKYO,
+    limits: { mean: 0.05, p99: 1 },
+  },
   outlines: {
     style: style([
       { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-color": "#a8d4f0", "fill-antialias": false } },

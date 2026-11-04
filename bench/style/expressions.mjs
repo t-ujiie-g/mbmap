@@ -22,11 +22,15 @@ function features() {
   for (const x of readdirSync(dir).sort().slice(0, 2)) {
     for (const y of readdirSync(path.join(dir, x)).sort().slice(0, 2)) {
       const tile = new VectorTile(new PbfReader(readFileSync(path.join(dir, x, y))));
+      const canonical = { z: 14, x: Number(x), y: Number(path.basename(y, ".pbf")) };
       for (const [name, max] of Object.entries(want)) {
         const layer = tile.layers[name];
         for (let i = 0; layer && i < Math.min(layer.length, max); i++) {
           const f = layer.feature(i);
-          out.push({ type: f.type, properties: { ...f.properties } });
+          // As MapLibre's loadGeometry gives it (within, distance).
+          const scale = 8192 / f.extent;
+          const geometry = f.loadGeometry().map((ring) => ring.map((p) => ({ x: Math.round(p.x * scale), y: Math.round(p.y * scale) })));
+          out.push({ type: f.type, properties: { ...f.properties }, geometry, canonical });
         }
       }
     }
@@ -106,7 +110,7 @@ for (const [e, type = "value", state] of CASES) {
     feats.forEach((f, i) => {
       let want;
       try {
-        want = maplibreValue(ml.value.evaluateWithoutErrorHandling({ zoom }, f));
+        want = maplibreValue(ml.value.evaluateWithoutErrorHandling({ zoom }, f, undefined, f.canonical));
       } catch {
         want = { error: true };
       }

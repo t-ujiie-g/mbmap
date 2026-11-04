@@ -1,11 +1,13 @@
 ///|
-/// Feature `index` of a layer's features, as expressions see it, with the
-/// processor's `trig`, `text_number`, `number_text` and `intl`. Property names
-/// are resolved to key indices once per layer.
+/// Feature `index` of a layer's features, as expressions see it, with the processor's
+/// hooks, and `place` (its tile) for `within` and `distance`, decoded through `scratch`.
+/// Property names are resolved to key indices once per layer.
 priv struct FeatureRef {
   features : Features
   mut index : Int32
   keys : Map[String, Int32]
+  place : @style.TileGeometry
+  scratch : @mvt.Geometry
   trig : @core.Trig
   text_number : (String) -> Double
   number_text : (Double) -> String
@@ -21,6 +23,8 @@ fn TileProcessor::feature_ref(
     features,
     index: 0,
     keys: Map([]),
+    place: self.place,
+    scratch: self.scratch,
     trig: self.trig,
     text_number: self.text_number,
     number_text: self.number_text,
@@ -139,5 +143,59 @@ impl @style.FeatureContext for FeatureRef with fn geometry_type(self) {
     LineString => "LineString"
     Polygon => "Polygon"
     Unknown => "Unknown"
+  }
+}
+
+///|
+/// Loads the feature's geometry into `place` as MapLibre's `loadGeometry` does
+/// (scaled to `@style.GEOMETRY_EXTENT`, rounded, clamped to 15 bits); false if
+/// it is malformed.
+fn FeatureRef::load_place(self : FeatureRef) -> Bool {
+  guard self.features.load(self.index, self.scratch) is None else {
+    return false
+  }
+  let scale = @style.GEOMETRY_EXTENT.to_double() /
+    self.features.extent().to_double()
+  let coords = self.place.coords
+  coords.clear()
+  for c in self.scratch.coords {
+    let v = (c.to_double() * scale + 0.5).floor()
+    coords.push(
+      if v < -16384.0 {
+        -16384
+      } else if v > 16383.0 {
+        16383
+      } else {
+        v.to_int()
+      },
+    )
+  }
+  self.place.ring_ends.clear()
+  self.place.ring_ends.append(self.scratch.ring_ends)
+  true
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn within(self, polygons) {
+  self.load_place() &&
+  @style.geometry_within(
+    polygons,
+    @style.FeatureContext::geometry_type(self),
+    self.place,
+    self.trig,
+  )
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn distance(self, shapes) {
+  if self.load_place() {
+    @style.geometry_distance(
+      shapes,
+      @style.FeatureContext::geometry_type(self),
+      self.place,
+      self.trig,
+    )
+  } else {
+    Num(@double.not_a_number)
   }
 }

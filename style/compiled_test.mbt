@@ -234,6 +234,14 @@ test "every expression and value kind survives write_expr and read_expr" {
       Get("b"),
       Call(Collator, [Lit(Bool(false)), Get("d"), Lit(Str("de"))]),
     ),
+    Within([[[1.0, 2.0, 3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]),
+    Within([]),
+    Distance([
+      Point(1.0, 2.0),
+      Line([1.0, 2.0, 3.0, 4.0]),
+      Polygon([[0.0, 0.0]]),
+      Other,
+    ]),
   ]
   for e in exprs {
     let w = @core.ByteWriter::new()
@@ -272,6 +280,10 @@ test "read_expr refuses unknown tags, short input and huge counts" {
       expr_bytes(Call(NumberFormat, [Zoom]))[:],
       expr_bytes(Call(Format, [Zoom, Zoom]))[:],
       expr_bytes(Call(Split, [Zoom]))[:],
+      expr_bytes(Within([[[1.0, 2.0, 3.0]]]))[:],
+      expr_bytes(Within([[]]))[:],
+      expr_bytes(Distance([Line([])]))[:],
+      b"\x01\x19\x01\x00\x00\x00\x07"[:],
     ] {
     let r = @core.ByteReader::new(bad)
     @style.read_expr(r) |> ignore

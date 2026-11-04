@@ -370,7 +370,7 @@ fn slice_range(begin : Double, end : Double, len : Int32) -> (Int32, Int32) {
 }
 
 ///|
-/// JavaScript's `Math.round` for numbers that are not negative.
+/// JavaScript's `Math.round`.
 fn js_round(x : Double) -> Double {
   let f = x.floor()
   if x - f >= 0.5 {

@@ -2,6 +2,9 @@
 // "value" when omitted), legacy filters, and legacy functions by property.
 const g = (k) => ["get", k];
 
+/** A GeoJSON rectangle from (x0, y0) to (x1, y1), counterclockwise. */
+const polygon = (x0, y0, x1, y1) => ({ type: "Polygon", coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+
 export const CASES = [
   [["+", g("ftCode"), 1]],
   [["+", g("alti"), g("arrngAgl"), 0.25]],
@@ -245,6 +248,26 @@ export const CASES = [
   [["resolved-locale", ["collator", { locale: "ja-JP" }]]],
   [["resolved-locale", ["collator", { locale: "en" }]]],
   [["let", "c", ["collator", { "case-sensitive": true }], ["==", g("s"), "Abc", ["var", "c"]]]],
+  // within and distance on the features' geometry in their z14 tiles (139.68-139.72°E, 35.69-35.73°N).
+  [["within", polygon(139.69, 35.70, 139.71, 35.72)]],
+  [["within", { type: "Feature", properties: {}, geometry: polygon(139.685, 35.695, 139.72, 35.725) }]],
+  [["within", { type: "MultiPolygon", coordinates: [polygon(139.68, 35.69, 139.70, 35.71).coordinates, polygon(139.70, 35.71, 139.73, 35.73).coordinates] }]],
+  [["within", { type: "Polygon", coordinates: [...polygon(139.68, 35.69, 139.73, 35.73).coordinates, ...polygon(139.70, 35.70, 139.71, 35.72).coordinates.map((r) => r.slice().reverse())] }]],
+  [["within", { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [139.7, 35.7] } }, { type: "Feature", geometry: polygon(139.695, 35.705, 139.715, 35.715) }] }]],
+  [["within", { type: "Polygon", coordinates: [[[139.69, 35.69], [139.73, 35.70], [139.70, 35.73], [139.69, 35.69]]] }]],
+  [["case", ["within", polygon(139.69, 35.70, 139.71, 35.72)], 1, 0], "number"],
+  [["distance", { type: "Point", coordinates: [139.7, 35.71] }]],
+  [["distance", { type: "MultiPoint", coordinates: [[139.69, 35.70], [139.71, 35.72]] }]],
+  [["distance", { type: "LineString", coordinates: [[139.68, 35.69], [139.705, 35.715], [139.73, 35.70]] }]],
+  [["distance", { type: "MultiLineString", coordinates: [[[139.68, 35.72], [139.72, 35.72]], [[139.70, 35.69], [139.70, 35.73]]] }]],
+  [["distance", polygon(139.695, 35.705, 139.705, 35.715)]],
+  [["distance", { type: "Feature", geometry: { type: "MultiPolygon", coordinates: [polygon(139.6, 35.6, 139.65, 35.65).coordinates, polygon(139.75, 35.75, 139.8, 35.8).coordinates] } }]],
+  [["distance", { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Point", coordinates: [139.5, 35.5] } }, { type: "Feature", geometry: { type: "LineString", coordinates: [[139.9, 35.9], [140, 36]] } }] }]],
+  [["distance", { type: "LineString", coordinates: Array.from({ length: 120 }, (_, i) => [139.68 + i * 0.0004, 35.69 + 0.03 * Math.sin(i / 7)]) }]],
+  [["distance", { type: "MultiPoint", coordinates: Array.from({ length: 150 }, (_, i) => [139.66 + (i % 15) * 0.006, 35.68 + Math.floor(i / 15) * 0.006]) }]],
+  [["distance", { type: "Polygon", coordinates: [Array.from({ length: 80 }, (_, i) => [139.70 + 0.01 * Math.cos((i / 79) * 2 * Math.PI), 35.71 + 0.008 * Math.sin((i / 79) * 2 * Math.PI)])] }]],
+  [["<", ["distance", { type: "Point", coordinates: [139.7, 35.71] }], 1000]],
+  [["interpolate", ["linear"], ["distance", { type: "Point", coordinates: [139.7, 35.71] }], 0, "red", 3000, "blue"], "color"],
 ];
 
 // Expressions MapLibre rejects when parsing and mbmap compiles (they fail when evaluated):

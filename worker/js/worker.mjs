@@ -198,12 +198,12 @@ function fetchInit(init, signal) {
   return out;
 }
 
-async function loadTile({ id, url, init, bytes: given, source, z, dem, raster }) {
+async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, raster }) {
   const controller = new AbortController();
   pending.set(id, controller);
   try {
     let bytes;
-    if (!Number.isInteger(source) || !Number.isInteger(z)) throw new Error("malformed tile message");
+    if (![source, z, x, y].every(Number.isInteger)) throw new Error("malformed tile message");
     const pmtiles = !(given instanceof ArrayBuffer) && typeof url === "string" && url.startsWith("pmtiles://") ? await loadPmtiles() : null;
     const pm = pmtiles?.splitTileUrl(url);
     if (controller.signal.aborted) return;
@@ -258,7 +258,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
     }
     await imagesReady;
     if (controller.signal.aborted) return;
-    let packed = withInput(bytes, () => wasm.process_tile(source, z));
+    let packed = withInput(bytes, () => wasm.process_tile(source, z, x, y));
     const featureRanges = () => readFeatureRanges(withInput(new Uint8Array(0), () => wasm.feature_ranges()));
     let ranges = null;
     if (!symbols && canDrawGlyphs && hasSymbols(packed)) {
@@ -296,7 +296,7 @@ function query({ id, kind, tile, source, z, x, y, request }) {
     input.set(new Uint8Array(request.buffer, request.byteOffset, request.byteLength), bytes.length);
     const run = kind === "features" ? wasm.source_features : wasm.query_tile;
     try {
-      hits = queries.readQueryResult(withInput(input, () => run(source, z, bytes.length)), z, x, y);
+      hits = queries.readQueryResult(withInput(input, () => run(source, z, bytes.length, x, y)), z, x, y);
     } catch (err) {
       postMessage({ type: "error", message: String(err?.message ?? err) });
     }

@@ -21,8 +21,8 @@ pub fn init_style() -> Int32 {
 
 ///|
 #export_name("process_tile")
-pub fn process_tile(source : Int32, z : Int32) -> Int32 {
-  @worker.process_tile(source, z)
+pub fn process_tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
+  @worker.process_tile(source, z, x, y)
 }
 
 ///|

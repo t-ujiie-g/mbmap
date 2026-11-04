@@ -362,6 +362,30 @@ test "property filters select features" {
 }
 
 ///|
+test "within and distance read the feature's geometry in the tile it is processed as" {
+  // A polygon over 0-10°E, 0-10°N and a line near the south-west corner of its tile.
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "in", "type": "line", "source": "a", "source-layer": "line",
+    #|   "filter": ["within", {"type": "Polygon", "coordinates": [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]}]},
+    #|  {"id": "near", "type": "line", "source": "a", "source-layer": "line",
+    #|   "filter": ["<", ["distance", {"type": "Point", "coordinates": [-170, 1]}], 1000000]}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let tile = tile_of([
+    tile_with("line", 2, [cmd(1, 1), 100, 4000, cmd(2, 1), 50, 0]),
+  ])
+  // Tile 1/1/0 holds 0-180°E, 0-85°N: the line is within, far from 170°W.
+  assert_true(p.process("a", tile[:], 1, x=1, y=0))
+  assert_eq(p.out.layer_count(), 1)
+  assert_eq(u32_at(p.out.to_bytes()[:], 4), 0)
+  // Tile 1/0/0 holds 180°W-0: the same line lies outside, near 170°W.
+  assert_true(p.process("a", tile[:], 1, x=0, y=0))
+  assert_eq(p.out.layer_count(), 1)
+  assert_eq(u32_at(p.out.to_bytes()[:], 4), 1)
+}
+
+///|
 test "circle layers pack one quad per point and share buffers like other kinds" {
   let style =
     #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},

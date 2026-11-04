@@ -100,9 +100,9 @@ pub(all) enum Op {
 } derive(Debug, Eq)
 
 ///|
-/// A compiled MapLibre expression (the subset this engine supports). Compiling resolves
-/// `let`, `var` (its bound expression) and `global-state` (its value in the style's `state`);
-/// `Collate` is a comparison with a collator, the last Expr.
+/// A compiled MapLibre expression (the subset this engine supports). Compiling resolves `let`,
+/// `var` and `global-state` (its value in the style's `state`); `Collate` compares with the
+/// collator last, `Within` holds polygons as rings of longitude, latitude pairs.
 pub(all) enum Expr {
   Lit(Value)
   Get(String)
@@ -128,6 +128,8 @@ pub(all) enum Expr {
   Coerce(Expected, Array[Expr])
   Call(Op, Array[Expr])
   Collate(CmpOp, Expr, Expr, Expr)
+  Within(Array[Array[Array[Double]]])
+  Distance(Array[Shape])
 } derive(Debug, Eq)
 
 ///|
@@ -244,7 +246,12 @@ fn Compiler::key(self : Compiler, json : Json, path : String) -> String {
 /// The type `e` produces, as far as compiling can tell.
 fn Expr::static_type(self : Expr) -> Expected {
   match self {
-    Lit(Num(_)) | Zoom | LineProgress | HeatmapDensity | Elevation => NumberType
+    Lit(Num(_))
+    | Zoom
+    | LineProgress
+    | HeatmapDensity
+    | Elevation
+    | Distance(_) => NumberType
     Call(op, _) => op_type(op)
     Lit(Str(_)) | GeometryType => StringType
     Lit(Bool(_))
@@ -254,6 +261,7 @@ fn Expr::static_type(self : Expr) -> Expected {
     | Any(_)
     | Compare(_, _, _)
     | Collate(_, _, _, _)
+    | Within(_)
     | In(_, _) => BoolType
     Lit(Color(_)) => ColorType
     Assert(t, _) | Coerce(t, _) => t
@@ -343,6 +351,8 @@ fn arity(op : String) -> (Int32, Int32, Int32) {
     | "collator"
     | "global-state"
     | "resolved-locale"
+    | "within"
+    | "distance"
     | "is-supported-script" => (1, 1, -1)
     "get" | "has" => (1, 2, -1)
     "in" | "number-format" => (2, 2, -1)
@@ -588,6 +598,19 @@ fn Compiler::compile_at(
       }
       Assert(AnyType, [Lit(v)])
     }
+    "within" =>
+      match within_polygons(items[1]) {
+        Some(p) => Within(p)
+        None =>
+          self.fail(
+            Invalid(path~, "within needs a GeoJSON polygon or multipolygon"),
+          )
+      }
+    "distance" =>
+      match distance_shapes(items[1]) {
+        Some(s) => Distance(s)
+        None => self.fail(Invalid(path~, "distance needs a GeoJSON geometry"))
+      }
     "in" => In(arg(1, AnyType), arg(2, AnyType))
     "match" => {
       let cases = []

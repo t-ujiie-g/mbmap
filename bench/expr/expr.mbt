@@ -114,6 +114,79 @@ impl @style.FeatureContext for JsFeature with fn text_number(_, s) {
 }
 
 ///|
+extern "js" fn math1(name : String) -> (Double) -> Double = "(n) => Math[n]"
+
+///|
+extern "js" fn math2(name : String) -> (Double, Double) -> Double = "(n) => Math[n]"
+
+///|
+/// The host's `Math`, as the display worker passes it to `within` and `distance`.
+let host_trig : @core.Trig = {
+  sin: math1("sin"),
+  cos: math1("cos"),
+  tan: math1("tan"),
+  asin: math1("asin"),
+  acos: math1("acos"),
+  atan: math1("atan"),
+  atan2: math2("atan2"),
+  exp: math1("exp"),
+  ln: math1("log"),
+  pow: math2("pow"),
+  cbrt: math1("cbrt"),
+  atanh: math1("atanh"),
+}
+
+///|
+/// The feature's `geometry` (rings of `{ x, y }` in `@style.GEOMETRY_EXTENT` units) in
+/// its `canonical` tile (`{ z, x, y }`), as MapLibre's evaluation context gives it.
+fn JsFeature::place(self : JsFeature) -> @style.TileGeometry? {
+  let geometry = js_key(self.obj, "geometry")
+  let canonical = js_key(self.obj, "canonical")
+  guard js_kind(geometry) == 5 && js_kind(canonical) == 5 else { return None }
+  let g = @style.TileGeometry::new()
+  g.z = js_double(js_key(canonical, "z")).to_int()
+  g.x = js_double(js_key(canonical, "x")).to_int()
+  g.y = js_double(js_key(canonical, "y")).to_int()
+  for r in 0..<js_length(geometry) {
+    let ring = js_at(geometry, r)
+    for i in 0..<js_length(ring) {
+      g.coords.push(js_double(js_key(js_at(ring, i), "x")).to_int())
+      g.coords.push(js_double(js_key(js_at(ring, i), "y")).to_int())
+    }
+    g.ring_ends.push(g.coords.length() / 2)
+  }
+  Some(g)
+}
+
+///|
+impl @style.FeatureContext for JsFeature with fn within(self, polygons) {
+  match self.place() {
+    Some(g) =>
+      @style.geometry_within(
+        polygons,
+        @style.FeatureContext::geometry_type(self),
+        g,
+        host_trig,
+      )
+    None => false
+  }
+}
+
+///|
+impl @style.FeatureContext for JsFeature with fn distance(self, shapes) {
+  match self.place() {
+    Some(g) =>
+      @style.geometry_distance(
+        shapes,
+        @style.FeatureContext::geometry_type(self),
+        g,
+        host_trig,
+      )
+    None => Num(@double.not_a_number)
+  }
+}
+
+///|
 fn result_js(v : @style.Value) -> Js {
   match v {
     Null => js_null()

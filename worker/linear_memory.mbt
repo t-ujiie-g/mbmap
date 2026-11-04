@@ -238,10 +238,10 @@ pub fn process_dem(source : Int32, z : Int32, size : Int32) -> Int32 {
 
 ///|
 /// Processes the tile placed as input for the style's source with index
-/// `source` at zoom `z`. Returns the packed tile's length at `output_addr`, or
+/// `source` at zoom `z`, column `x`, row `y`. Returns the packed tile's length at `output_addr`, or
 /// minus the length of a UTF-8 error message there.
 #export_name("process_tile")
-pub fn process_tile(source : Int32, z : Int32) -> Int32 {
+pub fn process_tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
   guard processor.val is Some(p) else {
     return fail_with(@utf8.encode("style not initialized"))
   }
@@ -249,7 +249,7 @@ pub fn process_tile(source : Int32, z : Int32) -> Int32 {
     return fail_with(@utf8.encode("no source \{source}"))
   }
   p.out.place_at(output_start())
-  if p.process(p.style.sources[source].id, input_bytes()[:], z) {
+  if p.process(p.style.sources[source].id, input_bytes()[:], z, x~, y~) {
     p.out.length()
   } else {
     fail_with(p.error_utf8())
@@ -258,10 +258,16 @@ pub fn process_tile(source : Int32, z : Int32) -> Int32 {
 
 ///|
 /// Answers a query: the input holds the tile (`tile_len` bytes, source `source`,
-/// zoom `z`), then the request (`TileProcessor::query`). Returns the result's
+/// zoom `z`, column `x`, row `y`), then the request (`TileProcessor::query`). Returns the result's
 /// length at `output_addr`, or minus an error message's.
 #export_name("query_tile")
-pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
+pub fn query_tile(
+  source : Int32,
+  z : Int32,
+  tile_len : Int32,
+  x : Int32,
+  y : Int32,
+) -> Int32 {
   guard processor.val is Some(p) else {
     return fail_with(@utf8.encode("style not initialized"))
   }
@@ -273,7 +279,14 @@ pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
     return fail_with(@utf8.encode("bad query"))
   }
   match
-    p.query(p.style.sources[source].id, input[:tile_len], z, input[tile_len:]) {
+    p.query(
+      p.style.sources[source].id,
+      input[:tile_len],
+      z,
+      input[tile_len:],
+      x~,
+      y~,
+    ) {
     Some(out) => write_output(out[:].to_fixedarray()[:])
     None => fail_with(p.error_utf8())
   }
@@ -284,7 +297,13 @@ pub fn query_tile(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
 /// the layer's name (a u32 length and UTF-8) and the filter
 /// (`@style.write_expr`; `TileProcessor::source_features`). Returns as `query_tile` does.
 #export_name("source_features")
-pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
+pub fn source_features(
+  source : Int32,
+  z : Int32,
+  tile_len : Int32,
+  x : Int32,
+  y : Int32,
+) -> Int32 {
   guard processor.val is Some(p) else {
     return fail_with(@utf8.encode("style not initialized"))
   }
@@ -306,6 +325,8 @@ pub fn source_features(source : Int32, z : Int32, tile_len : Int32) -> Int32 {
       z,
       layer,
       filter,
+      x~,
+      y~,
     ) {
     Some(out) => write_output(out[:].to_fixedarray()[:])
     None => fail_with(p.error_utf8())

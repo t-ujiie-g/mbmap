@@ -73,6 +73,8 @@ pub extend NoFeature with FeatureContext::{
   number_format,
   collate,
   resolved_locale,
+  within,
+  distance,
 }
 
 ///|
@@ -149,3 +151,9 @@ pub extend SymbolZOrder with @debug.Debug::{to_repr}
 
 ///|
 pub extend SymbolZOrder with Eq::{not_equal, equal}
+
+///|
+pub extend Shape with @debug.Debug::{to_repr}
+
+///|
+pub extend Shape with Eq::{not_equal, equal}

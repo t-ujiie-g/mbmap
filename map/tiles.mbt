@@ -72,6 +72,8 @@ fn Map::request_tile(
       ),
       src.index,
       id.z,
+      id.x,
+      id.y,
       src.source.kind is RasterDem,
       src.source.kind is Raster,
       self.transform_request,
@@ -90,7 +92,15 @@ fn Map::request_tile(
     if is_null_value(bytes) {
       self.finish(request, Some([]))
     } else {
-      post_tile_bytes(self.workers[worker], request, bytes, src.index, id.z)
+      post_tile_bytes(
+        self.workers[worker],
+        request,
+        bytes,
+        src.index,
+        id.z,
+        id.x,
+        id.y,
+      )
     }
   })
 }

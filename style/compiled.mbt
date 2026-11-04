@@ -320,7 +320,46 @@ fn StyleWriter::expr(self : StyleWriter, e : Expr) -> Unit {
       self.expr(b)
       self.expr(c)
     }
+    Within(polygons) => {
+      self.code(24)
+      self.w.u32(polygons.length())
+      polygons.each(p => self.rings(p))
+    }
+    Distance(shapes) => {
+      self.code(25)
+      self.w.u32(shapes.length())
+      for s in shapes {
+        match s {
+          Point(x, y) => {
+            self.code(0)
+            self.w.f64(x)
+            self.w.f64(y)
+          }
+          Line(c) => {
+            self.code(1)
+            self.coords(c)
+          }
+          Polygon(rings) => {
+            self.code(2)
+            self.rings(rings)
+          }
+          Other => self.code(3)
+        }
+      }
+    }
   }
+}
+
+///|
+fn StyleWriter::coords(self : StyleWriter, c : Array[Double]) -> Unit {
+  self.w.u32(c.length())
+  c.each(x => self.w.f64(x))
+}
+
+///|
+fn StyleWriter::rings(self : StyleWriter, rings : Array[Array[Double]]) -> Unit {
+  self.w.u32(rings.length())
+  rings.each(r => self.coords(r))
 }
 
 ///|
@@ -734,11 +773,51 @@ fn StyleReader::expr(self : StyleReader, depth : Int32) -> Expr {
       let b = self.expr(d)
       Collate(op, a, b, self.expr(d))
     }
+    24 => Within(self.list(() => self.rings()))
+    25 =>
+      Distance(
+        self.list(() => {
+          match self.r.u8() {
+            0 => {
+              let x = self.r.f64()
+              Shape::Point(x, self.r.f64())
+            }
+            1 => Line(self.coords())
+            2 => Polygon(self.rings())
+            3 => Other
+            _ => {
+              self.r.fail()
+              Other
+            }
+          }
+        }),
+      )
     _ => {
       self.r.fail()
       Lit(Null)
     }
   }
+}
+
+///|
+/// Longitude, latitude pairs: an even count, the first pair always there, as
+/// `compile` takes positions.
+fn StyleReader::coords(self : StyleReader) -> Array[Double] {
+  let c = self.list(() => self.r.f64())
+  if c.length() == 0 || c.length() % 2 != 0 {
+    self.r.fail()
+  }
+  c
+}
+
+///|
+/// A polygon's rings: at least one.
+fn StyleReader::rings(self : StyleReader) -> Array[Array[Double]] {
+  let rings = self.list(() => self.coords())
+  if rings.length() == 0 {
+    self.r.fail()
+  }
+  rings
 }
 
 ///|

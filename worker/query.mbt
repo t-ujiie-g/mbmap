@@ -489,7 +489,7 @@ fn TileProcessor::query_padding(
 
 ///|
 /// Answers `request` (docs/FORMATS.md "Query") about tile `bytes`: each asked
-/// layer's features meeting it, last drawn first, then the labels named, as
+/// layer's features meeting it (tile `z`, `x`, `y`), last drawn first, then the labels named, as
 /// feature records. None, with the error set, if anything is malformed.
 pub fn TileProcessor::query(
   self : TileProcessor,
@@ -497,7 +497,10 @@ pub fn TileProcessor::query(
   bytes : BytesView,
   z : Int32,
   request : BytesView,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
 ) -> Bytes? {
+  self.locate(z, x, y)
   guard read_query(@core.ByteReader::new(request)) is Some(query) else {
     self.error = "malformed query"
     return None
@@ -587,7 +590,10 @@ pub fn TileProcessor::source_features(
   z : Int32,
   source_layer : String,
   filter : @style.Expr?,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
 ) -> Bytes? {
+  self.locate(z, x, y)
   guard self.read_tile(source, bytes) is Some(features_of) else { return None }
   let w = @core.ByteWriter::new()
   guard features_of(source_layer) is Some(layer) else {
