@@ -29,9 +29,15 @@ license and source.
   @maplibre/maplibre-gl-style-spec 26.5.0 (src/util/classify_rings.ts); style/color_space.mbt
   (Lab and HCL interpolation, src/expression/types/color_spaces.ts and color.ts) and
   npm/src/legacy.ts (src/feature_filter/convert.ts, src/function/convert.ts) of the same
-  version; style/within.mbt and style/distance.mbt (src/expression/definitions/within.ts,
-  distance.ts, src/util/geometry_util.ts, cheap_ruler.ts, taken there from Mapbox's
-  cheap-ruler, ISC License, and classify_rings.ts)
+  version; style/within.mbt, style/distance.mbt and style/geojson_arg.mbt
+  (src/expression/definitions/within.ts, distance.ts, src/util/geometry_util.ts,
+  cheap_ruler.ts, taken there from Mapbox's cheap-ruler, ISC License, and
+  classify_rings.ts); style/color.mbt (`parseCssColor` and `hslToRgb` of
+  src/expression/types/parse_css_color.ts and color_spaces.ts); style/expr.mbt, style/eval.mbt and style/ops.mbt
+  (the type annotations of src/expression/parsing_context.ts, `typeOf`, `checkSubtype`,
+  `valueToString` and `typeToString` of src/expression/values.ts and types.ts, the
+  interpolation factor of definitions/interpolate.ts); style/icon.mbt (`Padding` of
+  src/expression/types/padding.ts)
   https://github.com/maplibre/maplibre-style-spec — BSD 3-Clause License:
 
     Copyright (c) 2020, MapLibre contributors
@@ -67,10 +73,47 @@ license and source.
   text above):
   - raster/dem.mbt: hillshade_prepare.fragment.glsl (slopes) and the border
     backfill of src/data/dem_data.ts
-  - render_webgl2/gl.mbt shaders: hillshade.fragment.glsl (`standard`),
-    sky.fragment.glsl, terrain.fragment.glsl (fog), `calculate_visibility` of
-    _prelude.vertex.glsl and the perspective ratio of symbol_sdf.vertex.glsl,
-    fill_extrusion.vertex.glsl
+  - render_webgl2/gl.mbt, gl_line.mbt, gl_pattern.mbt, gl_symbol.mbt, gl_raster.mbt,
+    renderer.mbt, renderer_line.mbt, renderer_pattern.mbt, renderer_icon.mbt,
+    renderer_3d.mbt and map/render_raster.mbt: the shaders of src/shaders/glsl/
+    (hillshade.fragment.glsl, every method, with `getIlluminationProperties` of
+    src/style/style_layer/hillshade_style_layer.ts; sky; terrain fog; `calculate_visibility`
+    of _prelude.vertex.glsl; fill_outline, line, line_sdf, line_gradient,
+    line_pattern, fill_pattern, fill_outline_pattern, background_pattern, circle,
+    heatmap, heatmap_texture, symbol_icon, symbol_sdf, fill_extrusion,
+    fill_extrusion_pattern and color_relief) with their uniforms of
+    src/webgl/program/ (`patternUniformValues` among them, also in map/draws.mbt),
+    `packDEMData` and `getUnpackVector` of src/data/dem_data.ts, the subdivided
+    raster quad and `premultiplyAlpha` of src/util/image.ts
+  - render_webgl2/line_atlas.mbt: `LineAtlas` of src/render/line_atlas.ts
+  - render_webgl2/pattern_atlas.mbt and renderer_icon.mbt: the padding and
+    positions of `ImageAtlas` and `ImagePosition` of src/render/image_atlas.ts
+  - render_webgl2/color_ramp.mbt and map/line.mbt: `renderColorRamp` of
+    src/util/color_ramp.ts and the line-floorwidth and dash smoothing of
+    src/webgl/draw/draw_line.ts
+  - render_webgl2/heatmap.mbt and map/heatmap.mbt: the two passes of
+    src/webgl/draw/draw_heatmap.ts (density texture, per-tile framebuffers on terrain)
+  - map/extrusion.mbt: `sphericalToCartesian` of src/util/util.ts (the light)
+  - tess/line.mbt, tess/line_emit.mbt, worker/lines.mbt and tess/circle.mbt: the
+    line bucket of src/data/bucket/line_bucket.ts (joins, offset normals, sharp
+    corners and `linesofar`, `dashDependencies`, `lineClipsArray`) and the points
+    the circle bucket keeps
+  - npm/src/media.ts and map/media.mbt: `ImageSource.setCoordinates` and
+    `calculateImageWarp` of src/source/image_source.ts, the video and canvas
+    sources of video_source.ts and canvas_source.ts
+  - npm/src/custom.ts, map/custom.mbt and npm/src/style.ts: `getProjectionData`
+    and the Mercator projection data of src/geo/projection/mercator_transform.ts,
+    the Mercator shader prelude of src/shaders/glsl/_projection_mercator.vertex.glsl,
+    `setCustomLayerDefaults` of src/webgl/draw/draw_custom.ts and
+    `validateCustomStyleLayer` of src/style/style_layer/custom_style_layer.ts
+  - worker/js/symbols.mjs: `shapeIcon` and `fitIconToText` of src/symbol/shaping.ts,
+    `getIconQuads` of quads.ts, the boxes of collision_feature.ts,
+    `getAnchorJustification` and `getShapedLabelLength` of symbol_layout.ts and
+    the size packing of symbol_size.ts
+  - npm/src/images.ts, sprite.ts and style-images.ts: `loadSprite` and
+    `normalizeSpriteURL` of src/style/load_sprite.ts
+  - style/text.mbt: the font weights of `GlyphManager._fontWeight` and the local
+    font of `_createTinySDF` (src/render/glyph_manager.ts)
   - tess/extrusion.mbt: `_generateSideFaces` and `addVertex` of
     src/data/bucket/fill_extrusion_bucket.ts, `isBoundaryEdge` of
     src/data/extent_bounds.ts
@@ -95,7 +138,8 @@ license and source.
     setLocationAtPoint, getBounds and the default constrain of src/ui/camera.ts
     and src/geo/projection/ (mercator_camera_helper.ts, camera_helper.ts,
     mercator_transform.ts)
-  - core/intersect.mbt, worker/query.mbt, map/query.mbt and npm/src/query.ts:
+  - core/intersect.mbt, worker/query.mbt, worker/query_geometry.mbt, map/query.mbt
+    and npm/src/query.ts:
     src/util/intersection_tests.ts, `FeatureIndex.query` of
     src/data/feature_index.ts, the `queryIntersectsFeature` of the fill, line,
     circle and fill-extrusion style layers, `getCameraQueryGeometry`,

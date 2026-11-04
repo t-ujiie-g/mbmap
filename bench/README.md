@@ -3,42 +3,46 @@
 すべての性能値はここのスクリプトで再現できること（docs/VISION.md §2）。結果は `results/*.json` に保存し、
 PROGRESS.md の表はそこから転記する。
 
+コマンドの一覧（黄金テスト、速度の計測、例の配信、パッケージの確認）は [AGENTS.md](../AGENTS.md) §1 にある。どれも `bench/` で
+`npm run <名前>` として走らせる（`package.json` の `scripts`）。初回は次を行う。
+
 ```sh
 cd bench
 npm ci
 npx playwright install chromium firefox webkit
-npm run fixtures          # 国土地理院タイルを取得し sha256 を照合
-npm run backend:node      # Wasm バックエンド比較（Node）
-npm run backend:browser   # 同（Chromium / Firefox / WebKit の module Worker 内）
-npm run maplibre:parse    # MapLibre WorkerTile.parse の基準値（Node）
-npm run maplibre          # MapLibre の初回描画・フレーム時間・バンドルサイズ（Chromium + Metal GPU）
-npm test                  # ベンチ用ツール（lib/）のテスト
-npm run mvt:golden        # mvt を @mapbox/vector-tile と全 fixture で突き合わせる
-npm run mvt:node          # mvt デコード速度（Node）
-npm run mvt:browser       # 同（3 ブラウザの module Worker 内）
-npm run tess:golden       # 面の三角形分割を MapLibre（classifyRings + earcut）と全 fixture で突き合わせる
-npm run tess:node         # デコード＋テッセレーション速度と MapLibre WorkerTile.parse（Node）
-npm run tess:browser      # 同（3 ブラウザの module Worker 内）
-npm run worker:browser    # Worker の process_tile（冷えた状態・温まった状態）を 3 ブラウザで
-npm run render            # mbmap と MapLibre の初回描画・フレーム時間・バンドルサイズ（同じスタイル）
-npm run example           # リポジトリを 127.0.0.1:8080 で配信（開発用の /bench/pages/basic/・/bench/pages/terrain/ はこれだけで動く）
-npm run examples          # npm パッケージを pack して examples/{html,element,react} と bench/npm/pages/ に入れてから配信（一覧は /examples/）
-npm run split             # 2つ目の wasm-gc モジュールのサイズと読み込み時間（入口の分割の判断用）
-npm run geojson:golden    # tiler と @maplibre/geojson-vt の黄金テスト（範囲内の全タイル）
-npm run geojson:node      # GeoJSON の読み込み・索引・タイル切り出しを geojson-vt と比べる（geojson:browser は3ブラウザ）
-npm run analysis:golden   # 解析の wasm と Turf.js / flatbush の黄金テスト（全 fixture）
-npm run analysis:node     # 解析の速度を Turf.js + flatbush と比べる（analysis:browser は3ブラウザ）
-npm run npm:pack          # npm/ をビルドして npm pack し、examples と bench/npm/pages/ に入れて Chromium で確かめる
+npm run fixtures          # タイルなどを取得し、fixtures/*.manifest.json の sha256 と照合する
 ```
+
+- fixture は `fixtures/`（コミットしない。マニフェストだけを置く）。中身と出典は [fixtures/README.md](fixtures/README.md)。上流が変わって
+  照合に失敗したときは止まる。意図して更新するときは `node maplibre/fetch-tiles.mjs --update`。
+- MoonBit をビルドするスクリプトは `npm run build:moon`（ベンチの入口、配布する wasm-gc、`bundle/main`）を先に走らせる。npm パッケージを
+  使うもの（`*:golden` の多く）は `npm --prefix ../npm run build` を先に走らせる。
+- TypeScript や MapLibre のソースを import する Node の入口は `node lib/run-bundled.mjs bench/<dir>/<entry>.mjs` で動かす（esbuild で
+  `bench/dist/` にバンドルしてから実行する）。
+- GPU を使う計測は、ヘッドレス Chromium に `--use-angle=metal --enable-gpu --ignore-gpu-blocklist` を付ける（既定は SwiftShader）。
+  性能の計測は同時に走らせない。
+- `bench/dist/` は生成物（バンドル、PMTiles、GeoJSON のデータなど）の置き場で、コミットしない。
+
+## ベンチ専用の MoonBit パッケージ
+
+| パッケージ | 役割 |
+|---|---|
+| `backend/kernel`, `backend/entry` | Wasm バックエンドの比較（下の backend/）。デコードの繰り返しは比較のためにわざと重複させている |
+| `entry` | mvt / tess / GeoJSON / 座標系などのベンチと黄金テストが呼ぶ公開面（`#export_name`）。js と wasm-gc でビルドする |
+| `expr` | `expression:golden` と `color:golden` が呼ぶ、式のコンパイルと評価（js） |
+| `worker/compile_entry` | メインスレッドのスタイルのコンパイルを wasm-gc にしたもの（`worker:browser` が Worker に渡すコンパイル済みのスタイルを作る） |
+| `split/*` | 2 つ目の wasm-gc モジュールのコスト（下の split/） |
 
 ## entry/ と lib/
 
-- `entry/`：mvt / tess ベンチと黄金テストが呼ぶ MoonBit の公開面（`#export_name`）。js と wasm-gc でビルドし、
-  `lib/entry.mjs` で読み込む。wasm-gc ではタイルを線形メモリに置き、wasm 内で `Bytes` へコピーしてから処理する。
-- `lib/`：静的サーバー、fixture の読み込み（`fixtures.mjs`、Node 用は `node-io.mjs`）、行ごとの計測（`rows.mjs`）、
-  Worker ベンチの実行（`worker-bench.mjs`）、esbuild 設定（`bundle.mjs`。`maplibre-src` で MapLibre の TS ソースを参照）。
+- `entry/`：`lib/entry.mjs` で読み込む。wasm-gc ではタイルを線形メモリに置き、wasm 内で `Bytes` へコピーしてから処理する。
+- `lib/`：静的サーバー（`serve.mjs`。127.0.0.1 だけで待ち、ポートを指定しなければ空いているものを選ぶ）、fixture の読み込み（`fixtures.mjs`、Node 用は
+  `node-io.mjs`）、行ごとの計測（`rows.mjs`）、Worker ベンチの実行（`worker-bench.mjs`、`worker-page.*`）、esbuild 設定（`bundle.mjs`。
+  `maplibre-src` で MapLibre の TS ソースを参照）と `run-bundled.mjs`、試験用の PNG（`png.mjs`）と PMTiles（`pmtiles-writer.mjs`）の
+  読み書き、富士山の DEM を Terrarium にしたもの（`fuji-terrain.mjs`）、偽の Geolocation（`fake-geolocation.mjs`）、長いコメントの一覧
+  （`long-comments.mjs`、AGENTS.md §7.7）。
 
-## backend/ — Wasm バックエンド比較（Phase 0）
+## backend/ — Wasm バックエンド比較
 
 `kernel/`（純 MoonBit）と `entry/`（`#export_name` で公開する export 面）を `wasm` / `wasm-gc` / `js` で
 `--release` ビルドし、さらに `wasm-opt -O3` 版を作って比較する。
@@ -63,7 +67,7 @@ npm run npm:pack          # npm/ をビルドして npm pack し、examples と 
 
 ## maplibre/ — MapLibre 基準値
 
-- `style.json`：background / fill / line のみ（MVP と同じ範囲の Style Spec）。filter、`match`、`interpolate`、
+- `style.json`：background / fill / line / circle のレイヤー。filter、`match`、`interpolate`、
   `step` を含む。`render/` と `worker/` も、このファイルをそのまま使う。
 - `parse-tile.ts`：MapLibre の `src/` を esbuild でバンドルし `WorkerTile.parse` を直接呼ぶ
   （maplibre-gl-js の `test/bench/lib/parse_tile.ts` と同じ方法）。
@@ -96,6 +100,8 @@ npm run npm:pack          # npm/ をビルドして npm pack し、examples と 
 
 `maplibre/style.json` をそのまま両エンジンに渡し、同じタイル・同じカメラ操作で計測する（Chromium + Metal GPU、
 1280×800、DPR 2、11 回の中央値。最初の数回はブラウザが温まっておらず遅いため、5 回では中央値がぶれた）。
+`--labels`・`--line-labels` はラベルのレイヤー（等高線に沿ったラベル）を、`--terrain`・`--extrusion`・`--pitch=N` は地形・押し出し・傾きを足す
+（結果のファイル名に付く）。
 
 - 初回描画：ナビゲーション開始から最初の `idle`（見えているタイルが揃って描かれた）まで。import 完了・
   地図生成の時刻も記録する。mbmap は `bundle/main` を esbuild で minify したもの（アプリが配信する形）を読む。
@@ -109,26 +115,31 @@ npm run npm:pack          # npm/ をビルドして npm pack し、examples と 
 `worker` パッケージの wasm-gc ビルドが `maplibre/style.json` で全 fixture を処理する時間（デコード、
 テッセレーション、GPU 用バッファへの書き込みまで）。`cold` は新しいインスタンスが各タイルを 1 回ずつ順に
 処理したもの（ページの最初のタイルに相当）、行の値は温まった後のタイルごとの中央値。出力バイト数も記録する。
+スタイルは `worker/compile_entry` でコンパイルして渡す（本番ではメインスレッドが行う）。
 
 ## npm/ — npm パッケージの確認
 
 `pack-test.mjs` は `npm/` をビルドして `npm pack` し、できた tarball を examples と試験用のページ（`bench/npm/pages/`）の
-`node_modules/mbmap` に展開する（アプリがインストールするのと同じ形）。そのうえで Chromium で次を確かめる。
+`node_modules/mbmap` に展開する（アプリがインストールするのと同じ形。`npm/prepare.mjs`）。そのうえで Chromium で次を確かめる。
 
-- `examples/{html,element,react}`（ショーケース。`?local=1` で fixture を読む）：3 つとも同じく、東京駅で 5 km 以内の地点と
-  平面直角座標系 IX 系の座標（proj4js と同じ）が出ること、3D で 60° に傾くこと、大阪駅へ移動するとパネルが追従すること。
+- `examples/{html,element,react}`（ショーケース。`?local=1` で fixture を読む）：3 つとも同じく、解析（5 km 以内の地点、平面直角座標系の
+  座標）、3D の切り替え、地点への移動、コントロール（`checks/controls.mjs`）、クラスタ（`clusters.mjs`）、検索（`search.mjs`）、
+  計測・作図・編集・分割（`geo-tools.mjs`）。
 - `bench/pages/{basic,terrain}`（エンジンを直接呼ぶ開発用のページ）：地図ができて描画まで進むこと。
-- `bench/npm/pages/npm`（ファサード）：`load`、`jumpTo` で `move` が1回だけ出ること、帰属表示、スタイル URL の取得失敗が `error`
-  イベントになること、描けないスタイルが例外になること。
+- `bench/npm/pages/npm`（ファサード）：イベント、出典の表示、エラーの経路と、`checks/` のカメラ（`camera.mjs`）、スタイルの変更
+  （`style.mjs`）、画像（`images.mjs`）、地物の状態（`state.mjs`）、問い合わせとマウスのイベント（`query.mjs`）、ラスタ・TileJSON・
+  PMTiles のソース（`tile-sources.mjs`）、追跡と画像の書き出し（`track-export.mjs`）。
 - `bench/npm/pages/element`（素の HTML の `<mb-map>`）：属性で `mb-move` が1回だけ出ること、不正な属性が `mb-error` になり値が変わらない
   こと、移動では地図を保ち、外すと解放し、戻すと同じカメラで作り直すこと、帰属表示が右下の1行であること。
 - `bench/npm/pages/{geojson,analysis}`：GeoJSON ソースと `mbmap/analysis` の遅延読み込み、結果、エラーの経路。
-- React の例は esbuild でバンドルし、Worker と wasm をバンドルの隣にコピーする。
-fixture がなくてもタイルが 404 になるだけで地図は読み込まれるので、CI でも動く。
+- `bench/npm/pages/media`（image・video・canvas のソース、`media.mjs`）、`bench/npm/pages/custom`（カスタムレイヤー、`custom.mjs`）。
 
-## split/ — 入口の分割のコスト（Phase 6.5）
+fixture がなくてもタイルが 404 になるだけで地図は読み込まれるので、CI でも動く（`--screenshots=dir` で画面を保存する）。
 
-2つ目の wasm-gc モジュールで何が増えるかを測る（`npm run split`、`bench/results/split.json`）。
+## split/ — 2 つ目の wasm-gc モジュールのコスト
+
+2つ目の wasm-gc モジュールで何が増えるかを測る（`npm run split`、`bench/results/split.json`）。入口を分ける粒度（入口ごとに 1 つの wasm を、
+それぞれの Worker で遅延して読む。AGENTS.md §4）を決めたときの計測で、粒度を見直すときに走らせ直す。CI では走らせない。
 
 - `split/analysis`：解析の代わりに置くパッケージ（列指向のポリゴンの球面面積、bbox、グリッド集計、面積順の上位）。本物の解析と同じく `Map`、ソート、`@math` を使う。
 - `split/analysis_entry`：それを単独の wasm-gc モジュールにしたもの。`split/combined_entry`：表示用 Worker に同じコードを入れた一体型。`split/empty_entry`：空のモジュール（ランタイムの下限）。
@@ -158,3 +169,11 @@ fixture がなくてもタイルが 404 になるだけで地図は読み込ま�
   索引から切り出す（キャッシュではなく実際に切る）。5回の中央値。
 - 読み込み方の比較：A は MoonBit で GeoJSON のテキストを読む（本番の方式）。B は JS の `JSON.parse` と JS のループで `geom` の表のバイト列
   （`columnarize.mjs`）を作り、wasm で表と索引を作る。B の結果が A と同じタイルになることは、ハッシュで確かめた。
+
+## そのほかの黄金テストと計測
+
+ほかのディレクトリは、それぞれ AGENTS.md §1 の `npm run` の名前に対応する（比べる相手と合格の条件もそこにある）：
+`raster/`、`pmtiles/`、`query/`、`track/`、`export/`、`ui/`、`labels/`、`style/`（`style:golden`・`style:public`・`style:compat`・
+`expression:golden`・`color:golden`。場面は `style/scenes.mjs`、公開のスタイルは `style/public-styles.mjs`）、`camera/`、`terrain/`、
+`proj/`、`clipper/`（`clipper:golden`・`buffer:check`・`geometry:node`）、`geodesic/`、`draw/`（`draw:golden`・`draw:many`・
+`draw:setdata`）。開発用のページは `pages/`（basic、terrain）にあり、`npm run example` で配信する。

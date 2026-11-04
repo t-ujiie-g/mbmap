@@ -16,33 +16,61 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 
 ## 配布物
 
+入口（`package.json` の `exports`）：
+
 | ファイル | 内容 |
 |---|---|
-| `dist/index.js` | メインスレッドの ESM（`Map`） |
-| `dist/index.d.ts` | 型定義 |
-| `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される） |
+| `dist/index.js`, `dist/index.d.ts` | メインスレッドの ESM（`Map`）と型定義 |
+| `dist/element.js` | Web Component `<mb-map>`（`mbmap/element`。import すると要素が登録される。`index.js` を import する） |
 | `dist/ui.js` | 見た目を持たない UI のコントローラ（`mbmap/ui`） |
 | `dist/search.js` | 見た目を持たない検索（GeoSearch、`mbmap/search`） |
-| `dist/geojson.js`, `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソース用のモジュール、Worker、wasm。スタイルに GeoJSON ソースがあるときだけ、`index.js` が動的 import で読み込む |
-| `dist/geojson-properties.wasm` | 式を持つ GeoJSON の wasm。`clusterProperties` のあるソースがあるときだけ Worker が読み込む |
-| `dist/analysis.js`, `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析（`mbmap/analysis`）の入口、Worker、wasm。`mbmap/analysis` を import したときだけ読み込まれる |
-| `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect）。解析の Worker が、初めて演算を呼んだときだけ読み込む（場所は `geometryWasmUrl` で変えられる） |
-| `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読み込む（場所は `projWasmUrl` で変えられる） |
-| `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ読み込む |
 | `dist/draw.js` | 見た目を持たない作図（`mbmap/draw`） |
-| `dist/geodesic.js`, `dist/geodesic-worker.js`, `dist/geodesic.wasm` | 楕円体の上の計測（`mbmap/geodesic`）の入口、Worker、wasm。初めて呼んだときに Worker を起こす |
-| `dist/worker.js` | タイル Worker（モジュール Worker） |
-| `dist/mbmap.wasm` | Worker が読む wasm-gc |
+| `dist/analysis.js` | 解析（`mbmap/analysis`）の入口 |
+| `dist/geodesic.js` | 楕円体の上の計測（`mbmap/geodesic`）の入口 |
 
-`worker.js` と `mbmap.wasm` は、既定で `new URL("./worker.js", import.meta.url)` のように `index.js` の隣から読む。ESM をそのまま配信する場合（import map など）は、そのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う（まだ検証していない）。動かないときは、2つのファイルを自分で配信し、`workerUrl` と `wasmUrl` で場所を渡す。Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
+`index.js` が、使うときだけ動的 import で読み込むもの（`index.js` と同じ場所に置く）：
+
+| ファイル | 読み込む時 |
+|---|---|
+| `dist/geojson.js` | スタイルに GeoJSON ソースがあるとき |
+| `dist/legacy.js` | 旧形式のフィルタやプロパティ関数（`["==", "class", "x"]`、`{stops: …}`）があるとき（式に変換する） |
+| `dist/sprite.js` | スタイルに `sprite` があるとき |
+| `dist/tilejson-merge.js` | `url` を持つソース（TileJSON か PMTiles）があるとき |
+| `dist/pmtiles.js` | `pmtiles://` のソースがあるとき（アーカイブのヘッダーを読む） |
+| `dist/media.js` | image・video・canvas のソースがあるとき |
+| `dist/custom.js` | 最初のカスタムレイヤーを足したとき |
+| `dist/export.js` | 最初に `toBlob` を呼んだとき |
+
+Worker と wasm：
+
+| ファイル | 内容 |
+|---|---|
+| `dist/worker.js`, `dist/mbmap.wasm` | タイル Worker（モジュール Worker）と、それが読む wasm-gc |
+| `dist/worker-labels.js`, `dist/worker-pmtiles.js`, `dist/worker-query.js` | タイル Worker の部品。ラベル、PMTiles、地物の問い合わせを初めて扱うときに、`worker.js` が自分の隣から読む |
+| `dist/geojson-worker.js`, `dist/geojson.wasm` | GeoJSON ソースの Worker と wasm（読み込みとタイル分割） |
+| `dist/geojson-properties.wasm` | 式を持つ GeoJSON の wasm。`clusterProperties` のあるソースがあるときだけ GeoJSON の Worker が読む |
+| `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析の Worker と wasm。`mbmap/analysis` を初めて呼んだときに起こす |
+| `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect、split、merge）。解析の Worker が、初めて演算を呼んだときだけ読む |
+| `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読む |
+| `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ自分の隣から読む |
+| `dist/geodesic-worker.js`, `dist/geodesic.wasm` | `mbmap/geodesic` の Worker と wasm。初めて呼んだときに起こす |
+
+どのファイルも、既定では `new URL("./worker.js", import.meta.url)` のように、読み込む側のモジュールの隣から読む。ESM をそのまま配信する場合（import map など）は、`dist/` をまるごと置けばそのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う。esbuild はこの `new URL` をそのまま残し、動的 import はバンドルに入れるので、Worker と wasm（`dist/` の `*.wasm` と `*worker*.js`）をバンドルの隣にコピーすれば動く（`examples/react/build.mjs`）。ほかのバンドラはまだ検証していない。動かないときは、ファイルを自分で配信して場所を渡す。
+
+- `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
+- `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
+- `index.js` の動的 import（上の表）と `analysis.js` の `projstring.js` は、場所を変えられない。それぞれの隣に置く。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+
+Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
 Content Security Policy を使うページでは、wasm のコンパイルに `script-src 'wasm-unsafe-eval'`、Worker に `worker-src 'self'`（または `script-src 'self'`）が要る。`eval` と `new Function` は使っていない。
 
 ## API
 
-- `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜85 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`fontFamily`（ラベルの CSS フォントファミリー。既定 `sans-serif`）、`strict`（既定 false。true にすると、まだ描けない内容を含むスタイルを拒む）、`attributionControl`（既定 true。表示中のレイヤーと地形が使うソースの `attribution` を、MapLibre と同じ順で文字列として表示する）。
+- `new Map(options)`：`container`、`style`、`center`、`zoom`、`bearing`（北から時計回りの度）、`pitch`（0〜85 度）、`workerCount`（0 なら自動、1〜4）、`workerUrl`、`wasmUrl`、`geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（場所は「配布物」）、`fontFamily`（ラベルの CSS フォントファミリー。既定 `sans-serif`）、`strict`（既定 false。true にすると、まだ描けない内容を含むスタイルを拒む）、`attributionControl`（既定 true。表示中のレイヤーと地形が使うソースの `attribution` を、MapLibre と同じ順で文字列として表示する）。
   - まだ描けないプロパティ・式・レイヤーは、既定ではそれを除いて描き（プロパティは既定値に戻し、描けないレイヤーとソースは外す）、コンソールと `warning` イベント（`warnings`：`{path, layer, message}` の一覧）で知らせる。`strict: true` のときと、値が不正なときは、スタイルがオブジェクトなら例外を投げ、URL なら `error` イベントになる。
-- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`render`（描画のたび）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`、`warning`（スタイルを描いたあと、除いた内容が変わったとき）。
+- `on` / `off` / `once(type, listener?)`：`load`（最初の描画）、`render`（描画のたび）、`idle`（落ち着くたび）、`move`（カメラが変わるたび）、`error`、`warning`（スタイルを描いたあと、除いた内容が変わったとき）、`styledata`（スタイルの読み込みと変更のたび）、`styleimagemissing`（タイルが使う画像がないとき。`id` にその名前。1 つの名前に 1 回）。カメラとマウスのイベントは下に。
 - `getCenter()`、`getZoom()`、`getBearing()`、`getPitch()`、`jumpTo({ center, zoom, bearing, pitch })`、`setCenter`、`setZoom`、`setBearing`、`setPitch`。bearing は -180〜180 に折り返し、pitch は 0〜85 に収める。値が変わらないときは `move` を出さない。有限でない値（NaN など）は TypeError になる。
 - カメラの移動（MapLibre と同じ計算。`npm run camera:golden` で MapLibre 6.16 の Camera と比べている）：
   - `easeTo(options)`（既定 500ms）、`flyTo(options)`（ズームアウトして戻る。`curve`、`speed`、`screenSpeed`、`maxDuration`、`minZoom`）、`panBy`、`panTo`、`zoomTo`、`zoomIn`、`zoomOut`、`rotateTo`、`resetNorth`、`resetNorthPitch`、`snapToNorth`、`stop()`。どれも `center`、`zoom`、`bearing`、`pitch`、`around`（その点を動かさない）、`offset`、`duration`、`easing`、`animate`、`essential`（OS の「視差効果を減らす」でもアニメーションする）を受け付ける。
@@ -61,25 +89,24 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - `addLayer(layer, beforeId?)`、`removeLayer`、`moveLayer(id, beforeId?)`、`getLayer`、`getLayersOrder()`、`setPaintProperty`・`getPaintProperty`、`setLayoutProperty`・`getLayoutProperty`（`visibility` を含む）、`setFilter`・`getFilter`、`setLayerZoomRange`。
   - `addSource(id, source)`、`removeSource(id)`（レイヤーや地形が使っている間は `error`）、`getSource(id)`（GeoJSON ソースは `setData(data)` でデータを差し替える。クラスタにしたソースは MapLibre と同じ `getClusterExpansionZoom(id)`、`getClusterChildren(id)`、`getClusterLeaves(id, limit, offset)` を持ち、Promise で答える。クラスタにしていないソースでは null になる）。
   - `setTerrain`・`getTerrain`、`setSky`・`getSky`、`setLight`・`getLight`（null で外す）。
+  - `getSource(id)` は、image・video・canvas のソースでは MapLibre と同じ `setCoordinates(corners)`（左上から時計回り）、`updateImage({ url, image, coordinates })`、`play()`・`pause()`、`getVideo()`・`getCanvas()` を持つ。
   - 描けないスタイルになる変更は `error` イベントを出し、元のスタイルのまま描き続ける。スタイルの読み込み前に呼ぶと例外になる。
+- 画像（パターンとアイコン。MapLibre と同じ名前）：`addImage(id, image, { pixelRatio, sdf })`（`ImageData`、`{ width, height, data }` の RGBA、画像・ImageBitmap・canvas）、`updateImage(id, image)`、`removeImage(id)`、`hasImage(id)`、`listImages()`（スプライトのものを含む）、`loadImage(url)`（`transformRequest` を通して取得し、`{ data: ImageBitmap }` を返す）。同じ名前の `addImage` と、ない名前の `updateImage` は `error` イベントになる。スタイルの `sprite`（URL か `{ id, url }` の一覧。画素密度 2 の画面では `@2x`）は自動で読む。
+- カスタムレイヤー（MapLibre の `CustomLayerInterface`）：`addLayer({ id, type: "custom", renderingMode, onAdd, onRemove, prerender, render }, beforeId?)`。`render(gl, options)` の `options` は MapLibre 6.16 と同じ（`modelViewProjectionMatrix`、`defaultProjectionData`、`getProjectionData`、Mercator 用のシェーダの前置き）。`renderingMode: "3d"` は押し出しや地形と深度バッファを共有する。GL の状態はレイヤーの前に保存し、後に戻す。アニメーションは `triggerRepaint()` で次のフレームを頼む。`getStyle()` には入らず、`setStyle` で外れる（MapLibre と同じ）。地形があるときも、地形のテクスチャには描かず画面の上に描く。
 - 地物の問い合わせ（結果は MapLibre と同じ。`npm run query:golden` で MapLibre 6.16 と比べている）：
   - `queryRenderedFeatures(geometry?, { layers, filter })`：点 `[x, y]` か範囲 `[[x0, y0], [x1, y1]]`（CSS ピクセル。省略すると地図全体）に描かれている地物を、上のものから順に返す。各地物には `layer`（スタイルのレイヤー）、`source`、`sourceLayer`、`state` が付く。
   - `querySourceFeatures(sourceId, { sourceLayer, filter })`：描画中のタイルにあるソースの地物を返す。
   - ジオメトリはワーカーが持つので、どちらも Promise を返す（MapLibre は同期）。
   - MapLibre 6 は既定で source の maxzoom より深いズームのタイルを切り分けるため（`zoomLevelsToOverscale`）、そこでは同じ地物の切り口と重複が MapLibre と違う。mbmap は source のタイルのまま描き、問い合わせる。
-- ラスタタイルとタイルの在りか：
-  - `raster` のソースとレイヤー。paint は `raster-opacity`、`raster-hue-rotate`、`raster-brightness-min`・`max`、`raster-saturation`、`raster-contrast`、`raster-resampling` に対応する。止まっているときは MapLibre と同じく画素の格子にそろえて描く。フェードはない。
-  - `url` で TileJSON を指すソース（vector、raster、raster-dem）。TileJSON の `tiles`、`minzoom`、`maxzoom`、`bounds`、`attribution` などを読み、ソースに書いた値を優先する。`bounds` の外のタイルは要求しない。`scheme: "tms"` にも対応する。
-  - PMTiles：`url: "pmtiles://https://…/x.pmtiles"`。プラグインは不要。ワーカーが範囲リクエストでディレクトリとタイルを読む。圧縮は none と gzip に対応する。サーバーは Range に対応している必要がある。
-  - `transformRequest`（オプションと `setTransformRequest`）：スタイル、TileJSON、GeoJSON の `data` の URL、タイルの要求の URL、ヘッダー、`credentials` を変えられる。既定では資格情報を送らない。PMTiles の範囲リクエストは対象外。
+- `transformRequest`（オプションと `setTransformRequest`）：スタイル、TileJSON、GeoJSON の `data`、タイル、スプライト、image ソースの画像の要求の URL、ヘッダー、`credentials` を変えられる（MapLibre と同じ `(url, resourceType)`）。既定では資格情報を送らない。PMTiles の範囲リクエスト（ヘッダーもタイルも）は対象外。ソースと描けるレイヤーは「対応するスタイル」に。
 - 地物の状態（feature-state）：`setFeatureState({ source, sourceLayer, id }, state)`、`getFeatureState`、`removeFeatureState(target, key?)`。
-  - paint で `["feature-state", key]`（`boolean`・`number`・`string` で型をそろえる）を読むと、その地物だけその状態で描く。fill、line、circle、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
+  - paint で `["feature-state", key]`（`boolean`・`number`・`string` で型をそろえる）を読むと、その地物だけその状態で描く。fill、line、circle、heatmap、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
   - 地物の id は、タイルの id、GeoJSON の `id`、または source の `promoteId` が指すプロパティ。同じ id の地物はまとめて同じ状態になる。
-- グローバルな状態（global state、MapLibre と同じ）：`setGlobalStateProperty(name, value)`、`getGlobalState()`、`new Map` の `globalState`（スタイルの `state` の既定値より優先）。`["global-state", name]` を読むレイヤーは描き直され、フィルタやレイアウトで読むレイヤーはタイルを読み直す。`null` を渡すとスタイルの既定値に戻る。
   - ワーカーが地物の位置を持ち、状態のある地物の分だけを問い合わせるので、変更は 1 往復遅れて描かれる。フィルターや layout では使えない（MapLibre と同じ）。
+- グローバルな状態（global state、MapLibre と同じ）：`setGlobalStateProperty(name, value)`、`getGlobalState()`、`new Map` の `globalState`（スタイルの `state` の既定値より優先）。`["global-state", name]` を読むレイヤーは描き直され、フィルタやレイアウトで読むレイヤーはタイルを読み直す。`null` を渡すとスタイルの既定値に戻る。
 - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
   - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
-- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`evaluatePaint(layerId, properties)`（その属性の地物を、いまのズームでどう描くか。凡例が使う）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。`styledata` イベントは、スタイルの読み込みと変更のたびに出る。
+- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`evaluatePaint(layerId, properties)`（その属性の地物を、いまのズームでどう描くか。凡例が使う）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。
 
 ## UI のコントローラ `mbmap/ui`
 
@@ -221,7 +248,7 @@ draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
 - 状態は `mode`、`selection`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
 - 操作は `setMode(mode)`、`select(id, add)`、`setProperties(id, properties)`、`deleteSelected()`、`merge()`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
 - 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回り、穴は時計回りにする（RFC 7946）。
-- 描くのは自前の GeoJSON ソース（既定の id は `mbmap-draw`）とレイヤーで、`setData` で更新する。描いている間はダブルクリックのズームを止める。
+- 描くのは自前の GeoJSON ソース（`id` で名前の頭を変えられる。既定は `mbmap-draw`）とレイヤーで、`setData` で更新する。色は `color`（既定 `#3b6ed6`）、円の点の数は `steps`（既定 64）、座標の桁は `precision`（既定 9）。描いている間はダブルクリックのズームを止める。
 
 ## 楕円体の上の計測 `mbmap/geodesic`
 
@@ -259,19 +286,53 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 
 ## 対応するスタイル
 
-background / fill / line / circle / symbol レイヤーと、vector ソース（`tiles` に `{z}/{x}/{y}` のテンプレート。http(s) か相対 URL）・GeoJSON ソース（`data` に URL かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`、`clusterProperties`。`clusterProperties` のあるソースは、式を持つ別の wasm `geojson-properties.wasm`（`geojsonPropertiesWasmUrl` で場所を渡せる）で読む）。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る。URL は認証情報なしで取得し、http(s) に限る。式は `get` `has` `geometry-type` `zoom` `!` `all` `any`、比較（`collator` つきも）、`in` `match` `case` `coalesce` `interpolate` `step`、`format`（`font-scale`、`vertical-align`、区切りごとの `text-font` と `text-color`）、`number-format`、`split` `join`、`resolved-locale`、`is-supported-script`（MapLibre 6.16 と同じく常に true）、`global-state`、`within` と `distance`（フィルタ、レイアウト、fill・line・circle・heatmap の地物ごとの paint。記号や押し出しの paint、feature-state を読むレイヤーの paint では未対応）、`accumulated`（`clusterProperties` の reduce で）など。地物ごとの `line-dasharray`、heatmap の feature-state にも対応。数の書式と文字列の照合はブラウザの `Intl` で行う。未対応のものは、JSON 上の場所付きの警告を出して除く（`strict` ではエラー）。黙って無視はしない。
+MapLibre の Style Spec（v8）を、MapLibre 6.16 と同じ描き方で描く（`npm run style:golden` などで画素ごとに比べている）。描けないプロパティ・式・レイヤーは、JSON 上の場所付きの警告を出して除く（`strict` ではエラー）。黙って無視はしない。公開のスタイル（OpenMapTiles、OpenFreeMap、Protomaps など）から何が除かれるかは、`npm --prefix bench run style:compat` で一覧できる。
 
-線の `line-offset`・`line-gap-width`（地物ごとの式も）と `line-blur`（ズームの式まで）、円の `circle-blur`（ズームの式まで）・`circle-pitch-scale`・`circle-pitch-alignment`、fill / line / circle / fill-extrusion の `*-translate`（定数の `[x, y]`）と `*-translate-anchor` を MapLibre と同じに描き、`queryRenderedFeatures` もそれに合わせて当たりを判定する。`fill-sort-key`・`line-sort-key`・`circle-sort-key`（円はタイルをまたいでキーの順に描く）と `symbol-z-order` も MapLibre と同じ。`text-translate` と `icon-translate` は未対応。
+### ソース
 
-fill-extrusion レイヤー（`fill-extrusion-color`、`fill-extrusion-opacity`、`fill-extrusion-height`、`fill-extrusion-base`、`fill-extrusion-vertical-gradient`）とスタイルの `light`（`anchor`、`color`、`intensity`、`position`）に対応している。高さと基部は地物ごとに Worker で頂点に入れ、ズームの式はタイルのズームとその 1 段下の値の間を補間する（MapLibre と同じ）。高さは 0〜6553.5m（0.1m 単位）。地形があるときは、建物を重心の地面の高さに置く。`fill-extrusion-pattern` は未対応。
+- `vector`：`tiles` に `{z}/{x}/{y}` のテンプレート（http(s) か相対 URL）、`minzoom`、`maxzoom`、`bounds`（外のタイルは要求しない）、`scheme: "tms"`、`promoteId`、`attribution`。
+- `raster`：`tiles`、`tileSize`（128・256・512）など vector と同じもの。
+- `raster-dem`：`tiles`、`tileSize`、`encoding` は `mapbox`・`terrarium`・`custom`（`redFactor` などの係数）、それに国土地理院の標高タイル用の拡張 `gsi`。
+- `url` で TileJSON を指すソース（vector、raster、raster-dem）。TileJSON の `tiles`、`minzoom`、`maxzoom`、`bounds`、`attribution` などを読み、ソースに書いた値を優先する。
+- PMTiles：`url: "pmtiles://https://…/x.pmtiles"`。プラグインは不要。ワーカーが範囲リクエストでディレクトリとタイルを読む。圧縮は none と gzip に対応する。サーバーは Range に対応している必要がある。
+- `geojson`：`data` に URL（認証情報なしで取得し、http(s) に限る）かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`lineMetrics`、`promoteId`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`、`clusterProperties`。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る（geojson-vt と同じタイル）。`clusterProperties` のあるソースは、式を持つ別の wasm `geojson-properties.wasm` で読む。
+- `image`（`url`、`coordinates`）、`video`（`urls`、`coordinates`。音を消してループ再生する）、`canvas`（`canvas` に要素の id、または `addSource` に要素そのもの、`animate`、`coordinates`）。四隅の位置は MapLibre と同じく計算し、四角形でない配置は MapLibre と同じくゆがめて描く。再生中の動画と `animate` の canvas は毎フレーム描き直す（MapLibre と違い、そのあいだも `idle` になる）。
 
-hillshade レイヤー（MapLibre の `standard` 方式。`hillshade-illumination-direction`、`hillshade-illumination-anchor`、`hillshade-exaggeration`、`hillshade-shadow-color`、`hillshade-highlight-color`、`hillshade-accent-color`）と `raster-dem` ソース（`tiles`、`tileSize`、`encoding` は `mapbox`・`terrarium`・`custom`、それに国土地理院の標高タイル用の拡張 `gsi`）にも対応している。
+### レイヤー
+
+- `background`：`background-color`、`background-opacity`、`background-pattern`。
+- `fill`：`fill-color`、`fill-opacity`、`fill-antialias` と `fill-outline-color`（MapLibre の輪郭の描き方）、`fill-pattern`、`fill-translate`・`fill-translate-anchor`、`fill-sort-key`。
+- `line`：`line-color`、`line-opacity`、`line-width`、`line-gap-width`、`line-offset`（地物ごとの式も）、`line-blur`（ズームの式まで）、`line-dasharray`（ズームの式も地物ごとの式も）、`line-gradient`（`["line-progress"]` で。GeoJSON ソースの `lineMetrics: true`）、`line-pattern`、`line-translate`・`line-translate-anchor`、`line-cap`、`line-join`、`line-miter-limit`、`line-round-limit`、`line-sort-key`。
+- `circle`：`circle-color`、`circle-opacity`、`circle-radius`、`circle-blur`（ズームの式まで）、`circle-stroke-color`・`circle-stroke-opacity`・`circle-stroke-width`、`circle-pitch-scale`、`circle-pitch-alignment`、`circle-translate`・`circle-translate-anchor`、`circle-sort-key`（タイルをまたいでキーの順に描く）。
+- `heatmap`：`heatmap-radius`、`heatmap-weight`、`heatmap-intensity`、`heatmap-color`（`["heatmap-density"]` で）、`heatmap-opacity`。MapLibre と同じく、密度を画面の 1/4 の大きさのテクスチャに足してから色を付ける。
+- `fill-extrusion`：`fill-extrusion-color`、`fill-extrusion-opacity`、`fill-extrusion-height`、`fill-extrusion-base`、`fill-extrusion-vertical-gradient`、`fill-extrusion-pattern`、`fill-extrusion-translate`。スタイルの `light`（`anchor`、`color`、`intensity`、`position`）で陰を付ける。高さと基部は地物ごとに Worker で頂点に入れ、ズームの式はタイルのズームとその 1 段下の値の間を補間する（MapLibre と同じ）。高さは 0〜6553.5m（0.1m 単位）。半透明のものは、MapLibre と同じく各画素にいちばん手前の面だけを描く。地形があるときは、建物を重心の地面の高さに置く。
+- `raster`：`raster-opacity`、`raster-hue-rotate`、`raster-brightness-min`・`max`、`raster-saturation`、`raster-contrast`、`raster-resampling`。止まっているときは MapLibre と同じく画素の格子にそろえて描く。フェードはない。
+- `hillshade`：`hillshade-method`（`standard`、`basic`、`combined`、`igor`、`multidirectional`。複数の光源も）、`hillshade-illumination-direction`、`hillshade-illumination-altitude`、`hillshade-illumination-anchor`、`hillshade-exaggeration`、`hillshade-shadow-color`、`hillshade-highlight-color`、`hillshade-accent-color`。
+- `color-relief`：`color-relief-color`（`["elevation"]` の `interpolate`）、`color-relief-opacity`。
+- `symbol`：点と線に沿った（`symbol-placement` の `point`、`line`、`line-center`）文字のラベルとアイコン。
+  - 文字：`text-field`（`{key}` の書き方、`get`、`concat`、`to-string`、`format`）、`text-font`、`text-size`、`text-anchor`、`text-offset`、`text-radial-offset`、`text-variable-anchor`、`text-variable-anchor-offset`、`text-justify`、`text-max-width`、`text-line-height`、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-max-angle`、`text-keep-upright`、`text-padding`、`text-optional`、`text-allow-overlap` と `text-overlap`、`text-ignore-placement`、`text-writing-mode`（最初の値。縦書きでは、漢字・かなは立て、ラテン文字は横倒し、括弧と句読点は縦書き用の字形にする）、`text-color`、`text-opacity`、`text-halo-color`、`text-halo-width`、`text-halo-blur`、`text-translate`・`text-translate-anchor`。
+  - アイコン：`icon-image`、`icon-size`、`icon-rotate`、`icon-anchor`、`icon-offset`、`icon-padding`、`icon-text-fit`・`icon-text-fit-padding`、`icon-optional`、`icon-allow-overlap` と `icon-overlap`、`icon-ignore-placement`、`icon-rotation-alignment`、`icon-pitch-alignment`、`icon-keep-upright`、`icon-color` と `icon-halo-*`（SDF の画像）、`icon-opacity`、`icon-translate`・`icon-translate-anchor`。
+  - `symbol-spacing`、`symbol-sort-key`、`symbol-z-order` も MapLibre と同じ。`symbol-avoid-edges` は読まない（警告を出す）。
+  - 文字はブラウザにあるフォントで描く（グリフ PBF は使わない）。`text-font` は MapLibre がグリフをその場で描くときと同じく、名前を CSS のフォントファミリーに並べ（最後に `fontFamily`）、最初の名前の `Bold`・`Light`・`Italic` などから太さと斜体を決める。`text-font` がなければ `fontFamily` で描く。
+  - 地図を傾けると、MapLibre と同じく遠くのラベルほど小さく描き、カメラの距離の 5 倍より遠いラベルは置かない。
+
+`*-translate` は定数とズームの式を受け付け、`queryRenderedFeatures` もそれに合わせて当たりを判定する。
+
+### 画像
+
+`fill-pattern`、`line-pattern`、`fill-extrusion-pattern`、`background-pattern`、`icon-image` は、スタイルの `sprite` と `addImage` で足した画像を使う。パターンは整数のズームで選ぶ（MapLibre のズームの間のクロスフェードはしない）。
+
+### 地形と空
 
 スタイルの `terrain`（`source` に `raster-dem` ソース、`exaggeration`）で、地図を地形の起伏の上に貼って描く。カメラの中心は地面の高さに合わせて持ち上がる。symbol レイヤーのラベルは地形の高さに置き、地形に隠れるものは消す（MapLibre と同じく、地形の深度と比べる）。
 
 ピッチは MapLibre と同じく 85° まで。70° を超えると地平線が画面に入り、スタイルの `sky`（`sky-color`、`horizon-color`、`fog-color`、`fog-ground-blend`、`horizon-fog-blend`、`sky-horizon-blend`。ズームの式も可。`atmosphere-blend` は地球儀用なので読まない）があれば、その上に空を描き、地形には遠くほど霧をかける。`sky` がなければ、MapLibre と同じく空も霧も描かない。
 
-symbol レイヤーは、点と線に沿った文字のラベルとアイコンに対応している（`text-field`（`{key}` の書き方、`get`、`concat`、`to-string`、`format`）、`text-font`、`text-size`、`text-anchor`、`text-offset`、`text-variable-anchor`、`text-max-width`、`text-line-height`、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-padding`、`text-allow-overlap` と `text-overlap`、`text-ignore-placement`、`text-writing-mode`（最初の値。縦書きでは、漢字・かなは立て、ラテン文字は横倒し、括弧と句読点は縦書き用の字形にする）、`symbol-sort-key`、`text-color`、`text-opacity`、`text-halo-color`、`text-halo-width`、`text-halo-blur`、`text-translate`、`icon-*` の同じ名前のもの）。文字はブラウザにあるフォントで描く（グリフ PBF は使わない）。`text-font` は MapLibre がグリフをその場で描くときと同じく、名前を CSS のフォントファミリーに並べ（最後に `fontFamily`）、最初の名前の `Bold`・`Light`・`Italic` などから太さと斜体を決める。`text-font` がなければ `fontFamily` で描く。地図を傾けると、MapLibre と同じく遠くのラベルほど小さく描き、カメラの距離の 5 倍より遠いラベルは置かない。
+### 式
+
+MapLibre 6.16 の式を、型の注釈も含めて MapLibre と同じに評価する（`npm run expression:golden` で style-spec 26.5.0 と比べている）。`let`・`var`、`interpolate`（`interpolate-hcl`・`interpolate-lab` も）、`step`、`match`、`case`、`coalesce`、比較（`collator` つきも）、数学と文字列の演算、`format`（`font-scale`、`vertical-align`、区切りごとの `text-font` と `text-color`）、`number-format`、`split`・`join`、`resolved-locale`、`is-supported-script`（MapLibre 6.16 と同じく常に true）、`global-state`、`feature-state`（paint で）、`within` と `distance`（フィルタ、レイアウト、fill・line・circle・heatmap の地物ごとの paint。記号や押し出しの paint、feature-state を読むレイヤーの paint では未対応）、`accumulated`（`clusterProperties` の reduce で）など。数の書式と文字列の照合はブラウザの `Intl` で行う。旧形式のフィルタとプロパティ関数（`stops`）は、MapLibre と同じく式に変換して描く。
+
+未対応のおもなもの：`object` と `properties`、`get`・`has` のオブジェクト引数、`format` の中の `image`、`symbol-placement`・`text-anchor`・`text-offset`・`icon-offset`・`fill-antialias` を式で与えること、線に沿ったラベルの `viewport` の配置（`text-pitch-alignment`・`text-rotation-alignment`）、`light.position` の式。
 
 WebGL2 とモジュール Worker、wasm-gc が必要（Chrome / Edge 119 以降、Firefox 120 以降、Safari 18.2 以降）。
 
