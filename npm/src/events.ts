@@ -78,6 +78,10 @@ export class Events {
     this.#fire(event, this.#listeners.get(type) ?? []);
   }
 
+  sourceData(sourceId: string): void {
+    this.#fire({ type: "sourcedata", target: this.#target, sourceId, dataType: "source" }, this.#listeners.get("sourcedata") ?? []);
+  }
+
   warn(warnings: StyleWarning[]): void {
     this.#fire({ type: "warning", target: this.#target, warnings }, this.#listeners.get("warning") ?? []);
   }

@@ -20,13 +20,20 @@ export function matchRank(text: string, query: string): number {
   return text.includes(query) ? 1 : 0;
 }
 
-interface Feature {
-  properties?: Record<string, unknown> | null;
-  geometry?: { type: string; coordinates?: unknown; geometries?: { coordinates?: unknown }[] } | null;
+/** A GeoJSON geometry, or a GeometryCollection of them. */
+export interface Geometry {
+  type: string;
+  coordinates?: unknown;
+  geometries?: (Geometry | null)[];
 }
 
-/** The bounding box of a GeoJSON geometry's coordinates, or null without any. */
-function boxOf(g: Feature["geometry"]): [number, number, number, number] | null {
+interface Feature {
+  properties?: Record<string, unknown> | null;
+  geometry?: Geometry | null;
+}
+
+/** The bounding box of a GeoJSON geometry's coordinates (collections' included, nested too), or null without any. */
+export function boxOf(g: Geometry | null | undefined): [number, number, number, number] | null {
   const box: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
   const walk = (c: unknown): void => {
     if (!Array.isArray(c)) return;
@@ -37,8 +44,11 @@ function boxOf(g: Feature["geometry"]): [number, number, number, number] | null 
       box[3] = Math.max(box[3], c[1]);
     } else c.forEach(walk);
   };
-  walk(g?.coordinates);
-  g?.geometries?.forEach((x) => walk(x.coordinates));
+  const geometry = (x: Geometry | null | undefined): void => {
+    walk(x?.coordinates);
+    x?.geometries?.forEach(geometry);
+  };
+  geometry(g);
   return Number.isFinite(box[0]) ? box : null;
 }
 
