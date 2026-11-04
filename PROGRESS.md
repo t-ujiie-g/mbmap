@@ -4,20 +4,46 @@
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り、#86）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
-- **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` / `fill-translate` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
+  1. 16.8 の Protomaps（下の節）。16.6 の残り（別の worktree で進行中）（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
+- **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 123.9KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 71.7KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 124.1KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 71.9KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16.8：公開スタイルの突き合わせ（OpenMapTiles 系）（2026-11-04）
+
+状態：**OpenMapTiles 系の 7 本は完了**。Protomaps は次の段（`@protomaps/basemaps` でスタイルを作るので、依存を足す確認から）。
+
+- **`npm run style:public`**（`bench/style/public.mjs`）：OpenMapTiles スキーマの公開スタイル 7 本（osm-bright、positron、dark-matter、maptiler-basic、ofm-liberty、ofm-bright、ofm-positron）を、OpenFreeMap のタイル（ビルド `20261101_080013_pt`、GSI と同じ東京駅周辺の z14 7×5、約 20MB）と各スタイルのスプライトで、mbmap と MapLibre 6.16 に描かせて画素で比べる。ラベルは `labels:golden` の担当なので記号レイヤーは外し、低ズームの陰影のラスタ（`ne2_shaded`）も外す。カメラは z15（回転なし）と z14.6（25° 回転）。フィクスチャは manifest の sha256 で固定（`ofm-planet`、`sprites`。`npm run fixtures` が取る）。比べる部分は `bench/style/compare.mjs` に切り出し、`style:golden` と共通にした。
+- **見つけて直したもの**：
+  - ズームで変わる `*-translate`（osm-bright と ofm-bright の `building-top` が `{"stops": [[14, [0, 0]], [16, [-2, -2]]]}`）：平行移動を `[x, y]` の式（定数かズームの曲線）にした（`@style.translate_at`、主スレッドはカメラのズーム、ワーカーのクエリはクエリのズームで評価）。地物ごとの式は MapLibre と同じく拒む。osm-bright は平均 1.036 → 0.072。
+  - `line-join: bevel`：MapLibre は miter の長さが `line-miter-limit`（既定 2）未満なら miter で描く（`line_bucket.ts`）。mbmap はほぼまっすぐのときだけ miter にしていた。
+- **結果**（クラウドの SwiftShader、平均 / p99。限度は測った値のすぐ上）：
+
+  | スタイル | z15 | z14.6・25° |
+  |---|---|---|
+  | osm-bright | 0.072 / 1 | 0.037 / 1 |
+  | positron | 0.007 / 0 | 0.006 / 0 |
+  | dark-matter | 0.04 / 1 | 0.036 / 1 |
+  | maptiler-basic | 0.114 / 4 | 0.064 / 2 |
+  | ofm-liberty | 0.102 / 2 | 0.108 / 2 |
+  | ofm-bright | 0.04 / 1 | 0.01 / 0 |
+  | ofm-positron | 0.007 / 0 | 0.006 / 0 |
+
+  - 残る差は細い破線の道（`line-dasharray`、幅 1 px 前後）。source の maxzoom より深く見るとき、MapLibre はタイルを組み直し（overscale）、鋭い角を分ける距離（`sharpCornerOffset`）や破線の距離がそのズームで変わる。mbmap は z14 の形のまま。破線をなくすと maptiler-basic の道は 0.153（bevel の修正後）。
+- `style:compat` の警告は 30 → 27（`fill-translate` の式が読めるようになった）。
+- 大きさ（gzip -9）：表示（メイン）123,940 → 124,099 バイト（+159）、表示ワーカー 71,714 → 71,855 バイト（+141）。
+- クラウドでは Node の `fetch` がプロキシを通らないので `NODE_USE_ENV_PROXY=1` が要る（`scripts/setup.sh`、docs/CLOUD.md、AGENTS.md §9。ネットワークに `tiles.openfreemap.org` と `raw.githubusercontent.com` を足した）。
+- **本線で測ってほしいもの**：`style:public` を M2 の GPU で（限度を Mac の値に合わせる）。
 
 ## 点のラベルの字の位置（16.5 の残り、2026-11-04）
 
@@ -31,7 +57,7 @@
 - **確認**（クラウドの SwiftShader）：`npm run style:golden` の点のラベル（mean / p99）：`text` 3.253 / 74 → 0.174 / 6、`text-thin-halo` 1.085 / 39 → 0.073 / 3、`text-format` 1.828 / 58 → 0.163 / 6、`text-2x` 2.948 / 106 → 0.175 / 6、`text-lines` 0.024 / 0 → 0.002 / 0。画像全体のずれは 1/32 px 刻みで 0 になった。残りは字ごとに ±0.05 px ほどのずれと濃さの差で、原因は分かっていない。限度を測った値のすぐ上（0.2 / 7 など）にし、`gap` を外した。`npm run labels:golden` は全場面一致（箱の差 0）。結果の JSON は Linux のフォントなので戻した。
 - **大きさ**（gzip -9）：表示（メイン）123,940 → 123,945 バイト、`worker-labels.js` 9,561 → 9,582 バイト（予算 10KB まで 418 バイト）、表示ワーカーは変わらない。
 - **残したもの**：
-  - ズームで変わる `*-translate`：値は `StyleLayer` の定数の組で、コンパイル済みの形でワーカーにも渡り（クエリの余白と当たり判定）、変えると style/・worker/ に触る。式（16.8）の作業と重なるので後に回した。
+  - （16.8 で対応した）ズームで変わる `*-translate`：値は `StyleLayer` の定数の組で、コンパイル済みの形でワーカーにも渡り（クエリの余白と当たり判定）、変えると style/・worker/ に触る。式（16.8）の作業と重なるので後に回した。
   - `text-writing-mode` 縦と `text-variable-anchor`：`text-rotate` がなくても、縦書きに可変アンカーを組み合わせると MapLibre と箱が最大 48 px 違う（MapLibre は 2 列に折るのに mbmap は 1 列のままのラベルがある）。`labels:golden` の `same` は箱の差を見ないので、そういう場面を足すと一致のまま `boxDiff` が出る。+90° の扱いはこの後で（mbmap は列の形で箱を回すので、列の箱が MapLibre の縦の形を 90° 回したものと同じなら回し方は同じになる）。
 - **本線で測ってほしいもの**：`style:golden` の文字の場面（Mac の GPU で）。性能は変わらない見込み。
 

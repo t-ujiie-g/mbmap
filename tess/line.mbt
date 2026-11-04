@@ -42,10 +42,6 @@ const SHARP_CORNER_OFFSET : Double = 15.0
 pub const MAX_LINE_DISTANCE : Int32 = 8192
 
 ///|
-/// Slack when deciding that a join is straight (miter length 1).
-const STRAIGHT_EPSILON : Double = 1.0e-9
-
-///|
 /// Fan segments per half turn of a round join.
 const ROUND_SEGMENTS : Int32 = 8
 
@@ -668,7 +664,8 @@ fn Emitter::join_at(
   let miter = if mlen > 0.0 { 2.0 / mlen } else { @double.infinity }
   let use_miter = match self.join {
     Miter => miter <= self.miter_limit
-    Bevel => miter <= 1.0 + STRAIGHT_EPSILON
+    // MapLibre draws a bevel join as a miter below the miter limit.
+    Bevel => miter < self.miter_limit
     Round => miter < self.round_limit
   }
   if close_to is None {

@@ -16,4 +16,6 @@ bench/fixtures/gsi-dem/
 bench/fixtures/gsi-dem-fuji/
 bench/fixtures/gsi-std/
 bench/fixtures/styles/
+bench/fixtures/ofm-planet/
+bench/fixtures/sprites/
 .claude/worktrees/

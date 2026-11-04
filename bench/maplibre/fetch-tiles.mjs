@@ -1,6 +1,6 @@
-// Downloads the GSI bench tile sets and verifies each against its
-// bench/fixtures/<set>.manifest.json (see bench/fixtures/README.md);
-// --update rewrites the manifests.
+// Downloads the bench tile sets (GSI, and OpenFreeMap's for the public styles) and the public styles'
+// sprites, and verifies each against its bench/fixtures/<set>.manifest.json (see
+// bench/fixtures/README.md); --update rewrites the manifests.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -29,7 +29,26 @@ const SETS = [
     url: "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
     attribution: "国土地理院 標高タイル (GSI Japan)",
   },
+  {
+    name: "ofm-planet", ext: "pbf", ...TILES,
+    url: "https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf",
+    attribution: "OpenFreeMap © OpenMapTiles Data from OpenStreetMap",
+  },
+  { name: "sprites", files: sprites(), attribution: "OpenMapTiles styles (CC-BY 4.0), OpenFreeMap sprites (MIT)" },
 ];
+
+// The public styles' sprites (style/public-styles.mjs), each at 1x and 2x.
+function sprites() {
+  const omt = (name) => `https://raw.githubusercontent.com/openmaptiles/${name}-gl-style/gh-pages/sprite`;
+  const bases = {
+    "osm-bright": omt("osm-bright"), positron: omt("positron"), "dark-matter": omt("dark-matter"),
+    "maptiler-basic": omt("maptiler-basic"), ofm: "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
+  };
+  const files = {};
+  for (const [name, base] of Object.entries(bases))
+    for (const suffix of ["", "@2x"]) for (const ext of ["json", "png"]) files[`${name}/sprite${suffix}.${ext}`] = `${base}${suffix}.${ext}`;
+  return files;
+}
 const update = process.argv.includes("--update");
 const hash = (b) => createHash("sha256").update(b).digest("hex");
 
@@ -40,18 +59,24 @@ for (const set of SETS) {
   let manifest = null;
   try { manifest = JSON.parse(await readFile(manifestPath, "utf8")); } catch {}
   const jobs = [];
-  for (let x = set.x[0]; x <= set.x[1]; x++)
-    for (let y = set.y[0]; y <= set.y[1]; y++) jobs.push({ z: set.z, x, y });
+  if (set.files) {
+    for (const [key, url] of Object.entries(set.files)) jobs.push({ key, file: path.join(dir, key), url });
+  } else {
+    for (let x = set.x[0]; x <= set.x[1]; x++)
+      for (let y = set.y[0]; y <= set.y[1]; y++) {
+        const key = `${set.z}/${x}/${y}`;
+        jobs.push({ key, file: path.join(dir, `${key}.${set.ext}`), url: set.url.replace("{z}", set.z).replace("{x}", x).replace("{y}", y) });
+      }
+  }
   const entries = {};
   let mismatches = 0;
   const worker = async () => {
     for (let job; (job = jobs.shift()); ) {
-      const key = `${job.z}/${job.x}/${job.y}`;
-      const file = path.join(dir, `${key}.${set.ext}`);
+      const { key, file } = job;
       let buf = await readFile(file).catch(() => null);
       const expected = manifest?.tiles?.[key]?.sha256;
       if (!buf || (expected && hash(buf) !== expected)) {
-        const res = await fetch(set.url.replace("{z}", job.z).replace("{x}", job.x).replace("{y}", job.y));
+        const res = await fetch(job.url);
         if (!res.ok) throw new Error(`${set.name} ${key}: HTTP ${res.status}`);
         buf = Buffer.from(await res.arrayBuffer());
         await mkdir(path.dirname(file), { recursive: true });
@@ -70,7 +95,7 @@ for (const set of SETS) {
     const tiles = Object.fromEntries(Object.entries(entries).sort());
     const total = Object.values(tiles).reduce((a, t) => a + t.bytes, 0);
     await writeFile(manifestPath, JSON.stringify({
-      source: set.url,
+      source: set.url ?? "see bench/maplibre/fetch-tiles.mjs",
       attribution: set.attribution,
       fetched: new Date().toISOString().slice(0, 10),
       totalBytes: total,

@@ -1,0 +1,88 @@
+{
+  "source": "see bench/maplibre/fetch-tiles.mjs",
+  "attribution": "OpenMapTiles styles (CC-BY 4.0), OpenFreeMap sprites (MIT)",
+  "fetched": "2026-11-04",
+  "totalBytes": 360248,
+  "tiles": {
+    "dark-matter/sprite.json": {
+      "bytes": 407,
+      "sha256": "cd1381fba4b34c1e5654b7b95d9ba6b704a9c526a5fec924b7ec2da1c4404376"
+    },
+    "dark-matter/sprite.png": {
+      "bytes": 1015,
+      "sha256": "3605b162b28b0b8354e95b4e20586f313ad90b5f37fd2686fa53bb70d038d3f6"
+    },
+    "dark-matter/sprite@2x.json": {
+      "bytes": 412,
+      "sha256": "9b391ebf72fa60884123548c6761f6efacc8d96a4247443293360573c0eb1710"
+    },
+    "dark-matter/sprite@2x.png": {
+      "bytes": 1976,
+      "sha256": "54a6c9dd09ff97ee844c6109823b43f4aa37d1fcd3595dc97ec8076c82247549"
+    },
+    "maptiler-basic/sprite.json": {
+      "bytes": 100,
+      "sha256": "6895160e93a567f278cfd131105a852f9d1528f08ce32faf1a815facd7cfdce6"
+    },
+    "maptiler-basic/sprite.png": {
+      "bytes": 103,
+      "sha256": "753ddd9356a57ef7d6d4879b1e4e01b92ce65ea4bdca05754dfd01d8dbe39fed"
+    },
+    "maptiler-basic/sprite@2x.json": {
+      "bytes": 100,
+      "sha256": "595f1369404db391241f13fc45e4e5dce014f4f758e12dc98fd61a3216ec5152"
+    },
+    "maptiler-basic/sprite@2x.png": {
+      "bytes": 134,
+      "sha256": "069e9eef1b191d605374372086c2a05066fbab34cbf563ceb8c53ece774b2653"
+    },
+    "ofm/sprite.json": {
+      "bytes": 27737,
+      "sha256": "73e75e58d8c7bb62cc25d9d150660500552f4d04f6eac5efa4e236076773c356"
+    },
+    "ofm/sprite.png": {
+      "bytes": 49454,
+      "sha256": "8996a519d218dc5f98015267709dae272a77bb74ef0ecc5a0992dcf276c1be4c"
+    },
+    "ofm/sprite@2x.json": {
+      "bytes": 27822,
+      "sha256": "82a4aaeed2c5ce6e98553915754dbe394ee66fd9a2aacc4318d25cdd74e8730b"
+    },
+    "ofm/sprite@2x.png": {
+      "bytes": 118872,
+      "sha256": "3793faf7dc47960636e4b6b1039978fa6925e6c90a7cb49ef23b37e153635c9b"
+    },
+    "osm-bright/sprite.json": {
+      "bytes": 15604,
+      "sha256": "73586a1c10e60b536a3a7b8b3d4e70cd4e6ffa6afe801ff1cb08f38bf38d7cb0"
+    },
+    "osm-bright/sprite.png": {
+      "bytes": 30851,
+      "sha256": "66f12c218af7bada52ccd319013f73c570f3fe1b90d2c79e26bb4d30f7a121f8"
+    },
+    "osm-bright/sprite@2x.json": {
+      "bytes": 15666,
+      "sha256": "89bc79bdad0a0351cab255c8db20485f741c9f606e98f564f6918c0a44845809"
+    },
+    "osm-bright/sprite@2x.png": {
+      "bytes": 68139,
+      "sha256": "c26647b95eb807beb0c7d9439d4a02468e7c19aa8f665b5e8580794fbfc0478a"
+    },
+    "positron/sprite.json": {
+      "bytes": 203,
+      "sha256": "25e87f3e0a663b9e234b9bc9f2f466c28de6daf30013734edf8c57ecd8ed957f"
+    },
+    "positron/sprite.png": {
+      "bytes": 529,
+      "sha256": "e6ed2c0d57178c469759e3a5ca4b593d82de4568c690bd01c7f8b57e8f38ccab"
+    },
+    "positron/sprite@2x.json": {
+      "bytes": 203,
+      "sha256": "0f11263302107aef560f50e69247b1d54b6abe5fa6e7ee210e1d8dd7078f12a5"
+    },
+    "positron/sprite@2x.png": {
+      "bytes": 921,
+      "sha256": "cdf987ec722a33376f8e044ff5103662cfd1e7ea5151f0600b274117d8c01709"
+    }
+  }
+}

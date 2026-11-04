@@ -117,10 +117,14 @@ fn Map::translate_by(
   self : Map,
   at : @render_webgl2.Placement,
   id : @core.TileId,
-  translate : (Double, Double),
+  translate : @style.Expr,
   viewport : Bool,
 ) -> @render_webgl2.Placement {
-  let (x, y) = translate
+  let (x, y) = @style.translate_at(
+    translate,
+    self.transform.camera.zoom,
+    JsProps::none(),
+  )
   if x == 0.0 && y == 0.0 {
     return at
   }

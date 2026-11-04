@@ -26,11 +26,6 @@
       "styles": "positron 2, dark-matter 2"
     },
     {
-      "kind": "paint.fill-translate: expressions",
-      "total": 3,
-      "styles": "osm-bright 2, ofm-bright 1"
-    },
-    {
       "kind": "paint.fill-antialias: expressions",
       "total": 2,
       "styles": "osm-bright 1, ofm-bright 1"
@@ -47,16 +42,6 @@
         {
           "path": "layers[9].paint.fill-antialias",
           "layer": "landcover-wood",
-          "message": "expressions"
-        },
-        {
-          "path": "layers[19].paint.fill-translate",
-          "layer": "water-offset",
-          "message": "expressions"
-        },
-        {
-          "path": "layers[26].paint.fill-translate",
-          "layer": "building-top",
           "message": "expressions"
         },
         {
@@ -176,11 +161,6 @@
         {
           "path": "layers[11].paint.fill-antialias",
           "layer": "landcover-wood",
-          "message": "expressions"
-        },
-        {
-          "path": "layers[26].paint.fill-translate",
-          "layer": "building-top",
           "message": "expressions"
         },
         {
