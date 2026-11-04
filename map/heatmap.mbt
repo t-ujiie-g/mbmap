@@ -29,6 +29,7 @@ fn Map::draw_heatmap(
     return
   }
   let zoom = self.transform.camera.zoom
+  let layer = self.style.layers[index]
   let intensity = number_or(h.intensity.eval(zoom, JsProps::none()), 1.0)
   self.renderer.begin_heatmap(scale)
   for i, d in draws {
@@ -41,13 +42,17 @@ fn Map::draw_heatmap(
     }
     for m in d.meshes {
       if m.layer == index && m.kind == KIND_CIRCLE {
-        self.renderer.draw_heatmap(
-          m.mesh,
-          d.at,
-          self.slots(index, m, shared, zoom),
-          intensity,
-          px,
-        )
+        // Weights and radii read from feature state go by group and state range.
+        let p = mesh_paint(m, layer, shared, zoom)
+        self.draw_by_state(m, layer, p, zoom, p => {
+          self.renderer.draw_heatmap(
+            m.mesh,
+            d.at,
+            self.slots(index, m, p, zoom),
+            intensity,
+            px,
+          )
+        })
       }
     }
   }

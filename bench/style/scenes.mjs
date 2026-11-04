@@ -470,6 +470,22 @@ export const SCENES = {
     limits: { mean: 0.5, p99: 5 },
     gap: "GeoJSON tiles of extent 4096 (MapLibre's 8192) move points up to 1/16 px, about 1% of the density",
   },
+  // Weights and radii from feature state (set on both maps before the shot, `states`), the rest at
+  // their defaults: drawn by group and state range.
+  "heatmap-state": {
+    style: style([
+      { id: "heat", type: "heatmap", source: "pts",
+        paint: {
+          "heatmap-weight": ["coalesce", ["feature-state", "w"], 0.3],
+          "heatmap-radius": ["coalesce", ["feature-state", "r"], 12],
+          "heatmap-opacity": 0.85,
+        } },
+    ], { pts: { ...POINTS.pts, promoteId: "i" } }),
+    states: Array.from({ length: 150 }, (_, k) => [{ source: "pts", id: k * 20 + 1 }, { w: 2, r: 30 }]),
+    camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
+    limits: { mean: 0.5, p99: 5 },
+    gap: "GeoJSON tiles of extent 4096 (MapLibre's 8192) move points up to 1/16 px, about 1% of the density",
+  },
   "heatmap-tiles": {
     style: style([
       { id: "heat", type: "heatmap", source: "gsi", "source-layer": "label",

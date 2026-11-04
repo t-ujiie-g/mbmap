@@ -543,9 +543,6 @@ fn parse_layer(
   if layer.heatmap is Some(h) {
     others.push(h.weight)
     others.push(h.intensity)
-    if layer.radius.reads_state() || h.weight.reads_state() {
-      raise Unsupported(path=ppath, "feature-state in heatmap paint")
-    }
   }
   // And `heatmap-density` in `heatmap-color` only.
   if others.iter().any(e => e.reads_heatmap_density()) ||

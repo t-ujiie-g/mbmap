@@ -453,6 +453,28 @@ test "heatmap layers pack circle quads with their weights per vertex" {
 }
 
 ///|
+test "heatmaps reading feature state go by group, with their features' ranges" {
+  let style =
+    #|{"sources": {"a": {"type": "vector", "tiles": ["t"]}},
+    #| "layers": [
+    #|  {"id": "heat", "type": "heatmap", "source": "a", "source-layer": "pts",
+    #|   "paint": {"heatmap-weight": ["coalesce", ["feature-state", "w"], ["get", "w"], 3]}}]}
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:])
+  let tile = tile_of([tile_with("pts", 1, [cmd(1, 2), 10, 20, 30, 40])])
+  assert_true(p.process("a", tile[:], 14))
+  let b = p.out.to_bytes()[:]
+  let entry = (k : Int32, w : Int32) => {
+    u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
+  }
+  // No paint per vertex: the group's properties (none read here) carry it.
+  assert_eq(p.out.layer_count(), 1)
+  assert_eq((entry(0, 1), entry(0, 10)), (@worker.KIND_CIRCLE, 0))
+  assert_eq(u32_at(b, entry(0, 7)), 0)
+  // The feature's range in the entry, for its state.
+  assert_eq(u32_at(p.feature_ranges()[:], 0), 1)
+}
+
+///|
 /// A GeoJSON source's tile as the GeoJSON worker sends it: two points (one
 /// with k = 1) and a square, cut at 0/0/0.
 fn geojson_tile() -> Bytes {

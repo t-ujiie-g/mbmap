@@ -75,6 +75,11 @@ pub fn StyleLayer::reads_state(self : StyleLayer) -> Bool {
         self.stroke_color,
         self.stroke_opacity,
       ]
+    Heatmap =>
+      match self.heatmap {
+        Some(h) => [self.radius, h.weight]
+        None => [self.radius]
+      }
     _ => []
   }
   exprs.iter().any(e => e.reads_state())

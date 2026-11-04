@@ -31,6 +31,7 @@ try {
     page.on("pageerror", (e) => console.log(name, "pageerror", e.message));
     await page.goto(`${origin}/bench/query/index.html?style=/${file}&camera=${encodeURIComponent(JSON.stringify(scene.camera))}&ratio=${scene.dpr ?? 1}`);
     await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
+    if (scene.states) await page.evaluate((s) => window.__setState(s), scene.states);
     const shot = (y) => page.screenshot({ clip: { x: 0, y, width: 800, height: 600 } });
     const [pa, pb] = [await shot(0), await shot(600)];
     if (shots) {
