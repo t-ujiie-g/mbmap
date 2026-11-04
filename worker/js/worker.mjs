@@ -11,7 +11,7 @@ const LAYER_ENTRY_WORDS = 23; // worker/packed.mbt
 const KIND_SYMBOL = 4; // worker/packed.mbt
 const KIND_HILLSHADE = 5; // map/tiles.mbt
 const KIND_RASTER = 7; // map/tiles.mbt
-// Largest DEM tile side (worker/processor.mbt `dem_tile`) and raster tile side (JS only:
+// Largest DEM tile side (worker/dem.mbt `dem_tile`) and raster tile side (JS only:
 // raster tiles go to a texture without passing through the wasm).
 const MAX_DEM_SIZE = 1024;
 const MAX_RASTER_SIZE = 4096;
@@ -265,7 +265,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, ras
     if (dem === true) {
       const { size, rgba } = await demPixels(bytes);
       if (controller.signal.aborted) return;
-      // Slopes, border elevations (f64) and elevations (f32): worker/processor.mbt `dem_tile`.
+      // Slopes, border elevations (f64) and elevations (f32): worker/dem.mbt `dem_tile`.
       const out = withInput(rgba, () => wasm.process_dem(source, z, size));
       const s = (size + 2) * (size + 2) * 2;
       const image = out.slice(0, s).buffer;

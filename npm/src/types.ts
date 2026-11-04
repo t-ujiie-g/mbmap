@@ -31,13 +31,13 @@ export interface QuerySourceFeatureOptions {
   filter?: unknown;
 }
 
-/** What a `transformRequest` is asked about: the style, a source's TileJSON or PMTiles header, a tile, a sprite, or an image source's image. */
+/** What a `transformRequest` is asked about: the style, a source's TileJSON or GeoJSON data, a tile, a sprite, or an image source's image. */
 export type ResourceType = "Style" | "Source" | "Tile" | "SpriteJSON" | "SpriteImage" | "Image";
 
 /**
  * MapLibre's `transformRequest`: may change a request's `url`, add `headers` or send
  * `credentials` (none are sent otherwise). Return undefined to leave the request as it is.
- * A GeoJSON source's `data` URL is asked about as `"Source"`; PMTiles range requests are not passed through it.
+ * A GeoJSON source's `data` URL is asked about as `"Source"`; PMTiles requests (header and tiles) are not passed through it.
  */
 export type RequestTransformFunction = (
   url: string,

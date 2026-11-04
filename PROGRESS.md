@@ -2,9 +2,9 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、下の節）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、下の節）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（#93）→ R2 正しさ（#94）→ R3 重複・定数・分割・テスト（下の節）→ R4 文書。残りの指摘は「全体のレビュー（2026-11-04）」の節。
+  1. 全体のレビュー（AGENTS §7、§8。Phase 16 の分だけでなく全体、2026-11-04 ユーザー判断）を 4 本で：R1 セキュリティ（#93）→ R2 正しさ（#94）→ R3 重複・定数・分割・テスト（#95）→ R4 文書（下の節）。R4 のあとは次の Phase の範囲をユーザーと決める（VISION §8）。M2 で測ってから決める性能の候補は「全体のレビュー（2026-11-04）」の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -24,7 +24,15 @@
 
 8 つの範囲（style、表示ワーカー、map と描画、core〜tess、GeoJSON と分析、幾何・座標系・測地線、npm の窓口、道具と文書）を、読むだけのサブエージェントが §7・§8 の観点で全部読んだ。指摘を 4 本の PR に分けて直す。
 
-### R3：重複・定数・分割・テスト（このブランチ）
+### R4：文書（このブランチ）
+
+- `Emitter` の使い回しをやめた（下の R3 の計測）。tess の線は 1 本ごとに `Emitter` を作る形に戻した。`line_emit.mbt` への分割はそのまま。
+- AGENTS.md：
+  - §1 に `npm test` で拡張子つきで読めるモジュールと `mirror.test.mjs`。
+  - §4 の食い違いを直した：format の区切りの `text-font` / `text-color` は描いている。地形のタイルの描画は中身が変わったときだけ（`texture_signature`）。`@wasmio.input_number`。`<mb-map>` は約 1.6KB。
+  - §4 に新しく足したもの：`ENTRY_*` と `EXPR_*`、`compiled_writer.mbt` と `compiled_reader.mbt`、窓口の純粋なモジュール、`.d.ts` の後処理、exports、テスト用の export。
+
+### R3：重複・定数・分割・テスト（#95）
 
 4 つの範囲を、それぞれ自分の worktree のサブエージェントが並行して直し、ひとつのブランチにまとめた（AGENTS §2 "Parallel work"。クラウドの `isolation: "worktree"` でも動いた）。
 
@@ -61,11 +69,20 @@
   - 部分のない地物の `length`。
   - パッケージの exports に `geojson-properties.wasm` と `worker-*.js` を足した。
   - `dist/*.d.ts` の相対 import を `.js` にした（`moduleResolution: nodenext` で解決できる）。
-- **ホットパスの変更**（**M2 で測ってほしい**、`tess:node`、`tess:browser`、`worker:browser`）：
+- **M2 での計測**（2026-11-04、ユーザーが測った。結果の JSON はユーザーの手元にある）：
+  - `worker:browser`：Chromium −8.4%、Firefox −5.5%、WebKit ±0。
+  - `tess:browser`（mbt-wasm-gc、中央値）：
+    - decode + lines：Chromium 3.75–3.77 → 3.88–4.04 ms（+3〜7%）、WebKit 4.16–4.36 → 4.38–4.46 ms（+1〜5%）。
+    - decode + fills + lines：Chromium 5.09 → 5.19–5.21 ms（+2〜3%）、WebKit 5.52 → 5.70 ms（+3%）。
+    - Firefox は 1〜4% 速い。fills と decode だけの行は ±2% 以内。
+  - `tess:node`（Node 22）：fills −6.9%、lines +4.3%、fills + lines +3.4%。合計ではほぼ同じ（+0.3〜0.5%）。
+  - 線だけが遅くなったのは、`Emitter` の使い回しで V8 の最適化が効きにくくなったためとみている（推測）。AGENTS §7.5 に従い、R4 で 1 本ごとに作る形に戻した。戻したあとの `tess:browser` は、まだ測っていない。
+- **ホットパスの変更**：
   - 円の点ごと、押し出しの壁ごとの配列リテラルをやめた。
-  - 線の `Emitter` を使い回す。
+  - 線の `Emitter` を使い回す（R4 で戻した）。
   - ワーカーの `put_i16` は `@core.clamp_i16` を呼ぶ（wasm-gc でインライン化されるか）。
 - **試して戻したもの**：
+  - 線の `Emitter` を `LineTessellator` に持たせて使い回す：M2 の `tess:browser` で線が Chromium・WebKit で 2〜7% 遅くなった（上の計測）。1 本ごとに作る形に戻した。
   - map の `VertexPaint::position` に host の `pow` を渡す：メインが 17 バイト増えた（`js_trig` は `Trig::moonbit()` で、`@math.pow` はもともと入っている）。
   - worker.mjs の `ENTRY` オブジェクト：+179 バイト。名前つきの局所変数にした。
   - 定数を埋め込んだテンプレート文字列は esbuild が畳まず、文字列のままのほうが小さかった。

@@ -111,13 +111,13 @@ pub fn LineBuffers::num_vertices(self : LineBuffers) -> Int32 {
 /// Extrudes polylines into triangles. Reuse one instance; its scratch buffers
 /// keep their capacity, so steady-state use does not allocate.
 pub struct LineTessellator {
+  priv trig : @core.Trig
   priv xs : Array[Int32]
   priv ys : Array[Int32]
   priv nx : Array[Double]
   priv ny : Array[Double]
   priv cx : Array[Int32]
   priv cy : Array[Int32]
-  priv emitter : Emitter
 }
 
 ///|
@@ -125,15 +125,7 @@ pub struct LineTessellator {
 pub fn LineTessellator::new(
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> LineTessellator {
-  {
-    xs: [],
-    ys: [],
-    nx: [],
-    ny: [],
-    cx: [],
-    cy: [],
-    emitter: Emitter::new(trig),
-  }
+  { trig, xs: [], ys: [], nx: [], ny: [], cx: [], cy: [], }
 }
 
 ///|
@@ -182,8 +174,9 @@ pub fn LineTessellator::add_line(
     n
   }
   let miter_limit = @cmp.minimum(miter_limit, MAX_MITER_LIMIT)
-  let emitter = self.emitter
-  emitter.start(
+  // A new emitter per line: reusing one was slower in V8 (PROGRESS.md, R3).
+  let emitter : Emitter = {
+    trig: self.trig,
     out,
     join,
     miter_limit,
@@ -192,8 +185,16 @@ pub fn LineTessellator::add_line(
     progress,
     offset,
     total,
-    @core.TILE_EXTENT.to_double() / extent.to_double(),
-  )
+    scale: @core.TILE_EXTENT.to_double() / extent.to_double(),
+    along: 0.0,
+    whole: 0.0,
+    distance: 0,
+    ox: 0.0,
+    oy: 0.0,
+    jx: 0.0,
+    jy: 0.0,
+    fallback: 0.0,
+  }
   let xs = self.xs
   let ys = self.ys
   let nx = self.nx
