@@ -130,3 +130,9 @@ test("sources and properties named like Object.prototype's keys are plain keys",
   assert.deepEqual(Object.keys(paint), ["__proto__"]);
   assert.equal(Object.getPrototypeOf(paint), Object.prototype);
 });
+
+test("setPaintProperty keeps the order of a layer's other properties", () => {
+  const style = { version: 8, sources: {}, layers: [{ id: "b", type: "background", paint: { "background-color": "#000", "background-opacity": 1 } }] } as unknown as StyleSpecification;
+  const changed = edit.setPaintProperty(style, "b", "background-color", "#fff");
+  assert.deepEqual(Object.keys(edit.getLayer(changed, "b")!.paint!), ["background-color", "background-opacity"]);
+});

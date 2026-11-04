@@ -112,9 +112,14 @@ export function moveLayer(style: StyleSpecification, id: string, beforeId?: stri
 
 function setProperty(style: StyleSpecification, id: string, group: "paint" | "layout", name: string, value: unknown): StyleSpecification {
   return withLayer(style, id, (l) => {
-    // Entries and spreads define keys, so `__proto__` stays a key rather than a prototype.
-    const props = Object.fromEntries(Object.entries(l[group] ?? {}).filter(([k]) => k !== name));
-    return { ...l, [group]: value === undefined || value === null ? props : { ...props, [name]: copy(value) } };
+    // Keys keep their order (layers are compared as written), and entries define keys, so
+    // `__proto__` stays a key rather than a prototype.
+    const entries = Object.entries(l[group] ?? {});
+    const at = entries.findIndex(([k]) => k === name);
+    const removed = value === undefined || value === null;
+    if (at >= 0) entries.splice(at, 1, ...(removed ? [] : [[name, copy(value)] as [string, unknown]]));
+    else if (!removed) entries.push([name, copy(value)]);
+    return { ...l, [group]: Object.fromEntries(entries) };
   });
 }
 
