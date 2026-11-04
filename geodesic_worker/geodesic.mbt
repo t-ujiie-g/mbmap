@@ -3,6 +3,14 @@
 const MAX_PATH_POINTS : Int32 = 1_000_000
 
 ///|
+/// Most points `circle` puts on a ring.
+const MAX_CIRCLE_POINTS : Int32 = 4096
+
+///|
+/// Widest `circle` radius in meters, about half the Earth's circumference.
+const MAX_CIRCLE_RADIUS : Double = 2.0e7
+
+///|
 /// Makes room for `len` input bytes and returns where JS should write them,
 /// or -1 if `len` is too large.
 #export_name("prepare_input")
@@ -74,12 +82,15 @@ pub fn densify(step : Double) -> Int32 {
 }
 
 ///|
-/// Writes `@geodesic.Geodesic::circle` (`n` from 1 to 4096 points, `radius` up
-/// to 20,000 km); returns the count of f64s, or minus an error's length.
+/// Writes `@geodesic.Geodesic::circle` (`n` from 1 to `MAX_CIRCLE_POINTS`
+/// points, `radius` up to `MAX_CIRCLE_RADIUS`); returns the count of f64s, or minus an error's length.
 #export_name("circle")
 pub fn circle(lng : Double, lat : Double, radius : Double, n : Int32) -> Int32 {
   @wasmio.clear_input()
-  guard n >= 1 && n <= 4096 && radius >= 0.0 && radius <= 2.0e7 else {
+  guard n >= 1 &&
+    n <= MAX_CIRCLE_POINTS &&
+    radius >= 0.0 &&
+    radius <= MAX_CIRCLE_RADIUS else {
     return @wasmio.fail_with("invalid circle")
   }
   @wasmio.write_f64s(wgs84.circle(lng, lat, radius, n))

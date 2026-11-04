@@ -23,12 +23,6 @@ pub extend PointInPolygonResult with @debug.Debug::{to_repr}
 pub extend PointInPolygonResult with Eq::{not_equal, equal}
 
 ///|
-pub extend Rect64 with @debug.Debug::{to_repr}
-
-///|
-pub extend Rect64 with Eq::{not_equal, equal}
-
-///|
 pub extend JoinType with Eq::{not_equal, equal}
 
 ///|

@@ -91,12 +91,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29435,
+      "bytes": 29406,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49198,
+      "bytes": 49224,
       "budget": 50000
     },
     {
@@ -111,12 +111,12 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28059,
+      "bytes": 28067,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 41877,
+      "bytes": 41815,
       "budget": 50000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12026,
+      "bytes": 12018,
       "budget": 15000
     },
     {

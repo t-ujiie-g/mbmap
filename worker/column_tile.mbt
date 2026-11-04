@@ -116,9 +116,9 @@ fn Features::geom_type(self : Features, i : Int32) -> @mvt.GeomType {
     Mvt(l) => l.geom_type(i)
     Columns(c) =>
       match c.types[i] {
-        1 => Point
-        2 => LineString
-        3 => Polygon
+        @core.GEOM_POINTS => Point
+        @core.GEOM_LINES => LineString
+        @core.GEOM_POLYGONS => Polygon
         _ => Unknown
       }
   }

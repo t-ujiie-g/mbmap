@@ -113,16 +113,6 @@ pub fn PolyPath64::is_hole(Self) -> Bool
 pub fn PolyPath64::level(Self) -> Int32
 pub fn PolyPath64::new() -> Self
 
-pub(all) struct Rect64 {
-  left : Int64
-  top : Int64
-  right : Int64
-  bottom : Int64
-} derive(Eq, @debug.Debug)
-pub fn Rect64::equal(Self, Self) -> Bool
-pub fn Rect64::not_equal(Self, Self) -> Bool
-pub fn Rect64::to_repr(Self) -> @debug.Repr
-
 // Type aliases
 
 // Traits

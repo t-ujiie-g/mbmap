@@ -216,3 +216,26 @@ test "input past the property-cell limit is rejected" {
     _ => fail("expected the cell limit to apply")
   }
 }
+
+///|
+test "nesting past MAX_GEOJSON_DEPTH is rejected in coordinates and features" {
+  let n = @formats.MAX_GEOJSON_DEPTH
+  let coords = "{\"type\": \"Point\", \"coordinates\": " +
+    "[".repeat(n) +
+    "]".repeat(n) +
+    "}"
+  let collection = "{\"type\": \"FeatureCollection\", \"features\": ["
+  // Each collection is an object and an array: two levels.
+  let features = collection.repeat(n / 2 + 1) + "]}".repeat(n / 2 + 1)
+  for text in [coords, features] {
+    try read(text) catch {
+      @formats.Malformed(_) as e =>
+        assert_true(e.message().has_suffix("nested deeper than 64"))
+      e => fail("unexpected \{Repr(e)}")
+    } noraise {
+      _ => fail("expected the depth limit to apply")
+    }
+  }
+  let shallow = collection.repeat(n / 2) + "]}".repeat(n / 2)
+  assert_eq(read(shallow).length(), 0)
+}

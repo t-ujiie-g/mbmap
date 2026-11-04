@@ -69,7 +69,8 @@ pub fn Table::column(self : Table, name : String) -> Column? {
 }
 
 ///|
-fn start_of(ends : Array[Int32], i : Int32) -> Int32 {
+/// Where item `i` starts in a list of end offsets `ends` (0 for the first).
+pub fn start_of(ends : Array[Int32], i : Int32) -> Int32 {
   if i == 0 {
     0
   } else {
@@ -141,7 +142,8 @@ pub fn TableBuilder::end_part(self : TableBuilder) -> Unit {
 }
 
 ///|
-fn start_of_last(ends : Array[Int32]) -> Int32 {
+/// Where an item appended after `ends` starts: the last end, or 0.
+pub fn start_of_last(ends : Array[Int32]) -> Int32 {
   match ends.last() {
     Some(e) => e
     None => 0

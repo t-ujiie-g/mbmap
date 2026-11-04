@@ -10,6 +10,12 @@ pub const FIELD_OF_VIEW : Double = 0.6435011087932844
 
 pub const GEOMETRY_TYPE_KEY : String = "$type"
 
+pub const GEOM_LINES : Int32 = 2
+
+pub const GEOM_POINTS : Int32 = 1
+
+pub const GEOM_POLYGONS : Int32 = 3
+
 pub const MAX_LATITUDE : Double = 85.051128779806604
 
 pub const MAX_PITCH : Double = 85.0

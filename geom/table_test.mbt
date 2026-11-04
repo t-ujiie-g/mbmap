@@ -187,3 +187,13 @@ test "map_coords maps every pair and empties a feature it cannot map" {
     None,
   ])
 }
+
+///|
+test "start_of and start_of_last read end offsets" {
+  let ends = [3, 5, 9]
+  assert_eq(
+    (@geom.start_of(ends, 0), @geom.start_of(ends, 1), @geom.start_of(ends, 2)),
+    (0, 3, 5),
+  )
+  assert_eq((@geom.start_of_last(ends), @geom.start_of_last([])), (9, 0))
+}

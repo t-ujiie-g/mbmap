@@ -1,9 +1,4 @@
 ///|
-/// The JSON number at `[addr, addr + len)` of linear memory, by the host's
-/// `Number()` (correctly rounded, as strconv is, and far smaller).
-fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
-
-///|
 /// The host's `Math`, so measures match Turf bit for bit.
 let trig : @analysis.Trig = @wasmio.host_trig()
 
@@ -36,9 +31,10 @@ let next_id : Ref[Int32] = Ref(0)
 /// or minus the length of a UTF-8 error message at `output_addr`.
 #export_name("load")
 pub fn load() -> Int32 {
-  let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number=(s, e) => {
-    host_number(@wasmio.PAGE + s, e - s)
-  }) catch {
+  let table = @formats.read_geojson(
+    @wasmio.input_bytes()[:],
+    slow_number=@wasmio.input_number,
+  ) catch {
     e => return @wasmio.fail_with(e.message())
   }
   let id = next_id.val

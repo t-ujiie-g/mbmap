@@ -40,9 +40,9 @@ fn convert(
   let out = []
   for f in 0..<table.length() {
     let kind = match table.kinds[f] {
-      Point | MultiPoint => 1
-      LineString | MultiLineString => 2
-      Polygon | MultiPolygon => 3
+      Point | MultiPoint => @core.GEOM_POINTS
+      LineString | MultiLineString => @core.GEOM_LINES
+      Polygon | MultiPolygon => @core.GEOM_POLYGONS
       NoGeometry => continue
     }
     let (p0, p1) = table.parts(f)
@@ -50,7 +50,7 @@ fn convert(
       let (r0, r1) = table.rings(p)
       for r in r0..<r1 {
         let (a, b) = table.points(r)
-        if kind == 1 {
+        if kind == @core.GEOM_POINTS {
           for i in a..<b {
             store.push_point(
               project_x(table.coords[i * 2]),
@@ -60,8 +60,16 @@ fn convert(
           }
           continue
         }
-        convert_line(store, table.coords, a, b, sq_tolerance, kind == 3, trig)
-        if metrics && kind == 2 {
+        convert_line(
+          store,
+          table.coords,
+          a,
+          b,
+          sq_tolerance,
+          kind == @core.GEOM_POLYGONS,
+          trig,
+        )
+        if metrics && kind == @core.GEOM_LINES {
           store.end_part()
           let i = store.end_feature(kind, f)
           if i >= 0 {
@@ -69,18 +77,18 @@ fn convert(
           }
         }
       }
-      if metrics && kind == 2 {
+      if metrics && kind == @core.GEOM_LINES {
         continue
       }
-      if kind != 1 {
+      if kind != @core.GEOM_POINTS {
         store.end_part()
       }
     }
-    if kind == 1 {
+    if kind == @core.GEOM_POINTS {
       store.end_ring(0.0)
       store.end_part()
     }
-    if metrics && kind == 2 {
+    if metrics && kind == @core.GEOM_LINES {
       continue
     }
     let i = store.end_feature(kind, f)

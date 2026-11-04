@@ -3,7 +3,7 @@
 /// or -1 if `len` is too large.
 #export_name("prepare_input")
 pub fn prepare_input(len : Int32) -> Int32 {
-  @wasmio.prepare_input(len, @geojson_tiles.MAX_GEOJSON_BYTES)
+  @wasmio.prepare_input(len, @wasmio.MAX_INPUT_BYTES)
 }
 
 ///|
