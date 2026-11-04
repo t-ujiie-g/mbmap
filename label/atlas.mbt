@@ -1,7 +1,7 @@
 ///|
 /// Rectangles for glyph bitmaps in a texture of `width` x `height`, packed in
-/// shelves as they come, with a pixel of space around each; a glyph keeps its
-/// place once given one.
+/// shelves as they come, each with `GLYPH_PADDING` blank pixels around it (as
+/// MapLibre's `GlyphAtlas`); a glyph keeps its place once given one.
 pub struct Atlas {
   width : Int32
   height : Int32
@@ -10,19 +10,23 @@ pub struct Atlas {
 }
 
 ///|
+/// Blank pixels around each glyph bitmap, which its rectangle and quad include.
+const GLYPH_PADDING : Int32 = 1
+
+///|
 pub fn Atlas::new(width : Int32, height : Int32) -> Atlas {
   { width, height, shelves: [], rects: Map([]), }
 }
 
 ///|
-/// Glyph `cp`'s rectangle (x, y, width, height), if it has one.
+/// Glyph `cp`'s rectangle (x, y, width, height) with its padding, if it has one.
 pub fn Atlas::rect(self : Atlas, cp : Int32) -> (Int32, Int32, Int32, Int32)? {
   self.rects.get(cp)
 }
 
 ///|
-/// Places glyph `cp` of `w` x `h` pixels; None when the atlas is full (or the
-/// glyph already has a place, which stays as it was).
+/// Places glyph `cp` of `w` x `h` pixels and returns where its bitmap goes; None when
+/// the atlas is full (or the glyph already has a place, which stays as it was).
 pub fn Atlas::place(
   self : Atlas,
   cp : Int32,
@@ -32,8 +36,8 @@ pub fn Atlas::place(
   if self.rects.contains(cp) || w <= 0 || h <= 0 {
     return None
   }
-  let cw = w + 1
-  let ch = h + 1
+  let cw = w + 2 * GLYPH_PADDING
+  let ch = h + 2 * GLYPH_PADDING
   // The shortest shelf it fits, (y, height, used width) each.
   let mut best = -1
   for i, s in self.shelves {
@@ -56,6 +60,6 @@ pub fn Atlas::place(
   }
   let (y, sh, used) = self.shelves[best]
   self.shelves[best] = (y, sh, used + cw)
-  self.rects[cp] = (used, y, w, h)
-  Some((used, y))
+  self.rects[cp] = (used, y, cw, ch)
+  Some((used + GLYPH_PADDING, y + GLYPH_PADDING))
 }

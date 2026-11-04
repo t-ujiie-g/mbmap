@@ -115,10 +115,12 @@ What the display worker sends for a symbol entry, 16 bytes per vertex, 4 per gly
 quad (corners top-left, top-right, bottom-right, bottom-left):
 
 - i16 anchor x, y (`TILE_EXTENT` units);
-- i16 corner offset x, y from the anchor in quarter CSS pixels, y down;
+- i16 corner offset x, y from the anchor in 16ths of a CSS pixel, y down (a quad covers its
+  glyph's SDF bitmap and the pixel of padding `label.Atlas` leaves around it);
 - u16 glyph index into the entry's `codepoints` and u16 corner (0-3), which the main
   thread turns into atlas pixel coordinates before upload;
-- u16 text size in 1/16 px, u16 0.
+- u16 the label's text size in 1/16 px (not scaled by a section's `font-scale`, as MapLibre's
+  SDF edges are not), u16 0.
 
 With `format` sections that have colors the entry adds `colors`, 8 bytes per vertex:
 the section's straight RGBA and 1, or zeros where the label's `text-color` applies.
