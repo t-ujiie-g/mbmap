@@ -4,15 +4,15 @@
 /// its offset normal (`jx`, `jy`) eased `fallback` toward the vertex's normal.
 priv struct Emitter {
   trig : @core.Trig
-  mut out : LineBuffers
-  mut join : LineJoin
-  mut miter_limit : Double
-  mut round_limit : Double
-  mut dashed : Bool
-  mut progress : Bool
-  mut offset : Bool
-  mut total : Double
-  mut scale : Double
+  out : LineBuffers
+  join : LineJoin
+  miter_limit : Double
+  round_limit : Double
+  dashed : Bool
+  progress : Bool
+  offset : Bool
+  total : Double
+  scale : Double
   mut along : Double
   mut whole : Double
   mut distance : Int32
@@ -21,63 +21,6 @@ priv struct Emitter {
   mut jx : Double
   mut jy : Double
   mut fallback : Double
-}
-
-///|
-fn Emitter::new(trig : @core.Trig) -> Emitter {
-  {
-    trig,
-    out: LineBuffers::new(),
-    join: Miter,
-    miter_limit: 0.0,
-    round_limit: 0.0,
-    dashed: false,
-    progress: false,
-    offset: false,
-    total: 0.0,
-    scale: 1.0,
-    along: 0.0,
-    whole: 0.0,
-    distance: 0,
-    ox: 0.0,
-    oy: 0.0,
-    jx: 0.0,
-    jy: 0.0,
-    fallback: 0.0,
-  }
-}
-
-///|
-/// Points the emitter at a new line written into `out`.
-fn Emitter::start(
-  self : Emitter,
-  out : LineBuffers,
-  join : LineJoin,
-  miter_limit : Double,
-  round_limit : Double,
-  dashed : Bool,
-  progress : Bool,
-  offset : Bool,
-  total : Double,
-  scale : Double,
-) -> Unit {
-  self.out = out
-  self.join = join
-  self.miter_limit = miter_limit
-  self.round_limit = round_limit
-  self.dashed = dashed
-  self.progress = progress
-  self.offset = offset
-  self.total = total
-  self.scale = scale
-  self.along = 0.0
-  self.whole = 0.0
-  self.distance = 0
-  self.ox = 0.0
-  self.oy = 0.0
-  self.jx = 0.0
-  self.jy = 0.0
-  self.fallback = 0.0
 }
 
 ///|
