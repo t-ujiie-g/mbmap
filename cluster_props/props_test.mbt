@@ -72,3 +72,12 @@ test "clusters carry their reduced properties into tiles and children" {
   let leaves = index.leaves(fs[0].cluster_id).unwrap()
   assert_eq(leaves.map(l => l.props.length()), [0, 0, 0])
 }
+
+///|
+test "default hooks print and read numbers and take MoonBit's math" {
+  let h = @cluster_props.Hooks::default()
+  assert_eq((h.number_text)(1.5), "1.5")
+  assert_eq((h.text_number)(" 2.5 "), 2.5)
+  assert_true((h.text_number)("x").is_nan())
+  assert_eq((h.trig.sin)(0.0), 0.0)
+}

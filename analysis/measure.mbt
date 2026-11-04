@@ -90,8 +90,11 @@ pub fn length(t : @geom.Table, trig : Trig, f : Int32) -> Double {
   }
   let c = t.coords
   let (p0, p1) = t.parts(f)
+  if p1 == p0 {
+    return 0.0
+  }
   let (r0, _) = t.rings(p0)
-  let (_, r1) = if p1 > p0 { t.rings(p1 - 1) } else { (r0, r0) }
+  let (_, r1) = t.rings(p1 - 1)
   let mut total = 0.0
   for r in r0..<r1 {
     let (a, b) = t.points(r)

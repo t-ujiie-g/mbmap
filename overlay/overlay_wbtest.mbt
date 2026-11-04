@@ -325,3 +325,10 @@ test "buffer_refusal bounds the distance and the arc tolerance" {
     buffer_refusal(1000.0, mode=Geodesic, arc_tolerance=1.0e-9) is Some(_),
   )
 }
+
+///|
+test "the largest coordinate fits Clipper's integers at both scales" {
+  let max = @clipper.MAX_COORD.to_double()
+  assert_true(MAX_COORDINATE * DEGREE_SCALE < max)
+  assert_true(MAX_COORDINATE * METER_SCALE < max)
+}

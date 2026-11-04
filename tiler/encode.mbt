@@ -129,7 +129,7 @@ pub fn encode_cluster_tile(
   w.u32(fs.length())
   w.u32(keys.length())
   for _ in fs {
-    w.u8(1)
+    w.u8(@core.GEOM_POINTS)
   }
   w.pad4()
   for i in 1..<=fs.length() {

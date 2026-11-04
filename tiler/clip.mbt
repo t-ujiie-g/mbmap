@@ -37,18 +37,18 @@ fn clip(
       continue
     }
     match s.kind[f.i] {
-      1 => {
+      @core.GEOM_POINTS => {
         let i = clip_points(f, out, k1, k2, axis)
         if i >= 0 {
           clipped.push({ s: out, i, })
         }
       }
-      2 if metrics =>
+      @core.GEOM_LINES if metrics =>
         for i in clip_slices(f, out, k1, k2, axis) {
           clipped.push({ s: out, i, })
         }
       kind => {
-        let i = clip_lines(f, out, k1, k2, axis, kind == 3)
+        let i = clip_lines(f, out, k1, k2, axis, kind == @core.GEOM_POLYGONS)
         if i >= 0 {
           clipped.push({ s: out, i, })
         }
@@ -73,9 +73,9 @@ fn clip_points(
   axis : Int32,
 ) -> Int32 {
   let s = f.s
-  let p = start(s.part_ends, f.i)
-  let r = start(s.ring_ends, p)
-  for i in start(s.point_ends, r)..<s.point_ends[r] {
+  let p = @geom.start_of(s.part_ends, f.i)
+  let r = @geom.start_of(s.ring_ends, p)
+  for i in @geom.start_of(s.point_ends, r)..<s.point_ends[r] {
     let a = s.pts[i * 3 + axis]
     if a >= k1 && a <= k2 {
       out.push_point(s.pts[i * 3], s.pts[i * 3 + 1], s.pts[i * 3 + 2])
@@ -83,7 +83,7 @@ fn clip_points(
   }
   out.end_ring(0.0)
   out.end_part()
-  out.end_feature(1, s.row[f.i])
+  out.end_feature(@core.GEOM_POINTS, s.row[f.i])
 }
 
 ///|
@@ -98,15 +98,22 @@ fn clip_lines(
   polygon : Bool,
 ) -> Int32 {
   let s = f.s
-  for p in start(s.part_ends, f.i)..<s.part_ends[f.i] {
-    for r in start(s.ring_ends, p)..<s.ring_ends[p] {
+  for p in @geom.start_of(s.part_ends, f.i)..<s.part_ends[f.i] {
+    for r in @geom.start_of(s.ring_ends, p)..<s.ring_ends[p] {
       clip_line(s, r, out, k1, k2, axis, polygon)
     }
     if polygon {
       out.end_part()
     }
   }
-  out.end_feature(if polygon { 3 } else { 2 }, s.row[f.i])
+  out.end_feature(
+    if polygon {
+      @core.GEOM_POLYGONS
+    } else {
+      @core.GEOM_LINES
+    },
+    s.row[f.i],
+  )
 }
 
 ///|
@@ -122,10 +129,10 @@ fn clip_slices(
   let s = f.s
   let row = s.row[f.i]
   let found = []
-  for p in start(s.part_ends, f.i)..<s.part_ends[f.i] {
-    for r in start(s.ring_ends, p)..<s.ring_ends[p] {
+  for p in @geom.start_of(s.part_ends, f.i)..<s.part_ends[f.i] {
+    for r in @geom.start_of(s.ring_ends, p)..<s.ring_ends[p] {
       clip_line(s, r, out, k1, k2, axis, false, sliced=() => {
-        let i = out.end_feature(2, row)
+        let i = out.end_feature(@core.GEOM_LINES, row)
         if i >= 0 {
           found.push(i)
         }
@@ -155,7 +162,7 @@ fn clip_line(
   let mut to = s.to[r]
   let mut len = from
   let mut t = 0.0
-  let first = start(s.point_ends, r)
+  let first = @geom.start_of(s.point_ends, r)
   let last = s.point_ends[r] - 1
   let pts = s.pts
   // The slice being built starts at this point index of `out`.
@@ -271,9 +278,9 @@ fn shifted(set : Array[FRef], offset : Double) -> Array[FRef] {
   let refs = []
   for f in set {
     let s = f.s
-    for p in start(s.part_ends, f.i)..<s.part_ends[f.i] {
-      for r in start(s.ring_ends, p)..<s.ring_ends[p] {
-        for i in start(s.point_ends, r)..<s.point_ends[r] {
+    for p in @geom.start_of(s.part_ends, f.i)..<s.part_ends[f.i] {
+      for r in @geom.start_of(s.ring_ends, p)..<s.ring_ends[p] {
+        for i in @geom.start_of(s.point_ends, r)..<s.point_ends[r] {
           out.push_point(
             s.pts[i * 3] + offset,
             s.pts[i * 3 + 1],

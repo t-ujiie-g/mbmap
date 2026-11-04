@@ -9,6 +9,10 @@ import {
 // Values
 pub fn read_prop(@core.ByteReader) -> Prop?
 
+pub fn start_of(Array[Int32], Int32) -> Int32
+
+pub fn start_of_last(Array[Int32]) -> Int32
+
 pub fn write_prop(@core.ByteWriter, Prop?) -> Unit
 
 // Errors

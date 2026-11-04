@@ -2,10 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// geojson-vt's projected features, nested like `@geom.Table` with points as
-/// (x, y, importance) in `pts`, `size` a ring's length or area and `from`, `to`
-/// where a line's slice lies along it (line metrics). A conversion or clip
-/// writes a store of its own; features kept whole are shared (`FRef`).
+/// geojson-vt's projected features, nested like `@geom.Table`: `pts` as (x, y,
+/// importance), `size` a ring's length or area, `from`/`to` a line slice's place
+/// along it. Each conversion or clip has its own store (`FRef` shares features).
 priv struct Store {
   kind : Array[Int32]
   row : Array[Int32]
@@ -42,23 +41,6 @@ fn Store::new() -> Store {
 }
 
 ///|
-fn last_or_zero(a : Array[Int32]) -> Int32 {
-  match a.last() {
-    Some(v) => v
-    None => 0
-  }
-}
-
-///|
-fn start(ends : Array[Int32], i : Int32) -> Int32 {
-  if i == 0 {
-    0
-  } else {
-    ends[i - 1]
-  }
-}
-
-///|
 fn Store::push_point(self : Store, x : Double, y : Double, z : Double) -> Unit {
   self.pts.push(x)
   self.pts.push(y)
@@ -68,7 +50,7 @@ fn Store::push_point(self : Store, x : Double, y : Double, z : Double) -> Unit {
 ///|
 /// Points pushed since the last ring.
 fn Store::open_points(self : Store) -> Int32 {
-  self.pts.length() / 3 - last_or_zero(self.point_ends)
+  self.pts.length() / 3 - @geom.start_of_last(self.point_ends)
 }
 
 ///|
@@ -91,7 +73,7 @@ fn Store::end_ring(
 ///|
 /// Closes the part of rings closed since the last one, if any.
 fn Store::end_part(self : Store) -> Unit {
-  if self.point_ends.length() > last_or_zero(self.ring_ends) {
+  if self.point_ends.length() > @geom.start_of_last(self.ring_ends) {
     self.ring_ends.push(self.point_ends.length())
   }
 }
@@ -100,15 +82,15 @@ fn Store::end_part(self : Store) -> Unit {
 /// Closes the feature and returns its index, or -1 (dropping it) if empty.
 /// Like geojson-vt's `createFeature`, a polygon's box covers its first ring only.
 fn Store::end_feature(self : Store, kind : Int32, row : Int32) -> Int32 {
-  let p0 = last_or_zero(self.part_ends)
+  let p0 = @geom.start_of_last(self.part_ends)
   let p1 = self.ring_ends.length()
   if p1 == p0 {
-    let r = last_or_zero(self.ring_ends)
+    let r = @geom.start_of_last(self.ring_ends)
     self.point_ends.truncate(r)
     self.size.truncate(r)
     self.from.truncate(r)
     self.to.truncate(r)
-    self.pts.truncate(last_or_zero(self.point_ends) * 3)
+    self.pts.truncate(@geom.start_of_last(self.point_ends) * 3)
     return -1
   }
   let mut x0 = @double.infinity
@@ -116,10 +98,14 @@ fn Store::end_feature(self : Store, kind : Int32, row : Int32) -> Int32 {
   let mut x1 = @double.neg_infinity
   let mut y1 = @double.neg_infinity
   for p in p0..<p1 {
-    let r0 = start(self.ring_ends, p)
-    let r1 = if kind == 3 { r0 + 1 } else { self.ring_ends[p] }
+    let r0 = @geom.start_of(self.ring_ends, p)
+    let r1 = if kind == @core.GEOM_POLYGONS {
+      r0 + 1
+    } else {
+      self.ring_ends[p]
+    }
     for r in r0..<r1 {
-      for i in start(self.point_ends, r)..<self.point_ends[r] {
+      for i in @geom.start_of(self.point_ends, r)..<self.point_ends[r] {
         let x = self.pts[i * 3]
         let y = self.pts[i * 3 + 1]
         x0 = @cmp.minimum(x0, x)

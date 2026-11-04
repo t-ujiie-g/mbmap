@@ -11,7 +11,7 @@ pub const CLIP_END : String = "geojsonvt_clip_end"
 
 pub const CLIP_START : String = "geojsonvt_clip_start"
 
-pub fn abbreviated_count(Int32) -> @geom.Prop
+pub const MAX_ZOOM : Int32 = 24
 
 pub fn encode_cluster_features(Array[ClusterFeature], @geom.Table) -> Bytes
 

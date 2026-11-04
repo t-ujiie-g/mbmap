@@ -141,12 +141,12 @@ priv struct HorzJoin {
 
 ///|
 /// An axis-aligned rectangle (`Rect64`); `invalid_rect()` has left > right.
-pub(all) struct Rect64 {
+priv struct Rect64 {
   left : Int64
   top : Int64
   right : Int64
   bottom : Int64
-} derive(Debug, Eq)
+}
 
 ///|
 fn Rect64::contains_rect(self : Rect64, r : Rect64) -> Bool {

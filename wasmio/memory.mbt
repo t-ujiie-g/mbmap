@@ -158,3 +158,15 @@ pub fn fail_with(message : String) -> Int32 {
     -n
   }
 }
+
+///|
+/// The JSON number at `[addr, addr + len)` of linear memory, by the host's
+/// `Number()`: correctly rounded like strconv, which it keeps out of the module.
+fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
+
+///|
+/// The number at input bytes `[start, end)` by the host's `Number()`: a
+/// `slow_number` for `@formats.read_geojson` over `input_bytes`.
+pub fn input_number(start : Int32, end : Int32) -> Double {
+  host_number(PAGE + start, end - start)
+}

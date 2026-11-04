@@ -79,12 +79,12 @@ async function load({ url, bytes, crs }) {
   }
 }
 
-// Fetches the DEM tiles of `url` (a {z}/{x}/{y} template) at zoom `z` covering
-// `bounds` [west, south, east, north] and mosaics them; missing tiles are 0 m.
 const WORLD_WIDTH = 40075016.6855785;
 const MAX_GRID_SIDE = 4096; // analysis_worker/dem.mbt
 // Each DEM grid's zoom, north-west tile and tile size, for `gridSample`.
 const demTiles = new Map();
+// Fetches the DEM tiles of `url` (a {z}/{x}/{y} template) at zoom `z` covering
+// `bounds` [west, south, east, north] and mosaics them; missing tiles are 0 m.
 async function loadDem({ url, z, bounds, encoding }) {
   check(typeof url === "string" && Number.isInteger(z) && z >= 0 && z <= 24 && isBox(bounds));
   check(Array.isArray(encoding) && encoding.length === 5 && encoding.every(Number.isFinite));

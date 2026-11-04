@@ -1,13 +1,4 @@
 ///|
-/// Largest GeoJSON accepted (AGENTS.md §8.2: limit the size before tiling).
-pub const MAX_GEOJSON_BYTES : Int32 = 256 * 1024 * 1024
-
-///|
-/// The JSON number at `[addr, addr + len)` of linear memory, by the host's
-/// `Number()`: correctly rounded like strconv, which it keeps out of the module.
-fn host_number(addr : Int32, len : Int32) -> Double = "host" "number"
-
-///|
 /// Turns MapLibre's GeoJSON source options, in pixels, into tile units.
 let units_per_pixel : Double = @core.TILE_EXTENT.to_double() / @core.TILE_SIZE
 
@@ -24,8 +15,8 @@ let sources : Map[Int32, (@geom.Table, Index)] = Map([])
 
 ///|
 /// Reads the input GeoJSON as source `source` with its options (pixels; 1 for `line_metrics`
-/// and `cluster`, docs/FORMATS.md; `properties` for clusters). Returns the feature count, or
-/// minus the length of a UTF-8 error message at `output_addr`.
+/// and `cluster`, docs/FORMATS.md; `properties` for clusters; the host's `trig` and `slow_number`).
+/// Returns the feature count, or minus the length of a UTF-8 error message at `output_addr`.
 pub fn load(
   source : Int32,
   max_zoom : Int32,
@@ -36,11 +27,13 @@ pub fn load(
   cluster_max_zoom : Int32,
   cluster_radius : Double,
   cluster_min_points : Int32,
+  trig : @core.Trig,
+  slow_number : (Int32, Int32) -> Double,
   properties? : (@geom.Table) -> @tiler.ClusterProperties,
 ) -> Int32 {
   // The style's ranges (style/source.mbt), which the facade clamps to.
   if !(max_zoom >= 0 &&
-    max_zoom <= 24 &&
+    max_zoom <= @tiler.MAX_ZOOM &&
     buffer >= 0.0 &&
     buffer <= 512.0 &&
     tolerance >= 0.0 &&
@@ -48,14 +41,10 @@ pub fn load(
     cluster_max_zoom <= 30) {
     return @wasmio.fail_with("source options out of range")
   }
-  let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number=(s, e) => {
-    host_number(@wasmio.PAGE + s, e - s)
-  }) catch {
+  let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number~) catch {
     e => return @wasmio.fail_with(e.message())
   }
   let buffer = (buffer * units_per_pixel).round().to_int()
-  // The host's `Math`: projections then match geojson-vt bit for bit.
-  let trig = @wasmio.host_trig()
   let index = if cluster != 0 {
     let options : @tiler.ClusterOptions = {
       ..@tiler.ClusterOptions::default(),

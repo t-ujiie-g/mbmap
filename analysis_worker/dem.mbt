@@ -5,7 +5,7 @@ let grids : Map[Int32, @analysis.Grid] = Map([])
 
 ///|
 /// Largest DEM grid side in cells: 16 tiles of 256 pixels (AGENTS.md §8.2).
-pub const MAX_GRID_SIDE : Int32 = 4096
+const MAX_GRID_SIDE : Int32 = 4096
 
 ///|
 /// Reads the RGBA input (`width` x `height` pixels of DEM tiles) into a grid of

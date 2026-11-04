@@ -19,6 +19,17 @@ pub const PROP_STRING : Int32 = 4
 pub const PROP_ABSENT : Int32 = 5
 
 ///|
+/// Feature type codes of the columnar tile (docs/FORMATS.md, "Columnar tile"),
+/// MVT's `GeomType` numbers: `GEOM_POINTS`, `GEOM_LINES`, `GEOM_POLYGONS`.
+pub const GEOM_POINTS : Int32 = 1
+
+///|
+pub const GEOM_LINES : Int32 = 2
+
+///|
+pub const GEOM_POLYGONS : Int32 = 3
+
+///|
 /// Little-endian bytes being written.
 pub struct ByteWriter {
   priv buf : Array[Byte]

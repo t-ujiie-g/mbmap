@@ -25,11 +25,16 @@ pub fn Grid::new(
 }
 
 ///|
+/// Cell (x, y) of the grid, the nearest edge cell past it.
+fn Grid::clamped(self : Grid, x : Int32, y : Int32) -> Double {
+  self.elev[@cmp.maximum(0, @cmp.minimum(self.height - 1, y)) * self.width +
+  @cmp.maximum(0, @cmp.minimum(self.width - 1, x))]
+}
+
+///|
 /// Cell (x, y), edges repeated outward and no data as 0 m.
 fn Grid::at(self : Grid, x : Int32, y : Int32) -> Double {
-  let v = self.elev[@cmp.maximum(0, @cmp.minimum(self.height - 1, y)) *
-    self.width +
-    @cmp.maximum(0, @cmp.minimum(self.width - 1, x))]
+  let v = self.clamped(x, y)
   if v.is_nan() {
     0.0
   } else {
@@ -132,13 +137,10 @@ pub fn Grid::sample(self : Grid, x : Double, y : Double) -> Double {
   let y0 = fy.floor()
   let dx = fx - x0
   let dy = fy - y0
-  let cell = (cx : Int32, cy : Int32) => {
-    self.elev[@cmp.maximum(0, @cmp.minimum(self.height - 1, cy)) * self.width +
-    @cmp.maximum(0, @cmp.minimum(self.width - 1, cx))]
-  }
   let (xa, ya) = (x0.to_int(), y0.to_int())
-  let top = (1.0 - dx) * cell(xa, ya) + dx * cell(xa + 1, ya)
-  let bottom = (1.0 - dx) * cell(xa, ya + 1) + dx * cell(xa + 1, ya + 1)
+  let top = (1.0 - dx) * self.clamped(xa, ya) + dx * self.clamped(xa + 1, ya)
+  let bottom = (1.0 - dx) * self.clamped(xa, ya + 1) +
+    dx * self.clamped(xa + 1, ya + 1)
   (1.0 - dy) * top + dy * bottom
 }
 

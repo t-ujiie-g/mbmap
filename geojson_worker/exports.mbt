@@ -13,8 +13,17 @@ pub fn load(
   cluster_min_points : Int32,
 ) -> Int32 {
   @geojson_tiles.load(
-    source, max_zoom, buffer, tolerance, line_metrics, cluster, cluster_max_zoom,
-    cluster_radius, cluster_min_points,
+    source,
+    max_zoom,
+    buffer,
+    tolerance,
+    line_metrics,
+    cluster,
+    cluster_max_zoom,
+    cluster_radius,
+    cluster_min_points,
+    @wasmio.host_trig(),
+    @wasmio.input_number,
   )
 }
 

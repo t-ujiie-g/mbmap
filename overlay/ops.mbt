@@ -169,14 +169,8 @@ pub fn buffer(
 /// The polygons of every feature of `t` merged into one feature without
 /// properties (lines and points are left out).
 pub fn dissolve(t : @geom.Table) -> @geom.Table {
-  let all = []
-  for f in 0..<t.length() {
-    for ring in normalized(shape_of(t, f, degree_int).polygons) {
-      all.push(ring)
-    }
-  }
   let b = @geom.TableBuilder::new()
-  let parts = add_tree(b, tree_of(@clipper.union(all, [], NonZero)), degree_xy)
+  let parts = add_tree(b, tree_of(region_of(t)), degree_xy)
   b.end_feature(polygon_kind(parts))
   b.finish()
 }
@@ -271,6 +265,30 @@ fn path_box(path : Array[@clipper.Point64]) -> (Int64, Int64, Int64, Int64) {
 }
 
 ///|
+/// The bounding box (as `path_box`) of every path and point of `shape`.
+fn shape_box(shape : Shape) -> (Int64, Int64, Int64, Int64) {
+  let grow = (
+    a : (Int64, Int64, Int64, Int64),
+    b : (Int64, Int64, Int64, Int64),
+  ) => {
+    (
+      @cmp.minimum(a.0, b.0),
+      @cmp.minimum(a.1, b.1),
+      @cmp.maximum(a.2, b.2),
+      @cmp.maximum(a.3, b.3),
+    )
+  }
+  let mut box = path_box(shape.points)
+  for p in shape.polygons {
+    box = grow(box, path_box(p))
+  }
+  for l in shape.lines {
+    box = grow(box, path_box(l))
+  }
+  box
+}
+
+///|
 fn cut_all(
   a : @geom.Table,
   b : @geom.Table,
@@ -284,12 +302,7 @@ fn cut_all(
     // Only the region's rings that reach the feature matter: a hole lies in
     // its outer ring, so dropping rings away from the feature keeps the rest
     // paired.
-    let all = shape.polygons.copy()
-    for l in shape.lines {
-      all.push(l)
-    }
-    all.push(shape.points)
-    let (x0, y0, x1, y1) = path_box(all.flatten())
+    let (x0, y0, x1, y1) = shape_box(shape)
     let near = []
     for i, ring in region {
       let (rx0, ry0, rx1, ry1) = boxes[i]
