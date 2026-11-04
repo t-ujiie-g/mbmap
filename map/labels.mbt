@@ -73,11 +73,12 @@ const PLACEMENT_INTERVAL : Double = 100.0
 /// `round`), their anchors' terrain heights in meters as of DEM version `heights_at`.
 /// With variable anchors (`anchors`: code and offset x, y in ems each), `anchor` is
 /// the one each label took, `variant` its layout and `shifts` its move in CSS px as
-/// uploaded. Labels along lines have `line`, those with `icon-image` `icon`.
+/// uploaded. Labels along lines have `line`, those with `icon-image` `icon`; `cooperative` the layer's.
 priv struct LabelSet {
   labels : @render_webgl2.JsBuffer
   count : Int32
   allow_overlap : Bool
+  mut cooperative : Bool
   ignore_placement : Bool
   padding : Double
   anchors : FixedArray[Double]
@@ -110,11 +111,54 @@ extern "js" fn now() -> Double =
   #|() => performance.now()
 
 ///|
-/// Adds the glyphs a worker drew for the first time to the atlas.
+extern "js" fn fonts_of(msg : JsValue) -> Int32 =
+  #|(m) => Array.isArray(m.fonts) ? m.fonts.length : 0
+
+///|
+extern "js" fn font_at(msg : JsValue, i : Int32) -> String =
+  #|(m, i) => String(m.fonts[i])
+
+///|
+/// A glyph key's code point bits; the bits above name its font
+/// (worker/js/symbols.mjs `FONT_KEY`).
+const FONT_SHIFT : Int32 = 21
+
+///|
+/// Most fonts the atlas tells apart; glyphs of others take the map's own.
+const MAX_FONT_IDS : Int32 = 1023
+
+///|
+/// A worker's glyph key as the atlas's: each worker numbers its fonts (the
+/// tile message's `fonts`), the map gives each its own id (0 the map's font).
+fn Map::glyph_key(self : Map, key : Int32) -> Int32 {
+  let f = key >> FONT_SHIFT
+  if f == 0 {
+    return key
+  }
+  let id = self.tile_fonts.get(f).unwrap_or(0)
+  (id << FONT_SHIFT) | (key & ((1 << FONT_SHIFT) - 1))
+}
+
+///|
+/// Adds the glyphs a worker drew for the first time to the atlas, after
+/// numbering the fonts the tile message names.
 fn Map::take_glyphs(self : Map, msg : JsValue) -> Unit {
+  self.tile_fonts.clear()
+  for i in 0..<fonts_of(msg) {
+    let name = font_at(msg, i)
+    let id = match self.fonts.get(name) {
+      Some(id) => id
+      None if name == "" || self.fonts.length() >= MAX_FONT_IDS => 0
+      None => {
+        self.fonts[name] = self.fonts.length() + 1
+        self.fonts.length()
+      }
+    }
+    self.tile_fonts.push(id)
+  }
   for i in 0..<glyphs_of(msg) {
     let g = glyph_at(msg, i)
-    let cp = get_int(g, "cp")
+    let cp = self.glyph_key(get_int(g, "cp"))
     let w = get_int(g, "width")
     let h = get_int(g, "height")
     match self.atlas.place(cp, w, h) {
@@ -135,7 +179,8 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
   let codepoints = buffer_of(l, "codepoints")
   let rects = FixedArray::make(length_of(codepoints) * 4, 0)
   for i in 0..<length_of(codepoints) {
-    if self.atlas.rect(u32_at(codepoints, i)) is Some((x, y, w, h)) {
+    if self.atlas.rect(self.glyph_key(u32_at(codepoints, i)))
+      is Some((x, y, w, h)) {
       rects[i * 4] = x
       rects[i * 4 + 1] = y
       rects[i * 4 + 2] = w
@@ -147,6 +192,7 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
     buffer_of(l, "indices"),
     get_int(l, "indexBytes"),
     rects,
+    colors=buffer_of(l, "colors"),
   )
   let labels = buffer_of(l, "labels")
   let count = length_of(labels) / LABEL_FLOATS
@@ -158,6 +204,7 @@ fn Map::symbol_mesh(self : Map, l : JsValue) -> (@render_webgl2.Mesh, LabelSet) 
       labels,
       count,
       allow_overlap: get_bool(l, "allowOverlap"),
+      cooperative: false,
       ignore_placement: get_bool(l, "ignorePlacement"),
       padding: get_double(l, "padding"),
       anchors: FixedArray::makei(length_of(anchors), i => f32_at(anchors, i)),
@@ -222,9 +269,12 @@ fn placement_order(draws : Array[Draw]) -> Array[Draw] {
 }
 
 ///|
-/// One symbol mesh of a tile, as placement walks it: `next` is its next label.
+/// One symbol mesh of a tile, as placement walks it: `next` is its next label,
+/// `at` and `icon_at` where its text and icons lie (moved by `*-translate`).
 priv struct Pending {
   draw : Draw
+  at : @render_webgl2.Placement
+  icon_at : @render_webgl2.Placement
   mesh : LayerMesh
   set : LabelSet
   mut next : Int32
@@ -285,7 +335,18 @@ fn Map::place_labels(
             )
           }
         }
-        pending.push({ draw: d, mesh: m, set: s, next: 0, })
+        s.cooperative = layer.text.map_or(false, t => t.cooperative)
+        if s.icon is Some(ic) {
+          ic.cooperative = layer.icon.map_or(false, i => i.cooperative)
+        }
+        pending.push({
+          draw: d,
+          at: self.translated(d.at, layer, d.id),
+          icon_at: self.icon_translated(d.at, layer, d.id),
+          mesh: m,
+          set: s,
+          next: 0,
+        })
       }
     }
     let by_key = layer.text is Some(text) && text.sort_key is Some(_)
@@ -302,7 +363,8 @@ fn Map::place_labels(
         if l.meta[i * LINE_FLOATS].to_int() == level {
           self.place_line_symbol(
             grid,
-            p.draw.at,
+            p.at,
+            p.icon_at,
             p.set,
             l,
             i,
@@ -315,7 +377,7 @@ fn Map::place_labels(
         }
         continue
       }
-      self.place_label(grid, p.draw.at, p.set, i, height_scale, unit)
+      self.place_label(grid, p.at, p.icon_at, p.set, i, height_scale, unit)
     }
     for p in pending {
       let s = p.set
@@ -433,9 +495,9 @@ fn snap(v : Double, unit : Double) -> Double {
 }
 
 ///|
-/// Whether box `k` of label `i` (0 its text's, padded by `pad`; 4 its icon's,
-/// from floats `col` on) fits the grid at grid point (sx, sy), scaled by `ratio`
-/// and moved by (dx, dy) CSS px; recorded in `s.boxes` if so.
+/// Whether box `k` of label `i` (0 its text's, padded by `pad`; 4 its icon's, from floats `col` on)
+/// fits the grid at grid point (sx, sy), scaled by `ratio` and moved by (dx, dy) CSS px, unless it may
+/// `overlap` (`cooperative`: meeting only symbols that may); recorded in `s.boxes` if so.
 fn fits_box(
   grid : @label.Grid,
   s : LabelSet,
@@ -450,6 +512,7 @@ fn fits_box(
   dx : Double,
   dy : Double,
   overlap : Bool,
+  cooperative : Bool,
 ) -> Bool {
   let at = i * LABEL_FLOATS + col
   let bx0 = sx + (snap(f32_at(s.labels, at) - pad, unit) + dx) * ratio
@@ -457,7 +520,7 @@ fn fits_box(
   let bx1 = sx + (snap(f32_at(s.labels, at + 2) + pad, unit) + dx) * ratio
   let by1 = sy + (snap(f32_at(s.labels, at + 3) + pad, unit) + dy) * ratio
   guard grid.inside(bx0, by0, bx1, by1) &&
-    (overlap || !grid.hits(bx0, by0, bx1, by1)) else {
+    (overlap || !grid.hits(bx0, by0, bx1, by1, cooperative~)) else {
     return false
   }
   let b = i * BOX_FLOATS + k
@@ -470,30 +533,34 @@ fn fits_box(
 
 ///|
 /// Puts box `k` of label `i` (0 its text's, 4 its icon's) in the grid as
-/// recorded in `s.boxes`.
-fn insert_box(grid : @label.Grid, s : LabelSet, i : Int32, k : Int32) -> Unit {
+/// recorded in `s.boxes`, of a symbol that `never` overlaps others or not.
+fn insert_box(
+  grid : @label.Grid,
+  s : LabelSet,
+  i : Int32,
+  k : Int32,
+  never : Bool,
+) -> Unit {
   let b = i * BOX_FLOATS + k
   grid.insert(
     s.boxes[b] + VIEWPORT_PADDING,
     s.boxes[b + 1] + VIEWPORT_PADDING,
     s.boxes[b + 2] + VIEWPORT_PADDING,
     s.boxes[b + 3] + VIEWPORT_PADDING,
+    never~,
   )
 }
 
 ///|
-/// Places label `i` of `s` as MapLibre's `placeLayerBucketPart` does: its text box
-/// (variable anchors as `attemptAnchorPlacement`, its last one first), then its icon's,
-/// combined by `text-optional` and `icon-optional` before either goes in the grid.
-fn Map::place_label(
+/// Where label `i` of `s` lies on the grid by `at`: its anchor's grid point, its
+/// perspective ratio and whether it is near enough to be placed.
+fn Map::grid_point(
   self : Map,
-  grid : @label.Grid,
   at : @render_webgl2.Placement,
   s : LabelSet,
   i : Int32,
   height_scale : Double,
-  unit : Double,
-) -> Unit {
+) -> (Double, Double, Double, Bool) {
   let t = self.transform
   let row = i * LABEL_FLOATS
   let (cx, cy, _, cw) = at.matrix.apply(
@@ -503,9 +570,33 @@ fn Map::place_label(
     1.0,
   )
   let ratio = perspective_ratio(at, cw)
-  let visible = cw > 0.0 && ratio >= MIN_PERSPECTIVE_RATIO
-  let sx = screen_x(cx, cw, t.width) + VIEWPORT_PADDING
-  let sy = screen_y(cy, cw, t.height) + VIEWPORT_PADDING
+  (
+    screen_x(cx, cw, t.width) + VIEWPORT_PADDING,
+    screen_y(cy, cw, t.height) + VIEWPORT_PADDING,
+    ratio,
+    cw > 0.0 && ratio >= MIN_PERSPECTIVE_RATIO,
+  )
+}
+
+///|
+/// Places label `i` of `s` as MapLibre's `placeLayerBucketPart` does: its text box by `at` (variable
+/// anchors as `attemptAnchorPlacement`, its last one first), then its icon's by `icon_at`, combined
+/// by `text-optional` and `icon-optional` before either goes in the grid.
+fn Map::place_label(
+  self : Map,
+  grid : @label.Grid,
+  at : @render_webgl2.Placement,
+  icon_at : @render_webgl2.Placement,
+  s : LabelSet,
+  i : Int32,
+  height_scale : Double,
+  unit : Double,
+) -> Unit {
+  let row = i * LABEL_FLOATS
+  let (sx, sy, ratio, visible) = self.grid_point(at, s, i, height_scale)
+  let (ix, iy, icon_ratio, icon_visible) = self.grid_point(
+    icon_at, s, i, height_scale,
+  )
   let has_text = f32_at(s.labels, row + LABEL_COUNT) > 0.0
   let icon = icon_of(s, i)
   // With `icon-text-fit` an icon that may not overlap must fit at each anchor tried.
@@ -532,6 +623,7 @@ fn Map::place_label(
       0.0,
       0.0,
       s.allow_overlap,
+      s.cooperative,
     )
   if has_text && tries > 0 {
     let pad = s.padding
@@ -542,7 +634,8 @@ fn Map::place_label(
     let size = f32_at(s.labels, row + LABEL_SIZE)
     let mut prev = if s.shown[i] { s.anchor[i] } else { -1 }
     let mut overlap = false
-    let passes = (if s.allow_overlap { 2 } else { 1 }) +
+    let mut cooperative = false
+    let passes = (if s.allow_overlap || s.cooperative { 2 } else { 1 }) +
       (if prev >= 0 { 1 } else { 0 })
     let mut placed = -1
     for _ in 0..<passes {
@@ -554,7 +647,7 @@ fn Map::place_label(
         let dx = -(ha - 0.5) * (x1 - x0) + s.anchors[k * 3 + 1] * size
         let dy = -(va - 0.5) * (y1 - y0) + s.anchors[k * 3 + 2] * size
         if fitted &&
-          !(visible &&
+          !(icon_visible &&
           fits_box(
             grid,
             s,
@@ -562,13 +655,14 @@ fn Map::place_label(
             4,
             ICON_COLUMN,
             0.0,
-            sx,
-            sy,
-            ratio,
+            ix,
+            iy,
+            icon_ratio,
             unit,
             dx,
             dy,
             overlap,
+            cooperative,
           )) {
           continue
         }
@@ -587,6 +681,7 @@ fn Map::place_label(
             dx,
             dy,
             overlap,
+            cooperative,
           ) {
           placed = k
           shifted = true
@@ -610,6 +705,7 @@ fn Map::place_label(
         prev = -1
       } else {
         overlap = s.allow_overlap
+        cooperative = s.cooperative
       }
     }
     s.anchor[i] = placed
@@ -622,7 +718,7 @@ fn Map::place_label(
     } else {
       (0.0, 0.0)
     }
-    place_icon = visible &&
+    place_icon = icon_visible &&
       fits_box(
         grid,
         s,
@@ -630,23 +726,24 @@ fn Map::place_label(
         4,
         ICON_COLUMN,
         0.0,
-        sx,
-        sy,
-        ratio,
+        ix,
+        iy,
+        icon_ratio,
         unit,
         dx,
         dy,
         ic.allow_overlap,
+        ic.cooperative,
       )
     let (text, icon) = joint(ic, has_text, place_text, place_icon)
     place_text = text
     place_icon = icon
   }
   if place_text && !s.ignore_placement {
-    insert_box(grid, s, i, 0)
+    insert_box(grid, s, i, 0, !(s.allow_overlap || s.cooperative))
   }
   if icon is Some(ic) {
-    show_icon(grid, s, ic, i, place_icon, visible)
+    show_icon(grid, s, ic, i, place_icon, icon_visible)
   }
   let always = s.allow_overlap &&
     (match s.icon {

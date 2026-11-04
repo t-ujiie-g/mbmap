@@ -259,3 +259,97 @@ test "anchors round-trip through their codes and align as MapLibre's" {
   assert_eq(@style.TextAnchor::BottomLeft.align(), (0.0, 1.0))
   assert_eq(@style.TextAnchor::Bottom.align(), (0.5, 1.0))
 }
+
+///|
+test "text-font takes a list of names or an expression; the other text properties default as MapLibre's" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "a", "type": "symbol",
+      #|   "layout": {"text-font": ["Noto Sans Bold"], "text-letter-spacing": 0.2,
+      #|              "text-transform": "uppercase", "text-rotate": 45},
+      #|   "paint": {"text-halo-blur": 1.5, "text-translate": [1, 2], "text-translate-anchor": "viewport"}},
+      #|  {"id": "b", "type": "symbol", "layout": {"text-font": ["get", "font"]}},
+      #|  {"id": "c", "type": "symbol"}
+      #|]}
+    ),
+  )
+  let a = s.layers[0]
+  let t = a.text.unwrap()
+  assert_eq(t.font, Some(Lit(List([Str("Noto Sans Bold")]))))
+  assert_eq(constant(t.letter_spacing), Num(0.2))
+  assert_eq(constant(t.transform), Str("uppercase"))
+  assert_eq(constant(t.rotate), Num(45.0))
+  assert_eq(constant(a.blur), Num(1.5))
+  assert_eq((a.translate, a.translate_viewport), ((1.0, 2.0), true))
+  assert_true(
+    s.layers[1].text.unwrap().font is Some(Assert(ArrayOf(StringType, -1), _)),
+  )
+  let c = s.layers[2].text.unwrap()
+  assert_eq(c.font, None)
+  assert_eq(
+    (constant(c.letter_spacing), constant(c.transform), constant(c.rotate)),
+    (Num(0.0), Str("none"), Num(0.0)),
+  )
+}
+
+///|
+test "*-overlap takes precedence over *-allow-overlap" {
+  let s = @style.Style::parse(
+    (
+      #|{"layers": [
+      #|  {"id": "a", "type": "symbol",
+      #|   "layout": {"text-allow-overlap": true, "text-overlap": "never", "icon-image": "x",
+      #|              "icon-overlap": "cooperative"},
+      #|   "paint": {"icon-translate": [3, -4]}},
+      #|  {"id": "b", "type": "symbol", "layout": {"text-overlap": "always", "icon-image": "x",
+      #|   "icon-allow-overlap": true}},
+      #|  {"id": "c", "type": "symbol", "layout": {"text-overlap": "cooperative"}}
+      #|]}
+    ),
+  )
+  let a = s.layers[0]
+  assert_eq(
+    (a.text.unwrap().allow_overlap, a.text.unwrap().cooperative),
+    (false, false),
+  )
+  let i = a.icon.unwrap()
+  assert_eq((i.allow_overlap, i.cooperative), (false, true))
+  assert_eq(a.icon_paint.unwrap().translate, (3.0, -4.0))
+  let b = s.layers[1]
+  assert_true(b.text.unwrap().allow_overlap && b.icon.unwrap().allow_overlap)
+  assert_true(s.layers[2].text.unwrap().cooperative)
+  try
+    @style.Style::parse(
+      "{\"layers\": [{\"id\": \"a\", \"type\": \"symbol\", \"layout\": {\"text-overlap\": \"maybe\"}}]}",
+    )
+  catch {
+    Invalid(path~, _) => assert_eq(path, "layers[0].layout.text-overlap")
+    e => fail(e.message())
+  } noraise {
+    _ => fail("unknown overlap accepted")
+  }
+}
+
+///|
+test "font_face sniffs MapLibre's weight and style from the first name" {
+  assert_eq(
+    @style.font_face("Noto Sans Regular,Arial Unicode MS Bold"),
+    ("Noto Sans Regular,Arial Unicode MS Bold", "400", "normal"),
+  )
+  assert_eq(
+    @style.font_face("Open Sans Extra Bold Italic"),
+    ("Open Sans Extra Bold Italic", "800", "italic"),
+  )
+  assert_eq(
+    @style.font_face("Roboto Semibold Oblique"),
+    ("Roboto Semibold Oblique", "600", "oblique"),
+  )
+  assert_eq(@style.font_face("Boldface"), ("Boldface", "", "normal"))
+  // A name without word characters is quoted, its ASCII escaped as CSS.escape does.
+  assert_eq(
+    @style.font_face("游ゴシック"),
+    ("'游ゴシック'", "", "normal"),
+  )
+  assert_eq(@style.font_face("+ +"), ("'\\+\\ \\+'", "", "normal"))
+}

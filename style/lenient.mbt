@@ -2,26 +2,8 @@
 /// Properties of the Style Spec that are not drawn yet: a style using them
 /// is drawn without them, with a warning.
 let ignored_properties : Array[String] = [
-  "fill-sort-key", "line-sort-key", "circle-sort-key", "text-translate", "text-translate-anchor",
-  "icon-translate", "icon-translate-anchor", "symbol-avoid-edges", "symbol-z-order",
-  "text-font", "text-letter-spacing", "text-transform", "text-rotate", "text-halo-blur",
-  "text-overlap", "icon-overlap",
+  "fill-sort-key", "line-sort-key", "circle-sort-key", "symbol-avoid-edges", "symbol-z-order",
 ]
-
-///|
-/// Options of `format` sections that are parsed but not drawn yet.
-let ignored_format_options : Array[String] = ["text-font", "text-color"]
-
-///|
-/// Whether an object within `json` (to `MAX_EXPR_DEPTH` levels) has `key`.
-fn has_key(json : Json, key : String, depth : Int32) -> Bool {
-  match json {
-    _ if depth > MAX_EXPR_DEPTH => false
-    Object(o) => o.contains(key)
-    Array(items) => items.iter().any(j => has_key(j, key, depth + 1))
-    _ => false
-  }
-}
 
 ///|
 /// What a style uses that cannot be drawn. Strict, the first one raises;
@@ -142,21 +124,11 @@ pub fn Style::report_ignored(
     }
     for section in ["paint", "layout"] {
       guard l.get(section) is Some(Object(props)) else { continue }
-      for key, value in props {
+      for key, _ in props {
         if ignored_properties.contains(key) {
           issues.report(
             Unsupported(path="layers[\{i}].\{section}.\{key}", "not drawn yet"),
           )
-        }
-        for option in ignored_format_options {
-          if key == "text-field" && has_key(value, option, 0) {
-            issues.report(
-              Unsupported(
-                path="layers[\{i}].layout.text-field",
-                "\{option} of format sections not drawn yet",
-              ),
-            )
-          }
         }
       }
     }

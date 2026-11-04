@@ -1,14 +1,50 @@
 ///|
 /// The labels of one symbol layer entry (docs/FORMATS.md, "Labels"), built
-/// per group and reused across tiles.
+/// per group and reused across tiles; `fonts` the `text-font` stacks they use
+/// (the map's own font first) and the faces written for them.
 priv struct Labels {
   w : @core.ByteWriter
   mut count : Int32
+  fonts : Map[String, Int32]
+  faces : Array[String]
 }
 
 ///|
 fn Labels::new() -> Labels {
-  { w: @core.ByteWriter::new(), count: 0, }
+  { w: @core.ByteWriter::new(), count: 0, fonts: Map([]), faces: [], }
+}
+
+///|
+/// Most fonts one entry names; labels past them take the map's own font.
+const MAX_FONTS : Int32 = 32
+
+///|
+/// A font's index among the entry's (0 the map's own): `stack` as `text-font`
+/// joins its names, its face (`@style.font_face`) written as style, weight and
+/// family on lines of their own.
+fn Labels::font(self : Labels, stack : String) -> Int32 {
+  if stack == "" {
+    return 0
+  }
+  match self.fonts.get(stack) {
+    Some(i) => i
+    None if self.faces.length() >= MAX_FONTS => 0
+    None => {
+      let (family, weight, style) = @style.font_face(stack)
+      self.faces.push("\{style}\n\{weight}\n\{family}")
+      self.fonts[stack] = self.faces.length()
+      self.faces.length()
+    }
+  }
+}
+
+///|
+/// Clears the labels and fonts for the next tile.
+fn Labels::clear(self : Labels) -> Unit {
+  self.w.clear()
+  self.count = 0
+  self.fonts.clear()
+  self.faces.clear()
 }
 
 ///|
@@ -81,15 +117,19 @@ fn Labels::bytes(
       h.f64(v)
     }
   }
+  h.u8(self.faces.length())
+  for f in self.faces {
+    h.utf8(f)
+  }
   h.u32(self.count)
   h.append(self.w)
   h.to_bytes()
 }
 
 ///|
-/// Adds a label of feature `feature` at (x, y) in `TILE_EXTENT` units, with
-/// its icon's name parts, size and rotation if the layer has an icon; false
-/// (nothing added) when neither its text nor its icon has a part with a value.
+/// Adds a label of feature `feature` at (x, y) in `TILE_EXTENT` units drawn as `look` says, with
+/// its icon's name parts, size and rotation if the layer has one; false (nothing added) when
+/// neither its text nor its icon has a part with a value.
 fn Labels::add(
   self : Labels,
   feature : Int32,
@@ -98,6 +138,7 @@ fn Labels::add(
   size : Double,
   sort_key : Double,
   parts : Array[@style.Value],
+  look : Look,
   icon : (Array[@style.Value], Double, Double)?,
 ) -> Bool {
   let icon_empty = match icon {
@@ -113,9 +154,13 @@ fn Labels::add(
   w.i16(y)
   w.f64(size)
   w.f64(sort_key)
-  write_values(w, parts)
+  w.u8(self.font(look.font))
+  w.u8(look.transform)
+  w.f64(look.spacing)
+  w.f64(look.rotate)
+  self.write_values(parts)
   if icon is Some((name, size, rotate)) {
-    write_values(w, name)
+    self.write_values(name)
     w.f64(size)
     w.f64(rotate)
   }
@@ -152,9 +197,21 @@ fn any_failed(parts : Array[@style.Value]) -> Bool {
 }
 
 ///|
+/// How a label's text is drawn: its `text-font` joined by commas ("" for the
+/// map's own), `text-transform` (0 none, 1 uppercase, 2 lowercase),
+/// `text-letter-spacing` (ems) and `text-rotate` (degrees).
+priv struct Look {
+  mut font : String
+  mut transform : Int32
+  mut spacing : Double
+  mut rotate : Double
+}
+
+///|
 /// A count, then each of `parts`: a property value, or a formatted text
 /// (docs/FORMATS.md "Labels").
-fn write_values(w : @core.ByteWriter, parts : Array[@style.Value]) -> Unit {
+fn Labels::write_values(self : Labels, parts : Array[@style.Value]) -> Unit {
+  let w = self.w
   w.u32(parts.length())
   for v in parts {
     guard v is Formatted(sections) else {
@@ -173,6 +230,21 @@ fn write_values(w : @core.ByteWriter, parts : Array[@style.Value]) -> Unit {
           _ => 0
         },
       )
+      w.u8(
+        match s.font {
+          Some(f) => self.font(f)
+          None => NO_FONT
+        },
+      )
+      match s.color {
+        Some(c) => {
+          w.u8(1)
+          for v in [c.r, c.g, c.b, c.a] {
+            w.u8((v * 255.0).round().to_int())
+          }
+        }
+        None => w.u8(0)
+      }
     }
   }
 }
@@ -180,6 +252,10 @@ fn write_values(w : @core.ByteWriter, parts : Array[@style.Value]) -> Unit {
 ///|
 /// The tag of a formatted text among a label's parts, past `@core.PROP_ABSENT`.
 const LABEL_SECTIONS : Int32 = 6
+
+///|
+/// A section's font index when it takes the label's.
+const NO_FONT : Int32 = 255
 
 ///|
 /// `e`'s number at zoom `z` for `feature`, or `default` if it gives none.
@@ -234,13 +310,13 @@ fn TileProcessor::symbol_layer(
     return true
   }
   for l in self.label_pool {
-    l.w.clear()
-    l.count = 0
+    l.clear()
   }
   let feature = self.feature_ref(layer)
   let extent = layer.extent()
   let parts = []
   let icon_parts = []
+  let look = { font: "", transform: 0, spacing: 0.0, rotate: 0.0, }
   let on_lines = !(text.placement is Point)
   for i in 0..<layer.length() {
     feature.index = i
@@ -294,6 +370,18 @@ fn TileProcessor::symbol_layer(
       Some(e) => number_at(e, zoom, feature)
       None => 0.0
     }
+    look.font = match text.font.map(e => e.eval(zoom, feature)) {
+      Some(List(names)) =>
+        names.map(v => if v is Str(s) { s } else { "" }).join(",")
+      _ => ""
+    }
+    look.transform = match text.transform.eval(zoom, feature) {
+      Str("uppercase") => 1
+      Str("lowercase") => 2
+      _ => 0
+    }
+    look.spacing = number_or(text.letter_spacing, zoom, feature, 0.0)
+    look.rotate = number_or(text.rotate, zoom, feature, 0.0)
     if !self.decode(layer, i) {
       return false
     }
@@ -301,7 +389,7 @@ fn TileProcessor::symbol_layer(
     let out = self.labels(groups.of(feature))
     // The glue finds the anchors along lines (worker/js/line-labels.mjs).
     if on_lines {
-      if out.add(i, 0, 0, size, sort_key, parts, icon) {
+      if out.add(i, 0, 0, size, sort_key, parts, look, icon) {
         out.lines(g, extent)
       }
       continue
@@ -310,7 +398,7 @@ fn TileProcessor::symbol_layer(
       let x = rescale(g.coords[p * 2], extent)
       let y = rescale(g.coords[p * 2 + 1], extent)
       if x >= 0 && y >= 0 && x < @core.TILE_EXTENT && y < @core.TILE_EXTENT {
-        out.add(i, x, y, size, sort_key, parts, icon) |> ignore
+        out.add(i, x, y, size, sort_key, parts, look, icon) |> ignore
       }
     }
   }

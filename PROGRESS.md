@@ -2,22 +2,47 @@
 
 ## 現在の状況（2026-11-04）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式。`within`・`distance` などは残り）、16.5（文字）。
 - **次**（2026-11-04 にユーザーが決めた順）：
-  1. 16.3、16.5、16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
-- **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。残る警告の多いものは `text-font` 128、`text-halo-blur` 83、`text-transform` 38、`text-letter-spacing` 22。段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）は 16.5 に入れる。
+  1. 16.3、16.8。16.6 の残り（`within`、`distance`、`accumulated` と `clusterProperties`、地物ごとの破線、heatmap の feature-state）。
+- **公開スタイル**（`npm run style:compat`）：8 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` / `fill-translate` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 119.7KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 66.9KB（ラベルは別に `worker-labels.js` 9.0KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 122.6KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.4KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 70.8KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | `mbmap/ui` | 6.8KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.3KB ＋ ワーカー 27.0KB（geometry.wasm 41.3KB） | 5KB ＋ 30KB（50KB） |
+
+## Phase 16.5：文字（2026-11-04）
+
+状態：**完了**（下の「残したもの」を除く）。
+
+- **`text-font`**（地物ごとの式も）：MapLibre 6.16 がグリフをブラウザのフォントでその場で描くとき（`GlyphManager._createTinySDF`）と同じフォントにした。名前をそのまま CSS のファミリーに並べ（単語の文字がない名前だけ `CSS.escape` と同じに引用）、最後に地図の `fontFamily`（MapLibre の `sans-serif` の位置）を足す。太さと斜体は最初の名前から MapLibre と同じ規則で決める（`Thin` 100 〜 `Ultra Black` 950、最後に見つかったもの。`italic` / `oblique`）。`text-font` がないときはこれまでどおり `fontFamily` だけで描く（MapLibre の既定のスタック `Open Sans Regular,Arial Unicode MS Regular` とかなの `localIdeographFontFamily` には合わせない）。式は style-spec と同じく、文字列だけの配列は名前の並び、`get` などで始まれば式。
+  - 表示ワーカー（wasm）がスタックを `@style.font_face` で CSS の書体（スタイル・太さ・ファミリー）にし、項目ごとに最大 32 の書体の表を書く（docs/FORMATS.md「Labels」）。JS はワーカーごとに書体ごとの TinySDF を持ち（最大 32、超えたら地図のフォント）、グリフの鍵は「書体の番号 × 2^21 ＋ 符号位置」。ワーカーごとに番号が違うので、タイルのメッセージに `fonts` を添え、主スレッドが書体の名前に自分の番号を振り直してアトラスの鍵にする（最大 1023）。
+  - `format` の区切りの `text-font` も同じ表の番号で（255 はラベルのもの）。
+- **`text-letter-spacing`**（地物ごとの式も）：MapLibre の `shapeLines` と同じく、字の送りに `間隔 × 文字の大きさ` を足し、行の長さは最後の字の送りまで（`x - spacing`）。改行の判定（`determineLineBreaks`）も間隔込みの幅で、間隔が負なら 1 行に収まっても改行を調べる。続け書きの文字（アラビア文字など）を含む文は間隔 0（MapLibre の `allowsLetterSpacing`。判定は BMP の範囲だけ）。縦書きの列と線に沿ったラベルにも効く。
+- **`text-transform`**（地物ごとの式も）：MapLibre の `transformText` と同じく区切りごとに `toLocaleUpperCase` / `toLocaleLowerCase`（JS）。アラビア文字の字形の整形はしない（以前から）。
+- **`text-rotate`**（地物ごとの式も）：MapLibre の `getGlyphQuads` と同じく字の四隅をアンカーの周りに回し（線に沿ったラベルは字の中心の周り）、衝突判定の箱は余白をつけた箱を回した外接矩形（`CollisionFeature`）。主スレッドが余白を足すので、ワーカーは外接矩形から余白を引いて渡す。可変アンカーのずらしは回した箱の幅と高さで決まる（MapLibre と同じ）。
+- **`text-opacity`**：以前から色と縁取りに掛けていた。MapLibre と同じく 0.1 未満では描かない（`icon-opacity` も）。
+- **`text-halo-blur`**（地物ごとの式も）と文字の描き方：文字の断片シェーダーを MapLibre の symbol_sdf と同じ式にした（アイコンの SDF と共通の `sdf`。縁は 0.75、ガンマ `0.105 / dpr / fontScale`、縁取りのぼかし `halo_blur × 1.19 / 8`）。以前は 1 px 幅の直線のぼかしで、ぼかしがなかった。縁取りは MapLibre と同じく、幅 1 px を超えるとき（地物ごとの幅も）と字間が負のときだけ別のパスで先に描き、ほかは文字と同じパスで重ねる。線に沿った文字は `u_gamma_scale`（cos(pitch) × 中心の距離）と頂点の w で MapLibre と同じに滑らかにする。
+- **`text-translate` / `icon-translate`**（と `-anchor`）：MapLibre の `placement.ts` と同じく、配置のときに文字とアイコンをそれぞれの平行移動の分ずらした行列で投影して衝突判定し（`Pending.at` / `icon_at`、`Map::icon_translated`）、描くときも同じ行列を使う。クエリはその箱で当たる。値は定数の `[x, y]` だけ（ほかの `*-translate` と同じ）。
+- **`text-overlap` / `icon-overlap`**：MapLibre の `getOverlapMode` と同じく `*-overlap` があれば `*-allow-overlap` より優先（`always` は従来の allow-overlap）。`cooperative` は、`never` の記号の箱や円にだけ当たる（`label.Grid` が箱と円ごとに `never` かを持つ。MapLibre の `overlapAllowed`）。可変アンカーの 2 回目の試しは `cooperative` で（MapLibre の `placementPasses`）。
+- **`format` の区切りの `text-color`**：記号の頂点に色を持たせた（区切りに色があるときだけ、項目に 8 バイト／頂点の `colors`：RGBA と 1。頂点属性 `a_fill` と `a_section`）。色は `text-opacity` を掛け、縁取りには使わない（MapLibre と同じ）。区切りの色と書体の警告はなくなった。
+- **`ignored_properties`** から `text-translate(-anchor)`、`icon-translate(-anchor)`、`text-font`、`text-letter-spacing`、`text-transform`、`text-rotate`、`text-halo-blur`、`text-overlap`、`icon-overlap` を外した（残りは 16.3 の 5 つ）。
+- **大きさ**（gzip -9。main b71d928 からの差）：表示（メイン）120,984 → 122,623 バイト（+1,639：シェーダー、平行移動と cooperative の配置、書体の番号）、表示ワーカー 68,398 → 70,820 バイト（+2,422：`font_face`、新しいレイアウトの式と書き出し）、`worker-labels.js` 8,959 → 9,561 バイト（+602。予算 10KB まで 439 バイト）。
+- **確認**（クラウドの SwiftShader）：
+  - `npm run labels:golden`：新しい場面 13（`font-bold`、`font-by-feature`、`format-fonts`、`transform-spacing`、`spacing-negative`、`rotate`、`rotate-variable`、`translate`、`translate-viewport`、`overlap`、`icon-overlap`、`contours-spacing`、`contours-rotate`）を含めて全場面一致（箱の差 0）。書体の場面はラテン文字を混ぜた（IPAGothic に太字がないので漢字では太さが箱に出ない。太さを渡さないと `boxDiff` 0.375 になることを確かめた）。結果の JSON はフォントが Mac と違うので戻した。
+  - `npm run style:golden`：新しい場面 5 つ。線に沿った文字（`text-lines`：斜体、字間、幅 2 px・ぼかし 1.5 の縁取り、傾き 45°）は mean 0.024 / p99 0（限度 0.05 / 1）で、MapLibre の symbol_sdf と画素で合う。点のラベル（`text`、`text-thin-halo`、`text-format`、`text-2x`）は mean 1.1〜3.3 / p99 39〜106：字が MapLibre より約 0.5 px 上と左にある（`worker/js/text.mjs` の字の置き方の定数。箱は一致しているので 16.5 の前からの差）。限度は測った値のすぐ上にして `gap` に書いた。
+  - `npm run style:compat`（外への要求をすべて断って）：警告 321 → 30。残りは `symbol-placement` / `text-anchor` / `fill-antialias` / `fill-translate` の式と、線に沿った `text-pitch-alignment` / `text-rotation-alignment`。
+- **MapLibre との違い**：既定のフォントスタックとかなの `localIdeographFontFamily`（上）、`font-faces`（スタイルのフォントファイル）は読まない、続け書きの判定は BMP だけ、点のラベルの字の 0.5 px のずれ（上）。
+- **残したもの**：点のラベルの字の位置を MapLibre の `getGlyphQuads` の数え方に合わせる（labels:golden の箱は変えずに）、ズームで変わる `*-translate`、`text-variable-anchor` と `text-writing-mode` での `text-rotate` の縦書きの扱い（MapLibre は縦の形に 90° 足す）。
+- **本線で測ってほしいもの**：`worker:browser`（ラベルの項目の語が増え、書体ごとの TinySDF）、`render --labels`（文字の 1 パス化で描画が減る）。
 
 ## Phase 16.6：式（2026-11-04）
 

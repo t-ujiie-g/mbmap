@@ -67,19 +67,21 @@ const ALIGN = [1, 0.5, 0];
 const DEFAULT_OFFSET = 17 / ONE_EM;
 const BASELINE = ASCENT - 0.5 + DEFAULT_OFFSET;
 
-// Lays `text` out at `size` px like MapLibre, in columns when `vertical` and it has upright characters
-// (`metrics(cp)` at SDF_SIZE; `sections`, from `format`, each code point's `scales` and `aligns` codes,
-// which columns ignore). Returns quads (bitmap corners from top-left, clockwise) and the box.
-export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2, vertical = false, justify = "auto" }, metrics, sections = null) {
+// Lays `text` out at `size` px like MapLibre, letters `spacing` ems apart, in columns when `vertical` and it has
+// upright characters (`metrics(cp, i)` of the i-th code point at SDF_SIZE, `key` its glyph; `sections`, from `format`,
+// each code point's `scales` and `aligns` codes, which columns ignore). Returns quads (corners from top-left) and the box.
+export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth = 10, lineHeight = 1.2, vertical = false, justify = "auto", spacing = 0 }, metrics, sections = null) {
   const scale = size / SDF_SIZE;
   let cps = [...text].map((c) => c.codePointAt(0));
   const columns = vertical && cps.some(upright);
   if (columns) cps = verticalize(cps);
   const sc = (i) => (columns || !sections ? 1 : sections.scales[i]);
-  const advance = (i) => (columns && upright(cps[i]) ? size : metrics(cps[i]).advance * scale * sc(i));
-  const lines = breakLines(cps, maxWidth * ONE_EM, (i) => (advance(i) * ONE_EM) / size);
+  // MapLibre's pen moves a glyph's advance and the spacing; a line ends at its last glyph's advance.
+  const gap = spacing * size;
+  const advance = (i) => (columns && upright(cps[i]) ? size : metrics(cps[i], i).advance * scale * sc(i)) + gap;
+  const lines = breakLines(cps, maxWidth * ONE_EM, (i) => (advance(i) * ONE_EM) / size, gap < 0);
   const sum = ([a, b], f) => { let w = 0; for (let i = a; i < b; i++) w = f(w, i); return w; };
-  const lengths = lines.map((l) => sum(l, (w, i) => w + advance(i)));
+  const lengths = lines.map((l) => sum(l, (w, i) => w + advance(i)) - (l[0] < l[1] ? gap : 0));
   // Each line's largest scale (MapLibre's `getMaxScale`; an empty line takes the plain height).
   const tallest = lines.map((l) => (l[0] === l[1] ? 0 : sum(l, (m, i) => Math.max(m, sc(i)))));
   const heights = tallest.map((m) => lineHeight * size * (m || 1));
@@ -99,7 +101,7 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
   // An unturned glyph with its pen at x and its baseline at y.
   const standing = (cp, m, x, y, s) => {
     const [l, t, r, b] = rect(m, s);
-    return { cp, corners: [[x + l, y + t], [x + r, y + t], [x + r, y + b], [x + l, y + b]] };
+    return { cp: m.key ?? cp, corners: [[x + l, y + t], [x + r, y + t], [x + r, y + b], [x + l, y + b]] };
   };
   let top = 0;
   lines.forEach((line, i) => {
@@ -108,11 +110,11 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
       const shift = scaled ? 0 : -topShare(name) * lines.length * lineHeight * size + (lineHeight / 2 - DEFAULT_OFFSET) * size - y0 + offset[1] * size;
       pen += x0;
       for (let k = line[0]; k < line[1]; k++) {
-        const [cp, m, s] = [cps[k], metrics(cps[k]), sc(k)];
+        const [cp, m, s] = [cps[k], metrics(cps[k], k), sc(k)];
         const baseline = y0 + top + shift + (tallest[i] - s) * ALIGN[sections?.aligns[k] ?? 0] * size + s * BASELINE * size;
         // `along`: the glyph's middle, where a label along a line puts it on the line.
-        if (inked(m)) quads.push({ ...standing(cp, m, pen, baseline, s), along: pen + (m.advance * scale * s) / 2, ...(sections ? { scale: s } : {}) });
-        pen += m.advance * scale * s;
+        if (inked(m)) quads.push({ ...standing(cp, m, pen, baseline, s), along: pen + (m.advance * scale * s) / 2, ...(sections ? { scale: s, k } : {}) });
+        pen += m.advance * scale * s + gap;
       }
       top += heights[i];
       return;
@@ -122,14 +124,14 @@ export function layoutLabel(text, size, { anchor = 0, offset = [0, 0], maxWidth 
     pen += y0;
     for (let k = line[0]; k < line[1]; k++) {
       const cp = cps[k];
-      const m = metrics(cp);
+      const m = metrics(cp, k);
       if (inked(m) && upright(cp)) {
-        quads.push(standing(cp, m, center - (m.advance * scale) / 2, pen + ASCENT * size));
+        quads.push({ ...standing(cp, m, center - (m.advance * scale) / 2, pen + ASCENT * size), ...(sections ? { k } : {}) });
       } else if (inked(m)) {
         // Turned a quarter clockwise, the em box centered on the column.
         const [l, t, r, b] = rect(m);
         const x = center + (ASCENT - 0.5) * size;
-        quads.push({ cp, corners: [[x - t, pen + l], [x - t, pen + r], [x - b, pen + r], [x - b, pen + l]] });
+        quads.push({ cp: m.key ?? cp, corners: [[x - t, pen + l], [x - t, pen + r], [x - b, pen + r], [x - b, pen + l]], ...(sections ? { k } : {}) });
       }
       pen += advance(k);
     }
@@ -163,11 +165,12 @@ function evaluateBreak(index, x, target, breaks, penalty, last) {
 }
 
 // MapLibre's `determineLineBreaks`, `breakLines` and `trim`: lines of about equal width
-// under `limit`, as [start, end) code point indices; `advance(i)` and `limit` in its 24-unit em.
-function breakLines(cps, limit, advance) {
+// under `limit`, as [start, end) code point indices; `advance(i)` and `limit` in its 24-unit em,
+// `narrowed` when letters are spaced closer than their advances.
+function breakLines(cps, limit, advance, narrowed) {
   const total = cps.reduce((w, cp, i) => w + advance(i), 0);
   const ends = [];
-  if (total > 0 && total <= limit && !cps.includes(0x0a) && !cps.includes(0x0d)) {
+  if (!narrowed && total > 0 && total <= limit && !cps.includes(0x0a) && !cps.includes(0x0d)) {
     ends.push(cps.length);
   } else {
     const target = total / Math.max(1, Math.ceil(total / limit));

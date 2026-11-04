@@ -83,13 +83,19 @@ vertex range (no indices):
   alignment (1 for `map`, after `auto` is resolved), keep upright, u8 text fit
   (`none`, `width`, `height`, `both`); f64 offset x, y (px at size 1), padding top,
   right, bottom, left (px), text fit padding top, right, bottom, left (px);
+- u8 font count F (at most 32), then F UTF-8 faces: a `text-font` stack's style, weight
+  ("" for none named) and CSS family list on lines of their own (`@style.font_face`);
+  font 0 is the map's own (`fontFamily`), font i the i-th face;
 - u32 label count;
 - per label: u32 index of its feature in the source layer, i16 anchor x, y
   (`TILE_EXTENT` units, inside the tile; 0 along lines), f64 text size
-  (px), f64 sort key (`symbol-sort-key`, 0 without one), u32 part count, then each part of the text as a property value (numbers and
+  (px), f64 sort key (`symbol-sort-key`, 0 without one), u8 font, u8 `text-transform` (0
+  none, 1 uppercase, 2 lowercase), f64 `text-letter-spacing` (ems), f64 `text-rotate`
+  (degrees), u32 part count, then each part of the text as a property value (numbers and
   booleans are written out by the glue) or, for a `format` result, tag 6, u32 section count and
-  per section its UTF-8 text, f64 `font-scale` (NaN without one) and u8 `vertical-align` (0
-  bottom or none, 1 center, 2 top); with an icon, u32 part count and the parts
+  per section its UTF-8 text, f64 `font-scale` (NaN without one), u8 `vertical-align` (0
+  bottom or none, 1 center, 2 top), u8 font (255 for the label's) and u8 1 and its
+  `text-color` as straight RGBA bytes, or u8 0; with an icon, u32 part count and the parts
   of its image's name, f64 `icon-size` (at the tile's zoom plus one, as MapLibre lays
   icons out) and f64 `icon-rotate` (degrees). A label has text, an icon or both;
 - along lines, one label per feature, then its lines: u32 line count, per line u32
@@ -106,6 +112,12 @@ quad (corners top-left, top-right, bottom-right, bottom-left):
 - u16 glyph index into the entry's `codepoints` and u16 corner (0-3), which the main
   thread turns into atlas pixel coordinates before upload;
 - u16 text size in 1/16 px, u16 0.
+
+With `format` sections that have colors the entry adds `colors`, 8 bytes per vertex:
+the section's straight RGBA and 1, or zeros where the label's `text-color` applies.
+Glyph keys in `codepoints` are code points plus 2^21 times the font's index in the tile
+message's `fonts`; text turned by `text-rotate` has its corners turned and its box is the
+envelope of the padded box turned, less the padding.
 
 `labels` holds 19 floats per label: anchor x, y, its text box (min x, min y, max x,
 max y in CSS px from the anchor), its feature's index, text size (px), sort key, its
@@ -211,7 +223,7 @@ Out:
 - `{type: "ready"}`, `{type: "error", message}` (also for a style that failed; tiles
   are then made with the previous one). Messages without an integer `id` are ignored;
   after a failed init, tiles get `tile-error` and queries and ranges empty answers.
-- `{type: "tile", id, layers, glyphs}`: per entry `{entry, layer, kind, vertices,
+- `{type: "tile", id, layers, glyphs, fonts}`: per entry `{entry, layer, kind, vertices,
   indices, count, indexBytes, shared, props}` (`entry` its index in the packed tile;
   symbol entries without labels are left out). Buffers are transferred, never copied;
   `shared` is the position in `layers` of an earlier entry whose buffers it reuses (or -1); `props`
@@ -220,8 +232,10 @@ Out:
   (Uint32Array), `allowOverlap`, `ignorePlacement` and `padding`, and with icons
   `icon` and `missing` ("Symbol vertices"). `glyphs` are the
   SDF glyphs the worker drew since its last tile, `{cp, width, height, data}` (one
-  byte per pixel, TinySDF at 48 px with a 6 px buffer): each is sent once per
-  worker, so the main thread takes them even from tiles it no longer wants.
+  byte per pixel, TinySDF at 48 px with a 6 px buffer; `cp` a glyph key as in
+  `codepoints`): each is sent once per worker, so the main thread takes them even
+  from tiles it no longer wants. `fonts` are the worker's faces, "" first for the map's
+  own font; the main thread numbers them for its atlas.
 - `{type: "tile-error", id, message}`.
 - A raster tile's message has one entry `{entry: 0, layer: -1, kind: 7, image}`,
   `image` an ImageBitmap (transferred) for every raster layer of the source.

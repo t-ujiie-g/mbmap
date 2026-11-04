@@ -111,6 +111,7 @@ function unpack(packed) {
       if (s.count === 0 && !(s.icon?.count > 0) && !s.missing?.length) continue;
       layers.push({ entry: k, layer: e(0), kind: e(1), shared: -1, props, ...s });
       transfer.push(s.vertices, s.indices, s.labels.buffer, s.codepoints.buffer);
+      if (s.colors) transfer.push(s.colors);
       if (s.icon) transfer.push(s.icon.vertices, s.icon.indices);
       continue;
     }
@@ -263,7 +264,8 @@ async function loadTile({ id, url, init, bytes: given, source, z, dem, raster })
     // thread takes them even from tiles it no longer wants.
     const fresh = glyphs?.take() ?? [];
     kept.set(id, { bytes, ranges });
-    postMessage({ type: "tile", id, layers, glyphs: fresh }, [...transfer, ...fresh.map((g) => g.data.buffer)]);
+    // Glyph keys name their font by its index in `fonts` (worker/js/symbols.mjs `Glyphs`).
+    postMessage({ type: "tile", id, layers, glyphs: fresh, fonts: glyphs?.faces }, [...transfer, ...fresh.map((g) => g.data.buffer)]);
   } catch (err) {
     if (!controller.signal.aborted) postMessage({ type: "tile-error", id, message: String(err?.message ?? err) });
   } finally {

@@ -12,8 +12,9 @@ const glyphs = {
 };
 
 // A symbol entry as worker/labels.mbt writes it: centered, labels of (x, y,
-// size, parts, sort key), the n-th label of feature 10 + n.
-function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0, spacing = 250, maxAngle = 45, icon = null } = {}) {
+// size, parts, sort key, lines, image, look: font, transform, letter spacing, rotation),
+// the n-th label of feature 10 + n; `fonts` its faces.
+function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0, spacing = 250, maxAngle = 45, icon = null, fonts = [] } = {}) {
   const bytes = [];
   const u8 = (v) => bytes.push(v & 0xff);
   const u32 = (v) => [0, 8, 16, 24].forEach((s) => u8(v >>> s));
@@ -37,6 +38,13 @@ function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0,
     [icon.anchor ?? 0, 0, 0, icon.optional ?? 0, icon.textOptional ?? 0, 0, 0, 0, icon.textFit ?? 0].forEach(u8);
     [...(icon.offset ?? [0, 0]), ...(icon.padding ?? [2, 2, 2, 2]), ...(icon.fitPadding ?? [0, 0, 0, 0])].forEach(f64);
   }
+  const string = (p) => {
+    const s = new TextEncoder().encode(p);
+    u32(s.length);
+    bytes.push(...s);
+  };
+  u8(fonts.length);
+  fonts.forEach(string);
   u32(labels.length);
   const value = (p) => {
     if (typeof p === "number") {
@@ -44,19 +52,30 @@ function entry(labels, vertical = 0, { justify = 2, anchors = [], placement = 0,
       f64(p);
     } else if (p === null) {
       u8(0);
+    } else if (Array.isArray(p)) {
+      // `format` sections: text, font scale, vertical align, font, color (RGBA bytes or none).
+      u8(6);
+      u32(p.length);
+      for (const [text, scale = NaN, align = 0, font = 255, color = null] of p) {
+        string(text);
+        f64(scale);
+        [align, font, color ? 1 : 0, ...(color ?? [])].forEach(u8);
+      }
     } else {
-      const s = new TextEncoder().encode(p);
       u8(4);
-      u32(s.length);
-      bytes.push(...s);
+      string(p);
     }
   };
-  for (const [n, [x, y, size, parts, key = 0, lines = [], image = null]] of labels.entries()) {
+  for (const [n, [x, y, size, parts, key = 0, lines = [], image = null, look = {}]] of labels.entries()) {
     u32(10 + n);
     i16(x);
     i16(y);
     f64(size);
     f64(key);
+    u8(look.font ?? 0);
+    u8(look.transform ?? 0);
+    f64(look.spacing ?? 0);
+    f64(look.rotate ?? 0);
     u32(parts.length);
     parts.forEach(value);
     if (icon) {
@@ -186,4 +205,37 @@ test("icons along lines go with each instance; alone they keep no distance from 
   const firsts = [0, 1, 2, 3, 4, 5].map((i) => s.labels[i * LABEL_FLOATS + 14]);
   assert.deepEqual([...firsts].sort((a, b) => a - b), [0, 6, 12, 18, 24, 30]);
   assert.equal(s.labels[LABEL_FLOATS - 1], 0);
+});
+
+test("text-transform, letter spacing and text-rotate shape the text as MapLibre's", () => {
+  const s = buildSymbols(entry([[0, 0, 10, ["ab"], 0, [], null, { transform: 1, spacing: 0.5, rotate: 90 }]]), glyphs);
+  assert.deepEqual([...s.codepoints], ["A".codePointAt(0), "B".codePointAt(0)]);
+  // Two 10 px glyphs 5 px apart, turned a quarter: the envelope of the padded box, less the padding.
+  assert.deepEqual([...s.labels.slice(2, 6)].map((x) => Math.round(x * 1000) / 1000), [-5, -12.5, 5, 12.5]);
+  const v = new DataView(s.vertices);
+  // The first glyph's top-left corner (-12.5 - pad, -5 - pad px) turned to (5 + pad, -12.5 - pad).
+  const pad = (SDF_BUFFER * 10) / SDF_SIZE;
+  assert.deepEqual([4, 6].map((o) => v.getInt16(o, true)), [Math.round((5 + pad) * 4), Math.round((-12.5 - pad) * 4)]);
+  const plain = buildSymbols(entry([[0, 0, 10, ["ab"], 0, [], null, { transform: 2, spacing: 0.5 }]]), glyphs);
+  assert.deepEqual([...plain.labels.slice(2, 6)], [-12.5, -5, 12.5, 5]);
+  // Joined scripts are never spaced apart.
+  assert.deepEqual([...buildSymbols(entry([[0, 0, 10, ["سل"], 0, [], null, { spacing: 0.5 }]]), glyphs).labels.slice(2, 6)], [-10, -5, 10, 5]);
+});
+
+test("fonts name glyphs by their face; format sections take their own font and color", () => {
+  const faces = [""];
+  const fonts = {
+    face: (f) => faces.indexOf(f) >= 0 ? faces.indexOf(f) : faces.push(f) - 1,
+    metrics: (cp, font = 0) => ({ ...glyphs.metrics(), key: font * 2 ** 21 + cp }),
+  };
+  const parts = [[["a"], ["b", NaN, 0, 2, [255, 0, 0, 255]], ["c", NaN, 0, 0]]];
+  const s = buildSymbols(entry([[0, 0, 10, parts, 0, [], null, { font: 1 }]], 0, { fonts: ["normal\n700\nX", "italic\n\nY"] }), fonts);
+  assert.deepEqual(faces, ["", "normal\n700\nX", "italic\n\nY"]);
+  const cp = (c) => c.codePointAt(0);
+  assert.deepEqual([...s.codepoints], [2 ** 21 + cp("a"), 2 * 2 ** 21 + cp("b"), cp("c")]);
+  // Per vertex: RGBA and 1 where a section has a color.
+  const colors = new Uint8Array(s.colors);
+  assert.deepEqual([...colors.slice(0, 8)], [0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual([...colors.slice(4 * 8, 4 * 8 + 8)], [255, 0, 0, 255, 1, 0, 0, 0]);
+  assert.equal(buildSymbols(entry([[0, 0, 10, ["a"]]]), glyphs).colors, undefined);
 });

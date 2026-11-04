@@ -8,9 +8,9 @@ pub(all) enum IconTextFit {
 } derive(Debug, Eq)
 
 ///|
-/// A symbol layer's icon layout (`layout` as written: equal ones make the same
-/// tiles): `image` as parts of a name, `rotate` in degrees, `offset` in px at size
-/// 1, paddings top, right, bottom, left (px), alignments resolved from `auto`.
+/// A symbol layer's icon layout (`layout` as written: equal ones make the same tiles): `image`
+/// as parts of a name, `rotate` in degrees, `offset` in px at size 1, paddings top, right, bottom,
+/// left (px), alignments resolved from `auto`; overlap modes as `TextLayout`'s.
 pub struct IconLayout {
   layout : Json
   image : Array[Expr]
@@ -28,17 +28,21 @@ pub struct IconLayout {
   keep_upright : Bool
   text_fit : IconTextFit
   text_fit_padding : (Double, Double, Double, Double)
+  cooperative : Bool
 }
 
 ///|
 /// A symbol layer's icon paint: `color`, `halo_color`, `halo_width` and
-/// `halo_blur` color SDF icons only.
+/// `halo_blur` color SDF icons only; `translate` (CSS px) and `translate_viewport`
+/// are `icon-translate` and its anchor.
 pub struct IconPaint {
   color : Expr
   opacity : Expr
   halo_color : Expr
   halo_width : Expr
   halo_blur : Expr
+  translate : (Double, Double)
+  translate_viewport : Bool
 }
 
 ///|
@@ -74,8 +78,7 @@ fn padding_of(
 ///|
 /// The icon layout keys that are booleans, in `IconLayout`'s order.
 let icon_flags : Array[String] = [
-  "icon-allow-overlap", "icon-ignore-placement", "icon-optional", "text-optional",
-  "icon-keep-upright",
+  "icon-ignore-placement", "icon-optional", "text-optional", "icon-keep-upright",
 ]
 
 ///|
@@ -110,6 +113,10 @@ fn parse_icon(
   if [..exprs, ..parts].iter().any(e => e.reads_state()) {
     raise Invalid(path~, "feature-state is only allowed in paint properties")
   }
+  let (allow_overlap, cooperative) = overlap_of(layout, "icon", path)
+  let (translate, translate_viewport) = parse_translate(
+    paint, "icon-translate", ppath,
+  )
   let flags = []
   for k in icon_flags {
     flags.push(bool_or(layout, k, path, false))
@@ -170,11 +177,12 @@ fn parse_icon(
         anchor,
         offset,
         padding: padding_of(layout, "icon-padding", path, 2.0),
-        allow_overlap: flags[0],
-        ignore_placement: flags[1],
-        optional: flags[2],
-        text_optional: flags[3],
-        keep_upright: flags[4],
+        allow_overlap,
+        cooperative,
+        ignore_placement: flags[0],
+        optional: flags[1],
+        text_optional: flags[2],
+        keep_upright: flags[3],
         rotate_with_map: aligned[1],
         pitch_with_map: aligned[2],
         text_fit: fit_values[fit],
@@ -186,6 +194,8 @@ fn parse_icon(
         halo_color: paints[2],
         halo_width: paints[3],
         halo_blur: paints[4],
+        translate,
+        translate_viewport,
       },
     ),
   )

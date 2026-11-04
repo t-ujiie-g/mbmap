@@ -5,8 +5,9 @@ import { anchorShares, JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } 
 import { EXTENT, lineAnchors, mergeLines } from "./line-labels.mjs";
 import { readString, readValue } from "./values.mjs";
 
-// Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
+// Bytes per glyph quad vertex, and per vertex of `colors` (docs/FORMATS.md, "Symbol vertices").
 export const SYMBOL_VERTEX_BYTES = 16;
+const COLOR_BYTES = 8;
 // Floats per label in an entry's `labels`; mirrored as LABEL_FLOATS in map/labels.mbt.
 export const LABEL_FLOATS = 19;
 // Where a label's icon columns start in its `labels` row: box (4), 1, first index, index count.
@@ -48,12 +49,19 @@ export const MAX_NEW_GLYPHS_PER_TILE = 1024;
 const BLANK = { advance: SDF_SIZE / 2, left: 0, top: 0, width: 0, height: 0 };
 
 
-// SDF glyphs of one font, drawn once per worker; `fresh` lists the ones the
-// main thread has not been sent yet.
+// Most fonts a worker draws glyphs with (worker/labels.mbt `MAX_FONTS`); past them the map's own.
+const MAX_FONTS = 32;
+// A glyph's key: its font's index in `faces` times this, plus its code point.
+const FONT_KEY = 2 ** 21;
+
+// SDF glyphs, drawn once per worker in the map's font (`fontFamily`) or a face of `text-font`
+// (`faces`: style, weight and family lines, worker/labels.mbt `Labels::font`; "" the map's font);
+// `fresh` lists the ones the main thread has not been sent yet.
 export class Glyphs {
   constructor(fontFamily) {
     this.fontFamily = fontFamily;
-    this.sdf = null;
+    this.faces = [""];
+    this.sdfs = [];
     this.cache = new Map();
     this.fresh = new Set();
     this.budget = MAX_NEW_GLYPHS_PER_TILE;
@@ -64,16 +72,28 @@ export class Glyphs {
     this.budget = MAX_NEW_GLYPHS_PER_TILE;
   }
 
-  metrics(cp) {
-    let g = this.cache.get(cp);
+  // The index of a face, which then has the map's font after its families as MapLibre adds sans-serif.
+  face(f) {
+    let i = this.faces.indexOf(f);
+    if (i < 0 && this.faces.length < MAX_FONTS) i = this.faces.push(f) - 1;
+    return Math.max(i, 0);
+  }
+
+  metrics(cp, font = 0) {
+    const key = font * FONT_KEY + cp;
+    let g = this.cache.get(key);
     if (!g) {
       if (this.cache.size >= MAX_GLYPHS || this.budget <= 0) return BLANK;
       this.budget--;
-      this.sdf ??= new TinySDF({ fontSize: SDF_SIZE, buffer: SDF_BUFFER, radius: SDF_RADIUS, cutoff: 0.25, fontFamily: this.fontFamily });
-      const d = this.sdf.draw(String.fromCodePoint(cp));
-      g = { advance: d.glyphAdvance, left: d.glyphLeft - SDF_BUFFER, top: d.glyphTop + SDF_BUFFER, width: d.width, height: d.height, data: d.data };
-      this.cache.set(cp, g);
-      this.fresh.add(cp);
+      const [fontStyle, fontWeight, family] = this.faces[font].split("\n");
+      this.sdfs[font] ??= new TinySDF({
+        fontSize: SDF_SIZE, buffer: SDF_BUFFER, radius: SDF_RADIUS, cutoff: 0.25,
+        fontFamily: family ? `${family},${this.fontFamily}` : this.fontFamily, fontWeight: fontWeight || undefined, fontStyle: fontStyle || undefined,
+      });
+      const d = this.sdfs[font].draw(String.fromCodePoint(cp));
+      g = { key, advance: d.glyphAdvance, left: d.glyphLeft - SDF_BUFFER, top: d.glyphTop + SDF_BUFFER, width: d.width, height: d.height, data: d.data };
+      this.cache.set(key, g);
+      this.fresh.add(key);
     }
     return g;
   }
@@ -153,18 +173,28 @@ const SECTIONS = 6;
 // Font scales a glyph may take: its size per vertex is a u16 of 16ths of a px.
 const MAX_FONT_SCALE = 15;
 
-// A label's text parts joined: null and absent parts are empty, numbers and booleans as JS
-// writes them. With a formatted part, also each code point's font scale and vertical-align code.
-function readText(view, bytes, at, parts, skip = 0) {
+// Code points of the scripts whose letters join, which MapLibre never spaces apart (a part of its
+// `codePointIsInCursiveScript`).
+const CURSIVE = /[\u0600-\u08ff\u1800-\u18af\ua840-\ua877\ufb50-\ufdff\ufe70-\ufeff]/;
+
+// A label's text parts joined in `transform`'s case (1 upper, 2 lower; null and absent parts empty, numbers
+// and booleans as JS writes them). With a formatted part, also each code point's font scale, vertical-align
+// code, font (an index into the entry's, 255 for the label's) and color.
+function readText(view, bytes, at, parts, skip = 0, transform = 0) {
   at += skip;
   let text = "";
   let sections = null;
   const scales = [];
   const aligns = [];
-  const add = (s, scale = 1, align = 0) => {
+  const fonts = [];
+  const colors = [];
+  const add = (s, scale = 1, align = 0, font = 255, color = null) => {
+    s = transform === 1 ? s.toLocaleUpperCase() : transform === 2 ? s.toLocaleLowerCase() : s;
     for (const _ of s) {
       scales.push(scale);
       aligns.push(align);
+      fonts.push(font);
+      colors.push(color);
     }
     text += s;
   };
@@ -172,13 +202,14 @@ function readText(view, bytes, at, parts, skip = 0) {
     if (view.getUint8(at) === SECTIONS) {
       const n = view.getUint32(at + 1, true);
       at += 5;
-      sections = { scales, aligns };
+      sections = { scales, aligns, fonts, colors };
       for (let k = 0; k < n; k++) {
         let s;
         [s, at] = readString(view, bytes, at);
         const scale = view.getFloat64(at, true);
-        add(s, Math.max(0, Math.min(scale || 1, MAX_FONT_SCALE)), view.getUint8(at + 8));
-        at += 9;
+        const colored = view.getUint8(at + 10) === 1;
+        add(s, Math.max(0, Math.min(scale || 1, MAX_FONT_SCALE)), view.getUint8(at + 8), view.getUint8(at + 9), colored ? bytes.slice(at + 11, at + 15) : null);
+        at += colored ? 15 : 11;
       }
       continue;
     }
@@ -234,8 +265,8 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     at += 89;
   }
   const onLines = along.placement !== "point";
-  // Along lines MapLibre shapes one centered line of text, whatever the layout says.
-  const shaping = onLines ? { ...layout, maxWidth: Infinity, justify: "center", offset: [0, 0] } : layout;
+  const faces = [];
+  for (let n = view.getUint8(at++), f; faces.length < n; faces.push(glyphs.face(f))) [f, at] = readString(view, bytes, at);
   const count = view.getUint32(at, true);
   at += 4;
   let placed = [];
@@ -248,19 +279,23 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     const y = view.getInt16(at + 6, true);
     const size = view.getFloat64(at + 8, true);
     const key = view.getFloat64(at + 16, true);
-    const parts = view.getUint32(at + 24, true);
+    const font = faces[view.getUint8(at + 24) - 1] ?? 0;
+    const spacing = view.getFloat64(at + 26, true);
+    const rotate = view.getFloat64(at + 34, true);
     let text, sections;
-    [text, at, sections] = readText(view, bytes, at + 28, parts);
+    [text, at, sections] = readText(view, bytes, at + 46, view.getUint32(at + 42, true), 0, view.getUint8(at + 25));
     const chars = [...text];
     if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
-    const metrics = (cp) => glyphs.metrics(cp);
+    const metrics = (cp, k) => glyphs.metrics(cp, sections?.fonts[k] < 255 ? faces[sections.fonts[k] - 1] ?? 0 : font);
+    // Along lines MapLibre shapes one centered line of text, whatever the layout says.
+    const shaping = { ...layout, spacing: CURSIVE.test(text) ? 0 : spacing, ...(onLines ? { maxWidth: Infinity, justify: "center", offset: [0, 0] } : {}) };
     let iconName = "";
     let iconSize = 1;
-    let rotate = 0;
+    let iconRotate = 0;
     if (icon) {
       [iconName, at] = readText(view, bytes, at, view.getUint32(at, true), 4);
       iconSize = view.getFloat64(at, true);
-      rotate = view.getFloat64(at + 8, true);
+      iconRotate = view.getFloat64(at + 8, true);
       at += 16;
     }
     let lines = null;
@@ -274,18 +309,22 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     // Sizes may come from tiles; past 511 they do not fit the vertex's u16.
     const scale = Math.max(0, Math.min(iconSize, 511));
     const iconRow = shapedIcon
-      ? { name: iconName, image, size: scale, rotate, shaped: shapedIcon, box: iconBox(shapedIcon, scale, icon.padding, rotate) }
+      ? { name: iconName, image, size: scale, rotate: iconRotate, shaped: shapedIcon, box: iconBox(shapedIcon, scale, icon.padding, iconRotate) }
       : null;
     if (onLines) {
-      placed.push({ feature, size, key, text: shaped.quads.length > 0 ? text : "", shaped, lines, icon: iconRow });
+      placed.push({ feature, size, key, text: shaped.quads.length > 0 ? text : "", shaped, lines, icon: iconRow, rotate, sections });
       continue;
     }
     // With variable anchors a multi-line label is laid out once per justification
     // its anchors may take (MapLibre's `getAnchorJustification`), all centered.
     const variants = tries > 0 && layout.justify === "auto" && !layout.vertical && shaped.lines > 1
-      ? VARIANTS.map((justify) => layoutLabel(text, Math.min(size, 256), { ...layout, justify }, metrics, sections))
+      ? VARIANTS.map((justify) => layoutLabel(text, Math.min(size, 256), { ...shaping, justify }, metrics, sections))
       : [shaped];
-    placed.push({ feature, x, y, size, key, box: shaped.box, variants, icon: iconRow });
+    // A turned text's collision box is the envelope of its padded box turned (MapLibre's
+    // `CollisionFeature`), less the padding the main thread adds.
+    const p = flags.padding;
+    const box = rotate ? iconBox(shaped.box, 1, [p, p, p, p], rotate).map((v, k) => v + (k < 2 ? p : -p)) : shaped.box;
+    placed.push({ feature, x, y, size, key, box, variants, icon: iconRow, rotate, sections });
   }
   if (along.placement === "line") placed = mergeLines(placed);
   // Lower sort keys are placed (and drawn) first; ties keep their order.
@@ -299,6 +338,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
   }
   const vertices = new ArrayBuffer(quads * 4 * SYMBOL_VERTEX_BYTES);
   const v = new DataView(vertices);
+  const colors = placed.some((l) => l.sections?.colors.some((c) => c)) ? new Uint8Array(quads * 4 * COLOR_BYTES) : null;
   const wide = quads * 4 > 65536;
   const indices = wide ? new Uint32Array(quads * QUAD_INDICES) : new Uint16Array(quads * QUAD_INDICES);
   const labels = new Float32Array(placed.length * LABEL_FLOATS);
@@ -310,14 +350,17 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     labels.set([l.x, l.y, ...l.box, l.feature, Math.min(l.size, 256), l.key, ...ic, l.variants.length, l.first * QUAD_INDICES, per * QUAD_INDICES], i * LABEL_FLOATS);
     l.variants.flatMap((s) => s.quads).forEach((q, k) => {
       const n = l.first + k;
-      // Along lines a glyph's corners are relative to its own middle.
+      // Along lines a glyph's corners are relative to its own middle, about which it turns.
       const dx = onLines ? q.along : 0;
+      const [cos, sin] = rotation(l.rotate);
+      const color = l.sections?.colors[q.k];
       q.corners.forEach(([cx, cy], c) => {
         const o = (n * 4 + c) * SYMBOL_VERTEX_BYTES;
+        if (color) colors.set([...color, 1], (n * 4 + c) * COLOR_BYTES);
         v.setInt16(o, Math.round(l.x), true);
         v.setInt16(o + 2, Math.round(l.y), true);
-        v.setInt16(o + 4, quarterPixels(cx - dx), true);
-        v.setInt16(o + 6, quarterPixels(cy), true);
+        v.setInt16(o + 4, quarterPixels(cos * (cx - dx) - sin * cy), true);
+        v.setInt16(o + 6, quarterPixels(sin * (cx - dx) + cos * cy), true);
         v.setUint16(o + 8, local.get(q.cp), true);
         v.setUint16(o + 10, c, true);
         v.setUint16(o + 12, Math.min(65535, Math.round(l.size * (q.scale ?? 1) * 16)), true);
@@ -327,6 +370,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
   });
   return {
     vertices,
+    ...(colors ? { colors: colors.buffer } : {}),
     indices: indices.buffer,
     count: indices.length,
     indexBytes: wide ? 4 : 2,

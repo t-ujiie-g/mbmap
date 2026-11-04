@@ -38,9 +38,9 @@ pub(all) enum Cap {
 ///|
 /// One drawable layer with its type's paint (CSS pixels); `text` a symbol's layout
 /// (`icon`, `icon_paint` with `icon-image`); `filter_id` shared by identically written
-/// filters (-1 for none); a fill's `antialias` draws its outline, `outline_color` (or
-/// its color); `radius` a circle's or heatmap's; the rest are the Style Spec's of
-/// the same names (`translate_viewport`: `*-translate-anchor` viewport).
+/// filters (-1 for none); a fill's `antialias` draws its outline, `outline_color` (or its
+/// color); `radius` a circle's or heatmap's; `blur` a symbol's `text-halo-blur`; the rest
+/// are the Style Spec's of the same names (`translate_viewport`: `*-translate-anchor` viewport).
 pub struct StyleLayer {
   id : String
   kind : LayerKind
@@ -316,7 +316,7 @@ fn parse_layer(
     c => raise Invalid(path="\{lpath}.line-cap", "unknown cap \{c}")
   }
   let (translate, translate_viewport) = match kind {
-    Fill | Line | Circle | FillExtrusion =>
+    Fill | Line | Circle | FillExtrusion | Symbol =>
       parse_translate(paint, "\{prefix}-translate", ppath)
     _ => ((0.0, 0.0), false)
   }
@@ -476,6 +476,14 @@ fn parse_layer(
       Lit(Num(0.0))
     },
     blur: match kind {
+      Symbol =>
+        paint_expr(
+          paint,
+          "text-halo-blur",
+          ppath,
+          NumberType,
+          Json::number(0.0),
+        )
       Line | Circle => {
         let key = "\{prefix}-blur"
         let e = paint_expr(paint, key, ppath, NumberType, Json::number(0.0))

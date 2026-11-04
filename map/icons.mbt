@@ -1,12 +1,13 @@
 ///|
-/// A symbol mesh's icons (a quad per label with one), its images' `names` (those
-/// it lacked too) and layout; `sharp` when no image needs linear filtering
-/// (MapLibre's `iconsNeedLinear`); `shown` and `glyphs` (along lines) as text's.
+/// A symbol mesh's icons (a quad per label with one), its images' `names` (those it lacked too)
+/// and layout; `sharp` when no image needs linear filtering (MapLibre's `iconsNeedLinear`); `shown`,
+/// `glyphs` (along lines) and `cooperative` (`icon-overlap`) as text's.
 priv struct IconSet {
   mesh : @render_webgl2.Mesh
   names : Array[String]
   has_icons : Bool
   allow_overlap : Bool
+  mut cooperative : Bool
   ignore_placement : Bool
   optional : Bool
   text_optional : Bool
@@ -58,6 +59,7 @@ fn Map::icon_set(self : Map, l : JsValue, count : Int32) -> IconSet? {
     names: [..names.iter(), ..missing.iter()],
     has_icons: get_int(ic, "count") > 0,
     allow_overlap: get_bool(ic, "allowOverlap"),
+    cooperative: false,
     ignore_placement: get_bool(ic, "ignorePlacement"),
     optional: get_bool(ic, "optional"),
     text_optional: get_bool(ic, "textOptional"),
@@ -122,7 +124,7 @@ fn show_icon(
   visible : Bool,
 ) -> Unit {
   if placed && !ic.ignore_placement {
-    insert_box(grid, s, i, 4)
+    insert_box(grid, s, i, 4, !(ic.allow_overlap || ic.cooperative))
   }
   let always = ic.allow_overlap &&
     (s.allow_overlap || !s.has_text || ic.text_optional)
@@ -165,16 +167,22 @@ fn Map::draw_icons(
       ic.drawn = self.frame_count
       let s = m.labels.unwrap()
       let along = s.line is Some(_) && ic.rotate_with_map
+      let at = self.icon_translated(d.at, layer, d.id)
       if s.line is Some(l) {
-        let tile_px = d.at.units_per_pixel * dpr
-        self.lay_line_glyphs(m.mesh, d.at, s, l, tile_px, height_scale)
+        let tile_px = at.units_per_pixel * dpr
+        self.lay_line_glyphs(m.mesh, at, s, l, tile_px, height_scale)
       }
       let ctx = m.props.unwrap_or(JsProps::none())
       let c = (e : @style.Expr) => rgba_of(color_of(e, zoom, ctx))
       let n = (e : @style.Expr, d : Double) => number_or(e.eval(zoom, ctx), d)
+      // MapLibre hides icons below 0.1 opacity.
+      let opacity = n(paint.opacity, 1.0)
+      if opacity < 0.1 {
+        continue
+      }
       self.renderer.draw_icons(
         ic.mesh,
-        d.at,
+        at,
         dpr,
         size~,
         perspective=!ic.offset,
@@ -192,13 +200,13 @@ fn Map::draw_icons(
           ic.pitch_with_map ||
           size != 1.0 ||
           !ic.sharp,
-        opacity=n(paint.opacity, 1.0),
+        opacity~,
         color=c(paint.color),
         halo=c(paint.halo_color),
         halo_width=n(paint.halo_width, 0.0),
         halo_blur=n(paint.halo_blur, 0.0),
         gamma_scale=if ic.pitch_with_map {
-          @math.cos(pitch * @math.PI / 180.0) * d.at.center_depth
+          @math.cos(pitch * @math.PI / 180.0) * at.center_depth
         } else {
           1.0
         },

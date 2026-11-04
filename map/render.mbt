@@ -93,11 +93,38 @@ fn Map::translated(
   layer : @style.StyleLayer,
   id : @core.TileId,
 ) -> @render_webgl2.Placement {
-  let (x, y) = layer.translate
+  self.translate_by(at, id, layer.translate, layer.translate_viewport)
+}
+
+///|
+/// `at` moved by a symbol layer's `icon-translate`.
+fn Map::icon_translated(
+  self : Map,
+  at : @render_webgl2.Placement,
+  layer : @style.StyleLayer,
+  id : @core.TileId,
+) -> @render_webgl2.Placement {
+  match layer.icon_paint {
+    Some(p) => self.translate_by(at, id, p.translate, p.translate_viewport)
+    None => at
+  }
+}
+
+///|
+/// `at` moved by `translate` CSS px, turned with the camera when `viewport`
+/// (MapLibre's `translatePosition`).
+fn Map::translate_by(
+  self : Map,
+  at : @render_webgl2.Placement,
+  id : @core.TileId,
+  translate : (Double, Double),
+  viewport : Bool,
+) -> @render_webgl2.Placement {
+  let (x, y) = translate
   if x == 0.0 && y == 0.0 {
     return at
   }
-  let (x, y) = if layer.translate_viewport {
+  let (x, y) = if viewport {
     let a = self.transform.camera.bearing * @math.PI / 180.0
     let c = @math.cos(a)
     let s = @math.sin(a)
@@ -111,6 +138,30 @@ fn Map::translated(
     matrix: at.matrix.translate(x * k, y * k, 0.0),
     raster_matrix: at.raster_matrix.translate(x * k, y * k, 0.0),
   }
+}
+
+///|
+/// Whether a symbol layer's halo goes in a pass of its own, as MapLibre draws it
+/// when glyphs may overlap: halos wider than 1 px (or by feature), or letters
+/// spaced closer.
+fn Map::halo_apart(
+  self : Map,
+  layer : @style.StyleLayer,
+  halo_width : Double,
+) -> Bool {
+  let by_feature = (e : @style.Expr) => {
+    let (keys, geometry) = e.feature_inputs()
+    keys.length() > 0 || geometry || e.reads_state()
+  }
+  let spacing = match layer.text {
+    Some(t) if !by_feature(t.letter_spacing) =>
+      number_or(
+        t.letter_spacing.eval(self.transform.camera.zoom, JsProps::none()),
+        0.0,
+      )
+    _ => 0.0
+  }
+  halo_width > 1.0 || by_feature(layer.halo_width) || spacing < 0.0
 }
 
 ///|
@@ -244,8 +295,9 @@ fn Map::draw_layer(
     }
     let p = mesh_paint(m, layer, shared, zoom)
     if m.labels is Some(s) {
-      // An ancestor standing in for several tiles is drawn once.
-      if s.drawn != self.frame_count {
+      // An ancestor standing in for several tiles is drawn once; MapLibre hides
+      // text below 0.1 opacity.
+      if s.drawn != self.frame_count && p.opacity >= 0.1 {
         s.drawn = self.frame_count
         if s.line is Some(l) {
           let tile_px = at.units_per_pixel * dpr
@@ -257,7 +309,12 @@ fn Map::draw_layer(
           dpr,
           p.rgba(),
           p.halo,
-          p.halo_width * dpr,
+          p.halo_width,
+          halo_blur=p.blur,
+          two_pass=self.halo_apart(layer, p.halo_width),
+          opacity=p.opacity,
+          gamma_scale=@math.cos(self.transform.camera.pitch * @math.PI / 180.0) *
+            at.center_depth,
           height_scale~,
         )
       }

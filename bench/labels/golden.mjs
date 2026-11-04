@@ -60,7 +60,72 @@ const SCENES = {
   ...contourScenes(),
   ...iconScenes(),
   ...expressionScenes(),
+  ...textScenes(),
 };
+
+// Text properties: fonts (weights and styles sniffed from the names, by feature, and per format
+// section), case, letter spacing, rotation, translation and the overlap modes.
+function textScenes() {
+  const latin = ["concat", "St ", ["get", "knj"]];
+  const byCategory = (a, b) => ["case", ["==", ["get", "annoCtg"], 412], a, b];
+  const contours = (layout) => ({
+    id: "c", type: "symbol", source: "gsi", "source-layer": "contour",
+    layout: { "symbol-placement": "line", "text-field": "{alti}m", "text-font": ["sans-serif"], "text-size": 11, ...layout },
+  });
+  const west = [139.702, 35.664];
+  return {
+    "font-bold": { style: style(label("l", { "text-field": latin, "text-font": ["Noto Sans Bold"], "text-max-width": 8 })), camera: { center: tokyo, zoom: 15 } },
+    "font-by-feature": {
+      style: style(label("l", { ...VARIABLE, "text-field": latin, "text-font": byCategory(["literal", ["Open Sans Semibold Italic"]], ["literal", ["Open Sans Light"]]) })),
+      camera: { center: tokyo, zoom: 15 },
+    },
+    "format-fonts": {
+      style: style(label("l", { "text-field": ["format", ["get", "knj"], { "text-font": ["literal", ["Noto Sans Black"]], "text-color": "#cc0000" }, "\n", {}, latin, { "font-scale": 0.8 }], "text-max-width": 8 })),
+      camera: { center: tokyo, zoom: 15 },
+    },
+    "transform-spacing": {
+      style: style(label("l", { "text-field": latin, "text-transform": "uppercase", "text-letter-spacing": 0.15, "text-max-width": 6 })),
+      camera: { center: tokyo, zoom: 15 },
+    },
+    "spacing-negative": {
+      style: style(label("l", { ...VARIABLE, "text-field": latin, "text-transform": "lowercase", "text-letter-spacing": byCategory(-0.1, 0.3) })),
+      camera: { center: [139.7645, 35.6795], zoom: 15.4, bearing: 30 },
+    },
+    rotate: {
+      style: style(label("l", { "text-rotate": byCategory(30, -50), "text-max-width": 6 })),
+      camera: { center: tokyo, zoom: 15 },
+    },
+    "rotate-variable": {
+      style: style(label("l", { ...VARIABLE, "text-rotate": 20 })),
+      camera: { center: tokyo, zoom: 15.2, bearing: -20, pitch: 50 },
+    },
+    translate: {
+      style: style({ ...label("l", { "text-max-width": 8, "icon-image": "dot", "text-anchor": "top", "text-offset": [0, 0.8] }), paint: { "text-translate": [12, -6], "icon-translate": [-5, 9] } }),
+      camera: { center: tokyo, zoom: 15 },
+    },
+    "translate-viewport": {
+      style: style({ ...label("l", { ...VARIABLE }), paint: { "text-translate": [8, 14], "text-translate-anchor": "viewport" } }),
+      camera: { center: [139.7645, 35.6795], zoom: 15.4, bearing: 30 },
+    },
+    overlap: {
+      style: style(
+        label("never", { "text-overlap": "never", "text-allow-overlap": true }, ["==", ["get", "annoCtg"], 412]),
+        label("cooperative", { ...VARIABLE, "text-overlap": "cooperative" }, ["!=", ["get", "annoCtg"], 412]),
+        label("always", { "text-size": 15, "text-overlap": "always" }, ["==", ["get", "annoCtg"], 412]),
+      ),
+      camera: { center: tokyo, zoom: 14.6 },
+    },
+    "icon-overlap": {
+      style: style(
+        { id: "s", type: "symbol", source: "gsi", "source-layer": "symbol", layout: { "icon-image": "box", "icon-overlap": "cooperative" } },
+        label("l", { "icon-image": "pin", "icon-overlap": "cooperative", "text-overlap": "cooperative", "text-anchor": "top", "text-offset": [0, 0.8] }),
+      ),
+      camera: { center: tokyo, zoom: 14.8 },
+    },
+    "contours-spacing": { style: style(contours({ "text-letter-spacing": 0.3, "text-font": ["Noto Sans Bold"] })), camera: { center: west, zoom: 14.6 }, along: true },
+    "contours-rotate": { style: style(contours({ "text-rotate": 15, "text-transform": "uppercase" })), camera: { center: west, zoom: 14.6, bearing: 20 }, along: true },
+  };
+}
 
 // Expressions in text and filters: format sections with their scales and alignment, a whole label
 // scaled, split / join and is-supported-script, a collator and a global-state default in filters.

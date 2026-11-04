@@ -1,7 +1,7 @@
 ///|
-/// Placed screen boxes and circles in a grid of `cell`-px squares (MapLibre's
-/// `GridIndex`): a cell lists boxes by their offset in `boxes`, circles as -1 -
-/// their offset in `circles` (x, y, radius).
+/// Placed screen boxes and circles in a grid of `cell`-px squares (MapLibre's `GridIndex`): a cell
+/// lists boxes by their offset in `boxes`, circles as -1 - their offset in `circles` (x, y, radius);
+/// `box_never` and `circle_never` tell whether each was placed by a symbol that never overlaps.
 pub struct Grid {
   priv mut width : Double
   priv mut height : Double
@@ -11,6 +11,8 @@ pub struct Grid {
   priv mut cells : FixedArray[Array[Int32]]
   priv boxes : Array[Double]
   priv circles : Array[Double]
+  priv box_never : Array[Bool]
+  priv circle_never : Array[Bool]
 }
 
 ///|
@@ -31,6 +33,8 @@ pub fn Grid::new(
     cells: FixedArray::makei(cols * rows, _ => []),
     boxes: [],
     circles: [],
+    box_never: [],
+    circle_never: [],
   }
 }
 
@@ -53,6 +57,8 @@ pub fn Grid::reset(self : Grid, width : Double, height : Double) -> Unit {
   self.rows = rows
   self.boxes.clear()
   self.circles.clear()
+  self.box_never.clear()
+  self.circle_never.clear()
 }
 
 ///|
@@ -98,13 +104,15 @@ fn circle_meets_box(
 
 ///|
 /// Whether the box meets one already inserted, edges touching included, as
-/// MapLibre's `GridIndex.hitTest` (a box over the whole grid meets everything).
+/// MapLibre's `GridIndex.hitTest` (a box over the whole grid meets everything);
+/// `cooperative`, only those inserted as `never` (MapLibre's `overlapAllowed`).
 pub fn Grid::hits(
   self : Grid,
   x0 : Double,
   y0 : Double,
   x1 : Double,
   y1 : Double,
+  cooperative~ : Bool = false,
 ) -> Bool {
   if x1 < 0.0 || x0 > self.width || y1 < 0.0 || y0 > self.height {
     return false
@@ -120,6 +128,9 @@ pub fn Grid::hits(
   for r in r0..<=r1 {
     for c in c0..<=c1 {
       for i in self.cells[r * self.cols + c] {
+        if cooperative && !self.never(i) {
+          continue
+        }
         if i >= 0 {
           if x0 <= b[i + 2] + e &&
             y0 <= b[i + 3] + e &&
@@ -141,12 +152,13 @@ pub fn Grid::hits(
 
 ///|
 /// Whether the circle meets a box or circle already inserted (MapLibre's
-/// `hitTestCircle`).
+/// `hitTestCircle`), as `hits` does with `cooperative`.
 pub fn Grid::hits_circle(
   self : Grid,
   x : Double,
   y : Double,
   radius : Double,
+  cooperative~ : Bool = false,
 ) -> Bool {
   if x + radius < 0.0 ||
     x - radius > self.width ||
@@ -161,6 +173,9 @@ pub fn Grid::hits_circle(
   for r in r0..<=r1 {
     for c in c0..<=c1 {
       for i in self.cells[r * self.cols + c] {
+        if cooperative && !self.never(i) {
+          continue
+        }
         if i >= 0 {
           if circle_meets_box(x, y, radius, b[i], b[i + 1], b[i + 2], b[i + 3]) {
             return true
@@ -193,14 +208,27 @@ pub fn Grid::inside(
 }
 
 ///|
-/// Adds a box; the parts outside the viewport are not kept.
+/// Whether cell entry `i` was inserted as `never`.
+fn Grid::never(self : Grid, i : Int32) -> Bool {
+  if i >= 0 {
+    self.box_never[i / 4]
+  } else {
+    self.circle_never[(-1 - i) / 3]
+  }
+}
+
+///|
+/// Adds a box, of a symbol that `never` overlaps others or not; the parts
+/// outside the viewport are not kept.
 pub fn Grid::insert(
   self : Grid,
   x0 : Double,
   y0 : Double,
   x1 : Double,
   y1 : Double,
+  never~ : Bool = true,
 ) -> Unit {
+  self.box_never.push(never)
   let at = self.boxes.length()
   self.boxes.push(x0)
   self.boxes.push(y0)
@@ -210,13 +238,15 @@ pub fn Grid::insert(
 }
 
 ///|
-/// Adds a circle, in the cells its bounding square covers.
+/// Adds a circle, in the cells its bounding square covers, as `insert` a box.
 pub fn Grid::insert_circle(
   self : Grid,
   x : Double,
   y : Double,
   radius : Double,
+  never~ : Bool = true,
 ) -> Unit {
+  self.circle_never.push(never)
   let at = self.circles.length()
   self.circles.push(x)
   self.circles.push(y)

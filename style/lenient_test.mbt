@@ -66,7 +66,7 @@ test "properties parsed but not drawn yet are reported only when asked" {
 }
 
 ///|
-test "fonts and colors of format sections are reported as not drawn yet" {
+test "fonts and colors of format sections are drawn without warnings" {
   let json = @json.parse(
     (
       #|{"version": 8, "sources": {"v": {"type": "vector", "tiles": ["https://x/{z}/{x}/{y}"]}},
@@ -78,10 +78,7 @@ test "fonts and colors of format sections are reported as not drawn yet" {
   let style = @style.Style::from_json(json, strict=false)
   assert_eq(style.layers.length(), 1)
   style.report_ignored(json, strict=false)
-  assert_eq(style.warnings.map(e => e.message()), [
-    "layers[0].layout.text-field: unsupported: text-font of format sections not drawn yet",
-    "layers[0].layout.text-field: unsupported: text-color of format sections not drawn yet",
-  ])
+  assert_eq(style.warnings.map(e => e.message()), [])
 }
 
 ///|
