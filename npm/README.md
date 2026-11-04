@@ -27,6 +27,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/draw.js` | 見た目を持たない作図（`mbmap/draw`） |
 | `dist/analysis.js` | 解析（`mbmap/analysis`）の入口 |
 | `dist/geodesic.js` | 楕円体の上の計測（`mbmap/geodesic`）の入口 |
+| `dist/data.js` | データの読み込み（CSV・WKT・WKB、`mbmap/data`）の入口 |
 
 `index.js` が、使うときだけ動的 import で読み込むもの（`index.js` と同じ場所に置く）：
 
@@ -54,13 +55,14 @@ Worker と wasm：
 | `dist/proj.wasm` | 座標系の変換。解析の Worker が、初めて座標系を使ったときだけ読む |
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ自分の隣から読む |
 | `dist/geodesic-worker.js`, `dist/geodesic.wasm` | `mbmap/geodesic` の Worker と wasm。初めて呼んだときに起こす |
+| `dist/data-worker.js`, `dist/data.wasm` | `mbmap/data` の Worker と wasm。初めて呼んだときに起こす |
 
 どのファイルも、既定では `new URL("./worker.js", import.meta.url)` のように、読み込む側のモジュールの隣から読む。ESM をそのまま配信する場合（import map など）は、`dist/` をまるごと置けばそのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う。esbuild はこの `new URL` をそのまま残し、動的 import はバンドルに入れるので、Worker と wasm（`dist/` の `*.wasm` と `*worker*.js`）をバンドルの隣にコピーすれば動く（`examples/react/build.mjs`）。ほかのバンドラはまだ検証していない。動かないときは、ファイルを自分で配信して場所を渡す。
 
 - `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
 - `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
 - `index.js` の動的 import（上の表）と `analysis.js` の `projstring.js` は、場所を変えられない。それぞれの隣に置く。
-- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）と `wasmUrl`（`data.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
 
 Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
@@ -196,7 +198,7 @@ list.onclick = (e) => search.select(Number(e.target.dataset.i)); // 選ぶと、
 ```js
 import { load } from "mbmap/analysis";
 
-const blocks = await load(polygonsGeoJSON);  // オブジェクト、UTF-8 のバイト列、http(s) の URL
+const blocks = await load(polygonsGeoJSON);  // オブジェクト、UTF-8 のバイト列、http(s) の URL、mbmap/data の DataTable
 const shops = await load("/data/shops.geojson");
 const area = await blocks.areas();           // Float64Array（m²）
 const { count, mean } = await blocks.collect(shops, "sales");
@@ -274,6 +276,34 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 - `direct(from, azimuth, distance)`：`position`、`azimuth`、`arc`。
 - `measure(positions, { closed, step })`：線の長さ、または閉じた多角形の周囲と面積（反時計回りが正）、各頂点までの距離（`distances`）。`step` を渡すと、測地線に沿って `step` m ごとに点を足した `path` も返す（経度は ±180 を越えても続けて数える）。
 - 初めて呼んだときに、専用の Worker と wasm（約 12KB）を読み込む。`terminate()` で止める。
+
+## データの読み込み `mbmap/data`
+
+```js
+import { read, parse } from "mbmap/data";
+import { load } from "mbmap/analysis";
+
+const stations = await read("/data/stations.csv");   // 緯度・経度の列から点を作る
+map.addSource("stations", { type: "geojson", data: stations.toGeoJSON() });
+const dataset = await load(stations);                 // mbmap/analysis の Dataset にもなる
+const area = await parse("SRID=4326;POLYGON ((139.76 35.67, 139.775 35.67, 139.775 35.688, 139.76 35.688, 139.76 35.67))", { format: "wkt" });
+```
+
+- `read(input, options)`：`input` は http(s) の URL（文字列か `URL`。ページを基準に解決し、資格情報なしで取得する）、`Blob`・`File`、`ArrayBuffer`・型付き配列（コピーする）。文字列はいつも URL として扱う。文字列のデータは `parse(text, { format })` に渡す。
+- `options.format`：`"csv"`・`"wkt"`・`"wkb"`。省くと URL か `File` の名前の拡張子（`.csv`・`.tsv`・`.txt`・`.wkt`・`.wkb`・`.ewkb`）で決める。決められないときは失敗する。`transformRequest(url)` で URL の取得に `headers` や `credentials` を付けられる（地図の `transformRequest` と同じ形）。
+- 結果の `DataTable`：`length`（行の数。GEOMETRYCOLLECTION は要素ごとに 1 行）、`columns`（属性の名前）、`format`、`toGeoJSON()`（FeatureCollection。GeoJSON ソースの `data` にそのまま渡せる。呼ぶたびに新しく作る）、`tableBytes()`（`mbmap/analysis` の `load` が受け取る形）。`mbmap/analysis` の `load(table, { crs })` に渡すと、投影座標の CSV も経緯度にして読める。
+- CSV（RFC 4180）：引用符（`""` で引用符そのもの、引用の中の改行）、CRLF・LF・CR の行末、先頭の BOM、空行の読み飛ばし。オプション：
+  - `delimiter`：1 文字。省くと papaparse と同じやり方で `,`・タブ・`|`・`;` から推測する。
+  - `header`（既定 true）：1 行目を列の名前にする。同じ名前は papaparse と同じく `_1`、`_2` を付けて区別する。false なら列は `"0"`、`"1"`、… という名前になる。
+  - `dynamicTyping`（既定 true）：papaparse の `dynamicTyping` と同じく、数（`007` は 7、`1e3` は 1000、±2^53 以上と `NaN`・`+1`・`0x10` は文字列のまま）、`true`/`TRUE`/`false`/`FALSE`、空の欄（null）に型を付ける。ISO の日時は（papaparse の Date と違い）文字列のまま。false ならすべて文字列。
+  - ジオメトリ：`latitude` と `longitude`、または `geometry`（WKT・EWKT・16 進の WKB の列）で列を指定する。省くと名前で探す：`wkt`・`geometry`・`the_geom`・`geom`（最初の値がジオメトリとして読めるとき）、なければ `lat`・`latitude`・`y`・`緯度` と `lon`・`lng`・`long`・`longitude`・`x`・`経度`（大文字と小文字は区別しない）。座標が数として読めない行も、属性を持ったままジオメトリなしの行になる。ジオメトリの列は属性に入れない（緯度・経度の列は残す）。
+  - ヘッダーより多い欄は捨て、足りない欄は属性を持たない。
+- WKT・EWKT：すべての型（GEOMETRYCOLLECTION は要素ごとの行に分ける。入れ子も）、`EMPTY`（ジオメトリなしの行）、Z・M・ZM（2 次元だけ残す。タグのない 3・4 次元の座標も読む）、`MULTIPOINT (1 2, 3 4)` と `MULTIPOINT ((1 2), (3 4))`。空白で区切って複数のジオメトリを続けて書ける（1 行に 1 つなど）。
+- WKB・EWKB：バイト列か 16 進の文字列（PostGIS の出力の形。空白は無視）。ジオメトリごと（入れ子も）のバイト順、ISO の Z/M/ZM の型コード（+1000/2000/3000）と EWKB のフラグ。NaN の点は空として扱う。続けて置いた複数のジオメトリを読む。
+- 座標系：EWKT・EWKB の SRID は 4326（と、指定なしを表す 0）だけを受け付け、ほかの SRID は失敗する。投影座標の CSV は `mbmap/analysis` の `load(table, { crs })` で経緯度にできる。
+- 値は papaparse 5.7.0（`header`、`dynamicTyping`、`skipEmptyLines`）、betterknown 1.2.0（WKT）、wkx 0.5.0（WKB）と一致することを黄金テストで確かめている（`npm run data:golden`）。違うのは、参照の実装が緩く受け付けるもの（WKT の後ろの余分な文字列、`1a` のような数、型の違う Multi の要素、0 と 1 以外のバイト順、4326 以外の SRID）を失敗にするところと、タグのない Z 座標を読むところ。
+- 入力は 256MB、点は 2000 万、CSV の欄は 1 行に 4096、1 つの欄は 16MB、属性の欄の数（行 × 列）は 3200 万まで。
+- 初めて呼んだときに、専用の Worker と wasm（gzip で約 17KB）を読み込む。`terminate()` で止める。
 
 ## Web Component `<mb-map>`
 

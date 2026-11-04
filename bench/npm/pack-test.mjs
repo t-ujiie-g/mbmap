@@ -34,6 +34,7 @@ const PAGES = {
   element: "bench/npm/pages/element/",
   geojson: "bench/npm/pages/geojson/",
   analysis: "bench/npm/pages/analysis/",
+  data: "bench/npm/pages/data/",
   media: "bench/npm/pages/media/",
   custom: "bench/npm/pages/custom/",
   basic: "bench/pages/basic/",
@@ -83,7 +84,7 @@ const checks = {
       // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("proj")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("proj") || n.startsWith("data")),
         styleError,
         thrown,
         warned,
@@ -230,6 +231,62 @@ const checks = {
     const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /geojson/.test(n));
     const ok = ["geojson.js", "geojson-worker.js", "geojson.wasm", "places.geojson"].every((n) => loaded.includes(n)) && r.pitch === 50;
     return [ok, { loaded, pitch: r.pitch }];
+  },
+
+  // mbmap/data: a CSV by URL with 緯度/経度 columns and a WKT area drawn as GeoJSON sources and
+  // counted in mbmap/analysis (bench/npm/pages/data); Files, bytes and hex WKB; refusals.
+  async data(page, requests) {
+    const r = await page.evaluate(async () => {
+      const { read, parse } = await import("mbmap/data");
+      const map = window.__map;
+      const drawn = (await map.queryRenderedFeatures({ layers: ["stations"] })).length;
+      const file = await read(new File(["POINT (1 2)\nGEOMETRYCOLLECTION (POINT (3 4), LINESTRING (0 0, 1 1))"], "shapes.wkt"));
+      const bytes = new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xf0, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0x40]);
+      const wkb = await read(bytes, { format: "wkb" });
+      const hex = await parse("0101000020E6100000000000000000F03F0000000000000040", { format: "wkb" });
+      const tsv = await parse("x\ty\tname\n1\t2\ta\n", { format: "csv" });
+      const fail = (p) => p.then(() => "", (e) => e.message);
+      return {
+        ...window.__data,
+        drawn,
+        file: file.toGeoJSON().features.map((f) => f.geometry.type),
+        wkb: wkb.toGeoJSON().features[0].geometry.coordinates,
+        hex: hex.toGeoJSON().features[0].geometry.coordinates,
+        tsv: [tsv.columns, tsv.toGeoJSON().features[0].geometry.coordinates],
+        bytesKept: bytes.length,
+        refused: await fail(read("data:text/csv,a,b")),
+        noFormat: await fail(read(new Uint8Array([1]))),
+        malformed: await fail(parse("a,b\n\"x,1\n", { format: "csv" })),
+        srid: await fail(parse("SRID=3857;POINT (1 2)", { format: "wkt" })),
+        badOption: await fail(parse("a\n", { format: "csv", delimiter: ";;" })),
+        missing: await fail(read("./missing.csv")),
+      };
+    });
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /^data|stations/.test(n));
+    const station = r.features[0];
+    const ok =
+      ["data.js", "data-worker.js", "data.wasm", "stations.csv"].every((n) => loaded.includes(n)) &&
+      r.length === 5 &&
+      JSON.stringify(r.columns) === JSON.stringify(["名前", "緯度", "経度", "乗降客数", "備考"]) &&
+      JSON.stringify(station.geometry) === JSON.stringify({ type: "Point", coordinates: [139.7671, 35.6812] }) &&
+      station.properties.名前 === "東京" && station.properties.乗降客数 === 462589 && station.properties.備考 === "丸の内, 八重洲" &&
+      r.features[3].properties.乗降客数 === null && r.features[4].geometry === null &&
+      r.area === "Polygon" &&
+      JSON.stringify(r.datasets) === JSON.stringify([5, 1]) &&
+      JSON.stringify(r.inside) === JSON.stringify([0, 1, 3]) &&
+      r.drawn === 4 &&
+      JSON.stringify(r.file) === JSON.stringify(["Point", "Point", "LineString"]) &&
+      JSON.stringify(r.wkb) === JSON.stringify([1, 2]) &&
+      JSON.stringify(r.hex) === JSON.stringify([1, 2]) &&
+      JSON.stringify(r.tsv) === JSON.stringify([["x", "y", "name"], [1, 2]]) &&
+      r.bytesKept === 21 &&
+      /http\(s\) URL/.test(r.refused) &&
+      /format cannot be told/.test(r.noFormat) &&
+      r.malformed === "mbmap: data: malformed CSV at 4: unterminated quoted field" &&
+      r.srid === "mbmap: data: malformed WKT at 5: only SRID 4326 is supported" &&
+      /invalid delimiter/.test(r.badOption) &&
+      /HTTP 404/.test(r.missing);
+    return [ok, { loaded, ...r, features: r.features.length }];
   },
 
   async analysis(page, requests) {

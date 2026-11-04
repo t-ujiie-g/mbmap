@@ -444,7 +444,8 @@ In:
   `Math`, the geometry module nothing.
 - `{type: "call", id, op, ...}`, run one after another in arrival order. `op` and its arguments
   (no argument may be named `op`):
-  - `load` with `url` (fetched without credentials) or `bytes` (GeoJSON as UTF-8),
+  - `load` with `url` (fetched without credentials), `bytes` (GeoJSON as UTF-8) or
+    `table` (an ArrayBuffer of "Table" bytes, as mbmap/data reads them; `load_table`),
     and `crs` (of its coordinates; anything but 4326 is transformed to 4326 by
     the coordinate system module, which every other call then assumes). A
     `crs` is an EPSG code or a Float64Array "CRS definition";
@@ -465,7 +466,7 @@ In:
     `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect, 3 split); the datasets go to
     the geometry module and back as Table bytes;
   - `toGeoJSON` (`dataset`, `crs`): its Table bytes, transformed to `crs` when
-    given, decoded into a FeatureCollection (`analysis_worker/js/table.mjs`);
+    given, decoded into a FeatureCollection (`wasmio/js/table.mjs`);
   - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to`): the
     pairs in `to`, NaN where a point is out of the projection's reach.
 
@@ -502,6 +503,23 @@ with `op` and its arguments, positions as `[lng, lat]`:
   unrolled (`densify`, at most 1,000,000 points).
 
 Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
+
+## Data worker messages (`data_worker/js/worker.mjs`)
+
+In: `{type: "init", wasm}` (instantiated with `{ host: { number } }`, `hostNumber`), then
+`{type: "call", id, op: "read", format, options, ...}` with the data as one of `url` (http(s),
+fetched with `init`'s string `headers` and `credentials`, none sent otherwise), `blob` or `bytes`
+(an ArrayBuffer), at most `MAX_INPUT_BYTES`:
+
+- `format` `"csv"`, with `options` `{delimiter, header, dynamicTyping, latitude, longitude,
+  geometry}` (`delimiter` a character code or -1 to guess; the column names optional). The wasm's
+  `read_csv(names, delimiter, header, typing)` takes the three names, each ended by a NUL byte
+  (empty: found by name), before the CSV in its input;
+- `"wkt"` (`read_wkt`) or `"wkb"` (`read_wkb`: binary, or hexadecimal text when the first byte
+  that is not white space is neither 0 nor 1).
+
+Out: `{type: "result", id, value}` with `value` an ArrayBuffer of "Table" bytes (transferred),
+or `{type: "result", id, error}`.
 
 ## CRS definition (`proj/encoding.mbt`, written by `npm/src/projstring.ts`)
 
