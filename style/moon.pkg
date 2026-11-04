@@ -11,3 +11,7 @@ import {
 import {
   "moonbitlang/core/json",
 } for "test"
+
+options(
+  targets: { "intl_js.mbt": [ "js" ], "intl_nonjs.mbt": [ "not", "js" ] },
+)

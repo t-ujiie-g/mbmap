@@ -28,8 +28,8 @@
     {
       "scene": "fixed-tilted",
       "same": true,
-      "maplibre": 138,
-      "mbmap": 138,
+      "maplibre": 139,
+      "mbmap": 139,
       "anchored": 0,
       "justified": 0,
       "icons": 0,
@@ -48,8 +48,8 @@
     {
       "scene": "radial-turned",
       "same": true,
-      "maplibre": 84,
-      "mbmap": 84,
+      "maplibre": 83,
+      "mbmap": 83,
       "anchored": 23,
       "justified": 14,
       "icons": 0,
@@ -58,9 +58,9 @@
     {
       "scene": "radial-tilted",
       "same": true,
-      "maplibre": 186,
-      "mbmap": 186,
-      "anchored": 61,
+      "maplibre": 185,
+      "mbmap": 185,
+      "anchored": 60,
       "justified": 13,
       "icons": 0,
       "boxDiff": 0
@@ -68,10 +68,10 @@
     {
       "scene": "radial-multiline",
       "same": true,
-      "maplibre": 111,
-      "mbmap": 111,
-      "anchored": 26,
-      "justified": 90,
+      "maplibre": 108,
+      "mbmap": 108,
+      "anchored": 22,
+      "justified": 91,
       "icons": 0,
       "boxDiff": 0
     },
@@ -90,7 +90,7 @@
       "same": true,
       "maplibre": 62,
       "mbmap": 62,
-      "anchored": 10,
+      "anchored": 11,
       "justified": 0,
       "icons": 0,
       "boxDiff": 0
@@ -98,9 +98,9 @@
     {
       "scene": "overlap-anchors",
       "same": true,
-      "maplibre": 185,
-      "mbmap": 185,
-      "anchored": 74,
+      "maplibre": 184,
+      "mbmap": 184,
+      "anchored": 73,
       "justified": 13,
       "icons": 0,
       "boxDiff": 0
@@ -177,6 +177,32 @@
       "icons": 0,
       "boxDiff": 0,
       "glyphs": 36,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-number-format",
+      "same": true,
+      "maplibre": 8,
+      "mbmap": 8,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0,
+      "glyphs": 40,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-format",
+      "same": true,
+      "maplibre": 7,
+      "mbmap": 7,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0,
+      "glyphs": 21,
       "glyphDiff": 0,
       "angleDiff": 0
     },
@@ -369,6 +395,56 @@
       "anchored": 0,
       "justified": 0,
       "icons": 75,
+      "boxDiff": 0
+    },
+    {
+      "scene": "format",
+      "same": true,
+      "maplibre": 68,
+      "mbmap": 68,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "format-variable",
+      "same": true,
+      "maplibre": 86,
+      "mbmap": 86,
+      "anchored": 36,
+      "justified": 70,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "format-scaled",
+      "same": true,
+      "maplibre": 65,
+      "mbmap": 65,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "string-ops",
+      "same": true,
+      "maplibre": 81,
+      "mbmap": 81,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "global-state",
+      "same": true,
+      "maplibre": 1,
+      "mbmap": 1,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
       "boxDiff": 0
     }
   ]

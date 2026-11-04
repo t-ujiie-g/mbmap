@@ -4,12 +4,12 @@
     "node": "v22.23.4"
   },
   "summary": {
-    "expressions": 186,
+    "expressions": 243,
     "legacy filters": 31,
     "legacy functions": 21,
     "features": 2686,
     "zooms": 5,
-    "evaluations": 2822986,
+    "evaluations": 3575066,
     "values that differ": 0,
     "rejected by MapLibre only (MAPLIBRE_REJECTS)": 3,
     "problems": 0

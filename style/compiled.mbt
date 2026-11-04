@@ -42,6 +42,12 @@ let ops : FixedArray[Op] = [
   At,
   Rgba,
   ToRgba,
+  Split,
+  Join,
+  ResolvedLocale,
+  Format,
+  NumberFormat,
+  Collator,
 ]
 
 ///|
@@ -153,7 +159,8 @@ fn StyleWriter::value(self : StyleWriter, v : Value) -> Unit {
       self.w.u32(vs.length())
       vs.each(v => self.value(v))
     }
-    Failed => self.code(VALUE_FAILED)
+    // Expressions make these; literals never hold them.
+    Failed | Formatted(_) | Collator(_, _, _) => self.code(VALUE_FAILED)
   }
 }
 
@@ -302,6 +309,13 @@ fn StyleWriter::expr(self : StyleWriter, e : Expr) -> Unit {
       self.code(22)
       self.code(code_of(ops, op))
       self.exprs(es)
+    }
+    Collate(op, a, b, c) => {
+      self.code(23)
+      self.code(code_of(cmp_ops, op))
+      self.expr(a)
+      self.expr(b)
+      self.expr(c)
     }
   }
 }
@@ -699,12 +713,38 @@ fn StyleReader::expr(self : StyleReader, depth : Int32) -> Expr {
     }
     22 => {
       let op = self.from(ops, Add)
-      Call(op, exprs())
+      let args = exprs()
+      if !arity_fits(op, args.length()) {
+        self.r.fail()
+      }
+      Call(op, args)
+    }
+    23 => {
+      let op = self.from(cmp_ops, Eq)
+      let a = self.expr(d)
+      let b = self.expr(d)
+      Collate(op, a, b, self.expr(d))
     }
     _ => {
       self.r.fail()
       Lit(Null)
     }
+  }
+}
+
+///|
+/// Whether `op` takes `n` arguments, as `compile` makes its calls.
+fn arity_fits(op : Op, n : Int32) -> Bool {
+  match op {
+    Add | Mul | Min | Max | Concat => true
+    Sub => n is (1 | 2)
+    Div | Rem | Pow | At | Split | Join => n == 2
+    Slice | IndexOf => n is (2 | 3)
+    Rgba => n is (3 | 4)
+    Format => n > 0 && n % 5 == 0
+    NumberFormat => n == 6
+    Collator => n == 3
+    _ => n == 1
   }
 }
 

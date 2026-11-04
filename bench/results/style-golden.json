@@ -16,6 +16,16 @@
       }
     },
     {
+      "scene": "expressions-strings",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
       "scene": "outlines",
       "ok": true,
       "mean": 0,
@@ -28,7 +38,7 @@
     {
       "scene": "lines",
       "ok": true,
-      "mean": 0,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.1,
@@ -48,7 +58,7 @@
     {
       "scene": "turned",
       "ok": true,
-      "mean": 0.559,
+      "mean": 0.558,
       "p99": 18,
       "limits": {
         "mean": 0.7,
@@ -68,7 +78,47 @@
     {
       "scene": "data-lines",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0.002,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "line-offset",
+      "ok": true,
+      "mean": 0.029,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "line-gap",
+      "ok": true,
+      "mean": 0.018,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "translate",
+      "ok": true,
+      "mean": 0.002,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "circle-pitch",
+      "ok": true,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -88,7 +138,7 @@
     {
       "scene": "dashes",
       "ok": true,
-      "mean": 0.034,
+      "mean": 0.035,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -118,7 +168,7 @@
     {
       "scene": "legacy",
       "ok": true,
-      "mean": 0.002,
+      "mean": 0.003,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -128,7 +178,7 @@
     {
       "scene": "gradients",
       "ok": true,
-      "mean": 0.052,
+      "mean": 0.053,
       "p99": 1,
       "limits": {
         "mean": 0.07,
@@ -138,7 +188,7 @@
     {
       "scene": "icons",
       "ok": true,
-      "mean": 0,
+      "mean": 0.012,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -148,7 +198,7 @@
     {
       "scene": "icons-turned",
       "ok": true,
-      "mean": 0,
+      "mean": 0.003,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -158,7 +208,7 @@
     {
       "scene": "icons-lines",
       "ok": true,
-      "mean": 0.016,
+      "mean": 0.017,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -168,7 +218,7 @@
     {
       "scene": "icons-lines-tilted",
       "ok": true,
-      "mean": 0.027,
+      "mean": 0.033,
       "p99": 1,
       "limits": {
         "mean": 0.05,
@@ -178,7 +228,7 @@
     {
       "scene": "icons-2x",
       "ok": true,
-      "mean": 0,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -188,7 +238,7 @@
     {
       "scene": "patterns",
       "ok": true,
-      "mean": 0.074,
+      "mean": 0.075,
       "p99": 2,
       "limits": {
         "mean": 0.08,
@@ -199,7 +249,7 @@
     {
       "scene": "patterns-2x",
       "ok": true,
-      "mean": 0.077,
+      "mean": 0.078,
       "p99": 2,
       "limits": {
         "mean": 0.08,
@@ -209,9 +259,9 @@
     },
     {
       "scene": "heatmap",
-      "ok": true,
-      "mean": 0.484,
-      "p99": 5,
+      "ok": false,
+      "mean": 0.567,
+      "p99": 8,
       "limits": {
         "mean": 0.5,
         "p99": 5
@@ -261,7 +311,7 @@
     {
       "scene": "line-patterns",
       "ok": true,
-      "mean": 0.144,
+      "mean": 0.142,
       "p99": 1,
       "limits": {
         "mean": 0.2,
@@ -271,9 +321,9 @@
     },
     {
       "scene": "extrusion-patterns",
-      "ok": true,
-      "mean": 0.183,
-      "p99": 0,
+      "ok": false,
+      "mean": 0.215,
+      "p99": 1,
       "limits": {
         "mean": 0.2,
         "p99": 1
@@ -282,7 +332,7 @@
     {
       "scene": "extrusions-translucent",
       "ok": true,
-      "mean": 0.098,
+      "mean": 0.101,
       "p99": 0,
       "limits": {
         "mean": 0.12,
@@ -362,7 +412,7 @@
     {
       "scene": "color-relief-nearest",
       "ok": true,
-      "mean": 0,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.05,

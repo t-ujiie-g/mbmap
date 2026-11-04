@@ -69,6 +69,35 @@ test "labels whose text has no value are left out" {
 }
 
 ///|
+test "formatted text-fields pack their sections with scale and vertical align" {
+  let style =
+    #|{"sources": {"g": {"type": "geojson", "data": "x"}},
+    #| "layers": [{"id": "t", "type": "symbol", "source": "g",
+    #|   "layout": {"text-field": ["format", ["number-format", ["get", "k"], {}], {"font-scale": 1.5},
+    #|                             "!", {"vertical-align": "top", "text-font": ["literal", ["A"]]}]}}]}
+  let intl = {
+    ..@style.Intl::fallback(),
+    number_format: (x, _, _, _, _, _) => Some("n\{x.to_int()}"),
+  }
+  let p = @worker.TileProcessor::from_utf8(@utf8.encode(style)[:], intl~)
+  assert_true(p.process("g", geojson_tile()[:], 0))
+  let b = p.out.to_bytes()[:]
+  let at = u32_at(b, 4 + 2 * 4)
+  let r = @core.ByteReader::new(b[at + 65:])
+  // The point without k fails its number-format, so has no label.
+  assert_eq(r.u32(), 1)
+  assert_eq(
+    (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
+    (0, 2048, 2048, 16.0, 0.0),
+  )
+  assert_eq((r.u32(), r.u8(), r.u32()), (1, 6, 2))
+  assert_eq((r.utf8(), r.f64(), r.u8()), ("n1", 1.5, 0))
+  assert_eq(r.utf8(), "!")
+  assert_true(r.f64().is_nan())
+  assert_eq(r.u8(), 2)
+}
+
+///|
 test "labels along lines carry their features' lines" {
   let style =
     #|{"sources": {"g": {"type": "geojson", "data": "x"}},

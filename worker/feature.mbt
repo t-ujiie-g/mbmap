@@ -1,7 +1,7 @@
 ///|
 /// Feature `index` of a layer's features, as expressions see it, with the
-/// processor's `trig`, `text_number` and `number_text`. Property names are resolved to key
-/// indices once per layer.
+/// processor's `trig`, `text_number`, `number_text` and `intl`. Property names
+/// are resolved to key indices once per layer.
 priv struct FeatureRef {
   features : Features
   mut index : Int32
@@ -9,6 +9,7 @@ priv struct FeatureRef {
   trig : @core.Trig
   text_number : (String) -> Double
   number_text : (Double) -> String
+  intl : @style.Intl
 }
 
 ///|
@@ -23,7 +24,38 @@ fn TileProcessor::feature_ref(
     trig: self.trig,
     text_number: self.text_number,
     number_text: self.number_text,
+    intl: self.intl,
   }
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn number_format(
+  self,
+  x,
+  locale,
+  currency,
+  unit,
+  min,
+  max,
+) {
+  (self.intl.number_format)(x, locale, currency, unit, min, max)
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn collate(
+  self,
+  a,
+  b,
+  case,
+  diacritic,
+  locale,
+) {
+  (self.intl.collate)(a, b, case, diacritic, locale)
+}
+
+///|
+impl @style.FeatureContext for FeatureRef with fn resolved_locale(self, l) {
+  (self.intl.resolved_locale)(l)
 }
 
 ///|

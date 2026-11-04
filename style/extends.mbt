@@ -70,6 +70,9 @@ pub extend NoFeature with FeatureContext::{
   line_progress,
   heatmap_density,
   elevation,
+  number_format,
+  collate,
+  resolved_locale,
 }
 
 ///|
@@ -134,3 +137,9 @@ pub extend IconTextFit with @debug.Debug::{to_repr}
 
 ///|
 pub extend IconTextFit with Eq::{not_equal, equal}
+
+///|
+pub extend Section with @debug.Debug::{to_repr}
+
+///|
+pub extend Section with Eq::{not_equal, equal}

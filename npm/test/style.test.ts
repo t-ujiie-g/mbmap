@@ -99,3 +99,16 @@ test("styleWarnings pairs the engine's paths and messages and names each warning
     { path: "layers[7]", message: "gone" },
   ]);
 });
+
+test("loadedState takes initial values over the style's defaults and keeps other keys", () => {
+  const s = { ...style(), state: { a: { default: 1 }, b: {}, c: { default: [2] } } };
+  assert.deepEqual(edit.loadedState({ a: 5, x: true }, s, { c: "init", d: 0 }), { a: 1, b: null, c: "init", d: 0, x: true });
+  assert.deepEqual(edit.loadedState({}, style(), {}), {});
+});
+
+test("withState hands the engine the values as defaults, and leaves a style alone without any", () => {
+  const s = { ...style(), state: { a: { default: 1 } } };
+  assert.deepEqual(edit.withState(s, { a: 2, b: null }).state, { a: { default: 2 }, b: { default: null } });
+  assert.equal(edit.withState(s, {}), s);
+  assert.deepEqual(s.state, { a: { default: 1 } });
+});

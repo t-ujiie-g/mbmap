@@ -3,7 +3,7 @@
 import TinySDF from "./tiny-sdf.mjs";
 import { anchorShares, JUSTIFY, layoutLabel, SDF_BUFFER, SDF_RADIUS, SDF_SIZE } from "./text.mjs";
 import { EXTENT, lineAnchors, mergeLines } from "./line-labels.mjs";
-import { readValue } from "./values.mjs";
+import { readString, readValue } from "./values.mjs";
 
 // Bytes per glyph quad vertex (docs/FORMATS.md, "Symbol vertices").
 export const SYMBOL_VERTEX_BYTES = 16;
@@ -148,17 +148,45 @@ export function iconCorners(shaped, image, rotate) {
     .map(([x, y]) => [c * x - s * y, s * x + c * y]);
 }
 
-// A label's text parts joined: null and absent parts are empty, numbers and
-// booleans as JS writes them.
+// A formatted text's sections among a label's parts (worker/labels.mbt `LABEL_SECTIONS`).
+const SECTIONS = 6;
+// Font scales a glyph may take: its size per vertex is a u16 of 16ths of a px.
+const MAX_FONT_SCALE = 15;
+
+// A label's text parts joined: null and absent parts are empty, numbers and booleans as JS
+// writes them. With a formatted part, also each code point's font scale and vertical-align code.
 function readText(view, bytes, at, parts, skip = 0) {
   at += skip;
   let text = "";
+  let sections = null;
+  const scales = [];
+  const aligns = [];
+  const add = (s, scale = 1, align = 0) => {
+    for (const _ of s) {
+      scales.push(scale);
+      aligns.push(align);
+    }
+    text += s;
+  };
   for (let p = 0; p < parts; p++) {
+    if (view.getUint8(at) === SECTIONS) {
+      const n = view.getUint32(at + 1, true);
+      at += 5;
+      sections = { scales, aligns };
+      for (let k = 0; k < n; k++) {
+        let s;
+        [s, at] = readString(view, bytes, at);
+        const scale = view.getFloat64(at, true);
+        add(s, Math.max(0, Math.min(scale || 1, MAX_FONT_SCALE)), view.getUint8(at + 8));
+        at += 9;
+      }
+      continue;
+    }
     let v;
     [v, at] = readValue(view, bytes, at);
-    if (v != null) text += String(v);
+    if (v != null) add(String(v));
   }
-  return [text, at];
+  return [text, at, sections];
 }
 
 // One symbol entry: `bytes` are its labels, `images` the style's images by name
@@ -221,8 +249,8 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     const size = view.getFloat64(at + 8, true);
     const key = view.getFloat64(at + 16, true);
     const parts = view.getUint32(at + 24, true);
-    let text;
-    [text, at] = readText(view, bytes, at + 28, parts);
+    let text, sections;
+    [text, at, sections] = readText(view, bytes, at + 28, parts);
     const chars = [...text];
     if (chars.length > MAX_LABEL_CHARS) text = chars.slice(0, MAX_LABEL_CHARS).join("");
     const metrics = (cp) => glyphs.metrics(cp);
@@ -237,7 +265,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     }
     let lines = null;
     if (onLines) [lines, at] = readLines(view, at);
-    const shaped = layoutLabel(text, Math.min(size, 256), shaping, metrics);
+    const shaped = layoutLabel(text, Math.min(size, 256), shaping, metrics, sections);
     const image = iconName ? images.get(iconName) : undefined;
     // Names come from tiles: a few short ones are reported, as MapLibre reports each.
     if (iconName && !image && iconName.length <= MAX_LABEL_CHARS && missing.size < MAX_MISSING) missing.add(iconName);
@@ -255,7 +283,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
     // With variable anchors a multi-line label is laid out once per justification
     // its anchors may take (MapLibre's `getAnchorJustification`), all centered.
     const variants = tries > 0 && layout.justify === "auto" && !layout.vertical && shaped.lines > 1
-      ? VARIANTS.map((justify) => layoutLabel(text, Math.min(size, 256), { ...layout, justify }, metrics))
+      ? VARIANTS.map((justify) => layoutLabel(text, Math.min(size, 256), { ...layout, justify }, metrics, sections))
       : [shaped];
     placed.push({ feature, x, y, size, key, box: shaped.box, variants, icon: iconRow });
   }
@@ -292,7 +320,7 @@ export function buildSymbols(bytes, glyphs, images = new Map()) {
         v.setInt16(o + 6, quarterPixels(cy), true);
         v.setUint16(o + 8, local.get(q.cp), true);
         v.setUint16(o + 10, c, true);
-        v.setUint16(o + 12, Math.round(l.size * 16), true);
+        v.setUint16(o + 12, Math.min(65535, Math.round(l.size * (q.scale ?? 1) * 16)), true);
       });
       indices.set([n * 4, n * 4 + 1, n * 4 + 2, n * 4, n * 4 + 2, n * 4 + 3], n * QUAD_INDICES);
     });

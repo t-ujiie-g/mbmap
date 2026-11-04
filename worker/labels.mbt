@@ -124,11 +124,17 @@ fn Labels::add(
 }
 
 ///|
-/// Whether none of `parts` has a value: each is null or empty.
+/// Whether none of `parts` has a value: each is null or empty (a formatted
+/// text as MapLibre's `Formatted::isEmpty`).
 fn no_value(parts : Array[@style.Value]) -> Bool {
   for v in parts {
-    if !(v is (Null | Str(""))) {
-      return false
+    match v {
+      Null | Str("") => ()
+      Formatted(sections) =>
+        if sections.iter().any(s => s.text != "") {
+          return false
+        }
+      _ => return false
     }
   }
   true
@@ -146,13 +152,34 @@ fn any_failed(parts : Array[@style.Value]) -> Bool {
 }
 
 ///|
-/// A count, then each of `parts`.
+/// A count, then each of `parts`: a property value, or a formatted text
+/// (docs/FORMATS.md "Labels").
 fn write_values(w : @core.ByteWriter, parts : Array[@style.Value]) -> Unit {
   w.u32(parts.length())
   for v in parts {
-    write_value(w, v)
+    guard v is Formatted(sections) else {
+      write_value(w, v)
+      continue
+    }
+    w.u8(LABEL_SECTIONS)
+    w.u32(sections.length())
+    for s in sections {
+      w.utf8(s.text)
+      w.f64(s.scale.unwrap_or(@double.not_a_number))
+      w.u8(
+        match s.align {
+          Some("center") => 1
+          Some("top") => 2
+          _ => 0
+        },
+      )
+    }
   }
 }
+
+///|
+/// The tag of a formatted text among a label's parts, past `@core.PROP_ABSENT`.
+const LABEL_SECTIONS : Int32 = 6
 
 ///|
 /// `e`'s number at zoom `z` for `feature`, or `default` if it gives none.

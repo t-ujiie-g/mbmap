@@ -72,8 +72,6 @@ fn text_parts(json : Json, path : String) -> Array[Expr] raise StyleError {
       out
     }
     Array([String("to-string"), j]) => text_parts(j, "\{path}[1]")
-    Array([String("format"), ..]) =>
-      raise Unsupported(path~, "expression format")
     _ => [compile(json, path~)]
   }
 }

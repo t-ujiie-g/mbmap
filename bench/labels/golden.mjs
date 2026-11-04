@@ -59,7 +59,31 @@ const SCENES = {
   },
   ...contourScenes(),
   ...iconScenes(),
+  ...expressionScenes(),
 };
+
+// Expressions in text and filters: format sections with their scales and alignment, a whole label
+// scaled, split / join and is-supported-script, a collator and a global-state default in filters.
+function expressionScenes() {
+  const twoLines = ["format", ["get", "knj"], { "font-scale": 1.3 }, "\n", {}, ["to-string", ["get", "annoCtg"]], { "font-scale": 0.7, "vertical-align": "top" }];
+  const spaced = ["case", ["is-supported-script", ["get", "knj"]], ["join", ["split", ["get", "knj"], ""], " "], ""];
+  return {
+    format: { style: style(label("l", { "text-field": twoLines, "text-max-width": 8 })), camera: { center: tokyo, zoom: 15 } },
+    "format-variable": { style: style(label("l", { ...VARIABLE, "text-field": twoLines })), camera: { center: tokyo, zoom: 15.2 } },
+    "format-scaled": {
+      style: style(label("l", { "text-field": ["format", ["get", "knj"], { "font-scale": 0.8 }], "text-max-width": 6 })),
+      camera: { center: [139.7645, 35.6795], zoom: 15.4, bearing: 30 },
+    },
+    "string-ops": {
+      style: style(label("l", { "text-field": spaced, "text-max-width": 6 }, [">=", ["get", "knj"], "あ", ["collator", { locale: "ja" }]])),
+      camera: { center: tokyo, zoom: 15 },
+    },
+    "global-state": {
+      style: { ...style(label("l", {}, ["==", ["get", "annoCtg"], ["global-state", "category"]])), state: { category: { default: 412 } } },
+      camera: { center: tokyo, zoom: 15 },
+    },
+  };
+}
 
 // Icons (page.mjs draws the images: dot, box, pin at 2x, an SDF ring; "nope" is missing): GSI
 // symbols by their code, alone or under a layer of labels, and labels with icons.
@@ -123,6 +147,14 @@ function contourScenes() {
     "contours-tilted": { style: style(contours()), camera: { center: west, zoom: 14.6, bearing: -15, pitch: 45 }, along: true },
     "contours-deeper": { style: style(contours({ "symbol-spacing": 150 })), camera: { center: west, zoom: 15.4 }, along: true },
     "contours-center": { style: style(contours({ "symbol-placement": "line-center", "text-max-angle": 30 })), camera: { center: west, zoom: 14.5 }, along: true },
+    "contours-number-format": {
+      style: style(contours({ "text-field": ["concat", ["number-format", ["get", "alti"], { locale: "en-US", "min-fraction-digits": 1, "max-fraction-digits": 1 }], "m"] })),
+      camera: { center: west, zoom: 14.5 }, along: true,
+    },
+    "contours-format": {
+      style: style(contours({ "text-field": ["format", ["to-string", ["get", "alti"]], { "font-scale": 1.4 }, "m", { "font-scale": 0.8 }] })),
+      camera: { center: west, zoom: 14.6 }, along: true,
+    },
     "contours-upright": { style: style(contours({ "text-keep-upright": false, "text-size": 14 })), camera: { center: west, zoom: 14.8, bearing: 160 }, along: true },
     "contours-and-points": {
       style: style(contours(), label("l", { "text-max-width": 8 })),

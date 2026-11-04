@@ -1,7 +1,7 @@
 ///|
 /// Turns one style's tiles into `PackedTile`s (an entry per group of features
 /// sharing their paint's inputs); reuse one per worker. `text_number` /
-/// `number_text` are the host's `Number` / `String`;
+/// `number_text` are the host's `Number` / `String`, `intl` its `Intl`;
 /// `ranges` holds feature-state layers' ranges (`feature_ranges`).
 pub struct TileProcessor {
   style : @style.Style
@@ -21,6 +21,7 @@ pub struct TileProcessor {
   priv runs : Array[Int32]
   priv text_number : (String) -> Double
   priv number_text : (Double) -> String
+  priv intl : @style.Intl
   priv state_layers : Array[Bool]
   priv range_pool : Array[Array[Int32]]
   priv ranges : @core.ByteWriter
@@ -34,6 +35,7 @@ pub fn TileProcessor::new(
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
+  intl~ : @style.Intl = @style.Intl::fallback(),
 ) -> TileProcessor {
   {
     style,
@@ -59,6 +61,7 @@ pub fn TileProcessor::new(
     runs: [],
     text_number,
     number_text,
+    intl,
     state_layers: style.layers.map(l => l.reads_state()),
     range_pool: [],
     ranges: @core.ByteWriter::new(),
@@ -75,12 +78,14 @@ pub fn TileProcessor::from_compiled(
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
+  intl~ : @style.Intl = @style.Intl::fallback(),
 ) -> TileProcessor raise @style.StyleError {
   TileProcessor::new(
     @style.Style::from_compiled(bytes),
     text_number~,
     number_text~,
     trig~,
+    intl~,
   )
 }
 
@@ -92,6 +97,7 @@ pub fn TileProcessor::from_utf8(
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,
   trig~ : @core.Trig = @core.Trig::moonbit(),
+  intl~ : @style.Intl = @style.Intl::fallback(),
 ) -> TileProcessor raise @style.StyleError {
   let json = @core.parse_json(bytes) catch {
     e => raise Invalid(path="", "not JSON: \{e.message()}")
@@ -102,6 +108,7 @@ pub fn TileProcessor::from_utf8(
     text_number~,
     number_text~,
     trig~,
+    intl~,
   )
 }
 

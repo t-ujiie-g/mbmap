@@ -83,6 +83,7 @@ export interface MapOptions {
   geojsonWasmUrl?: string | URL;
   fontFamily?: string;
   strict?: boolean;
+  globalState?: Record<string, unknown>;
   attributionControl?: boolean;
   minZoom?: number;
   maxZoom?: number;
