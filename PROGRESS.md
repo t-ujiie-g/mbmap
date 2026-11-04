@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.1 → 17.6。17.7（属性テーブル）は独立なので並行して進める（下の「Phase 17」の節）。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.2 → 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は下の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -53,7 +53,34 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.7：属性テーブルのコントローラ（このブランチ）
+### 17.1：土台、CSV、WKT/WKB（このブランチ）
+
+- **入口とワーカー**：
+  - `mbmap/data` の `read(input, options)` は URL・File/Blob・バイトを読み、`parse(text, { format })` は CSV・WKT・hex WKB の文字列を読む。どちらも `DataTable` を返す。
+  - `DataTable` は `format`、`length`、`columns`、`toGeoJSON()`（GeoJSON ソースの `data` にできる）、`tableBytes()`。
+  - `mbmap/analysis` の `load` は `tableBytes()` を持つものを受け取る。形を見るだけで、`mbmap/data` は読み込まない。座標系の指定（`crs`）も効く。
+  - `data_worker`（wasm-gc）は Table のバイトを返す。Table のバイトを GeoJSON にする `tableToGeoJSON` は `wasmio/js/table.mjs` に移した。
+- **CSV**（papaparse 5.7.0 のソースから決まりを写した。NOTICE に MIT の項）：
+  - 区切りは推測する（`, \t | ; RS US`、最初の 10 行）。同じ見出しは `a_1` のように名前を変える。
+  - `dynamicTyping` は papaparse と同じ（`true`/`false`、`""` は null、±2^53 までの数。`NaN`、`+1`、`0x10`、`1e400` は文字列のまま）。
+  - 点は緯度経度の列（lat/latitude/y/緯度、lon/lng/long/longitude/x/経度）から作る。WKT か hex WKB の列（wkt/geometry/the_geom/geom）があれば、そちらを先に使う。
+  - 上限：`MAX_POINTS`、`MAX_CSV_COLUMNS`、`MAX_CSV_FIELD_BYTES`、`MAX_CSV_CELLS`。
+- **WKT/WKB**：EWKT、EWKB、hex、両方のバイト順、ISO と EWKB の Z/M、EMPTY、入れ子の集まり（地物ごとの行に平らにする）。
+- **SRID**：4326 以外は 17.1 では拒む（0 は「指定なし」として読む）。データワーカーには proj がないので、座標変換はあとの段にする。
+- **黄金テスト**（`npm run data:golden`）：796 件で差 0。
+  - 手で書いた場合と、GSI の地物を CSV・WKT・WKB にした分（約 23 万行）を比べる。
+  - 違いは 8 つで、比べる前に正規化して記録した。主なもの：WKT のあとの文字、`1a` のような数、WKB の後ろの余りのバイトは拒む。`POINT (1 2 3)` は読む。
+- **bench の devDependencies**（版は固定）：papaparse 5.7.0（MIT、依存なし）、betterknown 1.2.0（MIT、tmcw）、wkx 0.5.0（MIT、2020 年から更新なし）。どれも install スクリプトはなく、`npm audit` は 0 件。
+- **大きさ**（gzip -9）：
+  - `mbmap/data` 2.4KB / 6KB、データワーカー 17.2KB / 30KB（wasm は約 15.7KB）。
+  - geojson.wasm と analysis.wasm は変わらない。`mbmap/analysis` 3,425 → 3,481、分析ワーカー 28,067 → 28,102 バイト。
+- **確認**：
+  - MoonBit のテストは全ターゲットで通る（434 / 438 / 465 / 434）。npm のテストは 197 件。
+  - `analysis:golden` はすべて一致、`geojson:golden` は差 0。
+  - pack test の `data` の確認：緯度・経度の列の CSV を URL で読んで地図に描き、WKT の範囲を解析に渡して `pointsWithin`。File・バイト・hex も読む。拒むもの（http(s) でない URL、知らない形式、壊れた CSV、SRID、404）は拒む。`mbmap` が `data*` を読み込まないことも確かめる。
+- **残したもの**：見出しだけでデータ行のない CSV では `columns` が空になる。
+
+### 17.7：属性テーブルのコントローラ（#97）
 
 - **API**：`createAttributeTable(map, { source, sourceLayer?, columns?, searchColumns?, filter?, pageSize? = 50, locale?, highlight? = "selected" | false, fitBoundsOptions? })`。
   - 状態：`columns`、`rows`（いまのページ）、`total`、`filtered`、`page`、`pages`、`pageSize`、`sort`、`query`、`selected`、`loading`、`error`。
