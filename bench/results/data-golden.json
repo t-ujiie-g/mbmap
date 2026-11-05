@@ -4,6 +4,10 @@
     "papaparse": "5.7.0",
     "betterknown": "1.2.0",
     "wkx": "0.5.0",
+    "shpjs": "6.2.0",
+    "topojson-client": "3.1.0",
+    "topojson-server": "3.0.1",
+    "proj4": "2.22.0",
     "tiles": [
       "14/14552/6451",
       "14/14551/6450",
@@ -26,10 +30,10 @@
       "differ": 0
     },
     "wkt refused": {
-      "cases": 13,
+      "cases": 12,
       "rows": 0,
       "identical": 0,
-      "bothRefuse": 13,
+      "bothRefuse": 12,
       "differ": 0
     },
     "wkb cases": {
@@ -73,6 +77,55 @@
       "identical": 5,
       "bothRefuse": 0,
       "differ": 0
+    },
+    "shapefile": {
+      "cases": 14,
+      "rows": 6191,
+      "identical": 14,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "shapefile encodings": {
+      "cases": 7,
+      "rows": 3297,
+      "identical": 7,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "shapefile .prj": {
+      "cases": 13,
+      "rows": 6253,
+      "identical": 13,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "shapefile zip": {
+      "cases": 6,
+      "rows": 2944,
+      "identical": 6,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "topojson": {
+      "cases": 16,
+      "rows": 3628,
+      "identical": 16,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "topojson refused": {
+      "cases": 3,
+      "rows": 0,
+      "identical": 0,
+      "bothRefuse": 3,
+      "differ": 0
+    },
+    "srid": {
+      "cases": 6,
+      "rows": 2060,
+      "identical": 6,
+      "bothRefuse": 0,
+      "differ": 0
     }
   },
   "deviations": [
@@ -102,12 +155,6 @@
     },
     {
       "group": "wkb",
-      "label": "SRID 3857",
-      "why": "wkx keeps any SRID; mbmap/data refuses SRIDs other than 4326 (and 0)",
-      "ok": true
-    },
-    {
-      "group": "wkb",
       "label": "byte order 2",
       "why": "wkx reads any byte but 0 as little-endian",
       "ok": true
@@ -122,6 +169,114 @@
       "group": "wkb",
       "label": "trailing bytes",
       "why": "wkx ignores bytes after the geometry; mbmap/data reads geometries to the end",
+      "ok": true
+    },
+    {
+      "group": "shapefile .prj",
+      "label": "the crs option leaves the .prj parser unloaded",
+      "why": "a crs given in place of the .prj needs no WKT parser",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip",
+      "label": "layers listed",
+      "why": "the layers of an archive are its .shp files outside __MACOSX, in archive order",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "an encrypted entry",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "compression method 12",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "an entry larger than the cap",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "an entry that inflates past its size",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "no shapefile",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "a missing layer",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "not an archive",
+      "why": "refused by mbmap/data's zip reader (shpjs not asked)",
+      "ok": true
+    },
+    {
+      "group": "shapefile zip refused",
+      "label": "a cap on inflated bytes",
+      "why": "readZip's `bytes` limit holds across reads",
+      "ok": true
+    },
+    {
+      "group": "shapefile",
+      "label": "a hole inside one outer ring and another's box",
+      "why": "mbmap/data gives a hole to the smallest outer ring that contains it (point in ring); shpjs compares bounding boxes only",
+      "ok": true
+    },
+    {
+      "group": "shapefile",
+      "label": "MultiPatch",
+      "why": "MultiPatch shapes are refused",
+      "ok": true
+    },
+    {
+      "group": "shapefile",
+      "label": "a record past the end",
+      "why": "shpjs stops at a record cut short; mbmap/data refuses the file",
+      "ok": true
+    },
+    {
+      "group": "shapefile",
+      "label": "a logical field of ?",
+      "why": "a logical that is neither true nor false is null; shpjs makes it false",
+      "ok": true
+    },
+    {
+      "group": "topojson",
+      "label": "objects listed",
+      "why": "a topology's objects are its layers, in order",
+      "ok": true
+    },
+    {
+      "group": "topojson",
+      "label": "a GeoJSON object",
+      "why": "only a Topology is read (topojson-client reads any object with arcs and objects)",
+      "ok": true
+    },
+    {
+      "group": "srid",
+      "label": "4326 alone leaves proj.wasm unloaded",
+      "why": "only rows in another CRS load the coordinate system module",
+      "ok": true
+    },
+    {
+      "group": "srid",
+      "label": "SRID 9999",
+      "why": "SRIDs proj.wasm does not know are refused",
       "ok": true
     }
   ],

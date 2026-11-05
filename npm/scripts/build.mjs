@@ -60,8 +60,16 @@ await build({ ...common, entryPoints: [path.join(PKG, "src/projstring.ts")], out
 await build({ ...common, entryPoints: [path.join(ROOT, "analysis_worker/js/worker.mjs")], outfile: path.join(DIST, "analysis-worker.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/geodesic.ts")], outfile: path.join(DIST, "geodesic.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geodesic_worker/js/worker.mjs")], outfile: path.join(DIST, "geodesic-worker.js") });
-await build({ ...common, entryPoints: [path.join(PKG, "src/data.ts")], outfile: path.join(DIST, "data.js") });
-await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js/worker.mjs")], outfile: path.join(DIST, "data-worker.js") });
+await build({ ...common, entryPoints: [path.join(PKG, "src/data.ts")], outfile: path.join(DIST, "data.js"), plugins: [projstringEntry] });
+// The zip reader and the CRS conversion stay files of their own, imported by the data worker on first use.
+const DATA_PARTS = { "../../npm/src/zip.ts": "data-zip.js", "./crs.mjs": "data-crs.js" };
+const dataParts = { name: "data-parts", setup: (b) => b.onResolve({ filter: /^(\.\.\/\.\.\/npm\/src\/zip\.ts|\.\/crs\.mjs)$/ }, (a) => ({ path: `./${DATA_PARTS[a.path]}`, external: true })) };
+await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js/worker.mjs")], outfile: path.join(DIST, "data-worker.js"), plugins: [dataParts] });
+for (const [source, file] of Object.entries(DATA_PARTS)) {
+  await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js", source)], outfile: path.join(DIST, file) });
+}
+// The .prj parser stays a file of its own, imported by the data worker on the first .prj.
+await build({ ...common, entryPoints: [path.join(PKG, "src/prjwkt.ts")], outfile: path.join(DIST, "prjwkt.js") });
 // The element imports the main entry rather than bundling a second copy of it.
 const mainEntry = { name: "main-entry", setup: (b) => b.onResolve({ filter: /^mbmap$/ }, () => ({ path: "./index.js", external: true })) };
 await build({ ...common, entryPoints: [path.join(ROOT, "element/element.ts")], outfile: path.join(DIST, "element.js"), plugins: [mainEntry] });

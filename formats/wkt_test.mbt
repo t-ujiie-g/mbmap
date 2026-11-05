@@ -72,14 +72,19 @@ test "EMPTY geometries make rows without geometry; collections are flattened" {
 }
 
 ///|
-test "EWKT takes SRID 4326 or 0 and refuses others" {
-  let t = wkt("SRID=4326;POINT(139.5 35.25) srid=0;POINT(1 2)")
-  assert_eq(t.coords, [139.5, 35.25, 1.0, 2.0])
-  assert_eq(
-    wkt_error("SRID=3857;POINT(1 2)"),
-    "malformed WKT at 5: only SRID 4326 is supported",
+test "EWKT gives each row its SRID, 0 without one" {
+  let srids = []
+  let t = @formats.read_wkt(
+    b"SRID=6677;GEOMETRYCOLLECTION(POINT(1 2),POINT(3 4)) srid=0;POINT(1 2) POINT(5 6) SRID=4326;POINT(7 8)",
+    srids~,
   )
+  assert_eq(t.length(), 5)
+  assert_eq(srids, [6677, 6677, 0, 0, 4326])
   assert_eq(wkt_error("SRID=;POINT(1 2)"), "malformed WKT at 5: invalid SRID")
+  assert_eq(
+    wkt_error("SRID=1234567890;POINT(1 2)"),
+    "malformed WKT at 14: expected ';'",
+  )
 }
 
 ///|

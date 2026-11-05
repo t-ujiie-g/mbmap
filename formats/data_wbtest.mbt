@@ -15,34 +15,34 @@ fn limit_error(f : () -> @geom.Table raise ReadError) -> String {
 ///|
 test "readers stop at their point and cell limits" {
   let wkt = b"POINT (1 2) MULTIPOINT (1 2, 3 4)"
-  assert_eq(wkt_table(wkt[:], slow_of(wkt), 3).length(), 2)
+  assert_eq(wkt_table(wkt[:], slow_of(wkt), 3, None).length(), 2)
   assert_eq(
-    limit_error(() => wkt_table(wkt[:], slow_of(wkt), 2)),
+    limit_error(() => wkt_table(wkt[:], slow_of(wkt), 2, None)),
     "malformed WKT at 32: too many points",
   )
   let wkb = b"\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x00\x00\x40"
   let twice = Bytes::from_array([..wkb, ..wkb])
-  assert_eq(wkb_table(twice[:], 2).length(), 2)
+  assert_eq(wkb_table(twice[:], 2, None).length(), 2)
   assert_eq(
-    limit_error(() => wkb_table(twice[:], 1)),
+    limit_error(() => wkb_table(twice[:], 1, None)),
     "malformed WKB at 42: too many points",
   )
   let csv = b"lat,lon\n1,2\n3,4\n"
   let options = CsvOptions::new()
-  assert_eq(csv_table(csv[:], options, slow_of(csv), 2, 4).length(), 2)
+  assert_eq(csv_table(csv[:], options, slow_of(csv), 2, 4, None).length(), 2)
   assert_eq(
-    limit_error(() => csv_table(csv[:], options, slow_of(csv), 1, 4)),
+    limit_error(() => csv_table(csv[:], options, slow_of(csv), 1, 4, None)),
     "malformed CSV at 16: too many points",
   )
   assert_eq(
-    limit_error(() => csv_table(csv[:], options, slow_of(csv), 2, 3)),
+    limit_error(() => csv_table(csv[:], options, slow_of(csv), 2, 3, None)),
     "malformed CSV at 16: too many property cells",
   )
   let wide = Bytes::from_array(
     [..b"a\n\"", ..FixedArray::make(MAX_CSV_FIELD_BYTES + 1, b'x'), ..b"\"\n"],
   )
   assert_eq(
-    limit_error(() => csv_table(wide[:], options, slow_of(wide), 2, 4)),
+    limit_error(() => csv_table(wide[:], options, slow_of(wide), 2, 4, None)),
     "malformed CSV at 3: a field longer than 16777216 bytes",
   )
 }
@@ -100,4 +100,47 @@ test "typed_number trims white space and keeps to papaparse's range" {
   assert_eq(typed("-9007199254740992"), None)
   assert_eq(typed("1 2"), None)
   assert_eq(typed(" "), None)
+}
+
+///|
+test "shapefiles and TopoJSON stop at their point and cell limits" {
+  // Two points, and a DBF of two records of one field.
+  let shp = Bytes::from_array(
+    [
+      ..b"\x00\x00\x27\x0a",
+      ..FixedArray::make(28, b'\x00'),
+      ..b"\x01\x00\x00\x00",
+      ..FixedArray::make(64, b'\x00'),
+      ..b"\x00\x00\x00\x01\x00\x00\x00\x0a\x01\x00\x00\x00",
+      ..FixedArray::make(16, b'\x00'),
+      ..b"\x00\x00\x00\x02\x00\x00\x00\x0a\x01\x00\x00\x00",
+      ..FixedArray::make(16, b'\x00'),
+    ],
+  )
+  let dbf = Bytes::from_array(
+    [
+      ..b"\x03\x7c\x01\x01\x02\x00\x00\x00\x41\x00\x03\x00",
+      ..FixedArray::make(20, b'\x00'),
+      ..b"a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00C\x00\x00\x00\x00\x02",
+      ..FixedArray::make(15, b'\x00'),
+      ..b"\x0d x1 x2",
+    ],
+  )
+  let text = (_ : Int32, _ : Int32) => ""
+  let read = (points : Int32, cells : Int32) => {
+    shapefile_table(shp[:], Some(dbf[:]), text, slow_of(dbf), points, cells)
+  }
+  assert_eq(read(2, 2).length(), 2)
+  assert_eq(
+    limit_error(() => read(1, 2)),
+    "malformed shapefile at 136: too many points",
+  )
+  assert_eq(limit_error(() => read(2, 1)), "malformed DBF at 0: too many cells")
+  let topo = b"{\"type\":\"Topology\",\"arcs\":[[[0,0],[1,1]]],\"objects\":{\"o\":{\"type\":\"MultiLineString\",\"arcs\":[[0],[0]]}}}"
+  let topo_read = (points : Int32) => {
+    topojson_table(topo[:], None, slow_of(topo), points).0
+  }
+  assert_eq(topo_read(4).length(), 1)
+  assert_true(limit_error(() => topo_read(3)).has_suffix("too many points"))
+  assert_true(limit_error(() => topo_read(1)).has_suffix("too many points"))
 }

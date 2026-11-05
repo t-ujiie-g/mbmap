@@ -1,16 +1,22 @@
 ///|
-/// Reads WKB or EWKB geometries one after another into rows as `read_wkt` does; each
-/// has its own byte order and an ISO type code or EWKB flags (SRID 4326 or 0 only).
-/// A point of NaN coordinates is empty; any other coordinate must be finite.
-pub fn read_wkb(bytes : BytesView) -> @geom.Table raise ReadError {
-  wkb_table(bytes, MAX_POINTS)
+/// Reads WKB or EWKB geometries one after another into rows as `read_wkt` does, each in
+/// its byte order with an ISO code or EWKB flags (SRIDs to `srids`). A point of NaN
+/// coordinates is empty; any other coordinate must be finite.
+pub fn read_wkb(
+  bytes : BytesView,
+  srids? : Array[Int32],
+) -> @geom.Table raise ReadError {
+  wkb_table(bytes, MAX_POINTS, srids)
 }
 
 ///|
 /// `read_wkb` of hexadecimal text (as PostGIS prints EWKB), white space ignored.
-pub fn read_wkb_hex(text : BytesView) -> @geom.Table raise ReadError {
+pub fn read_wkb_hex(
+  text : BytesView,
+  srids? : Array[Int32],
+) -> @geom.Table raise ReadError {
   match unhex(text, 0, text.length()) {
-    Some(bytes) => wkb_table(bytes[:], MAX_POINTS)
+    Some(bytes) => wkb_table(bytes[:], MAX_POINTS, srids)
     None => raise Invalid(format="WKB", pos=0, "invalid hexadecimal text")
   }
 }
@@ -48,6 +54,7 @@ fn unhex(text : BytesView, start : Int32, end : Int32) -> Bytes? {
 fn wkb_table(
   bytes : BytesView,
   max_points : Int32,
+  srids : Array[Int32]?,
 ) -> @geom.Table raise ReadError {
   let out = @geom.TableBuilder::new()
   let p = Wkb::new(bytes, max_points)
@@ -58,7 +65,7 @@ fn wkb_table(
       raise Invalid(format="WKB", pos~, m)
     }
     p.used += p.shapes.points()
-    p.shapes.emit(out, [])
+    p.shapes.emit(out, [], srids)
   }
   out.finish()
 }
@@ -193,9 +200,10 @@ fn Wkb::header(self : Wkb) -> (Int32, Int32) {
   }
   if (t & 0x20000000) != 0 {
     let srid = self.u32()
-    if srid != 0 && srid != 4326 {
-      self.pos -= 4
-      self.fail("only SRID 4326 is supported")
+    if !self.shapes.take_srid(srid, m => {
+        self.pos -= 4
+        self.fail(m)
+      }) {
       return (0, 0)
     }
   }
