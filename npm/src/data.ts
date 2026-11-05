@@ -15,16 +15,14 @@ export interface DataFeatureCollection {
   features: { type: "Feature"; id?: string | number; geometry: { type: string; coordinates: unknown } | null; properties: Record<string, unknown> }[];
 }
 
-/**
- * Where the data worker (`workerUrl`), its wasm (`wasmUrl`), the coordinate system module
- * (`projWasmUrl`, loaded for data in another CRS) and the KML/GPX wasm (`xmlUrl`, loaded on the
- * first such read) are served; by default next to this module.
- */
+/** Where the data worker (`workerUrl`), its wasm (`wasmUrl`), proj.wasm (`projWasmUrl`), xml.wasm (`xmlUrl`) and
+ * geotiff.wasm (`geotiffUrl`, each loaded on first use) are served; by default next to this module. */
 export interface DataOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
   projWasmUrl?: string | URL;
   xmlUrl?: string | URL;
+  geotiffUrl?: string | URL;
 }
 
 /**
@@ -104,6 +102,7 @@ function start(options: DataOptions): void {
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
     prj: new URL("./prjwkt.js", import.meta.url).href,
     xml: wasmUrl(options.xmlUrl ?? new URL("./xml.wasm", import.meta.url), page),
+    geotiff: wasmUrl(options.geotiffUrl ?? new URL("./geotiff.wasm", import.meta.url), page),
   }));
 }
 
@@ -195,8 +194,8 @@ export async function write(input: DataTable | object, options: WriteOptions): P
   if (!(input instanceof DataTable)) {
     if (!input || typeof input !== "object") throw new Error("mbmap: data: write takes a DataTable or a GeoJSON object");
     if (format === "geojson") return JSON.stringify(input);
-    const { workerUrl, wasmUrl, projWasmUrl, xmlUrl } = options;
-    input = await parse(JSON.stringify(input), { workerUrl, wasmUrl, projWasmUrl, xmlUrl, format: "geojson" });
+    const { workerUrl, wasmUrl, projWasmUrl, xmlUrl, geotiffUrl } = options;
+    input = await parse(JSON.stringify(input), { workerUrl, wasmUrl, projWasmUrl, xmlUrl, geotiffUrl, format: "geojson" });
   }
   const table = input as DataTable;
   if (format === "geojson") return JSON.stringify(table.toGeoJSON());
@@ -204,6 +203,66 @@ export async function write(input: DataTable | object, options: WriteOptions): P
   start(options);
   const bytes = await client.call<ArrayBuffer>("write", args, [args.table, ...(args.ids ? [args.ids] : [])]);
   return new TextDecoder().decode(bytes);
+}
+
+/** A band of a raster, typed as geotiff's `readRasters` types it. */
+export type RasterBand = Uint8Array | Int8Array | Uint16Array | Int16Array | Uint32Array | Int32Array | Float32Array | Float64Array;
+
+/** Which pixels `readRaster` reads, as geotiff's `readRasters` takes them (`window`, `bbox`, `width`, `height`, `resX`,
+ * `resY`, `resampleMethod`, `samples`, `fillValue`), `image` by index, `transformRequest` as `read`'s; npm/README.md has the rules. */
+export interface RasterOptions extends DataOptions {
+  window?: [number, number, number, number];
+  bbox?: [number, number, number, number];
+  width?: number;
+  height?: number;
+  resX?: number;
+  resY?: number;
+  resampleMethod?: "nearest" | "bilinear";
+  image?: number;
+  samples?: number[];
+  fillValue?: number;
+  transformRequest?: ReadOptions["transformRequest"];
+}
+
+/** Pixels `readRaster` read: `bands` per sample, the window's `bbox` and `resolution` (y negative north up; null
+ * without geo tags) in `crs` (GeoKeys' EPSG code or null), `noData` (GDAL_NODATA or null); npm/README.md has the rest. */
+export interface Raster {
+  width: number;
+  height: number;
+  bands: RasterBand[];
+  bbox: [number, number, number, number] | null;
+  resolution: [number, number] | null;
+  window: [number, number, number, number];
+  image: number;
+  images: number;
+  crs: number | null;
+  noData: number | null;
+  pixelIsPoint: boolean;
+}
+
+const isFour = (v: unknown): boolean => Array.isArray(v) && v.length === 4 && v.every(Number.isFinite);
+
+/**
+ * Reads pixels of the GeoTIFF or COG `input` (an http(s) URL, read by range requests; a Blob, read
+ * in slices; or bytes) as geotiff 3.0.5's `readRasters` does (npm/README.md has the rules).
+ */
+export async function readRaster(input: Input, options: RasterOptions = {}): Promise<Raster> {
+  const { window: wnd, bbox, width, height, resX, resY, resampleMethod, image, samples, fillValue } = options;
+  const fail = (what: string): never => {
+    throw new Error(`mbmap: data: invalid ${what}`);
+  };
+  if (wnd !== undefined && (!isFour(wnd) || !wnd.every(Number.isInteger))) fail("window");
+  if (bbox !== undefined && !isFour(bbox)) fail("bbox");
+  for (const [what, n] of [["width", width], ["height", height], ["image", image]] as const) {
+    if (n !== undefined && !(Number.isInteger(n) && n >= (what === "image" ? 0 : 1) && n <= 65536)) fail(what);
+  }
+  for (const [what, n] of [["resX", resX], ["resY", resY], ["fillValue", fillValue]] as const) if (n !== undefined && !Number.isFinite(n)) fail(what);
+  if (resampleMethod !== undefined && !["nearest", "bilinear", "linear"].includes(resampleMethod)) fail("resampleMethod");
+  if (samples !== undefined && (!Array.isArray(samples) || !samples.every((s) => Number.isInteger(s) && s >= 0))) fail("samples");
+  const transfer: Transferable[] = [];
+  const source = sourceOf(input, options, transfer);
+  start(options);
+  return client.call<Raster>("readRaster", { ...source, options: { window: wnd, bbox, width, height, resX, resY, resampleMethod, image, samples, fillValue } }, transfer);
 }
 
 /** Stops the data worker; pending calls reject. */

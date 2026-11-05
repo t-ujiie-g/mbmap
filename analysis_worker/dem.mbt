@@ -112,3 +112,44 @@ pub fn grid_sample(
   })
   @wasmio.write_f64s(out)
 }
+
+///|
+/// Reads `width` x `height` input f64s (rows from the north, NaN for no data) into a
+/// grid of `res_x` x `res_y` cells (a GeoTIFF band, npm/src/analysis.ts `loadGrid`).
+/// Returns the grid's handle, or -1 if invalid.
+#export_name("load_grid")
+pub fn load_grid(
+  width : Int32,
+  height : Int32,
+  res_x : Double,
+  res_y : Double,
+) -> Int32 {
+  let values = @wasmio.input_f64s()
+  if width <= 0 ||
+    height <= 0 ||
+    width > MAX_GRID_SIDE ||
+    height > MAX_GRID_SIDE ||
+    values.length() != width * height ||
+    !(res_x > 0.0 && res_y > 0.0) {
+    return -1
+  }
+  let id = next_id.val
+  next_id.val += 1
+  grids[id] = @analysis.Grid::new(values, width, height, res_x, res_y)
+  @wasmio.clear_input()
+  id
+}
+
+///|
+/// Writes `Grid::sample` at each input pair of pixel coordinates (from the grid's
+/// north-west corner). Returns the count, or -1 for an unknown grid.
+#export_name("grid_sample_pixels")
+pub fn grid_sample_pixels(id : Int32) -> Int32 {
+  let coords = @wasmio.input_f64s()
+  guard grids.get(id) is Some(g) else { return -1 }
+  @wasmio.write_f64s(
+    FixedArray::makei(coords.length() / 2, i => {
+      g.sample(coords[i * 2], coords[i * 2 + 1])
+    }),
+  )
+}

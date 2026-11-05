@@ -3,7 +3,7 @@
 
 import { hostText, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { fetchInit, readCapped } from "../../worker/js/body.mjs";
-import { dataImports, dataReader } from "./read.mjs";
+import { dataImports, dataReader, rasterSource } from "./read.mjs";
 
 let reader = null;
 let ready = null;
@@ -20,6 +20,7 @@ function load(name, start) {
 const proj = () => load("proj", (url) => WebAssembly.instantiateStreaming(fetch(url), { Math }).then(({ instance }) => instance.exports));
 const prj = () => load("prj", (url) => import(url));
 const xml = () => load("xml", (url) => WebAssembly.instantiateStreaming(fetch(url), { Math, host: hostText() }).then(({ instance }) => instance.exports));
+const geotiff = () => load("geotiff", (url) => WebAssembly.instantiateStreaming(fetch(url), {}).then(({ instance }) => instance.exports));
 
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");
@@ -80,6 +81,15 @@ async function read(msg) {
 async function run(msg) {
   try {
     await ready;
+    if (msg.op === "readRaster") {
+      const { url, init, blob, bytes, options = {} } = msg;
+      check(options && typeof options === "object");
+      check(bytes instanceof ArrayBuffer || blob instanceof Blob || (typeof url === "string" && /^https?:/i.test(url)));
+      if (bytes) check(bytes.byteLength <= MAX_INPUT_BYTES);
+      const value = await reader.readRaster(rasterSource({ bytes: bytes && new Uint8Array(bytes), blob, url, init }, MAX_INPUT_BYTES), options);
+      postMessage({ type: "result", id: msg.id, value }, [...new Set(value.bands.map((b) => b.buffer))]);
+      return;
+    }
     if (msg.op === "write") {
       const { format, table, ids = null, options = {} } = msg;
       check(["csv", "kml"].includes(format) && table instanceof ArrayBuffer && (ids === null || ids instanceof ArrayBuffer) && options && typeof options === "object");
@@ -100,13 +110,14 @@ onmessage = (e) => {
     urls.proj = msg.proj;
     urls.prj = msg.prj;
     urls.xml = msg.xml;
+    urls.geotiff = msg.geotiff;
     let wasm = null;
     const imports = dataImports(() => wasm.memory);
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), imports).then(({ instance }) => {
       wasm = instance.exports;
-      reader = dataReader(wasm, imports, { proj, prj, xml });
+      reader = dataReader(wasm, imports, { proj, prj, xml, geotiff });
     });
-  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && (msg.op === "read" || msg.op === "write")) {
+  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && (msg.op === "read" || msg.op === "write" || msg.op === "readRaster")) {
     queue = queue.then(() => run(msg));
   }
 };

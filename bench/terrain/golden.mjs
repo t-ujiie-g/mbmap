@@ -150,5 +150,50 @@ compare("hillshade (0-255)", shade, gdal(["hillshade"], "hillshade.asc"), 1);
   const outside = ours.filter(Number.isNaN).length;
   console.log(`sample (m): ${points.length} points (${outside} without a value in both), max difference ${worst.toPrecision(3)} (tolerance 1e-6), ${over} over, ${missing} with a value in one only`);
 }
+// The same grid as a COG written by GDAL (Deflate, floating-point predictor), read by mbmap/data's
+// readRaster and loaded as mbmap/analysis's loadGrid loads it: gdaldem on that file, and
+// gdallocationinfo in EPSG:3857 coordinates (ours: the window's corner and resolution).
+{
+  const cog = path.join(dir, "dem3857-cog.tif");
+  execFileSync("gdal_translate", ["-q", "-of", "COG", "-co", "COMPRESS=DEFLATE", "-co", "PREDICTOR=YES", path.join(dir, "dem3857.tif"), cog]);
+  const { dataImports, dataReader, rasterSource } = await import("../../data_worker/js/read.mjs");
+  const wasmOf = (name) => readFile(path.join(ROOT, `_build/wasm-gc/release/build/${name}/${name}.wasm`));
+  const imports = dataImports(() => data.exports.memory);
+  const data = (await WebAssembly.instantiate(await wasmOf("data_worker"), imports)).instance;
+  const tiff = (await WebAssembly.instantiate(await wasmOf("geotiff_worker"), {})).instance.exports;
+  const reader = dataReader(data.exports, imports, { geotiff: async () => tiff });
+  const raster = await reader.readRaster(rasterSource({ bytes: new Uint8Array(readFileSync(cog)) }), {});
+  if (raster.width !== width || raster.height !== height) throw new Error(`the COG reads as ${raster.width} x ${raster.height}`);
+  const values = Float64Array.from(raster.bands[0], (v) => (v === raster.noData ? NaN : v));
+  const [rx, ry] = raster.resolution;
+  const at2 = e.prepare_input(values.byteLength);
+  new Uint8Array(e.memory.buffer, at2, values.byteLength).set(new Uint8Array(values.buffer));
+  const gid = e.load_grid(width, height, Math.abs(rx), Math.abs(ry));
+  if (gid < 0) throw new Error("load_grid failed");
+  const onCog = (args, out) => {
+    execFileSync("gdaldem", [...args, cog, path.join(dir, out), "-of", "AAIGrid", "-q"]);
+    return readGrid(path.join(dir, out));
+  };
+  compare("COG slope (degrees)", f64s(e.grid_values(gid, 1)), onCog(["slope"], "cog-slope.asc"), 0.01);
+  compare("COG hillshade (0-255)", new Uint8Array(e.memory.buffer, e.output_addr(), e.grid_hillshade(gid, 315, 45, 1)).slice(), onCog(["hillshade"], "cog-hillshade.asc"), 1);
+  let seed2 = 11;
+  const rand2 = () => ((seed2 = (seed2 * 16807) % 2147483647) / 2147483647);
+  const points = Array.from({ length: 2000 }, () => [raster.bbox[0] + rand2() * (raster.bbox[2] - raster.bbox[0]), raster.bbox[1] + rand2() * (raster.bbox[3] - raster.bbox[1])]);
+  const theirs = spawnSync("gdallocationinfo", ["-valonly", "-r", "bilinear", "-geoloc", cog], {
+    input: points.map(([x, y]) => `${x} ${y}`).join("\n") + "\n",
+  }).stdout.toString().split("\n").slice(0, points.length).map((t) => (t === "" || Number(t) === -9999 ? NaN : Number(t)));
+  const pixels = new Float64Array(points.flatMap(([x, y]) => [(x - raster.bbox[0]) / rx, (y - raster.bbox[3]) / ry]));
+  const at3 = e.prepare_input(pixels.byteLength);
+  new Uint8Array(e.memory.buffer, at3, pixels.byteLength).set(new Uint8Array(pixels.buffer));
+  const ours = f64s(e.grid_sample_pixels(gid));
+  let worst = 0;
+  let over = 0;
+  ours.forEach((v, i) => {
+    if (Number.isNaN(v) !== Number.isNaN(theirs[i]) || (!Number.isNaN(v) && Math.abs(v - theirs[i]) > 1e-6)) over++;
+    else if (!Number.isNaN(v)) worst = Math.max(worst, Math.abs(v - theirs[i]));
+  });
+  if (over > 0) failures++;
+  console.log(`COG sample (m): ${points.length} points, max difference ${worst.toPrecision(3)} (tolerance 1e-6), ${over} over`);
+}
 console.log(failures === 0 ? "all within tolerance" : `${failures} comparisons out of tolerance`);
 process.exit(failures === 0 ? 0 : 1);

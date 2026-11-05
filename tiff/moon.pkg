@@ -1,0 +1,11 @@
+// TIFF and BigTIFF images read as geotiff 3.0.5 reads them: their IFDs, and
+// blocks (tiles or strips) decoded and copied into windows. Pure MoonBit,
+// tested on every backend.
+
+import {
+  "moonbitlang/core/cmp",
+}
+
+import {
+  "moonbitlang/core/double",
+} for "test"

@@ -4,7 +4,7 @@
 import path from "node:path";
 import { chromium } from "playwright";
 import proj4 from "proj4";
-import { STATIONS, WARDS } from "../data/pack-fixtures.mjs";
+import { HILL, STATIONS, WARDS } from "../data/pack-fixtures.mjs";
 import { serve } from "../lib/serve.mjs";
 import { prepareExamples } from "./prepare.mjs";
 import { fakeGeolocation } from "../lib/fake-geolocation.mjs";
@@ -486,7 +486,84 @@ const checks = {
       w.wktHead === "name;面積;wkt" &&
       JSON.stringify(w.geojsonIds) === JSON.stringify(["d1", null]) &&
       /unknown write format shp/.test(w.badFormat) && /not a point/.test(w.lonlat);
-    return [ok && okXml && okFgb && okWrite, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g }, written: w }];
+    // Rasters: a COG by URL (range requests) whole, by bbox and as an overview; JPEG and WebP
+    // tiles the browser decodes; a band as an analysis grid. geotiff.wasm is fetched once.
+    const tiffBefore = requests.filter((u) => u.endsWith("/geotiff.wasm")).length;
+    const t = await page.evaluate(async (HILL) => {
+      const { readRaster } = await import("mbmap/data");
+      const { loadGrid } = await import("mbmap/analysis");
+      // bench/data/pack-fixtures.mjs HILL.at.
+      const at = (x, y) => Math.fround(40 + 30 * Math.exp(-(((x - 120) / 40) ** 2 + ((y - 80) / 30) ** 2)));
+      const whole = await readRaster("./dem.tif");
+      const box = await readRaster("./dem.tif", { bbox: [139.75, 35.66, 139.76, 35.67] });
+      const small = await readRaster("./dem.tif", { width: 50, height: 40 });
+      // One 64 x 64 RGB tile, compressed by the browser, in a TIFF written here.
+      const tile = async (type, compression) => {
+        const canvas = new OffscreenCanvas(64, 64);
+        const ctx = canvas.getContext("2d");
+        for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+          ctx.fillStyle = `rgb(${x * 4},${y * 4},${128})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+        const img = new Uint8Array(await (await canvas.convertToBlob({ type, quality: 1 })).arrayBuffer());
+        const tags = [[256, 3, 64], [257, 3, 64], [258, 3, [8, 8, 8]], [259, 3, compression], [262, 3, 2], [277, 3, 3], [322, 3, 64], [323, 3, 64], [324, 4, 0], [325, 4, img.length]];
+        const ifd = 8 + img.length + (img.length % 2);
+        const bits = ifd + 2 + tags.length * 12 + 4;
+        const out = new Uint8Array(bits + 6);
+        const v = new DataView(out.buffer);
+        out.set([0x49, 0x49, 42, 0]);
+        v.setUint32(4, ifd, true);
+        out.set(img, 8);
+        v.setUint16(ifd, tags.length, true);
+        tags.forEach(([tag, type2, value], i) => {
+          const e = ifd + 2 + i * 12;
+          v.setUint16(e, tag, true);
+          v.setUint16(e + 2, type2, true);
+          v.setUint32(e + 4, Array.isArray(value) ? value.length : 1, true);
+          if (Array.isArray(value)) {
+            v.setUint32(e + 8, bits, true);
+            value.forEach((x, k) => v.setUint16(bits + k * 2, x, true));
+          } else if (type2 === 3) v.setUint16(e + 8, value, true);
+          else v.setUint32(e + 8, tag === 324 ? 8 : value, true);
+        });
+        const r = await readRaster(new Blob([out]));
+        let worst = 0;
+        for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+          const i = y * 64 + x;
+          worst = Math.max(worst, Math.abs(r.bands[0][i] - x * 4), Math.abs(r.bands[1][i] - y * 4), Math.abs(r.bands[2][i] - 128));
+        }
+        return { bands: r.bands.length, worst };
+      };
+      const grid = await loadGrid(whole);
+      const [x, y] = [150, 90];
+      const center = [HILL.west + (x + 0.5) * HILL.step, HILL.north - (y + 0.5) * HILL.step];
+      const sampled = await grid.sample([center]);
+      const slope = await grid.slope();
+      grid.dispose();
+      return {
+        whole: [whole.width, whole.height, whole.bands[0].constructor.name, whole.image, whole.images, whole.crs, whole.noData],
+        value: whole.bands[0][90 * HILL.width + 150] === at(150, 90),
+        empty: whole.bands[0][0],
+        box: [box.width, box.height, box.window.join(",")],
+        boxValue: box.bands[0][0] === at(box.window[0], box.window[1]),
+        small: [small.width, small.height, small.image],
+        jpeg: await tile("image/jpeg", 7),
+        webp: await tile("image/webp", 50001),
+        sampled: Math.abs(sampled[0] - at(x, y)) < 1e-9,
+        slope: Number.isFinite(slope[90 * HILL.width + 150]) && slope[90 * HILL.width + 150] > 0,
+        refused: await readRaster(new Blob([new Uint8Array(16)])).then(() => "", (e) => e.message),
+      };
+    }, { ...HILL, at: undefined });
+    const tiffAfter = requests.filter((u) => u.endsWith("/geotiff.wasm")).length;
+    const okTiff =
+      tiffBefore === 0 && tiffAfter === 1 &&
+      JSON.stringify(t.whole) === JSON.stringify([200, 150, "Float32Array", 0, 2, 4326, -9999]) &&
+      t.value && t.empty === -9999 &&
+      JSON.stringify(t.box) === JSON.stringify([20, 20, "100,100,120,120"]) && t.boxValue &&
+      JSON.stringify(t.small) === JSON.stringify([50, 40, 1]) &&
+      t.jpeg.bands === 3 && t.jpeg.worst <= 12 && t.webp.bands === 3 && t.webp.worst <= 12 &&
+      t.sampled && t.slope && /not a TIFF file/.test(t.refused);
+    return [ok && okXml && okFgb && okWrite && okTiff, { raster: { tiffBefore, tiffAfter, ...t }, loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g }, written: w }];
   },
 
   async analysis(page, requests) {
