@@ -3,11 +3,11 @@
 // "tiles" cuts every z6-z16 tile from a fresh index, so none comes from cache.
 import { GeoJSONVT } from "@maplibre/geojson-vt";
 import { columnarize } from "./columnarize.mjs";
+import { median } from "../lib/rows.mjs";
 
 export const OPTIONS = { maxZoom: 18, indexMaxZoom: 5, indexMaxPoints: 100000, tolerance: 3, extent: 4096, buffer: 1024, wrap: true };
 export const DATASETS = ["points", "roads", "roads6", "buildings"];
 
-const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
 
 function bboxOf(data) {
   const b = [Infinity, Infinity, -Infinity, -Infinity];

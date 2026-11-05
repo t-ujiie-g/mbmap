@@ -5,8 +5,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import geodesic from "geographiclib-geodesic";
 import { ROOT } from "../lib/root.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const CASES = Number(arg("cases", 20000));
 const G = geodesic.Geodesic;
 const WGS84 = G.WGS84;

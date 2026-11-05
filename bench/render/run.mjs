@@ -9,8 +9,8 @@ import { chromium } from "playwright";
 import { serve } from "../lib/serve.mjs";
 import { ROOT } from "../lib/root.mjs";
 import { decodePng, encodePng, gsiToTerrarium } from "../lib/png.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const runs = Number(arg("runs", 11));
 const uncapped = process.argv.includes("--uncapped");
 // --labels adds the label layers of bench/pages/basic, drawn from local fonts by both engines.

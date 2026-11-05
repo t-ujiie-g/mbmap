@@ -6,14 +6,13 @@
 process.env.TZ = "UTC";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { VectorTile } from "@mapbox/vector-tile";
 import { geoJSONToWkt, wktToGeoJSON } from "betterknown";
 import Papa from "papaparse";
-import { PbfReader } from "pbf";
 import wkx from "wkx";
 import { dataImports, dataReader } from "../../data_worker/js/read.mjs";
 import { tableToGeoJSON } from "../../wasmio/js/table.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { GSI_TILES, gsiFeatures, same, wasmFile } from "./common.mjs";
 import { moreCases } from "./golden-more.mjs";
 
 // papaparse warns on the console when it renames repeated headers.
@@ -22,11 +21,11 @@ console.warn = (...args) => /Duplicate headers/.test(args[0]) || warn(...args);
 
 const imports = dataImports(() => instance.exports.memory);
 const { instance } = await WebAssembly.instantiate(
-  await readFile(path.join(ROOT, "_build/wasm-gc/release/build/data_worker/data_worker.wasm")),
+  await wasmFile("data_worker"),
   imports,
 );
 const w = instance.exports;
-const projBytes = await readFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"));
+const projBytes = await wasmFile("proj_worker");
 let projModule = null;
 const loads = { proj: 0, prj: 0 };
 const reader = dataReader(w, imports, {
@@ -179,19 +178,6 @@ function wkbRows(buffers) {
     out.push(...rows);
   }
   return out;
-}
-
-// Equal as JSON with numbers by Object.is, or within `eps` if given; a Date of papaparse equals
-// the ISO string it came from.
-function same(a, b, eps = 0) {
-  if (b instanceof Date) return typeof a === "string" && new Date(a).getTime() === b.getTime();
-  if (typeof a === "number" && typeof b === "number" && eps > 0) return Math.abs(a - b) <= eps;
-  if (typeof a === "number" || typeof b === "number") return Object.is(a, b);
-  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return a === b;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  const ka = Object.keys(a);
-  const kb = Object.keys(b);
-  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && same(a[k], b[k], eps));
 }
 
 const results = {};
@@ -369,18 +355,7 @@ deviation("wkb", "MultiPoint of a LineString", ours("wkb", Uint8Array.from([1, 4
 deviation("wkb", "trailing bytes", ours("wkb", join([point, [1, 2, 3]])), true, "wkx ignores bytes after the geometry; mbmap/data reads geometries to the end");
 
 // --- GSI tile features in every format ---
-const manifest = JSON.parse(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap.manifest.json"), "utf8"));
-const TILES = ["14/14552/6451", "14/14551/6450", "14/14553/6452"].filter((k) => k in manifest.tiles);
-if (TILES.length === 0) throw new Error("no GSI fixtures: run npm run fixtures");
-const byLayer = {};
-for (const key of TILES) {
-  const [z, x, y] = key.split("/").map(Number);
-  const tile = new VectorTile(new PbfReader(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap", `${key}.pbf`))));
-  for (const name of ["label", "road", "building", "contour", "railway", "waterarea"]) {
-    const layer = tile.layers[name];
-    for (let i = 0; layer && i < layer.length; i++) (byLayer[name] ??= []).push(layer.feature(i).toGeoJSON(x, y, z));
-  }
-}
+const byLayer = await gsiFeatures();
 const features = Object.values(byLayer).flat();
 // Pairs of buildings as MultiPolygons and a point with a road as a collection, for the multi kinds.
 const buildings = (byLayer.building ?? []).filter((f) => f.geometry.type === "Polygon");
@@ -440,7 +415,7 @@ await writeFile(
     env: {
       node: process.version,
       ...Object.fromEntries(await Promise.all(["papaparse", "betterknown", "wkx", "shpjs", "topojson-client", "topojson-server", "proj4"].map(async (p) => [p, await pkg(p)]))),
-      tiles: TILES,
+      tiles: GSI_TILES,
     },
     results,
     deviations,

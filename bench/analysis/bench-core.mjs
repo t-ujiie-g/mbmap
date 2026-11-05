@@ -3,8 +3,8 @@
 // computing the boxes; mbmap builds its index on the first search.
 import { loadAnalysis, MEASURE } from "./load.mjs";
 import * as ref from "./reference.mjs";
+import { median } from "../lib/rows.mjs";
 
-const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
 
 export async function runAnalysisBench(fetchBytes, { runs = 5 } = {}) {
   const wasm = await loadAnalysis(fetchBytes);

@@ -1,7 +1,7 @@
 // The wasm-gc worker processing every fixture with bench/maplibre/style.json:
 // "cold" is a fresh instance taking each tile once, "warm" the median after warm-up.
 import { hostText } from "../../wasmio/js/host.mjs";
-import { runRows } from "../lib/rows.mjs";
+import { median, runRows } from "../lib/rows.mjs";
 
 const put = (e, bytes) => {
   const addr = e.prepare_input(bytes.length);
@@ -29,9 +29,8 @@ export async function loadWorker(fetchBytes) {
   };
 }
 
-const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[s.length >> 1]; };
 
-export async function runWorkerBench(fetchBytes, tiles) {
+export async function runTileBench(fetchBytes, tiles) {
   const cold = await loadWorker(fetchBytes);
   const coldMs = [];
   let outputBytes = 0;

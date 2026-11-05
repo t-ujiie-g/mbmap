@@ -6,8 +6,8 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { serve } from "../lib/serve.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const throttle = Number(arg("throttle", 1));
 const runs = Number(arg("runs", 5));
 const headed = process.argv.includes("--headed");

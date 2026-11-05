@@ -6,8 +6,8 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const shapes = Number(arg("shapes", 500));
 const label = arg("label", "");
 const { server, origin } = await serve();

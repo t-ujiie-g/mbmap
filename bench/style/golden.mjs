@@ -8,8 +8,8 @@ import { compareScenes } from "./compare.mjs";
 import { SCENES } from "./scenes.mjs";
 import { writeSprite } from "./sprite.mjs";
 import { writeFujiTerrarium } from "../lib/fuji-terrain.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 const only = arg("scene");
 await writeSprite();
 await writeFujiTerrarium();

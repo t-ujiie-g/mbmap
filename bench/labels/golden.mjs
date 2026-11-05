@@ -6,8 +6,8 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 // How far a glyph along a line may lie from MapLibre's (CSS px) and turn from it (radians).
 const GLYPH_TOLERANCE = 0.5;
 const ANGLE_TOLERANCE = 0.01;

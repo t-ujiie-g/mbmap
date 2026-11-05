@@ -3,18 +3,16 @@
 // cases, byte for byte. Usage: node data/write-golden.mjs; writes bench/results/write-golden.json.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { VectorTile } from "@mapbox/vector-tile";
 import { toKML } from "@placemarkio/tokml";
 import { geoJSONToWkt } from "betterknown";
 import Papa from "papaparse";
-import { PbfReader } from "pbf";
 import { dataImports, dataReader } from "../../data_worker/js/read.mjs";
 import { hostText } from "../../wasmio/js/host.mjs";
 import { tableInfo, tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { GSI_TILES, gsiFeatures, wasmFile } from "./common.mjs";
 import { fgbFile, T } from "./fgb-write.mjs";
 
-const wasmFile = (name) => readFile(path.join(ROOT, `_build/wasm-gc/release/build/${name}/${name}.wasm`));
 const imports = dataImports(() => instance.exports.memory);
 const { instance } = await WebAssembly.instantiate(await wasmFile("data_worker"), imports);
 const xmlBytes = await wasmFile("xml_worker");
@@ -91,21 +89,7 @@ async function both(group, label, t, csvOptions = [{}]) {
 }
 
 // --- GSI tile features ---
-const manifest = JSON.parse(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap.manifest.json"), "utf8"));
-const TILES = ["14/14552/6451", "14/14551/6450", "14/14553/6452"].filter((k) => k in manifest.tiles);
-if (TILES.length === 0) throw new Error("no GSI fixtures: run npm run fixtures");
-const byLayer = {};
-for (const key of TILES) {
-  const [z, x, y] = key.split("/").map(Number);
-  const tile = new VectorTile(new PbfReader(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap", `${key}.pbf`))));
-  for (const name of ["label", "road", "building", "contour", "railway", "waterarea"]) {
-    const layer = tile.layers[name];
-    for (let i = 0; layer && i < layer.length; i++) {
-      const f = layer.feature(i).toGeoJSON(x, y, z);
-      (byLayer[name] ??= []).push({ ...f, id: `${key}/${i}` });
-    }
-  }
-}
+const byLayer = await gsiFeatures({ id: true });
 const csvVariants = [{}, { geometryFormat: "wkt" }, { delimiter: 9, header: false }, { delimiter: 59, geometry: "the_geom" }, { geometryFormat: "none" }];
 for (const [name, features] of Object.entries(byLayer)) {
   await both("gsi", `${name}: ${features.length} features`, await tableOf({ type: "FeatureCollection", features }), csvVariants);
@@ -176,6 +160,6 @@ console.log(`${total} cases, ${differ} differ`);
 const pkg = async (name) => JSON.parse(await readFile(path.join(ROOT, "bench/node_modules", name, "package.json"), "utf8")).version;
 await writeFile(
   path.join(ROOT, "bench/results/write-golden.json"),
-  JSON.stringify({ env: { node: process.version, papaparse: await pkg("papaparse"), betterknown: await pkg("betterknown"), "@placemarkio/tokml": await pkg("@placemarkio/tokml"), tiles: TILES }, results, differ }, null, 2) + "\n",
+  JSON.stringify({ env: { node: process.version, papaparse: await pkg("papaparse"), betterknown: await pkg("betterknown"), "@placemarkio/tokml": await pkg("@placemarkio/tokml"), tiles: GSI_TILES }, results, differ }, null, 2) + "\n",
 );
 if (differ > 0) process.exit(1);

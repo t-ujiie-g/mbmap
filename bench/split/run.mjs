@@ -8,8 +8,9 @@ import { gzipSync } from "node:zlib";
 import { chromium, firefox, webkit } from "playwright";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
+import { arg } from "../lib/args.mjs";
 
-const runs = Number(process.argv.find((a) => a.startsWith("--runs="))?.split("=")[1] ?? 7);
+const runs = Number(arg("runs", 7));
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const build = (pkg) => execFileSync("moon", ["build", pkg, "--target", "wasm-gc", "--release"], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
 const files = {

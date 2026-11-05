@@ -9,9 +9,9 @@ import { dataImports, dataReader, rasterSource } from "../../data_worker/js/read
 import { decodePng } from "../lib/png.mjs";
 import { ROOT } from "../lib/root.mjs";
 import { byteRange } from "../lib/serve.mjs";
+import { wasmFile } from "./common.mjs";
 import { tiffFile } from "./tiff-write.mjs";
 
-const wasmFile = (name) => readFile(path.join(ROOT, `_build/wasm-gc/release/build/${name}/${name}.wasm`));
 const imports = dataImports(() => instance.exports.memory);
 const { instance } = await WebAssembly.instantiate(await wasmFile("data_worker"), imports);
 const geotiffWasm = (await WebAssembly.instantiate(await wasmFile("geotiff_worker"), {})).instance.exports;
