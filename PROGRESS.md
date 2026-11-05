@@ -24,7 +24,7 @@
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
-  | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（26KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+  | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 17 の後の点検（2026-11-06〜）
 
@@ -39,7 +39,7 @@
   - FlatGeobuf のオフセットの使い回しによる指数の仕事（1 ファイルの訪問はファイルのバイト数まで）、XML の `end_tag` の二次の走査、`TableBuilder` の欄の数の上限（TopoJSON と FlatGeobuf にも 3200 万）、GPX の拡張の列、KML と GPX の点の上限を読みながら確かめる、TIFF のビット数とブロックの大きさの折り返し（1 ブロック 256MB、1 ファイルのタグの値 6400 万）、Shapefile の輪の二次の処理。
   - 大きなファイルで変わること：行 × 列が 3200 万を超える FlatGeobuf と TopoJSON は断る。256MB を超える非圧縮のブロックは開くときに断る。
   - BitsPerSample のないファイルは、使わない IFD で全体を断らないよう読み、使うときに「unsupported data format」で失敗する。
-- **大きさ**：`createAttributeTable` だけで 1996 / 2000 バイト、`xml.wasm` 25,983 / 26,000 バイト、GeoTIFF 19.9KB、データワーカー 39.4KB。予算は変えていない。`xml.wasm` と GeoTIFF には次の機能の余地がない。
+- **大きさ**：`createAttributeTable` だけで 1996 / 2000 バイト、`xml.wasm` 26.0KB、GeoTIFF 19.9KB、データワーカー 39.4KB。`xml.wasm` の予算は 26KB → 27KB に引き上げた（2026-11-06 ユーザー判断。上限の確かめで約 350 バイト増え、CI の moonc 0.10.18 で 26,031 バイト。ローカルの 0.10.19 は 48 バイト小さい）。ほかの予算は変えていない。GeoTIFF には次の機能の余地がない。
 
 ## Phase 17：データ形式（2026-11-04〜）
 

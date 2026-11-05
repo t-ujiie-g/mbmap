@@ -171,8 +171,8 @@
     },
     {
       "name": "KML and GPX (loaded by the data worker on the first such read)",
-      "bytes": 25983,
-      "budget": 26000
+      "bytes": 25954,
+      "budget": 27000
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
