@@ -66,6 +66,7 @@
     "./prjwkt.js": "./dist/prjwkt.js",
     "./xml.wasm": "./dist/xml.wasm",
     "./geotiff.wasm": "./dist/geotiff.wasm",
+    "./geotiff-source.js": "./dist/geotiff-source.js",
     "./data-geotiff.js": "./dist/data-geotiff.js"
   },
   "types": "./dist/index.d.ts",

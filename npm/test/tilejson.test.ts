@@ -42,3 +42,11 @@ test("withoutSources drops the sources and their layers, and keeps the style wit
   const same = withoutSources(style(), new Set());
   assert.deepEqual(same, style());
 });
+
+test("a geotiff source's document is its file's, keyed apart from TileJSON, and merges without tiles", () => {
+  const s = { version: 8 as const, sources: { cog: { type: "geotiff", url: "dem.tif", dem: true, maxzoom: 12 } }, layers: [{ id: "h", type: "hillshade", source: "cog" }] };
+  const urls = tileJSONUrls(s, base);
+  assert.deepEqual([...urls], [["cog", "geotiff:https://example.com/styles/dem.tif"]]);
+  const docs = new Map<string, unknown>([["geotiff:https://example.com/styles/dem.tif", { bounds: [138, 35, 139, 36], minzoom: 0, maxzoom: 14, crs: 3857, range: [0, 3776] }]]);
+  assert.deepEqual(withTileJSON(s, urls, docs, resolveTemplate).sources.cog, { minzoom: 0, maxzoom: 12, bounds: [138, 35, 139, 36], type: "geotiff", dem: true });
+});

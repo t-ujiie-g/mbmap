@@ -231,18 +231,45 @@ const rowBytes = (width, bits) => Math.ceil((width * bits) / 8);
  * a server that ignores ranges, to `{ whole }`; `source.bytes` is the file when it is at hand.
  * `wasm` is geotiff.wasm's exports with `input` and `output` (data_worker/js/read.mjs).
  */
-export async function readRaster(source, options, { wasm, input, output, max }) {
-  // The image directories, read again with more bytes while they reach past them.
-  let file = source.bytes ?? null;
-  let head = file ?? (await source.read(0, FIRST_BYTES));
+// The first bytes (or the whole) of files read by URL, and their blocks, kept for the next reads
+// (a map's tiles read the same file over and over): most recent last.
+const HEADS = 8;
+const BLOCK_BYTES = 32 * 1024 * 1024;
+const heads = new Map();
+const blocksKept = new Map();
+let blockTotal = 0;
+
+function keepBlock(key, bytes) {
+  if (bytes.length > BLOCK_BYTES / 8) return;
+  blocksKept.set(key, bytes.slice());
+  blockTotal += bytes.length;
+  for (const [k, b] of blocksKept) {
+    if (blockTotal <= BLOCK_BYTES) break;
+    blocksKept.delete(k);
+    blockTotal -= b.length;
+  }
+}
+
+/**
+ * The image directories of the file `source` reads, parsed into geotiff.wasm (which keeps the
+ * last file's images for `window`), read again with more bytes while they reach past those read.
+ */
+async function open(source, { wasm, input, output, max }) {
+  const kept = source.key && heads.get(source.key);
+  let file = kept ? kept.file : (source.bytes ?? null);
+  let head = kept ? kept.head : (file ?? (await source.read(0, FIRST_BYTES)));
   if (head.whole) file = head = head.whole;
-  let summary;
   for (let tries = 0; ; tries++) {
     input(wasm, [head]);
     const n = wasm.parse();
     if (n !== -3) {
-      summary = readSummary(output(wasm, n));
-      break;
+      const summary = readSummary(output(wasm, n));
+      if (source.key) {
+        heads.delete(source.key);
+        heads.set(source.key, { head, file });
+        if (heads.size > HEADS) heads.delete(heads.keys().next().value);
+      }
+      return { images: summary.images, file };
     }
     const need = wasm.need();
     if (file || tries > 12 || need > max || need <= head.length) throw new Error("malformed TIFF: its image directories reach past its end");
@@ -250,7 +277,11 @@ export async function readRaster(source, options, { wasm, input, output, max }) 
     if (!head.whole && head.length < need) throw new Error("malformed TIFF: its image directories reach past its end");
     if (head.whole) file = head = head.whole;
   }
-  const { images } = summary;
+}
+
+export async function readRaster(source, options, ctx) {
+  const { wasm, input, output, max } = ctx;
+  let { images, file } = await open(source, ctx);
   const { index, window: wnd } = choose(images, options);
   const img = images[index];
   const samples = options.samples?.length ? options.samples : Array.from({ length: img.samples }, (_, i) => i);
@@ -289,6 +320,11 @@ export async function readRaster(source, options, { wasm, input, output, max }) 
       output(wasm, wasm.empty(i, noData || 0), true);
       continue;
     }
+    const kept = !file && source.key && blocksKept.get(`${source.key}#${offset}`);
+    if (kept) {
+      await add(i, kept);
+      continue;
+    }
     if (count > max) throw new Error(`a block of ${count} bytes`);
     const last = ranges.at(-1);
     if (!file && last && offset >= last.end && offset - last.end <= GAP_BYTES && offset + count - last.start <= max) {
@@ -316,6 +352,7 @@ export async function readRaster(source, options, { wasm, input, output, max }) 
         const at = img.offsets[i] - base;
         const bytes = got[j].subarray(at, at + img.counts[i]);
         if (bytes.length < img.counts[i]) throw new Error("malformed TIFF: a block past the end of the file");
+        if (got[j] !== file && source.key) keepBlock(`${source.key}#${img.offsets[i]}`, bytes);
         await add(i, bytes);
       }
     }
@@ -366,4 +403,165 @@ export async function readRaster(source, options, { wasm, input, output, max }) 
     pixelIsPoint: first.rasterType === 2,
     noData,
   };
+}
+
+const R = 6378137;
+const WORLD = 2 * Math.PI * R;
+const MERCATOR = new Set([3857, 900913, 3785, 102100]);
+// Geographic CRSs drawn as EPSG:4326 (JGD2011 and JGD2000 lie within centimeters of it).
+const LONLAT = new Set([4326, 6668, 4612]);
+
+function kindOf(crs) {
+  if (MERCATOR.has(crs)) return "mercator";
+  if (LONLAT.has(crs)) return "lonlat";
+  throw new Error(crs ? `GeoTIFFs in EPSG:${crs} are not drawn yet (EPSG:3857 and EPSG:4326 are)` : "a GeoTIFF without an EPSG code is not drawn");
+}
+
+/** The images a resolution picks from (geotiff's: the first, and reduced-resolution ones), coarsest first. */
+const levels = (images) => images.filter((img, i) => i === 0 || img.oldSubfile === 2 || (img.subfile & 1)).sort((a, b) => a.width - b.width);
+
+/** The finite values of `band` but `noData`: [min, max], or null. */
+function extent(band, noData) {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const v of band) {
+    if (v === noData || !Number.isFinite(v)) continue;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  return lo <= hi ? [lo, hi] : null;
+}
+
+/**
+ * What drawing the GeoTIFF of `source` needs: `crs`, `bounds` in longitude and latitude, the
+ * `maxzoom` its first image's pixels match on 256-pixel tiles, `samples`, `noData`, and `range`, the
+ * finite values of band 0 in its coarsest image.
+ */
+export async function rasterInfo(source, ctx) {
+  const { images } = await open(source, ctx);
+  const first = images[0];
+  const kind = kindOf(first.epsg);
+  const [w, s, e, n] = bboxOf(first);
+  const toLat = (y) => (Math.atan(Math.sinh(y / R)) * 180) / Math.PI;
+  const bounds = kind === "mercator" ? [(w / R) * (180 / Math.PI), toLat(s), (e / R) * (180 / Math.PI), toLat(n)] : [w, s, e, n];
+  const res = Math.abs(resolutionOf(first)[0]) * (kind === "mercator" ? 1 : (Math.PI / 180) * R);
+  const maxzoom = Math.max(0, Math.min(24, Math.ceil(Math.log2(WORLD / 256 / res) - 1e-6)));
+  const coarse = levels(images)[0];
+  const { bands } = await readRaster(source, { image: images.indexOf(coarse), samples: [0] }, ctx);
+  return { crs: first.epsg, bounds, maxzoom, samples: first.samples, noData: noDataOf(first), range: extent(bands[0], noDataOf(first)) };
+}
+
+/** A CSS color as [r, g, b, a] (0 to 255), read through a canvas. */
+function rgbaOf(color, ctx) {
+  ctx.fillStyle = "#000";
+  ctx.fillStyle = color;
+  ctx.clearRect(0, 0, 1, 1);
+  ctx.fillRect(0, 0, 1, 1);
+  return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+}
+
+/** XYZ tile `z`/`x`/`y` of the GeoTIFF of `source` (EPSG:3857 or 4326) as a PNG, or null where it has no pixel: each
+ * pixel's center read from the coarsest image still finer than the tile, colored as npm/README.md's `geotiff` sources. */
+export async function renderTile(source, { z, x, y, tileSize = 256, bands, range, colors, dem = false, resampling }, ctx) {
+  const { images } = await open(source, ctx);
+  const first = images[0];
+  const kind = kindOf(first.epsg);
+  const size = tileSize;
+  const px = WORLD / 2 ** z / size;
+  const mx0 = -WORLD / 2 + x * (WORLD / 2 ** z);
+  const my0 = WORLD / 2 - y * (WORLD / 2 ** z);
+  // Each column's x and each row's y in the file's coordinates.
+  const xs = Float64Array.from({ length: size }, (_, i) => mx0 + (i + 0.5) * px);
+  const ys = Float64Array.from({ length: size }, (_, j) => my0 - (j + 0.5) * px);
+  if (kind === "lonlat") {
+    for (let i = 0; i < size; i++) xs[i] = (xs[i] / R) * (180 / Math.PI);
+    for (let j = 0; j < size; j++) ys[j] = (Math.atan(Math.sinh(ys[j] / R)) * 180) / Math.PI;
+  }
+  const want = Math.abs(kind === "mercator" ? px : (xs[1] - xs[0]));
+  const box = bboxOf(first);
+  let img = images[0];
+  for (const level of levels(images)) {
+    img = level;
+    if (want > (box[2] - box[0]) / level.width) break;
+  }
+  const [ox, oy] = originOf(first);
+  const [rx, ry] = resolutionOf(img, first);
+  const linear = resampling === "bilinear";
+  const shift = linear ? 0.5 : 0;
+  const cols = Float64Array.from(xs, (v) => (v - ox) / rx - shift);
+  const rows = Float64Array.from(ys, (v) => (v - oy) / ry - shift);
+  const span = (a, n) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const v of a) {
+      lo = Math.min(lo, Math.floor(v));
+      hi = Math.max(hi, Math.floor(v) + (linear ? 2 : 1));
+    }
+    return [Math.max(0, lo), Math.min(n, hi)];
+  };
+  const [c0, c1] = span(cols, img.width);
+  const [r0, r1] = span(rows, img.height);
+  if (c0 >= c1 || r0 >= r1) return null;
+  const rgb = !dem && !bands && img.samples >= 3 && img.bits.slice(0, 3).every((b) => b === 8) && img.formats[0] === 1;
+  const samples = bands ?? (rgb ? (img.samples >= 4 ? [0, 1, 2, 3] : [0, 1, 2]) : [0]);
+  const raster = await readRaster(source, { image: images.indexOf(img), window: [c0, r0, c1, r1], samples }, ctx);
+  const w = c1 - c0;
+  const noData = raster.noData;
+  const canvas = new OffscreenCanvas(size, size);
+  const c2d = canvas.getContext("2d", { willReadFrequently: true });
+  const stops = (colors ?? []).map(([v, c]) => [v, rgbaOf(c, c2d)]).sort((a, b) => a[0] - b[0]);
+  const [lo, hi] = range ?? [0, 255];
+  const out = new Uint8ClampedArray(size * size * 4);
+  // Band `b` at column `cx`, row `cy` of the image: NaN off the window or at no data.
+  const at = (b, cx, cy) => {
+    if (cx < c0 || cx >= c1 || cy < r0 || cy >= r1) return NaN;
+    const v = raster.bands[b][(cy - r0) * w + cx - c0];
+    return v === noData ? NaN : v;
+  };
+  const sample = (b, sx, sy) => {
+    if (!linear) return sx >= 0 && sy >= 0 && sx < img.width && sy < img.height ? at(b, Math.floor(sx), Math.floor(sy)) : NaN;
+    const [fx, fy] = [Math.floor(sx), Math.floor(sy)];
+    const [tx, ty] = [sx - fx, sy - fy];
+    const edge = (v, n) => Math.min(n - 1, Math.max(0, v));
+    if (sx < -0.5 || sy < -0.5 || sx > img.width - 0.5 || sy > img.height - 0.5) return NaN;
+    const [xa, xb, ya, yb] = [edge(fx, img.width), edge(fx + 1, img.width), edge(fy, img.height), edge(fy + 1, img.height)];
+    const v = (1 - ty) * ((1 - tx) * at(b, xa, ya) + tx * at(b, xb, ya)) + ty * ((1 - tx) * at(b, xa, yb) + tx * at(b, xb, yb));
+    return v;
+  };
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) {
+      const o = (j * size + i) * 4;
+      const v = sample(0, cols[i], rows[j]);
+      if (dem) {
+        const e = Math.min(65535.99, Math.max(0, (Number.isNaN(v) ? 0 : v) + 32768));
+        out[o] = Math.floor(e / 256);
+        out[o + 1] = Math.floor(e) % 256;
+        out[o + 2] = Math.floor((e - Math.floor(e)) * 256);
+        out[o + 3] = 255;
+        continue;
+      }
+      if (Number.isNaN(v)) continue;
+      if (rgb) {
+        out[o] = v;
+        out[o + 1] = sample(1, cols[i], rows[j]);
+        out[o + 2] = sample(2, cols[i], rows[j]);
+        out[o + 3] = samples.length === 4 ? sample(3, cols[i], rows[j]) : 255;
+        continue;
+      }
+      if (stops.length > 0) {
+        let k = 0;
+        while (k < stops.length - 1 && v > stops[k + 1][0]) k++;
+        const [va, ca] = stops[k];
+        const [vb, cb] = stops[Math.min(k + 1, stops.length - 1)];
+        const t = vb > va ? Math.min(1, Math.max(0, (v - va) / (vb - va))) : 0;
+        for (let q = 0; q < 4; q++) out[o + q] = Math.round(ca[q] + (cb[q] - ca[q]) * t);
+        continue;
+      }
+      const g = Math.round((hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0) * 255);
+      out[o] = out[o + 1] = out[o + 2] = g;
+      out[o + 3] = 255;
+    }
+  }
+  c2d.putImageData(new ImageData(out, size, size), 0, 0);
+  return (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer();
 }

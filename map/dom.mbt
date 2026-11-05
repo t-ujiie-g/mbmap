@@ -339,12 +339,14 @@ extern "js" fn post_tile_bytes(
   z : Int32,
   x : Int32,
   y : Int32,
+  dem : Bool,
+  raster : Bool,
 ) -> Unit =
-  #|(w, id, bytes, source, z, x, y) => w.postMessage({ type: "tile", id, bytes, source, z, x, y }, [bytes])
+  #|(w, id, bytes, source, z, x, y, dem, raster) => w.postMessage({ type: "tile", id, bytes, source, z, x, y, dem, raster }, [bytes])
 
 ///|
-/// Asks the GeoJSON provider for a tile and calls `done` with its bytes, or
-/// null when there is none or it failed (logged).
+/// Asks the provider for a GeoJSON or GeoTIFF tile and calls `done` with its
+/// bytes, or null when there is none or it failed (logged).
 extern "js" fn call_provider(
   provider : Provider,
   source : String,
@@ -356,13 +358,13 @@ extern "js" fn call_provider(
   #|(p, s, z, x, y, done) => {
   #|  Promise.resolve().then(() => p(s, z, x, y)).then(
   #|    (b) => done(b ?? null),
-  #|    (e) => { console.warn(`mbmap: GeoJSON tile ${z}/${x}/${y}: ${e?.message ?? e}`); done(null); });
+  #|    (e) => { console.warn(`mbmap: tile ${z}/${x}/${y} of ${s}: ${e?.message ?? e}`); done(null); });
   #|}
 
 ///|
-/// The GeoJSON tile provider `Map::new` takes: a JS function `(source, z, x,
-/// y) => Promise<ArrayBuffer | null>` (source being the source's id), or JS
-/// null.
+/// The tile provider `Map::new` takes for GeoJSON and GeoTIFF sources: a JS
+/// function `(source, z, x, y) => Promise<ArrayBuffer | null>` (source being the
+/// source's id), or JS null.
 #external
 pub type Provider
 

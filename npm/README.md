@@ -38,6 +38,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/sprite.js` | スタイルに `sprite` があるとき |
 | `dist/tilejson-merge.js` | `url` を持つソース（TileJSON か PMTiles）があるとき |
 | `dist/pmtiles.js` | `pmtiles://` のソースがあるとき（アーカイブのヘッダーを読む） |
+| `dist/geotiff-source.js` | `geotiff` のソースがあるとき（タイルは `mbmap/data` のワーカーが作るので、`data.js` と `data-worker.js`・`data.wasm`・`geotiff.wasm`・`data-geotiff.js` も隣に置く） |
 | `dist/media.js` | image・video・canvas のソースがあるとき |
 | `dist/custom.js` | 最初のカスタムレイヤーを足したとき |
 | `dist/export.js` | 最初に `toBlob` を呼んだとき |
@@ -382,6 +383,13 @@ MapLibre の Style Spec（v8）を、MapLibre 6.16 と同じ描き方で描く�
 - `raster`：`tiles`、`tileSize`（128・256・512）など vector と同じもの。
 - `raster-dem`：`tiles`、`tileSize`、`encoding` は `mapbox`・`terrarium`・`custom`（`redFactor` などの係数）、それに国土地理院の標高タイル用の拡張 `gsi`。
 - `url` で TileJSON を指すソース（vector、raster、raster-dem）。TileJSON の `tiles`、`minzoom`、`maxzoom`、`bounds`、`attribution` などを読み、ソースに書いた値を優先する。
+- GeoTIFF・COG（mbmap 独自のソース型）：`{ type: "geotiff", url: "https://…/x.tif" }` を `raster` レイヤーで描く。`dem: true` なら標高のソースになり、`hillshade`・`color-relief`・`terrain` に使える。
+  - EPSG:3857 と EPSG:4326（JGD2011・JGD2000 の経緯度も）のファイルを描く。ほかの座標系は 17.6c で描けるようにする予定。
+  - 表示するタイルごとに、ちょうどよい概観図の必要なブロックだけを範囲リクエストで読む（ヘッダーとブロックはワーカーに残して使い回す）。`bounds` と `maxzoom` はファイルから決める（ソースに書けばそちらを使う）。
+  - 色：8 ビットの 3 帯・4 帯は RGB・RGBA。1 帯（または `bands` の最初の帯）は `range`（`[最小, 最大]`、省くといちばん粗い画像の値の範囲）を黒から白に、`colors`（`[値, 色]` の並び。色は CSS の書き方）があればその間を直線でつなぐ。no data と範囲の外は透明。`resampling` は `"nearest"`（既定）か `"bilinear"`。`tileSize` は 256（既定）か 512。
+  - 標高は Terrarium の PNG にしてから描くので、1/256 m 刻みになる。
+  - 描いたタイルは、GSI の標準地図から作った COG を元の PNG タイルと画素単位で比べて一致することを確かめている（`npm run geotiff:tiles`）。
+  - `mbmap/data` の `rasterInfo(input)` と `rasterTile(input, z, x, y, options)` で、同じ情報とタイル（PNG）を直接得られる。
 - PMTiles：`url: "pmtiles://https://…/x.pmtiles"`。プラグインは不要。ワーカーが範囲リクエストでディレクトリとタイルを読む。圧縮は none と gzip に対応する。サーバーは Range に対応している必要がある。
 - `geojson`：`data` に URL（認証情報なしで取得し、http(s) に限る）かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`lineMetrics`、`promoteId`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`、`clusterProperties`。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る（geojson-vt と同じタイル）。`clusterProperties` のあるソースは、式を持つ別の wasm `geojson-properties.wasm` で読む。
 - `image`（`url`、`coordinates`）、`video`（`urls`、`coordinates`。音を消してループ再生する）、`canvas`（`canvas` に要素の id、または `addSource` に要素そのもの、`animate`、`coordinates`）。四隅の位置は MapLibre と同じく計算し、四角形でない配置は MapLibre と同じくゆがめて描く。再生中の動画と `animate` の canvas は毎フレーム描き直す（MapLibre と違い、そのあいだも `idle` になる）。

@@ -106,6 +106,7 @@ export function rasterSource({ bytes, blob, url, init }, max) {
   if (bytes) return { bytes };
   if (blob) return { read: async (offset, length) => new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer()) };
   return {
+    key: url,
     async read(offset, length) {
       const options = fetchInit(init);
       options.headers = { ...options.headers, Range: `bytes=${offset}-${offset + length - 1}` };
@@ -247,9 +248,16 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     return output(wasm, wasm.write_csv(names.length, delimiter, header ? 1 : 0, mode));
   }
   /** A window of the GeoTIFF of `source` (see `rasterSource`) as npm/README.md's `readRaster` gives it. */
-  async function readRaster(source, options) {
+  // `op` of data_worker/js/geotiff.mjs over geotiff.wasm.
+  async function raster(op, ...args) {
     const [m, g] = await Promise.all([geotiffModule(), geotiff()]);
-    return m.readRaster(source, options, { wasm: g, input, output, max: MAX_INPUT_BYTES });
+    return m[op](...args, { wasm: g, input, output, max: MAX_INPUT_BYTES });
   }
-  return { read, write, readRaster };
+  return {
+    read,
+    write,
+    readRaster: (source, options) => raster("readRaster", source, options),
+    rasterInfo: (source) => raster("rasterInfo", source),
+    rasterTile: (source, options) => raster("renderTile", source, options),
+  };
 }

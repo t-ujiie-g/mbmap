@@ -15,7 +15,7 @@ import { mediaChecks } from "./checks/media.mjs";
 import { customChecks } from "./checks/custom.mjs";
 import { cameraChecks } from "./checks/camera.mjs";
 import { controlChecks } from "./checks/controls.mjs";
-import { atCentre } from "./checks/pixels.mjs";
+import { atCentre, pixel } from "./checks/pixels.mjs";
 import { queryChecks } from "./checks/query.mjs";
 import { searchChecks } from "./checks/search.mjs";
 import { tableChecks } from "./checks/table.mjs";
@@ -554,6 +554,30 @@ const checks = {
         refused: await readRaster(new Blob([new Uint8Array(16)])).then(() => "", (e) => e.message),
       };
     }, { ...HILL, at: undefined });
+    // geotiff sources: dem.tif drawn gray as a raster and as a hillshade of a DEM source.
+    const sourceBefore = requests.filter((u) => u.endsWith("/geotiff-source.js")).length;
+    const drawn = await page.evaluate(async (HILL) => {
+      const map = window.__map;
+      map.jumpTo({ center: [HILL.west + 150 * HILL.step, HILL.north - 90 * HILL.step], zoom: 15 });
+      // Source URLs resolve against the style's, as MapLibre's do.
+      const url = new URL("./dem.tif", location.href).href;
+      map.addSource("cog", { type: "geotiff", url, range: [40, 70] });
+      map.addSource("cog-dem", { type: "geotiff", url, dem: true });
+      map.addLayer({ id: "cog", type: "raster", source: "cog" });
+      map.addLayer({ id: "cog-shade", type: "hillshade", source: "cog-dem" });
+      await new Promise((resolve) => map.once("idle", resolve));
+      const r = map.getCanvas().getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, kept: map.getStyle().sources.cog?.type ?? null };
+    }, { ...HILL, at: undefined });
+    drawn.pixel = await pixel(page, drawn.x, drawn.y);
+    await page.evaluate(() => {
+      const map = window.__map;
+      map.removeLayer("cog-shade");
+      map.removeLayer("cog");
+      map.removeSource("cog-dem");
+      map.removeSource("cog");
+    });
+    const sourceAfter = requests.filter((u) => u.endsWith("/geotiff-source.js")).length;
     const tiffAfter = requests.filter((u) => u.endsWith("/geotiff.wasm")).length;
     const okTiff =
       tiffBefore === 0 && tiffAfter === 1 &&
@@ -562,8 +586,10 @@ const checks = {
       JSON.stringify(t.box) === JSON.stringify([20, 20, "100,100,120,120"]) && t.boxValue &&
       JSON.stringify(t.small) === JSON.stringify([50, 40, 1]) &&
       t.jpeg.bands === 3 && t.jpeg.worst <= 12 && t.webp.bands === 3 && t.webp.worst <= 12 &&
-      t.sampled && t.slope && /not a TIFF file/.test(t.refused);
-    return [ok && okXml && okFgb && okWrite && okTiff, { raster: { tiffBefore, tiffAfter, ...t }, loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g }, written: w }];
+      t.sampled && t.slope && /not a TIFF file/.test(t.refused) &&
+      sourceBefore === 0 && sourceAfter === 1 && drawn.kept === "geotiff" &&
+      drawn.pixel.every((v) => v > 30 && v < 220);
+    return [ok && okXml && okFgb && okWrite && okTiff, { raster: { tiffBefore, tiffAfter, ...t, drawn }, loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g }, written: w }];
   },
 
   async analysis(page, requests) {

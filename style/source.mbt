@@ -1,7 +1,7 @@
 ///|
 /// What a source draws from: vector, image (`raster`) or elevation (`raster-dem`)
-/// tiles at URLs, GeoJSON the map cuts into tiles itself, or a picture placed by
-/// its corners (`image`, `video`, `canvas`). The JS facade loads data and pictures.
+/// tiles at URLs or made by the facade (`geotiff`, without `tiles`), GeoJSON the map
+/// cuts into tiles itself, or a picture placed by its corners (`image`, `video`, `canvas`).
 pub(all) enum SourceKind {
   Vector
   GeoJSON
@@ -180,6 +180,46 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       tolerance: 0.0,
       promote_id: FeatureId,
       bounds: None,
+      tms: false,
+    })
+  }
+  // GeoTIFF tiles come from the facade (npm/src/geotiff-source.ts), which completes
+  // `bounds` and the zooms from the file; a DEM's are Terrarium PNGs.
+  if s.get("type") is Some(String("geotiff")) {
+    let dem = match s.get("dem") {
+      None | Some(False) => false
+      Some(True) => true
+      Some(_) => raise Invalid(path="\{path}.dem", "not a boolean")
+    }
+    let tile_size = number_or(s, "tileSize", path, 256.0).to_int()
+    if !(tile_size is (256 | 512)) {
+      raise Unsupported(path="\{path}.tileSize", "only 256 and 512")
+    }
+    let min_zoom = source_zoom(s, "minzoom", path, 0.0)
+    let max_zoom = source_zoom(s, "maxzoom", path, 22.0)
+    if min_zoom > max_zoom {
+      raise Invalid(path="\{path}.minzoom", "above maxzoom")
+    }
+    return Some({
+      id,
+      kind: if dem {
+        RasterDem
+      } else {
+        Raster
+      },
+      tiles: [],
+      min_zoom,
+      max_zoom,
+      tile_size,
+      encoding: if dem {
+        Terrarium
+      } else {
+        Mapbox
+      },
+      buffer: 0,
+      tolerance: 0.0,
+      promote_id: FeatureId,
+      bounds: parse_bounds(s),
       tms: false,
     })
   }

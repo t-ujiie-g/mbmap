@@ -81,13 +81,18 @@ async function read(msg) {
 async function run(msg) {
   try {
     await ready;
-    if (msg.op === "readRaster") {
+    if (msg.op === "readRaster" || msg.op === "rasterInfo" || msg.op === "rasterTile") {
       const { url, init, blob, bytes, options = {} } = msg;
       check(options && typeof options === "object");
       check(bytes instanceof ArrayBuffer || blob instanceof Blob || (typeof url === "string" && /^https?:/i.test(url)));
       if (bytes) check(bytes.byteLength <= MAX_INPUT_BYTES);
-      const value = await reader.readRaster(rasterSource({ bytes: bytes && new Uint8Array(bytes), blob, url, init }, MAX_INPUT_BYTES), options);
-      postMessage({ type: "result", id: msg.id, value }, [...new Set(value.bands.map((b) => b.buffer))]);
+      const source = rasterSource({ bytes: bytes && new Uint8Array(bytes), blob, url, init }, MAX_INPUT_BYTES);
+      if (msg.op === "rasterTile") {
+        const { z, x, y, tileSize = 256 } = options;
+        check([z, x, y].every(Number.isInteger) && z >= 0 && z <= 24 && x >= 0 && y >= 0 && x < 2 ** z && y < 2 ** z && (tileSize === 256 || tileSize === 512));
+      }
+      const value = await (msg.op === "readRaster" ? reader.readRaster(source, options) : msg.op === "rasterInfo" ? reader.rasterInfo(source) : reader.rasterTile(source, options));
+      postMessage({ type: "result", id: msg.id, value }, msg.op === "readRaster" ? [...new Set(value.bands.map((b) => b.buffer))] : value instanceof ArrayBuffer ? [value] : []);
       return;
     }
     if (msg.op === "write") {
@@ -117,7 +122,7 @@ onmessage = (e) => {
       wasm = instance.exports;
       reader = dataReader(wasm, imports, { proj, prj, xml, geotiff });
     });
-  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && (msg.op === "read" || msg.op === "write" || msg.op === "readRaster")) {
+  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && ["read", "write", "readRaster", "rasterInfo", "rasterTile"].includes(msg.op)) {
     queue = queue.then(() => run(msg));
   }
 };

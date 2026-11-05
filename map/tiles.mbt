@@ -33,8 +33,8 @@ priv struct SourceTiles {
 }
 
 ///|
-/// Requests tile `id` of `src`: a vector tile is fetched by a worker, a
-/// GeoJSON tile comes from the provider and is then handed to a worker.
+/// Requests tile `id` of `src`: a tile at a URL is fetched by a worker, a GeoJSON
+/// or GeoTIFF tile comes from the provider and is then handed to a worker.
 fn Map::request_tile(
   self : Map,
   src : SourceTiles,
@@ -55,7 +55,8 @@ fn Map::request_tile(
     self.finish(request, None)
     return
   }
-  if src.source.kind is (Vector | RasterDem | Raster) {
+  if src.source.kind is (Vector | RasterDem | Raster) &&
+    !src.source.tiles.is_empty() {
     let tiles = src.source.tiles
     post_tile(
       self.workers[worker],
@@ -101,6 +102,8 @@ fn Map::request_tile(
         id.z,
         id.x,
         id.y,
+        src.source.kind is RasterDem,
+        src.source.kind is Raster,
       )
     }
   })

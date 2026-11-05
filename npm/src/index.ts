@@ -33,7 +33,7 @@ import * as edit from "./style";
 import type { LayerSpecification, StyleSpecification } from "./style";
 import { attributionsOf } from "./attribution";
 import { Events } from "./events";
-import { tileJSONUrls, withoutSources } from "./tilejson";
+import { GEOTIFF, tileJSONUrls, withoutSources } from "./tilejson";
 import type {
   MapGeoJSONFeature,
   FeatureIdentifier,
@@ -370,6 +370,11 @@ export class Map {
   async #fetchDocuments(urls: string[]): Promise<void> {
     tilejson ??= await import("./tilejson-merge.js");
     await Promise.all(urls.map(async (url) => {
+      if (url.startsWith(GEOTIFF)) {
+        const { geotiffDocument } = await import("./geotiff-source.js");
+        this.#tilejson.set(url, await geotiffDocument(url.slice(GEOTIFF.length), (u) => this.#transform?.(u, "Source")));
+        return;
+      }
       const archive = pmtilesArchive(url);
       if (archive !== null) {
         const { pmtilesDocument } = await import("./pmtiles.js");
@@ -702,8 +707,15 @@ export class Map {
     return [];
   }
 
-  /** A GeoJSON tile for the engine, once the GeoJSON worker has started. */
-  #geojsonTile(source: string, z: number, x: number, y: number): Promise<ArrayBuffer | null> {
+  /** A GeoJSON tile for the engine, once the GeoJSON worker has started, or a GeoTIFF source's tile. */
+  #providedTile(source: string, z: number, x: number, y: number): Promise<ArrayBuffer | null> {
+    const spec = this.#style && (edit.sourceOf(this.#style, source) as Record<string, unknown> | undefined);
+    if (spec?.type === "geotiff" && typeof spec.url === "string") {
+      const url = httpUrl(spec.url, this.#base, `source "${source}": url`);
+      const info = this.#tilejson.get(GEOTIFF + url) as Parameters<typeof import("./geotiff-source.js").geotiffTile>[2] | undefined;
+      if (!info) return Promise.resolve(null);
+      return import("./geotiff-source.js").then((m) => m.geotiffTile(url, spec, info, z, x, y, (u) => this.#transform?.(u, "Tile")));
+    }
     if (this.#geojson) return this.#geojson.tile(source, z, x, y);
     return this.#geojsonLoading?.then((t) => t?.tile(source, z, x, y) ?? null) ?? Promise.resolve(null);
   }
@@ -724,7 +736,7 @@ export class Map {
       workerScriptUrl(o.workerUrl ?? new URL("./worker.js", import.meta.url), page, location.origin),
       wasmUrl(o.wasmUrl ?? new URL("./mbmap.wasm", import.meta.url), page),
       o.workerCount ?? 0,
-      (source, z, x, y) => this.#geojsonTile(source, z, x, y),
+      (source, z, x, y) => this.#providedTile(source, z, x, y),
       o.fontFamily ?? "sans-serif",
       limitsArray(this.#limits),
       o.strict ?? false,
