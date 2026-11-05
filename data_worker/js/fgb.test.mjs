@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { dataFetchInit, readCapped } from "../../worker/js/body.mjs";
 import { headerCrs, headerLength, levelBounds, readHeader, search, selectBytes, selectUrl, treeBytes } from "./fgb.mjs";
 
 // flatgeobuf 4.6.1's `geojson.serialize` of a point and a triangle, without an index.
@@ -104,4 +105,58 @@ test("selectBytes takes a clamped node size and stops at max before allocating",
   assert.equal(ids, 2);
   assert.equal(bytes.length, 60 + 2 * 104 + 8);
   await assert.rejects(selectBytes(shared(2, 100), [0, 0, 1, 1], 200), /data larger than 200 bytes/);
+});
+
+const select = (bbox, max) => selectUrl("https://x.org/a.fgb", undefined, bbox, max, { fetchInit: dataFetchInit, readCapped });
+
+// Answers ranges of `file` by the mock's fetch; `answer(n)` may give the n-th request's Response instead.
+function serve(t, file, answer = () => undefined) {
+  let n = 0;
+  t.mock.method(globalThis, "fetch", async (_, { headers }) => {
+    const [, from, to] = /^bytes=(\d+)-(\d+)$/.exec(headers.Range).map(Number);
+    const end = Math.min(to + 1, file.length);
+    return answer(++n) ?? new Response(file.subarray(from, end), { status: 206, headers: { "content-range": `bytes ${from}-${end - 1}/${file.length}` } });
+  });
+}
+
+// Its feature lies past the first request's bytes.
+const FILE = shared(16, 20000);
+
+test("selectUrl reads a file by ranges as selectBytes reads its bytes", async (t) => {
+  serve(t, FILE);
+  const { bytes, ids } = await select([0, 0, 1, 1], 1 << 20);
+  const whole = await selectBytes(FILE, [0, 0, 1, 1], 1 << 20);
+  assert.equal(ids, whole.ids);
+  assert.deepEqual(bytes, whole.bytes);
+  assert.ok(globalThis.fetch.mock.callCount() > 1);
+});
+
+test("selectUrl reads from a whole file answered by a 200", async (t) => {
+  serve(t, FILE, () => new Response(FILE));
+  const { bytes, ids } = await select([0, 0, 1, 1], 1 << 20);
+  assert.equal(ids, 2);
+  assert.deepEqual(bytes, (await selectBytes(FILE, [0, 0, 1, 1], 1 << 20)).bytes);
+  assert.equal(globalThis.fetch.mock.callCount(), 1);
+});
+
+test("selectUrl refuses another range and any other status", async (t) => {
+  serve(t, FILE, () => new Response(FILE, { status: 206, headers: { "content-range": "bytes 1-20/64" } }));
+  await assert.rejects(select([0, 0, 1, 1], 1 << 20), /^Error: https:\/\/x\.org\/a\.fgb answered another range$/);
+  t.mock.restoreAll();
+  serve(t, FILE, () => new Response(null, { status: 500 }));
+  await assert.rejects(select([0, 0, 1, 1], 1 << 20), /^Error: HTTP 500 for https:\/\/x\.org\/a\.fgb$/);
+});
+
+test("selectUrl stops at max", async (t) => {
+  serve(t, FILE);
+  await assert.rejects(select([0, 0, 1, 1], 1000), /^Error: data larger than 1000 bytes$/);
+  await assert.rejects(select([0, 0, 1, 1], 14000), /^Error: data larger than 14000 bytes$/);
+});
+
+test("selectUrl refuses a server that stops answering ranges", async (t) => {
+  serve(t, FILE, (n) => (n > 1 ? new Response(FILE) : undefined));
+  await assert.rejects(select([0, 0, 1, 1], 1 << 20), /^Error: https:\/\/x\.org\/a\.fgb stopped answering range requests$/);
+  t.mock.restoreAll();
+  serve(t, FILE, (n) => (n > 2 ? new Response(FILE) : undefined));
+  await assert.rejects(select([0, 0, 1, 1], 1 << 20), /^Error: malformed FlatGeobuf: feature past the end of the data$/);
 });
