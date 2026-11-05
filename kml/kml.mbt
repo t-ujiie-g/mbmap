@@ -146,9 +146,8 @@ fn Reader::common(
 
 ///|
 /// The tuples of `s` as togeojson's `coord` reads them, four numbers each (a count, up to three
-/// values, NaN after): white space separates tuples, NaN parts are skipped, and tuples of fewer
-/// than two numbers are left out (unless `point`, which reads `s` as one tuple). Stops past
-/// the point limit.
+/// values, NaN after); tuples of fewer than two numbers are left out (unless `point`, which
+/// reads `s` as one tuple). Stops past the point limit.
 fn Reader::tuples(self : Reader, s : String, point : Bool) -> Array[Double] {
   let out = []
   let n = s.length()

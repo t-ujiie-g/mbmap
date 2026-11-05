@@ -112,14 +112,9 @@ let recover : Int32 = -1
 let stop : Int32 = -2
 
 ///|
-/// The sax reader's state over normalized source `b` (sticky errors: `fatal`
-/// holds the first). `open` holds the open elements and `bound` how many
-/// namespace bindings each found. A binding `i` binds prefix `bind_prefixes[i]`
-/// (a number of `prefixes`) to `bind_uris[i]`, shadowing `bind_prev[i]`;
-/// `heads` has each prefix's innermost one. `attr_*` hold the tag being read;
-/// `attr_seen` gives the tag each name was last used in and, by the key
-/// `<namespace id>:<local name>`, which no name can be, where that attribute was
-/// last put. `next_gt`: the first `>` from where `end_tag` last looked (`n` if none).
+/// The sax reader's state over normalized source `b`; `fatal` holds the first error.
+/// `bind_*`: namespace bindings, `heads` each prefix's innermost; `attr_*`: the tag
+/// being read; `next_gt`: the first `>` from where `end_tag` last looked (`n` if none).
 priv struct Parser {
   b : Bytes
   n : Int32

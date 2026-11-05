@@ -149,7 +149,7 @@ test "blocks whose bytes pass the limit are refused, without wrapping" {
   for _ in 0..<8 {
     le16(tail, 32)
   }
-  let wide = tiled(1, 1, 8192, 8192, 8, (258, 3, 8, tail_at(8)))
+  let wide = tiled(8192, 8192, 8192, 8192, 8, (258, 3, 8, tail_at(8)))
   assert_eq(
     read_error(ifd_tiff(wide, tail)),
     "malformed TIFF at 8: a block too large",
@@ -158,14 +158,14 @@ test "blocks whose bytes pass the limit are refused, without wrapping" {
   for _ in 0..<32 {
     le16(short, 16)
   }
-  let row = tiled(1, 1, 1 << 25, 1, 32, (258, 3, 32, tail_at(8)))
+  let row = tiled(1 << 25, 1, 1 << 25, 1, 32, (258, 3, 32, tail_at(8)))
   assert_eq(
     read_error(ifd_tiff(row, short)),
     "malformed TIFF at 8: a block too large",
   )
-  let fits = tiled(1, 1, 8192, 8192, 1, (258, 3, 1, 32))
+  let fits = tiled(8192, 8192, 8192, 8192, 1, (258, 3, 1, 32))
   assert_true(@tiff.read_tiff(ifd_tiff(fits, [])[:]).0.length() == 1)
-  let over = tiled(1, 1, 8192, 8192, 1, (258, 3, 1, 33))
+  let over = tiled(8192, 8192, 8192, 8192, 1, (258, 3, 1, 33))
   assert_eq(
     read_error(ifd_tiff(over, [])),
     "malformed TIFF at 8: a block too large",
