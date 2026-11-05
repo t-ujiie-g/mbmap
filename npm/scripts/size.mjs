@@ -34,14 +34,17 @@ const ENTRIES = [
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
   { name: "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)", files: ["geojson-worker.js", "geojson-properties.wasm"], budget: 50_000, references: [] },
   { name: "mbmap/analysis", files: ["analysis.js"], budget: 5_000, references: ["./projstring.js", "./analysis-worker.js", "./analysis.wasm", "./geometry.wasm", "./proj.wasm"] },
-  { name: "PROJ strings (loaded by mbmap/analysis on the first one)", files: ["projstring.js"], budget: 5_000, references: [] },
+  { name: "PROJ strings (loaded by mbmap/analysis and mbmap/data on the first one)", files: ["projstring.js"], budget: 5_000, references: [] },
   { name: "analysis worker", files: ["analysis-worker.js", "analysis.wasm"], budget: 30_000, references: [] },
   { name: "geometry (loaded by the analysis worker on first use)", files: ["geometry.wasm"], budget: 50_000, references: [] },
-  { name: "coordinate systems (loaded by the analysis worker on first use)", files: ["proj.wasm"], budget: 25_000, references: [] },
+  { name: "coordinate systems (loaded by the analysis and data workers on first use)", files: ["proj.wasm"], budget: 25_000, references: [] },
   { name: "mbmap/geodesic", files: ["geodesic.js"], budget: 2_000, references: ["./geodesic-worker.js", "./geodesic.wasm"] },
   { name: "geodesic worker", files: ["geodesic-worker.js", "geodesic.wasm"], budget: 15_000, references: [] },
-  { name: "mbmap/data", files: ["data.js"], budget: 6_000, references: ["./data-worker.js", "./data.wasm"] },
-  { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 30_000, references: [] },
+  { name: "mbmap/data", files: ["data.js"], budget: 6_000, references: ["./projstring.js", "./data-worker.js", "./data.wasm", "./proj.wasm", "./prjwkt.js"] },
+  { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 30_000, references: ["./data-zip.js", "./data-crs.js"] },
+  { name: "zip archives (loaded by the data worker with the first one)", files: ["data-zip.js"], budget: 2_000, references: [] },
+  { name: "coordinates from another CRS (loaded by the data worker with proj.wasm)", files: ["data-crs.js"], budget: 1_500, references: [] },
+  { name: ".prj WKT (loaded by the data worker on the first .prj)", files: ["prjwkt.js"], budget: 4_000, references: [] },
 ];
 
 const failures = [];

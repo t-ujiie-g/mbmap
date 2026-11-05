@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { csvArgs, formatOf } from "../src/data-format.ts";
+import { csvArgs, formatOf, shapefileParts } from "../src/data-format.ts";
 
 test("formatOf reads the format from a name's extension, in any case", () => {
   assert.equal(formatOf("points.CSV"), "csv");
@@ -9,6 +9,10 @@ test("formatOf reads the format from a name's extension, in any case", () => {
   assert.equal(formatOf("shapes.wkt"), "wkt");
   assert.equal(formatOf("dump.ewkb"), "wkb");
   assert.equal(formatOf("x.wkb"), "wkb");
+  assert.equal(formatOf("roads.SHP"), "shapefile");
+  assert.equal(formatOf("roads.zip"), "shapefile");
+  assert.equal(formatOf("world.topojson"), "topojson");
+  assert.equal(formatOf("world.json"), null);
   assert.equal(formatOf("x.geojson"), null);
   assert.equal(formatOf("x.constructor"), null);
   assert.equal(formatOf("noextension"), null);
@@ -30,4 +34,11 @@ test("csvArgs refuses invalid options", () => {
   assert.throws(() => csvArgs({ dynamicTyping: 1 as unknown as boolean }), /invalid dynamicTyping/);
   assert.throws(() => csvArgs({ geometry: "" }), /invalid geometry column/);
   assert.throws(() => csvArgs({ latitude: "lat" }), /latitude and longitude go together/);
+});
+
+test("shapefileParts picks a shapefile's files by their extensions", () => {
+  const f = (name: string) => ({ name });
+  const parts = shapefileParts([f("a.SHP"), f("a.dbf"), f("a.prj"), f("a.cpg"), f("a.shx"), f("b.shp"), f("notes.txt")]);
+  assert.deepEqual(parts, { shp: f("a.SHP"), dbf: f("a.dbf"), prj: f("a.prj"), cpg: f("a.cpg") });
+  assert.equal(shapefileParts([f("a.dbf"), f("a.prj")]), null);
 });

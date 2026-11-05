@@ -57,6 +57,20 @@ export function tableToGeoJSON(buffer) {
   return { type: "FeatureCollection", features };
 }
 
+// `fc`'s features with the ids of `ids`, a property value per feature (docs/FORMATS.md
+// "Property values"): each gets its `id` unless absent or null.
+export function withIds(fc, ids) {
+  const v = new DataView(ids.buffer ?? ids, ids.byteOffset ?? 0, ids.byteLength);
+  const bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  let at = 0;
+  fc.features = fc.features.map((f) => {
+    let id;
+    [id, at] = readValue(v, bytes, at);
+    return id == null ? f : { type: "Feature", id, geometry: f.geometry, properties: f.properties };
+  });
+  return fc;
+}
+
 // The feature count and the property keys of table bytes, read without the rest.
 export function tableInfo(buffer) {
   const v = new DataView(buffer.buffer ?? buffer, buffer.byteOffset ?? 0, buffer.byteLength);

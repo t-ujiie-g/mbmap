@@ -1,6 +1,6 @@
 // PROJ strings parsed as proj4js 2.22.0 reads them (lib/projString.js and what it
 // uses), MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE. Loaded by
-// `mbmap/analysis` on the first PROJ string; import-free for `npm test`.
+// mbmap/analysis and mbmap/data on the first PROJ string; import-free for `npm test`.
 
 const D2R = 0.01745329251994329577;
 // `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
@@ -31,7 +31,7 @@ const ELLIPSOIDS: Record<string, [number, number, number]> = {
 };
 
 // towgs84, ellipsoid (nad27 needs grids, which are not supported).
-const DATUMS: Record<string, [string, string]> = {
+export const DATUMS: Record<string, [string, string]> = {
   wgs84: ["0,0,0", "WGS84"], ch1903: ["674.374,15.056,405.346", "bessel"], ggrs87: ["-199.87,74.79,246.62", "GRS80"],
   nad83: ["0,0,0", "GRS80"], potsdam: ["598.1,73.7,418.2,0.202,0.045,-2.455,6.7", "bessel"],
   carthage: ["-263.0,6.0,431.0", "clrk80ign"], hermannskogel: ["577.326,90.129,463.919,5.137,1.474,5.297,2.4232", "bessel"],
@@ -58,7 +58,7 @@ const MERIDIANS: Record<string, number> = {
 };
 
 /** proj4js's `match`: exact, else ignoring case, spaces, `_`, `-`, `/` and parentheses. */
-function lookup<T>(table: Record<string, T>, key: string): T | undefined {
+export function lookup<T>(table: Record<string, T>, key: string): T | undefined {
   if (Object.hasOwn(table, key)) return table[key];
   const norm = (k: string) => k.toLowerCase().replace(/[\s_\-/()]/g, "");
   const found = Object.keys(table).find((k) => norm(k) === norm(key));

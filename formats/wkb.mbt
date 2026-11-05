@@ -1,8 +1,7 @@
 ///|
-/// Reads WKB or EWKB geometries one after another into rows as `read_wkt` does; each
-/// has its own byte order and an ISO type code or EWKB flags (an SRID, once per
-/// geometry, goes to `srids` as `read_wkt`'s). A point of NaN coordinates is empty;
-/// any other coordinate must be finite.
+/// Reads WKB or EWKB geometries one after another into rows as `read_wkt` does, each in
+/// its byte order with an ISO code or EWKB flags (SRIDs to `srids`). A point of NaN
+/// coordinates is empty; any other coordinate must be finite.
 pub fn read_wkb(
   bytes : BytesView,
   srids? : Array[Int32],

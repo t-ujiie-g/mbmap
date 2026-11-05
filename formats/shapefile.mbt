@@ -1,10 +1,7 @@
 ///|
-/// Reads a shapefile: its .shp (`shp`) and, if given, its .dbf (`dbf`), a row per
-/// record (npm/README.md `mbmap/data` has the rules). Points, multipoints, lines and
-/// polygons in XY, M and Z (Z and M dropped); a null shape makes a row without
-/// geometry; records deleted in the .dbf are left out. `text` decodes the .dbf's
-/// bytes `dbf[start:end]` that are not ASCII (its encoding is the caller's), and
-/// `slow_number` parses its numbers past the fast path, as `read_csv`'s.
+/// Reads a shapefile's .shp and .dbf into a row per record not deleted (npm/README.md
+/// `mbmap/data`). `text` decodes `dbf[start:end]` where it is not ASCII, in the .dbf's
+/// encoding; `slow_number` parses its numbers past the fast path, as `read_csv`'s.
 pub fn read_shapefile(
   shp : BytesView,
   dbf : BytesView?,
@@ -319,10 +316,9 @@ fn Rings::assign(self : Rings, outer_cw : Bool) -> Int32 {
 }
 
 ///|
-/// Writes the rings as polygons, each outer ring counter-clockwise followed by its
-/// holes clockwise, and returns the kind. Clockwise rings are outer as shapefiles
-/// have them; if some hole then lies in no outer ring but the reverse reading leaves
-/// none astray, that one is taken (as shpjs does), else stray holes are outer rings.
+/// Writes the rings as polygons (outer rings counter-clockwise, holes clockwise) and gives
+/// the kind. Clockwise rings are outer, unless holes then go astray and the other way
+/// round none do (as shpjs reads them); holes still astray are outer rings.
 fn Rings::write_polygons(
   self : Rings,
   out : @geom.TableBuilder,

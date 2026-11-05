@@ -60,10 +60,9 @@ let guessed_delimiters : FixedArray[Byte] = [
 ]
 
 ///|
-/// Reads CSV (RFC 4180, with CRLF, LF or CR row ends) into a table, a row per CSV
-/// row and per member of its geometry (npm/README.md `mbmap/data` has the rules).
-/// `slow_number` parses the numbers the fast path cannot, from offsets into `bytes`.
-/// `srids` gets each row's SRID as `read_wkt`'s (0 for latitude and longitude columns).
+/// Reads CSV (RFC 4180, CRLF, LF or CR row ends) into a row per CSV row and member of its
+/// geometry (npm/README.md `mbmap/data`); `slow_number` parses numbers past the fast path
+/// from offsets into `bytes`; `srids` gets each row's SRID as `read_wkt`'s.
 pub fn read_csv(
   bytes : BytesView,
   options : CsvOptions,

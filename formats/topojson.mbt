@@ -1,10 +1,7 @@
 ///|
-/// Reads a TopoJSON Topology into a table: the object named `object`, or the first
-/// one, as topojson-client's `feature` makes features of it (a GeometryCollection
-/// object's members are features; collections inside them are flattened into rows,
-/// as `read_wkt` does), each with its `id` and `properties` (nested values as their
-/// JSON text). Returns the table and the names of every object, in order.
-/// `slow_number` as `read_geojson`'s.
+/// Reads the object `object` (or the first) of a TopoJSON Topology as topojson-client's
+/// `feature` makes features of it, collections in them flattened (npm/README.md
+/// `mbmap/data`); gives the table and the objects' names. `slow_number` as `read_geojson`'s.
 pub fn read_topojson(
   bytes : BytesView,
   object : String?,
@@ -14,9 +11,8 @@ pub fn read_topojson(
 }
 
 ///|
-/// Reading state over `Parser`'s JSON primitives (numbers read by `read_decimal`):
-/// the arcs (`coords`, `ends`; positions once decoded), the transform (scale x and
-/// y, translate x and y), the objects' names and value ranges, and the geometry
+/// Reading state over `Parser`'s JSON primitives: the arcs (`coords`, `ends`), the
+/// transform (scale x, y, translate x, y), the objects' names and starts, the geometry
 /// being read.
 priv struct Topo {
   p : Parser
