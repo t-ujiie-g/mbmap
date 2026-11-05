@@ -40,4 +40,8 @@ test("parsePrj refuses WKT2, other CRS types, unknown projections and malformed 
     assert.throws(() => parsePrj(bad), /\.prj: /);
   }
   assert.throws(() => parsePrj("GEOGCS[".repeat(40)), /nested too deep/);
+  // A __proto__ key is an ordinary one, and changes no object's prototype.
+  const prj = parsePrj(`GEOGCS["g",DATUM["d",SPHEROID["s",6378137,298.257223563]],PARAMETER["__proto__",PROJECTION["x"]],UNIT["degree",0.0174532925199433]]`);
+  assert.equal(prj.definition![0], 0);
+  assert.equal(({} as Record<string, unknown>).PROJECTION, undefined);
 });

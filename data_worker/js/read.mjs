@@ -82,10 +82,9 @@ const isName = (n) => n === undefined || (typeof n === "string" && n.length > 0 
 export const isZip = (b) => b.length >= 4 && b[0] === 0x50 && b[1] === 0x4b && (b[2] === 3 || b[2] === 5);
 
 /**
- * A reader over data.wasm's exports (`imports` as `dataImports` made them): `read(format, parts,
- * options)` with `parts.data` (bytes) or, for a shapefile, `parts.shp`, `dbf`, `prj`, `cpg` (bytes);
- * returns `{ table, ids, layer, layers }` (ArrayBuffers, `ids` null without feature ids). `proj()`
- * gives proj.wasm's exports and `prj()` the module of npm/src/prjwkt.ts, each loaded on first use.
+ * A reader over data.wasm (`imports` from `dataImports`): `read(format, parts, options)` with `parts.data`
+ * or a shapefile's `shp`, `dbf`, `prj`, `cpg` bytes gives `{ table, ids, layer, layers }`; `proj()` and
+ * `prj()` load proj.wasm's exports and npm/src/prjwkt.ts on first use.
  */
 export function dataReader(wasm, imports, { proj, prj }) {
   async function shapefile(files, options) {

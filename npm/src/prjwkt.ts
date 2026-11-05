@@ -1,7 +1,6 @@
-// A shapefile's .prj (Esri or OGC WKT1) read as wkt-parser 1.6.0 (parser.js,
-// process.js, index.js) and proj4js 2.22.0 (lib/Proj.js, lib/parseCode.js) read
-// one, MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE. Loaded by the
-// data worker on the first .prj; imports only the datum table of projstring.ts.
+// A .prj (Esri or OGC WKT1) read as wkt-parser 1.6.0 and proj4js 2.22.0 (lib/Proj.js, parseCode.js)
+// read one, MIT License, Copyright (c) 2014 Mike Adair et al.; see NOTICE. Loaded by the data
+// worker on the first .prj; imports only the datum table of projstring.ts.
 import { DATUMS, lookup } from "./projstring.ts";
 
 const D2R = 0.01745329251994329577;
@@ -69,10 +68,13 @@ function parse(text: string): Node {
 
 type Obj = Record<string, any>;
 
-// wkt-parser's `sExpr`: a node into `obj`'s key.
-function sExpr(v: Node | string | number, obj: Obj): void {
+// Objects without a prototype, so that a WKT key like `__proto__` is a key like any other.
+const obj = (fields: Obj = {}): Obj => Object.assign(Object.create(null), fields);
+
+// wkt-parser's `sExpr`: a node added to `into` under its keyword.
+function sExpr(v: Node | string | number, into: Obj): void {
   if (!Array.isArray(v)) {
-    obj[v] = true;
+    into[v] = true;
     return;
   }
   v = v.slice();
@@ -80,34 +82,34 @@ function sExpr(v: Node | string | number, obj: Obj): void {
   if (key === "PARAMETER") key = v.shift() as string;
   if (v.length === 1) {
     if (Array.isArray(v[0])) {
-      obj[key] = {};
-      sExpr(v[0], obj[key]);
-    } else obj[key] = v[0];
+      into[key] = obj();
+      sExpr(v[0], into[key]);
+    } else into[key] = v[0];
     return;
   }
   if (!v.length) {
-    obj[key] = true;
+    into[key] = true;
     return;
   }
   if (key === "TOWGS84") {
-    obj[key] = v;
+    into[key] = v;
     return;
   }
   if (key === "AXIS") {
-    (obj[key] ??= []).push(v);
+    (into[key] ??= []).push(v);
     return;
   }
   switch (key) {
     case "UNIT":
     case "PRIMEM":
     case "VERT_DATUM":
-      obj[key] = { name: String(v[0]).toLowerCase(), convert: v[1] };
-      if (v.length === 3) sExpr(v[2], obj[key]);
+      into[key] = obj({ name: String(v[0]).toLowerCase(), convert: v[1] });
+      if (v.length === 3) sExpr(v[2], into[key]);
       return;
     case "SPHEROID":
     case "ELLIPSOID":
-      obj[key] = { name: v[0], a: v[1], rf: v[2] };
-      if (v.length === 4) sExpr(v[3], obj[key]);
+      into[key] = obj({ name: v[0], a: v[1], rf: v[2] });
+      if (v.length === 4) sExpr(v[3], into[key]);
       return;
     case "DATUM":
     case "VERT_CS":
@@ -117,13 +119,13 @@ function sExpr(v: Node | string | number, obj: Obj): void {
     case "GEOGCS":
     case "GEOCCS":
     case "LOCAL_CS":
-      obj[key] = v.slice(1).reduce((o: Obj, item) => (sExpr(item, o), o), { name: v[0] });
-      if (key !== "DATUM" && key !== "VERT_CS") obj[key].type = key;
+      into[key] = v.slice(1).reduce((o: Obj, item) => (sExpr(item, o), o), obj({ name: v[0] }));
+      if (key !== "DATUM" && key !== "VERT_CS") into[key].type = key;
       return;
     default:
-      obj[key] = {};
-      if (v.some((item) => !Array.isArray(item))) sExpr(v, obj[key]);
-      else for (const item of v) sExpr(item, obj[key]);
+      into[key] = obj();
+      if (v.some((item) => !Array.isArray(item))) sExpr(v, into[key]);
+      else for (const item of v) sExpr(item, into[key]);
   }
 }
 
@@ -155,7 +157,7 @@ export function parsePrj(text: string): { code?: number; definition?: Float64Arr
   const tree = parse(text);
   const type = tree[0];
   if (type !== "PROJCS" && type !== "GEOGCS") fail(`unsupported CRS type ${String(type)}`);
-  const holder: Obj = {};
+  const holder = obj();
   sExpr(tree, holder);
   const w = holder[type as string];
   const authority = w.AUTHORITY && Object.keys(w.AUTHORITY)[0];
@@ -168,7 +170,7 @@ export function parsePrj(text: string): { code?: number; definition?: Float64Arr
     if (code !== undefined) return { code };
     fail(`unsupported projection ${projName}`);
   }
-  const geogcs = type === "GEOGCS" ? w : w.GEOGCS ?? {};
+  const geogcs = type === "GEOGCS" ? w : w.GEOGCS ?? obj();
   const units = w.UNIT?.convert;
   const toMeter = type === "PROJCS" && units ? units : undefined;
   for (const [to, from, convert] of RENAMES) {

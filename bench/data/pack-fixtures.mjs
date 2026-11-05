@@ -1,7 +1,6 @@
-// Writes the pack test's shapefile and TopoJSON fixtures into bench/npm/pages/data/: two
-// areas by Tokyo Station in JGD2011 plane rectangular IX (Shift_JIS names, an Esri .prj),
-// loose and zipped, refused archives, and lines as quantized TopoJSON.
-// Usage: node data/pack-fixtures.mjs (bench/npm/pack-test.mjs keeps WARDS in step).
+// Writes the pack test's fixtures into bench/npm/pages/data/: WARDS in plane IX as shapefiles
+// (Shift_JIS, an Esri .prj; loose and zipped), refused archives, lines as quantized TopoJSON.
+// Usage: node data/pack-fixtures.mjs (bench/npm/pack-test.mjs imports WARDS).
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import proj4 from "proj4";
