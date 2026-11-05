@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 128383,
+      "bytes": 128508,
       "budget": 135000
     },
     {
@@ -16,7 +16,7 @@
     },
     {
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
-      "bytes": 759,
+      "bytes": 770,
       "budget": 2000
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 8282,
+      "bytes": 8284,
       "budget": 10000
     },
     {
@@ -76,7 +76,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 80767,
+      "bytes": 80791,
       "budget": 100000
     },
     {
@@ -86,7 +86,7 @@
     },
     {
       "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
-      "bytes": 2029,
+      "bytes": 2169,
       "budget": 3000
     },
     {
@@ -96,12 +96,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29534,
+      "bytes": 29490,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49229,
+      "bytes": 49223,
       "budget": 50000
     },
     {
@@ -116,12 +116,12 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28597,
+      "bytes": 28606,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 41815,
+      "bytes": 41822,
       "budget": 50000
     },
     {
@@ -136,7 +136,7 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12018,
+      "bytes": 12017,
       "budget": 15000
     },
     {
@@ -146,7 +146,7 @@
     },
     {
       "name": "data worker",
-      "bytes": 38672,
+      "bytes": 38726,
       "budget": 40000
     },
     {
@@ -156,7 +156,7 @@
     },
     {
       "name": "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)",
-      "bytes": 2304,
+      "bytes": 2340,
       "budget": 2500
     },
     {
@@ -166,17 +166,17 @@
     },
     {
       "name": ".prj WKT (loaded by the data worker on the first .prj)",
-      "bytes": 3711,
+      "bytes": 3780,
       "budget": 4000
     },
     {
       "name": "KML and GPX (loaded by the data worker on the first such read)",
-      "bytes": 25660,
+      "bytes": 25636,
       "budget": 26000
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
-      "bytes": 19189,
+      "bytes": 19344,
       "budget": 20000
     },
     {
@@ -241,7 +241,7 @@
     },
     {
       "name": "mbmap/ui createAttributeTable alone",
-      "bytes": 1991,
+      "bytes": 1996,
       "budget": 2000
     }
   ]

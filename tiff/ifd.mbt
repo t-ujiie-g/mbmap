@@ -1,6 +1,13 @@
+// Ported from geotiff 3.0.5: MIT License, Copyright (c) 2015 EOX IT Services GmbH. See NOTICE.
+
 ///|
 /// Most images (IFDs) read from one file.
 pub const MAX_IMAGES : Int32 = 256
+
+///|
+/// Most pixels a tile may reach past its image: a small overview keeps its file's tile size,
+/// but a tile far larger than its image only makes one tiny file decode a large block.
+let max_tile_overhang : Double = 4096.0
 
 ///|
 /// Most entries in one IFD, and most values in one entry.
@@ -416,7 +423,9 @@ fn Tiff::image(
     )
   }
   if !(block_width >= 1.0 && block_height >= 1.0) ||
-    block_width * block_height > 64.0 * 1024.0 * 1024.0 {
+    block_width * block_height > 64.0 * 1024.0 * 1024.0 ||
+    block_width > width.to_double() + max_tile_overhang ||
+    block_height > height.to_double() + max_tile_overhang {
     fail("invalid tile size")
   }
   let mut pixel = 0

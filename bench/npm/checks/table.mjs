@@ -1,11 +1,12 @@
 // The showcase's attribute table (mbmap/ui's createAttributeTable over the places' GeoJSON source):
 // sorted by a header's click, filtered by the query box (folded as the search folds), paged, and a
 // row's click selecting the place (feature state) and fitting the map to it.
-import { awaitAfter } from "./step.mjs";
+import { awaitAfter, openTab } from "./step.mjs";
 
 const NAMES_PER_PAGE = 6;
 
 export async function tableChecks(page) {
+  await openTab(page, "data");
   await page.waitForFunction(() => window.__table?.state.total > 0 && !window.__table.state.loading);
   const state = () =>
     page.evaluate(() => {

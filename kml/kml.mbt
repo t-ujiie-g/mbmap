@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 /// Reads a KML document into rows as togeojson's `kml()` does: every `Placemark`, then every
 /// `GroundOverlay` (no `NetworkLink`s); a multi-geometry gives a row per member, nested values are

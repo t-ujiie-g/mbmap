@@ -26,7 +26,7 @@ test("rowsOf: ids from the feature or a property; pieces of one id become one ro
     { id: 0, properties: null },
   ]);
   assert.deepEqual(rows, [
-    { id: 7, properties: { name: "a" }, geometry: { type: "GeometryCollection", geometries: [{ type: "GeometryCollection", geometries: [a, b] }, point(-1, 0)] } },
+    { id: 7, properties: { name: "a" }, geometry: { type: "GeometryCollection", geometries: [a, b, point(-1, 0)] } },
     { id: null, properties: { name: "b" }, geometry: point(5, 5) },
     { id: null, properties: { name: "b" }, geometry: null },
     { id: 0, properties: {}, geometry: null },
@@ -35,6 +35,16 @@ test("rowsOf: ids from the feature or a property; pieces of one id become one ro
   assert.equal(boxOf(rows[2].geometry), null);
   const promoted = rowsOf([{ id: 1, properties: { name: "東京駅" } }, { properties: { name: "上野駅" } }, { properties: {} }], "name");
   assert.deepEqual(promoted.map((r) => r.id), ["東京駅", "上野駅", null]);
+});
+
+test("rowsOf: many pieces of one id stay one level deep, also after a collection", () => {
+  const pieces = Array.from({ length: 50000 }, (_, i) => ({ id: 1, geometry: point(i, 0) }));
+  const [many] = rowsOf(pieces);
+  assert.equal(many.geometry?.geometries?.length, 50000);
+  assert.deepEqual(boxOf(many.geometry), [0, 0, 49999, 0]);
+  const own = { type: "GeometryCollection", geometries: [point(1, 1)] };
+  const [row] = rowsOf([{ id: 2, geometry: own }, { id: 2, geometry: point(2, 2) }]);
+  assert.deepEqual(row.geometry, { type: "GeometryCollection", geometries: [point(1, 1), point(2, 2)] });
 });
 
 test("columnsOf: every key in the order first seen", () => {

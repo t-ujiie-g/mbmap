@@ -26,6 +26,17 @@ test("levelBounds and treeBytes lay the tree out as flatgeobuf does", () => {
   assert.equal(treeBytes(10, 1), (10 + 5 + 3 + 2 + 1) * 40);
 });
 
+test("a node size under 2 is read as 2, as flatgeobuf's calcTreeSize clamps it", async () => {
+  assert.deepEqual(levelBounds(2, 1), levelBounds(2, 2));
+  assert.deepEqual(levelBounds(3, 0), levelBounds(3, 2));
+  assert.equal(treeBytes(3, 1), treeBytes(3, 2));
+  assert.deepEqual(await search(3, 1, [0, 0, 5.5, 5.5], tree(THREE)), await search(3, 2, [0, 0, 5.5, 5.5], tree(THREE)));
+});
+
+test("levelBounds of no items ends", () => {
+  assert.deepEqual(levelBounds(0, 16), [[0, 0], [0, 0]]);
+});
+
 test("search finds the features whose boxes meet the rectangle, with their lengths", async () => {
   assert.deepEqual(await search(3, 2, [0, 0, 5.5, 5.5], tree(THREE)), [[0, 0, 100], [100, 1, 150]]);
   assert.deepEqual(await search(3, 2, [10, 10, 12, 12], tree(THREE)), [[250, 2, null]]);
@@ -63,4 +74,34 @@ test("a bbox needs an index and a valid rectangle", async () => {
   for (const bbox of [[0, 0, 1], [1, 0, 0, 1], [0, 0, NaN, 1], "0,0,1,1"]) {
     await assert.rejects(selectUrl("http://127.0.0.1:1/x.fgb", undefined, bbox, 1000, {}), /invalid bbox/);
   }
+});
+
+// A file with an index of `nodeSize` whose two leaves both name one feature of `size` bytes.
+function shared(nodeSize, size) {
+  const b = new Uint8Array(60 + 3 * 40 + 4 + size);
+  const v = new DataView(b.buffer);
+  b.set([0x66, 0x67, 0x62, 3]);
+  v.setUint32(8, 48, true);
+  v.setUint32(12, 28, true);
+  v.setUint16(16, 24, true);
+  v.setUint16(36, 8, true);
+  v.setUint16(38, 16, true);
+  v.setInt32(40, 24, true);
+  v.setBigUint64(48, 2n, true);
+  v.setUint16(56, nodeSize, true);
+  [[0, 0, 1, 1, 1], [0, 0, 1, 1, 0], [0, 0, 1, 1, 0]].forEach((n, i) => {
+    for (let k = 0; k < 4; k++) v.setFloat64(60 + i * 40 + k * 8, n[k], true);
+    v.setBigUint64(60 + i * 40 + 32, BigInt(n[4]), true);
+  });
+  v.setUint32(180, size, true);
+  return b;
+}
+
+test("selectBytes takes a clamped node size and stops at max before allocating", async () => {
+  const file = shared(1, 100);
+  assert.deepEqual(readHeader(file), { length: 48, count: 2, nodeSize: 1, crs: null });
+  const { bytes, ids } = await selectBytes(file, [0, 0, 1, 1], 1000);
+  assert.equal(ids, 2);
+  assert.equal(bytes.length, 60 + 2 * 104 + 8);
+  await assert.rejects(selectBytes(shared(2, 100), [0, 0, 1, 1], 200), /data larger than 200 bytes/);
 });

@@ -1,3 +1,5 @@
+// Ported from geotiff 3.0.5: MIT License, Copyright (c) 2015 EOX IT Services GmbH. See NOTICE.
+
 ///|
 /// Most bytes of one window's bands.
 pub const MAX_WINDOW_BYTES : Int32 = 256 * 1024 * 1024

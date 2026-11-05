@@ -1,3 +1,6 @@
+// Ported from @xmldom/xmldom 0.9.12: MIT License, Copyright 2019 - present Christopher J. Brody
+// and other contributors, Copyright 2012 - 2017 @jindw and other contributors. See NOTICE.
+
 ///|
 /// Deepest element nesting a document may have (AGENTS.md §8.2).
 pub const MAX_XML_DEPTH : Int32 = 256

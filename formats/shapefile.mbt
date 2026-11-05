@@ -1,3 +1,6 @@
+// Ported from shpjs 6.2.0 and parsedbf 2.0.0: MIT License, Copyright (c) 2013 Calvin Metcalf
+// and other shapefile-js contributors. See NOTICE.
+
 ///|
 /// Reads a shapefile's .shp and .dbf into a row per record not deleted (npm/README.md
 /// `mbmap/data`). `text` decodes `dbf[start:end]` where it is not ASCII, in the .dbf's

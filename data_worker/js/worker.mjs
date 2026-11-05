@@ -2,8 +2,8 @@
 // docs/FORMATS.md ("Data worker messages").
 
 import { hostText, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
-import { fetchInit, readCapped } from "../../worker/js/body.mjs";
-import { dataImports, dataReader, rasterSource } from "./read.mjs";
+import { dataFetchInit, readCapped } from "../../worker/js/body.mjs";
+import { dataImports, dataReader, isCrs, rasterSource } from "./read.mjs";
 
 let reader = null;
 let ready = null;
@@ -41,7 +41,7 @@ async function bytesOf({ url, init, blob, bytes }, optional = false) {
     return new Uint8Array(await blob.arrayBuffer());
   }
   check(typeof url === "string" && /^https?:/i.test(url));
-  const res = await fetch(url, fetchInit(init));
+  const res = await fetch(url, dataFetchInit(init));
   if (optional && res.status === 404) return null;
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return readCapped(res, MAX_INPUT_BYTES);
@@ -52,7 +52,7 @@ async function read(msg) {
   check(FORMATS.includes(format) && options && typeof options === "object");
   const { crs, layer, encoding, bbox } = options;
   check(bbox === undefined || (format === "flatgeobuf" && Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)));
-  check(crs === undefined || (Number.isInteger(crs) && crs > 0) || crs instanceof Float64Array);
+  check(crs === undefined || isCrs(crs));
   check((layer === undefined || typeof layer === "string") && (encoding === undefined || typeof encoding === "string"));
   const files = {};
   if (parts && typeof parts === "object") {

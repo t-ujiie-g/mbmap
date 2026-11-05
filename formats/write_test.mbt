@@ -95,7 +95,7 @@ test "write_csv writes a row of no values without delimiters, and no rows as one
 }
 
 ///|
-test "wkt_of writes every kind as betterknown does" {
+test "wkt_of writes every kind" {
   let b = @geom.TableBuilder::new()
   for k in 0..<2 {
     b.point(k.to_double(), 0)

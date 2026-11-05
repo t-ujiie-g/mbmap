@@ -4,6 +4,7 @@
 import { sampleDem } from "mbmap/analysis";
 import { measure } from "mbmap/geodesic";
 import { createProfile, formatLength } from "mbmap/ui";
+import { showRows } from "./readout.js";
 import { DEM_TILES } from "./style.js";
 
 export const CHART = { width: 260, height: 110, pad: 4 };
@@ -102,7 +103,7 @@ export function mountProfile(map, measurement) {
   trackProfile(map, profile, document.body);
   const figure = document.getElementById("profile");
   const chart = svg("svg", { viewBox: `0 0 ${CHART.width} ${CHART.height}`, class: "profile-chart", role: "img", "aria-label": "断面図" });
-  const dl = document.createElement("dl");
+  const dl = Object.assign(document.createElement("dl"), { className: "rows" });
   figure.replaceChildren(chart, dl);
   chart.addEventListener("pointermove", (e) => profile.highlight(distanceAt(profile.state, chart, e.clientX)));
   chart.addEventListener("pointerleave", () => profile.highlight(null));
@@ -119,7 +120,7 @@ export function mountProfile(map, measurement) {
       chart.append(top, bottom);
       if (c.at) chart.append(svg("circle", { cx: c.at.x, cy: c.at.y, r: 3.5, class: "profile-at" }));
     }
-    dl.replaceChildren(...profileRows(s).flatMap(([k, v]) => [Object.assign(document.createElement("dt"), { textContent: k }), Object.assign(document.createElement("dd"), { textContent: v })]));
+    showRows(dl, profileRows(s));
   };
   profile.subscribe(draw);
   draw(profile.state);

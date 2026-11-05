@@ -1,18 +1,44 @@
 <!doctype html>
+<html lang="ja">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mbmap examples</title>
+<link rel="icon" href="data:,">
 <style>
-  body { margin: 0 auto; max-width: 720px; padding: 24px 16px; font: 15px/1.6 system-ui, sans-serif; color: #222; }
-  li { margin-bottom: 12px; }
-  code { background: #f2f2f2; padding: 0 4px; border-radius: 3px; }
-  small { color: #666; }
+  :root { --ink: #1c2330; --muted: #5d6878; --line: #e2e5ea; --accent: #2f5bd0; --soft: #f4f5f7; }
+  body { margin: 0 auto; max-width: 860px; padding: 56px 20px 40px; font: 15px/1.7 system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif; color: var(--ink); background: #fff; }
+  h1 { margin: 0; font-size: 40px; line-height: 1.1; letter-spacing: -0.02em; }
+  .lead { margin: 12px 0 32px; max-width: 40em; font-size: 17px; color: var(--muted); }
+  h2 { margin: 40px 0 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { display: block; padding: 16px; color: inherit; text-decoration: none; border: 1px solid var(--line); border-radius: 12px; }
+  .card:hover { border-color: var(--accent); }
+  .card b { display: block; font-size: 16px; color: var(--accent); }
+  .card span { display: block; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+  code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .card code { display: block; padding: 6px 8px; overflow-wrap: anywhere; background: var(--soft); border-radius: 6px; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 24px; margin: 0; }
+  .features dt { margin-top: 10px; font-weight: 600; }
+  .features dd { margin: 0; font-size: 13.5px; color: var(--muted); }
+  footer { margin-top: 48px; padding-top: 16px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); }
 </style>
-<h1>mbmap examples</h1>
-<p>同じ地図アプリを 3 通りの書き方で作っています。2D と 3D（地形・建物・空）の切り替え、地点への移動、カメラの状態と平面直角座標、中心から 5 km 以内の地点（<code>mbmap/analysis</code> のバッファと点の判定）を表示します。</p>
-<ul>
-  <li><a href="./html/">素の HTML</a> — <code>import { Map } from "mbmap"</code> と DOM で書く。</li>
-  <li><a href="./element/">Web Component</a> — <code>&lt;mb-map&gt;</code> の属性・プロパティ・イベントで書く。</li>
-  <li><a href="./react/">React</a> — React 19 から <code>&lt;mb-map&gt;</code> を JSX で使う。</li>
-</ul>
-<p><small>地図は国土地理院の配信タイルを直接読みます（出典：国土地理院ベクトルタイル提供実験、国土地理院 標高タイル）。<code>?local=1</code> を付けると、ベンチ用に取得した東京駅周辺の z14 のタイル（<code>bench/fixtures</code>）を読みます。</small></p>
+<h1>mbmap</h1>
+<p class="lead">MoonBit で書いた、Web のためのベクトルタイル地図エンジン。同じ地図アプリを 3 通りの書き方で作っています。</p>
+
+<h2>書き方を選ぶ</h2>
+<div class="cards">
+  <a class="card" href="./html/"><b>HTML</b><span>素の DOM から使う</span><code>import { Map } from "mbmap"</code></a>
+  <a class="card" href="./element/"><b>Web Component</b><span>属性とイベントで使う</span><code>&lt;mb-map center="139.77,35.68"&gt;</code></a>
+  <a class="card" href="./react/"><b>React</b><span>React 19 の JSX から使う</span><code>&lt;mb-map onmb-load={onLoad} /&gt;</code></a>
+</div>
+
+<h2>アプリでできること</h2>
+<dl class="features">
+  <div><dt>探す</dt><dd>地名と座標の検索、地点への移動、クリックした地物、周辺の地点</dd></div>
+  <div><dt>レイヤー</dt><dd>2D と 3D（地形・建物・空）、地図と空中写真、レイヤーの切り替え、凡例</dd></div>
+  <div><dt>作図</dt><dd>点・線・多角形・円、編集、スナップ、分割と結合</dd></div>
+  <div><dt>計測</dt><dd>楕円体の上の距離と面積、標高の断面図</dd></div>
+  <div><dt>データ</dt><dd>CSV、Shapefile、KML、GPX などの読み込みと書き出し、属性テーブル</dd></div>
+</dl>
+
+<footer>地図は国土地理院の配信タイルを直接読みます（出典：国土地理院ベクトルタイル提供実験、国土地理院 標高タイル）。<code>?local=1</code> を付けると、ベンチ用に取得した東京駅周辺の z14 のタイル（<code>bench/fixtures</code>）を読みます。</footer>

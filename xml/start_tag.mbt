@@ -1,3 +1,6 @@
+// Ported from @xmldom/xmldom 0.9.12: MIT License, Copyright 2019 - present Christopher J. Brody
+// and other contributors, Copyright 2012 - 2017 @jindw and other contributors. See NOTICE.
+
 ///|
 /// States of xmldom's `parseElementStartPart`: `s_tag` reading the name,
 /// `s_attr` an attribute's name, `s_attr_space` spaces after it, `s_eq` after
