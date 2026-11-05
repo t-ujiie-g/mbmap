@@ -1,11 +1,13 @@
-// The data module: CSV, WKT and WKB read into `@geom.Table` bytes, numbers
-// past the fast path parsed by the host. js/worker.mjs is its glue.
+// The data module: CSV, WKT, WKB, shapefiles and TopoJSON read into `@geom.Table`
+// bytes, numbers past the fast path parsed and DBF text decoded by the host.
+// js/worker.mjs is its glue.
 
 import {
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/wasmio",
+  "moonbitlang/core/cmp",
 }
 
 supported_targets = "+wasm-gc"

@@ -13,6 +13,8 @@ pub const MAX_CSV_COLUMNS : Int32 = 4096
 
 pub const MAX_CSV_FIELD_BYTES : Int32 = 16777216
 
+pub const MAX_DBF_CELLS : Int32 = 32_000_000
+
 pub const MAX_GEOJSON_CELLS : Int32 = 32_000_000
 
 pub const MAX_GEOJSON_DEPTH : Int32 = 64
@@ -25,15 +27,19 @@ pub const MAX_GEOMETRY_DEPTH : Int32 = 32
 
 pub const MAX_POINTS : Int32 = 20_000_000
 
-pub fn read_csv(BytesView, CsvOptions, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise ReadError
+pub fn read_csv(BytesView, CsvOptions, slow_number? : (Int32, Int32) -> Double, srids? : Array[Int32]) -> @geom.Table raise ReadError
 
 pub fn read_geojson(BytesView, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise GeoJSONError
 
-pub fn read_wkb(BytesView) -> @geom.Table raise ReadError
+pub fn read_shapefile(BytesView, BytesView?, text~ : (Int32, Int32) -> String, slow_number~ : (Int32, Int32) -> Double) -> @geom.Table raise ReadError
 
-pub fn read_wkb_hex(BytesView) -> @geom.Table raise ReadError
+pub fn read_topojson(BytesView, String?, slow_number~ : (Int32, Int32) -> Double) -> (@geom.Table, Array[String]) raise ReadError
 
-pub fn read_wkt(BytesView, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise ReadError
+pub fn read_wkb(BytesView, srids? : Array[Int32]) -> @geom.Table raise ReadError
+
+pub fn read_wkb_hex(BytesView, srids? : Array[Int32]) -> @geom.Table raise ReadError
+
+pub fn read_wkt(BytesView, slow_number? : (Int32, Int32) -> Double, srids? : Array[Int32]) -> @geom.Table raise ReadError
 
 // Errors
 pub(all) suberror GeoJSONError {

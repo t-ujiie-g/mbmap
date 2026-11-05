@@ -192,8 +192,19 @@ test "malformed WKB is refused" {
     "malformed WKB at 1: unsupported geometry type",
   )
   assert_eq(
-    Wkb::new().header(true, 0x20000001).u32(3857).xy(1, 2).error(),
-    "malformed WKB at 5: only SRID 4326 is supported",
+    Wkb::new().header(true, 0x20000001).u32(-1).xy(1, 2).error(),
+    "malformed WKB at 5: invalid SRID",
+  )
+  assert_eq(
+    Wkb::new()
+    .header(true, 0x20000004)
+    .u32(3857)
+    .u32(1)
+    .header(true, 0x20000001)
+    .u32(4326)
+    .xy(1, 2)
+    .error(),
+    "malformed WKB at 18: mixed SRIDs in one geometry",
   )
   assert_eq(
     Wkb::new().header(true, 2).u32(1000).xy(1, 2).error(),
@@ -222,6 +233,32 @@ test "malformed WKB is refused" {
   }
   deep.header(true, 1).xy(1, 2) |> ignore
   assert_eq(deep.error(), "malformed WKB at 297: collections nested too deep")
+}
+
+///|
+test "EWKB gives each row its SRID" {
+  let b = Wkb::new()
+    .header(true, 0x20000004)
+    .u32(3857)
+    .u32(2)
+    .header(true, 1)
+    .xy(1, 2)
+    .header(false, 0x20000001)
+    .u32(3857)
+    .xy(3, 4)
+    .header(true, 1)
+    .xy(5, 6)
+  let srids = []
+  let t = @formats.read_wkb(Bytes::from_array(b.out)[:], srids~)
+  assert_eq(t.length(), 2)
+  assert_eq(srids, [3857, 0])
+  let hex = []
+  @formats.read_wkb_hex(
+    b"0101000020e6100000000000000000084000000000000010c0",
+    srids=hex,
+  )
+  |> ignore
+  assert_eq(hex, [4326])
 }
 
 ///|

@@ -63,14 +63,16 @@ let guessed_delimiters : FixedArray[Byte] = [
 /// Reads CSV (RFC 4180, with CRLF, LF or CR row ends) into a table, a row per CSV
 /// row and per member of its geometry (npm/README.md `mbmap/data` has the rules).
 /// `slow_number` parses the numbers the fast path cannot, from offsets into `bytes`.
+/// `srids` gets each row's SRID as `read_wkt`'s (0 for latitude and longitude columns).
 pub fn read_csv(
   bytes : BytesView,
   options : CsvOptions,
   slow_number~ : (Int32, Int32) -> Double = (s, e) => {
     @core.strconv_number(bytes[s:e])
   },
+  srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  csv_table(bytes, options, slow_number, MAX_POINTS, MAX_CSV_CELLS)
+  csv_table(bytes, options, slow_number, MAX_POINTS, MAX_CSV_CELLS, srids)
 }
 
 ///|
@@ -375,6 +377,7 @@ fn csv_table(
   slow : (Int32, Int32) -> Double,
   max_points : Int32,
   max_cells : Int32,
+  srids : Array[Int32]?,
 ) -> @geom.Table raise ReadError {
   let bom = bytes.length() >= 3 &&
     bytes[0] == b'\xef' &&
@@ -449,7 +452,7 @@ fn csv_table(
       break
     }
     used += shapes.points()
-    shapes.emit(out, props)
+    shapes.emit(out, props, srids)
     let t = out.table
     if t.length().to_double() * t.columns.length().to_double() >
       max_cells.to_double() {
