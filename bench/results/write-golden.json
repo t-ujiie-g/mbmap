@@ -1,0 +1,51 @@
+{
+  "env": {
+    "node": "v22.23.4",
+    "papaparse": "5.7.0",
+    "betterknown": "1.2.0",
+    "@placemarkio/tokml": "0.4.0",
+    "tiles": [
+      "14/14552/6451",
+      "14/14551/6450",
+      "14/14553/6452"
+    ]
+  },
+  "results": {
+    "gsi csv": {
+      "cases": 34,
+      "bytes": 27376862,
+      "identical": 34,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "gsi kml": {
+      "cases": 8,
+      "bytes": 16852041,
+      "identical": 8,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "cases csv": {
+      "cases": 32,
+      "bytes": 3906,
+      "identical": 32,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "cases kml": {
+      "cases": 7,
+      "bytes": 6292,
+      "identical": 7,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "refused": {
+      "cases": 2,
+      "bytes": 0,
+      "identical": 0,
+      "bothRefuse": 2,
+      "differ": 0
+    }
+  },
+  "differ": 0
+}

@@ -3,11 +3,11 @@
 // source's data (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
 import { tableInfo, tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { crsArg, type Crs } from "./crs";
-import { bboxArg, csvArgs, formatOf, shapefileParts, type CsvOptions, type DataFormat, type ShapefileParts } from "./data-format";
+import { bboxArg, csvArgs, csvWriteArgs, formatOf, shapefileParts, type CsvOptions, type CsvWriteOptions, type DataFormat, type ShapefileParts, type WriteFormat } from "./data-format";
 import { httpUrl, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
-export type { CsvOptions, DataFormat, ShapefileParts, Crs };
+export type { CsvOptions, CsvWriteOptions, DataFormat, ShapefileParts, WriteFormat, Crs };
 
 /** What `DataTable.toGeoJSON` gives: a feature per row, its geometry null without one. */
 export interface DataFeatureCollection {
@@ -85,6 +85,11 @@ export class DataTable {
     return this.#ids ? withIds(fc, this.#ids) : fc;
   }
 
+  /** @internal The rows and ids as the data worker's `write` takes them (copies). */
+  writeArgs(): { table: ArrayBuffer; ids: ArrayBuffer | null } {
+    return { table: this.#bytes.slice(0), ids: this.#ids?.slice(0) ?? null };
+  }
+
   /** A copy of the rows in @geom.Table's byte form (docs/FORMATS.md "Table"), which mbmap/analysis's `load` takes. */
   tableBytes(): ArrayBuffer {
     return this.#bytes.slice(0);
@@ -102,7 +107,7 @@ function start(options: DataOptions): void {
   }));
 }
 
-const FORMATS: DataFormat[] = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx", "flatgeobuf"];
+const FORMATS: DataFormat[] = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx", "flatgeobuf", "geojson"];
 
 function formatFor(options: ReadOptions, name: string | null): DataFormat {
   const format = options.format ?? (name === null ? null : formatOf(name));
@@ -136,7 +141,7 @@ async function call(format: DataFormat, source: object, options: ReadOptions, tr
   const { layer, encoding } = options;
   if (layer !== undefined && typeof layer !== "string") throw new Error("mbmap: data: invalid layer");
   if (encoding !== undefined && typeof encoding !== "string") throw new Error("mbmap: data: invalid encoding");
-  if (options.crs !== undefined && (format === "kml" || format === "gpx")) throw new Error("mbmap: data: KML and GPX are always in EPSG:4326; options.crs is for other formats");
+  if (options.crs !== undefined && (format === "kml" || format === "gpx" || format === "geojson")) throw new Error("mbmap: data: KML, GPX and GeoJSON are always in EPSG:4326; options.crs is for other formats");
   if (options.bbox !== undefined && format !== "flatgeobuf") throw new Error("mbmap: data: options.bbox is for FlatGeobuf");
   const bbox = options.bbox === undefined ? undefined : bboxArg(options.bbox);
   const crs = options.crs === undefined ? undefined : await crsArg(options.crs, "data");
@@ -172,6 +177,33 @@ export async function parse(text: string, options: ReadOptions & { format: DataF
   if (typeof text !== "string") throw new Error("mbmap: data: parse takes a string");
   const bytes = new TextEncoder().encode(text).buffer;
   return call(formatFor(options, null), { bytes }, options, [bytes]);
+}
+
+/** `format` and, for CSV, how its rows are laid out. */
+export interface WriteOptions extends DataOptions, CsvWriteOptions {
+  format: WriteFormat;
+}
+
+/**
+ * `input` (a DataTable, or a GeoJSON Feature or FeatureCollection) as `options.format`: GeoJSON as
+ * `JSON.stringify` of `toGeoJSON()`, CSV as papaparse's `unparse`, KML as @placemarkio/tokml's
+ * `toKML` write them (npm/README.md has the rules).
+ */
+export async function write(input: DataTable | object, options: WriteOptions): Promise<string> {
+  const { format } = options ?? {};
+  if (!["geojson", "csv", "kml"].includes(format)) throw new Error(`mbmap: data: unknown write format ${String(format)}`);
+  if (!(input instanceof DataTable)) {
+    if (!input || typeof input !== "object") throw new Error("mbmap: data: write takes a DataTable or a GeoJSON object");
+    if (format === "geojson") return JSON.stringify(input);
+    const { workerUrl, wasmUrl, projWasmUrl, xmlUrl } = options;
+    input = await parse(JSON.stringify(input), { workerUrl, wasmUrl, projWasmUrl, xmlUrl, format: "geojson" });
+  }
+  const table = input as DataTable;
+  if (format === "geojson") return JSON.stringify(table.toGeoJSON());
+  const args = { format, options: format === "csv" ? csvWriteArgs(options) : {}, ...table.writeArgs() };
+  start(options);
+  const bytes = await client.call<ArrayBuffer>("write", args, [args.table, ...(args.ids ? [args.ids] : [])]);
+  return new TextDecoder().decode(bytes);
 }
 
 /** Stops the data worker; pending calls reject. */

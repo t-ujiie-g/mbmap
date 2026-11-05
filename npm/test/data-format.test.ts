@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { csvArgs, formatOf, shapefileParts } from "../src/data-format.ts";
+import { bboxArg, csvArgs, csvWriteArgs, formatOf, shapefileParts } from "../src/data-format.ts";
 
 test("formatOf reads the format from a name's extension, in any case", () => {
   assert.equal(formatOf("points.CSV"), "csv");
@@ -16,7 +16,8 @@ test("formatOf reads the format from a name's extension, in any case", () => {
   assert.equal(formatOf("doc.kml"), "kml");
   assert.equal(formatOf("https://example.com/a.KMZ"), "kml");
   assert.equal(formatOf("run.gpx"), "gpx");
-  assert.equal(formatOf("x.geojson"), null);
+  assert.equal(formatOf("x.geojson"), "geojson");
+  assert.equal(formatOf("x.FGB"), "flatgeobuf");
   assert.equal(formatOf("x.constructor"), null);
   assert.equal(formatOf("noextension"), null);
 });
@@ -44,4 +45,23 @@ test("shapefileParts picks a shapefile's files by their extensions", () => {
   const parts = shapefileParts([f("a.SHP"), f("a.dbf"), f("a.prj"), f("a.cpg"), f("a.shx"), f("b.shp"), f("notes.txt")]);
   assert.deepEqual(parts, { shp: f("a.SHP"), dbf: f("a.dbf"), prj: f("a.prj"), cpg: f("a.cpg") });
   assert.equal(shapefileParts([f("a.dbf"), f("a.prj")]), null);
+});
+
+test("csvWriteArgs gives the worker's character codes and refuses invalid options", () => {
+  assert.deepEqual(csvWriteArgs({}), { delimiter: 44, header: true, geometryFormat: undefined, geometry: undefined, longitude: undefined, latitude: undefined });
+  assert.deepEqual(csvWriteArgs({ delimiter: "\t", header: false, geometryFormat: "lonlat", longitude: "経度", latitude: "緯度" }), {
+    delimiter: 9, header: false, geometryFormat: "lonlat", geometry: undefined, longitude: "経度", latitude: "緯度",
+  });
+  for (const bad of [{ delimiter: ";;" }, { delimiter: '"' }, { delimiter: "\r" }, { delimiter: "、" }]) {
+    assert.throws(() => csvWriteArgs(bad), /invalid delimiter/);
+  }
+  assert.throws(() => csvWriteArgs({ header: 1 as unknown as boolean }), /invalid header/);
+  assert.throws(() => csvWriteArgs({ geometryFormat: "geojson" as "wkt" }), /invalid geometryFormat/);
+  assert.throws(() => csvWriteArgs({ geometry: "a\0b" }), /invalid geometry column/);
+  assert.throws(() => csvWriteArgs({ latitude: "" }), /invalid latitude column/);
+});
+
+test("bboxArg takes four finite numbers, min at most max", () => {
+  assert.deepEqual(bboxArg([139, 35, 140, 36]), [139, 35, 140, 36]);
+  for (const bad of [[0, 0, 1], [1, 0, 0, 1], [0, 0, Infinity, 1], "0,0,1,1"]) assert.throws(() => bboxArg(bad), /invalid bbox/);
 });

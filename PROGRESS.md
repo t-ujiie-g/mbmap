@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.5 → 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は下の節。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は #101、17.5 は下の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -26,7 +26,7 @@
 - **構成**：
   - 入口は新しい `mbmap/data`（`data.js`、6KB）。分析ワーカー（28.1 / 30KB）と GeoJSON ワーカー（29.3 / 30KB）には読み手の入る余裕がないので、ワーカーも新しく作る。
   - wasm は 3 つ：`data.wasm`（CSV、WKT/WKB、TopoJSON、Shapefile、FlatGeobuf、書き出し）、`xml.wasm`（KML/GPX と KML の書き出し、初めて使うときに読む）、`geotiff.wasm` 20KB（同じく遅れて読む）。
-  - 予算：データワーカーは 30KB → 38KB、`xml.wasm` は 20KB → 26KB に引き上げた（2026-11-05 ユーザー判断）。17.2 でデータワーカーが 28,976 / 30,000 バイトになり、17.3（FlatGeobuf、約 4〜5KB）と 17.5（書き出し、約 2KB）が入らなかったため。`xml.wasm` は xmldom と同じ振る舞いの XML の読み手（約 10.4KB）、KML（4.5KB）、GPX（2.2KB）で 22.2KB になり、17.5 の KML の書き出し（約 3KB）も入る。分けると wasm ごとに core の約 6KB を持つので、データワーカーは 1 つのままにした。
+  - 予算：データワーカーは 30KB → 38KB → 40KB、`xml.wasm` は 20KB → 26KB に引き上げた（2026-11-05 ユーザー判断。40KB は 17.5 で GeoJSON の読み込みを足したとき）。17.2 でデータワーカーが 28,976 / 30,000 バイトになり、17.3（FlatGeobuf、約 4〜5KB）と 17.5（書き出し、約 2KB）が入らなかったため。`xml.wasm` は xmldom と同じ振る舞いの XML の読み手（約 10.4KB）、KML（4.5KB）、GPX（2.2KB）で 22.2KB になり、17.5 の KML の書き出し（約 3KB）も入る。分けると wasm ごとに core の約 6KB を持つので、データワーカーは 1 つのままにした。
   - 読んだデータは `@geom.Table` にし、地図の GeoJSON ソースにも `mbmap/analysis` の Dataset にもする。
 - **段階**：
   - 17.1：土台と CSV（緯度経度の列、WKT の列）、WKT/WKB。比べる相手は papaparse 5.7.0、betterknown 1.2.0、wkx 0.5.0。
@@ -54,7 +54,28 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.3：FlatGeobuf（このブランチ）
+### 17.5：書き出し（このブランチ）
+
+- **API**：`write(input, { format })`。`input` は `DataTable` か GeoJSON のオブジェクト、`format` は `"geojson"`・`"csv"`・`"kml"`。文字列を返す。
+  - GeoJSON：`JSON.stringify(table.toGeoJSON())`。wasm のコードはない。
+  - CSV（data.wasm の `@formats.write_csv`）：papaparse 5.7.0 の `unparse` と同じ。ジオメトリは点なら経度・緯度の列、ほかは WKT の列（betterknown 1.2.0 の `geoJSONToWkt` と同じ）、なければ書かない（`geometryFormat` で選べる）。同じ名前の属性の列があればその場所に書く（JS の `{...props, wkt}` と同じ）。
+  - KML（xml.wasm の `@kml.write_kml`）：@placemarkio/tokml 0.4.0 の `toKML` と同じ。エスケープは tokml がまとめている xast-util-to-xml 4.0.0 のもの（`&`、`<`、属性の `"` を `&#x26;` などに、C0 の制御文字は落とす）。
+  - どちらも Table のバイト列から書き、数は host の `String(x)`。
+- **GeoJSON の読み込み**：GeoJSON のオブジェクトを CSV や KML にするために、data.wasm に `read_geojson`（GeoJSON ソースと同じ読み手）を足した。`read` でも `format: "geojson"`・`.geojson` が読める。
+- **見つけた不具合**：`worker/js/values.mjs` の `TextDecoder` が、先頭が U+FEFF の文字列からそれを落としていた（`toGeoJSON`、表示ワーカーの属性、問い合わせ）。`ignoreBOM: true` にした。`data:golden`、`xml:golden`、`fgb:golden` は差 0 のまま。
+- **黄金テスト**（`npm run write:golden`）：83 件、バイト単位で差 0。
+  - GSI の 6 層と点、MultiPolygon・MultiPoint を CSV（区切り、ヘッダーなし、列の名前、WKT、ジオメトリなしの 5 通り）で 34 件 27.4MB、KML で 8 件 16.9MB。
+  - 手で書いたもの：引用の要る値（引用符、区切り、CR・LF、BOM、前後の空白）、`-0`・`1e21`・`1e-7`、真偽値、null、値のない行、ジオメトリのない行、ジオメトリと同じ名前の列、行のない表（papaparse は空の行を 1 つ書く）、KML の `name`・`description`・`visibility` の真偽の扱い（`0`、`""`、`false`、null）、id（文字列、数、`0`）、`&` `<` `"` と制御文字、サロゲートペア、すべての図形、FlatGeobuf から NaN・無限大・float。
+  - 点でない行を `lonlat` で書くことと、知らない `geometryFormat` は両方で拒む。
+- **予算**：データワーカーは 38,106 / 40,000 バイト（+5.5KB：CSV と WKT の書き手 約 2.8KB、GeoJSON の読み込み 約 2.7KB）。38KB をわずかに超えたので 40KB に引き上げた（2026-11-05 ユーザー判断）。
+  - 削ったもの：入口の列の名前の読み取りを `split` から手書きのループにして約 1.6KB、`replace_all` をやめて約 0.3KB。
+  - 試してやめたもの：ジオメトリの形式を JS で決める代わりに wasm で決める（変わらず）、配列の作り方を変える（gzip の揺れの範囲）。
+- **大きさ**（gzip -9）：`xml.wasm` 25,660 / 26,000（+3.0KB）、`mbmap/data` 3,842 / 6,000。
+- **bench の devDependencies**（版は固定、`npm audit` は 0 件）：@placemarkio/tokml 0.4.0（MIT、tmcw、依存なし、install スクリプトなし）。NOTICE に tokml と、それがまとめている xast-util-to-xml・stringify-entities を書いた。
+- **pack test**：観測点の CSV を GeoJSON・CSV に書いて読み直す、作図した GeoJSON を KML と CSV（WKT）に書いて読み直す、id、拒む入力。
+- **残したもの**：書き出しは文字列で返す（ストリームはない）。KML の `description` は tokml と同じく文字列のまま書く（togeojson が読んだ HTML の説明は JSON の文字列なので、CDATA には戻らない）。CSV に id の列は書かない（papaparse の参照にない）。
+
+### 17.3：FlatGeobuf（#101）
 
 - **読み手**：`@formats.read_flatgeobuf`（data.wasm）。flatgeobuf 4.6.1 の `deserialize` と同じ地物にする。
   - FlatBuffers は自前で読む。どのオフセットも範囲を確かめ、誤りは残す形（`Wkb` と同じ）。地物ごとにその地物のバイトの中だけを読む。

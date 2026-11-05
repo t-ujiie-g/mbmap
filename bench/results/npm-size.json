@@ -71,12 +71,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 80748,
+      "bytes": 80767,
       "budget": 100000
     },
     {
       "name": "labels (loaded by the display worker with the first tile that has them)",
-      "bytes": 9544,
+      "bytes": 9560,
       "budget": 10000
     },
     {
@@ -86,17 +86,17 @@
     },
     {
       "name": "feature queries (loaded by the display worker with the first query)",
-      "bytes": 905,
+      "bytes": 925,
       "budget": 1500
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29515,
+      "bytes": 29534,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49210,
+      "bytes": 49229,
       "budget": 50000
     },
     {
@@ -111,7 +111,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28115,
+      "bytes": 28128,
       "budget": 30000
     },
     {
@@ -136,13 +136,13 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 3442,
+      "bytes": 3842,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 32634,
-      "budget": 38000
+      "bytes": 38106,
+      "budget": 40000
     },
     {
       "name": "zip archives (loaded by the data worker with the first one)",
@@ -151,7 +151,7 @@
     },
     {
       "name": "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)",
-      "bytes": 2303,
+      "bytes": 2304,
       "budget": 2500
     },
     {
@@ -166,7 +166,7 @@
     },
     {
       "name": "KML and GPX (loaded by the data worker on the first such read)",
-      "bytes": 22661,
+      "bytes": 25660,
       "budget": 26000
     },
     {

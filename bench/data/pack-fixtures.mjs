@@ -1,7 +1,6 @@
-// Writes the pack test's fixtures into bench/npm/pages/data/: WARDS in plane IX as shapefiles
-// (Shift_JIS, an Esri .prj; loose and zipped), refused archives, lines as quantized TopoJSON,
-// STATIONS as an indexed FlatGeobuf.
-// Usage: node data/pack-fixtures.mjs (bench/npm/pack-test.mjs imports WARDS).
+// The pack test's fixtures in bench/npm/pages/data/: WARDS in plane IX as shapefiles (Shift_JIS, an
+// Esri .prj; loose and zipped), refused archives, quantized TopoJSON lines, STATIONS as a FlatGeobuf.
+// Usage: node data/pack-fixtures.mjs (bench/npm/pack-test.mjs imports WARDS and STATIONS).
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import proj4 from "proj4";

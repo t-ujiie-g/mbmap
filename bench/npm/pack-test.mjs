@@ -238,7 +238,7 @@ const checks = {
   // mbmap/data (bench/npm/pages/data): CSV, WKT, TopoJSON drawn and counted; EWKT in plane IX (proj.wasm
   // loaded); a plane IX shapefile with .prj and Shift_JIS names, zipped and loose, by URL and as Files,
   // drawn (the .prj parser loaded); KML, KMZ and GPX, a KML drawn (xml.wasm loaded); FlatGeobuf
-  // whole and by bbox (data-fgb.js loaded); refusals.
+  // whole and by bbox (data-fgb.js loaded); GeoJSON, CSV and KML written and read back; refusals.
   async data(page, requests) {
     const names = () => requests.map((u) => u.split("/").pop());
     const startup = names();
@@ -448,7 +448,45 @@ const checks = {
       JSON.stringify(g.near) === JSON.stringify([[1, "東京", 2], [2, "日本橋", 3]]) &&
       JSON.stringify(g.fromBytes) === JSON.stringify(g.near) &&
       /invalid bbox/.test(g.badBbox) && /bbox is for FlatGeobuf/.test(g.csvBbox);
-    return [ok && okXml && okFgb, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g } }];
+    // Writing: a DataTable as GeoJSON, CSV and KML, a GeoJSON object as KML, each read back.
+    const w = await page.evaluate(async () => {
+      const { read, parse, write } = await import("mbmap/data");
+      const stations = await read("./stations.csv");
+      const drawn = {
+        type: "FeatureCollection",
+        features: [
+          { type: "Feature", id: "d1", properties: { name: "区画A", 面積: 12.5 }, geometry: { type: "Polygon", coordinates: [[[139.76, 35.68], [139.77, 35.68], [139.77, 35.69], [139.76, 35.68]]] } },
+          { type: "Feature", properties: { name: "線" }, geometry: { type: "LineString", coordinates: [[139.76, 35.68], [139.77, 35.69]] } },
+        ],
+      };
+      const fail = (p) => p.then(() => "", (e) => e.message);
+      const geojson = await write(stations, { format: "geojson" });
+      const csv = await write(stations, { format: "csv" });
+      const kml = await write(drawn, { format: "kml" });
+      const wkt = await write(drawn, { format: "csv", delimiter: ";" });
+      const back = await parse(csv, { format: "csv" });
+      const kmlBack = await parse(kml, { format: "kml" });
+      const read2 = await parse(JSON.stringify(drawn), { format: "geojson" });
+      return {
+        geojson: geojson === JSON.stringify(stations.toGeoJSON()),
+        csvHead: csv.split("\r\n")[0],
+        csvRows: back.length,
+        csvSame: JSON.stringify(back.toGeoJSON().features.map((f) => f.geometry)) === JSON.stringify(stations.toGeoJSON().features.map((f) => f.geometry)),
+        kmlNames: kmlBack.toGeoJSON().features.map((f) => [f.id ?? null, f.properties.name, f.geometry.type]),
+        wktHead: wkt.split("\r\n")[0],
+        geojsonIds: read2.toGeoJSON().features.map((f) => f.id ?? null),
+        badFormat: await fail(write(stations, { format: "shp" })),
+        lonlat: await fail(write(drawn, { format: "csv", geometryFormat: "lonlat" })),
+      };
+    });
+    const okWrite =
+      w.geojson && w.csvRows === 5 && w.csvSame &&
+      w.csvHead === "名前,緯度,経度,乗降客数,備考,longitude,latitude" &&
+      JSON.stringify(w.kmlNames) === JSON.stringify([["d1", "区画A", "Polygon"], [null, "線", "LineString"]]) &&
+      w.wktHead === "name;面積;wkt" &&
+      JSON.stringify(w.geojsonIds) === JSON.stringify(["d1", null]) &&
+      /unknown write format shp/.test(w.badFormat) && /not a point/.test(w.lonlat);
+    return [ok && okXml && okFgb && okWrite, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g }, written: w }];
   },
 
   async analysis(page, requests) {

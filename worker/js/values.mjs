@@ -1,6 +1,7 @@
 // Property values as the wasm writes them (docs/FORMATS.md, "Property values").
 
-const decoder = new TextDecoder();
+// ignoreBOM: a string that starts with U+FEFF keeps it.
+const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 
 // A u32-length-prefixed UTF-8 string at `at`, and the offset after it.
 export function readString(view, bytes, at) {

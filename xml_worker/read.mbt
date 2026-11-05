@@ -74,3 +74,29 @@ pub fn read_gpx() -> Int32 {
   }
   table_out(table)
 }
+
+///|
+/// Writes as KML the table placed as input, then `ids` bytes of its feature ids (a
+/// property value per row, 0 for none); returns the UTF-8's length, or minus an
+/// error message's.
+#export_name("write_kml")
+pub fn write_kml(ids : Int32) -> Int32 {
+  let input = @wasmio.input_bytes()
+  guard ids >= 0 && ids <= input.length() else {
+    return @wasmio.fail_with("invalid ids")
+  }
+  let end = input.length() - ids
+  guard @geom.Table::from_bytes(input[:end]) is Some(table) else {
+    return @wasmio.fail_with("invalid table")
+  }
+  if ids > 0 {
+    let r = @core.ByteReader::new(input[end:])
+    for i in 0..<table.length() {
+      table.ids[i] = @geom.read_prop(r)
+    }
+    guard r.ok() && r.done() else { return @wasmio.fail_with("invalid ids") }
+  }
+  let text = @kml.write_kml(table, number_text=@wasmio.host_number_to_text)
+  @wasmio.clear_input()
+  @wasmio.write_bytes(@utf8.encode(text)[:])
+}

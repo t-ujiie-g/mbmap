@@ -41,7 +41,7 @@ const ENTRIES = [
   { name: "mbmap/geodesic", files: ["geodesic.js"], budget: 2_000, references: ["./geodesic-worker.js", "./geodesic.wasm"] },
   { name: "geodesic worker", files: ["geodesic-worker.js", "geodesic.wasm"], budget: 15_000, references: [] },
   { name: "mbmap/data", files: ["data.js"], budget: 6_000, references: ["./projstring.js", "./data-worker.js", "./data.wasm", "./proj.wasm", "./prjwkt.js", "./xml.wasm"] },
-  { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 38_000, references: ["./data-zip.js", "./data-crs.js", "./data-fgb.js"] },
+  { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 40_000, references: ["./data-zip.js", "./data-crs.js", "./data-fgb.js"] },
   { name: "zip archives (loaded by the data worker with the first one)", files: ["data-zip.js"], budget: 2_000, references: [] },
   { name: "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)", files: ["data-fgb.js"], budget: 2_500, references: [] },
   { name: "coordinates from another CRS (loaded by the data worker with proj.wasm)", files: ["data-crs.js"], budget: 1_500, references: [] },
