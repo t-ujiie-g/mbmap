@@ -101,3 +101,11 @@ export async function toLonLat(table, srids, fallback, proj) {
   }
   return table;
 }
+
+/** The longitude, latitude pairs of `xy` (a Float64Array) taken from EPSG:`from` to EPSG:`to` by proj.wasm (`exports`); NaN out of reach. */
+export function transformPairs(exports, from, to, xy) {
+  const [a, b] = [crsId(exports, from), crsId(exports, to)];
+  inputTo(exports, new Uint8Array(xy.buffer, xy.byteOffset, xy.byteLength));
+  const m = checked(exports, exports.transform_coords(a, b));
+  return new Float64Array(exports.memory.buffer.slice(exports.output_addr(), exports.output_addr() + m * 8));
+}

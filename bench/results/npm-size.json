@@ -146,7 +146,7 @@
     },
     {
       "name": "data worker",
-      "bytes": 38642,
+      "bytes": 38672,
       "budget": 40000
     },
     {
@@ -161,7 +161,7 @@
     },
     {
       "name": "coordinates from another CRS (loaded by the data worker with proj.wasm)",
-      "bytes": 1020,
+      "bytes": 1093,
       "budget": 1500
     },
     {
@@ -176,7 +176,7 @@
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
-      "bytes": 18633,
+      "bytes": 19189,
       "budget": 20000
     },
     {

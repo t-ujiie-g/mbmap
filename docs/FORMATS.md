@@ -573,7 +573,8 @@ from the start); `window(image, x0, y0, x1, y1, fill)` takes u32 sample indices;
 decoded)` takes one block's bytes (`decoded` 1 when the host inflated or decoded them); `empty(index,
 value)` fills a block of no bytes; `bands()` writes each band's little-endian values, padded to 8 bytes. `op: "rasterInfo"` (the same sources) answers npm/src/data.ts `RasterInfo`; `op: "rasterTile"` takes
 `options` `{z, x, y, tileSize, bands, range, colors, dem, resampling}` and answers a PNG
-ArrayBuffer (Terrarium elevations with `dem`), or null off the file. A map's `geotiff` sources get
+ArrayBuffer (Terrarium elevations with `dem`), or null off the file; files in a CRS other than
+EPSG:3857 or 4326 get every pixel center through proj.wasm's `transform_coords`. A map's `geotiff` sources get
 their tiles this way through the engine's tile provider (map/dom.mbt `Provider`), which hands them
 to a display worker as raster or DEM tile bytes.
 

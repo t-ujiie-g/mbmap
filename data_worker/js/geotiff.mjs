@@ -410,11 +410,23 @@ const WORLD = 2 * Math.PI * R;
 const MERCATOR = new Set([3857, 900913, 3785, 102100]);
 // Geographic CRSs drawn as EPSG:4326 (JGD2011 and JGD2000 lie within centimeters of it).
 const LONLAT = new Set([4326, 6668, 4612]);
+const EDGE_STEPS = 32;
 
+// "mercator", "lonlat", or "other" for an EPSG code proj.wasm takes the pixels through.
 function kindOf(crs) {
   if (MERCATOR.has(crs)) return "mercator";
   if (LONLAT.has(crs)) return "lonlat";
-  throw new Error(crs ? `GeoTIFFs in EPSG:${crs} are not drawn yet (EPSG:3857 and EPSG:4326 are)` : "a GeoTIFF without an EPSG code is not drawn");
+  if (!crs) throw new Error("a GeoTIFF without an EPSG code is not drawn");
+  return "other";
+}
+
+/** `xy` (longitude, latitude pairs) in EPSG:`crs` through `ctx.transform`, with the CRS named on failure. */
+async function project(ctx, from, to, xy) {
+  try {
+    return await ctx.transform(from, to, xy);
+  } catch (err) {
+    throw new Error(`GeoTIFFs in EPSG:${from === 4326 ? to : from} are not drawn: ${err.message}`);
+  }
 }
 
 /** The images a resolution picks from (geotiff's: the first, and reduced-resolution ones), coarsest first. */
@@ -443,9 +455,34 @@ export async function rasterInfo(source, ctx) {
   const kind = kindOf(first.epsg);
   const [w, s, e, n] = bboxOf(first);
   const toLat = (y) => (Math.atan(Math.sinh(y / R)) * 180) / Math.PI;
-  const bounds = kind === "mercator" ? [(w / R) * (180 / Math.PI), toLat(s), (e / R) * (180 / Math.PI), toLat(n)] : [w, s, e, n];
-  const res = Math.abs(resolutionOf(first)[0]) * (kind === "mercator" ? 1 : (Math.PI / 180) * R);
-  const maxzoom = Math.max(0, Math.min(24, Math.ceil(Math.log2(WORLD / 256 / res) - 1e-6)));
+  let bounds;
+  let res;
+  if (kind === "other") {
+    // The edges taken to longitude and latitude at EDGE_STEPS points each, and two pixels at the center.
+    const [rx, ry] = resolutionOf(first);
+    const [cx, cy] = [(w + e) / 2, (s + n) / 2];
+    const xy = [cx, cy, cx + Math.abs(rx), cy, cx, cy + Math.abs(ry)];
+    for (let i = 0; i <= EDGE_STEPS; i++) {
+      const [x, y] = [w + ((e - w) * i) / EDGE_STEPS, s + ((n - s) * i) / EDGE_STEPS];
+      xy.push(x, s, x, n, w, y, e, y);
+    }
+    const ll = await project(ctx, first.epsg, 4326, Float64Array.from(xy));
+    bounds = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let i = 6; i < ll.length; i += 2) {
+      if (Number.isNaN(ll[i]) || Number.isNaN(ll[i + 1])) continue;
+      bounds = [Math.min(bounds[0], ll[i]), Math.min(bounds[1], ll[i + 1]), Math.max(bounds[2], ll[i]), Math.max(bounds[3], ll[i + 1])];
+    }
+    if (!(bounds[0] <= bounds[2])) throw new Error(`the GeoTIFF lies out of reach of EPSG:${first.epsg}`);
+    bounds = [Math.max(-180, bounds[0]), Math.max(-85.051129, bounds[1]), Math.min(180, bounds[2]), Math.min(85.051129, bounds[3])];
+    // A pixel's width in Web Mercator meters at the center: the shorter of its two sides.
+    const merc = (i) => [(ll[i] * Math.PI * R) / 180, R * Math.log(Math.tan(Math.PI / 4 + (ll[i + 1] * Math.PI) / 360))];
+    const [c, a, b] = [merc(0), merc(2), merc(4)];
+    res = Math.min(Math.hypot(a[0] - c[0], a[1] - c[1]), Math.hypot(b[0] - c[0], b[1] - c[1]));
+  } else {
+    bounds = kind === "mercator" ? [(w / R) * (180 / Math.PI), toLat(s), (e / R) * (180 / Math.PI), toLat(n)] : [w, s, e, n];
+    res = Math.abs(resolutionOf(first)[0]) * (kind === "mercator" ? 1 : (Math.PI / 180) * R);
+  }
+  const maxzoom = Number.isFinite(res) && res > 0 ? Math.max(0, Math.min(24, Math.ceil(Math.log2(WORLD / 256 / res) - 1e-6))) : 0;
   const coarse = levels(images)[0];
   const { bands } = await readRaster(source, { image: images.indexOf(coarse), samples: [0] }, ctx);
   return { crs: first.epsg, bounds, maxzoom, samples: first.samples, noData: noDataOf(first), range: extent(bands[0], noDataOf(first)) };
@@ -460,8 +497,9 @@ function rgbaOf(color, ctx) {
   return Array.from(ctx.getImageData(0, 0, 1, 1).data);
 }
 
-/** XYZ tile `z`/`x`/`y` of the GeoTIFF of `source` (EPSG:3857 or 4326) as a PNG, or null where it has no pixel: each
- * pixel's center read from the coarsest image still finer than the tile, colored as npm/README.md's `geotiff` sources. */
+/** XYZ tile `z`/`x`/`y` of the GeoTIFF of `source` as a PNG, or null where it has no pixel: each pixel's center
+ * (taken to the file's CRS by proj.wasm unless it is EPSG:3857 or 4326) read from the coarsest image still finer
+ * than the tile, colored as npm/README.md's `geotiff` sources. */
 export async function renderTile(source, { z, x, y, tileSize = 256, bands, range, colors, dem = false, resampling }, ctx) {
   const { images } = await open(source, ctx);
   const first = images[0];
@@ -470,14 +508,41 @@ export async function renderTile(source, { z, x, y, tileSize = 256, bands, range
   const px = WORLD / 2 ** z / size;
   const mx0 = -WORLD / 2 + x * (WORLD / 2 ** z);
   const my0 = WORLD / 2 - y * (WORLD / 2 ** z);
-  // Each column's x and each row's y in the file's coordinates.
-  const xs = Float64Array.from({ length: size }, (_, i) => mx0 + (i + 0.5) * px);
-  const ys = Float64Array.from({ length: size }, (_, j) => my0 - (j + 0.5) * px);
-  if (kind === "lonlat") {
-    for (let i = 0; i < size; i++) xs[i] = (xs[i] / R) * (180 / Math.PI);
-    for (let j = 0; j < size; j++) ys[j] = (Math.atan(Math.sinh(ys[j] / R)) * 180) / Math.PI;
+  const lonOf = (mx) => (mx / R) * (180 / Math.PI);
+  const latOf = (my) => (Math.atan(Math.sinh(my / R)) * 180) / Math.PI;
+  // Each pixel's center in the file's coordinates, row by row.
+  const fx = new Float64Array(size * size);
+  const fy = new Float64Array(size * size);
+  let want;
+  if (kind === "other") {
+    const ll = new Float64Array(size * size * 2);
+    for (let j = 0; j < size; j++) {
+      const lat = latOf(my0 - (j + 0.5) * px);
+      for (let i = 0; i < size; i++) {
+        ll[(j * size + i) * 2] = lonOf(mx0 + (i + 0.5) * px);
+        ll[(j * size + i) * 2 + 1] = lat;
+      }
+    }
+    const xy = await project(ctx, 4326, first.epsg, ll);
+    for (let k = 0; k < size * size; k++) {
+      fx[k] = xy[k * 2];
+      fy[k] = xy[k * 2 + 1];
+    }
+    // A tile pixel's width in the file's units at the tile's center.
+    const c = (size / 2) * size + size / 2;
+    want = Math.hypot(fx[c] - fx[c - 1], fy[c] - fy[c - 1]);
+  } else {
+    for (let j = 0; j < size; j++) {
+      const my = my0 - (j + 0.5) * px;
+      const yy = kind === "lonlat" ? latOf(my) : my;
+      for (let i = 0; i < size; i++) {
+        const mx = mx0 + (i + 0.5) * px;
+        fx[j * size + i] = kind === "lonlat" ? lonOf(mx) : mx;
+        fy[j * size + i] = yy;
+      }
+    }
+    want = Math.abs(fx[1] - fx[0]);
   }
-  const want = Math.abs(kind === "mercator" ? px : (xs[1] - xs[0]));
   const box = bboxOf(first);
   let img = images[0];
   for (const level of levels(images)) {
@@ -488,12 +553,13 @@ export async function renderTile(source, { z, x, y, tileSize = 256, bands, range
   const [rx, ry] = resolutionOf(img, first);
   const linear = resampling === "bilinear";
   const shift = linear ? 0.5 : 0;
-  const cols = Float64Array.from(xs, (v) => (v - ox) / rx - shift);
-  const rows = Float64Array.from(ys, (v) => (v - oy) / ry - shift);
+  const cols = Float64Array.from(fx, (v) => (v - ox) / rx - shift);
+  const rows = Float64Array.from(fy, (v) => (v - oy) / ry - shift);
   const span = (a, n) => {
     let lo = Infinity;
     let hi = -Infinity;
     for (const v of a) {
+      if (Number.isNaN(v)) continue;
       lo = Math.min(lo, Math.floor(v));
       hi = Math.max(hi, Math.floor(v) + (linear ? 2 : 1));
     }
@@ -520,18 +586,19 @@ export async function renderTile(source, { z, x, y, tileSize = 256, bands, range
   };
   const sample = (b, sx, sy) => {
     if (!linear) return sx >= 0 && sy >= 0 && sx < img.width && sy < img.height ? at(b, Math.floor(sx), Math.floor(sy)) : NaN;
-    const [fx, fy] = [Math.floor(sx), Math.floor(sy)];
-    const [tx, ty] = [sx - fx, sy - fy];
+    const [gx, gy] = [Math.floor(sx), Math.floor(sy)];
+    const [tx, ty] = [sx - gx, sy - gy];
     const edge = (v, n) => Math.min(n - 1, Math.max(0, v));
-    if (sx < -0.5 || sy < -0.5 || sx > img.width - 0.5 || sy > img.height - 0.5) return NaN;
-    const [xa, xb, ya, yb] = [edge(fx, img.width), edge(fx + 1, img.width), edge(fy, img.height), edge(fy + 1, img.height)];
+    if (!(sx >= -0.5 && sy >= -0.5 && sx <= img.width - 0.5 && sy <= img.height - 0.5)) return NaN;
+    const [xa, xb, ya, yb] = [edge(gx, img.width), edge(gx + 1, img.width), edge(gy, img.height), edge(gy + 1, img.height)];
     const v = (1 - ty) * ((1 - tx) * at(b, xa, ya) + tx * at(b, xb, ya)) + ty * ((1 - tx) * at(b, xa, yb) + tx * at(b, xb, yb));
     return v;
   };
   for (let j = 0; j < size; j++) {
     for (let i = 0; i < size; i++) {
-      const o = (j * size + i) * 4;
-      const v = sample(0, cols[i], rows[j]);
+      const k = j * size + i;
+      const o = k * 4;
+      const v = sample(0, cols[k], rows[k]);
       if (dem) {
         const e = Math.min(65535.99, Math.max(0, (Number.isNaN(v) ? 0 : v) + 32768));
         out[o] = Math.floor(e / 256);
@@ -543,9 +610,9 @@ export async function renderTile(source, { z, x, y, tileSize = 256, bands, range
       if (Number.isNaN(v)) continue;
       if (rgb) {
         out[o] = v;
-        out[o + 1] = sample(1, cols[i], rows[j]);
-        out[o + 2] = sample(2, cols[i], rows[j]);
-        out[o + 3] = samples.length === 4 ? sample(3, cols[i], rows[j]) : 255;
+        out[o + 1] = sample(1, cols[k], rows[k]);
+        out[o + 2] = sample(2, cols[k], rows[k]);
+        out[o + 3] = samples.length === 4 ? sample(3, cols[k], rows[k]) : 255;
         continue;
       }
       if (stops.length > 0) {

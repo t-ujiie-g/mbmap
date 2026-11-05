@@ -384,11 +384,11 @@ MapLibre の Style Spec（v8）を、MapLibre 6.16 と同じ描き方で描く�
 - `raster-dem`：`tiles`、`tileSize`、`encoding` は `mapbox`・`terrarium`・`custom`（`redFactor` などの係数）、それに国土地理院の標高タイル用の拡張 `gsi`。
 - `url` で TileJSON を指すソース（vector、raster、raster-dem）。TileJSON の `tiles`、`minzoom`、`maxzoom`、`bounds`、`attribution` などを読み、ソースに書いた値を優先する。
 - GeoTIFF・COG（mbmap 独自のソース型）：`{ type: "geotiff", url: "https://…/x.tif" }` を `raster` レイヤーで描く。`dem: true` なら標高のソースになり、`hillshade`・`color-relief`・`terrain` に使える。
-  - EPSG:3857 と EPSG:4326（JGD2011・JGD2000 の経緯度も）のファイルを描く。ほかの座標系は 17.6c で描けるようにする予定。
+  - EPSG のコードを持つファイルなら座標系を問わずに描く。EPSG:3857 と EPSG:4326（JGD2011・JGD2000 の経緯度も）はそのまま、ほかの座標系（平面直角座標系、UTM など、`mbmap/analysis` の座標変換が知っているもの）は画素ごとの中心を `proj.wasm` でファイルの座標系にしてから引く（初めてのときに `proj.wasm` を読む）。
   - 表示するタイルごとに、ちょうどよい概観図の必要なブロックだけを範囲リクエストで読む（ヘッダーとブロックはワーカーに残して使い回す）。`bounds` と `maxzoom` はファイルから決める（ソースに書けばそちらを使う）。
   - 色：8 ビットの 3 帯・4 帯は RGB・RGBA。1 帯（または `bands` の最初の帯）は `range`（`[最小, 最大]`、省くといちばん粗い画像の値の範囲）を黒から白に、`colors`（`[値, 色]` の並び。色は CSS の書き方）があればその間を直線でつなぐ。no data と範囲の外は透明。`resampling` は `"nearest"`（既定）か `"bilinear"`。`tileSize` は 256（既定）か 512。
   - 標高は Terrarium の PNG にしてから描くので、1/256 m 刻みになる。
-  - 描いたタイルは、GSI の標準地図から作った COG を元の PNG タイルと画素単位で比べて一致することを確かめている（`npm run geotiff:tiles`）。
+  - 描いたタイルは、GSI の標準地図から作った COG を元の PNG タイルと画素単位で比べて一致すること、平面直角座標系 IX 系（EPSG:6677）のファイルを proj4js で独立に引いた画素と一致することを確かめている（`npm run geotiff:tiles`）。
   - `mbmap/data` の `rasterInfo(input)` と `rasterTile(input, z, x, y, options)` で、同じ情報とタイル（PNG）を直接得られる。
 - PMTiles：`url: "pmtiles://https://…/x.pmtiles"`。プラグインは不要。ワーカーが範囲リクエストでディレクトリとタイルを読む。圧縮は none と gzip に対応する。サーバーは Range に対応している必要がある。
 - `geojson`：`data` に URL（認証情報なしで取得し、http(s) に限る）かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`lineMetrics`、`promoteId`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`、`clusterProperties`。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る（geojson-vt と同じタイル）。`clusterProperties` のあるソースは、式を持つ別の wasm `geojson-properties.wasm` で読む。
