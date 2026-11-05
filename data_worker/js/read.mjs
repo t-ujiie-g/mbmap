@@ -6,8 +6,7 @@ import { hostNumber, MAX_INPUT_BYTES, writeInput } from "../../wasmio/js/host.mj
 import { dataFetchInit, fetchInit, readCapped } from "../../worker/js/body.mjs";
 import { readString } from "../../worker/js/values.mjs";
 
-// The zip reader and the CRS conversion, imported with the first archive and the first data
-// in another CRS (npm/scripts/build.mjs makes them files of their own).
+// Imported on first use: npm/scripts/build.mjs makes them files of their own.
 const zipModule = () => import("../../npm/src/zip.ts");
 const crsModule = () => import("./crs.mjs");
 const fgbModule = () => import("./fgb.mjs");

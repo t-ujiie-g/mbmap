@@ -466,10 +466,10 @@ async function showcase(page) {
     wait = idle();
     panel.basemaps.select("map");
     await wait;
+    // `ring`: the custom layer comes back under the places after each new style.
     return {
       same: map === window.__map, terrain: map.getTerrain(), hillshade, listed, markers: map.getStyle().sources.places.data.features.at(-1).properties.name,
       legend: legend && { title: legend.title, kind: legend.kind, labels: legend.items.map((i) => i.label) }, photo, back: map.getLayer("road") !== undefined,
-      // The custom layer comes back under the places after each new style.
       ring: map.getLayer("radius-ring")?.type === "custom" && map.getLayersOrder().indexOf("radius-ring") === map.getLayersOrder().indexOf("places") - 1,
     };
   });

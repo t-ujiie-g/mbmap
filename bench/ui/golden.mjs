@@ -78,7 +78,8 @@ try {
   }
   check("attribution", attribution.every((a) => a.theirs === a.mine), { cases: attribution });
 
-  // Geolocation: each step on both maps, then their states and cameras once both have settled.
+  // Geolocation: each step on both maps, then their states and cameras once both have settled. `same fix`
+  // comes where the camera already is, which moves nothing; panning after it still lets go.
   const steps = ["start", "first fix", "moved", "user pans", "fix in background", "back to active", "user zooms", "timeout", "fix again", "same fix", "user pans again", "back again", "off", "on again", "denied"];
   const geo = [];
   for (const name of steps) {
@@ -97,7 +98,6 @@ try {
           "user zooms": () => both((m) => m.zoomTo(13, { duration: 0 })),
           timeout: () => g.fail(3),
           "fix again": () => g.push(139.73, 35.69, 30),
-          // A fix where the camera already is moves nothing; panning after it still lets go.
           "same fix": () => g.push(139.73, 35.69, 30),
           "user pans again": () => both((m) => m.panBy([-80, 30], { duration: 0 })),
           "back again": trigger,

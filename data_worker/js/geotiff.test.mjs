@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { deflateSync } from "node:zlib";
-import { bboxOf, choose, noDataOf, originOf, readRaster, resample, resolutionOf } from "./geotiff.mjs";
+import { bboxOf, choose, noDataOf, originOf, readRaster, resample, resolutionOf } from "./geotiff-read.mjs";
 
 const image = (over) => ({ width: 100, height: 50, pixelScale: [], tiepoint: [], transform: [], subfile: 0, oldSubfile: 0, ...over });
 const first = image({ pixelScale: [0.5, 0.25, 0], tiepoint: [0, 0, 0, 10, 20, 0] });

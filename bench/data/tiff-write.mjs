@@ -166,12 +166,9 @@ function compress(bytes, c) {
   return bytes;
 }
 
-/**
- * A TIFF of `images` (each `{ width, height, values: [per sample], bits, format, planar, tile:
- * [w, h] | rows, compression, predictor, photometric, subfile, geo: { pixelScale, tiepoint,
- * transform }, keys: [[key, value]...], nodata, empty: [block indices] }`), `little`-endian or not,
- * BigTIFF if `big`, directories before the data if `ifdsFirst`.
- */
+// A TIFF of `images` ({ width, height, values per sample, bits, format, planar, tile or rows, compression,
+// predictor, photometric, subfile, geo, keys, nodata, empty blocks }), `little`-endian or not, BigTIFF if
+// `big`, directories before the data if `ifdsFirst`.
 export function tiffFile(images, { little = true, big = false, ifdsFirst = false } = {}) {
   const blocks = images.map((img) => {
     const spp = img.values.length;
