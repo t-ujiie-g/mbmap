@@ -1,23 +1,30 @@
 # PROGRESS
 
-## 現在の状況（2026-11-04）
+## 現在の状況（2026-11-05）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**：Phase 17 の 17.6c（下の節）のあと、Phase 17 のリファクタリングとセキュリティチェック。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は #101、17.5 は #102、17.6a は #103、17.6b は #104。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。
+- **次**：Phase 17 のリファクタリングとセキュリティチェック（AGENTS §7、§8）。動作確認と計測を含めて Mac で進める（2026-11-05 ユーザー判断）。段階ごとの PR は 17.7 #97、17.1 #98、17.2 #99、17.4 #100、17.3 #101、17.5 #102、17.6a #103、17.6b #104、17.6c #105。
+- **Mac で回すもの**（クラウドでは回せず、たまっているもの）：
+  - Phase 17 の点検の範囲：パッケージ `formats`（CSV、WKT/WKB、Shapefile、TopoJSON、FlatGeobuf、書き出し）、`xml`、`kml`、`tiff`、`data_worker`、`xml_worker`、`geotiff_worker`、`analysis_worker` の `load_grid`、JS の `data_worker/js/*`、`npm/src/{data,zip,prjwkt,crs,geotiff-source}.ts`、`npm/src/ui/` の属性テーブル、`style/source.mbt` の `geotiff`。
+  - 黄金テスト（Phase 17）：`data:golden`、`xml:golden`、`fgb:golden`、`write:golden`、`geotiff:golden`、`geotiff:tiles`、`ui:golden`。クラウドではすべて差 0 / all ok。
+  - `terrain:golden`（GDAL が要る）：17.6a で GDAL が書いた COG を `readRaster` と `loadGrid` で読む段を足した。まだ一度も走らせていない。
+  - 速さ：Phase 17 の読み込みには速さのベンチがまだない（要るなら、JS の各ライブラリとの比べを足すところから）。17.6c の投影し直し（1 タイル 65,536 点を proj.wasm で）のコストも未計測。
+  - 以前からの残り：R4 で戻した線の `Emitter` のあとの `tess:browser`、「全体のレビュー」の「M2 で測ってから」の候補、各節の「本線で測ってほしいもの」（`labels:golden`・`style:golden`・`style:public` の結果を Mac のフォントと GPU で、`worker:browser`、`render`）。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 128.0KB（画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 81.0KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
-  | GeoJSON ソース | 1.7KB ＋ ワーカー 29.3KB（`clusterProperties` のあるソースは式を持つワーカー 49.1KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
-  | `mbmap/ui` | 6.9KB（全部入り） | 10KB（1 つ 2KB） |
+  | 表示（メイン） | 128.4KB（GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示ワーカー | 80.8KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
+  | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 3.4KB ＋ ワーカー 28.1KB（geometry.wasm 41.9KB） | 5KB ＋ 30KB（50KB） |
+  | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
+  | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（26KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 17：データ形式（2026-11-04〜）
 
@@ -54,7 +61,7 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.6c：どの座標系の GeoTIFF でも描く（このブランチ）
+### 17.6c：どの座標系の GeoTIFF でも描く（#105）
 
 - **作り**：EPSG:3857 と 4326 以外の EPSG のコードを持つファイルは、タイルの画素ごとの中心（経緯度）を 1 回の `transform_coords` でファイルの座標系にしてから引く（`data_worker/js/crs.mjs` の `transformPairs`、`proj.wasm` は初めてのときに読む）。
   - 画素ごとに変換するので、近似の格子（GDAL の既定の 0.125 画素）による誤差はない。256 画素のタイルで 65,536 点。
@@ -300,7 +307,7 @@
 
 8 つの範囲（style、表示ワーカー、map と描画、core〜tess、GeoJSON と分析、幾何・座標系・測地線、npm の窓口、道具と文書）を、読むだけのサブエージェントが §7・§8 の観点で全部読んだ。指摘を 4 本の PR に分けて直す。
 
-### R4：文書（このブランチ）
+### R4：文書（#96）
 
 - `Emitter` の使い回しをやめた（下の R3 の計測）。tess の線は 1 本ごとに `Emitter` を作る形に戻した。`line_emit.mbt` への分割はそのまま。
 - AGENTS.md：
