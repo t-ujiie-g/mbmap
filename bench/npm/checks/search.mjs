@@ -16,13 +16,13 @@ export async function searchChecks(page) {
   const decimal = await find("35.6586, 139.7454");
   const plane = await find("第IX系 X -35367.23 Y -5995.19");
   const utm = await find("54N 388708 3949480");
-  const typed = page.locator("#search input, .react-search input").first();
+  const typed = page.locator("#search input").first();
   await typed.fill("東京タワー");
   await page.waitForFunction(() => !window.__search.state.loading && window.__search.state.results.length === 1 && window.__search.state.results[0].label === "東京タワー");
   // Keys that confirm a Japanese IME conversion are the IME's: neither the composing Enter nor
   // Safari's confirming one (keyCode 229) chooses a result.
   const imeIgnored = await page.evaluate(async () => {
-    const input = document.querySelector("#search input, .react-search input");
+    const input = document.querySelector("#search input");
     for (const init of [{ key: "Enter", isComposing: true }, { key: "Enter", keyCode: 229 }, { key: "ArrowDown", isComposing: true }]) {
       input.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true, cancelable: true }));
     }

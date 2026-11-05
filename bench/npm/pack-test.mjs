@@ -23,7 +23,8 @@ import { stateChecks } from "./checks/state.mjs";
 import { styleChecks } from "./checks/style.mjs";
 import { tileSourceChecks } from "./checks/tile-sources.mjs";
 import { trackExportChecks } from "./checks/track-export.mjs";
-import { crumb, mapState, trail } from "./checks/step.mjs";
+import { showcaseDataChecks } from "./checks/showcase-data.mjs";
+import { crumb, mapState, openTab, trail } from "./checks/step.mjs";
 
 const shots = process.argv.find((a) => a.startsWith("--screenshots="))?.split("=")[1];
 await prepareExamples();
@@ -778,6 +779,7 @@ async function showcase(page) {
   await page.click("#modes button >> text=3D");
   await page.waitForFunction(() => window.__map && window.__map.getPitch() === 60 && !window.__map.isMoving(), null, { timeout: 30000 });
   const tilted = await page.evaluate(() => ({ pitch: window.__map.getPitch(), bearing: window.__map.getBearing() }));
+  await openTab(page, "explore");
   await page.click("#destinations button >> text=大阪駅");
   await page.waitForFunction(() => Math.abs(window.__map.getCenter().lng - 135.4959) < 1e-9 && !window.__map.isMoving(), null, { timeout: 30000 });
   await page.waitForFunction(() => window.__described.near.includes("大阪駅"));
@@ -830,6 +832,8 @@ async function showcase(page) {
   tabled.marked = await page
     .waitForFunction((n) => window.__table.state.total === n + 1 && window.__table.state.rows.length > 0, tabled.initial.total, { timeout: 10_000 })
     .then(() => true, () => false);
+  crumb("showcaseDataChecks");
+  const read = await showcaseDataChecks(page);
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
     identified.count >= 1 && identified.index === 0 && identified.selected === true &&
@@ -837,7 +841,7 @@ async function showcase(page) {
     coordinates[2][1].startsWith("第IX系 X -35") && coordinates[3][1].startsWith("54N ") &&
     hovered.id === "東京駅" && hovered.state.hover === true &&
     styled.terrain?.source === "dem" && styled.hillshade === "none" && styled.listed.visible === false && styled.listed.inRange === true && styled.markers === "印 1" &&
-    JSON.stringify(styled.legend) === JSON.stringify({ title: "道路", kind: "match", labels: ["0", "1", "その他"] }) &&
+    JSON.stringify(styled.legend) === JSON.stringify({ title: "道路", kind: "match", labels: ["国道", "都道府県道", "その他"] }) &&
     styled.photo.layers.includes("photo") && !styled.photo.layers.includes("road") && styled.photo.layers.at(-1) === "places-label" && styled.photo.marker === "印 1" && styled.back && styled.ring &&
     first.near.includes("東京駅") && !first.near.includes("新宿駅") &&
     first.plane.zone === "第IX系" &&
@@ -846,8 +850,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, measured, drew, edited, cut, clustered }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && read.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, read, measured, drew, edited, cut, clustered }];
 }
 
 async function engineStarted(page) {

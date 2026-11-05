@@ -3,6 +3,7 @@
 // 「終える」 to finish. While it measures or draws, clicks do not identify features.
 import { measure } from "mbmap/geodesic";
 import { createMeasurement, formatArea, formatLength } from "mbmap/ui";
+import { showRows } from "./readout.js";
 
 export function createShowcaseMeasurement(map) {
   const m = createMeasurement(map, { measure });
@@ -58,7 +59,7 @@ export function mountMeasurement(map, beforeStart) {
         return b;
       }),
     );
-    dl.replaceChildren(...measuredRows(s).flatMap(([k, v]) => [Object.assign(document.createElement("dt"), { textContent: k }), Object.assign(document.createElement("dd"), { textContent: v })]));
+    showRows(dl, measuredRows(s));
   };
   m.subscribe(draw);
   draw(m.state);
