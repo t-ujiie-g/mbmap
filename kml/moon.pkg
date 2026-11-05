@@ -15,3 +15,7 @@ import {
   "moonbitlang/core/double",
   "moonbitlang/core/encoding/utf8",
 } for "test"
+
+import {
+  "moonbitlang/core/encoding/utf8",
+} for "wbtest"
