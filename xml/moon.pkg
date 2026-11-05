@@ -1,0 +1,12 @@
+// An XML reader as lenient as @xmldom/xmldom 0.9's `DOMParser` ("text/xml") into a
+// read-only node arena with the DOM queries togeojson uses. Pure MoonBit, tested on
+// every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "moonbitlang/core/encoding/utf8",
+} for "test"

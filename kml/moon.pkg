@@ -1,0 +1,17 @@
+// KML and GPX read into `@geom.Table`s as @tmcw/togeojson 7.1.3's `kml()` and
+// `gpx()` read them (over `@xml.Document`). Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/xml",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+  "moonbitlang/core/encoding/utf8",
+} for "test"
