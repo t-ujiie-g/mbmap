@@ -25,7 +25,8 @@
 
 - **構成**：
   - 入口は新しい `mbmap/data`（`data.js`、6KB）。分析ワーカー（28.1 / 30KB）と GeoJSON ワーカー（29.3 / 30KB）には読み手の入る余裕がないので、ワーカーも新しく作る。
-  - wasm は 3 つ：`data.wasm` 30KB（CSV、WKT/WKB、TopoJSON、Shapefile、FlatGeobuf、書き出し）、`xml.wasm` 20KB（KML/GPX と KML の書き出し、初めて使うときに読む）、`geotiff.wasm` 20KB（同じく遅れて読む）。
+  - wasm は 3 つ：`data.wasm`（CSV、WKT/WKB、TopoJSON、Shapefile、FlatGeobuf、書き出し）、`xml.wasm`（KML/GPX と KML の書き出し、初めて使うときに読む）、`geotiff.wasm` 20KB（同じく遅れて読む）。
+  - 予算：データワーカーは 30KB → 38KB、`xml.wasm` は 20KB → 26KB に引き上げた（2026-11-05 ユーザー判断）。17.2 でデータワーカーが 28,976 / 30,000 バイトになり、17.3（FlatGeobuf、約 4〜5KB）と 17.5（書き出し、約 2KB）が入らなかったため。`xml.wasm` は xmldom と同じ振る舞いの XML の読み手（約 10.4KB）、KML（4.5KB）、GPX（2.2KB）で 22.2KB になり、17.5 の KML の書き出し（約 3KB）も入る。分けると wasm ごとに core の約 6KB を持つので、データワーカーは 1 つのままにした。
   - 読んだデータは `@geom.Table` にし、地図の GeoJSON ソースにも `mbmap/analysis` の Dataset にもする。
 - **段階**：
   - 17.1：土台と CSV（緯度経度の列、WKT の列）、WKT/WKB。比べる相手は papaparse 5.7.0、betterknown 1.2.0、wkx 0.5.0。
@@ -53,7 +54,7 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.2：Shapefile、TopoJSON、座標変換（このブランチ）
+### 17.2：Shapefile、TopoJSON、座標変換（#99）
 
 - **入力**：
   - `read` は URL（`.shp` なら隣の `.dbf`・`.prj`・`.cpg` も取る。404 はないものとする）、zip、File の配列（拡張子で見分ける）、`{ shp, dbf?, prj?, cpg? }` を受け取る。
@@ -88,7 +89,7 @@
   - `mbmap/data`：2,435 → 3,191 / 6,000。
   - 新しい行：`.prj` WKT 3,679 / 4,000、zip 1,214 / 2,000、座標変換 1,020 / 1,500。`.prj` は proj4 の投影名と測地系の表で 4KB 近くになった。
   - geojson.wasm・analysis.wasm・geojson-properties.wasm は 2 バイトずつ大きくなった。逆アセンブルでは、`formats` の閉包の 1 つでフィールドの並びが変わっただけで、新しい読み手は入っていない。
-  - **データワーカーには約 1KB しか余裕がない**。17.3（FlatGeobuf）と 17.5（書き出し）の置き場所を決める必要がある（ユーザーに確認する）。
+  - **データワーカーには約 1KB しか余裕がなかった**。予算を 38KB に引き上げた（上の「構成」）。
 - **確認**：pack test は 12 ページすべて通った。`data` の確認でやったこと：
   - 平面直角 IX 系・Shift_JIS の DBF・Esri の `.prj` の `wards.zip` を URL・File・隣のファイル・`{shp, dbf}` と `crs` で読み、穴を保ったまま 1e-7° で一致させる。
   - SRID 6677 の EWKT を読む。
