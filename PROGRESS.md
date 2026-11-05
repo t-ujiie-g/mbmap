@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.2 → 17.6（下の「Phase 17」の節）。17.4（KML/KMZ・GPX、別の `xml.wasm`）は 17.2 とほぼ独立なので並行して進める。17.7 は #97、17.1 は #98。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.3 → 17.5 → 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は下の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -53,6 +53,38 @@
   - DBF の Shift_JIS は host の `TextDecoder` で読む。
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
+
+### 17.4：KML/KMZ と GPX（このブランチ）
+
+- **パッケージ**：
+  - `xml`：xmldom 0.9.12 の sax の読み手と同じ振る舞いの、純粋な XML の読み手。xmldom がする立ち直り（本文の `<`、引用符のない属性、`;` のない参照）と、xmldom が止まる誤りをそのまま写した。
+    - 改行をそろえ、BOM を落とす。名前空間は範囲で解決し、接頭辞は名前に残す。
+    - 宣言された実体は展開しない。billion laughs のような入力も書かれたまま。
+    - 上限：深さ 256、要素ごとの属性 1024、ノード 400 万。
+  - `kml`：togeojson 7.1.3 の `kml()` と `gpx()` を `@geom.Table` に写した。
+    - KML：Placemark（MultiGeometry は要素ごとの行、gx:Track / MultiTrack は時刻つき）、GroundOverlay（LatLonBox の回転、gx:LatLonQuad）、Style / StyleMap を simplestyle の値に（aabbggrr の色）、ExtendedData（Schema で型を付ける）、TimeStamp / TimeSpan。
+    - GPX：trk（区間が複数なら MultiLineString）、rte、wpt、`_gpxType`、拡張（心拍などは `coordinateProperties`）。
+    - 高さは落とす。入れ子の値は JSON の文字列。`kmlWithFolders` と TCX は範囲の外にした。
+  - `xml_worker`：`xml.wasm`。データワーカーが KML/GPX を初めて読むときに読み込む。
+- **KMZ**：17.2 の共通の zip の読み手で開き、`doc.kml`、なければ最初の `.kml` を読む。17.4 が先に作っていた別の zip の読み手は消し、1 つにまとめた。
+- **id**：Placemark の id は `ids_out` から `toGeoJSON` の地物の `id` に入る。TopoJSON と同じ道を通る。
+- **座標系**：KML と GPX は EPSG:4326 なので、座標変換の段を通らない。`crs` を渡すと拒む（無視するより誤りに気づきやすい）。
+- **黄金テスト**（`npm run xml:golden`）：83 件で差 0。
+  - 内訳：kml 38、gpx 8、悪意のある入力 20、GSI の地物を KML にしたもの 7（29,291 行）、GPX にしたもの 3（9,050 行）、KMZ 7。地理院地図の作図の書き方をまねた KML も入れた。
+  - 違いは 6 つで、記録どおり：深さ 256 を超えるものと属性 1024 を超えるものは拒む、内部サブセットは確かめない、XML 宣言の中身は確かめない、NetworkLink は読まない。
+  - `data:golden` は 860 件で差 0 のまま。
+- **bench の devDependencies**（版は固定、`npm audit` は 0 件）：@tmcw/togeojson 7.1.3（BSD-2、tmcw、依存なし）、@xmldom/xmldom 0.9.12（MIT、依存なし）。どちらも install スクリプトはなく、NOTICE に書いた。
+- **大きさ**（gzip -9）：
+  - `xml.wasm`：22,661 / 26,000。id で約 0.5KB 増えた。最初の版は約 29KB で、削って収めた。
+  - データワーカー：29,536 / 38,000。`mbmap/data`：3,281 / 6,000。
+  - 試したもの：`wasm-opt -Oz` を xml.wasm にかけると 18.7KB になり、黄金テストも差 0 のままだった。AGENTS の決まりと速さの問題があるので使っていない。
+- **確認**：
+  - MoonBit のテストは全ターゲットで通る（470 / 474 / 501 / 470）。npm のテストは 210 件。
+  - pack test は全部通った。KML を URL・File・KMZ で、GPX も読み、KML を描く。id と `crs` を拒むことも確かめる。xml.wasm は KML/GPX を初めて読むときだけ、1 回読み込まれる。
+- **残したもの**：
+  - Node の bench では KML を `dataReader` に通していない（通すのは pack test だけ）。
+  - 複数の区間がある GPX の track の `time` という名前の拡張は落とす。
+  - SimpleData のキー名が Object.prototype の名前のときなど、悪意のある入力の隅のいくつかは togeojson と合わせていない。
 
 ### 17.2：Shapefile、TopoJSON、座標変換（#99）
 
