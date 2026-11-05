@@ -27,7 +27,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/draw.js` | 見た目を持たない作図（`mbmap/draw`） |
 | `dist/analysis.js` | 解析（`mbmap/analysis`）の入口 |
 | `dist/geodesic.js` | 楕円体の上の計測（`mbmap/geodesic`）の入口 |
-| `dist/data.js` | データの読み込み（CSV・WKT・WKB、`mbmap/data`）の入口 |
+| `dist/data.js` | データの読み込み（CSV・WKT・WKB・KML/KMZ・GPX、`mbmap/data`）の入口 |
 
 `index.js` が、使うときだけ動的 import で読み込むもの（`index.js` と同じ場所に置く）：
 
@@ -56,13 +56,14 @@ Worker と wasm：
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` が、初めて PROJ 文字列を受け取ったときだけ自分の隣から読む |
 | `dist/geodesic-worker.js`, `dist/geodesic.wasm` | `mbmap/geodesic` の Worker と wasm。初めて呼んだときに起こす |
 | `dist/data-worker.js`, `dist/data.wasm` | `mbmap/data` の Worker と wasm。初めて呼んだときに起こす |
+| `dist/xml.wasm` | KML と GPX の読み込み。データの Worker が、初めて KML か GPX を読むときだけ読む |
 
 どのファイルも、既定では `new URL("./worker.js", import.meta.url)` のように、読み込む側のモジュールの隣から読む。ESM をそのまま配信する場合（import map など）は、`dist/` をまるごと置けばそのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う。esbuild はこの `new URL` をそのまま残し、動的 import はバンドルに入れるので、Worker と wasm（`dist/` の `*.wasm` と `*worker*.js`）をバンドルの隣にコピーすれば動く（`examples/react/build.mjs`）。ほかのバンドラはまだ検証していない。動かないときは、ファイルを自分で配信して場所を渡す。
 
 - `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
 - `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
 - `index.js` の動的 import（上の表）と `analysis.js` の `projstring.js` は、場所を変えられない。それぞれの隣に置く。
-- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）と `wasmUrl`（`data.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
 
 Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
@@ -287,10 +288,11 @@ const stations = await read("/data/stations.csv");   // 緯度・経度の列か
 map.addSource("stations", { type: "geojson", data: stations.toGeoJSON() });
 const dataset = await load(stations);                 // mbmap/analysis の Dataset にもなる
 const area = await parse("SRID=4326;POLYGON ((139.76 35.67, 139.775 35.67, 139.775 35.688, 139.76 35.688, 139.76 35.67))", { format: "wkt" });
+const drawing = await read(file);                     // 地理院地図の作図など、KML・KMZ・GPX の File も
 ```
 
 - `read(input, options)`：`input` は http(s) の URL（文字列か `URL`。ページを基準に解決し、資格情報なしで取得する）、`Blob`・`File`、`ArrayBuffer`・型付き配列（コピーする）。文字列はいつも URL として扱う。文字列のデータは `parse(text, { format })` に渡す。
-- `options.format`：`"csv"`・`"wkt"`・`"wkb"`。省くと URL か `File` の名前の拡張子（`.csv`・`.tsv`・`.txt`・`.wkt`・`.wkb`・`.ewkb`）で決める。決められないときは失敗する。`transformRequest(url)` で URL の取得に `headers` や `credentials` を付けられる（地図の `transformRequest` と同じ形）。
+- `options.format`：`"csv"`・`"wkt"`・`"wkb"`・`"kml"`（KMZ も）・`"gpx"`。省くと URL か `File` の名前の拡張子（`.csv`・`.tsv`・`.txt`・`.wkt`・`.wkb`・`.ewkb`・`.kml`・`.kmz`・`.gpx`）で決める。決められないときは失敗する。`transformRequest(url)` で URL の取得に `headers` や `credentials` を付けられる（地図の `transformRequest` と同じ形）。
 - 結果の `DataTable`：`length`（行の数。GEOMETRYCOLLECTION は要素ごとに 1 行）、`columns`（属性の名前）、`format`、`toGeoJSON()`（FeatureCollection。GeoJSON ソースの `data` にそのまま渡せる。呼ぶたびに新しく作る）、`tableBytes()`（`mbmap/analysis` の `load` が受け取る形）。`mbmap/analysis` の `load(table, { crs })` に渡すと、投影座標の CSV も経緯度にして読める。
 - CSV（RFC 4180）：引用符（`""` で引用符そのもの、引用の中の改行）、CRLF・LF・CR の行末、先頭の BOM、空行の読み飛ばし。オプション：
   - `delimiter`：1 文字。省くと papaparse と同じやり方で `,`・タブ・`|`・`;` から推測する。
@@ -300,10 +302,16 @@ const area = await parse("SRID=4326;POLYGON ((139.76 35.67, 139.775 35.67, 139.7
   - ヘッダーより多い欄は捨て、足りない欄は属性を持たない。
 - WKT・EWKT：すべての型（GEOMETRYCOLLECTION は要素ごとの行に分ける。入れ子も）、`EMPTY`（ジオメトリなしの行）、Z・M・ZM（2 次元だけ残す。タグのない 3・4 次元の座標も読む）、`MULTIPOINT (1 2, 3 4)` と `MULTIPOINT ((1 2), (3 4))`。空白で区切って複数のジオメトリを続けて書ける（1 行に 1 つなど）。
 - WKB・EWKB：バイト列か 16 進の文字列（PostGIS の出力の形。空白は無視）。ジオメトリごと（入れ子も）のバイト順、ISO の Z/M/ZM の型コード（+1000/2000/3000）と EWKB のフラグ。NaN の点は空として扱う。続けて置いた複数のジオメトリを読む。
+- KML・KMZ：@tmcw/togeojson 7.1.3 の `kml()` と同じ地物と属性（XML は @xmldom/xmldom 0.9.12 と同じく読み、壊れた文書は同じところで失敗する）。
+  - `Placemark`（Point、LineString、LinearRing、Polygon、MultiGeometry、`gx:Track`・`gx:MultiTrack`）、`GroundOverlay`（`LatLonBox` の回転と `gx:LatLonQuad` の多角形、`@geometry-type` は `"groundoverlay"`）の順。MultiGeometry は（togeojson の GeometryCollection と違い）要素ごとの行に分ける。`NetworkLink`（ほかの文書へのリンク）は読まない。
+  - 属性：`name`、`description`（CDATA なら togeojson と同じ `{"@type":"html","value":…}`）、`visibility`（真偽値）、`address`、`phoneNumber`、`open`、`styleUrl` と、それが指す `Style`・`StyleMap` と地物の中の `Style` から togeojson と同じ simplestyle 風の値（`stroke`、`stroke-opacity`、`stroke-width`、`fill`、`fill-opacity`、`icon`、`icon-scale`、`icon-color`、`icon-offset`、`label-scale`、…。KML の aabbggrr の色は `#rrggbb` と不透明度に）、`ExtendedData`（`Data/value`、`Schema` で型を付ける `SimpleData`）、`timestamp`、`timespan`、トラックの時刻（`coordinateProperties.times`）。
+  - 入れ子の値（オブジェクトと配列：`timespan`、`coordinateProperties`、`icon-offset` など）は JSON の文字列。高さ（z）は捨てる。座標に有限でない値を持つ要素は読まない。
+  - KMZ（zip）は、最上位の `doc.kml`、なければ最初の `.kml` を読む（格納と deflate。zip64 と暗号化は受け付けない）。
+- GPX：togeojson の `gpx()` と同じ。`trk`（区間が 2 つ以上なら MultiLineString）、`rte`、`wpt` の順。`_gpxType`、`name`・`cmt`・`desc`・`type`・`time`・`keywords`・`sym`、`links`、名前空間付きの要素（`gpxx_…` など）、`extensions` の線の色・不透明度・太さ、点ごとの時刻と拡張の値（心拍 `heart`、`cads` など。`coordinateProperties`）。標高は捨てる。
 - 座標系：EWKT・EWKB の SRID は 4326（と、指定なしを表す 0）だけを受け付け、ほかの SRID は失敗する。投影座標の CSV は `mbmap/analysis` の `load(table, { crs })` で経緯度にできる。
-- 値は papaparse 5.7.0（`header`、`dynamicTyping`、`skipEmptyLines`）、betterknown 1.2.0（WKT）、wkx 0.5.0（WKB）と一致することを黄金テストで確かめている（`npm run data:golden`）。違うのは、参照の実装が緩く受け付けるもの（WKT の後ろの余分な文字列、`1a` のような数、型の違う Multi の要素、0 と 1 以外のバイト順、4326 以外の SRID）を失敗にするところと、タグのない Z 座標を読むところ。
-- 入力は 256MB、点は 2000 万、CSV の欄は 1 行に 4096、1 つの欄は 16MB、属性の欄の数（行 × 列）は 3200 万まで。
-- 初めて呼んだときに、専用の Worker と wasm（gzip で約 17KB）を読み込む。`terminate()` で止める。
+- 値は papaparse 5.7.0（`header`、`dynamicTyping`、`skipEmptyLines`）、betterknown 1.2.0（WKT）、wkx 0.5.0（WKB）と一致することを黄金テストで確かめている（`npm run data:golden`）。KML と GPX は @tmcw/togeojson 7.1.3 ＋ @xmldom/xmldom 0.9.12 と（`npm run xml:golden`）。違うのは、参照の実装が緩く受け付けるもの（WKT の後ろの余分な文字列、`1a` のような数、型の違う Multi の要素、0 と 1 以外のバイト順、4326 以外の SRID）を失敗にするところと、タグのない Z 座標を読むところ。
+- 入力は 256MB、点は 2000 万、CSV の欄は 1 行に 4096、1 つの欄は 16MB、属性の欄の数（行 × 列）は 3200 万まで。XML は入れ子 256 段、1 つの要素の属性 1024、ノード 400 万まで。KML と GPX の地物の属性は 4096、表の欄（行 × 列）は 3200 万、点は 2000 万まで。宣言した実体（`<!ENTITY>`）は xmldom と同じく展開しない。
+- 初めて呼んだときに、専用の Worker と wasm（gzip で約 18KB）を読み込む。KML か GPX を初めて読むときに、もう 1 つの wasm（`xml.wasm`、約 22KB）を読む。`terminate()` で止める。
 
 ## Web Component `<mb-map>`
 

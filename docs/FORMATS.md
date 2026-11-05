@@ -506,7 +506,8 @@ Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
 ## Data worker messages (`data_worker/js/worker.mjs`)
 
-In: `{type: "init", wasm}` (instantiated with `{ host: { number } }`, `hostNumber`), then
+In: `{type: "init", wasm, xml}` (`wasm` instantiated with `{ host: { number } }`, `hostNumber`;
+`xml`, the KML and GPX module `xml_worker`, on the first such read with `{ Math, host }`, `hostText`), then
 `{type: "call", id, op: "read", format, options, ...}` with the data as one of `url` (http(s),
 fetched with `init`'s string `headers` and `credentials`, none sent otherwise), `blob` or `bytes`
 (an ArrayBuffer), at most `MAX_INPUT_BYTES`:
@@ -516,7 +517,10 @@ fetched with `init`'s string `headers` and `credentials`, none sent otherwise), 
   `read_csv(names, delimiter, header, typing)` takes the three names, each ended by a NUL byte
   (empty: found by name), before the CSV in its input;
 - `"wkt"` (`read_wkt`) or `"wkb"` (`read_wkb`: binary, or hexadecimal text when the first byte
-  that is not white space is neither 0 nor 1).
+  that is not white space is neither 0 nor 1);
+- `"kml"` (the XML module's `read_kml`; a zip, starting `PK\3\4`, is a KMZ whose `doc.kml`, else
+  first `.kml` entry, `data_worker/js/kmz.mjs` inflates first) or `"gpx"` (`read_gpx`), the
+  document as UTF-8 in that module's input. Nested property values are JSON text.
 
 Out: `{type: "result", id, value}` with `value` an ArrayBuffer of "Table" bytes (transferred),
 or `{type: "result", id, error}`.
