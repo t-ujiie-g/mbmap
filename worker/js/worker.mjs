@@ -8,9 +8,9 @@ import { rangesOf, readFeatureRanges } from "./ranges.mjs";
 import { readString, readValue } from "./values.mjs";
 
 const LAYER_ENTRY_WORDS = 23; // worker/packed.mbt
-const KIND_SYMBOL = 4; // worker/packed.mbt
-const KIND_HILLSHADE = 5; // map/tiles.mbt
-const KIND_RASTER = 7; // map/tiles.mbt
+const KIND_SYMBOL = 4; // core/kinds.mbt
+const KIND_HILLSHADE = 5; // core/kinds.mbt
+const KIND_RASTER = 7; // core/kinds.mbt
 // Largest DEM tile side (worker/dem.mbt `dem_tile`) and raster tile side (JS only:
 // raster tiles go to a texture without passing through the wasm).
 const MAX_DEM_SIZE = 1024;
