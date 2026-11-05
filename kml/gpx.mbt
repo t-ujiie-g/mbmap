@@ -2,11 +2,9 @@
 let gpxx_namespace : String = "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
 
 ///|
-/// Reads a GPX document into rows as togeojson's `gpx()` reads it: every `trk`
-/// (a LineString, or a MultiLineString for several segments), then every `rte`
-/// and `wpt`. Elevations are dropped with z; `coordinateProperties` (times and
-/// extension values per point) and `links` are kept as JSON text. `number` and
-/// `number_text` as `read_kml` takes them.
+/// Reads a GPX document into rows as togeojson's `gpx()` does: every `trk`, then every `rte`
+/// and `wpt`; elevations dropped, `coordinateProperties` and `links` as JSON text.
+/// `number` and `number_text` as `read_kml` takes them.
 pub fn read_gpx(
   input : Bytes,
   number~ : (String) -> Double,
@@ -133,11 +131,9 @@ fn Reader::line_style(self : Reader, p : Props, node : Int32) -> Unit {
 }
 
 ///|
-/// The segments of a track (or a route's one) as `getPoints` reads them: all
-/// their x, y pairs with `ends` (point counts) per segment, each segment's times
-/// as a JSON array (`""` without any), and its extension values: `names` (by
-/// plural, `name_ends` per segment) with `values` the JSON array of each, as long
-/// as the segment's points including those without a position.
+/// A track's (or a route's) segments as `getPoints` reads them: x, y pairs with `ends` per segment,
+/// times as a JSON array (`""` without any), and extension values by plural name (`names`,
+/// `name_ends`), each a JSON array as long as the segment's points.
 priv struct Line {
   xy : Array[Double]
   ends : Array[Int32]

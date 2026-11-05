@@ -1,13 +1,7 @@
 ///|
-/// Reads a KML document into rows as togeojson's `kml()` reads it: every
-/// `Placemark`, then every `GroundOverlay`, in document order (its
-/// `NetworkLink`s, links to other documents, are left out).
-/// A multi-geometry gives a row per member (togeojson's GeometryCollection
-/// flattened), each with the feature's properties; z is dropped, as is a member
-/// with a coordinate that is not finite. Nested values (`timespan`,
-/// `coordinateProperties`, an HTML `description`, `icon-offset`) are kept as JSON
-/// text. `number` is JavaScript's `Number(string)` and `number_text`
-/// `String(number)` (the host's); `trig` turns rotated `LatLonBox`es.
+/// Reads a KML document into rows as togeojson's `kml()` does: every `Placemark`, then every
+/// `GroundOverlay` (no `NetworkLink`s); a multi-geometry gives a row per member, nested values are
+/// JSON text. `number` / `number_text` are the host's `Number` / `String`; `trig` turns `LatLonBox`es.
 pub fn read_kml(
   input : Bytes,
   number~ : (String) -> Double,
@@ -148,11 +142,9 @@ fn Reader::common(
 }
 
 ///|
-/// The tuples of `s` as `coord` reads them, four numbers each (how many of up
-/// to three, then those, NaN after): runs of white space separate tuples, a
-/// tuple's white space is removed, and it keeps the numbers between its commas
-/// that are not NaN; tuples with fewer than two numbers are left out (unless
-/// `point`, which reads `s` as one tuple).
+/// The tuples of `s` as togeojson's `coord` reads them, four numbers each (a count, up to three
+/// values, NaN after): white space separates tuples, NaN parts are skipped, and tuples of fewer
+/// than two numbers are left out (unless `point`, which reads `s` as one tuple).
 fn Reader::tuples(self : Reader, s : String, point : Bool) -> Array[Double] {
   let out = []
   let n = s.length()

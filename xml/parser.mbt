@@ -28,11 +28,9 @@ pub fn XmlError::message(self : XmlError) -> String {
 }
 
 ///|
-/// Reads `input` (UTF-8, a leading BOM dropped, malformed bytes as U+FFFD) as
-/// xmldom's `DOMParser().parseFromString(text, "text/xml")` reads `TextDecoder`'s
-/// text: where xmldom stops with a `ParseError` this raises; where it reports an
-/// error and goes on (a `<` in text, a missing `;`, an unquoted attribute) so does
-/// this. Line ends are normalized as xmldom's `normalizeLineEndings`.
+/// Reads UTF-8 `input` as xmldom's `DOMParser().parseFromString(text, "text/xml")` does: raises
+/// where it throws a `ParseError`, goes on where it only reports one (a `<` in text, a missing `;`,
+/// an unquoted attribute); a BOM is dropped and line ends normalized as `normalizeLineEndings`.
 pub fn Document::parse(input : Bytes) -> Document raise XmlError {
   let p = Parser::new(normalize(input), MAX_XML_NODES)
   p.run()

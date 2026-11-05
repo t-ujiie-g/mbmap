@@ -12,10 +12,8 @@ fn is_digit(c : UInt16) -> Bool {
 }
 
 ///|
-/// JavaScript's `Number.parseFloat(s)`: white space skipped, then the longest
-/// decimal literal (or `Infinity`) at the start, NaN without one. Clinger's fast
-/// path takes up to 15 digits and exponents within ±22; the rest of the literal
-/// goes to `number` (the host's `Number`).
+/// JavaScript's `Number.parseFloat(s)`: the longest decimal literal (or `Infinity`) after white
+/// space, else NaN; Clinger's fast path up to 15 digits and exponents of ±22, the rest via `number`.
 pub fn parse_float(s : String, number : (String) -> Double) -> Double {
   parse_float_in(s, 0, s.length(), number)
 }

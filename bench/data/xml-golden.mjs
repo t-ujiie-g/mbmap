@@ -1,6 +1,5 @@
-// xml.wasm (KML, GPX) vs @tmcw/togeojson 7.1.3 over @xmldom/xmldom 0.9.12 on hand-written
-// documents, hostile XML, GSI tile features (国土地理院ベクトルタイル提供実験) written as KML and
-// GPX, and KMZ archives: rows identical or refused by both.
+// xml.wasm (KML, GPX) vs @tmcw/togeojson 7.1.3 over @xmldom/xmldom 0.9.12: hand-written, hostile,
+// GSI-feature (国土地理院ベクトルタイル提供実験) and KMZ cases, identical or refused by both.
 // Usage: node data/xml-golden.mjs; writes bench/results/xml-golden.json.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
