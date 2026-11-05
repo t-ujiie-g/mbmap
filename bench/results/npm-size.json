@@ -16,7 +16,7 @@
     },
     {
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
-      "bytes": 770,
+      "bytes": 769,
       "budget": 2000
     },
     {
@@ -76,37 +76,37 @@
     },
     {
       "name": "display worker",
-      "bytes": 80791,
+      "bytes": 80792,
       "budget": 100000
     },
     {
       "name": "labels (loaded by the display worker with the first tile that has them)",
-      "bytes": 9560,
+      "bytes": 9559,
       "budget": 10000
     },
     {
       "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
-      "bytes": 2169,
+      "bytes": 2111,
       "budget": 3000
     },
     {
       "name": "feature queries (loaded by the display worker with the first query)",
-      "bytes": 925,
+      "bytes": 927,
       "budget": 1500
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29579,
+      "bytes": 29634,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49323,
+      "bytes": 49378,
       "budget": 50000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3816,
+      "bytes": 3817,
       "budget": 5000
     },
     {
@@ -116,7 +116,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28677,
+      "bytes": 28680,
       "budget": 30000
     },
     {
@@ -136,32 +136,32 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12017,
+      "bytes": 12076,
       "budget": 15000
     },
     {
       "name": "mbmap/data",
-      "bytes": 4460,
+      "bytes": 4441,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 39376,
+      "bytes": 39363,
       "budget": 40000
     },
     {
       "name": "zip archives (loaded by the data worker with the first one)",
-      "bytes": 1214,
+      "bytes": 1175,
       "budget": 2000
     },
     {
       "name": "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)",
-      "bytes": 2340,
+      "bytes": 2125,
       "budget": 2500
     },
     {
       "name": "coordinates from another CRS (loaded by the data worker with proj.wasm)",
-      "bytes": 1093,
+      "bytes": 1104,
       "budget": 1500
     },
     {
@@ -176,7 +176,7 @@
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
-      "bytes": 19918,
+      "bytes": 19821,
       "budget": 20000
     },
     {
