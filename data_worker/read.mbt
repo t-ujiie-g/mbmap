@@ -251,3 +251,26 @@ pub fn read_topojson(name : Int32) -> Int32 {
   last_layers.append(names)
   table_out(table)
 }
+
+///|
+/// Reads the FlatGeobuf placed as input, then `ids` u32 feature indices (-1 for
+/// none: the whole file); returns as `read_csv`, the ids kept for `ids_out`.
+#export_name("read_flatgeobuf")
+pub fn read_flatgeobuf(ids : Int32) -> Int32 {
+  let input = @wasmio.input_bytes()
+  let end = input.length() - @cmp.maximum(ids, 0) * 4
+  guard ids >= -1 && ids <= input.length() / 4 && end >= 0 else {
+    return @wasmio.fail_with("invalid ids")
+  }
+  begin() |> ignore
+  let given = if ids < 0 {
+    None
+  } else {
+    let r = @core.ByteReader::new(input[end:])
+    Some(Array::makei(ids, _ => r.u32()))
+  }
+  let table = @formats.read_flatgeobuf(input[:end], ids?=given) catch {
+    e => return @wasmio.fail_with(e.message())
+  }
+  table_out(table)
+}

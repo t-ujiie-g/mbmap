@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.3 → 17.5 → 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は下の節。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.5 → 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は下の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -54,7 +54,27 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.4：KML/KMZ と GPX（このブランチ）
+### 17.3：FlatGeobuf（このブランチ）
+
+- **読み手**：`@formats.read_flatgeobuf`（data.wasm）。flatgeobuf 4.6.1 の `deserialize` と同じ地物にする。
+  - FlatBuffers は自前で読む。どのオフセットも範囲を確かめ、誤りは残す形（`Wkb` と同じ）。地物ごとにその地物のバイトの中だけを読む。
+  - 図形：すべての型、ヘッダーの型が Unknown なら地物ごと、GeometryCollection は要素ごとの行（入れ子 32 段まで）、Z・M は落とす。曲線の型は拒む。ジオメトリのない地物は行にする（flatgeobuf は例外になる）。
+  - 属性：15 の型すべて。Long と ULong は flatgeobuf の `Number(BigInt)` と同じ丸め。Json は文字列のまま（入れ子は JSON の文字列という 17 の決まりどおり）、Binary は base64。文字列の先頭の BOM は `TextDecoder` と同じく落とす。
+  - id は地物の番号。ヘッダーの `crs`（EPSG か org なしの code、なければ wkt を `.prj` と同じく読む）は `crs` オプションがなければ使う。
+- **索引と範囲リクエスト**：`data_worker/js/fgb.mjs`（`data-fgb.js`、2.3KB / 2.5KB、FlatGeobuf を初めて読むときに読む）。
+  - flatgeobuf の `streamSearch`（段ごとの範囲をまとめる）と HttpReader の読み方を写した：最初に 12,944 バイト、索引の段、256KB より近い地物は 1 回で、同時に 6 つまで。
+  - 見つけた地物をヘッダーの後ろに並べ、番号と一緒に `read_flatgeobuf(ids)` に渡す。範囲リクエストに答えないサーバー（200）ならファイル全体から探す。
+  - 上限：ヘッダー 10MB（flatgeobuf と同じ）、読むバイトは合わせて `MAX_INPUT_BYTES`。上の段を指す索引や同じ節を何度も指す索引は、調べる節の数の上限で拒む。
+- **黄金テスト**（`npm run fgb:golden`）：648 件で差 0。
+  - 内訳：GSI の 6 層（節の大きさ 16、2、索引なし、ヘッダーの型つき、flatgeobuf 自身の `serialize`）23 件 115,072 行、15 の型、すべての図形の型と Z・M、座標系 5 件（EPSG:6677 を code、org なし、WKT で。proj4 と 1e-8° 以内）、`bbox` をバイト列から 511 件、HTTP の範囲リクエストで 92 件（地物が数個の小さなファイルも）、悪意のある入力。
+  - 範囲リクエストの数は flatgeobuf と同じ（ファイルごとに 15 回の `bbox` で合わせて 18〜29 回）。最初の版は最後の地物の長さを取り違え、小さなファイルで足りない範囲を読んでいた（pack test で見つけ、黄金テストに小さなファイルを足した）。
+  - 違いは 12 つで、記録どおり：ジオメトリのない地物を読む、曲線を拒む、ヘッダーの大きさの誤り・ヘッダーや索引や地物の途中で切れたファイル・地物の数が大きすぎる索引・ループする索引・列のない属性を拒む（flatgeobuf はバッファの外を読むか、何も読まずに終わる）。
+  - テスト用の書き手 `bench/data/fgb-write.mjs`（すべての型、索引、CRS）は flatgeobuf の builder を使う。flatgeobuf 4.6.1 の書き手は索引を書かず、欠けた属性を壊れた値で書くので（`JSON.stringify(undefined)`、NaN）、比べる相手のファイルは主にこれで作った。
+- **bench の devDependencies**（版は固定、`npm audit` は 0 件）：flatgeobuf 4.6.1（BSD、bjornharrtell、install スクリプトなし。依存の flatbuffers 25.9.23、slice-source 0.4.1、@bokuweb/zstd-wasm 0.0.27、@repeaterjs/repeater 3.1.0 もなし）、flatbuffers 25.9.23（Apache-2.0、テスト用の書き手が使う）。NOTICE に書いた（flatgeobuf の LICENSE は 2 条項の BSD で、package.json は BSD-3-Clause と書く）。
+- **大きさ**（gzip -9）：データワーカー 32.6KB / 38KB（+3.1KB）。`mbmap/data` 3.4KB / 6KB。
+- **残したもの**：`bbox` はファイルの座標系で渡す（経緯度から変換しない）。索引のないファイルに `bbox` を渡すと拒む（flatgeobuf と同じ）。地物を順に届ける（ストリームで返す）形はない。
+
+### 17.4：KML/KMZ と GPX（#100）
 
 - **パッケージ**：
   - `xml`：xmldom 0.9.12 の sax の読み手と同じ振る舞いの、純粋な XML の読み手。xmldom がする立ち直り（本文の `<`、引用符のない属性、`;` のない参照）と、xmldom が止まる誤りをそのまま写した。

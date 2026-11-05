@@ -4,9 +4,9 @@
 /**
  * The formats `mbmap/data` reads: CSV (or TSV), WKT or EWKT, WKB or EWKB (binary or hexadecimal), a
  * shapefile (a .shp with its .dbf, .prj and .cpg, or a .zip of them), TopoJSON, KML (or KMZ, a zip
- * holding it) and GPX.
+ * holding it), GPX and FlatGeobuf.
  */
-export type DataFormat = "csv" | "wkt" | "wkb" | "shapefile" | "topojson" | "kml" | "gpx";
+export type DataFormat = "csv" | "wkt" | "wkb" | "shapefile" | "topojson" | "kml" | "gpx" | "flatgeobuf";
 
 /** The files of a shapefile, each a URL, a Blob or bytes; only `shp` is needed. */
 export interface ShapefileParts<T> {
@@ -35,12 +35,12 @@ export interface CsvOptions {
 
 const EXTENSIONS: Record<string, DataFormat> = {
   csv: "csv", tsv: "csv", txt: "csv", wkt: "wkt", wkb: "wkb", ewkb: "wkb", shp: "shapefile", zip: "shapefile", topojson: "topojson",
-  kml: "kml", kmz: "kml", gpx: "gpx",
+  kml: "kml", kmz: "kml", gpx: "gpx", fgb: "flatgeobuf",
 };
 
 /**
  * The format a file name or URL path ends in (`.csv`, `.tsv`, `.txt`, `.wkt`, `.wkb`, `.ewkb`, `.shp`,
- * `.zip`, `.topojson`, `.kml`, `.kmz`, `.gpx`), or null. TopoJSON in a `.json` is read only when `format` says so.
+ * `.zip`, `.topojson`, `.kml`, `.kmz`, `.gpx`, `.fgb`), or null. TopoJSON in a `.json` is read only when `format` says so.
  */
 export function formatOf(name: string): DataFormat | null {
   const m = /\.([a-z]+)$/i.exec(name);
@@ -62,6 +62,14 @@ export function csvArgs(options: CsvOptions): { delimiter: number; header: boole
   }
   if ((latitude === undefined) !== (longitude === undefined)) fail("columns: latitude and longitude go together");
   return { delimiter: code, header, dynamicTyping, latitude, longitude, geometry };
+}
+
+/** `bbox` as the data worker takes it: `[minX, minY, maxX, maxY]` of finite numbers; throws on another value. */
+export function bboxArg(bbox: unknown): [number, number, number, number] {
+  if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every(Number.isFinite) || bbox[0] > bbox[2] || bbox[1] > bbox[3]) {
+    throw new Error("mbmap: data: invalid bbox: [minX, minY, maxX, maxY] of finite numbers, min at most max");
+  }
+  return [bbox[0], bbox[1], bbox[2], bbox[3]];
 }
 
 /** Files picked together (as from `<input type="file" multiple>`) as a shapefile's parts, by their extensions; null without a .shp. */

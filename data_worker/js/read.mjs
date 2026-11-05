@@ -2,12 +2,14 @@
 // fetched, apart from its messages so that bench/data/golden.mjs runs them in Node.
 
 import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { fetchInit, readCapped } from "../../worker/js/body.mjs";
 import { readString } from "../../worker/js/values.mjs";
 
 // The zip reader and the CRS conversion, imported with the first archive and the first data
 // in another CRS (npm/scripts/build.mjs makes them files of their own).
 const zipModule = () => import("../../npm/src/zip.ts");
 const crsModule = () => import("./crs.mjs");
+const fgbModule = () => import("./fgb.mjs");
 const lonLat = (crs) => crs === undefined || crs === 4326;
 
 const decoder = new TextDecoder();
@@ -135,11 +137,31 @@ export function dataReader(wasm, imports, { proj, prj, xml }) {
     return { table, ids: ids > 0 ? output(x, ids) : null, layer: null, layers: [] };
   }
 
+  // The whole file, or with `bbox` the features its index finds there: in `data`, or by range
+  // requests to `parts.remote` ({ url, init }).
+  async function flatgeobuf({ data, remote }, options) {
+    const fgb = await fgbModule();
+    const { bbox } = options;
+    const { bytes, ids } =
+      remote ? await fgb.selectUrl(remote.url, remote.init, bbox, MAX_INPUT_BYTES, { fetchInit, readCapped }) :
+      bbox !== undefined ? await fgb.selectBytes(data, bbox) :
+      { bytes: data, ids: -1 };
+    const header = fgb.readHeader(bytes);
+    input(wasm, [bytes]);
+    const table = output(wasm, wasm.read_flatgeobuf(ids));
+    let crs = options.crs ?? fgb.headerCrs(header.crs);
+    if (crs?.wkt) crs = (await prj()).parsePrj(crs.wkt);
+    const n = wasm.ids_out();
+    return { table, ids: n > 0 ? output(wasm, n) : null, crs };
+  }
+
   async function read(format, parts, options) {
     let result;
     const { data } = parts;
     if (format === "kml" || format === "gpx") return xmlRead(format, data, options);
-    if (format === "shapefile") {
+    if (format === "flatgeobuf") {
+      result = await flatgeobuf(parts, options);
+    } else if (format === "shapefile") {
       result = data && isZip(data) ? await zip(data, options) : await shapefile(data ? { shp: data } : parts, options);
     } else if (format === "topojson") {
       const name = options.layer === undefined ? new Uint8Array(0) : encoder.encode(options.layer);

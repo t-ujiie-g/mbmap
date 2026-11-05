@@ -1,0 +1,185 @@
+{
+  "env": {
+    "node": "v22.23.4",
+    "flatgeobuf": "4.6.1",
+    "proj4": "2.22.0",
+    "tiles": [
+      "14/14552/6451",
+      "14/14551/6450",
+      "14/14553/6452"
+    ]
+  },
+  "results": {
+    "gsi": {
+      "cases": 23,
+      "rows": 115072,
+      "identical": 23,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "columns": {
+      "cases": 2,
+      "rows": 6,
+      "identical": 2,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "geometries": {
+      "cases": 10,
+      "rows": 34,
+      "identical": 10,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "crs": {
+      "cases": 5,
+      "rows": 1500,
+      "identical": 5,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "bbox bytes": {
+      "cases": 511,
+      "rows": 63735,
+      "identical": 505,
+      "bothRefuse": 6,
+      "differ": 0
+    },
+    "bbox http": {
+      "cases": 92,
+      "rows": 57431,
+      "identical": 89,
+      "bothRefuse": 1,
+      "differ": 2
+    },
+    "hostile": {
+      "cases": 5,
+      "rows": 20128,
+      "identical": 1,
+      "bothRefuse": 4,
+      "differ": 0
+    }
+  },
+  "http": {
+    "building-16": {
+      "bytes": 4925320,
+      "requests": {
+        "ours": 27,
+        "theirs": 29
+      }
+    },
+    "road-16": {
+      "bytes": 1803408,
+      "requests": {
+        "ours": 26,
+        "theirs": 28
+      }
+    },
+    "contour-2": {
+      "bytes": 66832,
+      "requests": {
+        "ours": 23,
+        "theirs": 22
+      }
+    },
+    "label-16": {
+      "bytes": 101792,
+      "requests": {
+        "ours": 23,
+        "theirs": 24
+      }
+    },
+    "shapes": {
+      "bytes": 2256,
+      "requests": {
+        "ours": 19,
+        "theirs": 19
+      }
+    },
+    "typed": {
+      "bytes": 1288,
+      "requests": {
+        "ours": 17,
+        "theirs": 18
+      }
+    },
+    "ignoringRange": {
+      "requests": 1
+    }
+  },
+  "deviations": [
+    {
+      "group": "geometries",
+      "label": "a feature without geometry",
+      "why": "flatgeobuf throws reading the missing geometry; mbmap/data gives a row without one",
+      "ok": true
+    },
+    {
+      "group": "geometries",
+      "label": "a CircularString",
+      "why": "flatgeobuf gives curves no coordinates; mbmap/data refuses them",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "header size past the end",
+      "why": "flatgeobuf reads no features from it without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "header size over 10 MB",
+      "why": "flatgeobuf reads no features from it without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "cut in the header",
+      "why": "flatgeobuf reads no features from it without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "cut at 216 of 4925320",
+      "why": "flatgeobuf reads past its buffer or stops without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "cut at 4176 of 4925320",
+      "why": "flatgeobuf reads past its buffer or stops without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "cut at 4925317 of 4925320",
+      "why": "flatgeobuf reads past its buffer or stops without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "cut at 4925220 of 4925320",
+      "why": "flatgeobuf reads past its buffer or stops without an error",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "a feature count of 2^40",
+      "why": "flatgeobuf allocates a tree of that size",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "bbox over a tree pointing back up",
+      "why": "flatgeobuf walks it until its queue fails",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "a property of no column",
+      "why": "flatgeobuf throws reading the column's name; mbmap/data refuses the file",
+      "ok": true
+    }
+  ],
+  "differ": 2
+}

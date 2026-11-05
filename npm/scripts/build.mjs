@@ -62,9 +62,9 @@ await build({ ...common, entryPoints: [path.join(ROOT, "analysis_worker/js/worke
 await build({ ...common, entryPoints: [path.join(PKG, "src/geodesic.ts")], outfile: path.join(DIST, "geodesic.js") });
 await build({ ...common, entryPoints: [path.join(ROOT, "geodesic_worker/js/worker.mjs")], outfile: path.join(DIST, "geodesic-worker.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/data.ts")], outfile: path.join(DIST, "data.js"), plugins: [projstringEntry] });
-// The zip reader and the CRS conversion stay files of their own, imported by the data worker on first use.
-const DATA_PARTS = { "../../npm/src/zip.ts": "data-zip.js", "./crs.mjs": "data-crs.js" };
-const dataParts = { name: "data-parts", setup: (b) => b.onResolve({ filter: /^(\.\.\/\.\.\/npm\/src\/zip\.ts|\.\/crs\.mjs)$/ }, (a) => ({ path: `./${DATA_PARTS[a.path]}`, external: true })) };
+// The zip reader, the CRS conversion and FlatGeobuf's index stay files of their own, imported by the data worker on first use.
+const DATA_PARTS = { "../../npm/src/zip.ts": "data-zip.js", "./crs.mjs": "data-crs.js", "./fgb.mjs": "data-fgb.js" };
+const dataParts = { name: "data-parts", setup: (b) => b.onResolve({ filter: /^(\.\.\/\.\.\/npm\/src\/zip\.ts|\.\/crs\.mjs|\.\/fgb\.mjs)$/ }, (a) => ({ path: `./${DATA_PARTS[a.path]}`, external: true })) };
 await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js/worker.mjs")], outfile: path.join(DIST, "data-worker.js"), plugins: [dataParts] });
 for (const [source, file] of Object.entries(DATA_PARTS)) {
   await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js", source)], outfile: path.join(DIST, file) });

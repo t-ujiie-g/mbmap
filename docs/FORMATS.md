@@ -515,7 +515,7 @@ format, options, ...}` with the data as one of `url` (http(s), fetched with `ini
 `MAX_INPUT_BYTES`, or for a shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source. Calls
 run one after another. `options` for every format: `crs` (an EPSG code or a "CRS definition", for
 coordinates the data does not tag; refused for KML and GPX, which are EPSG:4326), `layer` (a
-string), `encoding` (a .dbf's, a label or code page):
+string), `encoding` (a .dbf's, a label or code page), `bbox` (FlatGeobuf only, four finite numbers):
 
 - `format` `"csv"`, with `options` `{delimiter, header, dynamicTyping, latitude, longitude,
   geometry}` (`delimiter` a character code or -1 to guess; the column names optional). The wasm's
@@ -537,7 +537,14 @@ string), `encoding` (a .dbf's, a label or code page):
   first `.kml` entry, `kmlOfKmz` in `data_worker/js/read.mjs` inflates first through
   `npm/src/zip.ts`) or `"gpx"` (`read_gpx`), the document as UTF-8 in that module's input. Nested
   property values are JSON text. xml.wasm has its own `ids_out()` (KML's Placemark ids), and its
-  rows skip the CRS step below.
+  rows skip the CRS step below;
+- `"flatgeobuf"`: `read_flatgeobuf(ids)` takes the file (ids -1: the whole of it, its index skipped)
+  or, with `bbox`, the bytes up to the end of its header, the features `data_worker/js/fgb.mjs`
+  (`data-fgb.js`) finds in its index one after another (each with its u32 size), then `ids` u32
+  feature indices. With a `url`, those are read by HTTP range requests (`Range` added to `init`'s
+  headers; a 200 answer is the whole file, read as bytes). Feature indices are the rows' ids; the
+  header's CRS (`crs.code` of org EPSG or none, else `crs.wkt` read as a .prj) is the data's unless
+  `options.crs` is given.
 
 After a read, `srids_out()` writes each row's SRID as an i32 (0 where none was given) and returns
 their count, or 0 when no row had one; `layers_out()` writes the input's layer names (TopoJSON

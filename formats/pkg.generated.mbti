@@ -29,6 +29,8 @@ pub const MAX_POINTS : Int32 = 20_000_000
 
 pub fn read_csv(BytesView, CsvOptions, slow_number? : (Int32, Int32) -> Double, srids? : Array[Int32]) -> @geom.Table raise ReadError
 
+pub fn read_flatgeobuf(BytesView, ids? : Array[Int32]) -> @geom.Table raise ReadError
+
 pub fn read_geojson(BytesView, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise GeoJSONError
 
 pub fn read_shapefile(BytesView, BytesView?, text~ : (Int32, Int32) -> String, slow_number~ : (Int32, Int32) -> Double) -> @geom.Table raise ReadError

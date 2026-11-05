@@ -1,11 +1,13 @@
 // Writes the pack test's fixtures into bench/npm/pages/data/: WARDS in plane IX as shapefiles
-// (Shift_JIS, an Esri .prj; loose and zipped), refused archives, lines as quantized TopoJSON.
+// (Shift_JIS, an Esri .prj; loose and zipped), refused archives, lines as quantized TopoJSON,
+// STATIONS as an indexed FlatGeobuf.
 // Usage: node data/pack-fixtures.mjs (bench/npm/pack-test.mjs imports WARDS).
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import proj4 from "proj4";
 import topojsonServer from "topojson-server";
 import { ROOT } from "../lib/root.mjs";
+import { fgbFile, T } from "./fgb-write.mjs";
 import { encodeText, writeShapefile, writeZip } from "./shapefile.mjs";
 
 /** The areas' rings in longitude and latitude: outer rings counter-clockwise, holes clockwise. */
@@ -13,6 +15,9 @@ export const WARDS = [
   { name: "丸の内", number: 1, rings: [[[139.760, 35.676], [139.768, 35.676], [139.768, 35.684], [139.760, 35.684], [139.760, 35.676]], [[139.762, 35.678], [139.762, 35.680], [139.764, 35.680], [139.764, 35.678], [139.762, 35.678]]] },
   { name: "八重洲", number: 2, rings: [[[139.769, 35.678], [139.775, 35.678], [139.775, 35.684], [139.769, 35.684], [139.769, 35.678]]] },
 ];
+
+/** The points of stations.fgb (name, longitude, latitude), in file order. */
+export const STATIONS = [["有楽町", 139.7631, 35.6751], ["東京", 139.7671, 35.6812], ["日本橋", 139.7745, 35.6820], ["三越前", 139.7732, 35.6853], ["神田", 139.7709, 35.6918]];
 
 const IX = 139 + 50 / 60;
 proj4.defs("EPSG:6677", `+proj=tmerc +lat_0=36 +lon_0=${IX} +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`);
@@ -40,4 +45,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     ],
   };
   await writeFile(path.join(dir, "lines.topojson"), JSON.stringify(topojsonServer.topology({ lines }, 1e5)));
+  const stations = STATIONS.map(([name, x, y], i) => ({ type: "Feature", geometry: { type: "Point", coordinates: [x, y] }, properties: { 名前: name, 番号: i + 1 } }));
+  await writeFile(path.join(dir, "stations.fgb"), fgbFile(stations, { columns: [{ name: "名前", type: T.String }, { name: "番号", type: T.Int }], nodeSize: 2, crs: { org: "EPSG", code: 4326 } }));
 }
