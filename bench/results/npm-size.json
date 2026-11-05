@@ -91,27 +91,27 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29502,
+      "bytes": 29515,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49221,
+      "bytes": 49210,
       "budget": 50000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3481,
+      "bytes": 3500,
       "budget": 5000
     },
     {
-      "name": "PROJ strings (loaded by mbmap/analysis on the first one)",
-      "bytes": 2723,
+      "name": "PROJ strings (loaded by mbmap/analysis and mbmap/data on the first one)",
+      "bytes": 2740,
       "budget": 5000
     },
     {
       "name": "analysis worker",
-      "bytes": 28102,
+      "bytes": 28115,
       "budget": 30000
     },
     {
@@ -120,7 +120,7 @@
       "budget": 50000
     },
     {
-      "name": "coordinate systems (loaded by the analysis worker on first use)",
+      "name": "coordinate systems (loaded by the analysis and data workers on first use)",
       "bytes": 21681,
       "budget": 25000
     },
@@ -136,13 +136,28 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 2435,
+      "bytes": 3181,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 17170,
+      "bytes": 28947,
       "budget": 30000
+    },
+    {
+      "name": "zip archives (loaded by the data worker with the first one)",
+      "bytes": 1214,
+      "budget": 2000
+    },
+    {
+      "name": "coordinates from another CRS (loaded by the data worker with proj.wasm)",
+      "bytes": 1020,
+      "budget": 1500
+    },
+    {
+      "name": ".prj WKT (loaded by the data worker on the first .prj)",
+      "bytes": 3679,
+      "budget": 4000
     },
     {
       "name": "mbmap/ui createAttribution alone",

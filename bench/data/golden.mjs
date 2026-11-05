@@ -1,6 +1,9 @@
-// data.wasm vs papaparse 5.7.0, betterknown 1.2.0 and wkx 0.5.0 on hand-written cases and GSI
-// tile features (国土地理院ベクトルタイル提供実験): rows identical or refused by both.
-// Usage: node data/golden.mjs; writes bench/results/data-golden.json.
+// data.wasm vs papaparse 5.7.0, betterknown 1.2.0, wkx 0.5.0 and (golden-more.mjs) shpjs, topojson-client
+// and proj4 on hand-written cases and GSI features (国土地理院ベクトルタイル提供実験): rows identical or refused
+// by both. Usage: node data/golden.mjs; writes bench/results/data-golden.json.
+
+// shpjs's dates are local midnights: the time zone is pinned so they read the same anywhere.
+process.env.TZ = "UTC";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { VectorTile } from "@mapbox/vector-tile";
@@ -8,19 +11,28 @@ import { geoJSONToWkt, wktToGeoJSON } from "betterknown";
 import Papa from "papaparse";
 import { PbfReader } from "pbf";
 import wkx from "wkx";
-import { hostNumber } from "../../wasmio/js/host.mjs";
+import { dataImports, dataReader } from "../../data_worker/js/read.mjs";
 import { tableToGeoJSON } from "../../wasmio/js/table.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { moreCases } from "./golden-more.mjs";
 
 // papaparse warns on the console when it renames repeated headers.
 const warn = console.warn;
 console.warn = (...args) => /Duplicate headers/.test(args[0]) || warn(...args);
 
+const imports = dataImports(() => instance.exports.memory);
 const { instance } = await WebAssembly.instantiate(
   await readFile(path.join(ROOT, "_build/wasm-gc/release/build/data_worker/data_worker.wasm")),
-  { host: { number: hostNumber(() => instance.exports.memory) } },
+  imports,
 );
 const w = instance.exports;
+const projBytes = await readFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"));
+let projModule = null;
+const loads = { proj: 0, prj: 0 };
+const reader = dataReader(w, imports, {
+  proj: () => (loads.proj++, (projModule ??= WebAssembly.instantiate(projBytes, { Math }).then((r) => r.instance.exports))),
+  prj: () => (loads.prj++, import("../../npm/src/prjwkt.ts")),
+});
 const encoder = new TextEncoder();
 const bytesOf = (data) => (typeof data === "string" ? encoder.encode(data) : new Uint8Array(data));
 
@@ -169,23 +181,25 @@ function wkbRows(buffers) {
   return out;
 }
 
-// Equal as JSON with numbers by Object.is; a Date of papaparse equals the ISO string it came from.
-function same(a, b) {
+// Equal as JSON with numbers by Object.is, or within `eps` if given; a Date of papaparse equals
+// the ISO string it came from.
+function same(a, b, eps = 0) {
   if (b instanceof Date) return typeof a === "string" && new Date(a).getTime() === b.getTime();
+  if (typeof a === "number" && typeof b === "number" && eps > 0) return Math.abs(a - b) <= eps;
   if (typeof a === "number" || typeof b === "number") return Object.is(a, b);
   if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return a === b;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
   const ka = Object.keys(a);
   const kb = Object.keys(b);
-  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && same(a[k], b[k]));
+  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && same(a[k], b[k], eps));
 }
 
 const results = {};
 const failures = [];
-function compare(group, label, got, want) {
+function compare(group, label, got, want, eps = 0) {
   const r = (results[group] ??= { cases: 0, rows: 0, identical: 0, bothRefuse: 0, differ: 0 });
   r.cases++;
-  const ok = want === null ? "error" in got : !("error" in got) && same(got, want);
+  const ok = want === null ? "error" in got : !("error" in got) && same(got, want, eps);
   if (!ok) {
     r.differ++;
     if (failures.length < 20) failures.push({ group, label, got: "error" in got ? got.error : got.slice(0, 3), want: want?.slice(0, 3) ?? "refused" });
@@ -304,7 +318,7 @@ const WKT = [
   "LINESTRING (1e-7 2E+3, 3.0 4.)", "POINT\t(1\n2)",
 ];
 for (const t of WKT) compare("wkt cases", t, ours("wkt", t), wktRows([t]));
-const WKT_REFUSED = ["POINT (1)", "POINT (1 2", "POINT ()", "POINT 1 2", "CIRCLE (1 2)", "POLYGON (1 2)", "MULTIPOINT (EMPTY)", "POINT Z (1 2)", "SRID=3857;POINT (1 2)", "SRID=x;POINT (1 2)", "POINT (NaN 1)", "POINT (1e400 1)", "LINESTRING (0 0, 1)", ""];
+const WKT_REFUSED = ["POINT (1)", "POINT (1 2", "POINT ()", "POINT 1 2", "CIRCLE (1 2)", "POLYGON (1 2)", "MULTIPOINT (EMPTY)", "POINT Z (1 2)", "SRID=x;POINT (1 2)", "POINT (NaN 1)", "POINT (1e400 1)", "LINESTRING (0 0, 1)", ""];
 for (const t of WKT_REFUSED.slice(0, -1)) compare("wkt refused", t, ours("wkt", t), null);
 compare("wkt cases", "empty input", ours("wkt", ""), []);
 deviation("wkt", "POINT (1 2) trailing", ours("wkt", "POINT (1 2) trailing"), true, "betterknown stops after one geometry; mbmap/data reads geometries to the end and refuses other text");
@@ -350,7 +364,6 @@ for (const [label, b] of [
   ["count past the end", Uint8Array.from([1, 2, 0, 0, 0, 0xff, 0xff, 0xff, 0x0f])],
   ["empty input", new Uint8Array(0)],
 ]) compare("wkb refused", label, ours("wkb", b), b.length === 0 ? [] : wkbRows([b]));
-deviation("wkb", "SRID 3857", ours("wkb", toWkb(SHAPES[0], { ewkb: true, srid: 3857 })), true, "wkx keeps any SRID; mbmap/data refuses SRIDs other than 4326 (and 0)");
 deviation("wkb", "byte order 2", ours("wkb", Uint8Array.from([2, ...point.subarray(1)])), true, "wkx reads any byte but 0 as little-endian");
 deviation("wkb", "MultiPoint of a LineString", ours("wkb", Uint8Array.from([1, 4, 0, 0, 0, 1, 0, 0, 0, ...toWkb(SHAPES[2])])), true, "wkx takes members of any type");
 deviation("wkb", "trailing bytes", ours("wkb", join([point, [1, 2, 3]])), true, "wkx ignores bytes after the geometry; mbmap/data reads geometries to the end");
@@ -407,6 +420,8 @@ compare("gsi csv", `${shapes.length} lines and polygons as a WKT column`, ours("
 const hexCsv = Papa.unparse(geometries.map((g, i) => ({ i, the_geom: hex(ewkbs[geometries.indexOf(g)]) })));
 compare("gsi csv", `${geometries.length} geometries as a hex EWKB column`, ours("csv", hexCsv), papaRows(hexCsv));
 
+await moreCases({ reader, loads, byLayer, geometries, rowsOf, compare, deviation });
+
 let differ = 0;
 let cases = 0;
 for (const [group, r] of Object.entries(results)) {
@@ -422,7 +437,11 @@ const pkg = async (name) => JSON.parse(await readFile(path.join(ROOT, "bench/nod
 await writeFile(
   path.join(ROOT, "bench/results/data-golden.json"),
   JSON.stringify({
-    env: { node: process.version, papaparse: await pkg("papaparse"), betterknown: await pkg("betterknown"), wkx: await pkg("wkx"), tiles: TILES },
+    env: {
+      node: process.version,
+      ...Object.fromEntries(await Promise.all(["papaparse", "betterknown", "wkx", "shpjs", "topojson-client", "topojson-server", "proj4"].map(async (p) => [p, await pkg(p)]))),
+      tiles: TILES,
+    },
     results,
     deviations,
     differ: differ + badDeviations,
