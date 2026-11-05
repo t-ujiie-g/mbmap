@@ -1,10 +1,11 @@
 // GeoTIFF sources drawn by mbmap (mbmap/data's rasterTile in Chromium) vs the pixels they hold:
 // GSI's standard map tiles (国土地理院) made a COG in EPSG:3857 come back identical at their zoom,
-// the Mt Fuji DEM as Terrarium within 1/256 m, a raster in EPSG:4326 as an independent sampling
-// gives it, and a map of the COG source looks as the map of the PNG tiles. Needs `npm --prefix npm run build`.
+// the Mt Fuji DEM as Terrarium within 1/256 m, rasters in EPSG:4326 and in Japan's plane rectangular
+// zone IX (EPSG:6677, through proj4js 2.22.0) as an independent sampling gives them, and a map of the COG source looks as the map of the PNG tiles. Needs `npm --prefix npm run build`.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import proj4 from "proj4";
 import { decodePng } from "../lib/png.mjs";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
@@ -67,8 +68,22 @@ await writeFile(path.join(dir, "lonlat.tif"), tiffFile([
   { width: LL.width, height: LL.height, bits: 32, format: 3, values: [llValues], tile: [128, 128], compression: 5, geo: { pixelScale: [LL.step, LL.step, 0], tiepoint: [0, 0, 0, LL.west, LL.north, 0] }, keys: [[1024, 2], [1025, 1], [2048, 4326]], nodata: "-9999" },
 ]));
 
-// The 4326 surface's gray (or `colors`) at each pixel of tile z/x/y, sampled at the nearest pixel.
-function lonlatExpected(z, x, y, range, colors) {
+// A surface in EPSG:6677 (JGD2011 plane rectangular IX, around Tokyo): 50 m pixels, with a 100 m overview.
+const PR = { west: -20000, north: -20000, step: 50, width: 600, height: 400 };
+const prAt = (x, y) => Math.fround(80 * Math.sin(x / 3000) + 60 * Math.cos(y / 2000) + 200);
+const prValues = Array.from({ length: PR.width * PR.height }, (_, i) => prAt(PR.west + ((i % PR.width) + 0.5) * PR.step, PR.north - (Math.floor(i / PR.width) + 0.5) * PR.step));
+const PR2 = { ...PR, step: 100, width: 300, height: 200 };
+const pr2Values = Array.from({ length: PR2.width * PR2.height }, (_, i) => prValues[Math.floor(i / PR2.width) * 2 * PR.width + (i % PR2.width) * 2]);
+await writeFile(path.join(dir, "plane.tif"), tiffFile([
+  { width: PR.width, height: PR.height, bits: 32, format: 3, values: [prValues], tile: [256, 256], compression: 8, predictor: 3, geo: { pixelScale: [PR.step, PR.step, 0], tiepoint: [0, 0, 0, PR.west, PR.north, 0] }, keys: [[1024, 1], [1025, 1], [3072, 6677]] },
+  { width: PR2.width, height: PR2.height, bits: 32, format: 3, values: [pr2Values], tile: [256, 256], compression: 8, predictor: 3, subfile: 1 },
+], { ifdsFirst: true }));
+const PLANE = "+proj=tmerc +lat_0=36 +lon_0=139.833333333333 +k=0.9999 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
+const toPlane = proj4("EPSG:4326", PLANE);
+
+// The colors of `grid`'s values at each pixel of tile z/x/y, sampled at the nearest pixel of the
+// point `toFile` takes its center to; pixels within `edge` of a pixel border are left out (alpha 1).
+function expected(grid, values, toFile, z, x, y, range, colors, edge = 0) {
   const out = new Uint8ClampedArray(256 * 256 * 4);
   const px = WORLD / 2 ** z / 256;
   for (let j = 0; j < 256; j++) {
@@ -76,10 +91,16 @@ function lonlatExpected(z, x, y, range, colors) {
     const lat = (Math.atan(Math.sinh(my / R)) * 180) / Math.PI;
     for (let i = 0; i < 256; i++) {
       const lon = ((-WORLD / 2 + x * (WORLD / 2 ** z) + (i + 0.5) * px) / R) * (180 / Math.PI);
-      const [sx, sy] = [(lon - LL.west) / LL.step, (LL.north - lat) / LL.step];
-      if (sx < 0 || sy < 0 || sx >= LL.width || sy >= LL.height) continue;
-      const v = llValues[Math.floor(sy) * LL.width + Math.floor(sx)];
+      const [fx, fy] = toFile(lon, lat);
+      const [sx, sy] = [(fx - grid.west) / grid.step, (grid.north - fy) / grid.step];
       const o = (j * 256 + i) * 4;
+      const near = (v) => Math.abs(v - Math.round(v)) < edge;
+      if (near(sx) || near(sy)) {
+        out[o + 3] = 1;
+        continue;
+      }
+      if (sx < 0 || sy < 0 || sx >= grid.width || sy >= grid.height) continue;
+      const v = values[Math.floor(sy) * grid.width + Math.floor(sx)];
       if (colors) {
         let k = 0;
         while (k < colors.length - 1 && v > colors[k + 1][0]) k++;
@@ -96,6 +117,7 @@ function lonlatExpected(z, x, y, range, colors) {
   }
   return out;
 }
+const lonlatExpected = (z, x, y, range, colors) => expected(LL, llValues, (lon, lat) => [lon, lat], z, x, y, range, colors);
 
 // --- In Chromium ---
 const { server, origin } = await serve();
@@ -165,20 +187,41 @@ try {
   const range = [50, 350];
   const colors = [[100, "#0000ff"], [200, "rgb(0, 255, 0)"], [300, "red"]];
   const rgbaColors = colors.map(([v, c]) => [v, c === "#0000ff" ? [0, 0, 255, 255] : c === "red" ? [255, 0, 0, 255] : [0, 255, 0, 255]]);
+  // `got` against `want`, leaving out the pixels `want` holds transparent (no color) or marks with alpha 1.
+  const compare = (got, want) => {
+    let worst = 0;
+    let lit = 0;
+    for (let i = 0; i < want.length; i++) {
+      const a = want[i - (i % 4) + 3];
+      if (a === 1) continue;
+      if (i % 4 === 3 && a > 0) lit++;
+      if (i % 4 !== 3 && a === 0) continue;
+      worst = Math.max(worst, Math.abs((got ? got[i] : 0) - want[i]));
+    }
+    return { worst, lit };
+  };
   for (const [z, x, y] of [[11, 1818, 806], [12, 3637, 1612], [13, 7274, 3225], [14, 14549, 6450]]) {
     for (const [label, options, want] of [["gray", { range }, lonlatExpected(z, x, y, range)], ["colors", { colors }, lonlatExpected(z, x, y, range, rgbaColors)]]) {
-      const got = await tile("lonlat.tif", z, x, y, options);
-      let worst = 0;
-      let lit = 0;
-      for (let i = 0; i < want.length; i++) {
-        const g = got ? got[i] : 0;
-        if (i % 4 === 3 && want[i] > 0) lit++;
-        // A pixel the PNG holds transparent keeps no color.
-        if (i % 4 !== 3 && want[i - (i % 4) + 3] === 0) continue;
-        worst = Math.max(worst, Math.abs(g - want[i]));
-      }
+      const { worst, lit } = compare(await tile("lonlat.tif", z, x, y, options), want);
       record("lonlat", `${z}/${x}/${y} ${label}`, worst === 0 && lit > 0, { worst, lit });
     }
+  }
+
+
+  // The EPSG:6677 surface: tiles from z10 (the overview) to z14 around its middle, and its bounds.
+  const planeInfo = await page.evaluate((url) => window.data.rasterInfo(url), `${origin}/bench/dist/geotiff/plane.tif`);
+  const corners = [[PR.west, PR.north], [PR.west + PR.width * PR.step, PR.north], [PR.west, PR.north - PR.height * PR.step], [PR.west + PR.width * PR.step, PR.north - PR.height * PR.step]].map((c) => proj4(PLANE, "EPSG:4326", c));
+  const near = (a, b) => Math.abs(a - b) < 1e-4;
+  const planeBounds = [Math.min(...corners.map((c) => c[0])), Math.min(...corners.map((c) => c[1])), Math.max(...corners.map((c) => c[0])), Math.max(...corners.map((c) => c[1]))];
+  record("plane", "plane.tif bounds and maxzoom", planeInfo.crs === 6677 && planeInfo.maxzoom === 12 && planeInfo.bounds.every((v, i) => near(v, planeBounds[i])), { info: planeInfo, planeBounds });
+  const [clon, clat] = proj4(PLANE, "EPSG:4326", [PR.west + (PR.width * PR.step) / 2, PR.north - (PR.height * PR.step) / 2]);
+  for (let z = 10; z <= 14; z++) {
+    const tx = Math.floor(((clon + 180) / 360) * 2 ** z);
+    const ty = Math.floor(((1 - Math.log(Math.tan(Math.PI / 4 + (clat * Math.PI) / 360)) / Math.PI) / 2) * 2 ** z);
+    const [grid, values] = z === 10 ? [PR2, pr2Values] : [PR, prValues];
+    const want = expected(grid, values, (lon, lat) => toPlane.forward([lon, lat]), z, tx, ty, range, null, 1e-6);
+    const { worst, lit } = compare(await tile("plane.tif", z, tx, ty, { range }), want);
+    record("plane", `${z}/${tx}/${ty} gray`, worst === 0 && lit > 0, { worst, lit });
   }
 
   // A map drawing the COG source looks as one drawing the PNG tiles.

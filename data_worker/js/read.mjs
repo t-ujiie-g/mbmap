@@ -251,7 +251,8 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
   // `op` of data_worker/js/geotiff.mjs over geotiff.wasm.
   async function raster(op, ...args) {
     const [m, g] = await Promise.all([geotiffModule(), geotiff()]);
-    return m[op](...args, { wasm: g, input, output, max: MAX_INPUT_BYTES });
+    const transform = async (from, to, xy) => (await crsModule()).transformPairs(await proj(), from, to, xy);
+    return m[op](...args, { wasm: g, input, output, max: MAX_INPUT_BYTES, transform });
   }
   return {
     read,
