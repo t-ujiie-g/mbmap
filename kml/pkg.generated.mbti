@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/kml"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/xml",
+}
+
+// Values
+pub const MAX_KML_CELLS : Int32 = 32_000_000
+
+pub const MAX_KML_KEYS : Int32 = 4096
+
+pub const MAX_KML_POINTS : Int32 = 20_000_000
+
+pub fn parse_float(String, (String) -> Double) -> Double
+
+pub fn read_gpx(Bytes, number~ : (String) -> Double, number_text~ : (Double) -> String) -> @geom.Table raise @xml.XmlError
+
+pub fn read_kml(Bytes, number~ : (String) -> Double, number_text~ : (Double) -> String, trig~ : @core.Trig) -> @geom.Table raise @xml.XmlError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

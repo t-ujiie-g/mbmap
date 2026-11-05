@@ -3,9 +3,10 @@
 
 /**
  * The formats `mbmap/data` reads: CSV (or TSV), WKT or EWKT, WKB or EWKB (binary or hexadecimal), a
- * shapefile (a .shp with its .dbf, .prj and .cpg, or a .zip of them) and TopoJSON.
+ * shapefile (a .shp with its .dbf, .prj and .cpg, or a .zip of them), TopoJSON, KML (or KMZ, a zip
+ * holding it) and GPX.
  */
-export type DataFormat = "csv" | "wkt" | "wkb" | "shapefile" | "topojson";
+export type DataFormat = "csv" | "wkt" | "wkb" | "shapefile" | "topojson" | "kml" | "gpx";
 
 /** The files of a shapefile, each a URL, a Blob or bytes; only `shp` is needed. */
 export interface ShapefileParts<T> {
@@ -34,11 +35,12 @@ export interface CsvOptions {
 
 const EXTENSIONS: Record<string, DataFormat> = {
   csv: "csv", tsv: "csv", txt: "csv", wkt: "wkt", wkb: "wkb", ewkb: "wkb", shp: "shapefile", zip: "shapefile", topojson: "topojson",
+  kml: "kml", kmz: "kml", gpx: "gpx",
 };
 
 /**
  * The format a file name or URL path ends in (`.csv`, `.tsv`, `.txt`, `.wkt`, `.wkb`, `.ewkb`, `.shp`,
- * `.zip`, `.topojson`), or null. TopoJSON in a `.json` is read only when `format` says so.
+ * `.zip`, `.topojson`, `.kml`, `.kmz`, `.gpx`), or null. TopoJSON in a `.json` is read only when `format` says so.
  */
 export function formatOf(name: string): DataFormat | null {
   const m = /\.([a-z]+)$/i.exec(name);

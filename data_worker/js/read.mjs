@@ -1,7 +1,7 @@
 // The data worker's reads (docs/FORMATS.md "Data worker messages") on bytes already
 // fetched, apart from its messages so that bench/data/golden.mjs runs them in Node.
 
-import { hostNumber } from "../../wasmio/js/host.mjs";
+import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { readString } from "../../worker/js/values.mjs";
 
 // The zip reader and the CRS conversion, imported with the first archive and the first data
@@ -81,12 +81,21 @@ const isName = (n) => n === undefined || (typeof n === "string" && n.length > 0 
 /** Whether `bytes` start as a zip archive does (a local header, or the end of an empty one). */
 export const isZip = (b) => b.length >= 4 && b[0] === 0x50 && b[1] === 0x4b && (b[2] === 3 || b[2] === 5);
 
+/** The KML of the KMZ `bytes`: `doc.kml` at its top, else its first `.kml` entry, at most `max` bytes. */
+export async function kmlOfKmz(bytes, max = MAX_INPUT_BYTES) {
+  const { entries, read } = (await zipModule()).readZip(bytes, { bytes: max });
+  const kml = entries.filter((e) => /\.kml$/i.test(e.name));
+  const entry = kml.find((e) => e.name.toLowerCase() === "doc.kml") ?? kml[0];
+  if (!entry) throw new Error("the KMZ holds no .kml file");
+  return read(entry);
+}
+
 /**
  * A reader over data.wasm (`imports` from `dataImports`): `read(format, parts, options)` with `parts.data`
- * or a shapefile's `shp`, `dbf`, `prj`, `cpg` bytes gives `{ table, ids, layer, layers }`; `proj()` and
- * `prj()` load proj.wasm's exports and npm/src/prjwkt.ts on first use.
+ * or a shapefile's `shp`, `dbf`, `prj`, `cpg` bytes gives `{ table, ids, layer, layers }`; `proj()`,
+ * `prj()` and `xml()` load proj.wasm's exports, npm/src/prjwkt.ts and xml.wasm's exports on first use.
  */
-export function dataReader(wasm, imports, { proj, prj }) {
+export function dataReader(wasm, imports, { proj, prj, xml }) {
   async function shapefile(files, options) {
     const { shp, dbf, cpg, prj: prjBytes } = files;
     if (!shp) throw new Error("no .shp");
@@ -115,9 +124,21 @@ export function dataReader(wasm, imports, { proj, prj }) {
     return { ...(await shapefile(files, options)), layer: layers[at], layers };
   }
 
+  // KML and GPX are in EPSG:4326 by definition, so they skip the CRS step.
+  async function xmlRead(format, data, options) {
+    if (options.crs !== undefined) throw new Error("KML and GPX are always in EPSG:4326");
+    const kml = format === "kml" && isZip(data) ? await kmlOfKmz(data) : data;
+    const x = await xml();
+    input(x, [kml]);
+    const table = output(x, format === "kml" ? x.read_kml() : x.read_gpx());
+    const ids = x.ids_out();
+    return { table, ids: ids > 0 ? output(x, ids) : null, layer: null, layers: [] };
+  }
+
   async function read(format, parts, options) {
     let result;
     const { data } = parts;
+    if (format === "kml" || format === "gpx") return xmlRead(format, data, options);
     if (format === "shapefile") {
       result = data && isZip(data) ? await zip(data, options) : await shapefile(data ? { shp: data } : parts, options);
     } else if (format === "topojson") {
