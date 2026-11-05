@@ -112,13 +112,14 @@ fn Shapes::end_member(self : Shapes, kind : @geom.GeomKind) -> Unit {
 ///|
 /// Adds a row per member to `out`, each with `props` and `id`, and its SRID to
 /// `srids`; one row without geometry if there is no member (an EMPTY geometry or
-/// no geometry at all).
+/// no geometry at all). Stops once `out` has more than `max_cells` cells.
 fn Shapes::emit(
   self : Shapes,
   out : @geom.TableBuilder,
   props : Array[(String, @geom.Prop)],
   srids : Array[Int32]?,
   id~ : @geom.Prop? = None,
+  max_cells~ : Int32 = 0x7fffffff,
 ) -> Unit {
   let members = self.kinds.length()
   for m in 0..<(if members == 0 { 1 } else { members }) {
@@ -142,6 +143,9 @@ fn Shapes::emit(
     out.end_feature(kind, id~)
     if srids is Some(s) {
       s.push(self.srid)
+    }
+    if out.cells() > max_cells.to_int64() {
+      return
     }
   }
 }

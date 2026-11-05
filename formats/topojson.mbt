@@ -7,7 +7,7 @@ pub fn read_topojson(
   object : String?,
   slow_number~ : (Int32, Int32) -> Double,
 ) -> (@geom.Table, Array[String]) raise ReadError {
-  topojson_table(bytes, object, slow_number, MAX_POINTS)
+  topojson_table(bytes, object, slow_number, MAX_POINTS, MAX_GEOJSON_CELLS)
 }
 
 ///|
@@ -32,6 +32,7 @@ fn topojson_table(
   object : String?,
   slow_number : (Int32, Int32) -> Double,
   max_points : Int32,
+  max_cells : Int32,
 ) -> (@geom.Table, Array[String]) raise ReadError {
   let p : Parser = {
     b: bytes,
@@ -43,6 +44,7 @@ fn topojson_table(
     keys: [],
     next_key: 0,
     max_points,
+    max_cells,
   }
   let t : Topo = {
     p,
@@ -329,7 +331,8 @@ fn Topo::feature(self : Topo, at : Int32) -> Unit {
     p.fail("too many points")
   }
   if p.error is None {
-    self.shapes.emit(p.out, props, None, id~)
+    self.shapes.emit(p.out, props, None, id~, max_cells=p.max_cells)
+    p.check_properties()
   }
 }
 
@@ -367,7 +370,9 @@ fn Topo::geometry(self : Topo, m : FixedArray[Int32]) -> Unit {
       s.end_member(MultiPoint)
     }
     "LineString" => {
-      self.at(m[1], () => self.line(false))
+      if m[1] >= 0 {
+        self.at(m[1], () => self.line(false))
+      }
       s.end_part()
       s.end_member(LineString)
     }
@@ -410,9 +415,12 @@ fn Topo::line(self : Topo, ring : Bool) -> Unit {
     p.peek() |> ignore
     let at = p.pos
     let v = self.number()
+    if p.error is Some(_) {
+      return
+    }
     let n = self.ends.length()
     let i = v.to_int()
-    if p.error is None && (i.to_double() != v || i >= n || i < -n) {
+    if i.to_double() != v || i >= n || i < -n {
       p.pos = at
       p.fail("invalid arc index")
       return

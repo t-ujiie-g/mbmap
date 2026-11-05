@@ -60,6 +60,7 @@ fn read_points(
     keys: [],
     next_key: 0,
     max_points,
+    max_cells: MAX_GEOJSON_CELLS,
   }
   p.feature_like()
   if p.error is None && p.peek() != -1 {
@@ -84,6 +85,7 @@ priv struct Parser {
   keys : Array[(Int32, Int32, String)]
   mut next_key : Int32
   max_points : Int32
+  max_cells : Int32
 }
 
 ///|
@@ -433,12 +435,19 @@ fn Parser::feature_like(self : Parser) -> Unit {
       self.out.prop(p.0, p.1)
     }
     self.out.end_feature(kind, id~)
+    self.check_properties()
+    if self.error is Some(_) {
+      return
+    }
   }
-  let t = self.out.table
-  if t.columns.length() > MAX_GEOJSON_KEYS {
+}
+
+///|
+/// Fails past `MAX_GEOJSON_KEYS` keys or `max_cells` cells.
+fn Parser::check_properties(self : Parser) -> Unit {
+  if self.out.table.columns.length() > MAX_GEOJSON_KEYS {
     self.fail("more than \{MAX_GEOJSON_KEYS} property keys")
-  } else if t.length().to_double() * t.columns.length().to_double() >
-    MAX_GEOJSON_CELLS.to_double() {
+  } else if self.out.cells() > self.max_cells.to_int64() {
     self.fail("more than \{MAX_GEOJSON_CELLS} property cells")
   }
 }

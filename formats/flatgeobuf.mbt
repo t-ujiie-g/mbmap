@@ -11,6 +11,14 @@ const MAX_FGB_HEADER_BYTES : Int32 = 10 * 1024 * 1024
 const FGB_NODE_BYTES : Int32 = 40
 
 ///|
+/// Most columns a FlatGeobuf header may have.
+const MAX_FGB_COLUMNS : Int32 = 4096
+
+///|
+/// Most property cells (columns times rows) a table from a FlatGeobuf may have.
+const MAX_FGB_CELLS : Int32 = 32_000_000
+
+///|
 /// Reads a FlatGeobuf file as flatgeobuf 4.6.1's `deserialize` does, collections
 /// flattened, Z and M dropped. With `ids` (a feature index each), `bytes` holds the
 /// header and only those features; otherwise the whole file, features numbered from 0.
@@ -18,12 +26,13 @@ pub fn read_flatgeobuf(
   bytes : BytesView,
   ids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  fgb_table(bytes, ids, MAX_POINTS)
+  fgb_table(bytes, ids, MAX_POINTS, MAX_FGB_CELLS)
 }
 
 ///|
 /// Reading state over one FlatBuffers buffer at a time (the header's, then each
 /// feature's); errors are sticky as `Wkb`'s, `base` placing positions in the input.
+/// `visits` counts what `visit` charges against the file's `max_visits`.
 priv struct Fgb {
   mut b : BytesView
   mut base : Int32
@@ -34,6 +43,8 @@ priv struct Fgb {
   props : Array[(String, @geom.Prop)]
   max_points : Int32
   mut used : Int32
+  mut visits : Int32
+  max_visits : Int32
 }
 
 ///|
@@ -41,6 +52,19 @@ fn Fgb::fail(self : Fgb, at : Int32, message : String) -> Unit {
   if self.error is None {
     self.error = Some((self.base + at, message))
   }
+}
+
+///|
+/// Charges `n` to the file's reads; false (failed) past its bytes. Every geometry,
+/// ring and position takes bytes of its own, unless offsets alias one another,
+/// which can make a small file read as an exponential tree.
+fn Fgb::visit(self : Fgb, at : Int32, n : Int32) -> Bool {
+  self.visits += n
+  if self.visits > self.max_visits {
+    self.fail(at, "offsets reach the same data again and again")
+    return false
+  }
+  true
 }
 
 ///|
@@ -227,11 +251,12 @@ fn fgb_tree_bytes(count : Int64, node_size : Int32, limit : Int32) -> Int32 {
 }
 
 ///|
-/// `read_flatgeobuf` taking at most `max_points` points.
+/// `read_flatgeobuf` taking at most `max_points` points and `max_cells` cells.
 fn fgb_table(
   bytes : BytesView,
   ids : Array[Int32]?,
   max_points : Int32,
+  max_cells : Int32,
 ) -> @geom.Table raise ReadError {
   let p : Fgb = {
     b: bytes,
@@ -243,6 +268,8 @@ fn fgb_table(
     props: [],
     max_points,
     used: 0,
+    visits: 0,
+    max_visits: bytes.length(),
   }
   let fail = (pos, m) => raise Invalid(format="FlatGeobuf", pos~, m)
   if bytes.length() < 12 || bytes[:3] != fgb_magic[:] {
@@ -257,10 +284,16 @@ fn fgb_table(
   let header = p.root()
   let geometry_type = p.u8_field(header, 2)
   let (columns, n) = p.vector(header, 7, 4)
+  if n > MAX_FGB_COLUMNS {
+    fail(columns, "more than \{MAX_FGB_COLUMNS} columns")
+  }
   for i in 0..<n {
     let column = p.indirect(columns + i * 4)
     match p.string(column, 0) {
-      Some(name) => p.names.push(name)
+      Some(name) => {
+        p.names.push(name)
+        p.visit(column, 1 + name.length()) |> ignore
+      }
       None => p.fail(column, "a column without a name")
     }
     p.types.push(p.u8_field(column, 1))
@@ -308,7 +341,16 @@ fn fgb_table(
       fail(pos, m)
     }
     p.used += p.shapes.points()
-    p.shapes.emit(out, p.props, None, id=Some(@geom.Num(id.to_double())))
+    p.shapes.emit(
+      out,
+      p.props,
+      None,
+      id=Some(@geom.Num(id.to_double())),
+      max_cells~,
+    )
+    if out.cells() > max_cells.to_int64() {
+      fail(at, "too many property cells")
+    }
     at += 4 + n
     index += 1
   }
@@ -337,6 +379,9 @@ fn Fgb::feature(self : Fgb, geometry_type : Int32) -> Unit {
 fn Fgb::geometry(self : Fgb, g : Int32, kind : Int32, depth : Int32) -> Unit {
   if depth > MAX_GEOMETRY_DEPTH {
     self.fail(g, "collections nested too deep")
+    return
+  }
+  if !self.visit(g, 1) {
     return
   }
   let kind = if kind == 0 { self.u8_field(g, 6) } else { kind }
@@ -370,9 +415,7 @@ fn Fgb::geometry(self : Fgb, g : Int32, kind : Int32, depth : Int32) -> Unit {
     }
     2 | 4 => {
       let (xy, n) = self.vector(g, 1, 8)
-      for i in 0..<(n / 2) {
-        self.position(xy + i * 16)
-      }
+      self.positions(xy, 0, n / 2)
       self.shapes.end_ring()
       self.shapes.end_part()
       self.shapes.end_member(if kind == 2 { LineString } else { MultiPoint })
@@ -400,22 +443,41 @@ fn Fgb::rings(self : Fgb, g : Int32, lines : Bool) -> Unit {
   let (ends, e) = self.vector(g, 0, 4)
   let mut start = 0
   for k in 0..<@cmp.maximum(e, 1) {
-    let end = if e == 0 { n } else { self.u32(ends + k * 4) }
-    let stop = if end < 0 { n } else { @cmp.minimum(end, n) }
-    for i in start..<stop {
-      self.position(xy + i * 16)
+    if !self.visit(g, 1) {
+      return
     }
+    let end = if e == 0 { n } else { self.u32(ends + k * 4) }
+    let end = if end < 0 { n } else { end }
+    if end < start {
+      self.fail(g, "ring ends out of order")
+      return
+    }
+    self.positions(xy, start, @cmp.minimum(end, n))
     self.shapes.end_ring()
     if lines {
       self.shapes.end_part()
     }
-    start = if end < 0 { n } else { end }
+    start = end
+  }
+}
+
+///|
+/// Positions `start..<end` of the pairs at `xy`, up to the first error.
+fn Fgb::positions(self : Fgb, xy : Int32, start : Int32, end : Int32) -> Unit {
+  for i in start..<end {
+    self.position(xy + i * 16)
+    if self.error is Some(_) {
+      return
+    }
   }
 }
 
 ///|
 /// The x, y pair at `at`; NaN for both is an empty point, other non-finite values are refused.
 fn Fgb::position(self : Fgb, at : Int32) -> Unit {
+  if !self.visit(at, 1) {
+    return
+  }
   let x = self.f64(at)
   let y = self.f64(at + 8)
   if x.is_nan() && y.is_nan() {
