@@ -9,12 +9,9 @@ pub const MAX_CSV_COLUMNS : Int32 = 4096
 const MAX_CSV_FIELD_BYTES : Int32 = 16 * 1024 * 1024
 
 ///|
-/// How `read_csv` reads its input. `delimiter`: a byte, or -1 to guess it as
-/// papaparse does; `header`: the first row names the columns (else they are named
-/// "0", "1", ...); `dynamic_typing`: fields become numbers, booleans and nulls as
-/// papaparse's `dynamicTyping` makes them (else they stay strings); `latitude` and
-/// `longitude`, or `geometry` (WKT, EWKT or hexadecimal WKB), name the columns
-/// the geometry comes from, found by name when None.
+/// How `read_csv` reads: `delimiter` a byte, or -1 to guess as papaparse does; `header` the first row names
+/// the columns (else "0", "1", ...); `dynamic_typing` papaparse's `dynamicTyping`; `latitude` and `longitude`,
+/// or `geometry` (WKT, EWKT or hexadecimal WKB), the geometry's columns, found by name when None.
 pub(all) struct CsvOptions {
   delimiter : Int32
   header : Bool
@@ -25,6 +22,7 @@ pub(all) struct CsvOptions {
 }
 
 ///|
+/// By default the delimiter is guessed, the first row is a header and fields are typed.
 pub fn CsvOptions::new(
   delimiter~ : Int32 = -1,
   header~ : Bool = true,

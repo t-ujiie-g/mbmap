@@ -9,6 +9,7 @@ pub const MAX_GEOJSON_DEPTH : Int32 = 64
 pub const MAX_GEOJSON_KEYS : Int32 = 4096
 
 ///|
+/// Malformed GeoJSON: the byte offset where reading stopped and why.
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
 } derive(Debug)

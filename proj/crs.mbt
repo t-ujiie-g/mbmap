@@ -35,14 +35,9 @@ pub(all) enum Method {
 }
 
 ///|
-/// A coordinate reference system as a PROJ string gives it, once parsed:
-/// the projection, the ellipsoid's semi-axes `a` and `b` in meters (`r_a`:
-/// use the sphere of equal area), `towgs84` (3 or 7 Helmert parameters in
-/// meters, arc seconds and ppm; empty when the datum is unknown, which
-/// skips datum shifts), `datum_wgs84` for `+datum=WGS84`, `to_meter` (NaN
-/// for meters), the prime meridian `from_greenwich` and `long_wrap`, then
-/// the projection's parameters. Angles are in radians; NaN marks a
-/// parameter that was not given.
+/// A parsed PROJ string: `a`, `b` in meters (`r_a`: the sphere of equal area), `towgs84` 3 or 7 Helmert
+/// parameters in meters, arc seconds and ppm (empty for an unknown datum: no shifts), `to_meter` NaN for
+/// meters, then the projection's parameters. Angles are in radians; NaN marks a parameter not given.
 pub(all) struct Definition {
   mut proj : Method
   mut a : Double

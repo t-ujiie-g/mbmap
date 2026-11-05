@@ -66,6 +66,7 @@ pub fn map_camera(map : @map.Map) -> JsCamera {
 }
 
 ///|
+/// `@map.Map::set_camera` from the camera's numbers.
 #export_name("map_set_camera")
 pub fn map_set_camera(
   map : @map.Map,
@@ -87,30 +88,35 @@ pub fn map_on_move(map : @map.Map, f : () -> Unit) -> Int32 {
 }
 
 ///|
+/// Calls `f` after each frame is drawn; returns an id for `map_off`.
 #export_name("map_on_render")
 pub fn map_on_render(map : @map.Map, f : () -> Unit) -> Int32 {
   map.on_render(f)
 }
 
 ///|
+/// Calls `f` each time the map settles after a change; returns an id for `map_off`.
 #export_name("map_on_idle")
 pub fn map_on_idle(map : @map.Map, f : () -> Unit) -> Int32 {
   map.on_idle(f)
 }
 
 ///|
+/// Removes the listener `id`.
 #export_name("map_off")
 pub fn map_off(map : @map.Map, id : Int32) -> Unit {
   map.off(id)
 }
 
 ///|
+/// Frames rendered so far (a test hook).
 #export_name("map_frame_count")
 pub fn map_frame_count(map : @map.Map) -> Int32 {
   map.frame_count()
 }
 
 ///|
+/// Stops workers, removes listeners and frees GPU buffers.
 #export_name("map_destroy")
 pub fn map_destroy(map : @map.Map) -> Unit {
   map.destroy()
@@ -134,6 +140,7 @@ fn limits_of(a : FixedArray[Double]) -> @core.Limits {
 }
 
 ///|
+/// Sets the limits `limits_of` reads; the camera moves at once if outside them.
 #export_name("map_set_limits")
 pub fn map_set_limits(map : @map.Map, limits : FixedArray[Double]) -> Unit {
   map.set_limits(limits_of(limits))
@@ -191,6 +198,7 @@ pub fn map_fly_to(
 }
 
 ///|
+/// Stops a running animation.
 #export_name("map_stop")
 pub fn map_stop(map : @map.Map) -> Unit {
   map.stop()
@@ -310,12 +318,14 @@ pub fn map_set_handler(map : @map.Map, h : Int32, enabled : Bool) -> Unit {
 }
 
 ///|
+/// Calls `f` when the camera starts moving; returns an id for `map_off`.
 #export_name("map_on_move_start")
 pub fn map_on_move_start(map : @map.Map, f : (@map.Event) -> Unit) -> Int32 {
   map.on_move_start(f)
 }
 
 ///|
+/// Calls `f` when the camera stops; returns an id for `map_off`.
 #export_name("map_on_move_end")
 pub fn map_on_move_end(map : @map.Map, f : (@map.Event) -> Unit) -> Int32 {
   map.on_move_end(f)
@@ -508,12 +518,14 @@ pub fn map_set_transform_request(
 }
 
 ///|
+/// Whether the map has settled: its tiles loaded and drawn.
 #export_name("map_is_idle")
 pub fn map_is_idle(map : @map.Map) -> Bool {
   map.is_idle()
 }
 
 ///|
+/// The largest side `map_render_region` draws at once.
 #export_name("map_max_region")
 pub fn map_max_region(map : @map.Map) -> Int32 {
   map.max_region()
@@ -580,6 +592,7 @@ pub fn map_add_image(
 }
 
 ///|
+/// Removes style image `name`; false if there is none.
 #export_name("map_remove_image")
 pub fn map_remove_image(map : @map.Map, name : String) -> Bool {
   map.remove_image(name)

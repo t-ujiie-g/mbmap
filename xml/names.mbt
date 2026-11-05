@@ -6,6 +6,7 @@ pub struct Names {
 }
 
 ///|
+/// No strings yet.
 pub fn Names::new() -> Names {
   { keys: [], ids: Map([]), }
 }

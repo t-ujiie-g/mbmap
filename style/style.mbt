@@ -7,6 +7,7 @@ pub(all) suberror StyleError {
 } derive(Debug, Eq)
 
 ///|
+/// A style layer's `type`; `Custom` is the facade's placeholder for a custom layer.
 pub(all) enum LayerKind {
   Background
   Fill

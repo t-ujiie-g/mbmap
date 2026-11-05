@@ -1,4 +1,5 @@
 ///|
+/// How line segments meet (`line-join`).
 pub(all) enum LineJoin {
   Miter
   Bevel
@@ -6,6 +7,7 @@ pub(all) enum LineJoin {
 } derive(Debug, Eq)
 
 ///|
+/// How a line ends (`line-cap`).
 pub(all) enum LineCap {
   Butt
   Square

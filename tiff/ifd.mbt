@@ -108,6 +108,7 @@ pub(all) suberror TiffError {
 }
 
 ///|
+/// A one-line description, e.g. `malformed TIFF at 8: too many values`.
 pub fn TiffError::message(self : TiffError) -> String {
   match self {
     Invalid(pos, m) => "malformed TIFF at \{pos}: \{m}"
