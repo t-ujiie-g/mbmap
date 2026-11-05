@@ -239,3 +239,33 @@ test "nesting past MAX_GEOJSON_DEPTH is rejected in coordinates and features" {
   let shallow = collection.repeat(n / 2) + "]}".repeat(n / 2)
   assert_eq(read(shallow).length(), 0)
 }
+
+///|
+fn geojson_error(s : String) -> String {
+  try @formats.read_geojson(@utf8.encode(s)[:]) catch {
+    e => e.message()
+  } noraise {
+    _ => "read"
+  }
+}
+
+///|
+test "malformed JSON gives the first error and where it is" {
+  assert_eq(
+    geojson_error("{\"type\" 1}"),
+    "malformed GeoJSON at 8: expected ':'",
+  )
+  assert_eq(geojson_error("{1:2}"), "malformed GeoJSON at 1: expected '\"'")
+  assert_eq(
+    geojson_error("{\"type\":\"FeatureCollection\",\"features\":1}"),
+    "malformed GeoJSON at 39: expected '['",
+  )
+  assert_eq(
+    geojson_error("{\"type\":\"a\nb\"}"),
+    "malformed GeoJSON at 10: control character in string",
+  )
+  assert_eq(
+    geojson_error("{\"type\":\"Point\",\"x\":[1,{\"a\":2"),
+    "malformed GeoJSON at 29: unterminated array or object",
+  )
+}

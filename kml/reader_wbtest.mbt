@@ -188,3 +188,32 @@ test "well_formed turns lone surrogates into U+FFFD and keeps pairs" {
     "\u{FFFD}\u{1F600}\u{FFFD}",
   )
 }
+
+///|
+test "parse_hex2 is parseInt of two characters in base 16" {
+  assert_eq(parse_hex2("xFf", 1), 255.0)
+  assert_eq(parse_hex2("0a", 0), 10.0)
+  assert_eq(parse_hex2(" f", 0), 15.0)
+  assert_eq(parse_hex2("+f", 0), 15.0)
+  assert_eq(parse_hex2("-f", 0), -15.0)
+  assert_eq(parse_hex2("fz", 0), 15.0)
+  for bad in ["+x", " x", "gg", "0x", "0X"] {
+    assert_true(parse_hex2(bad, 0).is_nan(), msg=bad)
+  }
+}
+
+///|
+test "js_trim strips JavaScript's white space from both ends" {
+  assert_eq(js_trim(" a b\n"), "a b")
+  assert_eq(js_trim("\u{3000}a"), "a")
+  assert_eq(js_trim("a"), "a")
+  assert_eq(js_trim("  "), "")
+}
+
+///|
+test "json_number writes what is not finite as null" {
+  let r = reader(10, 10)
+  assert_eq(r.json_number(@double.not_a_number), "null")
+  assert_eq(r.json_number(@double.infinity), "null")
+  assert_eq(r.json_number(1.5), "1.5")
+}

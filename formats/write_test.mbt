@@ -129,3 +129,16 @@ test "wkt_of writes every kind" {
   )
   assert_eq(@formats.wkt_of(t, 3, int_text), None)
 }
+
+///|
+test "write_csv leaves the coordinates of a row without geometry empty" {
+  let b = @geom.TableBuilder::new()
+  b.prop("a", Num(1))
+  b.end_feature(NoGeometry)
+  let csv = @formats.write_csv(
+    b.finish(),
+    geometry=LonLat("x", "y"),
+    number_text=int_text,
+  )
+  assert_eq(csv, "a,x,y\r\n1,,")
+}

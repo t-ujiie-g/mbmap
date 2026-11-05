@@ -86,3 +86,36 @@ test "write_kml writes polygons and multi-geometries" {
     #|<Point><coordinates>2,2</coordinates></Point></MultiGeometry></Placemark></Document></kml>
   assert_eq(kml, want)
 }
+
+///|
+test "write_kml writes values of every type and multi-polygons" {
+  let b = @geom.TableBuilder::new()
+  b.prop("name", Num(5))
+  b.prop("description", Str("d"))
+  b.prop("nan", Num(@double.not_a_number))
+  b.prop("inf", Num(@double.infinity))
+  b.prop("yes", Bool(true))
+  b.prop("no", Bool(false))
+  b.end_feature(NoGeometry)
+  b.prop("name", Null)
+  b.prop("description", Bool(true))
+  for k in 0..<2 {
+    b.point(k.to_double(), 0)
+    b.point(k.to_double(), 1)
+    b.point(0, 0)
+    b.end_ring()
+    b.end_part()
+  }
+  b.end_feature(MultiPolygon)
+  let kml = @kml.write_kml(b.finish(), number_text=int_text)
+  for
+    part in [
+      "<name>5</name><description>d</description>", "<Data name=\"nan\"><value>null</value></Data>",
+      "<Data name=\"inf\"><value>null</value></Data>", "<Data name=\"yes\"><value>true</value></Data>",
+      "<Data name=\"no\"><value>false</value></Data>", "<MultiGeometry>\n<Polygon>",
+      "<description>true</description>",
+    ] {
+    assert_true(kml.contains(part), msg=part)
+  }
+  assert_false(kml.contains("<name>null</name>"))
+}
