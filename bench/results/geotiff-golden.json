@@ -198,19 +198,19 @@
   },
   "http": {
     "DEM with overviews (COG layout)": {
-      "ours": 8,
+      "ours": 7,
       "theirs": 38
     },
     "DEM float32 tiled 128 LZW predictor 3": {
-      "ours": 12,
+      "ours": 7,
       "theirs": 48
     },
     "map RGB planar 2 tiled Deflate": {
-      "ours": 24,
+      "ours": 6,
       "theirs": 49
     },
     "DEM float32 BigTIFF big-endian": {
-      "ours": 12,
+      "ours": 7,
       "theirs": 48
     }
   },
