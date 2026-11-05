@@ -1,8 +1,11 @@
 // The import-free part of `mbmap/data`: which reader a name asks for, and CSV
 // options as the data worker takes them.
 
-/** The formats `mbmap/data` reads: CSV (or TSV), WKT or EWKT, WKB or EWKB (binary or hexadecimal). */
-export type DataFormat = "csv" | "wkt" | "wkb";
+/**
+ * The formats `mbmap/data` reads: CSV (or TSV), WKT or EWKT, WKB or EWKB (binary or hexadecimal),
+ * KML (or KMZ, a zip holding it) and GPX.
+ */
+export type DataFormat = "csv" | "wkt" | "wkb" | "kml" | "gpx";
 
 /**
  * How CSV is read. `delimiter`: one character (by default guessed as papaparse guesses it from
@@ -21,9 +24,9 @@ export interface CsvOptions {
   geometry?: string;
 }
 
-const EXTENSIONS: Record<string, DataFormat> = { csv: "csv", tsv: "csv", txt: "csv", wkt: "wkt", wkb: "wkb", ewkb: "wkb" };
+const EXTENSIONS: Record<string, DataFormat> = { csv: "csv", tsv: "csv", txt: "csv", wkt: "wkt", wkb: "wkb", ewkb: "wkb", kml: "kml", kmz: "kml", gpx: "gpx" };
 
-/** The format a file name or URL path ends in (`.csv`, `.tsv`, `.txt`, `.wkt`, `.wkb`, `.ewkb`), or null. */
+/** The format a file name or URL path ends in (`.csv`, `.tsv`, `.txt`, `.wkt`, `.wkb`, `.ewkb`, `.kml`, `.kmz`, `.gpx`), or null. */
 export function formatOf(name: string): DataFormat | null {
   const m = /\.([a-z]+)$/i.exec(name);
   return (m && Object.hasOwn(EXTENSIONS, m[1].toLowerCase()) && EXTENSIONS[m[1].toLowerCase()]) || null;

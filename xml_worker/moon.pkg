@@ -1,0 +1,16 @@
+// The XML module the data worker loads on the first KML or GPX read: both read
+// into `@geom.Table` bytes, numbers converted by the host's `Number` and `String`.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/kml",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

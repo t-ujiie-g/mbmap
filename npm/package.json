@@ -59,7 +59,8 @@
     "./geodesic-worker.js": "./dist/geodesic-worker.js",
     "./geodesic.wasm": "./dist/geodesic.wasm",
     "./data-worker.js": "./dist/data-worker.js",
-    "./data.wasm": "./dist/data.wasm"
+    "./data.wasm": "./dist/data.wasm",
+    "./xml.wasm": "./dist/xml.wasm"
   },
   "types": "./dist/index.d.ts",
   "sideEffects": [
@@ -73,7 +74,7 @@
     "build": "node scripts/build.mjs",
     "size": "node scripts/size.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test test/*.test.ts ../element/*.test.ts ../worker/js/*.test.mjs ../geojson_worker/js/*.test.mjs ../wasmio/js/*.test.mjs"
+    "test": "node --test test/*.test.ts ../element/*.test.ts ../worker/js/*.test.mjs ../geojson_worker/js/*.test.mjs ../wasmio/js/*.test.mjs ../data_worker/js/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

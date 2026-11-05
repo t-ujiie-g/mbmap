@@ -1,6 +1,6 @@
-// `mbmap/data`: CSV, WKT and WKB read in a worker of its own, started on the
-// first call, into tables that are both a GeoJSON source's data
-// (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
+// `mbmap/data`: CSV, WKT, WKB, KML/KMZ and GPX read in a worker of its own, started
+// on the first call (KML and GPX by a second wasm), into tables that are both a
+// GeoJSON source's data (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
 import { tableInfo, tableToGeoJSON } from "../../wasmio/js/table.mjs";
 import { csvArgs, formatOf, type CsvOptions, type DataFormat } from "./data-format";
 import { httpUrl, wasmUrl } from "./urls";
@@ -14,10 +14,14 @@ export interface DataFeatureCollection {
   features: { type: "Feature"; geometry: { type: string; coordinates: unknown } | null; properties: Record<string, unknown> }[];
 }
 
-/** Where the data worker (`workerUrl`) and its wasm (`wasmUrl`) are served; by default next to this module. */
+/**
+ * Where the data worker (`workerUrl`), its wasm (`wasmUrl`) and the KML/GPX wasm it loads on the
+ * first such read (`xmlUrl`) are served; by default next to this module.
+ */
 export interface DataOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
+  xmlUrl?: string | URL;
 }
 
 /**
@@ -64,15 +68,16 @@ const client = new WorkerClient("data");
 function start(options: DataOptions): void {
   client.start(options.workerUrl ?? new URL("./data-worker.js", import.meta.url), (page) => ({
     wasm: wasmUrl(options.wasmUrl ?? new URL("./data.wasm", import.meta.url), page),
+    xml: wasmUrl(options.xmlUrl ?? new URL("./xml.wasm", import.meta.url), page),
   }));
 }
 
 function formatFor(options: ReadOptions, name: string | null): DataFormat {
   const format = options.format ?? (name === null ? null : formatOf(name));
-  if (format !== "csv" && format !== "wkt" && format !== "wkb") {
+  if (!["csv", "wkt", "wkb", "kml", "gpx"].includes(format as string)) {
     throw new Error(`mbmap: data: ${options.format === undefined ? "the format cannot be told from the input; give options.format" : `unknown format ${String(options.format)}`}`);
   }
-  return format;
+  return format as DataFormat;
 }
 
 async function call(format: DataFormat, source: object, options: ReadOptions, transfer: Transferable[] = []): Promise<DataTable> {
@@ -104,7 +109,7 @@ export async function read(input: string | URL | Blob | ArrayBuffer | ArrayBuffe
   return call(formatFor(options, null), { bytes }, options, [bytes]);
 }
 
-/** Reads `text` (CSV, WKT or hexadecimal WKB) as `options.format`. */
+/** Reads `text` (CSV, WKT, hexadecimal WKB, KML or GPX) as `options.format`. */
 export async function parse(text: string, options: ReadOptions & { format: DataFormat }): Promise<DataTable> {
   if (typeof text !== "string") throw new Error("mbmap: data: parse takes a string");
   const bytes = new TextEncoder().encode(text).buffer;

@@ -1,35 +1,47 @@
 // Glue around the wasm-gc build of `data_worker`; messages are in
 // docs/FORMATS.md ("Data worker messages").
 
-import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { hostNumber, hostText, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { fetchInit, readCapped } from "../../worker/js/body.mjs";
+import { isZip, kmlOfKmz } from "./kmz.mjs";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let wasm = null;
 let ready = null;
+// The XML module (xml_worker: KML and GPX), instantiated on the first such read.
+let xmlUrl = null;
+let xml = null;
 
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
 
-function input(parts) {
+function input(parts, exports = wasm) {
   const len = parts.reduce((s, b) => s + b.length, 0);
-  const addr = wasm.prepare_input(len);
+  const addr = exports.prepare_input(len);
   if (addr < 0) throw new Error(`input too large (${len} bytes)`);
   let at = addr;
   for (const b of parts) {
-    new Uint8Array(wasm.memory.buffer, at, b.length).set(b);
+    new Uint8Array(exports.memory.buffer, at, b.length).set(b);
     at += b.length;
   }
 }
 
 // The table bytes a reader wrote, or the error it reported.
-function table(n) {
-  const at = wasm.output_addr();
+function table(n, exports = wasm) {
+  const at = exports.output_addr();
   if (n === -2) throw new Error("out of memory");
-  if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, at, -n)));
-  return wasm.memory.buffer.slice(at, at + n);
+  if (n < 0) throw new Error(decoder.decode(new Uint8Array(exports.memory.buffer, at, -n)));
+  return exports.memory.buffer.slice(at, at + n);
+}
+
+function xmlModule() {
+  if (!xml) {
+    check(typeof xmlUrl === "string");
+    xml = WebAssembly.instantiateStreaming(fetch(xmlUrl), { Math, host: hostText() }).then(({ instance }) => instance.exports);
+  }
+  return xml;
 }
 
 // The data of a `read` call: fetched (http(s) only, no credentials unless `init`
@@ -53,8 +65,13 @@ const isName = (n) => n === undefined || (typeof n === "string" && n.length > 0 
 
 async function read(msg) {
   const { format, options = {} } = msg;
-  check(["csv", "wkt", "wkb"].includes(format) && options && typeof options === "object");
+  check(["csv", "wkt", "wkb", "kml", "gpx"].includes(format) && options && typeof options === "object");
   const data = await bytesOf(msg);
+  if (format === "kml" || format === "gpx") {
+    const exports = await xmlModule();
+    input([format === "kml" && isZip(data) ? await kmlOfKmz(data, MAX_INPUT_BYTES) : data], exports);
+    return table(format === "kml" ? exports.read_kml() : exports.read_gpx(), exports);
+  }
   if (format === "wkt") {
     input([data]);
     return table(wasm.read_wkt());
@@ -76,6 +93,7 @@ const OPS = { read };
 onmessage = async (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
+    xmlUrl = typeof msg.xml === "string" ? msg.xml : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { host }).then(({ instance }) => {
       wasm = instance.exports;
