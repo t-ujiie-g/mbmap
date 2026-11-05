@@ -506,10 +506,10 @@ Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
 ## Data worker messages (`data_worker/js/worker.mjs`)
 
-In: `{type: "init", wasm, proj, prj, xml}` (data.wasm instantiated with `{ host: { number, decode,
-text_code } }` from `dataImports` in `data_worker/js/read.mjs`; `proj` the URL of proj.wasm, `prj`
-of prjwkt.js and `xml` of xml.wasm, the KML and GPX module `xml_worker` instantiated with
-`{ Math, host }` (`hostText`), each loaded on first use), then `{type: "call", id, op: "read",
+In: `{type: "init", wasm, proj, prj, xml, geotiff}` (data.wasm instantiated with `{ host: { number,
+decode, text_code, number_text } }` from `dataImports` in `data_worker/js/read.mjs`; `proj` the URL
+of proj.wasm, `prj` of prjwkt.js, `xml` of xml.wasm, the KML and GPX module `xml_worker` instantiated
+with `{ Math, host }` (`hostText`), and `geotiff` of geotiff.wasm, each loaded on first use), then `{type: "call", id, op: "read",
 format, options, ...}` with the data as one of `url` (http(s), fetched with `init`'s string
 `headers` and `credentials`, none sent otherwise), `blob` or `bytes` (an ArrayBuffer), at most
 `MAX_INPUT_BYTES`, or for a shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source, or
@@ -578,6 +578,11 @@ EPSG:3857 or 4326 get every pixel center through proj.wasm's `transform_coords`.
 their tiles this way through the engine's tile provider (map/dom.mbt `Provider`), which hands them
 to a display worker as raster or DEM tile bytes.
 
+Out, for a read: `{type: "result", id, value: {table, ids, layer, layers}}` with `table` an
+ArrayBuffer of "Table" bytes and `ids` of the ids' property values or null (both transferred),
+`layer` the layer read or null and `layers` every layer of the input; for the other ops `value` is
+what is said above. A call that fails: `{type: "result", id, error}`.
+
 ## GeoTIFF images (`geotiff_worker/read.mbt` `parse`)
 
 u32 little-endian (1 or 0), u32 image count; per image: i32 width, height, tiled (0 or 1), block
@@ -586,10 +591,6 @@ SubfileType, EPSG code (0 for none), raster type; per sample u32 bits and u32 sa
 arrays (u32 count, values) ModelPixelScale, ModelTiepoint, ModelTransformation, block offsets, block
 byte counts; u8 1, a u32 length and UTF-8 for GDAL_NODATA's text, else u8 0; i32 JPEGTables
 length (-1 absent) and its bytes; padding to 4.
-
-Out: `{type: "result", id, value: {table, ids, layer, layers}}` with `table` an ArrayBuffer of
-"Table" bytes and `ids` of the ids' property values or null (both transferred), `layer` the layer
-read or null and `layers` every layer of the input; or `{type: "result", id, error}`.
 
 ## CRS definition (`proj/encoding.mbt`, written by `npm/src/projstring.ts` and `npm/src/prjwkt.ts`)
 

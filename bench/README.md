@@ -36,7 +36,7 @@ npm run fixtures          # タイルなどを取得し、fixtures/*.manifest.js
 ## entry/ と lib/
 
 - `entry/`：`lib/entry.mjs` で読み込む。wasm-gc ではタイルを線形メモリに置き、wasm 内で `Bytes` へコピーしてから処理する。
-- `lib/`：静的サーバー（`serve.mjs`。127.0.0.1 だけで待ち、ポートを指定しなければ空いているものを選ぶ）、fixture の読み込み（`fixtures.mjs`、Node 用は
+- `lib/`：コマンドライン引数（`args.mjs`）、静的サーバー（`serve.mjs`。127.0.0.1 だけで待ち、ポートを指定しなければ空いているものを選ぶ）、fixture の読み込み（`fixtures.mjs`、Node 用は
   `node-io.mjs`）、行ごとの計測（`rows.mjs`）、Worker ベンチの実行（`worker-bench.mjs`、`worker-page.*`）、esbuild 設定（`bundle.mjs`。
   `maplibre-src` で MapLibre の TS ソースを参照）と `run-bundled.mjs`、試験用の PNG（`png.mjs`）と PMTiles（`pmtiles-writer.mjs`）の
   読み書き、富士山の DEM を Terrarium にしたもの（`fuji-terrain.mjs`）、偽の Geolocation（`fake-geolocation.mjs`）、長いコメントの一覧
@@ -176,4 +176,6 @@ fixture がなくてもタイルが 404 になるだけで地図は読み込ま�
 `raster/`、`pmtiles/`、`query/`、`track/`、`export/`、`ui/`、`labels/`、`style/`（`style:golden`・`style:public`・`style:compat`・
 `expression:golden`・`color:golden`。場面は `style/scenes.mjs`、公開のスタイルは `style/public-styles.mjs`）、`camera/`、`terrain/`、
 `proj/`、`clipper/`（`clipper:golden`・`buffer:check`・`geometry:node`）、`geodesic/`、`draw/`（`draw:golden`・`draw:many`・
-`draw:setdata`）。開発用のページは `pages/`（basic、terrain）にあり、`npm run example` で配信する。
+`draw:setdata`）、`data/`（`data:golden`、`fgb:golden`、`xml:golden`、`write:golden`、`geotiff:golden`：`mbmap/data` の読み書きを
+papaparse、betterknown、wkx、shpjs、topojson-client、flatgeobuf、togeojson、tokml、geotiff と比べる。すべて 0 differ のまま。共通の部品は `data/common.mjs`）、
+`geotiff/`（`geotiff:tiles`：`geotiff` ソースのタイルを元の画素と比べる。すべて ok のまま）。開発用のページは `pages/`（basic、terrain）にあり、`npm run example` で配信する。

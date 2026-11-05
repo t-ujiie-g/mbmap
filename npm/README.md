@@ -354,7 +354,7 @@ const grid = await loadGrid(dem, { scale: 111120 });  // 経緯度の DEM の傾
   - 読めるもの：TIFF と BigTIFF（どちらのバイト順も）、ストリップとタイル、planar 1・2、非圧縮・LZW・Deflate・PackBits・JPEG・WebP（JPEG と WebP はブラウザで復号）、予測子 2・3、符号なし 1〜16 と 32 ビット、符号付き 8・16・32 ビット、浮動小数点 16・32・64 ビット、バイト数 0 のブロック（no data か 0）。LERC と ZSTD は失敗する。
   - geotiff と違うところ：ビッグエンディアンで予測子のあるファイルを仕様どおりに読む（geotiff はリトルエンディアンとして戻す）、`width` だけを渡すと窓の高さのまま幅だけリサンプリングする（geotiff は空の帯を返す）、途中で切れたファイルは失敗する。値は `npm run geotiff:golden` で、バイト列からも HTTP の範囲リクエストでも一致することを確かめている。
   - 初めて読むときに `geotiff.wasm` と `data-geotiff.js`（合わせて gzip で約 17KB）を読み込む。
-- 初めて呼んだときに、専用の Worker と wasm（gzip で約 38KB）を読み込む。KML か GPX を初めて読むときに、もう 1 つの wasm（`xml.wasm`、約 22KB）を読む。`terminate()` で止める。
+- 初めて呼んだときに、専用の Worker と wasm（gzip で約 38KB）を読み込む。KML か GPX を初めて読むときに、もう 1 つの wasm（`xml.wasm`、約 26KB）を読む。`terminate()` で止める。
 
 ## Web Component `<mb-map>`
 

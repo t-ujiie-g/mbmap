@@ -56,13 +56,13 @@ ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入
 - `tess/` … ポリゴン三角形分割（earcut 移植）、線の太さ展開（join/cap、ミター制限）、点・円
 - `style/` … MapLibre Style Spec の**サブセット**（後述）の評価
 - `geom/` … 列指向の地物の表（GeoArrow のマルチポリゴンと同じオフセット、属性はキーごとの列）
-- `formats/` … 外部形式の読み込み（今は GeoJSON）。`geom/` の表にする
+- `formats/` … 外部形式の読み込み（GeoJSON、CSV、WKT / WKB、Shapefile、TopoJSON、FlatGeobuf）。`geom/` の表にする
 - `tiler/` … `geom/` の表からベクトルタイルを切り出す（geojson-vt 6.3.0 の移植）
 - `worker/` … 表示用 Worker のエントリ。メッセージプロトコルと Transferable なバッファ出力
-- `geojson_worker/` … GeoJSON ソース用 Worker のエントリ（`formats` と `tiler`）。`mbmap/geojson` の入口から遅延ロードする
+- `geojson_tiles/`、`geojson_worker/`、`cluster_props/`、`geojson_props_worker/` … GeoJSON ソース用 Worker のエントリ（`formats` と `tiler`。`clusterProperties` のあるソースは式を持つ2つ目のモジュール）。スタイルに GeoJSON ソースがあるとき、ファサードが `geojson.js` から遅延ロードする
 - `analysis/` … 空間索引（flatbush の移植）、計測・点の内外判定（Turf.js と同じ値）、空間クエリ、集計
 - `analysis_worker/` … `mbmap/analysis` の Worker のエントリ（`formats` と `analysis`）。データセットをハンドルで保持する
-- `wasmio/` … wasm-gc 専用。`geojson_worker` と `analysis_worker` が JS とやりとりする線形メモリの入出力
+- `wasmio/` … wasm-gc 専用。wasm-gc 専用のエントリすべてが JS とやりとりする線形メモリの入出力
 - `raster/` … 標高タイルの読み込みと、hillshade レイヤー用の勾配（地形解析は `analysis/` の `Grid`）。3D 地形の描画（タイルごとにテクスチャへ描いて起伏に貼る）は `map/` と `render_webgl2/`
 - `label/` … ラベルの配置。グリフのアトラスの詰め込み、重なりを判定する画面のグリッド
 - `render_webgl2/` … js ターゲット。WebGL2 への FFI、シェーダ、描画パス
@@ -73,13 +73,16 @@ ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入
 - `clipper/`、`overlay/`、`geometry_worker/` … ジオメトリ演算（Clipper2 の移植と、地物の表への適用）。`geometry.wasm`
 - `proj/`、`proj_worker/` … 座標系変換（proj4js の移植）。`proj.wasm`
 - `geodesic/`、`geodesic_worker/` … 楕円体の上の測地線（GeographicLib の移植）。`mbmap/geodesic` の入口と `geodesic.wasm`
+- `data_worker/` … `mbmap/data` の Worker のエントリ（`formats`）。`data.wasm`
+- `xml/`、`kml/`、`xml_worker/` … KML / GPX の読み込みと KML の書き出し（togeojson と tokml の移植）。`xml.wasm`
+- `tiff/`、`geotiff_worker/` … GeoTIFF / COG の読み込み（geotiff の移植）。`geotiff.wasm`
 - `bench/`、`examples/`
 
-依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_worker`、`geom ← analysis ← analysis_worker`、`core ← geodesic ← geodesic_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
+依存の向きは `core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_tiles ← geojson_worker`、`style/tiler ← cluster_props ← geojson_props_worker`、`formats ← data_worker`、`geom/xml ← kml ← xml_worker`、`tiff ← geotiff_worker`、`geom ← analysis ← analysis_worker`、`geom/clipper ← overlay ← geometry_worker`、`proj ← proj_worker`、`core ← geodesic ← geodesic_worker`、`core ← render_webgl2 ← map ← (npm, element) ← adapters` のみ。逆方向の依存を作らない。**`map/` 以下のパッケージはいかなる UI フレームワークにも依存しない**。
 
 ### 入口の分割と遅延ロード
 
-- npm パッケージは1つ（`mbmap`）のまま、**subpath exports で入口を分ける**：`mbmap`（表示）、`mbmap/geojson`、`mbmap/analysis`、`mbmap/ui`、`mbmap/search`、`mbmap/geodesic`、`mbmap/draw`、`mbmap/3d` など。`import` しない入口はバンドルに入らない。
+- npm パッケージは1つ（`mbmap`）のまま、**subpath exports で入口を分ける**：`mbmap`（表示）、`mbmap/element`、`mbmap/data`、`mbmap/analysis`、`mbmap/ui`、`mbmap/search`、`mbmap/geodesic`、`mbmap/draw`、`mbmap/3d` など。`import` しない入口はバンドルに入らない。
 - データ処理と解析の Wasm は、表示用 Worker とは**別のモジュール**にする。初めて使うときに `import()` で読み込み、専用の Worker で実行する。API は Promise を返す。
 - **分割の粒度（Phase 6.5 で計測して決定）**：入口ごとに Wasm モジュールを1つにすることを基本とする（例：`mbmap/analysis` → `analysis.wasm`）。ある機能群の固有のコードが gzip で約 20KB（モジュールごとに重複する core の約3倍）を超えたら、その機能群を別モジュールに切り出す（Clipper2 の移植や座標系変換が候補）。表示用 Worker に解析を入れる一体型にはしない。
   - 根拠：wasm-gc のモジュールを増やす固定費はほぼ 0（空のモジュールで 0.18KB）。一方で、表示用 Worker と共通の core のコード（三角関数、整数の文字列化など）が、モジュールごとに約 6KB 重複する。読み込みは 1〜2.5ms で、一体型と比べても実行速度は変わらない（PROGRESS.md の Phase 6.5）。
@@ -92,14 +95,17 @@ ArcGIS Maps SDK for JavaScript や CesiumJS のような機能群を視野に入
 - 読み込み → 解析 → 表示が、コピーなしに Worker の中で閉じるようにする。解析結果は、そのまま描画レイヤーのソースになる。
 - GeoArrow に寄せることで、GeoParquet、DuckDB-wasm、deck.gl などと変換なしでつながる。確定したレイアウトは `geom/table.mbt` と [FORMATS.md](FORMATS.md)（Worker の間でやりとりするバイナリとメッセージ）にある。
 
-### 予定しているパッケージと入口（作るときに構成を確定する）
+### 表示以外の入口
 
 - `mbmap/ui`（ヘッドレス UI）… 見た目を持たないコントローラ群（§6）。DOM を作らず、地図の API とイベントだけを使う。コントローラごとに tree-shaking で落とせるようにし、使わないものはバンドルに入らない
 - `mbmap/search`（GeoSearch）… 検索のコントローラとプロバイダ。既定のプロバイダはサーバーに問い合わせない（座標の読み取り、読み込んだデータの属性検索）。外部の検索 API は同じ形のプロバイダとして差し替え・追加できる（§6）
 - `mbmap/draw`（作図・編集）… 描画モード、頂点の編集、スナップ、取り消し・やり直し。結果は列指向の表（`geom/` の形）で、保存先は利用者のアプリが決める
-- `formats/` の拡張 … CSV、KML / KMZ、GPX、Shapefile、FlatGeobuf、TopoJSON、WKT / WKB、GeoTIFF / COG（ラスタ）。形式ごとに遅延ロードし、書き出し（GeoJSON、CSV、KML）も持つ
+- `mbmap/data`（データの読み書き）… CSV、KML / KMZ、GPX、Shapefile、FlatGeobuf、TopoJSON、WKT / WKB、GeoTIFF / COG（ラスタ）。形式ごとに遅延ロードし、書き出し（GeoJSON、CSV、KML）も持つ
+
+### 予定しているパッケージと入口（作るときに構成を確定する）
+
 - `analysis/` の拡張 … 空間関係（DE-9IM）、単純化・凸包・ボロノイ、分類と統計、密度、補間、等高線、断面、可視域、ネットワーク上の経路探索
-- `raster/` の拡張 … 可視域などのラスタ解析、GeoTIFF のラスタ表示
+- `raster/` の拡張 … 可視域などのラスタ解析
 - 3D … カメラは `core` の `Transform` を一般化する。地球（globe）表示、glTF / 3D Tiles（PLATEAU）の展開（Draco、meshopt）、点群は `mbmap/3d` の入口に分ける
 
 `map/` は解析系のパッケージに依存しない。解析系は表示に依存せず、表示とは列指向のバッファだけでつながる。
@@ -163,13 +169,14 @@ map.addSource("pts", { type: "geojson", data });
 ```
 MapLibre の API に**名前と形を寄せる**（移行コストを下げるため）が、完全互換は目指さない。
 
-データ処理と解析は別の入口から使う。初回の呼び出しで Wasm を読み込み、Worker で実行して Promise を返す（イメージ。名前は作るときに決める）。
+データ処理と解析は別の入口から使う。初回の呼び出しで Wasm を読み込み、Worker で実行して Promise を返す。
 ```ts
-import { readGeoJSON } from "mbmap/geojson";
-import { buffer, area } from "mbmap/analysis";
-const table = await readGeoJSON(file);          // 列指向のジオメトリ表
-const zones = await buffer(table, { meters: 500 });
-map.addSource("zones", { type: "table", data: zones }); // コピーなしで描画に渡す
+import { read } from "mbmap/data";
+import { load } from "mbmap/analysis";
+const table = await read(file);                 // 列指向のジオメトリ表
+const dataset = await load(table);
+const zones = await dataset.buffer(500);
+map.addSource("zones", { type: "geojson", data: await zones.toGeoJSON() });
 ```
 
 ### MoonBit
