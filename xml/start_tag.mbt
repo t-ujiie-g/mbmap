@@ -36,6 +36,7 @@ fn Parser::start_tag(self : Parser, tag : Int32) -> Int32 {
   self.attr_names.clear()
   self.attr_values.clear()
   self.attr_starts.clear()
+  self.attr_tag = tag
   let b = self.b
   let n = self.n
   let mut p = tag + 1
@@ -200,11 +201,9 @@ fn Parser::add_attr(
   value : (Int32, Int32),
 ) -> Bool {
   let name = self.text(qname.0, qname.1)
-  for a in self.attr_names {
-    if a == name {
-      self.fail(qname.0, "attribute redefined")
-      return true
-    }
+  if self.attr_seen.get(name) == Some(self.attr_tag) {
+    self.fail(qname.0, "attribute redefined")
+    return true
   }
   for i in value.0..<value.1 {
     if self.b[i] == b'<' {
@@ -232,6 +231,7 @@ fn Parser::add_attr(
       },
     )
   }
+  self.attr_seen[name] = self.attr_tag
   self.attr_names.push(name)
   self.attr_values.push(entities(out.to_string()))
   self.attr_starts.push(qname.0)
@@ -383,11 +383,10 @@ fn Parser::append_element(
     // One with the same namespace and local name is replaced (`setNamedItem`).
     let mut at = d.attr_names.length()
     if attr_ns[i] >= 0 {
-      for a in d.starts[e]..<d.attr_names.length() {
-        if d.attr_nss[a] == attr_ns[i] &&
-          local_of(d.attr_names[a]) == local_of(name) {
-          at = a
-        }
+      let key = "\{attr_ns[i]}:" + local_of(name)
+      match self.attr_seen.get(key) {
+        Some(a) if a >= d.starts[e] => at = a
+        _ => self.attr_seen[key] = at
       }
     }
     if at == d.attr_names.length() {
