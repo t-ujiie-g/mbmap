@@ -93,3 +93,10 @@ test("mbmap/analysis names measures as analysis_worker/datasets.mbt numbers them
   assert.equal(entries.length, Object.keys(moon).filter((name) => name.startsWith("MEASURE_")).length);
   for (const [name, value] of entries) assert.equal(Number(value), moon[`MEASURE_${name.toUpperCase()}`], name);
 });
+
+test("values.mjs reads core's value tags", () => {
+  const core = moonConsts("../../core/bytes.mbt");
+  const js = Object.entries(jsConsts("./values.mjs"));
+  assert.equal(js.length, 5);
+  for (const [name, tag] of js) assert.equal(tag, core[name], name);
+});

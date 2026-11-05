@@ -1,6 +1,8 @@
 // Glue around the wasm-gc build of `geodesic_worker`; messages are in
 // docs/FORMATS.md ("Geodesic worker messages").
 
+import { writeInput } from "../../wasmio/js/host.mjs";
+
 const decoder = new TextDecoder();
 let wasm = null;
 let ready = null;
@@ -13,11 +15,7 @@ function f64s(n) {
   return new Float64Array(wasm.memory.buffer.slice(at, at + n * 8));
 }
 
-function input(coords) {
-  const at = wasm.prepare_input(coords.byteLength);
-  if (at < 0) throw new Error(`input too large (${coords.byteLength} bytes)`);
-  new Uint8Array(wasm.memory.buffer, at, coords.byteLength).set(new Uint8Array(coords));
-}
+const input = (coords) => writeInput(wasm, [new Uint8Array(coords)]);
 
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");

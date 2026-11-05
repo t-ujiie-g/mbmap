@@ -1,7 +1,18 @@
-// Host imports shared by the wasm-gc entries that read GeoJSON.
+// Host imports and input copying shared by the wasm-gc entries.
 
 /** Largest input the entries take (wasmio/memory.mbt `MAX_INPUT_BYTES`): URL data is read up to it. */
 export const MAX_INPUT_BYTES = 256 * 1024 * 1024;
+
+/** Copies `parts` one after another into the input area of `exports`; `what` names them when too large. */
+export function writeInput(exports, parts, what = "input") {
+  const len = parts.reduce((sum, part) => sum + part.length, 0);
+  let at = exports.prepare_input(len);
+  if (at < 0) throw new Error(`${what} too large (${len} bytes)`);
+  for (const part of parts) {
+    new Uint8Array(exports.memory.buffer, at, part.length).set(part);
+    at += part.length;
+  }
+}
 
 // `read_geojson`'s slow_number: the JSON number (ASCII) at `addr` of the
 // instance's memory, by `Number()`. One reader per instance; its view is

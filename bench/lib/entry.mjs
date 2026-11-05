@@ -3,13 +3,13 @@
 import { hostNumber } from "../../wasmio/js/host.mjs";
 
 export const ENTRY_JS = "_build/js/release/build/bench/entry/entry.js";
-export const ENTRY_WASM_GC = "_build/wasm-gc/release/build/bench/entry/entry.wasm";
+const ENTRY_WASM_GC = "_build/wasm-gc/release/build/bench/entry/entry.wasm";
 
 const WASM_PAGE = 65536;
 
 // `copyIn` places a tile in linear memory from the second page on and returns
 // its address, for the *_mem exports.
-export async function loadWasmGc(fetchBytes) {
+async function loadWasmGc(fetchBytes) {
   // The GeoJSON tiler and proj compute with the host's Math, and the reader parses long numbers
   // with its Number() (bench/entry/host_math.mbt).
   let e = null;

@@ -17,7 +17,7 @@ const ARRAYS = {
 };
 
 /** The images of a "GeoTIFF images" summary (docs/FORMATS.md). */
-export function readSummary(buffer) {
+function readSummary(buffer) {
   const v = new DataView(buffer);
   const bytes = new Uint8Array(buffer);
   let at = 0;
@@ -101,6 +101,9 @@ export function bboxOf(img) {
   return [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
 }
 
+/** The images a resolution picks from (geotiff's: the first, and reduced-resolution ones), coarsest first. */
+const levels = (images) => images.filter((img, i) => i === 0 || img.oldSubfile === 2 || (img.subfile & 1)).sort((a, b) => a.width - b.width);
+
 /**
  * The image and window geotiff's `GeoTIFF.readRasters` reads for `options` (`window`, `bbox`,
  * `width`, `height`, `resX`, `resY`; `image` picks an image by index instead).
@@ -133,9 +136,7 @@ export function choose(images, options) {
     }
     if (resX || resY) {
       const box = bboxOf(first);
-      const all = images.filter((img, i) => i === 0 || img.oldSubfile === 2 || (img.subfile & 1));
-      all.sort((a, b) => a.width - b.width);
-      for (const img of all) {
+      for (const img of levels(images)) {
         used = img;
         if ((resX && resX > (box[2] - box[0]) / img.width) || (resY && resY > (box[3] - box[1]) / img.height)) break;
       }
@@ -235,12 +236,6 @@ async function webImage(bytes, samples, img) {
 
 const rowBytes = (width, bits) => Math.ceil((width * bits) / 8);
 
-/**
- * A window of the GeoTIFF read through `source`, as `readRaster` gives it (npm/README.md):
- * `source.read(offset, length)` resolves to those bytes of the file (fewer at its end) or, from
- * a server that ignores ranges, to `{ whole }`; `source.bytes` is the file when it is at hand.
- * `wasm` is geotiff.wasm's exports with `input` and `output` (data_worker/js/read.mjs).
- */
 // The first bytes (or the whole) of files read by URL, and their blocks, kept for the next reads
 // (a map's tiles read the same file over and over): most recent last.
 const HEADS = 8;
@@ -298,16 +293,21 @@ async function open(source, { wasm, input, output, max }) {
   }
 }
 
+/**
+ * A window of the GeoTIFF of `source` (read.mjs's `rasterSource`) as npm/README.md's `readRaster`
+ * gives it; `ctx` holds geotiff.wasm's exports as `wasm`, with `input`, `output` and `max`.
+ */
 export async function readRaster(source, options, ctx) {
   const { wasm, input, output, max } = ctx;
-  let { images, file } = await open(source, ctx);
+  const { images, file: opened } = await open(source, ctx);
+  let file = opened;
   const { index, window: wnd } = choose(images, options);
   const img = images[index];
   const samples = options.samples?.length ? options.samples : Array.from({ length: img.samples }, (_, i) => i);
   for (const s of samples) if (!Number.isInteger(s) || s < 0 || s >= img.samples) throw new RangeError(`Invalid sample index '${s}'.`);
   const fill = typeof options.fillValue === "number" ? options.fillValue : 0;
   input(wasm, [new Uint8Array(Uint32Array.from(samples).buffer)]);
-  output(wasm, wasm.window(index, wnd[0], wnd[1], wnd[2], wnd[3], fill), true);
+  output(wasm, wasm.window(index, wnd[0], wnd[1], wnd[2], wnd[3], fill));
   // The blocks the window meets, as geotiff's `_readRaster` walks them.
   const across = Math.ceil(img.width / img.blockWidth);
   const down = Math.ceil(img.height / img.blockHeight);
@@ -325,21 +325,21 @@ export async function readRaster(source, options, ctx) {
     decodedBytes += rawSize(i);
     if (decodedBytes > max * DECODED_RATIO) throw new Error(`blocks decoding to more than ${max * DECODED_RATIO} bytes`);
     const c = img.compression;
-    if (c === 1 || c === 5 || c === 32773) return output(wasm, (input(wasm, [bytes]), wasm.block(i, 0)), true);
+    if (c === 1 || c === 5 || c === 32773) return output(wasm, (input(wasm, [bytes]), wasm.block(i, 0)));
     let decoded;
     if (c === 8 || c === 32946) decoded = await inflate(bytes, rawSize(i));
     else if (c === 7) decoded = await webImage(withTables(bytes, img.jpegTables), img.planar === 2 ? 1 : img.samples, img);
     else if (c === 50001) decoded = await webImage(bytes, img.planar === 2 ? 1 : img.samples, img);
     else throw new Error(`Unknown compression method identifier: ${c}`);
     input(wasm, [decoded]);
-    output(wasm, wasm.block(i, 1), true);
+    output(wasm, wasm.block(i, 1));
   };
   // Block byte ranges, merged where they lie close together and read a few at a time.
   const ranges = [];
   for (const i of blocks) {
     const [offset, count] = [img.offsets[i], img.counts[i]];
     if (count === 0) {
-      output(wasm, wasm.empty(i, noData || 0), true);
+      output(wasm, wasm.empty(i, noData || 0));
       continue;
     }
     const kept = !file && source.key && blocksKept.get(`${source.key}#${offset}`);
@@ -433,6 +433,8 @@ const MERCATOR = new Set([3857, 900913, 3785, 102100]);
 // Geographic CRSs drawn as EPSG:4326 (JGD2011 and JGD2000 lie within centimeters of it).
 const LONLAT = new Set([4326, 6668, 4612]);
 const EDGE_STEPS = 32;
+const lonOf = (mx) => (mx / R) * (180 / Math.PI);
+const latOf = (my) => (Math.atan(Math.sinh(my / R)) * 180) / Math.PI;
 
 // "mercator", "lonlat", or "other" for an EPSG code proj.wasm takes the pixels through.
 function kindOf(crs) {
@@ -442,7 +444,7 @@ function kindOf(crs) {
   return "other";
 }
 
-/** `xy` (longitude, latitude pairs) in EPSG:`crs` through `ctx.transform`, with the CRS named on failure. */
+/** The x, y pairs `xy` from EPSG:`from` to EPSG:`to` through `ctx.transform`, with the CRS named on failure. */
 async function project(ctx, from, to, xy) {
   try {
     return await ctx.transform(from, to, xy);
@@ -450,9 +452,6 @@ async function project(ctx, from, to, xy) {
     throw new Error(`GeoTIFFs in EPSG:${from === 4326 ? to : from} are not drawn: ${err.message}`);
   }
 }
-
-/** The images a resolution picks from (geotiff's: the first, and reduced-resolution ones), coarsest first. */
-const levels = (images) => images.filter((img, i) => i === 0 || img.oldSubfile === 2 || (img.subfile & 1)).sort((a, b) => a.width - b.width);
 
 /** The finite values of `band` but `noData`: [min, max], or null. */
 function extent(band, noData) {
@@ -476,7 +475,6 @@ export async function rasterInfo(source, ctx) {
   const first = images[0];
   const kind = kindOf(first.epsg);
   const [w, s, e, n] = bboxOf(first);
-  const toLat = (y) => (Math.atan(Math.sinh(y / R)) * 180) / Math.PI;
   let bounds;
   let res;
   if (kind === "other") {
@@ -501,7 +499,7 @@ export async function rasterInfo(source, ctx) {
     const [c, a, b] = [merc(0), merc(2), merc(4)];
     res = Math.min(Math.hypot(a[0] - c[0], a[1] - c[1]), Math.hypot(b[0] - c[0], b[1] - c[1]));
   } else {
-    bounds = kind === "mercator" ? [(w / R) * (180 / Math.PI), toLat(s), (e / R) * (180 / Math.PI), toLat(n)] : [w, s, e, n];
+    bounds = kind === "mercator" ? [lonOf(w), latOf(s), lonOf(e), latOf(n)] : [w, s, e, n];
     res = Math.abs(resolutionOf(first)[0]) * (kind === "mercator" ? 1 : (Math.PI / 180) * R);
   }
   const maxzoom = Number.isFinite(res) && res > 0 ? Math.max(0, Math.min(24, Math.ceil(Math.log2(WORLD / 256 / res) - 1e-6))) : 0;
@@ -522,16 +520,13 @@ function rgbaOf(color, ctx) {
 /** XYZ tile `z`/`x`/`y` of the GeoTIFF of `source` as a PNG, or null where it has no pixel: each pixel's center
  * (taken to the file's CRS by proj.wasm unless it is EPSG:3857 or 4326) read from the coarsest image still finer
  * than the tile, colored as npm/README.md's `geotiff` sources. */
-export async function renderTile(source, { z, x, y, tileSize = 256, bands, range, colors, dem = false, resampling }, ctx) {
+export async function renderTile(source, { z, x, y, tileSize: size = 256, bands, range, colors, dem = false, resampling }, ctx) {
   const { images } = await open(source, ctx);
   const first = images[0];
   const kind = kindOf(first.epsg);
-  const size = tileSize;
   const px = WORLD / 2 ** z / size;
   const mx0 = -WORLD / 2 + x * (WORLD / 2 ** z);
   const my0 = WORLD / 2 - y * (WORLD / 2 ** z);
-  const lonOf = (mx) => (mx / R) * (180 / Math.PI);
-  const latOf = (my) => (Math.atan(Math.sinh(my / R)) * 180) / Math.PI;
   // Each pixel's center in the file's coordinates, row by row.
   const fx = new Float64Array(size * size);
   const fy = new Float64Array(size * size);

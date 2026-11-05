@@ -1,5 +1,12 @@
 // URL handling of the facade, kept free of imports so tests can run it as is.
 
+/** What a `transformRequest` gives: the URL to fetch, and the headers and credentials to send. */
+export interface TransformedRequest {
+  url: string;
+  headers?: Record<string, string>;
+  credentials?: RequestCredentials;
+}
+
 /** `url` resolved against `base`, refused unless http(s), so a style cannot fetch data: or blob: URLs (AGENTS.md §8.3). */
 export function httpUrl(url: string | URL, base: string | URL, what: string): string {
   const u = new URL(url, base);

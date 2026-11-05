@@ -1,7 +1,7 @@
 // GeoJSON sources, served by their own worker. `Map` imports this module only
 // for styles that have one.
 import { type ClusterQuery, clusterArgs, loadOptions, sameOptions } from "./geojson-options.ts";
-import { httpUrl, workerScriptUrl, wasmUrl } from "./urls.ts";
+import { httpUrl, workerScriptUrl, wasmUrl, type TransformedRequest } from "./urls.ts";
 
 export type { ClusterQuery } from "./geojson-options.ts";
 
@@ -34,7 +34,7 @@ export function createGeoJSONTiles(
   onError: (error: Error) => void,
   urls: { workerUrl?: string | URL; wasmUrl?: string | URL; propertiesWasmUrl?: string | URL } = {},
   compile: (clusterProperties: string) => Uint8Array = () => new Uint8Array(0),
-  transform: (url: string) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined = () => undefined,
+  transform: (url: string) => TransformedRequest | undefined = () => undefined,
 ): GeoJSONTiles {
   const page = new URL(document.baseURI);
   const worker = new Worker(

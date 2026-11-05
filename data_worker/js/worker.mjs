@@ -11,16 +11,17 @@ let ready = null;
 let queue = Promise.resolve();
 const urls = {};
 const loaded = {};
-// proj.wasm (with the host's Math, as proj4js computes), the .prj parser and xml.wasm (KML and
-// GPX), each on first use.
+// proj.wasm (with the host's Math, as proj4js computes), the .prj parser, xml.wasm (KML and
+// GPX) and geotiff.wasm, each on first use.
 function load(name, start) {
   if (typeof urls[name] !== "string") return Promise.reject(new Error(`no URL for the ${name} module`));
   return (loaded[name] ??= start(urls[name]));
 }
-const proj = () => load("proj", (url) => WebAssembly.instantiateStreaming(fetch(url), { Math }).then(({ instance }) => instance.exports));
+const instantiate = (url, imports) => WebAssembly.instantiateStreaming(fetch(url), imports).then(({ instance }) => instance.exports);
+const proj = () => load("proj", (url) => instantiate(url, { Math }));
 const prj = () => load("prj", (url) => import(url));
-const xml = () => load("xml", (url) => WebAssembly.instantiateStreaming(fetch(url), { Math, host: hostText() }).then(({ instance }) => instance.exports));
-const geotiff = () => load("geotiff", (url) => WebAssembly.instantiateStreaming(fetch(url), {}).then(({ instance }) => instance.exports));
+const xml = () => load("xml", (url) => instantiate(url, { Math, host: hostText() }));
+const geotiff = () => load("geotiff", (url) => instantiate(url, {}));
 
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");
@@ -118,8 +119,8 @@ onmessage = (e) => {
     urls.geotiff = msg.geotiff;
     let wasm = null;
     const imports = dataImports(() => wasm.memory);
-    ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), imports).then(({ instance }) => {
-      wasm = instance.exports;
+    ready = instantiate(msg.wasm, imports).then((exports) => {
+      wasm = exports;
       reader = dataReader(wasm, imports, { proj, prj, xml, geotiff });
     });
   } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && ["read", "write", "readRaster", "rasterInfo", "rasterTile"].includes(msg.op)) {

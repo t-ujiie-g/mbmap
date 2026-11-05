@@ -2,7 +2,7 @@
 // fetched, apart from its messages so that bench/data/golden.mjs runs them in Node.
 // Code pages as parsedbf 2.0.0's: MIT License, Copyright (c) 2013 Calvin Metcalf. See NOTICE.
 
-import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { hostNumber, MAX_INPUT_BYTES, writeInput } from "../../wasmio/js/host.mjs";
 import { dataFetchInit, fetchInit, readCapped } from "../../worker/js/body.mjs";
 import { readString } from "../../worker/js/values.mjs";
 
@@ -74,22 +74,17 @@ export function dataImports(memory) {
   return { host };
 }
 
-function input(wasm, parts) {
-  const len = parts.reduce((s, b) => s + b.length, 0);
-  const addr = wasm.prepare_input(len);
-  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
-  let at = addr;
-  for (const b of parts) {
-    new Uint8Array(wasm.memory.buffer, at, b.length).set(b);
-    at += b.length;
-  }
-}
-
 function output(wasm, n) {
   if (n === -2) throw new Error("out of memory");
   const at = wasm.output_addr();
   if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, at, -n)));
   return wasm.memory.buffer.slice(at, at + n);
+}
+
+// The ids of the last read, or null without any.
+function idsOf(wasm) {
+  const n = wasm.ids_out();
+  return n > 0 ? output(wasm, n) : null;
 }
 
 const isName = (n) => n === undefined || (typeof n === "string" && n.length > 0 && !n.includes("\0"));
@@ -106,24 +101,29 @@ export async function kmlOfKmz(bytes, max = MAX_INPUT_BYTES) {
   return read(entry);
 }
 
-// A source of a file's bytes for `readRaster`: `bytes`, a Blob read in slices, or `url` by range
-// requests (`init` as worker/js/body.mjs's `fetchInit` takes it), at most `max` bytes in all.
-// `key` names what is kept of it: other headers or credentials may get other bytes.
+/**
+ * A reader of `url` by range requests (`init` as worker/js/body.mjs's `fetchInit` takes it):
+ * `(offset, length)` resolves to those bytes or, from a server that ignores ranges, to
+ * `{ whole }`, the file up to `max` bytes.
+ */
+export function rangeReader(url, init, max) {
+  return async (offset, length) => {
+    const options = dataFetchInit(init);
+    options.headers = { ...options.headers, Range: `bytes=${offset}-${offset + length - 1}` };
+    const res = await fetch(url, options);
+    if (res.status === 200) return { whole: await readCapped(res, max) };
+    if (res.status !== 206) throw new Error(`HTTP ${res.status} for ${url}`);
+    if (!res.headers.get("content-range")?.startsWith(`bytes ${offset}-`)) throw new Error(`${url} answered another range`);
+    return readCapped(res, length);
+  };
+}
+
+// A source of a file's bytes for `readRaster`: `bytes`, a Blob read in slices, or `url` by
+// `rangeReader`. `key` names what is kept of it: other headers or credentials may get other bytes.
 export function rasterSource({ bytes, blob, url, init }, max) {
   if (bytes) return { bytes };
   if (blob) return { read: async (offset, length) => new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer()) };
-  return {
-    key: `${url} ${JSON.stringify(fetchInit(init))}`,
-    async read(offset, length) {
-      const options = dataFetchInit(init);
-      options.headers = { ...options.headers, Range: `bytes=${offset}-${offset + length - 1}` };
-      const res = await fetch(url, options);
-      if (res.status === 200) return { whole: await readCapped(res, max) };
-      if (res.status !== 206) throw new Error(`HTTP ${res.status} for ${url}`);
-      if (!res.headers.get("content-range")?.startsWith(`bytes ${offset}-`)) throw new Error(`${url} answered another range`);
-      return readCapped(res, length);
-    },
-  };
+  return { key: `${url} ${JSON.stringify(fetchInit(init))}`, read: rangeReader(url, init, max) };
 }
 
 /** A reader over data.wasm (`imports` from `dataImports`): `read`, `write` and `readRaster` as the worker's messages;
@@ -133,7 +133,7 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     const { shp, dbf, cpg, prj: prjBytes } = files;
     if (!shp) throw new Error("no .shp");
     imports.host.decoder = new TextDecoder(dbfEncoding(options.encoding, cpg && decoder.decode(cpg), dbf));
-    input(wasm, dbf ? [shp, dbf] : [shp]);
+    writeInput(wasm, dbf ? [shp, dbf] : [shp]);
     const table = output(wasm, wasm.read_shapefile(shp.length, dbf?.length ?? 0));
     let crs = options.crs;
     const text = prjBytes && decoder.decode(prjBytes).trim();
@@ -162,10 +162,9 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     if (options.crs !== undefined) throw new Error("KML and GPX are always in EPSG:4326");
     const kml = format === "kml" && isZip(data) ? await kmlOfKmz(data) : data;
     const x = await xml();
-    input(x, [kml]);
+    writeInput(x, [kml]);
     const table = output(x, format === "kml" ? x.read_kml() : x.read_gpx());
-    const ids = x.ids_out();
-    return { table, ids: ids > 0 ? output(x, ids) : null, layer: null, layers: [] };
+    return { table, ids: idsOf(x), layer: null, layers: [] };
   }
 
   // The whole file, or with `bbox` the features its index finds there: in `data`, or by range
@@ -174,16 +173,15 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     const fgb = await fgbModule();
     const { bbox } = options;
     const { bytes, ids } =
-      remote ? await fgb.selectUrl(remote.url, remote.init, bbox, MAX_INPUT_BYTES, { fetchInit: dataFetchInit, readCapped }) :
+      remote ? await fgb.selectUrl(remote.url, bbox, MAX_INPUT_BYTES, rangeReader(remote.url, remote.init, MAX_INPUT_BYTES)) :
       bbox !== undefined ? await fgb.selectBytes(data, bbox, MAX_INPUT_BYTES) :
       { bytes: data, ids: -1 };
     const header = fgb.readHeader(bytes);
-    input(wasm, [bytes]);
+    writeInput(wasm, [bytes]);
     const table = output(wasm, wasm.read_flatgeobuf(ids));
     let crs = options.crs ?? fgb.headerCrs(header.crs);
     if (crs?.wkt) crs = (await prj()).parsePrj(crs.wkt);
-    const n = wasm.ids_out();
-    return { table, ids: n > 0 ? output(wasm, n) : null, crs };
+    return { table, ids: idsOf(wasm), crs };
   }
 
   async function read(format, parts, options) {
@@ -192,10 +190,9 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     if (format === "kml" || format === "gpx") return xmlRead(format, data, options);
     if (format === "geojson") {
       if (options.crs !== undefined) throw new Error("GeoJSON is always in EPSG:4326");
-      input(wasm, [data]);
+      writeInput(wasm, [data]);
       const table = output(wasm, wasm.read_geojson());
-      const ids = wasm.ids_out();
-      return { table, ids: ids > 0 ? output(wasm, ids) : null, layer: null, layers: [] };
+      return { table, ids: idsOf(wasm), layer: null, layers: [] };
     }
     if (format === "flatgeobuf") {
       result = await flatgeobuf(parts, options);
@@ -203,7 +200,7 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
       result = data && isZip(data) ? await zip(data, options) : await shapefile(data ? { shp: data } : parts, options);
     } else if (format === "topojson") {
       const name = options.layer === undefined ? new Uint8Array(0) : encoder.encode(options.layer);
-      input(wasm, [name, data]);
+      writeInput(wasm, [name, data]);
       const table = output(wasm, wasm.read_topojson(options.layer === undefined ? -1 : name.length));
       const v = new DataView(output(wasm, wasm.layers_out()));
       const bytes = new Uint8Array(v.buffer);
@@ -213,17 +210,16 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
         layers.push(s);
         at = next;
       }
-      const ids = wasm.ids_out();
-      result = { table, ids: ids > 0 ? output(wasm, ids) : null, layer: options.layer ?? layers[0] ?? null, layers };
+      result = { table, ids: idsOf(wasm), layer: options.layer ?? layers[0] ?? null, layers };
     } else if (format === "wkt" || format === "wkb") {
-      input(wasm, [data]);
+      writeInput(wasm, [data]);
       result = { table: output(wasm, format === "wkt" ? wasm.read_wkt() : wasm.read_wkb()) };
     } else {
       const { delimiter = -1, header = true, dynamicTyping = true, latitude, longitude, geometry } = options;
       if (!Number.isInteger(delimiter) || typeof header !== "boolean" || typeof dynamicTyping !== "boolean") throw new Error("invalid arguments");
       if (![latitude, longitude, geometry].every(isName)) throw new Error("invalid arguments");
       const names = encoder.encode(`${latitude ?? ""}\0${longitude ?? ""}\0${geometry ?? ""}\0`);
-      input(wasm, [names, data]);
+      writeInput(wasm, [names, data]);
       result = { table: output(wasm, wasm.read_csv(names.length, delimiter, header ? 1 : 0, dynamicTyping ? 1 : 0)) };
     }
     const n = wasm.srids_out();
@@ -243,7 +239,7 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     if (format === "kml") {
       const x = await xml();
       const idBytes = ids ? new Uint8Array(ids) : new Uint8Array(0);
-      input(x, [t, idBytes]);
+      writeInput(x, [t, idBytes]);
       return output(x, x.write_kml(idBytes.length));
     }
     const { delimiter = 44, header = true, geometry = "wkt", longitude = "longitude", latitude = "latitude" } = options;
@@ -251,15 +247,14 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     const mode = ["none", "wkt", "lonlat", undefined].indexOf(options.geometryFormat);
     if (mode < 0) throw new Error("invalid geometryFormat");
     const names = encoder.encode(`${geometry}\0${longitude}\0${latitude}\0`);
-    input(wasm, [names, t]);
+    writeInput(wasm, [names, t]);
     return output(wasm, wasm.write_csv(names.length, delimiter, header ? 1 : 0, mode));
   }
-  /** A window of the GeoTIFF of `source` (see `rasterSource`) as npm/README.md's `readRaster` gives it. */
-  // `op` of data_worker/js/geotiff.mjs over geotiff.wasm.
+  // `op` of data_worker/js/geotiff.mjs over geotiff.wasm, on a `rasterSource`.
   async function raster(op, ...args) {
     const [m, g] = await Promise.all([geotiffModule(), geotiff()]);
     const transform = async (from, to, xy) => (await crsModule()).transformPairs(await proj(), from, to, xy);
-    return m[op](...args, { wasm: g, input, output, max: MAX_INPUT_BYTES, transform });
+    return m[op](...args, { wasm: g, input: writeInput, output, max: MAX_INPUT_BYTES, transform });
   }
   return {
     read,

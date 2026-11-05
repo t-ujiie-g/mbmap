@@ -1,8 +1,9 @@
 // GeoTIFF sources (`{ type: "geotiff", url, ... }`): their bounds and zooms read from the file,
 // and their tiles drawn by mbmap/data's worker. Loaded by the map with the first such source.
 import { rasterInfo, rasterTile, type RasterInfo } from "./data";
+import type { TransformedRequest } from "./urls";
 
-type Transform = (url: string) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
+type Transform = (url: string) => TransformedRequest | undefined;
 
 /** The keys a GeoTIFF source's document gives the engine's style (the source's own win), and what its tiles need. */
 export async function geotiffDocument(url: string, transformRequest?: Transform): Promise<RasterInfo & { minzoom: number }> {

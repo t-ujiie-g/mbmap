@@ -2,8 +2,8 @@
 // clusterProperties, `geojson_props_worker`; messages are in docs/FORMATS.md
 // ("GeoJSON worker messages").
 
-import { hostNumber, hostText, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
-import { readCapped } from "../../worker/js/body.mjs";
+import { hostNumber, hostText, MAX_INPUT_BYTES, writeInput } from "../../wasmio/js/host.mjs";
+import { fetchInit, readCapped } from "../../worker/js/body.mjs";
 import { readClusterFeatures } from "./features.mjs";
 
 const decoder = new TextDecoder();
@@ -20,25 +20,9 @@ function instantiate(url, host) {
   return WebAssembly.instantiateStreaming(fetch(url), imports).then(({ instance }) => (exports = instance.exports));
 }
 
-function input(wasm, bytes) {
-  const addr = wasm.prepare_input(bytes.length);
-  if (addr < 0) throw new Error(`GeoJSON too large (${bytes.length} bytes)`);
-  new Uint8Array(wasm.memory.buffer, addr, bytes.length).set(bytes);
-}
+const input = (wasm, bytes) => writeInput(wasm, [bytes], "GeoJSON");
 
 const isInt32 = (v) => Number.isInteger(v) && v >= -(2 ** 31) && v < 2 ** 31;
-
-// The page's request transform for the data, checked as the display worker checks a tile's.
-function fetchInit(init) {
-  const out = { credentials: "omit" };
-  if (init && typeof init === "object") {
-    if (["omit", "same-origin", "include"].includes(init.credentials)) out.credentials = init.credentials;
-    if (init.headers && typeof init.headers === "object") {
-      out.headers = Object.fromEntries(Object.entries(init.headers).filter(([, v]) => typeof v === "string"));
-    }
-  }
-  return out;
-}
 
 async function load({ source, url, init, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties }, previous) {
   const withProperties = cluster && properties instanceof Uint8Array && properties.length > 0;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dataFetchInit, readCapped } from "../../worker/js/body.mjs";
 import { headerCrs, headerLength, levelBounds, readHeader, search, selectBytes, selectUrl, treeBytes } from "./fgb.mjs";
+import { rangeReader } from "./read.mjs";
 
 // flatgeobuf 4.6.1's `geojson.serialize` of a point and a triangle, without an index.
 const TWO = Uint8Array.from(Buffer.from("6667620366676200940000001c00000018001c000400000000000000000000000000080010000e0018000000180000001c00000000000000020000000000000000000000020000004c310000030000003c0000001c00000004000000d8ffffff00000002040000000100000062000000ecffffff0000000b04000000010000007300000008000c0008000700080000000000000a04000000010000006e0000006c0000000c00000008000e0008000400080000004000000018000000000012000c0000000800000000000000000007001200000000000001040000000200000000000000007061400000000000a0414000000000160000000000000000000000f83f010003000000e381820200010000940000000c00000008000e0008000400080000006c00000018000000000012000c000000080000000000000000000700120000000000000304000000080000000000000000000000000000000000000000000000000000400000000000000000000000000000004000000000000000400000000000000000000000000000000013000000000000000000000000c001000000000002000000", "hex"));
@@ -73,7 +73,7 @@ test("headerCrs takes an EPSG code, else the WKT", () => {
 test("a bbox needs an index and a valid rectangle", async () => {
   await assert.rejects(selectBytes(TWO, [0, 0, 1, 1]), /has no index/);
   for (const bbox of [[0, 0, 1], [1, 0, 0, 1], [0, 0, NaN, 1], "0,0,1,1"]) {
-    await assert.rejects(selectUrl("http://127.0.0.1:1/x.fgb", undefined, bbox, 1000, {}), /invalid bbox/);
+    await assert.rejects(selectUrl("http://127.0.0.1:1/x.fgb", bbox, 1000, null), /invalid bbox/);
   }
 });
 
@@ -107,7 +107,7 @@ test("selectBytes takes a clamped node size and stops at max before allocating",
   await assert.rejects(selectBytes(shared(2, 100), [0, 0, 1, 1], 200), /data larger than 200 bytes/);
 });
 
-const select = (bbox, max) => selectUrl("https://x.org/a.fgb", undefined, bbox, max, { fetchInit: dataFetchInit, readCapped });
+const select = (bbox, max) => selectUrl("https://x.org/a.fgb", bbox, max, rangeReader("https://x.org/a.fgb", undefined, max));
 
 // Answers ranges of `file` by the mock's fetch; `answer(n)` may give the n-th request's Response instead.
 function serve(t, file, answer = () => undefined) {
