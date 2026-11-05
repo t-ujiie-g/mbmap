@@ -1,0 +1,73 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/xml"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const MAX_XML_ATTRIBUTES : Int32 = 1024
+
+pub const MAX_XML_DEPTH : Int32 = 256
+
+pub const MAX_XML_NODES : Int32 = 4_000_000
+
+pub fn is_js_space(UInt16) -> Bool
+
+pub fn units(String, Int32, Int32) -> String
+
+pub let xml_namespace : String
+
+pub let xmlns_namespace : String
+
+// Errors
+pub(all) suberror XmlError {
+  Malformed(pos~ : Int32, String)
+  Limit(String)
+} derive(@debug.Debug)
+pub fn XmlError::message(Self) -> String
+pub fn XmlError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub struct Document {
+  // private fields
+}
+pub fn Document::attribute(Self, Int32, String) -> String?
+pub fn Document::attribute_count(Self, Int32) -> Int32
+pub fn Document::attribute_name(Self, Int32, Int32) -> String
+pub fn Document::attribute_value(Self, Int32, Int32) -> String
+pub fn Document::children(Self, Int32) -> Array[Int32]
+pub fn Document::elements(Self, Int32, String) -> Array[Int32]
+pub fn Document::elements_ns(Self, Int32, uri~ : String?, lname~ : String?) -> Array[Int32]
+pub fn Document::first(Self, Int32, String) -> Int32?
+pub fn Document::kind(Self, Int32) -> NodeKind
+pub fn Document::length(Self) -> Int32
+pub fn Document::local_name(Self, Int32) -> String
+pub fn Document::name(Self, Int32) -> String
+pub fn Document::namespace_uri(Self, Int32) -> String?
+pub fn Document::parent(Self, Int32) -> Int32?
+pub fn Document::parse(Bytes) -> Self raise XmlError
+pub fn Document::text(Self, Int32) -> String
+
+pub struct Names {
+  // private fields
+}
+pub fn Names::add(Self, String) -> Int32
+pub fn Names::at(Self, Int32) -> String
+pub fn Names::find(Self, String) -> Int32
+pub fn Names::length(Self) -> Int32
+pub fn Names::new() -> Self
+
+pub(all) enum NodeKind {
+  DocumentNode
+  Element
+  Text
+  CData
+} derive(Eq, @debug.Debug)
+pub fn NodeKind::equal(Self, Self) -> Bool
+pub fn NodeKind::not_equal(Self, Self) -> Bool
+pub fn NodeKind::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
