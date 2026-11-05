@@ -25,25 +25,26 @@ export function featuresOf(data: unknown): Feature[] {
 
 /**
  * Rows of `features`, one per id (the property `idKey` names, or the feature's id): pieces of one
- * feature from several tiles become one row; features without an id stay apart.
+ * feature from several tiles become one row (added to a first piece that is a collection itself,
+ * so `features` must be the caller's own); features without an id stay apart.
  */
 export function rowsOf(features: readonly Feature[], idKey?: string): TableRow[] {
-  const rows: TableRow[] = [];
-  const byId = new Map<string, TableRow>();
+  const rows = new Map<unknown, TableRow>();
   for (const f of features) {
     const properties = { ...f.properties };
     const id = ((idKey === undefined ? f.id : properties[idKey]) ?? null) as string | number | null;
     const geometry = f.geometry ?? null;
-    const seen = id === null ? undefined : byId.get(String(id));
+    const key = id === null ? {} : String(id);
+    const seen = rows.get(key);
     if (seen) {
-      seen.geometry = { type: "GeometryCollection", geometries: [seen.geometry, geometry] };
+      const geometries = seen.geometry?.geometries ?? [seen.geometry];
+      geometries.push(geometry);
+      seen.geometry = { type: "GeometryCollection", geometries };
       continue;
     }
-    const row = { id, properties, geometry };
-    if (id !== null) byId.set(String(id), row);
-    rows.push(row);
+    rows.set(key, { id, properties, geometry });
   }
-  return rows;
+  return [...rows.values()];
 }
 
 /** The property keys of `rows`, in the order they are first seen. */

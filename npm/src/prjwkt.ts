@@ -6,6 +6,9 @@ import { DATUMS, lookup } from "./projstring.ts";
 const D2R = 0.01745329251994329577;
 // `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
 const SLOTS = 34;
+// Longest WKT read and most items in one of its nodes: EPSG's definitions take a few KB and some 20 items.
+const MAX_TEXT = 65536;
+const MAX_ITEMS = 1024;
 
 // proj4js's projection names (each module's `names`), by `proj/encoding.mbt` `methods` index.
 const NAMES = [
@@ -61,6 +64,7 @@ function parse(text: string): Node {
     else if (m[4] !== undefined) top.push(parseFloat(m[4]));
     else if (m[5] !== undefined) stack.pop();
     if (stack.length > 32) fail("nested too deep");
+    if (top && top.length > MAX_ITEMS) fail("a node with too many items");
   }
   if (!root || stack.length > 0 || text.slice(at).trim() !== "") fail("not WKT");
   return root;
@@ -71,61 +75,67 @@ type Obj = Record<string, any>;
 // Objects without a prototype, so that a WKT key like `__proto__` is a key like any other.
 const obj = (fields: Obj = {}): Obj => Object.assign(Object.create(null), fields);
 
-// wkt-parser's `sExpr`: a node added to `into` under its keyword.
-function sExpr(v: Node | string | number, into: Obj): void {
-  if (!Array.isArray(v)) {
-    into[v] = true;
+// wkt-parser's `sExpr`: a node added to `into` under its keyword. Where it calls itself on the rest
+// of a node (each item the key of the next) this loops, so that a wide node takes no stack.
+function sExpr(node: Node | string | number, into: Obj): void {
+  if (!Array.isArray(node)) {
+    into[node] = true;
     return;
   }
-  v = v.slice();
-  let key = v.shift() as string;
-  if (key === "PARAMETER") key = v.shift() as string;
-  if (v.length === 1) {
-    if (Array.isArray(v[0])) {
-      into[key] = obj();
-      sExpr(v[0], into[key]);
-    } else into[key] = v[0];
-    return;
-  }
-  if (!v.length) {
-    into[key] = true;
-    return;
-  }
-  if (key === "TOWGS84") {
-    into[key] = v;
-    return;
-  }
-  if (key === "AXIS") {
-    (into[key] ??= []).push(v);
-    return;
-  }
-  switch (key) {
-    case "UNIT":
-    case "PRIMEM":
-    case "VERT_DATUM":
-      into[key] = obj({ name: String(v[0]).toLowerCase(), convert: v[1] });
-      if (v.length === 3) sExpr(v[2], into[key]);
+  const v = node.slice();
+  for (;;) {
+    let key = v.shift() as string;
+    if (key === "PARAMETER") key = v.shift() as string;
+    if (v.length === 1) {
+      if (Array.isArray(v[0])) {
+        into[key] = obj();
+        sExpr(v[0], into[key]);
+      } else into[key] = v[0];
       return;
-    case "SPHEROID":
-    case "ELLIPSOID":
-      into[key] = obj({ name: v[0], a: v[1], rf: v[2] });
-      if (v.length === 4) sExpr(v[3], into[key]);
+    }
+    if (!v.length) {
+      into[key] = true;
       return;
-    case "DATUM":
-    case "VERT_CS":
-    case "COMPD_CS":
-    case "FITTED_CS":
-    case "PROJCS":
-    case "GEOGCS":
-    case "GEOCCS":
-    case "LOCAL_CS":
-      into[key] = v.slice(1).reduce((o: Obj, item) => (sExpr(item, o), o), obj({ name: v[0] }));
-      if (key !== "DATUM" && key !== "VERT_CS") into[key].type = key;
+    }
+    if (key === "TOWGS84") {
+      into[key] = v;
       return;
-    default:
-      into[key] = obj();
-      if (v.some((item) => !Array.isArray(item))) sExpr(v, into[key]);
-      else for (const item of v) sExpr(item, into[key]);
+    }
+    if (key === "AXIS") {
+      (into[key] ??= []).push(v);
+      return;
+    }
+    switch (key) {
+      case "UNIT":
+      case "PRIMEM":
+      case "VERT_DATUM":
+        into[key] = obj({ name: String(v[0]).toLowerCase(), convert: v[1] });
+        if (v.length === 3) sExpr(v[2], into[key]);
+        return;
+      case "SPHEROID":
+      case "ELLIPSOID":
+        into[key] = obj({ name: v[0], a: v[1], rf: v[2] });
+        if (v.length === 4) sExpr(v[3], into[key]);
+        return;
+      case "DATUM":
+      case "VERT_CS":
+      case "COMPD_CS":
+      case "FITTED_CS":
+      case "PROJCS":
+      case "GEOGCS":
+      case "GEOCCS":
+      case "LOCAL_CS":
+        into[key] = v.slice(1).reduce((o: Obj, item) => (sExpr(item, o), o), obj({ name: v[0] }));
+        if (key !== "DATUM" && key !== "VERT_CS") into[key].type = key;
+        return;
+      default:
+        into[key] = obj();
+        if (!v.some((item) => !Array.isArray(item))) {
+          for (const item of v) sExpr(item, into[key]);
+          return;
+        }
+        into = into[key];
+    }
   }
 }
 
@@ -153,6 +163,7 @@ const RENAMES: [string, string, number?][] = [
  * Axis order is not read: shapefiles keep x as easting.
  */
 export function parsePrj(text: string): { code?: number; definition?: Float64Array } {
+  if (text.length > MAX_TEXT) fail(`WKT over ${MAX_TEXT} characters`);
   if (/PROJCRS|GEOGCRS|BOUNDCRS|VERTCRS|LENGTHUNIT|ANGLEUNIT|SCALEUNIT/i.test(text)) fail("WKT2 is not supported");
   const tree = parse(text);
   const type = tree[0];

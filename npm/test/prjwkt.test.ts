@@ -31,6 +31,11 @@ test("parsePrj gives the root's EPSG code, with the definition, and Web Mercator
   assert.deepEqual(unknown, { code: 5555 });
 });
 
+test("parsePrj reads past a wide unknown node", () => {
+  const wide = parsePrj(`GEOGCS["x",FOO[${Array(1000).fill(1).join(",")}],DATUM["d",SPHEROID["s",6378137,298.257223563]]]`);
+  assert.equal(wide.definition![1], 6378137);
+});
+
 test("parsePrj refuses WKT2, other CRS types, unknown projections and malformed text", () => {
   assert.throws(() => parsePrj(`PROJCRS["x",BASEGEOGCRS["y"]]`), /WKT2 is not supported/);
   assert.throws(() => parsePrj(`GEOCCS["x"]`), /unsupported CRS type GEOCCS/);
@@ -40,6 +45,8 @@ test("parsePrj refuses WKT2, other CRS types, unknown projections and malformed 
     assert.throws(() => parsePrj(bad), /\.prj: /);
   }
   assert.throws(() => parsePrj("GEOGCS[".repeat(40)), /nested too deep/);
+  assert.throws(() => parsePrj(`GEOGCS["${"a".repeat(65536)}"]`), /WKT over 65536 characters/);
+  assert.throws(() => parsePrj(`GEOGCS["x",FOO[${Array(1100).fill(1).join(",")}]]`), /a node with too many items/);
   // A __proto__ key is an ordinary one, and changes no object's prototype.
   const prj = parsePrj(`GEOGCS["g",DATUM["d",SPHEROID["s",6378137,298.257223563]],PARAMETER["__proto__",PROJECTION["x"]],UNIT["degree",0.0174532925199433]]`);
   assert.equal(prj.definition![0], 0);

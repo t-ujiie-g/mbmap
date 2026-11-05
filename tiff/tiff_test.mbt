@@ -18,6 +18,12 @@ fn strip_tiff(extra : Array[(Int32, Int32, Int32, Int32)]) -> Bytes {
     (279, 4, 1, 6),
   ]
   entries.append(extra)
+  tiff_of(entries)
+}
+
+///|
+/// A little-endian TIFF of six data bytes and one IFD of `entries` (tag, type, count, value).
+fn tiff_of(entries : Array[(Int32, Int32, Int32, Int32)]) -> Bytes {
   entries.sort_by_key(e => e.0)
   let b : Array[Byte] = [
     b'I', b'I', b'\x2a', b'\x00', b'\x0e', b'\x00', b'\x00', b'\x00',
@@ -49,6 +55,33 @@ fn error_of(f : () -> Unit raise @tiff.TiffError) -> String {
   } catch {
     e => e.message()
   }
+}
+
+///|
+/// The directory of a 1 x 1 image in one `tile` x `tile` tile.
+fn tile_entries(tile : Int32) -> Array[(Int32, Int32, Int32, Int32)] {
+  [
+    (256, 3, 1, 1),
+    (257, 3, 1, 1),
+    (258, 3, 1, 8),
+    (259, 3, 1, 1),
+    (277, 3, 1, 1),
+    (322, 3, 1, tile),
+    (323, 3, 1, tile),
+    (324, 4, 1, 8),
+    (325, 4, 1, 6),
+  ]
+}
+
+///|
+test "read_tiff refuses a tile far larger than its image" {
+  let (images, _) = @tiff.read_tiff(tiff_of(tile_entries(4096))[:])
+  assert_eq(images[0].block_width, 4096)
+  assert_true(
+    error_of(() => @tiff.read_tiff(tiff_of(tile_entries(4098))[:]) |> ignore).contains(
+      "invalid tile size",
+    ),
+  )
 }
 
 ///|

@@ -1,12 +1,15 @@
-// GeoTIFF and COG windows read as geotiff 3.0.5's `readRasters` reads them: which image (by
-// resolution), which window (by bbox), which blocks (by range requests from a URL), and the
-// blocks the host decodes (Deflate, JPEG, WebP); geotiff.wasm does the rest. Import-free.
+// GeoTIFF and COG windows read as geotiff 3.0.5's `readRasters` reads them (MIT License, Copyright
+// (c) 2015 EOX IT Services GmbH; see NOTICE): which image, which window, which blocks (by range
+// requests from a URL), and the blocks the host decodes; geotiff.wasm does the rest. Import-free.
 
 // What a first range request asks for, as geotiff's BlockedSource blocks.
 const FIRST_BYTES = 65536;
 // Requests for blocks this close together are merged.
 const GAP_BYTES = 65536;
 const PARALLEL = 6;
+// A read's blocks may decode to this many times `ctx.max`: a window's bands are at most that, and
+// its blocks hold more where they overhang it or carry other samples.
+const DECODED_RATIO = 8;
 const ARRAYS = {
   "1:1": Uint8Array, "1:2": Uint16Array, "1:4": Uint32Array,
   "2:1": Int8Array, "2:2": Int16Array, "2:4": Int32Array,
@@ -208,9 +211,16 @@ function withTables(tile, tables) {
   return out;
 }
 
-/** A JPEG or WebP block decoded by the host into `samples` bytes per pixel, as geotiff's WebImageDecoder does. */
-async function webImage(bytes, samples) {
+/**
+ * A JPEG or WebP block decoded by the host into `samples` bytes per pixel, as geotiff's WebImageDecoder
+ * does; a picture larger than the blocks of `img` is refused.
+ */
+async function webImage(bytes, samples, img) {
   const bitmap = await createImageBitmap(new Blob([bytes]));
+  if (bitmap.width > img.blockWidth || bitmap.height > img.blockHeight) {
+    bitmap.close();
+    throw new Error(`malformed TIFF: a block's picture of ${bitmap.width} x ${bitmap.height} pixels`);
+  }
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const ctx = canvas.getContext("2d");
   ctx.drawImage(bitmap, 0, 0);
@@ -237,7 +247,20 @@ const HEADS = 8;
 const BLOCK_BYTES = 32 * 1024 * 1024;
 const heads = new Map();
 const blocksKept = new Map();
+let headTotal = 0;
 let blockTotal = 0;
+
+// The newest stays whatever its size, or a server without ranges would send its file for each read.
+function keepHead(key, kept, max) {
+  headTotal += kept.head.length - (heads.get(key)?.head.length ?? 0);
+  heads.delete(key);
+  heads.set(key, kept);
+  for (const [k, { head }] of heads) {
+    if (k === key || (heads.size <= HEADS && headTotal <= max)) break;
+    heads.delete(k);
+    headTotal -= head.length;
+  }
+}
 
 function keepBlock(key, bytes) {
   if (bytes.length > BLOCK_BYTES / 8) return;
@@ -264,11 +287,7 @@ async function open(source, { wasm, input, output, max }) {
     const n = wasm.parse();
     if (n !== -3) {
       const summary = readSummary(output(wasm, n));
-      if (source.key) {
-        heads.delete(source.key);
-        heads.set(source.key, { head, file });
-        if (heads.size > HEADS) heads.delete(heads.keys().next().value);
-      }
+      if (source.key) keepHead(source.key, { head, file }, max);
       return { images: summary.images, file };
     }
     const need = wasm.need();
@@ -301,13 +320,16 @@ export async function readRaster(source, options, ctx) {
   const noData = noDataOf(img);
   const bits = img.planar === 2 ? null : img.bits.reduce((a, b) => a + b, 0);
   const rawSize = (i) => rowBytes(img.blockWidth, bits ?? img.bits[Math.floor(i / (across * down))]) * img.blockHeight;
+  let decodedBytes = 0;
   const add = async (i, bytes) => {
+    decodedBytes += rawSize(i);
+    if (decodedBytes > max * DECODED_RATIO) throw new Error(`blocks decoding to more than ${max * DECODED_RATIO} bytes`);
     const c = img.compression;
     if (c === 1 || c === 5 || c === 32773) return output(wasm, (input(wasm, [bytes]), wasm.block(i, 0)), true);
     let decoded;
     if (c === 8 || c === 32946) decoded = await inflate(bytes, rawSize(i));
-    else if (c === 7) decoded = await webImage(withTables(bytes, img.jpegTables), img.planar === 2 ? 1 : img.samples);
-    else if (c === 50001) decoded = await webImage(bytes, img.planar === 2 ? 1 : img.samples);
+    else if (c === 7) decoded = await webImage(withTables(bytes, img.jpegTables), img.planar === 2 ? 1 : img.samples, img);
+    else if (c === 50001) decoded = await webImage(bytes, img.planar === 2 ? 1 : img.samples, img);
     else throw new Error(`Unknown compression method identifier: ${c}`);
     input(wasm, [decoded]);
     output(wasm, wasm.block(i, 1), true);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { deflateRawSync } from "node:zlib";
-import { dataImports, dbfEncoding, isZip, kmlOfKmz } from "./read.mjs";
+import { dataImports, dbfEncoding, isCrs, isZip, kmlOfKmz, rasterSource } from "./read.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -87,4 +87,31 @@ test("kmlOfKmz refuses malformed, encrypted, unknown and oversized entries", asy
   await assert.rejects(kmlOfKmz(bytes, 100), /inflates to more than 100 bytes/);
   await assert.rejects(kmlOfKmz(zip([{ name: "doc.kml", data: encoder.encode("x"), flags: 1 }])), /encrypted/);
   await assert.rejects(kmlOfKmz(zip([{ name: "doc.kml", data: encoder.encode("x"), store: true, method: 12 }])), /method 12/);
+});
+
+test("isCrs takes an EPSG code or a definition of 34 slots", () => {
+  assert.ok(isCrs(6677));
+  assert.ok(isCrs(new Float64Array(34)));
+  for (const bad of [0, -1, 1.5, "6677", null, new Float64Array(33), new Float64Array(35), new Float32Array(34)]) assert.ok(!isCrs(bad));
+});
+
+test("a raster source by URL is kept apart by what its requests send", () => {
+  const key = (init) => rasterSource({ url: "https://x.org/a.tif", init }, 100).key;
+  assert.equal(key(undefined), key({}));
+  assert.equal(key({ headers: { a: "1" } }), key({ headers: { a: "1" } }));
+  assert.notEqual(key(undefined), key({ headers: { a: "1" } }));
+  assert.notEqual(key({ headers: { a: "1" } }), key({ headers: { a: "2" } }));
+  assert.notEqual(key(undefined), key({ credentials: "include" }));
+});
+
+test("a raster source's range requests time out", async (t) => {
+  let options;
+  t.mock.method(globalThis, "fetch", async (_, o) => {
+    options = o;
+    return new Response(new Uint8Array(4), { status: 206, headers: { "content-range": "bytes 8-11/100" } });
+  });
+  const bytes = await rasterSource({ url: "https://x.org/a.tif" }, 100).read(8, 4);
+  assert.equal(bytes.length, 4);
+  assert.ok(options.signal instanceof AbortSignal);
+  assert.equal(options.headers.Range, "bytes=8-11");
 });
