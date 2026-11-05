@@ -1,9 +1,9 @@
-// `mbmap/data`: CSV, WKT, WKB, shapefiles, TopoJSON, KML/KMZ and GPX read in a worker of its own
+// `mbmap/data`: CSV, WKT, WKB, shapefiles, TopoJSON, KML/KMZ, GPX and FlatGeobuf read in a worker of its own
 // (KML and GPX by a second wasm), started on the first call, into tables that are both a GeoJSON
 // source's data (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
 import { tableInfo, tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { crsArg, type Crs } from "./crs";
-import { csvArgs, formatOf, shapefileParts, type CsvOptions, type DataFormat, type ShapefileParts } from "./data-format";
+import { bboxArg, csvArgs, formatOf, shapefileParts, type CsvOptions, type DataFormat, type ShapefileParts } from "./data-format";
 import { httpUrl, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -34,7 +34,8 @@ export interface DataOptions {
  * default EPSG:4326): rows are taken to longitude and latitude. `layer`: the shapefile of a .zip
  * (its name without `.shp`, with or without folders) or the TopoJSON object to read, by default the
  * first; `encoding`: a .dbf's text encoding (a label such as `"shift_jis"` or a code page), in place
- * of its .cpg and language driver.
+ * of its .cpg and language driver. `bbox`: `[minX, minY, maxX, maxY]` in a FlatGeobuf's coordinates,
+ * to read only the features its index finds there (by HTTP range requests from a URL).
  */
 export interface ReadOptions extends DataOptions, CsvOptions {
   format?: DataFormat;
@@ -42,6 +43,7 @@ export interface ReadOptions extends DataOptions, CsvOptions {
   crs?: Crs;
   layer?: string;
   encoding?: string;
+  bbox?: [number, number, number, number];
 }
 
 /** A read's result as the data worker gives it (docs/FORMATS.md "Data worker messages"). */
@@ -100,7 +102,7 @@ function start(options: DataOptions): void {
   }));
 }
 
-const FORMATS: DataFormat[] = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx"];
+const FORMATS: DataFormat[] = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx", "flatgeobuf"];
 
 function formatFor(options: ReadOptions, name: string | null): DataFormat {
   const format = options.format ?? (name === null ? null : formatOf(name));
@@ -135,8 +137,10 @@ async function call(format: DataFormat, source: object, options: ReadOptions, tr
   if (layer !== undefined && typeof layer !== "string") throw new Error("mbmap: data: invalid layer");
   if (encoding !== undefined && typeof encoding !== "string") throw new Error("mbmap: data: invalid encoding");
   if (options.crs !== undefined && (format === "kml" || format === "gpx")) throw new Error("mbmap: data: KML and GPX are always in EPSG:4326; options.crs is for other formats");
+  if (options.bbox !== undefined && format !== "flatgeobuf") throw new Error("mbmap: data: options.bbox is for FlatGeobuf");
+  const bbox = options.bbox === undefined ? undefined : bboxArg(options.bbox);
   const crs = options.crs === undefined ? undefined : await crsArg(options.crs, "data");
-  const args = { format, options: { ...(format === "csv" ? csvArgs(options) : {}), crs, layer, encoding }, ...source };
+  const args = { format, options: { ...(format === "csv" ? csvArgs(options) : {}), crs, layer, encoding, bbox }, ...source };
   start(options);
   return new DataTable(format, await client.call<ReadResult>("read", args, transfer));
 }

@@ -4,7 +4,7 @@
 import path from "node:path";
 import { chromium } from "playwright";
 import proj4 from "proj4";
-import { WARDS } from "../data/pack-fixtures.mjs";
+import { STATIONS, WARDS } from "../data/pack-fixtures.mjs";
 import { serve } from "../lib/serve.mjs";
 import { prepareExamples } from "./prepare.mjs";
 import { fakeGeolocation } from "../lib/fake-geolocation.mjs";
@@ -237,7 +237,8 @@ const checks = {
 
   // mbmap/data (bench/npm/pages/data): CSV, WKT, TopoJSON drawn and counted; EWKT in plane IX (proj.wasm
   // loaded); a plane IX shapefile with .prj and Shift_JIS names, zipped and loose, by URL and as Files,
-  // drawn (the .prj parser loaded); KML, KMZ and GPX, a KML drawn (xml.wasm loaded); refusals.
+  // drawn (the .prj parser loaded); KML, KMZ and GPX, a KML drawn (xml.wasm loaded); FlatGeobuf
+  // whole and by bbox (data-fgb.js loaded); refusals.
   async data(page, requests) {
     const names = () => requests.map((u) => u.split("/").pop());
     const startup = names();
@@ -423,7 +424,31 @@ const checks = {
       k.malformed === "mbmap: data: malformed XML at 16: opening and ending tag mismatch: Placemark != kml" &&
       /no \.kml file/.test(k.badKmz) &&
       /always in EPSG:4326/.test(k.crs);
-    return [ok && okXml, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k } }];
+    // FlatGeobuf whole, by bbox through its index (range requests from the URL, and from bytes):
+    // data-fgb.js is fetched with the first read only.
+    const fgbBefore = requests.filter((u) => u.endsWith("/data-fgb.js")).length;
+    const g = await page.evaluate(async () => {
+      const { read } = await import("mbmap/data");
+      const bbox = [139.766, 35.68, 139.775, 35.683];
+      const rows = (t) => t.toGeoJSON().features.map((f) => [f.id, f.properties.名前, f.properties.番号]);
+      const fail = (p) => p.then(() => "", (e) => e.message);
+      const bytes = await (await fetch("./stations.fgb")).arrayBuffer();
+      return {
+        all: rows(await read("./stations.fgb")),
+        near: rows(await read("./stations.fgb", { bbox })),
+        fromBytes: rows(await read(bytes, { format: "flatgeobuf", bbox })),
+        badBbox: await fail(read("./stations.fgb", { bbox: [1, 2, 0, 3] })),
+        csvBbox: await fail(read("./stations.csv", { bbox })),
+      };
+    });
+    const fgbAfter = requests.filter((u) => u.endsWith("/data-fgb.js")).length;
+    const okFgb =
+      fgbBefore === 0 && fgbAfter === 1 &&
+      JSON.stringify(g.all) === JSON.stringify(STATIONS.map(([name], i) => [i, name, i + 1])) &&
+      JSON.stringify(g.near) === JSON.stringify([[1, "東京", 2], [2, "日本橋", 3]]) &&
+      JSON.stringify(g.fromBytes) === JSON.stringify(g.near) &&
+      /invalid bbox/.test(g.badBbox) && /bbox is for FlatGeobuf/.test(g.csvBbox);
+    return [ok && okXml && okFgb, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k }, fgb: { fgbBefore, fgbAfter, ...g } }];
   },
 
   async analysis(page, requests) {

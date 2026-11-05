@@ -25,7 +25,7 @@ function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
 
-const FORMATS = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx"];
+const FORMATS = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx", "flatgeobuf"];
 const PARTS = ["shp", "dbf", "prj", "cpg"];
 
 // A source's bytes: fetched (http(s) only, no credentials unless `init` asks for them; null for
@@ -49,13 +49,17 @@ async function bytesOf({ url, init, blob, bytes }, optional = false) {
 async function read(msg) {
   const { format, options = {}, parts } = msg;
   check(FORMATS.includes(format) && options && typeof options === "object");
-  const { crs, layer, encoding } = options;
+  const { crs, layer, encoding, bbox } = options;
+  check(bbox === undefined || (format === "flatgeobuf" && Array.isArray(bbox) && bbox.length === 4 && bbox.every(Number.isFinite)));
   check(crs === undefined || (Number.isInteger(crs) && crs > 0) || crs instanceof Float64Array);
   check((layer === undefined || typeof layer === "string") && (encoding === undefined || typeof encoding === "string"));
   const files = {};
   if (parts && typeof parts === "object") {
     check(format === "shapefile");
     for (const p of PARTS) if (parts[p]) files[p] = await bytesOf(parts[p]);
+  } else if (format === "flatgeobuf" && bbox !== undefined && typeof msg.url === "string") {
+    check(/^https?:/i.test(msg.url));
+    files.remote = { url: msg.url, init: msg.init };
   } else {
     files.data = await bytesOf(msg);
     // A .shp by URL brings the files beside it that are there.

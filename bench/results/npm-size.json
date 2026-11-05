@@ -136,18 +136,23 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 3281,
+      "bytes": 3442,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 29536,
+      "bytes": 32634,
       "budget": 38000
     },
     {
       "name": "zip archives (loaded by the data worker with the first one)",
       "bytes": 1214,
       "budget": 2000
+    },
+    {
+      "name": "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)",
+      "bytes": 2303,
+      "budget": 2500
     },
     {
       "name": "coordinates from another CRS (loaded by the data worker with proj.wasm)",
