@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>作図データ</name>
+<Style id="Point_080"><IconStyle><Icon><href>https://maps.gsi.go.jp/portal/sys/v4/symbols/080.png</href></Icon><scale>1</scale><hotSpot x="0.5" y="0.5" xunits="fraction" yunits="fraction"/></IconStyle></Style>
+<Style id="Line_ff0000ff_3"><LineStyle><color>ff0000ff</color><width>3</width></LineStyle></Style>
+<Placemark>
+<name>東京駅</name>
+<description><![CDATA[<table><tr><td>名称</td><td>東京駅</td></tr></table>]]></description>
+<styleUrl>#Point_080</styleUrl>
+<ExtendedData><Data name="備考"><value>丸の内口</value></Data></ExtendedData>
+<Point><coordinates>139.767125,35.681236</coordinates></Point>
+</Placemark>
+<Placemark>
+<name>日本橋</name>
+<styleUrl>#Point_080</styleUrl>
+<Point><coordinates>139.774096,35.684007,0</coordinates></Point>
+</Placemark>
+<Placemark>
+<name>経路</name>
+<styleUrl>#Line_ff0000ff_3</styleUrl>
+<LineString><coordinates>139.767125,35.681236 139.763806,35.675131 139.757347,35.671431</coordinates></LineString>
+</Placemark>
+</Document>
+</kml>

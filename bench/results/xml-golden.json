@@ -1,0 +1,103 @@
+{
+  "env": {
+    "node": "v22.23.4",
+    "togeojson": "7.1.3",
+    "xmldom": "0.9.12",
+    "tiles": [
+      "14/14552/6451",
+      "14/14551/6450",
+      "14/14553/6452"
+    ]
+  },
+  "normalized": [
+    "togeojson's GeometryCollections are a row per member, with the feature's properties",
+    "coordinates are x and y; a member with a coordinate that is not finite or missing is left out, as are empty rings",
+    "nested property values (objects and arrays) are their JSON.stringify text",
+    "lone surrogates in keys and values are U+FFFD, as UTF-8 carries text (TextEncoder's replacement)",
+    "feature ids and bounding boxes are left out: tables carry neither",
+    "togeojson's NetworkLink features (links to other documents, with their Region's box) are left out: mbmap/data reads none"
+  ],
+  "results": {
+    "kml cases": {
+      "cases": 38,
+      "rows": 60,
+      "identical": 38,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "gpx cases": {
+      "cases": 8,
+      "rows": 10,
+      "identical": 8,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "hostile": {
+      "cases": 20,
+      "rows": 20008,
+      "identical": 9,
+      "bothRefuse": 11,
+      "differ": 0
+    },
+    "gsi kml": {
+      "cases": 7,
+      "rows": 29291,
+      "identical": 7,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "gsi gpx": {
+      "cases": 3,
+      "rows": 9050,
+      "identical": 3,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "kmz": {
+      "cases": 7,
+      "rows": 20341,
+      "identical": 3,
+      "bothRefuse": 4,
+      "differ": 0
+    }
+  },
+  "deviations": [
+    {
+      "group": "hostile",
+      "label": "nesting past MAX_XML_DEPTH",
+      "why": "xmldom has no depth limit; mbmap/data refuses documents nested deeper than 256 (AGENTS.md §8.2)",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "100000 levels",
+      "why": "as above; togeojson overflows the stack on it",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "attributes past MAX_XML_ATTRIBUTES",
+      "why": "xmldom has no attribute limit; mbmap/data refuses more than 1024 on one element",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "malformed internal subset",
+      "why": "xmldom checks declarations in an internal subset; mbmap/data skips the subset (nothing in it is ever used)",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "XML declaration version 2",
+      "why": "xmldom checks an XML declaration's version, encoding and standalone parts; mbmap/data only that it comes first",
+      "ok": true
+    },
+    {
+      "group": "hostile",
+      "label": "XML declaration with a bad encoding",
+      "why": "as above",
+      "ok": true
+    }
+  ],
+  "differ": 0
+}

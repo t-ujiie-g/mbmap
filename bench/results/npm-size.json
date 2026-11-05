@@ -136,13 +136,18 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 2435,
+      "bytes": 2471,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 17170,
+      "bytes": 18388,
       "budget": 30000
+    },
+    {
+      "name": "KML and GPX (loaded by the data worker on the first such read)",
+      "bytes": 22165,
+      "budget": 20000
     },
     {
       "name": "mbmap/ui createAttribution alone",
