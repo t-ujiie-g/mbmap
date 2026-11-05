@@ -1,6 +1,6 @@
-// `mbmap/data`: CSV, WKT, WKB, shapefiles and TopoJSON read in a worker of its own,
-// started on the first call, into tables that are both a GeoJSON source's data
-// (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
+// `mbmap/data`: CSV, WKT, WKB, shapefiles, TopoJSON, KML/KMZ and GPX read in a worker of its own
+// (KML and GPX by a second wasm), started on the first call, into tables that are both a GeoJSON
+// source's data (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
 import { tableInfo, tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { crsArg, type Crs } from "./crs";
 import { csvArgs, formatOf, shapefileParts, type CsvOptions, type DataFormat, type ShapefileParts } from "./data-format";
@@ -16,13 +16,15 @@ export interface DataFeatureCollection {
 }
 
 /**
- * Where the data worker (`workerUrl`), its wasm (`wasmUrl`) and the coordinate system module
- * (`projWasmUrl`, loaded for data in another CRS) are served; by default next to this module.
+ * Where the data worker (`workerUrl`), its wasm (`wasmUrl`), the coordinate system module
+ * (`projWasmUrl`, loaded for data in another CRS) and the KML/GPX wasm (`xmlUrl`, loaded on the
+ * first such read) are served; by default next to this module.
  */
 export interface DataOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
   projWasmUrl?: string | URL;
+  xmlUrl?: string | URL;
 }
 
 /**
@@ -94,10 +96,11 @@ function start(options: DataOptions): void {
     wasm: wasmUrl(options.wasmUrl ?? new URL("./data.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
     prj: new URL("./prjwkt.js", import.meta.url).href,
+    xml: wasmUrl(options.xmlUrl ?? new URL("./xml.wasm", import.meta.url), page),
   }));
 }
 
-const FORMATS: DataFormat[] = ["csv", "wkt", "wkb", "shapefile", "topojson"];
+const FORMATS: DataFormat[] = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx"];
 
 function formatFor(options: ReadOptions, name: string | null): DataFormat {
   const format = options.format ?? (name === null ? null : formatOf(name));
@@ -131,6 +134,7 @@ async function call(format: DataFormat, source: object, options: ReadOptions, tr
   const { layer, encoding } = options;
   if (layer !== undefined && typeof layer !== "string") throw new Error("mbmap: data: invalid layer");
   if (encoding !== undefined && typeof encoding !== "string") throw new Error("mbmap: data: invalid encoding");
+  if (options.crs !== undefined && (format === "kml" || format === "gpx")) throw new Error("mbmap: data: KML and GPX are always in EPSG:4326; options.crs is for other formats");
   const crs = options.crs === undefined ? undefined : await crsArg(options.crs, "data");
   const args = { format, options: { ...(format === "csv" ? csvArgs(options) : {}), crs, layer, encoding }, ...source };
   start(options);
@@ -159,7 +163,7 @@ export async function read(input: Input | ArrayLike<File> | ShapefileParts<Input
   return call(formatFor(options, name), sourceOf(single, options, transfer), options, transfer);
 }
 
-/** Reads `text` (CSV, WKT, hexadecimal WKB or TopoJSON) as `options.format`. */
+/** Reads `text` (CSV, WKT, hexadecimal WKB, TopoJSON, KML or GPX) as `options.format`. */
 export async function parse(text: string, options: ReadOptions & { format: DataFormat }): Promise<DataTable> {
   if (typeof text !== "string") throw new Error("mbmap: data: parse takes a string");
   const bytes = new TextEncoder().encode(text).buffer;

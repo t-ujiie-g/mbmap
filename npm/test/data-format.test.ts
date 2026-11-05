@@ -13,6 +13,9 @@ test("formatOf reads the format from a name's extension, in any case", () => {
   assert.equal(formatOf("roads.zip"), "shapefile");
   assert.equal(formatOf("world.topojson"), "topojson");
   assert.equal(formatOf("world.json"), null);
+  assert.equal(formatOf("doc.kml"), "kml");
+  assert.equal(formatOf("https://example.com/a.KMZ"), "kml");
+  assert.equal(formatOf("run.gpx"), "gpx");
   assert.equal(formatOf("x.geojson"), null);
   assert.equal(formatOf("x.constructor"), null);
   assert.equal(formatOf("noextension"), null);

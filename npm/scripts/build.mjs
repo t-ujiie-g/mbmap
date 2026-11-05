@@ -20,6 +20,7 @@ run("moon", ["build", "geometry_worker", "--target", "wasm-gc", "--release"], RO
 run("moon", ["build", "proj_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geodesic_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "data_worker", "--target", "wasm-gc", "--release"], ROOT);
+run("moon", ["build", "xml_worker", "--target", "wasm-gc", "--release"], ROOT);
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 
@@ -82,6 +83,7 @@ await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geometry_worker/geo
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"), path.join(DIST, "proj.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geodesic_worker/geodesic_worker.wasm"), path.join(DIST, "geodesic.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/data_worker/data_worker.wasm"), path.join(DIST, "data.wasm"));
+await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/xml_worker/xml_worker.wasm"), path.join(DIST, "xml.wasm"));
 const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
 run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
 run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);

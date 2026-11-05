@@ -506,14 +506,16 @@ Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
 ## Data worker messages (`data_worker/js/worker.mjs`)
 
-In: `{type: "init", wasm, proj, prj}` (data.wasm instantiated with `{ host: { number, decode,
-text_code } }` from `dataImports` in `data_worker/js/read.mjs`; `proj` the URL of proj.wasm and
-`prj` of prjwkt.js, loaded on first use), then `{type: "call", id, op: "read", format, options, ...}`
-with the data as one of `url` (http(s), fetched with `init`'s string `headers` and `credentials`,
-none sent otherwise), `blob` or `bytes` (an ArrayBuffer), at most `MAX_INPUT_BYTES`, or for a
-shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source. Calls run one after another.
-`options` for every format: `crs` (an EPSG code or a "CRS definition", for coordinates the data
-does not tag), `layer` (a string), `encoding` (a .dbf's, a label or code page):
+In: `{type: "init", wasm, proj, prj, xml}` (data.wasm instantiated with `{ host: { number, decode,
+text_code } }` from `dataImports` in `data_worker/js/read.mjs`; `proj` the URL of proj.wasm, `prj`
+of prjwkt.js and `xml` of xml.wasm, the KML and GPX module `xml_worker` instantiated with
+`{ Math, host }` (`hostText`), each loaded on first use), then `{type: "call", id, op: "read",
+format, options, ...}` with the data as one of `url` (http(s), fetched with `init`'s string
+`headers` and `credentials`, none sent otherwise), `blob` or `bytes` (an ArrayBuffer), at most
+`MAX_INPUT_BYTES`, or for a shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source. Calls
+run one after another. `options` for every format: `crs` (an EPSG code or a "CRS definition", for
+coordinates the data does not tag; refused for KML and GPX, which are EPSG:4326), `layer` (a
+string), `encoding` (a .dbf's, a label or code page):
 
 - `format` `"csv"`, with `options` `{delimiter, header, dynamicTyping, latitude, longitude,
   geometry}` (`delimiter` a character code or -1 to guess; the column names optional). The wasm's
@@ -530,7 +532,12 @@ does not tag), `layer` (a string), `encoding` (a .dbf's, a label or code page):
   29, UTF-8), removes NULs, trims, keeps the text and returns its length in UTF-16 code units,
   which `host.text_code(i)` gives one by one;
 - `"topojson"`: `read_topojson(name)` takes the object's name (UTF-8, `name` bytes; -1 for the
-  first) before the TopoJSON.
+  first) before the TopoJSON;
+- `"kml"` (xml.wasm's `read_kml`; a zip archive, by its first bytes, is a KMZ whose `doc.kml`, else
+  first `.kml` entry, `kmlOfKmz` in `data_worker/js/read.mjs` inflates first through
+  `npm/src/zip.ts`) or `"gpx"` (`read_gpx`), the document as UTF-8 in that module's input. Nested
+  property values are JSON text. xml.wasm has its own `ids_out()` (KML's Placemark ids), and its
+  rows skip the CRS step below.
 
 After a read, `srids_out()` writes each row's SRID as an i32 (0 where none was given) and returns
 their count, or 0 when no row had one; `layers_out()` writes the input's layer names (TopoJSON

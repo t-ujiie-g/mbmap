@@ -1,7 +1,7 @@
 // Glue around the wasm-gc build of `data_worker`; messages are in
 // docs/FORMATS.md ("Data worker messages").
 
-import { MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { hostText, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
 import { fetchInit, readCapped } from "../../worker/js/body.mjs";
 import { dataImports, dataReader } from "./read.mjs";
 
@@ -11,19 +11,21 @@ let ready = null;
 let queue = Promise.resolve();
 const urls = {};
 const loaded = {};
-// proj.wasm (with the host's Math, as proj4js computes) and the .prj parser, each on first use.
+// proj.wasm (with the host's Math, as proj4js computes), the .prj parser and xml.wasm (KML and
+// GPX), each on first use.
 function load(name, start) {
   if (typeof urls[name] !== "string") return Promise.reject(new Error(`no URL for the ${name} module`));
   return (loaded[name] ??= start(urls[name]));
 }
 const proj = () => load("proj", (url) => WebAssembly.instantiateStreaming(fetch(url), { Math }).then(({ instance }) => instance.exports));
 const prj = () => load("prj", (url) => import(url));
+const xml = () => load("xml", (url) => WebAssembly.instantiateStreaming(fetch(url), { Math, host: hostText() }).then(({ instance }) => instance.exports));
 
 function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
 
-const FORMATS = ["csv", "wkt", "wkb", "shapefile", "topojson"];
+const FORMATS = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx"];
 const PARTS = ["shp", "dbf", "prj", "cpg"];
 
 // A source's bytes: fetched (http(s) only, no credentials unless `init` asks for them; null for
@@ -86,11 +88,12 @@ onmessage = (e) => {
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
     urls.proj = msg.proj;
     urls.prj = msg.prj;
+    urls.xml = msg.xml;
     let wasm = null;
     const imports = dataImports(() => wasm.memory);
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), imports).then(({ instance }) => {
       wasm = instance.exports;
-      reader = dataReader(wasm, imports, { proj, prj });
+      reader = dataReader(wasm, imports, { proj, prj, xml });
     });
   } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && msg.op === "read") {
     queue = queue.then(() => run(msg));

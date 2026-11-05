@@ -62,7 +62,8 @@
     "./data.wasm": "./dist/data.wasm",
     "./data-zip.js": "./dist/data-zip.js",
     "./data-crs.js": "./dist/data-crs.js",
-    "./prjwkt.js": "./dist/prjwkt.js"
+    "./prjwkt.js": "./dist/prjwkt.js",
+    "./xml.wasm": "./dist/xml.wasm"
   },
   "types": "./dist/index.d.ts",
   "sideEffects": [

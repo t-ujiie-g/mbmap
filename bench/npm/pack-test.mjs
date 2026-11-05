@@ -235,9 +235,9 @@ const checks = {
     return [ok, { loaded, pitch: r.pitch }];
   },
 
-  // mbmap/data (bench/npm/pages/data): CSV, WKT and TopoJSON drawn and counted in mbmap/analysis; an
-  // EWKT in plane IX (proj.wasm loaded, the .prj parser not); a shapefile in plane IX with a .prj and
-  // Shift_JIS names zipped and loose, by URL and as Files, drawn (the .prj parser loaded); refusals.
+  // mbmap/data (bench/npm/pages/data): CSV, WKT, TopoJSON drawn and counted; EWKT in plane IX (proj.wasm
+  // loaded); a plane IX shapefile with .prj and Shift_JIS names, zipped and loose, by URL and as Files,
+  // drawn (the .prj parser loaded); KML, KMZ and GPX, a KML drawn (xml.wasm loaded); refusals.
   async data(page, requests) {
     const names = () => requests.map((u) => u.split("/").pop());
     const startup = names();
@@ -304,8 +304,8 @@ const checks = {
     const wardFeatures = z.wards.features;
     const ok =
       ["data.js", "data-worker.js", "data.wasm", "stations.csv", "lines.topojson"].every((n) => startup.includes(n)) &&
-      !["proj.wasm", "prjwkt.js", "data-zip.js", "data-crs.js"].some((n) => startup.includes(n)) &&
-      ["proj.wasm", "data-crs.js"].every((n) => afterPlane.includes(n)) && !["prjwkt.js", "data-zip.js"].some((n) => afterPlane.includes(n)) &&
+      !["proj.wasm", "prjwkt.js", "data-zip.js", "data-crs.js", "xml.wasm"].some((n) => startup.includes(n)) &&
+      ["proj.wasm", "data-crs.js"].every((n) => afterPlane.includes(n)) && !["prjwkt.js", "data-zip.js", "xml.wasm"].some((n) => afterPlane.includes(n)) &&
       ["prjwkt.js", "data-zip.js", "wards.zip", "wards.shp", "wards.dbf", "wards.prj", "wards.cpg"].every((n) => loaded.includes(n)) &&
       r.length === 5 &&
       JSON.stringify(r.columns) === JSON.stringify(["名前", "緯度", "経度", "乗降客数", "備考"]) &&
@@ -340,7 +340,90 @@ const checks = {
       /encrypted entries are not supported/.test(z.encrypted) &&
       /inflates to more than 268435456 bytes/.test(z.bomb) &&
       /no shapefile named nope/.test(z.noLayer);
-    return [ok, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } } }];
+    // KML (by URL, as a File, as a KMZ made here) and GPX: xml.wasm is fetched on the first
+    // of them only, and a KML is drawn.
+    const xmlBefore = requests.filter((u) => u.endsWith("/xml.wasm")).length;
+    const k = await page.evaluate(async () => {
+      const { read, parse } = await import("mbmap/data");
+      const map = window.__map;
+      const kml = await read("./places.kml");
+      const text = await (await fetch("./places.kml")).text();
+      const file = await read(new File([text], "places.kml"));
+      // A KMZ: a deflated doc.kml beside an image, zipped by hand.
+      const deflated = new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer());
+      const zip = (entries) => {
+        const parts = [];
+        const central = [];
+        let offset = 0;
+        for (const [name, data, method, size = data.length] of entries) {
+          const n = new TextEncoder().encode(name);
+          const local = new DataView(new ArrayBuffer(30));
+          local.setUint32(0, 0x04034b50, true);
+          local.setUint16(8, method, true);
+          local.setUint32(18, data.length, true);
+          local.setUint32(22, size, true);
+          local.setUint16(26, n.length, true);
+          const cd = new DataView(new ArrayBuffer(46));
+          cd.setUint32(0, 0x02014b50, true);
+          cd.setUint16(10, method, true);
+          cd.setUint32(20, data.length, true);
+          cd.setUint32(24, size, true);
+          cd.setUint16(28, n.length, true);
+          cd.setUint32(42, offset, true);
+          parts.push(new Uint8Array(local.buffer), n, data);
+          central.push(new Uint8Array(cd.buffer), n);
+          offset += 30 + n.length + data.length;
+        }
+        const end = new DataView(new ArrayBuffer(22));
+        end.setUint32(0, 0x06054b50, true);
+        end.setUint16(8, entries.length, true);
+        end.setUint16(10, entries.length, true);
+        end.setUint32(12, central.reduce((s, b) => s + b.length, 0), true);
+        end.setUint32(16, offset, true);
+        return new Blob([...parts, ...central, new Uint8Array(end.buffer)]);
+      };
+      const kmz = await read(new File([zip([["files/icon.png", new Uint8Array(8), 0], ["doc.kml", deflated, 8, new TextEncoder().encode(text).length]])], "places.kmz"));
+      const gpx = await read("./walk.gpx");
+      const parsed = await parse("<gpx><wpt lat='1' lon='2'><name>a</name></wpt></gpx>", { format: "gpx" });
+      map.addSource("kml", { type: "geojson", data: kml.toGeoJSON() });
+      map.addLayer({ id: "kml-points", type: "circle", source: "kml", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": "#2e7d32" } });
+      map.addLayer({ id: "kml-lines", type: "line", source: "kml", paint: { "line-color": ["coalesce", ["get", "stroke"], "#000"], "line-width": 3 } });
+      await map.once("idle");
+      const fail = (p) => p.then(() => "", (e) => e.message);
+      const props = (t) => t.toGeoJSON().features.map((f) => f.properties);
+      return {
+        kml: kml.toGeoJSON().features.map((f) => [f.geometry.type, f.properties.name]),
+        ids: kml.toGeoJSON().features.map((f) => f.id ?? null),
+        styles: props(kml).map((p) => [p.styleUrl, p.icon ?? p.stroke]),
+        extended: props(kml)[0].備考,
+        description: JSON.parse(props(kml)[0].description).value,
+        file: file.length,
+        kmz: JSON.stringify(kmz.toGeoJSON()) === JSON.stringify(kml.toGeoJSON()),
+        gpx: gpx.toGeoJSON().features.map((f) => [f.geometry.type, f.properties.name, f.properties._gpxType ?? null]),
+        heart: JSON.parse(props(gpx)[0].coordinateProperties).heart,
+        parsed: parsed.toGeoJSON().features[0].geometry.coordinates,
+        drawn: [...new Set((await map.queryRenderedFeatures({ layers: ["kml-points", "kml-lines"] })).map((f) => `${f.layer.id} ${f.properties.name}`))],
+        malformed: await fail(parse("<kml><Placemark></kml>", { format: "kml" })),
+        badKmz: await fail(read(new File([zip([["a.png", new Uint8Array(4), 0]])], "x.kmz"))),
+        crs: await fail(read("./places.kml", { crs: "EPSG:6677" })),
+      };
+    });
+    const xmlAfter = requests.filter((u) => u.endsWith("/xml.wasm")).length;
+    const okXml =
+      xmlBefore === 0 && xmlAfter === 1 &&
+      JSON.stringify(k.kml) === JSON.stringify([["Point", "東京駅"], ["Point", "日本橋"], ["LineString", "経路"]]) &&
+      JSON.stringify(k.ids) === JSON.stringify(["tokyo", null, null]) &&
+      JSON.stringify(k.styles) === JSON.stringify([["#Point_080", "https://maps.gsi.go.jp/portal/sys/v4/symbols/080.png"], ["#Point_080", "https://maps.gsi.go.jp/portal/sys/v4/symbols/080.png"], ["#Line_ff0000ff_3", "#ff0000"]]) &&
+      k.extended === "丸の内口" && k.description.includes("<td>東京駅</td>") &&
+      k.file === 3 && k.kmz &&
+      JSON.stringify(k.gpx) === JSON.stringify([["LineString", "散歩", "trk"], ["Point", "東京駅", null]]) &&
+      JSON.stringify(k.heart) === JSON.stringify([90, 95]) &&
+      JSON.stringify(k.parsed) === JSON.stringify([2, 1]) &&
+      ["kml-points 東京駅", "kml-points 日本橋", "kml-lines 経路"].every((d) => k.drawn.includes(d)) &&
+      k.malformed === "mbmap: data: malformed XML at 16: opening and ending tag mismatch: Placemark != kml" &&
+      /no \.kml file/.test(k.badKmz) &&
+      /always in EPSG:4326/.test(k.crs);
+    return [ok && okXml, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } }, xml: { xmlBefore, xmlAfter, ...k } }];
   },
 
   async analysis(page, requests) {

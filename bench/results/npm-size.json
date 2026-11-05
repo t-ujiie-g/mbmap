@@ -136,13 +136,13 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 3181,
+      "bytes": 3281,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 28947,
-      "budget": 30000
+      "bytes": 29536,
+      "budget": 38000
     },
     {
       "name": "zip archives (loaded by the data worker with the first one)",
@@ -158,6 +158,11 @@
       "name": ".prj WKT (loaded by the data worker on the first .prj)",
       "bytes": 3711,
       "budget": 4000
+    },
+    {
+      "name": "KML and GPX (loaded by the data worker on the first such read)",
+      "bytes": 22661,
+      "budget": 26000
     },
     {
       "name": "mbmap/ui createAttribution alone",
