@@ -25,7 +25,7 @@ function check(ok) {
   if (!ok) throw new Error("invalid arguments");
 }
 
-const FORMATS = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx", "flatgeobuf"];
+const FORMATS = ["csv", "wkt", "wkb", "shapefile", "topojson", "kml", "gpx", "flatgeobuf", "geojson"];
 const PARTS = ["shp", "dbf", "prj", "cpg"];
 
 // A source's bytes: fetched (http(s) only, no credentials unless `init` asks for them; null for
@@ -80,6 +80,13 @@ async function read(msg) {
 async function run(msg) {
   try {
     await ready;
+    if (msg.op === "write") {
+      const { format, table, ids = null, options = {} } = msg;
+      check(["csv", "kml"].includes(format) && table instanceof ArrayBuffer && (ids === null || ids instanceof ArrayBuffer) && options && typeof options === "object");
+      const value = await reader.write(format, table, ids, options);
+      postMessage({ type: "result", id: msg.id, value }, [value]);
+      return;
+    }
     const value = await read(msg);
     postMessage({ type: "result", id: msg.id, value }, [value.table, ...(value.ids ? [value.ids] : [])]);
   } catch (err) {
@@ -99,7 +106,7 @@ onmessage = (e) => {
       wasm = instance.exports;
       reader = dataReader(wasm, imports, { proj, prj, xml });
     });
-  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && msg.op === "read") {
+  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && (msg.op === "read" || msg.op === "write")) {
     queue = queue.then(() => run(msg));
   }
 };

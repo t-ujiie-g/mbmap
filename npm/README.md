@@ -27,7 +27,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/draw.js` | 見た目を持たない作図（`mbmap/draw`） |
 | `dist/analysis.js` | 解析（`mbmap/analysis`）の入口 |
 | `dist/geodesic.js` | 楕円体の上の計測（`mbmap/geodesic`）の入口 |
-| `dist/data.js` | データの読み込み（CSV・WKT・WKB・Shapefile・TopoJSON・KML/KMZ・GPX・FlatGeobuf、`mbmap/data`）の入口 |
+| `dist/data.js` | データの読み込み（CSV・WKT・WKB・Shapefile・TopoJSON・KML/KMZ・GPX・FlatGeobuf・GeoJSON）と書き出し（GeoJSON・CSV・KML、`mbmap/data`）の入口 |
 
 `index.js` が、使うときだけ動的 import で読み込むもの（`index.js` と同じ場所に置く）：
 
@@ -57,7 +57,7 @@ Worker と wasm：
 | `dist/geodesic-worker.js`, `dist/geodesic.wasm` | `mbmap/geodesic` の Worker と wasm。初めて呼んだときに起こす |
 | `dist/data-worker.js`, `dist/data.wasm` | `mbmap/data` の Worker と wasm。初めて呼んだときに起こす |
 | `dist/data-zip.js`, `dist/data-crs.js`, `dist/data-fgb.js`, `dist/prjwkt.js` | データの Worker の部品。zip、4326 以外の座標、FlatGeobuf、`.prj` を初めて扱うときに、`data-worker.js` が自分の隣から読む（`prjwkt.js` は `data.js` の隣） |
-| `dist/xml.wasm` | KML と GPX の読み込み。データの Worker が、初めて KML か GPX を読むときだけ読む |
+| `dist/xml.wasm` | KML と GPX の読み込みと KML の書き出し。データの Worker が、初めて KML か GPX を扱うときだけ読む |
 
 どのファイルも、既定では `new URL("./worker.js", import.meta.url)` のように、読み込む側のモジュールの隣から読む。ESM をそのまま配信する場合（import map など）は、`dist/` をまるごと置けばそのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う。esbuild はこの `new URL` をそのまま残し、動的 import はバンドルに入れるので、Worker と wasm（`dist/` の `*.wasm` と `*worker*.js`）をバンドルの隣にコピーすれば動く（`examples/react/build.mjs`）。ほかのバンドラはまだ検証していない。動かないときは、ファイルを自分で配信して場所を渡す。
 
@@ -294,15 +294,19 @@ const picked = await read(input.files);               // <input type="file" mult
 const world = await read("/data/world.json", { format: "topojson", layer: "countries" });
 const drawing = await read(file);                     // 地理院地図の作図など、KML・KMZ・GPX の File も
 const near = await read("https://example.com/buildings.fgb", { bbox: [139.76, 35.67, 139.78, 35.69] }); // 索引で範囲の地物だけを範囲リクエストで読む
+
+import { write } from "mbmap/data";
+const csv = await write(stations, { format: "csv" });            // DataTable を CSV（点は経度・緯度の列）に
+const kml = await write(drawnFeatures, { format: "kml" });       // GeoJSON の地物（作図したものなど）を KML に
 ```
 
 - `read(input, options)`：`input` は http(s) の URL（文字列か `URL`。ページを基準に解決し、資格情報なしで取得する）、`Blob`・`File`、`ArrayBuffer`・型付き配列（コピーする）、Shapefile の部品（`FileList` か `File` の配列。拡張子で見分ける。または `{ shp, dbf, prj, cpg }` で、それぞれ URL・Blob・バイト列）。文字列はいつも URL として扱う。文字列のデータは `parse(text, { format })` に渡す。
-- `options.format`：`"csv"`・`"wkt"`・`"wkb"`・`"shapefile"`・`"topojson"`・`"kml"`（KMZ も）・`"gpx"`・`"flatgeobuf"`。省くと URL か `File` の名前の拡張子（`.csv`・`.tsv`・`.txt`・`.wkt`・`.wkb`・`.ewkb`・`.shp`・`.zip`・`.topojson`・`.kml`・`.kmz`・`.gpx`・`.fgb`）で決める。`.json` の TopoJSON は `format` で指定する。決められないときは失敗する。`transformRequest(url)` で URL の取得に `headers` や `credentials` を付けられる（地図の `transformRequest` と同じ形）。
+- `options.format`：`"csv"`・`"wkt"`・`"wkb"`・`"shapefile"`・`"topojson"`・`"kml"`（KMZ も）・`"gpx"`・`"flatgeobuf"`・`"geojson"`。省くと URL か `File` の名前の拡張子（`.csv`・`.tsv`・`.txt`・`.wkt`・`.wkb`・`.ewkb`・`.shp`・`.zip`・`.topojson`・`.kml`・`.kmz`・`.gpx`・`.fgb`・`.geojson`）で決める。`.json` の TopoJSON は `format` で指定する。決められないときは失敗する。`transformRequest(url)` で URL の取得に `headers` や `credentials` を付けられる（地図の `transformRequest` と同じ形）。
 - 結果の `DataTable`：`length`（行の数。GEOMETRYCOLLECTION は要素ごとに 1 行）、`columns`（属性の名前）、`format`、`layer` と `layers`（読んだ層と、入力にあるすべての層。zip の中の Shapefile、TopoJSON の object。層のない形式では null と空）、`toGeoJSON()`（FeatureCollection。GeoJSON ソースの `data` にそのまま渡せる。TopoJSON の `id`、KML の `Placemark` の `id`、FlatGeobuf の地物の番号（ファイルの中の 0 からの順番）は地物の `id` になる。呼ぶたびに新しく作る）、`tableBytes()`（`mbmap/analysis` の `load` が受け取る形。`id` は持たない）。
 - 座標系：行はいつも経緯度（EPSG:4326）にして返す。
   - EWKT・EWKB・CSV のジオメトリの欄の SRID は、行ごとに読み、4326 でなければ経緯度にする（1 つの入力に違う SRID が混ざってもよい）。`proj.wasm` が知る EPSG コード（解析の節の「PROJ 文字列なしで使える EPSG コード」）でない SRID は失敗する。1 つのジオメトリの中で違う SRID（EWKB の入れ子）は失敗する。
   - Shapefile は `.prj`（Esri か OGC の WKT1。wkt-parser と同じく読む。ルートの `AUTHORITY["EPSG", …]` は、`proj.wasm` が知るコードならそれを使う）。WKT2 は失敗する。軸の順は読まない（Shapefile の x は東向き）。
-  - `crs`：データが座標系を示さない座標の座標系（`mbmap/analysis` と同じ書き方：EPSG コード、`"EPSG:6677"`、PROJ 文字列）。SRID のない行と、Shapefile（`.prj` の代わりに使う。`.prj` は読まない）に効く。既定は EPSG:4326。KML と GPX はいつも EPSG:4326 なので、`crs` を渡すと失敗する。
+  - `crs`：データが座標系を示さない座標の座標系（`mbmap/analysis` と同じ書き方：EPSG コード、`"EPSG:6677"`、PROJ 文字列）。SRID のない行と、Shapefile（`.prj` の代わりに使う。`.prj` は読まない）に効く。既定は EPSG:4326。KML、GPX、GeoJSON はいつも EPSG:4326 なので、`crs` を渡すと失敗する。
   - FlatGeobuf はヘッダーの `crs`（`org` が EPSG か無しの `code`、なければ `wkt` を `.prj` と同じく読む）。`crs` オプションがあればそちらを使う。
   - 4326 以外を初めて扱うときに `proj.wasm`（約 22KB）と `data-crs.js` を、初めて `.prj` を読むときに `prjwkt.js`（約 4KB）を読み込む。
 - Shapefile：`.shp` の点・マルチポイント・ライン・ポリゴンと、その Z・M（2 次元だけ残す）。Null の図形はジオメトリなしの行、マルチポイントの点が 1 つなら Point、ラインの部分が 1 つなら LineString。MultiPatch は失敗する。`.shx` は使わない（`.shp` を先頭から読む）。
@@ -328,9 +332,15 @@ const near = await read("https://example.com/buildings.fgb", { bbox: [139.76, 35
 - GPX：togeojson の `gpx()` と同じ。`trk`（区間が 2 つ以上なら MultiLineString）、`rte`、`wpt` の順。`_gpxType`、`name`・`cmt`・`desc`・`type`・`time`・`keywords`・`sym`、`links`、名前空間付きの要素（`gpxx_…` など）、`extensions` の線の色・不透明度・太さ、点ごとの時刻と拡張の値（心拍 `heart`、`cads` など。`coordinateProperties`）。標高は捨てる。
 - FlatGeobuf：flatgeobuf 4.6.1 の `deserialize` と同じ地物にする。すべての図形の型（ヘッダーの型が Unknown なら地物ごとの型）、GeometryCollection は要素ごとの行、Z・M は捨てる。属性の型は 15 種すべて：整数・浮動小数点は数（Long と ULong は Number に丸める）、Bool、String と DateTime は文字列、Json は（JSON.parse せず）JSON の文字列、Binary は base64 の文字列。曲線の型（CircularString など）は失敗する。ジオメトリのない地物は（flatgeobuf と違い）ジオメトリなしの行。
   - `bbox`（`[minX, minY, maxX, maxY]`、ファイルの座標系で）：パックされた R-tree の索引で、箱が重なる地物だけを読む。URL なら flatgeobuf の HttpReader と同じく範囲リクエストで、ヘッダーと索引の上の段、索引の段、256KB より近い地物はまとめて 1 回で読む（同時に 6 つまで）。範囲リクエストに答えずファイル全体を返すサーバーなら、それを読む。索引のないファイルに `bbox` を渡すと失敗する。FlatGeobuf を初めて読むときに `data-fgb.js`（約 2KB）を読む。
+- GeoJSON：GeoJSON ソースと同じ読み手（geojson-vt と同じく GeometryCollection は要素ごとの行、地物の `id` も読む）。
+- 書き出し `write(input, options)`：`input` は `DataTable` か GeoJSON の Feature・FeatureCollection（オブジェクト。GeoJSON として読んでから書く）。`options.format` は `"geojson"`・`"csv"`・`"kml"`。文字列を返す（ファイルにするなら `new Blob([text])`）。
+  - GeoJSON：`JSON.stringify(table.toGeoJSON())` と同じ（GeoJSON のオブジェクトなら `JSON.stringify` そのもの）。
+  - CSV：papaparse 5.7.0 の `unparse` と同じ（区切り `delimiter`、既定は `,`。行末は CRLF。引用符・区切り・改行・BOM を含む値と前後に空白のある値は引用符で囲む。`header`：既定 true）。列は属性の列、そのあとにジオメトリの列。`geometryFormat`：`"lonlat"`（点の経度・緯度の列、名前は `longitude`・`latitude` で変えられる）、`"wkt"`（betterknown 1.2.0 の `geoJSONToWkt` と同じ WKT の列、名前は `geometry` で変えられる。既定 `wkt`）、`"none"`。省くと、ジオメトリがなければ `"none"`、すべて点なら `"lonlat"`、ほかは `"wkt"`。同じ名前の属性の列があれば、その場所にジオメトリを書く。点でない行に `"lonlat"` は失敗する。数は JavaScript の `String(x)` と同じに書く。
+  - KML：@placemarkio/tokml 0.4.0 の `toKML` と同じ（地物ごとの Placemark、`id`、属性の `name`・`description`・`visibility` は要素、ほかは `ExtendedData`、Multi の図形は `MultiGeometry`）。書き出しは KML を読む `xml.wasm` が受け持つ。
+  - どれも `npm run write:golden` で参照の実装とバイト単位で一致することを確かめている。
 - 値は papaparse 5.7.0（`header`、`dynamicTyping`、`skipEmptyLines`）、betterknown 1.2.0（WKT）、wkx 0.5.0（WKB）、shpjs 6.2.0（Shapefile。`.prj` の変換も）、topojson-client 3.1.0（TopoJSON）と一致し、ほかの座標系からの経緯度は proj4 2.22.0 と 1e-8° 以内で一致することを黄金テストで確かめている（`npm run data:golden`）。KML と GPX は @tmcw/togeojson 7.1.3 ＋ @xmldom/xmldom 0.9.12 と一致する（`npm run xml:golden`）。FlatGeobuf は flatgeobuf 4.6.1 と、バイト列からも HTTP の範囲リクエストでも一致する（`npm run fgb:golden`）。違うのは、参照の実装が緩く受け付けるもの（WKT の後ろの余分な文字列、`1a` のような数、型の違う Multi の要素、0 と 1 以外のバイト順、途中で切れた `.shp`、Topology でない TopoJSON）を失敗にするところ、タグのない Z 座標を読むところ、Shapefile の 4 つ（輪の向き、内外判定での穴の割り当て、削除されたレコード、日付を文字列に）と、論理値の `?` を null にするところ。
 - 入力は 256MB、点は 2000 万、CSV の欄は 1 行に 4096、1 つの欄は 16MB、属性の欄の数（行 × 列。CSV と `.dbf`）は 3200 万まで。XML は入れ子 256 段、1 つの要素の属性 1024、ノード 400 万まで。KML と GPX の地物の属性は 4096、表の欄（行 × 列）は 3200 万、点は 2000 万まで。宣言した実体（`<!ENTITY>`）は xmldom と同じく展開しない。FlatGeobuf のヘッダーは 10MB まで（flatgeobuf と同じ）、`bbox` で読むバイトは合わせて 256MB まで。
-- 初めて呼んだときに、専用の Worker と wasm（gzip で約 33KB）を読み込む。KML か GPX を初めて読むときに、もう 1 つの wasm（`xml.wasm`、約 22KB）を読む。`terminate()` で止める。
+- 初めて呼んだときに、専用の Worker と wasm（gzip で約 38KB）を読み込む。KML か GPX を初めて読むときに、もう 1 つの wasm（`xml.wasm`、約 22KB）を読む。`terminate()` で止める。
 
 ## Web Component `<mb-map>`
 

@@ -45,7 +45,10 @@ export function dbfEncoding(given, cpg, dbf) {
   return (dbf && dbf.length > 29 && codePage(DRIVERS[dbf[29]])) || "utf-8";
 }
 
-/** The imports of data.wasm: `host.number` and `host.decode` / `host.text_code`, DBF text in `encoding`. */
+/**
+ * The imports of data.wasm: `host.number`, `host.decode` / `host.text_code` (DBF text in
+ * `encoding`) and `host.number_text` (`String(x)`, read back by `text_code`).
+ */
 export function dataImports(memory) {
   let text = "";
   const host = {
@@ -56,6 +59,10 @@ export function dataImports(memory) {
       return text.length;
     },
     text_code: (i) => text.charCodeAt(i),
+    number_text(x) {
+      text = String(x);
+      return text.length;
+    },
   };
   return { host };
 }
@@ -159,6 +166,13 @@ export function dataReader(wasm, imports, { proj, prj, xml }) {
     let result;
     const { data } = parts;
     if (format === "kml" || format === "gpx") return xmlRead(format, data, options);
+    if (format === "geojson") {
+      if (options.crs !== undefined) throw new Error("GeoJSON is always in EPSG:4326");
+      input(wasm, [data]);
+      const table = output(wasm, wasm.read_geojson());
+      const ids = wasm.ids_out();
+      return { table, ids: ids > 0 ? output(wasm, ids) : null, layer: null, layers: [] };
+    }
     if (format === "flatgeobuf") {
       result = await flatgeobuf(parts, options);
     } else if (format === "shapefile") {
@@ -196,5 +210,25 @@ export function dataReader(wasm, imports, { proj, prj, xml }) {
     if (other) await (await crsModule()).toLonLat(result.table, srids, crs, proj);
     return { table: result.table, ids: result.ids ?? null, layer: result.layer ?? null, layers: result.layers ?? [] };
   }
-  return { read };
+  /**
+   * `table` (and its `ids`, property values, or null) as `format` ("csv" or "kml") in UTF-8;
+   * CSV `options` as docs/FORMATS.md "Data worker messages" has them.
+   */
+  async function write(format, table, ids, options) {
+    const t = new Uint8Array(table);
+    if (format === "kml") {
+      const x = await xml();
+      const idBytes = ids ? new Uint8Array(ids) : new Uint8Array(0);
+      input(x, [t, idBytes]);
+      return output(x, x.write_kml(idBytes.length));
+    }
+    const { delimiter = 44, header = true, geometry = "wkt", longitude = "longitude", latitude = "latitude" } = options;
+    if (!Number.isInteger(delimiter) || typeof header !== "boolean" || ![geometry, longitude, latitude].every(isName)) throw new Error("invalid arguments");
+    const mode = ["none", "wkt", "lonlat", undefined].indexOf(options.geometryFormat);
+    if (mode < 0) throw new Error("invalid geometryFormat");
+    const names = encoder.encode(`${geometry}\0${longitude}\0${latitude}\0`);
+    input(wasm, [names, t]);
+    return output(wasm, wasm.write_csv(names.length, delimiter, header ? 1 : 0, mode));
+  }
+  return { read, write };
 }

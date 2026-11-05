@@ -274,3 +274,84 @@ pub fn read_flatgeobuf(ids : Int32) -> Int32 {
   }
   table_out(table)
 }
+
+///|
+/// Reads the GeoJSON placed as input (collections flattened); returns as `read_csv`,
+/// the feature ids kept for `ids_out`.
+#export_name("read_geojson")
+pub fn read_geojson() -> Int32 {
+  begin() |> ignore
+  let table = @formats.read_geojson(
+    @wasmio.input_bytes()[:],
+    slow_number=@wasmio.input_number,
+  ) catch {
+    e => return @wasmio.fail_with(e.message())
+  }
+  table_out(table)
+}
+
+///|
+/// Writes as CSV the table placed after `names` bytes of three NUL-ended column names
+/// (WKT, longitude, latitude); `mode` 0 no geometry, 1 WKT, 2 coordinates, 3 2 for
+/// points, else 1, 0 without geometry. Returns the UTF-8's length, or minus an error's.
+#export_name("write_csv")
+pub fn write_csv(
+  names : Int32,
+  delimiter : Int32,
+  header : Int32,
+  mode : Int32,
+) -> Int32 {
+  let input = @wasmio.input_bytes()
+  guard names >= 0 &&
+    names <= input.length() &&
+    delimiter > 0 &&
+    delimiter < 128 &&
+    mode >= 0 &&
+    mode <= 3 else {
+    return @wasmio.fail_with("invalid arguments")
+  }
+  let given = []
+  let mut start = 0
+  for i in 0..<names {
+    if input[i] == b'\x00' {
+      given.push(@core.utf8_lossy(input[start:i]))
+      start = i + 1
+    }
+  }
+  guard given.length() == 3 else {
+    return @wasmio.fail_with("invalid column names")
+  }
+  guard @geom.Table::from_bytes(input[names:]) is Some(table) else {
+    return @wasmio.fail_with("invalid table")
+  }
+  let mut mode = mode
+  if mode == 3 {
+    mode = 0
+    for k in table.kinds {
+      match k {
+        NoGeometry => ()
+        Point => mode = @cmp.maximum(mode, 2)
+        _ => mode = 1
+      }
+      if mode == 1 {
+        break
+      }
+    }
+  }
+  let geometry : @formats.CsvGeometry = match mode {
+    1 => Wkt(given[0])
+    2 => LonLat(given[1], given[2])
+    _ => Omitted
+  }
+  let text = @formats.write_csv(
+    table,
+    delimiter=delimiter.unsafe_to_char(),
+    header=header == 1,
+    geometry~,
+    number_text=@wasmio.host_number_to_text,
+  ) catch {
+    Invalid(m, ..) => return @wasmio.fail_with(m)
+  }
+  @wasmio.clear_input()
+  @wasmio.write_bytes(@utf8.encode(text)[:])
+}

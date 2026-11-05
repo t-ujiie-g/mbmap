@@ -43,6 +43,10 @@ pub fn read_wkb_hex(BytesView, srids? : Array[Int32]) -> @geom.Table raise ReadE
 
 pub fn read_wkt(BytesView, slow_number? : (Int32, Int32) -> Double, srids? : Array[Int32]) -> @geom.Table raise ReadError
 
+pub fn wkt_of(@geom.Table, Int32, (Double) -> String) -> String?
+
+pub fn write_csv(@geom.Table, delimiter? : Char, header? : Bool, geometry~ : CsvGeometry, number_text~ : (Double) -> String) -> String raise ReadError
+
 // Errors
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
@@ -57,6 +61,12 @@ pub fn ReadError::message(Self) -> String
 pub fn ReadError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) enum CsvGeometry {
+  Wkt(String)
+  LonLat(String, String)
+  Omitted
+}
+
 pub(all) struct CsvOptions {
   delimiter : Int32
   header : Bool

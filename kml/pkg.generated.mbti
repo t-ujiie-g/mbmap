@@ -20,6 +20,8 @@ pub fn read_gpx(Bytes, number~ : (String) -> Double, number_text~ : (Double) -> 
 
 pub fn read_kml(Bytes, number~ : (String) -> Double, number_text~ : (Double) -> String, trig~ : @core.Trig) -> @geom.Table raise @xml.XmlError
 
+pub fn write_kml(@geom.Table, number_text~ : (Double) -> String) -> String
+
 // Errors
 
 // Types and methods

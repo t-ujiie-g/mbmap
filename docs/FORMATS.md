@@ -512,8 +512,8 @@ of prjwkt.js and `xml` of xml.wasm, the KML and GPX module `xml_worker` instanti
 `{ Math, host }` (`hostText`), each loaded on first use), then `{type: "call", id, op: "read",
 format, options, ...}` with the data as one of `url` (http(s), fetched with `init`'s string
 `headers` and `credentials`, none sent otherwise), `blob` or `bytes` (an ArrayBuffer), at most
-`MAX_INPUT_BYTES`, or for a shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source. Calls
-run one after another. `options` for every format: `crs` (an EPSG code or a "CRS definition", for
+`MAX_INPUT_BYTES`, or for a shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source, or
+`{type: "call", id, op: "write", format, table, ids, options}` (below). Calls run one after another. `options` for every format: `crs` (an EPSG code or a "CRS definition", for
 coordinates the data does not tag; refused for KML and GPX, which are EPSG:4326), `layer` (a
 string), `encoding` (a .dbf's, a label or code page), `bbox` (FlatGeobuf only, four finite numbers):
 
@@ -538,6 +538,8 @@ string), `encoding` (a .dbf's, a label or code page), `bbox` (FlatGeobuf only, f
   `npm/src/zip.ts`) or `"gpx"` (`read_gpx`), the document as UTF-8 in that module's input. Nested
   property values are JSON text. xml.wasm has its own `ids_out()` (KML's Placemark ids), and its
   rows skip the CRS step below;
+- `"geojson"`: `read_geojson()`, the GeoJSON source's reader (`@formats.read_geojson`), ids kept
+  for `ids_out()`; refused with `crs`;
 - `"flatgeobuf"`: `read_flatgeobuf(ids)` takes the file (ids -1: the whole of it, its index skipped)
   or, with `bbox`, the bytes up to the end of its header, the features `data_worker/js/fgb.mjs`
   (`data-fgb.js`) finds in its index one after another (each with its u32 size), then `ids` u32
@@ -553,6 +555,15 @@ ids, "Property values") and returns their length, or 0 without ids. Rows whose S
 one, `crs` or the .prj) is not 4326 are taken to longitude and latitude in place through proj.wasm
 (`data_worker/js/crs.mjs`, `data-crs.js` in dist): their coordinates as f64 pairs, a call to
 `transform_coords` per CRS; a coordinate it cannot reach fails the read.
+
+A write (`op: "write"`) takes `table` (an ArrayBuffer of "Table" bytes), `ids` (an ArrayBuffer of
+property values, one per row, or null) and `format` `"csv"` or `"kml"`, and answers with an
+ArrayBuffer of UTF-8 (GeoJSON is written by the facade, `JSON.stringify` of `toGeoJSON()`). CSV:
+data.wasm's `write_csv(names, delimiter, header, mode)` takes three NUL-ended column names (WKT,
+longitude, latitude) before the table, `delimiter` a character code, `mode` 0 (no geometry), 1
+(WKT), 2 (longitude and latitude) or 3 (chosen by the rows); `options` `{delimiter, header,
+geometryFormat, geometry, longitude, latitude}`. KML: xml.wasm's `write_kml(ids)` takes the table,
+then `ids` bytes of ids. Both write numbers through `host.number_text` (`String(x)`).
 
 Out: `{type: "result", id, value: {table, ids, layer, layers}}` with `table` an ArrayBuffer of
 "Table" bytes and `ids` of the ids' property values or null (both transferred), `layer` the layer

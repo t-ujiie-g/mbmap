@@ -4,9 +4,27 @@
 /**
  * The formats `mbmap/data` reads: CSV (or TSV), WKT or EWKT, WKB or EWKB (binary or hexadecimal), a
  * shapefile (a .shp with its .dbf, .prj and .cpg, or a .zip of them), TopoJSON, KML (or KMZ, a zip
- * holding it), GPX and FlatGeobuf.
+ * holding it), GPX, FlatGeobuf and GeoJSON.
  */
-export type DataFormat = "csv" | "wkt" | "wkb" | "shapefile" | "topojson" | "kml" | "gpx" | "flatgeobuf";
+export type DataFormat = "csv" | "wkt" | "wkb" | "shapefile" | "topojson" | "kml" | "gpx" | "flatgeobuf" | "geojson";
+
+/** The formats `mbmap/data` writes. */
+export type WriteFormat = "geojson" | "csv" | "kml";
+
+/**
+ * How `write` lays out CSV: `delimiter` one character (default `,`), `header` (default true);
+ * `geometryFormat`: `"wkt"` a column of WKT (named `geometry`, default `"wkt"`), `"lonlat"` a point's
+ * longitude and latitude (columns `longitude` and `latitude`, by default those names), `"none"`; by
+ * default `"none"` for rows without geometry, `"lonlat"` for points, else `"wkt"`.
+ */
+export interface CsvWriteOptions {
+  delimiter?: string;
+  header?: boolean;
+  geometryFormat?: "wkt" | "lonlat" | "none";
+  geometry?: string;
+  longitude?: string;
+  latitude?: string;
+}
 
 /** The files of a shapefile, each a URL, a Blob or bytes; only `shp` is needed. */
 export interface ShapefileParts<T> {
@@ -35,12 +53,12 @@ export interface CsvOptions {
 
 const EXTENSIONS: Record<string, DataFormat> = {
   csv: "csv", tsv: "csv", txt: "csv", wkt: "wkt", wkb: "wkb", ewkb: "wkb", shp: "shapefile", zip: "shapefile", topojson: "topojson",
-  kml: "kml", kmz: "kml", gpx: "gpx", fgb: "flatgeobuf",
+  kml: "kml", kmz: "kml", gpx: "gpx", fgb: "flatgeobuf", geojson: "geojson",
 };
 
 /**
  * The format a file name or URL path ends in (`.csv`, `.tsv`, `.txt`, `.wkt`, `.wkb`, `.ewkb`, `.shp`,
- * `.zip`, `.topojson`, `.kml`, `.kmz`, `.gpx`, `.fgb`), or null. TopoJSON in a `.json` is read only when `format` says so.
+ * `.zip`, `.topojson`, `.kml`, `.kmz`, `.gpx`, `.fgb`, `.geojson`), or null. TopoJSON in a `.json` is read only when `format` says so.
  */
 export function formatOf(name: string): DataFormat | null {
   const m = /\.([a-z]+)$/i.exec(name);
@@ -70,6 +88,21 @@ export function bboxArg(bbox: unknown): [number, number, number, number] {
     throw new Error("mbmap: data: invalid bbox: [minX, minY, maxX, maxY] of finite numbers, min at most max");
   }
   return [bbox[0], bbox[1], bbox[2], bbox[3]];
+}
+
+/** CSV write `options` as the data worker takes them (`delimiter` a character code); throws on invalid ones. */
+export function csvWriteArgs(options: CsvWriteOptions): { delimiter: number; header: boolean; geometryFormat?: string; geometry?: string; longitude?: string; latitude?: string } {
+  const { delimiter = ",", header = true, geometryFormat, geometry, longitude, latitude } = options;
+  const fail = (what: string): never => {
+    throw new Error(`mbmap: data: invalid ${what}`);
+  };
+  if (typeof delimiter !== "string" || delimiter.length !== 1 || delimiter.charCodeAt(0) > 127 || /["\r\n]/.test(delimiter)) fail("delimiter");
+  if (typeof header !== "boolean") fail("header");
+  if (geometryFormat !== undefined && !["wkt", "lonlat", "none"].includes(geometryFormat)) fail("geometryFormat");
+  for (const [what, name] of [["geometry", geometry], ["longitude", longitude], ["latitude", latitude]]) {
+    if (name !== undefined && (typeof name !== "string" || name === "" || name.includes("\0"))) fail(`${what} column`);
+  }
+  return { delimiter: delimiter.charCodeAt(0), header, geometryFormat, geometry, longitude, latitude };
 }
 
 /** Files picked together (as from `<input type="file" multiple>`) as a shapefile's parts, by their extensions; null without a .shp. */

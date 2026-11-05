@@ -45,6 +45,7 @@
     "geodesic:golden": "npm run build:moon && node geodesic/golden.mjs",
     "data:golden": "cd .. && moon build data_worker proj_worker --release --target wasm-gc && cd bench && node data/golden.mjs",
     "fgb:golden": "cd .. && moon build data_worker proj_worker --release --target wasm-gc && cd bench && node data/fgb-golden.mjs",
+    "write:golden": "cd .. && moon build data_worker xml_worker --release --target wasm-gc && cd bench && node data/write-golden.mjs",
     "xml:golden": "cd .. && moon build xml_worker --release --target wasm-gc && cd bench && node data/xml-golden.mjs",
     "draw:setdata": "npm --prefix ../npm run build && node draw/run.mjs",
     "style:golden": "npm --prefix ../npm run build && node style/golden.mjs",
@@ -60,6 +61,7 @@
   "devDependencies": {
     "@mapbox/vector-tile": "3.0.0",
     "@maplibre/geojson-vt": "6.3.0",
+    "@placemarkio/tokml": "0.4.0",
     "@protomaps/basemaps": "5.7.2",
     "@tmcw/togeojson": "7.1.3",
     "@turf/area": "7.4.0",
