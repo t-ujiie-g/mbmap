@@ -1,8 +1,9 @@
 // The data worker's reads (docs/FORMATS.md "Data worker messages") on bytes already
 // fetched, apart from its messages so that bench/data/golden.mjs runs them in Node.
+// Code pages as parsedbf 2.0.0's: MIT License, Copyright (c) 2013 Calvin Metcalf. See NOTICE.
 
 import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
-import { fetchInit, readCapped } from "../../worker/js/body.mjs";
+import { dataFetchInit, fetchInit, readCapped } from "../../worker/js/body.mjs";
 import { readString } from "../../worker/js/values.mjs";
 
 // The zip reader and the CRS conversion, imported with the first archive and the first data
@@ -15,6 +16,11 @@ const lonLat = (crs) => crs === undefined || crs === 4326;
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
+// `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
+const DEFINITION_SLOTS = 34;
+
+/** An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it. */
+export const isCrs = (c) => (Number.isInteger(c) && c > 0) || (c instanceof Float64Array && c.length === DEFINITION_SLOTS);
 
 // Code pages by number (a .cpg's `936`, `CP932`, `ANSI 1252`) and by DBF language driver id.
 const CODE_PAGES = { 932: "shift_jis", 936: "gbk", 949: "euc-kr", 950: "big5", 866: "ibm866", 874: "windows-874", 20932: "euc-jp", 65001: "utf-8" };
@@ -102,13 +108,14 @@ export async function kmlOfKmz(bytes, max = MAX_INPUT_BYTES) {
 
 // A source of a file's bytes for `readRaster`: `bytes`, a Blob read in slices, or `url` by range
 // requests (`init` as worker/js/body.mjs's `fetchInit` takes it), at most `max` bytes in all.
+// `key` names what is kept of it: other headers or credentials may get other bytes.
 export function rasterSource({ bytes, blob, url, init }, max) {
   if (bytes) return { bytes };
   if (blob) return { read: async (offset, length) => new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer()) };
   return {
-    key: url,
+    key: `${url} ${JSON.stringify(fetchInit(init))}`,
     async read(offset, length) {
-      const options = fetchInit(init);
+      const options = dataFetchInit(init);
       options.headers = { ...options.headers, Range: `bytes=${offset}-${offset + length - 1}` };
       const res = await fetch(url, options);
       if (res.status === 200) return { whole: await readCapped(res, max) };
@@ -167,8 +174,8 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     const fgb = await fgbModule();
     const { bbox } = options;
     const { bytes, ids } =
-      remote ? await fgb.selectUrl(remote.url, remote.init, bbox, MAX_INPUT_BYTES, { fetchInit, readCapped }) :
-      bbox !== undefined ? await fgb.selectBytes(data, bbox) :
+      remote ? await fgb.selectUrl(remote.url, remote.init, bbox, MAX_INPUT_BYTES, { fetchInit: dataFetchInit, readCapped }) :
+      bbox !== undefined ? await fgb.selectBytes(data, bbox, MAX_INPUT_BYTES) :
       { bytes: data, ids: -1 };
     const header = fgb.readHeader(bytes);
     input(wasm, [bytes]);

@@ -10,6 +10,8 @@ export const FIRST_BYTES = 16384;
 export const MAX_PART_BYTES = 32 * 1024 * 1024;
 const MAX_LEAF_DEPTH = 3;
 const MAX_DIRECTORIES = 64;
+/** Most directory entries an Archive keeps: each is an object, from as little as 4 bytes of a directory. */
+export const MAX_DIRECTORY_ENTRIES = 2_000_000;
 
 /** Tile types of the header: what `tileType` holds. */
 export const TILE_TYPES = ["unknown", "mvt", "png", "jpeg", "webp", "avif"];
@@ -136,11 +138,14 @@ async function decompress(bytes, compression) {
  * bytes): its header and directories are cached until a fetch of them fails, tiles fetched as asked.
  */
 export class Archive {
-  constructor(url, fetchRange) {
+  constructor(url, fetchRange, maxEntries = MAX_DIRECTORY_ENTRIES) {
     this.url = url;
     this.fetchRange = fetchRange;
+    this.maxEntries = maxEntries;
     this.first = null;
+    // Each directory's promise and its entry count (0 until it has them), oldest first.
     this.directories = new Map();
+    this.entries = 0;
   }
 
   /** The header, and the first bytes it came with. */
@@ -154,24 +159,42 @@ export class Archive {
     return this.first;
   }
 
+  forget(key) {
+    this.entries -= this.directories.get(key).entries;
+    this.directories.delete(key);
+  }
+
   async directory(offset, length) {
     const key = `${offset}:${length}`;
-    let dir = this.directories.get(key);
-    if (!dir) {
+    let kept = this.directories.get(key);
+    if (!kept) {
       if (length > MAX_PART_BYTES) throw new Error("PMTiles: directory too large");
       const { bytes, header } = await this.start();
-      dir = (async () => {
+      const dir = (async () => {
         const raw = offset + length <= bytes.length ? bytes.subarray(offset, offset + length) : await this.fetchRange(this.url, offset, length);
         return parseDirectory(await decompress(raw, header.internalCompression));
       })();
-      const settled = dir;
-      settled.catch(() => {
-        if (this.directories.get(key) === settled) this.directories.delete(key);
-      });
-      if (this.directories.size >= MAX_DIRECTORIES) this.directories.delete(this.directories.keys().next().value);
-      this.directories.set(key, dir);
+      const made = { dir, entries: 0 };
+      kept = made;
+      dir.then(
+        (entries) => {
+          if (this.directories.get(key) !== made) return;
+          made.entries = entries.length;
+          this.entries += entries.length;
+          // The newest stays even past the limit: a tile is waiting for it.
+          for (const k of this.directories.keys()) {
+            if (this.entries <= this.maxEntries || k === key) break;
+            this.forget(k);
+          }
+        },
+        () => {
+          if (this.directories.get(key) === made) this.forget(key);
+        },
+      );
+      if (this.directories.size >= MAX_DIRECTORIES) this.forget(this.directories.keys().next().value);
+      this.directories.set(key, made);
     }
-    return dir;
+    return kept.dir;
   }
 
   /** Tile z/x/y's bytes, decompressed; null where the archive has none. `signal` cancels its data's fetch only. */

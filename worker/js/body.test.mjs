@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchInit, readCapped } from "./body.mjs";
+import { dataFetchInit, fetchInit, readCapped } from "./body.mjs";
 
 const response = (chunks, headers = {}) => new Response(new ReadableStream({ start(c) { for (const x of chunks) c.enqueue(new Uint8Array(x)); c.close(); } }), { headers });
 
@@ -18,4 +18,11 @@ test("fetchInit: keeps string headers and a known credentials mode, omits creden
   const out = fetchInit({ credentials: "include", headers: { a: "1", b: 2 }, method: "POST" });
   assert.deepEqual(out, { signal: undefined, credentials: "include", headers: { a: "1" } });
   assert.equal(fetchInit({ credentials: "bogus" }).credentials, "omit");
+});
+
+test("dataFetchInit: fetchInit with a timeout", () => {
+  const out = dataFetchInit({ credentials: "include", headers: { a: "1" } });
+  assert.ok(out.signal instanceof AbortSignal);
+  assert.equal(out.credentials, "include");
+  assert.deepEqual(out.headers, { a: "1" });
 });

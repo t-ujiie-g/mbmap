@@ -1,3 +1,5 @@
+// Ported from papaparse 5.7.0: MIT License, Copyright (c) 2015 Matthew Holt. See NOTICE.
+
 ///|
 /// Most fields in a CSV row (AGENTS.md §8.2).
 pub const MAX_CSV_COLUMNS : Int32 = 4096

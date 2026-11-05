@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 let gpxx_namespace : String = "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
 
