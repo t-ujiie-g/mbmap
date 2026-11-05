@@ -1,7 +1,7 @@
-// The features under a click and the pointer's coordinates in React: every
-// feature found listed (click one to select and highlight it) and a table of
-// coordinates, from the controllers the plain-DOM examples draw differently.
+// The features under a click (every one listed: click one to highlight it) and the pointer's
+// coordinates in React, from the controllers the plain-DOM examples draw with the DOM.
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { createIdentify } from "mbmap/ui";
 import { createCoordinateReadout } from "../../shared/coordinates.js";
 import { createShowcaseDraw } from "../../shared/draw.js";
@@ -21,36 +21,27 @@ function Picked({ identify }) {
   return (
     <>
       {s.features.length > 1 && (
-        <ol className="react-features">
+        <div className="chips picked-nav">
           {s.features.map((f, i) => (
-            <li key={i}>
-              <button aria-pressed={i === s.index} onClick={() => identify.select(i)}>
-                {f.layer.id}
-                {f.properties.name ?? f.properties.knj ? `：${f.properties.name ?? f.properties.knj}` : ""}
-              </button>
-            </li>
+            <button key={i} aria-pressed={i === s.index} onClick={() => identify.select(i)}>
+              {f.layer.id}
+              {f.properties.name ?? f.properties.knj ? `：${f.properties.name ?? f.properties.knj}` : ""}
+            </button>
           ))}
-        </ol>
+        </div>
       )}
-      <dl id="picked">{rows.map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}</dl>
+      <dl id="picked" className="rows">{rows.map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}</dl>
     </>
   );
 }
 
-function Coordinates({ c }) {
+function Coordinates({ c, status }) {
   const s = useController(c);
-  return (
-    <table className="react-coordinates">
-      <caption>{s.source === "pointer" ? "ポインタ" : "中心"}の座標</caption>
-      <tbody>
-        {s.values.map((v) => (
-          <tr key={v.id}>
-            <th>{v.title}</th>
-            <td>{v.text}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+  return createPortal(
+    <dl className="coordinates">
+      {s.values.map((v) => <div key={v.id}><dt>{v.title}</dt><dd>{v.text}</dd></div>)}
+    </dl>,
+    status,
   );
 }
 
@@ -58,7 +49,7 @@ function Coordinates({ c }) {
  * The identify list, the coordinates table, the drawing, the measurement and its profile, their
  * controllers made once per map; clicks identify unless they measure or draw.
  */
-export function useIdentify(map) {
+export function useIdentify(map, status) {
   const [c, setC] = useState(null);
   useEffect(() => {
     if (!map) return;
@@ -75,5 +66,5 @@ export function useIdentify(map) {
       Object.values(next).forEach((x) => x.destroy());
     };
   }, [map]);
-  return c && { picked: <Picked identify={c.identify} />, coordinates: <Coordinates c={c.coordinates} />, measure: <Measure m={c.measurement} beforeStart={() => c.draw.setMode(null)} />, draw: <Draw draw={c.draw} />, profile: <Profile map={map} profile={c.profile} /> };
+  return c && { picked: <Picked identify={c.identify} />, coordinates: status && <Coordinates c={c.coordinates} status={status} />, measure: <Measure m={c.measurement} beforeStart={() => c.draw.setMode(null)} />, draw: <Draw draw={c.draw} />, profile: <Profile map={map} profile={c.profile} /> };
 }

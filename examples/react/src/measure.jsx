@@ -1,5 +1,4 @@
-// Measuring in React: the same controllers and readout rows as the plain-DOM
-// examples, the operations as a segmented toolbar and the profile's figures as a caption.
+// Measuring in React: the same controllers and readout rows as the plain-DOM examples.
 import { useEffect, useRef } from "react";
 import { measureActions, measuredRows } from "../../shared/measure.js";
 import { CHART, chartOf, distanceAt, profileRows, trackProfile } from "../../shared/profile.js";
@@ -9,26 +8,26 @@ export function Measure({ m, beforeStart }) {
   const s = useController(m);
   return (
     <>
-      <div id="measure" className="react-measure" role="toolbar" aria-label="計測">
+      <div id="measure" className="chips" role="toolbar" aria-label="計測">
         {measureActions(m, s, beforeStart).map(([label, f, enabled], i) => (
           <button key={label} disabled={!enabled} aria-pressed={i < 2 ? s.mode === (i === 0 ? "distance" : "area") : undefined} onClick={f}>
             {label}
           </button>
         ))}
       </div>
-      <dl id="measured">{measuredRows(s).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}</dl>
+      <dl id="measured" className="rows">{measuredRows(s).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}</dl>
     </>
   );
 }
 
-/** The profile as an SVG chart with the figures as a caption line; the place pointed at is a dot on the map. */
+/** The profile as an SVG chart with its figures; the place pointed at is a dot on the map. */
 export function Profile({ map, profile }) {
   const s = useController(profile);
   const ref = useRef(null);
   useEffect(() => trackProfile(map, profile, document.body), [map, profile]);
   const c = chartOf(s);
   return (
-    <figure id="profile" className="react-profile">
+    <figure id="profile">
       {c && (
         <svg
           ref={ref}
@@ -46,11 +45,7 @@ export function Profile({ map, profile }) {
           {c.at && <circle className="profile-at" cx={c.at.x} cy={c.at.y} r={3.5} />}
         </svg>
       )}
-      <figcaption>
-        {profileRows(s).map(([k, v], i) => (
-          <span key={i}>{k && <b>{k} </b>}{v}</span>
-        ))}
-      </figcaption>
+      <dl className="rows">{profileRows(s).map(([k, v], i) => [<dt key={`k${i}`}>{k}</dt>, <dd key={`v${i}`}>{v}</dd>])}</dl>
     </figure>
   );
 }

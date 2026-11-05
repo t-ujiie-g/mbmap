@@ -56,6 +56,12 @@ export const LAYER_GROUPS = [
   { name: "駅の略図", ids: ["sketch"] },
 ];
 
+/** The groups off at first: the map opens plain, and the panel turns these on. */
+export const HIDDEN_AT_START = new Set(["駅の密度", "散歩道", "駅の略図"]);
+
+/** The datasets read with mbmap/data by id, as `{ name, data }`: overlays that every new style keeps. */
+export const datasets = new Map();
+
 /** The basemaps (`createStyle`'s `basemap`): GSI's vector map, or its aerial photos with labels. */
 export const BASEMAPS = [
   { id: "map", title: "地図" },
@@ -71,11 +77,28 @@ export const LAYER_TITLES = {
   hillshade: "陰影", photo: "写真", sketch: "駅の略図",
 };
 
-/** A legend item's label: the attribute and its values as GSI codes them, or "その他". */
+// GSI's road classes (rdCtg).
+const ROAD_CLASSES = { 0: "国道", 1: "都道府県道", 2: "市区町村道", 3: "高速道路" };
+
+/** A legend item's label: GSI's road classes by name, other codes as they are, or "その他". */
 export function legendLabel(layer, category) {
   if (category.other) return "その他";
-  if (category.values) return category.values.join("・");
+  if (category.values) return category.values.map((v) => (layer.id === "road" || layer.id === "road-casing" ? ROAD_CLASSES[v] ?? v : v)).join("・");
   return undefined;
+}
+
+/** The GeoJSON source of a dataset. */
+export const datasetSource = (data) => ({ type: "geojson", data });
+
+/** A dataset's layers: its polygons, lines and points, kept apart by geometry. */
+export function datasetLayers(id) {
+  const metadata = { "mbmap:overlay": true };
+  const only = (...types) => ["in", ["geometry-type"], ["literal", types]];
+  return [
+    { id: `${id}-fill`, type: "fill", source: id, metadata, filter: only("Polygon", "MultiPolygon"), paint: { "fill-color": "#2f5bd0", "fill-opacity": 0.2 } },
+    { id: `${id}-line`, type: "line", source: id, metadata, filter: only("LineString", "MultiLineString", "Polygon", "MultiPolygon"), paint: { "line-color": "#2f5bd0", "line-width": 2 } },
+    { id: `${id}-point`, type: "circle", source: id, metadata, filter: only("Point", "MultiPoint"), paint: { "circle-radius": 6, "circle-color": "#2f5bd0", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } },
+  ];
 }
 
 /** The ids of the layers in the groups named in `hidden`. */
@@ -96,7 +119,7 @@ export const DEM_TILES = local ? `${fixtures}gsi-dem/{z}/{x}/{y}.png` : `${GSI}/
  * "2d" or "3d" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
  * named in `hidden`; the places are overlays, kept when the basemap changes.
  */
-export function createStyle(mode, hidden = new Set(), places = PLACES, basemap = "map") {
+export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, basemap = "map") {
   const sources = {
     gsi: local
       ? { type: "vector", tiles: [`${fixtures}gsi-bvmap/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 }
@@ -175,6 +198,10 @@ export function createStyle(mode, hidden = new Set(), places = PLACES, basemap =
       paint: { "text-color": "#8c2d1f", "text-halo-color": "#ffffff", "text-halo-width": 2 },
     },
   ];
+  for (const [id, { data }] of datasets) {
+    sources[id] = datasetSource(data);
+    layers.push(...datasetLayers(id));
+  }
   const off = hiddenLayers(hidden);
   for (const [i, l] of layers.entries()) {
     if (off.has(l.id)) layers[i] = { ...l, layout: { ...l.layout, visibility: "none" } };
