@@ -1,18 +1,12 @@
-// The panel's basemaps, layer list and legend in React: radio buttons,
-// checkboxes and a collapsible legend over the same controllers the plain-DOM
-// examples draw as buttons (shared/panel.js makes them).
+// The panel's basemaps, layer list and legend in React, over the controllers shared/panel.js makes.
 import { css } from "../../shared/panel.js";
 import { useController } from "./use-controller.js";
 
 export function Basemaps({ c }) {
   const s = useController(c);
   return (
-    <div role="radiogroup" aria-label="背景地図" className="react-choices">
-      {s.basemaps.map((b) => (
-        <label key={b.id}>
-          <input type="radio" name="basemap" checked={s.active === b.id} onChange={() => c.select(b.id)} /> {b.title}
-        </label>
-      ))}
+    <div id="basemaps" className="segmented">
+      {s.basemaps.map((b) => <button key={b.id} aria-pressed={s.active === b.id} onClick={() => c.select(b.id)}>{b.title}</button>)}
     </div>
   );
 }
@@ -20,50 +14,37 @@ export function Basemaps({ c }) {
 export function LayerChecklist({ c }) {
   const s = useController(c);
   return (
-    <div className="react-choices">
+    <div id="layers" className="toggles">
       {s.items.map((i) => (
         <label key={i.id} className={i.inRange ? "" : "out-of-range"}>
-          <input
-            type="checkbox"
-            checked={i.visible}
-            disabled={i.layers.length === 0}
-            ref={(el) => el && (el.indeterminate = i.mixed)}
-            onChange={() => c.toggle(i.id)}
-          />{" "}
           {i.title}
+          <input type="checkbox" checked={i.visible} disabled={i.layers.length === 0} ref={(el) => el && (el.indeterminate = i.mixed)} onChange={() => c.toggle(i.id)} />
         </label>
       ))}
     </div>
   );
 }
 
-function Swatch({ type, color }) {
-  const style = { background: css(color) };
-  if (type === "line") return <svg width="18" height="8"><line x1="1" y1="4" x2="17" y2="4" stroke={css(color)} strokeWidth="3" /></svg>;
-  if (type === "circle") return <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={css(color)} /></svg>;
-  if (type === "symbol") return <b style={{ color: css(color) }}>Aa</b>;
-  return <span className="react-swatch" style={style} />;
-}
+const Swatch = ({ type, color }) => <span className={`swatch swatch-${type}`} style={{ "--color": css(color) }} />;
 
 export function Legend({ c }) {
   const s = useController(c);
   const entries = s.entries.filter((e) => e.visible && e.items.length > 0);
   return (
-    <details open className="react-legend">
-      <summary>凡例（{entries.length}）</summary>
-      <table>
-        <tbody>
-          {entries.flatMap((e) =>
-            e.items.map((i, k) => (
-              <tr key={`${e.id}/${k}`}>
-                <td><Swatch type={e.type} color={i.paint.color} /></td>
-                <td>{k === 0 ? e.title : ""}</td>
-                <td>{e.kind === "single" ? "" : i.label}</td>
-              </tr>
-            )),
-          )}
-        </tbody>
-      </table>
+    <details className="legend">
+      <summary>凡例</summary>
+      <ul id="legend">
+        {entries.map((e) =>
+          e.kind === "single" ? (
+            <li key={e.id}><Swatch type={e.type} color={e.items[0].paint.color} /><span>{e.title}</span></li>
+          ) : (
+            <li key={e.id}>
+              <span>{e.title}</span>
+              <ul>{e.items.map((i, k) => <li key={k}><Swatch type={e.type} color={i.paint.color} /> {i.label}</li>)}</ul>
+            </li>
+          ),
+        )}
+      </ul>
     </details>
   );
 }

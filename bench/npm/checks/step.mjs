@@ -56,3 +56,6 @@ export async function mapState(page) {
   const late = new Promise((resolve) => setTimeout(() => resolve("no answer after 5 s"), 5000));
   return Promise.race([state.catch((e) => `failed: ${e.message}`), late]);
 }
+
+/** Opens the showcase panel's tab `id`. */
+export const openTab = (page, id) => page.click(`.tabs button[data-tab=${id}]`);
