@@ -565,6 +565,23 @@ longitude, latitude) before the table, `delimiter` a character code, `mode` 0 (n
 geometryFormat, geometry, longitude, latitude}`. KML: xml.wasm's `write_kml(ids)` takes the table,
 then `ids` bytes of ids. Both write numbers through `host.number_text` (`String(x)`).
 
+A raster read (`op: "readRaster"`) takes `url` (with `init`), `blob` or `bytes` and `options`
+(npm/src/data.ts `RasterOptions`) and answers with npm/src/data.ts `Raster` (bands as typed
+arrays, transferred). geotiff.wasm (`geotiff_worker`, no imports): `parse()` reads the input (the
+file's first bytes) and writes "GeoTIFF images", or returns -3 when it needs more (`need()` bytes
+from the start); `window(image, x0, y0, x1, y1, fill)` takes u32 sample indices; `block(index,
+decoded)` takes one block's bytes (`decoded` 1 when the host inflated or decoded them); `empty(index,
+value)` fills a block of no bytes; `bands()` writes each band's little-endian values, padded to 8 bytes.
+
+## GeoTIFF images (`geotiff_worker/read.mbt` `parse`)
+
+u32 little-endian (1 or 0), u32 image count; per image: i32 width, height, tiled (0 or 1), block
+width, block height, samples, planar, compression, predictor, photometric (-1 absent), NewSubfileType,
+SubfileType, EPSG code (0 for none), raster type; per sample u32 bits and u32 sample format; then f64
+arrays (u32 count, values) ModelPixelScale, ModelTiepoint, ModelTransformation, block offsets, block
+byte counts; u8 1, a u32 length and UTF-8 for GDAL_NODATA's text, else u8 0; i32 JPEGTables
+length (-1 absent) and its bytes; padding to 4.
+
 Out: `{type: "result", id, value: {table, ids, layer, layers}}` with `table` an ArrayBuffer of
 "Table" bytes and `ids` of the ids' property values or null (both transferred), `layer` the layer
 read or null and `layers` every layer of the input; or `{type: "result", id, error}`.

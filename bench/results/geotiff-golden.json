@@ -1,0 +1,375 @@
+{
+  "env": {
+    "node": "v22.23.4",
+    "geotiff": "3.0.5"
+  },
+  "results": {
+    "bytes": {
+      "cases": 280,
+      "values": 22477276,
+      "identical": 280,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "http": {
+      "cases": 17,
+      "values": 1373518,
+      "identical": 17,
+      "bothRefuse": 0,
+      "differ": 0
+    },
+    "refused": {
+      "cases": 7,
+      "values": 0,
+      "identical": 0,
+      "bothRefuse": 7,
+      "differ": 0
+    }
+  },
+  "meta": {
+    "DEM float32 tiled 64 none": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 1049386
+    },
+    "DEM float32 tiled 128 LZW predictor 3": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 720165
+    },
+    "DEM float32 tiled 64 Deflate predictor 3": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 581836
+    },
+    "DEM float32 strips of 16 Deflate": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 835166
+    },
+    "DEM float32 strips of 37 LZW": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 922233
+    },
+    "DEM float64 tiled 64 Deflate predictor 3": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 1250168
+    },
+    "DEM float16 tiled 64 LZW": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 282239
+    },
+    "DEM int16 tiled 64 LZW predictor 2": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 178897
+    },
+    "DEM uint16 decimeters strips PackBits": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 529068
+    },
+    "DEM int32 centimeters tiled Deflate predictor 2": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 513473
+    },
+    "DEM uint32 tiled none": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 1049130
+    },
+    "DEM int8 classes strips LZW": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 56883
+    },
+    "DEM float32 big-endian tiled LZW": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 839750
+    },
+    "DEM float32 big-endian predictor 3": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 581836
+    },
+    "DEM int16 big-endian strips none": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 524638
+    },
+    "DEM float32 BigTIFF tiled Deflate": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 800594
+    },
+    "DEM float32 BigTIFF big-endian": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 862656
+    },
+    "DEM with empty tiles and nodata": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 763752
+    },
+    "DEM with empty tiles, no nodata": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 500522
+    },
+    "DEM with ModelTransformation": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 1049430
+    },
+    "DEM in EPSG:6677, PixelIsPoint": {
+      "bbox": true,
+      "crs": 6677,
+      "images": 1,
+      "bytes": 1049386
+    },
+    "DEM with overviews (COG layout)": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 3,
+      "bytes": 782009
+    },
+    "map RGB tiled LZW predictor 2": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 192236
+    },
+    "map RGB planar 2 strips PackBits": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 198671
+    },
+    "map RGB planar 2 tiled Deflate": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 161799
+    },
+    "map red as 1-bit": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 8550
+    },
+    "map red as 4-bit tiled": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 24578
+    },
+    "DEM as 12-bit": {
+      "bbox": true,
+      "crs": 4326,
+      "images": 1,
+      "bytes": 339321
+    }
+  },
+  "http": {
+    "DEM with overviews (COG layout)": {
+      "ours": 8,
+      "theirs": 38
+    },
+    "DEM float32 tiled 128 LZW predictor 3": {
+      "ours": 12,
+      "theirs": 48
+    },
+    "map RGB planar 2 tiled Deflate": {
+      "ours": 24,
+      "theirs": 49
+    },
+    "DEM float32 BigTIFF big-endian": {
+      "ours": 12,
+      "theirs": 48
+    }
+  },
+  "deviations": [
+    {
+      "label": "DEM float32 tiled 64 none: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 tiled 128 LZW predictor 3: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 tiled 64 Deflate predictor 3: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 strips of 16 Deflate: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 strips of 37 LZW: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float64 tiled 64 Deflate predictor 3: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float16 tiled 64 LZW: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM int16 tiled 64 LZW predictor 2: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM uint16 decimeters strips PackBits: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM int32 centimeters tiled Deflate predictor 2: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM uint32 tiled none: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM int8 classes strips LZW: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 big-endian tiled LZW: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 big-endian predictor 3: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM int16 big-endian strips none: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 BigTIFF tiled Deflate: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM float32 BigTIFF big-endian: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM with empty tiles and nodata: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM with empty tiles, no nodata: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM with ModelTransformation: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM in EPSG:6677, PixelIsPoint: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM with overviews (COG layout): width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "map RGB tiled LZW predictor 2: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "map RGB planar 2 strips PackBits: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "map RGB planar 2 tiled Deflate: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "map red as 1-bit: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "map red as 4-bit tiled: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "DEM as 12-bit: width alone",
+      "ok": true,
+      "why": "geotiff gives empty bands for a width without a height"
+    },
+    {
+      "label": "cut at 841810 of 841910",
+      "ok": true,
+      "why": "geotiff reads past its buffer"
+    },
+    {
+      "label": "cut at 4000 of 841910",
+      "ok": true,
+      "why": "geotiff reads past its buffer"
+    },
+    {
+      "label": "cut at 9 of 841910",
+      "ok": true,
+      "why": "geotiff reads past its buffer"
+    }
+  ],
+  "differ": 0
+}

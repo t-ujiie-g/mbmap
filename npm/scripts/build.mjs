@@ -21,6 +21,7 @@ run("moon", ["build", "proj_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "geodesic_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "data_worker", "--target", "wasm-gc", "--release"], ROOT);
 run("moon", ["build", "xml_worker", "--target", "wasm-gc", "--release"], ROOT);
+run("moon", ["build", "geotiff_worker", "--target", "wasm-gc", "--release"], ROOT);
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 
@@ -63,8 +64,8 @@ await build({ ...common, entryPoints: [path.join(PKG, "src/geodesic.ts")], outfi
 await build({ ...common, entryPoints: [path.join(ROOT, "geodesic_worker/js/worker.mjs")], outfile: path.join(DIST, "geodesic-worker.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/data.ts")], outfile: path.join(DIST, "data.js"), plugins: [projstringEntry] });
 // The zip reader, the CRS conversion and FlatGeobuf's index stay files of their own, imported by the data worker on first use.
-const DATA_PARTS = { "../../npm/src/zip.ts": "data-zip.js", "./crs.mjs": "data-crs.js", "./fgb.mjs": "data-fgb.js" };
-const dataParts = { name: "data-parts", setup: (b) => b.onResolve({ filter: /^(\.\.\/\.\.\/npm\/src\/zip\.ts|\.\/crs\.mjs|\.\/fgb\.mjs)$/ }, (a) => ({ path: `./${DATA_PARTS[a.path]}`, external: true })) };
+const DATA_PARTS = { "../../npm/src/zip.ts": "data-zip.js", "./crs.mjs": "data-crs.js", "./fgb.mjs": "data-fgb.js", "./geotiff.mjs": "data-geotiff.js" };
+const dataParts = { name: "data-parts", setup: (b) => b.onResolve({ filter: /^(\.\.\/\.\.\/npm\/src\/zip\.ts|\.\/crs\.mjs|\.\/fgb\.mjs|\.\/geotiff\.mjs)$/ }, (a) => ({ path: `./${DATA_PARTS[a.path]}`, external: true })) };
 await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js/worker.mjs")], outfile: path.join(DIST, "data-worker.js"), plugins: [dataParts] });
 for (const [source, file] of Object.entries(DATA_PARTS)) {
   await build({ ...common, entryPoints: [path.join(ROOT, "data_worker/js", source)], outfile: path.join(DIST, file) });
@@ -84,6 +85,7 @@ await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_wo
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geodesic_worker/geodesic_worker.wasm"), path.join(DIST, "geodesic.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/data_worker/data_worker.wasm"), path.join(DIST, "data.wasm"));
 await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/xml_worker/xml_worker.wasm"), path.join(DIST, "xml.wasm"));
+await copyFile(path.join(ROOT, "_build/wasm-gc/release/build/geotiff_worker/geotiff_worker.wasm"), path.join(DIST, "geotiff.wasm"));
 const tsc = path.join(PKG, "node_modules/typescript/bin/tsc");
 run(process.execPath, [tsc, "-p", path.join(PKG, "tsconfig.json")], PKG);
 run(process.execPath, [tsc, "-p", path.join(ROOT, "element/tsconfig.json")], PKG);

@@ -58,6 +58,7 @@ Worker と wasm：
 | `dist/data-worker.js`, `dist/data.wasm` | `mbmap/data` の Worker と wasm。初めて呼んだときに起こす |
 | `dist/data-zip.js`, `dist/data-crs.js`, `dist/data-fgb.js`, `dist/prjwkt.js` | データの Worker の部品。zip、4326 以外の座標、FlatGeobuf、`.prj` を初めて扱うときに、`data-worker.js` が自分の隣から読む（`prjwkt.js` は `data.js` の隣） |
 | `dist/xml.wasm` | KML と GPX の読み込みと KML の書き出し。データの Worker が、初めて KML か GPX を扱うときだけ読む |
+| `dist/geotiff.wasm`, `dist/data-geotiff.js` | GeoTIFF・COG の読み込み。データの Worker が、初めて `readRaster` を呼ぶときだけ読む |
 
 どのファイルも、既定では `new URL("./worker.js", import.meta.url)` のように、読み込む側のモジュールの隣から読む。ESM をそのまま配信する場合（import map など）は、`dist/` をまるごと置けばそのまま動く。バンドラを使う場合、この書き方を解釈するかどうかはバンドラと設定によって違う。esbuild はこの `new URL` をそのまま残し、動的 import はバンドルに入れるので、Worker と wasm（`dist/` の `*.wasm` と `*worker*.js`）をバンドルの隣にコピーすれば動く（`examples/react/build.mjs`）。ほかのバンドラはまだ検証していない。動かないときは、ファイルを自分で配信して場所を渡す。
 
@@ -226,6 +227,7 @@ blocks.dispose();
   - 値は proj4js 2.22.0 と 1mm 未満で一致する（240 の座標系で黄金テストをしている）。proj4js が明らかに誤っているところ（`+R_A` の半径、正弦図法などの偽原点）は PROJ に合わせた。
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
 - `DemGrid.sample(positions)`：`[lng, lat]` ごとの標高（m）。セルの中心の間を双一次で補間する（GDAL の `-r bilinear` と同じ。黄金テストで 1e-8 m の桁まで一致）。格子の外と、データのないセルの隣は NaN。
+- `loadGrid(raster, { band, scale })`：`mbmap/data` の `readRaster` で読んだ GeoTIFF の帯（既定は 0）を `DemGrid` にする。`noData` のセルは値なし。セルの大きさは解像度を `scale`（gdaldem の `-s`。経緯度の度とメートルなら 111120）で割ったもの。GeoKeys が PixelIsPoint なら、GDAL と同じく画素の中心がタイポイントに来る。`sample` は経緯度を受け取り、GeoTIFF の座標系へは `proj.wasm` で変える。一辺 4096 セルまで。
 - `sampleDem(tiles, positions, { encoding, maxZoom, tileSize })`：`positions` を覆う標高タイルを、1 つの格子に収まるいちばん深いズーム（既定で 14 まで、24 が上限）で読み、標高を返す。`tileSize` は 256〜4096。サーバーにないタイル（404）は、`loadDem` と同じく 0 m として扱う。1 つの格子に入りきらないほどのタイル（一辺 16 枚を超えるもの）は、取得する前に断る。
 - `distance(from, to)`：2点間の大圏距離（m）。Worker を使わずに同期で計算する。
 - `terminate()`：Worker を止める。読み込んだデータは失われる。
@@ -298,6 +300,11 @@ const near = await read("https://example.com/buildings.fgb", { bbox: [139.76, 35
 import { write } from "mbmap/data";
 const csv = await write(stations, { format: "csv" });            // DataTable を CSV（点は経度・緯度の列）に
 const kml = await write(drawnFeatures, { format: "kml" });       // GeoJSON の地物（作図したものなど）を KML に
+
+import { readRaster } from "mbmap/data";
+import { loadGrid } from "mbmap/analysis";
+const dem = await readRaster("https://example.com/dem-cog.tif", { bbox: [138.7, 35.3, 138.8, 35.4] }); // COG の範囲だけ
+const grid = await loadGrid(dem, { scale: 111120 });  // 経緯度の DEM の傾斜・陰影
 ```
 
 - `read(input, options)`：`input` は http(s) の URL（文字列か `URL`。ページを基準に解決し、資格情報なしで取得する）、`Blob`・`File`、`ArrayBuffer`・型付き配列（コピーする）、Shapefile の部品（`FileList` か `File` の配列。拡張子で見分ける。または `{ shp, dbf, prj, cpg }` で、それぞれ URL・Blob・バイト列）。文字列はいつも URL として扱う。文字列のデータは `parse(text, { format })` に渡す。
@@ -340,6 +347,12 @@ const kml = await write(drawnFeatures, { format: "kml" });       // GeoJSON の�
   - どれも `npm run write:golden` で参照の実装とバイト単位で一致することを確かめている。
 - 値は papaparse 5.7.0（`header`、`dynamicTyping`、`skipEmptyLines`）、betterknown 1.2.0（WKT）、wkx 0.5.0（WKB）、shpjs 6.2.0（Shapefile。`.prj` の変換も）、topojson-client 3.1.0（TopoJSON）と一致し、ほかの座標系からの経緯度は proj4 2.22.0 と 1e-8° 以内で一致することを黄金テストで確かめている（`npm run data:golden`）。KML と GPX は @tmcw/togeojson 7.1.3 ＋ @xmldom/xmldom 0.9.12 と一致する（`npm run xml:golden`）。FlatGeobuf は flatgeobuf 4.6.1 と、バイト列からも HTTP の範囲リクエストでも一致する（`npm run fgb:golden`）。違うのは、参照の実装が緩く受け付けるもの（WKT の後ろの余分な文字列、`1a` のような数、型の違う Multi の要素、0 と 1 以外のバイト順、途中で切れた `.shp`、Topology でない TopoJSON）を失敗にするところ、タグのない Z 座標を読むところ、Shapefile の 4 つ（輪の向き、内外判定での穴の割り当て、削除されたレコード、日付を文字列に）と、論理値の `?` を null にするところ。
 - 入力は 256MB、点は 2000 万、CSV の欄は 1 行に 4096、1 つの欄は 16MB、属性の欄の数（行 × 列。CSV と `.dbf`）は 3200 万まで。XML は入れ子 256 段、1 つの要素の属性 1024、ノード 400 万まで。KML と GPX の地物の属性は 4096、表の欄（行 × 列）は 3200 万、点は 2000 万まで。宣言した実体（`<!ENTITY>`）は xmldom と同じく展開しない。FlatGeobuf のヘッダーは 10MB まで（flatgeobuf と同じ）、`bbox` で読むバイトは合わせて 256MB まで。
+- GeoTIFF・COG `readRaster(input, options)`：`input` は http(s) の URL（範囲リクエストで、窓に重なるブロックだけを読む。近いブロックはまとめて 1 回で）、`Blob`（必要なところだけ切り出して読む）、バイト列。geotiff 3.0.5 の `readRasters` と同じ値を返す。
+  - `options`：`window`（読む画像の画素 `[x0, y0, x1, y1]`、終わりは含まない。画像の外は `fillValue`、既定 0）か `bbox`（ファイルの座標系）、`width`・`height`・`resX`・`resY`（いちばん粗くて足りる概観図を選び、その大きさにリサンプリング。`resampleMethod` は `"nearest"` か `"bilinear"`）、`image`（画像を番号で選ぶ）、`samples`（帯の番号）。
+  - 結果：`width`、`height`、`bands`（帯ごとの Uint8Array・Int8Array・Uint16Array・Int16Array・Uint32Array・Int32Array・Float32Array・Float64Array）、`bbox`・`resolution`（ジオタグがなければ null）、`crs`（GeoKeys の EPSG コード、なければ null）、`noData`（GDAL_NODATA）、`window`、`image`、`images`、`pixelIsPoint`。
+  - 読めるもの：TIFF と BigTIFF（どちらのバイト順も）、ストリップとタイル、planar 1・2、非圧縮・LZW・Deflate・PackBits・JPEG・WebP（JPEG と WebP はブラウザで復号）、予測子 2・3、符号なし 1〜16 と 32 ビット、符号付き 8・16・32 ビット、浮動小数点 16・32・64 ビット、バイト数 0 のブロック（no data か 0）。LERC と ZSTD は失敗する。
+  - geotiff と違うところ：ビッグエンディアンで予測子のあるファイルを仕様どおりに読む（geotiff はリトルエンディアンとして戻す）、`width` だけを渡すと窓の高さのまま幅だけリサンプリングする（geotiff は空の帯を返す）、途中で切れたファイルは失敗する。値は `npm run geotiff:golden` で、バイト列からも HTTP の範囲リクエストでも一致することを確かめている。
+  - 初めて読むときに `geotiff.wasm` と `data-geotiff.js`（合わせて gzip で約 17KB）を読み込む。
 - 初めて呼んだときに、専用の Worker と wasm（gzip で約 38KB）を読み込む。KML か GPX を初めて読むときに、もう 1 つの wasm（`xml.wasm`、約 22KB）を読む。`terminate()` で止める。
 
 ## Web Component `<mb-map>`

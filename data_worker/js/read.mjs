@@ -10,6 +10,7 @@ import { readString } from "../../worker/js/values.mjs";
 const zipModule = () => import("../../npm/src/zip.ts");
 const crsModule = () => import("./crs.mjs");
 const fgbModule = () => import("./fgb.mjs");
+const geotiffModule = () => import("./geotiff.mjs");
 const lonLat = (crs) => crs === undefined || crs === 4326;
 
 const decoder = new TextDecoder();
@@ -99,12 +100,27 @@ export async function kmlOfKmz(bytes, max = MAX_INPUT_BYTES) {
   return read(entry);
 }
 
-/**
- * A reader over data.wasm (`imports` from `dataImports`): `read(format, parts, options)` with `parts.data`
- * or a shapefile's `shp`, `dbf`, `prj`, `cpg` bytes gives `{ table, ids, layer, layers }`; `proj()`,
- * `prj()` and `xml()` load proj.wasm's exports, npm/src/prjwkt.ts and xml.wasm's exports on first use.
- */
-export function dataReader(wasm, imports, { proj, prj, xml }) {
+// A source of a file's bytes for `readRaster`: `bytes`, a Blob read in slices, or `url` by range
+// requests (`init` as worker/js/body.mjs's `fetchInit` takes it), at most `max` bytes in all.
+export function rasterSource({ bytes, blob, url, init }, max) {
+  if (bytes) return { bytes };
+  if (blob) return { read: async (offset, length) => new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer()) };
+  return {
+    async read(offset, length) {
+      const options = fetchInit(init);
+      options.headers = { ...options.headers, Range: `bytes=${offset}-${offset + length - 1}` };
+      const res = await fetch(url, options);
+      if (res.status === 200) return { whole: await readCapped(res, max) };
+      if (res.status !== 206) throw new Error(`HTTP ${res.status} for ${url}`);
+      if (!res.headers.get("content-range")?.startsWith(`bytes ${offset}-`)) throw new Error(`${url} answered another range`);
+      return readCapped(res, length);
+    },
+  };
+}
+
+/** A reader over data.wasm (`imports` from `dataImports`): `read`, `write` and `readRaster` as the worker's messages;
+ * `proj()`, `prj()`, `xml()` and `geotiff()` load proj.wasm, npm/src/prjwkt.ts, xml.wasm and geotiff.wasm on first use. */
+export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
   async function shapefile(files, options) {
     const { shp, dbf, cpg, prj: prjBytes } = files;
     if (!shp) throw new Error("no .shp");
@@ -230,5 +246,10 @@ export function dataReader(wasm, imports, { proj, prj, xml }) {
     input(wasm, [names, t]);
     return output(wasm, wasm.write_csv(names.length, delimiter, header ? 1 : 0, mode));
   }
-  return { read, write };
+  /** A window of the GeoTIFF of `source` (see `rasterSource`) as npm/README.md's `readRaster` gives it. */
+  async function readRaster(source, options) {
+    const [m, g] = await Promise.all([geotiffModule(), geotiff()]);
+    return m.readRaster(source, options, { wasm: g, input, output, max: MAX_INPUT_BYTES });
+  }
+  return { read, write, readRaster };
 }

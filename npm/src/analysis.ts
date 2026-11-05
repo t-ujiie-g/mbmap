@@ -317,6 +317,39 @@ export class DemGrid {
   }
 }
 
+/** A raster as mbmap/data's `readRaster` gives it, only what `loadGrid` reads: `bands` (rows from the north),
+ * `bbox` and `resolution` in `crs` (an EPSG code, null for EPSG:4326), `noData`, `pixelIsPoint`. */
+export interface GridRaster {
+  width: number;
+  height: number;
+  bands: ArrayLike<number>[];
+  bbox: BBox | null;
+  resolution: [number, number] | null;
+  crs: number | null;
+  noData: number | null;
+  pixelIsPoint?: boolean;
+}
+
+/** Band `band` (default 0) of `raster` as an elevation grid, `noData` cells empty, cells the resolution divided by
+ * `scale` (gdaldem's `-s`), PixelIsPoint as GDAL reads it; `sample` takes longitude and latitude (npm/README.md). */
+export async function loadGrid(raster: GridRaster, options: AnalysisOptions & { band?: number; scale?: number } = {}): Promise<DemGrid> {
+  const { band = 0, scale = 1 } = options;
+  const { width, height, bands, bbox, resolution, crs, noData } = raster ?? ({} as GridRaster);
+  const values = bands?.[band];
+  if (!values || values.length !== width * height) throw new Error("mbmap: analysis: invalid raster or band");
+  if (!(Number.isFinite(scale) && scale > 0)) throw new Error("mbmap: analysis: invalid scale");
+  if (!Array.isArray(resolution) || !resolution.every((r) => Number.isFinite(r) && r !== 0) || !Array.isArray(bbox)) throw new Error("mbmap: analysis: a raster without geo tags (resolution and bbox)");
+  const f64 = Float64Array.from(values, (v) => (v === noData ? NaN : v));
+  const [rx, ry] = resolution;
+  const half = raster.pixelIsPoint ? 0.5 : 0;
+  const origin = [(rx > 0 ? bbox[0] : bbox[2]) - half * rx, (ry < 0 ? bbox[3] : bbox[1]) - half * ry];
+  start(options);
+  const r = await call<{ grid: number; width: number; height: number; bounds: BBox }>("loadGrid", {
+    values: f64.buffer, width, height, res: [Math.abs(rx) / scale, Math.abs(ry) / scale], origin, step: [rx, ry], crs: crs ?? 4326,
+  }, [f64.buffer]);
+  return new DemGrid(r.grid, r.width, r.height, r.bounds);
+}
+
 /** Mosaics the DEM tiles of `tiles` (a `{z}/{x}/{y}` http(s) template) covering `bounds` into a grid. */
 export async function loadDem(tiles: string, options: DemOptions): Promise<DemGrid> {
   start(options);

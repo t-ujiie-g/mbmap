@@ -101,7 +101,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3500,
+      "bytes": 3790,
       "budget": 5000
     },
     {
@@ -111,7 +111,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28128,
+      "bytes": 28597,
       "budget": 30000
     },
     {
@@ -136,12 +136,12 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 3842,
+      "bytes": 4179,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 38106,
+      "bytes": 38460,
       "budget": 40000
     },
     {
@@ -168,6 +168,11 @@
       "name": "KML and GPX (loaded by the data worker on the first such read)",
       "bytes": 25660,
       "budget": 26000
+    },
+    {
+      "name": "GeoTIFF (loaded by the data worker on the first raster read)",
+      "bytes": 16647,
+      "budget": 20000
     },
     {
       "name": "mbmap/ui createAttribution alone",

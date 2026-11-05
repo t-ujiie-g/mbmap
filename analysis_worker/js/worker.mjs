@@ -185,9 +185,28 @@ async function reproject(dataset, from, to) {
   return { dataset: id, features: wasm.feature_count(id) };
 }
 
+// Each GeoTIFF grid's north-west corner, cell step (x, y; y negative north up) and CRS, for `gridSample`.
+const rasterGrids = new Map();
+// A band (f64s, NaN for no data) as a grid of `res` cells; `bbox` [x0, y0, x1, y1] in `crs`
+// (an EPSG code, 4326 by default), its corners taken to longitude and latitude for `bounds`.
+async function loadGrid({ values, width, height, res, origin, step, crs = 4326 }) {
+  check(values instanceof ArrayBuffer && Number.isInteger(width) && Number.isInteger(height) && values.byteLength === width * height * 8);
+  check([...res, ...origin, ...step].every(Number.isFinite) && res.length === 2 && origin.length === 2 && step.length === 2 && isCrs(crs));
+  if (width > MAX_GRID_SIDE || height > MAX_GRID_SIDE) throw new Error(`a grid of ${width} x ${height} cells is too large`);
+  input(new Uint8Array(values));
+  const grid = counted(wasm.load_grid(width, height, res[0], res[1]));
+  rasterGrids.set(grid, { origin, step, crs });
+  const corners = new Float64Array([0, 0, width, 0, 0, height, width, height].map((v, i) => origin[i % 2] + v * step[i % 2]));
+  const ll = crs === 4326 ? corners : await OPS.transform({ coords: corners.buffer, from: crs, to: 4326 });
+  const xs = [ll[0], ll[2], ll[4], ll[6]];
+  const ys = [ll[1], ll[3], ll[5], ll[7]];
+  return { grid, width, height, bounds: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+}
+
 const OPS = {
   load,
   loadDem,
+  loadGrid,
   gridValues({ grid, kind }) {
     check(isId(grid) && Number.isInteger(kind));
     return f64s(wasm.grid_values(grid, kind));
@@ -202,10 +221,23 @@ const OPS = {
     check(isId(dataset));
     wasm.dispose(dataset);
     demTiles.delete(dataset);
+    rasterGrids.delete(dataset);
     return null;
   },
-  gridSample({ grid, coords }) {
-    check(demTiles.has(grid) && coords instanceof ArrayBuffer && coords.byteLength % 16 === 0);
+  async gridSample({ grid, coords }) {
+    check((demTiles.has(grid) || rasterGrids.has(grid)) && coords instanceof ArrayBuffer && coords.byteLength % 16 === 0);
+    const raster = rasterGrids.get(grid);
+    if (raster) {
+      // Longitude and latitude to the grid's CRS, then to pixels from its north-west corner.
+      const { origin, step, crs } = raster;
+      const xy = new Float64Array(crs === 4326 ? coords : await OPS.transform({ coords, from: 4326, to: crs }));
+      for (let i = 0; i < xy.length; i += 2) {
+        xy[i] = (xy[i] - origin[0]) / step[0];
+        xy[i + 1] = (xy[i + 1] - origin[1]) / step[1];
+      }
+      input(new Uint8Array(xy.buffer));
+      return f64s(wasm.grid_sample_pixels(grid));
+    }
     input(new Uint8Array(coords));
     return f64s(wasm.grid_sample(grid, ...demTiles.get(grid)));
   },

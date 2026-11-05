@@ -1,0 +1,80 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/tiff"
+
+// Values
+pub const MAX_ENTRIES : Int32 = 4096
+
+pub const MAX_IMAGES : Int32 = 256
+
+pub const MAX_VALUES : Int32 = 16777216
+
+pub const MAX_WINDOW_BYTES : Int32 = 268435456
+
+pub fn band_bytes(Int32, Int32) -> Int32
+
+pub fn lzw(BytesView, Int32) -> FixedArray[Byte] raise TiffError
+
+pub fn packbits(BytesView, Int32) -> FixedArray[Byte]
+
+pub fn read_tiff(BytesView) -> (Array[Image], Bool) raise TiffError
+
+pub fn unpack_bits(FixedArray[Byte], Int32, Int32, Int32, Int32) -> FixedArray[Byte] raise TiffError
+
+pub fn unpredict(FixedArray[Byte], Int32, Int32, Int32, Int32, Int32, Bool) -> Unit raise TiffError
+
+// Errors
+pub(all) suberror TiffError {
+  Invalid(Int32, String)
+  Truncated(Double)
+}
+pub fn TiffError::message(Self) -> String
+
+// Types and methods
+pub struct Image {
+  width : Int32
+  height : Int32
+  tiled : Bool
+  block_width : Int32
+  block_height : Int32
+  samples : Int32
+  bits : Array[Int32]
+  formats : Array[Int32]
+  planar : Int32
+  compression : Int32
+  predictor : Int32
+  photometric : Int32
+  subfile : Int32
+  old_subfile : Int32
+  offsets : Array[Double]
+  counts : Array[Double]
+  pixel_scale : Array[Double]
+  tiepoint : Array[Double]
+  transform : Array[Double]
+  epsg : Int32
+  raster_type : Int32
+  nodata : String?
+  jpeg_tables : Bytes?
+}
+pub fn Image::across(Self) -> Int32
+pub fn Image::down(Self) -> Int32
+pub fn Image::pixel_bytes(Self, Int32) -> Int32
+pub fn Image::rows(Self, Int32) -> Int32
+pub fn Image::sample_bytes(Self, Int32) -> Int32
+
+pub struct Window {
+  image : Image
+  little : Bool
+  x0 : Int32
+  y0 : Int32
+  x1 : Int32
+  y1 : Int32
+  samples : Array[Int32]
+  bands : Array[FixedArray[Byte]]
+}
+pub fn Window::block(Self, Int32, BytesView, Bool) -> Unit raise TiffError
+pub fn Window::empty(Self, Int32, Double) -> Unit raise TiffError
+pub fn Window::new(Image, Bool, Int32, Int32, Int32, Int32, Array[Int32], Double) -> Self raise TiffError
+
+// Type aliases
+
+// Traits

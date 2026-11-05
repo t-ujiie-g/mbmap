@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.6（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は #101、17.5 は下の節。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.6b、17.6c（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は #101、17.5 は #102、17.6a は下の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -54,7 +54,40 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.5：書き出し（このブランチ）
+### 17.6a：GeoTIFF/COG の読み込みと解析の Grid（このブランチ）
+
+- **API**（2026-11-05 ユーザー判断）：`mbmap/data` の `readRaster(input, options)` と、`mbmap/analysis` の `loadGrid(raster, { band, scale })`。
+- **読み手**：geotiff 3.0.5 の `readRasters` と同じ値を返す。
+  - `tiff`（純粋な MoonBit、全ターゲットでテスト）：IFD（TIFF と BigTIFF、両方のバイト順、IFD の輪は拒む）と、ブロックの復号（非圧縮、LZW、PackBits、予測子 2・3、1 バイトより狭いビット、float16）、窓への写し。
+  - `geotiff_worker`（geotiff.wasm、12.8KB）はデータワーカーが初めて `readRaster` を呼ぶときに読む。
+  - `data_worker/js/geotiff.mjs`（`data-geotiff.js`、3.8KB）：画像の選び方（解像度で概観図）、bbox から窓、窓に重なるブロック、Deflate は `DecompressionStream`、JPEG・WebP はブラウザ（JPEGTables をつなぐ）、リサンプリング（最近傍、双線形）。
+  - URL は範囲リクエスト。最初に 64KB、IFD がその先なら足りるまで読み足す。ブロックは 64KB より近いものをまとめ、同時に 6 つまで。Blob は必要なところだけ切り出す。
+  - 返す値：帯ごとの型付き配列、`bbox`・`resolution`（ジオタグがなければ null）、GeoKeys の EPSG コード、GDAL_NODATA、PixelIsPoint。
+- **loadGrid**：帯を `@analysis.Grid`（`load_grid`）にし、`noData` を値なしに。`scale` は gdaldem の `-s`。`sample` は経緯度を proj.wasm で GeoTIFF の座標系にして画素から引く（`grid_sample_pixels`）。PixelIsPoint は GDAL と同じく半画素ずらす。
+- **黄金テスト**（`npm run geotiff:golden`）：304 件、すべての値が一致（差 0）。
+  - データは富士山の DEM（標高タイル 4 枚、512×512）と地理院地図の標準地図のタイル（RGB）。テスト用の書き手 `bench/data/tiff-write.mjs` で 28 通りのファイルにした。
+    - ストリップとタイル、planar 2、LZW・Deflate・PackBits と予測子 2・3。
+    - float16/32/64、int8/16/32、uint1/4/8/12/16/32、BigTIFF とビッグエンディアン。
+    - 空のブロック（no data あり・なし）、ModelTransformation、EPSG:6677 と PixelIsPoint、概観図つきの COG。
+  - それぞれを窓、画像の外にはみ出す窓、空の窓、帯の選択、`fillValue`、bbox、大きさの指定（最近傍と双線形）、解像度での概観図の選択で読む。
+  - バイト列から 280 件（2,250 万値）、HTTP の範囲リクエストで 17 件（IFD が後ろにあるファイル、範囲に答えないサーバーも）、両方で拒むもの 7 件。
+  - 範囲リクエストの数は geotiff の 1/2〜1/5（ブロックをまとめるため）。
+  - 違いは 31 件で、記録どおり：
+    - geotiff のバグ（ビッグエンディアンで予測子のあるファイルをリトルエンディアンとして戻す）。ビッグエンディアンのファイルは、geotiff が読むリトルエンディアンの対のファイルと比べた。
+    - `width` だけを渡すと geotiff は空の帯を返す。こちらは窓の高さのまま。
+    - 途中で切れたファイルは拒む。
+  - テスト用の LZW の書き手は、最初は符号の幅を 1 つ早く上げていた。geotiff の復号器で往復を確かめて直した。
+- **terrain:golden**（GDAL が要るので M2 で）：GDAL が書いた COG（Deflate、浮動小数点の予測子）を `readRaster` と `load_grid` で読み、gdaldem（傾斜、陰影）と gdallocationinfo（EPSG:3857 の座標で双線形）と比べる段を足した。クラウドでは走らせていない。
+- **pack test**：COG を URL で全体、bbox、概観図で読む。ブラウザで作った JPEG と WebP のタイルを含む TIFF を読む（差は JPEG が最大 3、WebP は 0）。`loadGrid` の `sample` と `slope`、拒む入力も確かめる。geotiff.wasm は 1 回だけ読み込まれる。
+- **大きさ**（gzip -9）：GeoTIFF 16.6KB / 20KB（geotiff.wasm と data-geotiff.js）、データワーカー 38.5KB / 40KB、`mbmap/data` 4.2KB / 6KB、`mbmap/analysis` 3.8KB / 5KB、解析ワーカー 28.6KB / 30KB。
+- **bench の devDependencies**（版は固定、`npm audit` は 0 件）：geotiff 3.0.5（MIT、EOX）。依存の lerc 3.0.0、pako 2.2.0、zstddec 0.2.0、quick-lru 6.1.2、xml-utils 1.10.2、web-worker 1.5.0、parse-headers 2.0.6、@petamoriken/float16 3.9.3 も install スクリプトはない。NOTICE に書いた。
+- **残したもの**：
+  - LERC と ZSTD は拒む（17 の決まりどおり、あとで）。
+  - YCbCr の色の変換は、ブラウザの JPEG の復号に任せる。
+  - 回転のある ModelTransformation は、`loadGrid` では北が上として扱う。
+  - 24 ビットの整数は読まない（geotiff も正しく読めない）。
+
+### 17.5：書き出し（#102）
 
 - **API**：`write(input, { format })`。`input` は `DataTable` か GeoJSON のオブジェクト、`format` は `"geojson"`・`"csv"`・`"kml"`。文字列を返す。
   - GeoJSON：`JSON.stringify(table.toGeoJSON())`。wasm のコードはない。
