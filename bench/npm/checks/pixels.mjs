@@ -13,5 +13,16 @@ export async function pixel(page, x, y) {
   return [rgba[0], rgba[1], rgba[2]];
 }
 
+/** The share of the page's pixels that have its commonest colour. */
+export async function commonestShare(page) {
+  const { rgba } = decodePng(await page.screenshot());
+  const counts = new Map();
+  for (let i = 0; i < rgba.length; i += 4) {
+    const key = (rgba[i] << 16) | (rgba[i + 1] << 8) | rgba[i + 2];
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Math.max(...counts.values()) / (rgba.length / 4);
+}
+
 /** Whether two colours differ by at most `d` in each channel. */
 export const near = (rgb, want, d = 3) => rgb.every((v, i) => Math.abs(v - want[i]) <= d);

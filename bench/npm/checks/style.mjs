@@ -1,8 +1,27 @@
 // The style API on the npm example's map: paint changes, hiding, moving and
 // removing layers keep the tiles, showing a layer again loads them, setStyle swaps everything,
 // GeoJSON sources come and go, and refused changes fire `error` and keep the style.
-import { near, pixel } from "./pixels.mjs";
+import { commonestShare, near, pixel } from "./pixels.mjs";
 import { step } from "./step.mjs";
+
+// Terrain over DEM tiles loaded for a hillshade, with a renamed layer so the vector tiles reload too: the DEM
+// tiles are kept and must stand as terrain, or only the background shows. CI has no fixtures, so nothing to see there.
+async function terrainOverHillshade(page, requests, original) {
+  const present = await page.evaluate(async () => (await fetch("/bench/fixtures/gsi-dem/14/14552/6451.png")).ok);
+  if (!present) return { ok: true, skipped: "no fixtures" };
+  const origin = new URL(page.url()).origin;
+  const dem = { type: "raster-dem", tiles: [`${origin}/bench/fixtures/gsi-dem/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" };
+  const [background, ...layers] = original.layers;
+  const flat = { ...original, sources: { ...original.sources, dem }, layers: [background, { id: "hillshade", type: "hillshade", source: "dem" }, ...layers] };
+  const raised = { ...flat, terrain: { source: "dem" }, layers: flat.layers.map((l) => (l.id === "road" ? { ...l, id: "road-3d" } : l)) };
+  const demTiles = () => requests.filter((u) => u.includes("/gsi-dem/")).length;
+  await step(page, "style: hillshade", `map.jumpTo({ center: [139.7671, 35.6812], zoom: 14.5 }); map.setStyle(${JSON.stringify(flat)});`);
+  const before = { share: await commonestShare(page), dem: demTiles() };
+  await step(page, "style: terrain over hillshade", `map.setStyle(${JSON.stringify(raised)});`);
+  const after = { share: await commonestShare(page), dem: demTiles() };
+  await step(page, "style: terrain left", `map.setStyle(${JSON.stringify(original)});`);
+  return { ok: before.dem > 0 && after.dem === before.dem && after.share < 0.5, before, after };
+}
 
 export async function styleChecks(page, requests) {
   const tiles = () => requests.filter((u) => u.endsWith(".pbf")).length;
@@ -50,7 +69,9 @@ export async function styleChecks(page, requests) {
   const order = await step(page, "style: removeSource", 'map.removeLayer("pts"); map.removeSource("pts"); return [map.getLayersOrder(), Object.keys(map.getStyle().sources)];');
   await step(page, "style: setStyle back", `map.setStyle(${JSON.stringify(original)});`);
   const restored = { tiles: tiles(), center: await pixel(page, 400, 300), layers: await page.evaluate(() => window.__map.getLayersOrder().length) };
+  const terrain = await terrainOverHillshade(page, requests, original);
   const ok =
+    terrain.ok &&
     painted === before &&
     kept === painted &&
     relaid > kept &&
@@ -73,5 +94,5 @@ export async function styleChecks(page, requests) {
     restored.tiles > swapped &&
     !near(restored.center, [255, 0, 0]) &&
     restored.layers === original.layers.length;
-  return { ok, before, painted, kept, relaid, errors, red, read, green, state, red2, swapped, blue, moved, order, restored };
+  return { ok, before, painted, kept, relaid, errors, red, read, green, state, red2, swapped, blue, moved, order, restored, terrain };
 }
