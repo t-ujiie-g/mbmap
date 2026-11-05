@@ -237,3 +237,22 @@ test "empty CSV input makes an empty table" {
   assert_eq(csv("").length(), 0)
   assert_eq(csv("\u{feff}").length(), 0)
 }
+
+///|
+test "CSV geometry cells give their rows' SRIDs" {
+  let srids = []
+  let text = @utf8.encode(
+    "geom,lat,lon\nSRID=6677;POINT (1 2),,\n0101000020110F0000000000000000F03F0000000000000040,,\nPOINT (5 6),,\n",
+  )
+  let t = @formats.read_csv(text[:], @formats.CsvOptions::new(), srids~)
+  assert_eq(t.length(), 3)
+  assert_eq(srids, [6677, 3857, 0])
+  let latlon = []
+  @formats.read_csv(
+    b"lat,lon\n1,2\n"[:],
+    @formats.CsvOptions::new(),
+    srids=latlon,
+  )
+  |> ignore
+  assert_eq(latlon, [0])
+}

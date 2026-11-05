@@ -1,14 +1,15 @@
 ///|
 /// Reads WKT or EWKT geometries one after another into rows: one per member of each
-/// (collections flattened), one without geometry for an EMPTY one; Z and M dropped,
-/// SRIDs other than 4326 (or 0) refused. `slow_number` as `read_csv`'s.
+/// (collections flattened), one without geometry for an EMPTY one; Z and M dropped.
+/// `srids` gets each row's SRID (0 where none was given). `slow_number` as `read_csv`'s.
 pub fn read_wkt(
   bytes : BytesView,
   slow_number~ : (Int32, Int32) -> Double = (s, e) => {
     @core.strconv_number(bytes[s:e])
   },
+  srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  wkt_table(bytes, slow_number, MAX_POINTS)
+  wkt_table(bytes, slow_number, MAX_POINTS, srids)
 }
 
 ///|
@@ -17,6 +18,7 @@ fn wkt_table(
   bytes : BytesView,
   slow_number : (Int32, Int32) -> Double,
   max_points : Int32,
+  srids : Array[Int32]?,
 ) -> @geom.Table raise ReadError {
   let out = @geom.TableBuilder::new()
   let p = Wkt::new(bytes, slow_number, max_points)
@@ -28,7 +30,7 @@ fn wkt_table(
       raise Invalid(format="WKT", pos~, m)
     }
     p.used += p.shapes.points()
-    p.shapes.emit(out, [])
+    p.shapes.emit(out, [], srids)
     p.skip_space()
   }
   out.finish()
@@ -209,11 +211,7 @@ fn Wkt::geometry(self : Wkt, depth : Int32) -> Unit {
       self.fail("invalid SRID")
       return
     }
-    if srid != 0 && srid != 4326 {
-      self.pos = digits
-      self.fail("only SRID 4326 is supported")
-      return
-    }
+    self.shapes.srid = srid
     self.geometry(depth)
     return
   }

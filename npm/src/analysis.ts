@@ -1,6 +1,7 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
 // geometry operations are Clipper2's, in a module loaded on their first use.
+import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
 import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
@@ -20,15 +21,7 @@ export interface AnalysisOptions {
   projWasmUrl?: string | URL;
 }
 
-/**
- * A coordinate reference system: an EPSG code (`6677`, `"EPSG:6677"`, `"urn:ogc:def:crs:EPSG::6677"`),
- * `"CRS84"` (= 4326), a PROJ string, or a name given with `defineCrs`. EPSG codes known without a
- * definition are listed in the package README.
- */
-export type Crs = string | number;
-
-// An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it.
-type CrsArg = number | Float64Array;
+export type { Crs };
 
 const named = new Map<string, string>();
 
@@ -42,19 +35,7 @@ export function defineCrs(name: string, projString: string): void {
   named.set(name.trim().toUpperCase(), projString);
 }
 
-/** `crs` as the analysis worker takes it; PROJ strings load their parser on first use. */
-async function crsArg(crs: Crs): Promise<CrsArg> {
-  if (typeof crs === "number" && Number.isInteger(crs) && crs > 0) return crs;
-  if (typeof crs === "string") {
-    const key = crs.trim().toUpperCase();
-    const text = named.get(key) ?? (key.startsWith("+") ? crs : undefined);
-    if (text !== undefined) return (await import("./projstring.js")).parseProjString(text);
-    if (/^(OGC:)?CRS84$/.test(key)) return 4326;
-    const m = /^(?:EPSG:|URN:OGC:DEF:CRS:EPSG::)?(\d{1,6})$/.exec(key);
-    if (m) return Number(m[1]);
-  }
-  throw new Error(`mbmap: analysis: not a CRS: ${String(crs)}`);
-}
+const crsArg = (crs: Crs) => crsArgOf(crs, "analysis", named);
 
 /**
  * How `buffer` measures its distance: `"geodesic"` on the ground (true meters

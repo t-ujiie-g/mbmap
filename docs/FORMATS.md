@@ -506,22 +506,45 @@ Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
 ## Data worker messages (`data_worker/js/worker.mjs`)
 
-In: `{type: "init", wasm}` (instantiated with `{ host: { number } }`, `hostNumber`), then
-`{type: "call", id, op: "read", format, options, ...}` with the data as one of `url` (http(s),
-fetched with `init`'s string `headers` and `credentials`, none sent otherwise), `blob` or `bytes`
-(an ArrayBuffer), at most `MAX_INPUT_BYTES`:
+In: `{type: "init", wasm, proj, prj}` (data.wasm instantiated with `{ host: { number, decode,
+text_code } }` from `dataImports` in `data_worker/js/read.mjs`; `proj` the URL of proj.wasm and
+`prj` of prjwkt.js, loaded on first use), then `{type: "call", id, op: "read", format, options, ...}`
+with the data as one of `url` (http(s), fetched with `init`'s string `headers` and `credentials`,
+none sent otherwise), `blob` or `bytes` (an ArrayBuffer), at most `MAX_INPUT_BYTES`, or for a
+shapefile `parts: {shp, dbf?, prj?, cpg?}`, each such a source. Calls run one after another.
+`options` for every format: `crs` (an EPSG code or a "CRS definition", for coordinates the data
+does not tag), `layer` (a string), `encoding` (a .dbf's, a label or code page):
 
 - `format` `"csv"`, with `options` `{delimiter, header, dynamicTyping, latitude, longitude,
   geometry}` (`delimiter` a character code or -1 to guess; the column names optional). The wasm's
   `read_csv(names, delimiter, header, typing)` takes the three names, each ended by a NUL byte
   (empty: found by name), before the CSV in its input;
 - `"wkt"` (`read_wkt`) or `"wkb"` (`read_wkb`: binary, or hexadecimal text when the first byte
-  that is not white space is neither 0 nor 1).
+  that is not white space is neither 0 nor 1);
+- `"shapefile"`: a zip archive (by its first bytes; read by `npm/src/zip.ts`, `data-zip.js` in
+  dist, its `layer` or first .shp with the .dbf, .prj and .cpg of the same name), a .shp (by a URL
+  ending in `.shp`, the .dbf, .prj and .cpg beside it too, 404 meaning none) or `parts`. The wasm's
+  `read_shapefile(shp, dbf)` takes the .shp's `shp` bytes and the .dbf's `dbf` (0 for none) one
+  after the other, and calls `host.decode(addr, len)` for .dbf text that is not ASCII: the host
+  decodes those bytes of its memory in the encoding it chose (option, .cpg, language driver byte
+  29, UTF-8), removes NULs, trims, keeps the text and returns its length in UTF-16 code units,
+  which `host.text_code(i)` gives one by one;
+- `"topojson"`: `read_topojson(name)` takes the object's name (UTF-8, `name` bytes; -1 for the
+  first) before the TopoJSON.
 
-Out: `{type: "result", id, value}` with `value` an ArrayBuffer of "Table" bytes (transferred),
-or `{type: "result", id, error}`.
+After a read, `srids_out()` writes each row's SRID as an i32 (0 where none was given) and returns
+their count, or 0 when no row had one; `layers_out()` writes the input's layer names (TopoJSON
+objects), each a u32 length and UTF-8; `ids_out()` writes a property value per row (the feature
+ids, "Property values") and returns their length, or 0 without ids. Rows whose SRID (or, without
+one, `crs` or the .prj) is not 4326 are taken to longitude and latitude in place through proj.wasm
+(`data_worker/js/crs.mjs`, `data-crs.js` in dist): their coordinates as f64 pairs, a call to
+`transform_coords` per CRS; a coordinate it cannot reach fails the read.
 
-## CRS definition (`proj/encoding.mbt`, written by `npm/src/projstring.ts`)
+Out: `{type: "result", id, value: {table, ids, layer, layers}}` with `table` an ArrayBuffer of
+"Table" bytes and `ids` of the ids' property values or null (both transferred), `layer` the layer
+read or null and `layers` every layer of the input; or `{type: "result", id, error}`.
+
+## CRS definition (`proj/encoding.mbt`, written by `npm/src/projstring.ts` and `npm/src/prjwkt.ts`)
 
 A parsed PROJ string as 34 f64s; angles in radians, NaN where a parameter was
 not given.

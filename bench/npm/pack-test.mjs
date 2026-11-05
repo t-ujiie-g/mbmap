@@ -3,6 +3,8 @@
 // Usage: node npm/pack-test.mjs [--screenshots=dir]
 import path from "node:path";
 import { chromium } from "playwright";
+import proj4 from "proj4";
+import { WARDS } from "../data/pack-fixtures.mjs";
 import { serve } from "../lib/serve.mjs";
 import { prepareExamples } from "./prepare.mjs";
 import { fakeGeolocation } from "../lib/fake-geolocation.mjs";
@@ -233,39 +235,78 @@ const checks = {
     return [ok, { loaded, pitch: r.pitch }];
   },
 
-  // mbmap/data: a CSV by URL with 緯度/経度 columns and a WKT area drawn as GeoJSON sources and
-  // counted in mbmap/analysis (bench/npm/pages/data); Files, bytes and hex WKB; refusals.
+  // mbmap/data (bench/npm/pages/data): CSV, WKT and TopoJSON drawn and counted in mbmap/analysis; an
+  // EWKT in plane IX (proj.wasm loaded, the .prj parser not); a shapefile in plane IX with a .prj and
+  // Shift_JIS names zipped and loose, by URL and as Files, drawn (the .prj parser loaded); refusals.
   async data(page, requests) {
-    const r = await page.evaluate(async () => {
+    const names = () => requests.map((u) => u.split("/").pop());
+    const startup = names();
+    const [x, y] = proj4("EPSG:4326", "EPSG:6677", [139.7671, 35.6812]); // as pack-fixtures.mjs defines it
+    const r = await page.evaluate(async ([x, y]) => {
       const { read, parse } = await import("mbmap/data");
       const map = window.__map;
       const drawn = (await map.queryRenderedFeatures({ layers: ["stations"] })).length;
+      const linesDrawn = (await map.queryRenderedFeatures({ layers: ["lines"] })).length;
       const file = await read(new File(["POINT (1 2)\nGEOMETRYCOLLECTION (POINT (3 4), LINESTRING (0 0, 1 1))"], "shapes.wkt"));
       const bytes = new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xf0, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0x40]);
       const wkb = await read(bytes, { format: "wkb" });
       const hex = await parse("0101000020E6100000000000000000F03F0000000000000040", { format: "wkb" });
       const tsv = await parse("x\ty\tname\n1\t2\ta\n", { format: "csv" });
+      const plane = await parse(`SRID=6677;POINT (${x} ${y})\nPOINT (139.7671 35.6812)`, { format: "wkt" });
       const fail = (p) => p.then(() => "", (e) => e.message);
       return {
         ...window.__data,
         drawn,
+        linesDrawn,
         file: file.toGeoJSON().features.map((f) => f.geometry.type),
         wkb: wkb.toGeoJSON().features[0].geometry.coordinates,
         hex: hex.toGeoJSON().features[0].geometry.coordinates,
         tsv: [tsv.columns, tsv.toGeoJSON().features[0].geometry.coordinates],
+        plane: plane.toGeoJSON().features.map((f) => f.geometry.coordinates),
         bytesKept: bytes.length,
         refused: await fail(read("data:text/csv,a,b")),
         noFormat: await fail(read(new Uint8Array([1]))),
         malformed: await fail(parse("a,b\n\"x,1\n", { format: "csv" })),
-        srid: await fail(parse("SRID=3857;POINT (1 2)", { format: "wkt" })),
+        srid: await fail(parse("SRID=9999;POINT (1 2)", { format: "wkt" })),
         badOption: await fail(parse("a\n", { format: "csv", delimiter: ";;" })),
         missing: await fail(read("./missing.csv")),
       };
+    }, [x, y]);
+    const afterPlane = names();
+    const z = await page.evaluate(async () => {
+      const { read } = await import("mbmap/data");
+      const map = window.__map;
+      const wards = await read("./wards.zip");
+      map.addSource("wards", { type: "geojson", data: wards.toGeoJSON() });
+      map.addLayer({ id: "wards", type: "fill", source: "wards", paint: { "fill-color": "#9333ea", "fill-opacity": 0.4 } }, "stations");
+      await map.once("idle");
+      const drawn = (await map.queryRenderedFeatures({ layers: ["wards"] })).length;
+      const fetched = async (name) => new File([await (await fetch(`./${name}`)).blob()], name);
+      const asFile = await read(await fetched("wards.zip"));
+      const shpUrl = await read("./wards.shp");
+      const looseFiles = await read(await Promise.all(["wards.shp", "wards.dbf", "wards.prj", "wards.cpg"].map(fetched)));
+      const byCrs = await read({ shp: "./wards.shp", dbf: "./wards.dbf" }, { crs: "EPSG:6677", encoding: "shift_jis" });
+      const fail = (p) => p.then(() => "", (e) => e.message);
+      const summary = (t) => ({ length: t.length, columns: t.columns, layer: t.layer, layers: t.layers, features: t.toGeoJSON().features });
+      return {
+        drawn,
+        wards: summary(wards),
+        same: [asFile, shpUrl, looseFiles, byCrs].map((t) => JSON.stringify(t.toGeoJSON()) === JSON.stringify(wards.toGeoJSON())),
+        encrypted: await fail(read("./encrypted.zip")),
+        bomb: await fail(read("./bomb.zip")),
+        noLayer: await fail(read("./wards.zip", { layer: "nope" })),
+      };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /^data|stations/.test(n));
+    const loaded = names().filter((n) => /^(data|stations|lines|wards|proj|prjwkt)/.test(n));
     const station = r.features[0];
+    const near = (a, b) => Math.abs(a - b) < 1e-7;
+    const sameRings = (got, want) => got.length === want.length && got.every((ring, i) => ring.length === want[i].length && ring.every((p, j) => near(p[0], want[i][j][0]) && near(p[1], want[i][j][1])));
+    const wardFeatures = z.wards.features;
     const ok =
-      ["data.js", "data-worker.js", "data.wasm", "stations.csv"].every((n) => loaded.includes(n)) &&
+      ["data.js", "data-worker.js", "data.wasm", "stations.csv", "lines.topojson"].every((n) => startup.includes(n)) &&
+      !["proj.wasm", "prjwkt.js", "data-zip.js", "data-crs.js"].some((n) => startup.includes(n)) &&
+      ["proj.wasm", "data-crs.js"].every((n) => afterPlane.includes(n)) && !["prjwkt.js", "data-zip.js"].some((n) => afterPlane.includes(n)) &&
+      ["prjwkt.js", "data-zip.js", "wards.zip", "wards.shp", "wards.dbf", "wards.prj", "wards.cpg"].every((n) => loaded.includes(n)) &&
       r.length === 5 &&
       JSON.stringify(r.columns) === JSON.stringify(["名前", "緯度", "経度", "乗降客数", "備考"]) &&
       JSON.stringify(station.geometry) === JSON.stringify({ type: "Point", coordinates: [139.7671, 35.6812] }) &&
@@ -275,18 +316,31 @@ const checks = {
       JSON.stringify(r.datasets) === JSON.stringify([5, 1]) &&
       JSON.stringify(r.inside) === JSON.stringify([0, 1, 3]) &&
       r.drawn === 4 &&
+      r.linesDrawn > 0 &&
+      JSON.stringify([r.lines.layer, r.lines.layers]) === JSON.stringify(["lines", ["lines"]]) &&
+      JSON.stringify(r.lines.features.map((f) => [f.id, f.properties.name, f.geometry.type])) === JSON.stringify([["a", "内堀通り", "LineString"], [2, "永代通り", "LineString"]]) &&
       JSON.stringify(r.file) === JSON.stringify(["Point", "Point", "LineString"]) &&
       JSON.stringify(r.wkb) === JSON.stringify([1, 2]) &&
       JSON.stringify(r.hex) === JSON.stringify([1, 2]) &&
       JSON.stringify(r.tsv) === JSON.stringify([["x", "y", "name"], [1, 2]]) &&
+      r.plane.length === 2 && near(r.plane[0][0], 139.7671) && near(r.plane[0][1], 35.6812) && JSON.stringify(r.plane[1]) === JSON.stringify([139.7671, 35.6812]) &&
       r.bytesKept === 21 &&
       /http\(s\) URL/.test(r.refused) &&
       /format cannot be told/.test(r.noFormat) &&
       r.malformed === "mbmap: data: malformed CSV at 4: unterminated quoted field" &&
-      r.srid === "mbmap: data: malformed WKT at 5: only SRID 4326 is supported" &&
+      r.srid === "mbmap: data: SRID 9999: unsupported CRS EPSG:9999" &&
       /invalid delimiter/.test(r.badOption) &&
-      /HTTP 404/.test(r.missing);
-    return [ok, { loaded, ...r, features: r.features.length }];
+      /HTTP 404/.test(r.missing) &&
+      z.drawn > 0 &&
+      z.wards.length === 2 && JSON.stringify(z.wards.columns) === JSON.stringify(["名前", "番号"]) &&
+      JSON.stringify([z.wards.layer, z.wards.layers]) === JSON.stringify(["tokyo/wards", ["tokyo/wards"]]) &&
+      JSON.stringify(wardFeatures.map((f) => [f.properties.名前, f.properties.番号, f.geometry.type])) === JSON.stringify([["丸の内", 1, "Polygon"], ["八重洲", 2, "Polygon"]]) &&
+      WARDS.every((w, i) => sameRings(wardFeatures[i].geometry.coordinates, w.rings)) &&
+      z.same.every(Boolean) &&
+      /encrypted entries are not supported/.test(z.encrypted) &&
+      /inflates to more than 268435456 bytes/.test(z.bomb) &&
+      /no shapefile named nope/.test(z.noLayer);
+    return [ok, { loaded, ...r, features: r.features.length, wards: { ...z, wards: { ...z.wards, features: wardFeatures.length } } }];
   },
 
   async analysis(page, requests) {
