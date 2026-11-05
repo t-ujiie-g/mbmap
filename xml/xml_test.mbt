@@ -186,3 +186,10 @@ test "Names numbers strings in the order first added" {
   assert_eq(names.length(), 2)
   assert_eq(names.at(1), "b")
 }
+
+///|
+test "units keeps both halves of a split surrogate pair" {
+  let s = "a\u{1F600}b"
+  assert_eq(@xml.units(s, 1, 2).length(), 1)
+  assert_eq(@xml.units(s, 1, 2) + @xml.units(s, 2, 3), "\u{1F600}")
+}

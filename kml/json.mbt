@@ -17,7 +17,7 @@ fn json_string(s : String) -> String {
       s[i + 1].to_int() >= 0xDC00 &&
       s[i + 1].to_int() <= 0xDFFF
     if pair {
-      out.write_view(s.view(start_offset=i, end_offset=i + 2))
+      out.write_view(s.clamped_view(start=i, end=i + 2))
       i += 2
       continue
     }

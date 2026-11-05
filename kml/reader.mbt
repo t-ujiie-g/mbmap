@@ -88,7 +88,7 @@ fn well_formed(s : String) -> String {
         s[i + 1].to_int() <= 0xDFFF {
         i += 1
       } else {
-        out.write_view(s.view(start_offset=last, end_offset=i))
+        out.write_view(s.clamped_view(start=last, end=i))
         out.write_char('\u{FFFD}')
         last = i + 1
       }
@@ -98,7 +98,7 @@ fn well_formed(s : String) -> String {
   if last == 0 {
     return s
   }
-  out.write_view(s.view(start_offset=last, end_offset=n))
+  out.write_view(s.clamped_view(start=last, end=n))
   out.to_string()
 }
 

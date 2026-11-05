@@ -147,3 +147,41 @@ test "a GPX track stops at the extension names and points it may have" {
   let q = gpx_with(two, 100, 2)
   assert_eq(q.limit, Some("more than \{MAX_KML_POINTS} points"))
 }
+
+///|
+fn from_units(units : Array[Int32]) -> String {
+  let out = StringBuilder()
+  for u in units {
+    out.write_char(u.unsafe_to_char())
+  }
+  out.to_string()
+}
+
+///|
+test "json_string keeps surrogate pairs and escapes the rest as JSON.stringify" {
+  assert_eq(json_string("a\u{1F600}b"), "\"a\u{1F600}b\"")
+  assert_eq(
+    json_string("\"\\\u{08}\u{0C}\n\r\t"),
+    "\"\\\"\\\\\\b\\f\\n\\r\\t\"",
+  )
+  assert_eq(json_string("\u{01}\u{1F}é"), "\"\\u0001\\u001fé\"")
+  assert_eq(json_string(from_units([0xD83D])), "\"\\ud83d\"")
+  assert_eq(json_string(from_units([0xDE00, 0x61])), "\"\\ude00a\"")
+  assert_eq(json_string(from_units([0xD83D, 0x61])), "\"\\ud83da\"")
+  assert_eq(
+    json_string(from_units([0xD83D, 0xD83D, 0xDE00, 0xDE00])),
+    "\"\\ud83d\u{1F600}\\ude00\"",
+  )
+}
+
+///|
+test "well_formed turns lone surrogates into U+FFFD and keeps pairs" {
+  assert_eq(well_formed("a\u{1F600}b"), "a\u{1F600}b")
+  assert_eq(well_formed(from_units([0xD83D])), "\u{FFFD}")
+  assert_eq(well_formed(from_units([0x61, 0xDE00, 0x62])), "a\u{FFFD}b")
+  assert_eq(well_formed(from_units([0xD83D, 0x61])), "\u{FFFD}a")
+  assert_eq(
+    well_formed(from_units([0xDE00, 0xD83D, 0xDE00, 0xD83D])),
+    "\u{FFFD}\u{1F600}\u{FFFD}",
+  )
+}

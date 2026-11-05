@@ -98,7 +98,7 @@ fn parse_float_in(
     }
     return if negative { -v } else { v }
   }
-  number(s.view(start_offset=start, end_offset=i).to_owned())
+  number(s.clamped_view(start~, end=i).to_owned())
 }
 
 ///|
