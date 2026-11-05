@@ -53,6 +53,50 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
+### 17.2：Shapefile、TopoJSON、座標変換（このブランチ）
+
+- **入力**：
+  - `read` は URL（`.shp` なら隣の `.dbf`・`.prj`・`.cpg` も取る。404 はないものとする）、zip、File の配列（拡張子で見分ける）、`{ shp, dbf?, prj?, cpg? }` を受け取る。
+  - オプション：`layer`（zip の中の Shapefile、TopoJSON のオブジェクト。既定は最初）、`encoding`、`crs`（mbmap/analysis と同じ形。`.prj` より先に効く）。
+  - `DataTable` に `layer` と `layers` を足した。
+- **Shapefile**：
+  - 点・マルチ点・線・面と、その Z/M（Z/M は落とす）。null の図形は図形のない行、MultiPatch は拒む。
+  - 時計回りの輪が外周。穴は、それを含むいちばん小さい外周に、内外判定で割り当てる。書き出しは外周を反時計回り、穴を時計回りにする。
+  - DBF：C、N/F、L（`TtYy` / `FfNn`）、D（`YYYY-MM-DD` の文字列）。削除済みの行は飛ばす。
+  - 文字コードの順：オプション、`.cpg`（UTF-8・SJIS・CP932・ANSI 932・Shift_JIS など）、言語ドライバの値、UTF-8。host の `TextDecoder` で読む。
+  - `.shx` は使わない。
+- **zip**（`npm/src/zip.ts` → `data-zip.js`。17.4 の KMZ も使う）：
+  - central directory を読む。無圧縮と deflate（`DecompressionStream`）に対応する。
+  - ZIP64・分割・暗号化・ほかの圧縮方式は拒む。
+  - 上限：項目 10,000、展開後の合計 256MB。宣言より大きく展開されたものも拒む。
+  - 名前は UTF-8 の印があるか正しい UTF-8 ならそのまま、それ以外は Shift_JIS として読む。
+- **TopoJSON**：
+  - topojson-client の `feature()` と同じ。量子化の delta 復号、`~i` の逆向きの弧、弧のつなぎ方（つなぐ弧の最初の点を落とす）。
+  - Point と MultiPoint は delta なしで変換する。`id` と `properties` も持つ。
+- **座標変換**：
+  - proj.wasm を、4326 以外のデータを初めて読むときだけ読み込む。data.wasm には入れない。
+  - 行を座標系ごとにまとめ、f64 の組で 1 回ずつ変換する。
+  - 1 つの入力の中で SRID が混ざっていても、行ごとに正しく変換する。1 つの図形の中で SRID が違うものは拒む。
+  - 優先する順：明示した SRID、`crs`、`.prj`、4326。proj が知らない SRID は拒む。
+  - `.prj` は `npm/src/prjwkt.ts`（wkt-parser 1.6.0 の WKT1 と、proj4js の Proj と parseCode のポート）で読み、EPSG コードか CRS の定義にする。`Mercator_Auxiliary_Sphere` は 3857。WKT2 は拒み、軸の順は読まない。
+- **黄金テスト**（`npm run data:golden`）：860 件で差 0。
+  - 内訳：Shapefile 40 件（文字コード、`.prj`、zip を含む）、TopoJSON 19 件、SRID 6 件（6677・3857・32654 の混在。proj4 と 1e-8° で比べる）。
+  - 違いは 25 あり、すべて記録どおり。ユーザーが決めた 4 つ（輪の向き、内外判定での穴の割り当て、削除済みの行、日付の文字列）は、比べる前に正規化した。
+- **bench の devDependencies**（版は固定、`npm audit` は 0 件）：shpjs 6.2.0（MIT。依存の but-unzip は Apache-2.0、parsedbf は MIT）、topojson-client 3.1.0（ISC）、topojson-server 3.0.1（ISC、試験用の TopoJSON を作るだけ）。どれも install スクリプトはない。
+- **大きさ**（gzip -9、前 → 後 / 予算）：
+  - データワーカー：17,170 → 28,976 / 30,000（data.wasm 25.4KB、Shapefile と DBF で約 3.8KB、TopoJSON で約 4.7KB）。
+  - `mbmap/data`：2,435 → 3,191 / 6,000。
+  - 新しい行：`.prj` WKT 3,679 / 4,000、zip 1,214 / 2,000、座標変換 1,020 / 1,500。`.prj` は proj4 の投影名と測地系の表で 4KB 近くになった。
+  - geojson.wasm・analysis.wasm・geojson-properties.wasm は 2 バイトずつ大きくなった。逆アセンブルでは、`formats` の閉包の 1 つでフィールドの並びが変わっただけで、新しい読み手は入っていない。
+  - **データワーカーには約 1KB しか余裕がない**。17.3（FlatGeobuf）と 17.5（書き出し）の置き場所を決める必要がある（ユーザーに確認する）。
+- **確認**：pack test は 12 ページすべて通った。`data` の確認でやったこと：
+  - 平面直角 IX 系・Shift_JIS の DBF・Esri の `.prj` の `wards.zip` を URL・File・隣のファイル・`{shp, dbf}` と `crs` で読み、穴を保ったまま 1e-7° で一致させる。
+  - SRID 6677 の EWKT を読む。
+  - TopoJSON を描く。
+  - 拒むもの（暗号化された zip、256MB の上限、知らない layer、SRID 9999）を拒む。
+  - 必要なときだけ proj.wasm・prjwkt・data-zip・data-crs を読み込む。
+- **残したもの**：`.shx` を使わない、印のない zip の名前は Shift_JIS とみなす、`.prj` の軸の順を読まない、WKT2 の `.prj` を拒む、遅れて読み込むものが失敗したらワーカーを作り直すまで再び試さない。
+
 ### 17.1：土台、CSV、WKT/WKB（#98）
 
 - **入口とワーカー**：
