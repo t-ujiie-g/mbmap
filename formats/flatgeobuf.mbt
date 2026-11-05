@@ -1,3 +1,5 @@
+// Ported from flatgeobuf 4.6.1: BSD License, Copyright (c) 2018, Björn Harrtell. See NOTICE.
+
 ///|
 /// Bytes a FlatGeobuf file starts with; flatgeobuf checks no version byte after them.
 let fgb_magic : Bytes = b"fgb"

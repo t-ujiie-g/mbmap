@@ -1,3 +1,5 @@
+// Ported from topojson-client 3.1.0: ISC License, Copyright 2012-2019 Michael Bostock. See NOTICE.
+
 ///|
 /// Reads the object `object` (or the first) of a TopoJSON Topology as topojson-client's
 /// `feature` makes features of it, collections in them flattened (npm/README.md

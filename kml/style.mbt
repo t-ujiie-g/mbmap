@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 /// togeojson's `fixColor`: a KML `aabbggrr` color as `#rrggbb` and an opacity,
 /// a 3- or 6-digit one as it is (after a `#`), anything else nothing.

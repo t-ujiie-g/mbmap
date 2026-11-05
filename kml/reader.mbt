@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 /// Most properties one feature may have (AGENTS.md §8.2).
 pub const MAX_KML_KEYS : Int32 = 4096
