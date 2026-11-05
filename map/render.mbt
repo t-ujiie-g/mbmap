@@ -183,7 +183,7 @@ fn Map::draw_circles_by_key(
   let runs : Array[(Double, Draw, LayerMesh, Int32, Int32)] = []
   for d in draws {
     for m in d.meshes {
-      guard m.layer == index && m.kind == KIND_CIRCLE else { continue }
+      guard m.layer == index && m.kind == @core.KIND_CIRCLE else { continue }
       match m.key_runs {
         Some(r) if m.states.is_empty() =>
           for k in 0..<(r.length() / 3) {
@@ -319,15 +319,15 @@ fn Map::draw_layer(
   // Fill outlines go after every fill of the tile, as MapLibre draws them.
   let outlines : Array[() -> Unit] = []
   for m in meshes {
-    if m.kind == KIND_HILLSHADE && layer.hillshade is Some(h) {
+    if m.kind == @core.KIND_HILLSHADE && layer.hillshade is Some(h) {
       self.draw_hillshade(h, m.mesh, at)
       continue
     }
-    if m.kind == KIND_HILLSHADE && layer.relief is Some(r) {
+    if m.kind == @core.KIND_HILLSHADE && layer.relief is Some(r) {
       self.draw_relief(layer, r, m, at)
       continue
     }
-    if m.kind == KIND_RASTER && layer.raster is Some(r) {
+    if m.kind == @core.KIND_RASTER && layer.raster is Some(r) {
       self.draw_raster(r, m.mesh, at)
       continue
     }
@@ -359,7 +359,7 @@ fn Map::draw_layer(
           height_scale~,
         )
       }
-    } else if m.kind == KIND_LINE &&
+    } else if m.kind == @core.KIND_LINE &&
       layer.gradient is Some(e) &&
       self.gradient_of(m, e) is Some(g) {
       self.draw_by_state(m, layer, p, zoom, p => {
@@ -372,7 +372,7 @@ fn Map::draw_layer(
           blur=p.blur,
         )
       })
-    } else if m.kind == KIND_LINE && layer.pattern is Some(_) {
+    } else if m.kind == @core.KIND_LINE && layer.pattern is Some(_) {
       guard p.pattern is Some(name) && self.pattern(name) is Some(pos) else {
         continue
       }
@@ -389,7 +389,7 @@ fn Map::draw_layer(
           blur=p.blur,
         )
       })
-    } else if m.kind == KIND_LINE && by_feature {
+    } else if m.kind == @core.KIND_LINE && by_feature {
       let (floor_width, floor_t) = self.floor_width(index, layer, m, zoom)
       let px_per_unit = @math.pow(2.0, floor_zoom - zoom) /
         (at.units_per_pixel * dpr)
@@ -406,7 +406,7 @@ fn Map::draw_layer(
           blur=p.blur,
         )
       })
-    } else if m.kind == KIND_LINE {
+    } else if m.kind == @core.KIND_LINE {
       match dash {
         Some((entry, gamma_width)) => {
           let (floor_width, floor_t) = self.floor_width(index, layer, m, zoom)
@@ -439,7 +439,7 @@ fn Map::draw_layer(
             )
           })
       }
-    } else if m.kind == KIND_CIRCLE {
+    } else if m.kind == @core.KIND_CIRCLE {
       self.draw_by_state(m, layer, p, zoom, p => {
         self.renderer.draw_circle(
           m.mesh,
@@ -592,14 +592,14 @@ fn Map::slots(
   }
   slots.constant(
     @style.SLOT_SIZE,
-    if m.kind == KIND_CIRCLE {
+    if m.kind == @core.KIND_CIRCLE {
       p.radius
     } else {
       p.width
     },
   )
   color(@style.SLOT_STROKE_COLOR, p.stroke_color)
-  if m.kind == KIND_LINE {
+  if m.kind == @core.KIND_LINE {
     slots.constant(@style.SLOT_GAP_WIDTH, p.gap_width)
     slots.constant(@style.SLOT_OFFSET, p.offset)
   } else {
@@ -607,7 +607,7 @@ fn Map::slots(
     slots.constant(@style.SLOT_STROKE_WIDTH, p.stroke_width)
   }
   // A fill's outline color is its own, or its fill color (slot by slot).
-  let outline_follows = m.kind == KIND_FILL &&
+  let outline_follows = m.kind == @core.KIND_FILL &&
     self.style.layers[index].outline_color is None
   if m.vertex_paint is Some(buffer) {
     let paint = self.vertex_paint[index]

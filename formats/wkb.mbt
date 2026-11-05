@@ -6,7 +6,7 @@ pub fn read_wkb(
   bytes : BytesView,
   srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  wkb_table(bytes, MAX_POINTS, srids)
+  wkb_table(bytes, @geom.MAX_TABLE_POINTS, srids)
 }
 
 ///|
@@ -16,7 +16,7 @@ pub fn read_wkb_hex(
   srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
   match unhex(text, 0, text.length()) {
-    Some(bytes) => wkb_table(bytes[:], MAX_POINTS, srids)
+    Some(bytes) => wkb_table(bytes[:], @geom.MAX_TABLE_POINTS, srids)
     None => raise Invalid(format="WKB", pos=0, "invalid hexadecimal text")
   }
 }

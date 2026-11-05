@@ -1,25 +1,4 @@
 ///|
-/// `PackedTile` layer kinds, as the renderer reads them.
-pub const KIND_FILL : Int32 = 1
-
-///|
-pub const KIND_LINE : Int32 = 2
-
-///|
-/// Circles share the line vertex layout: a quad per point whose extrusion
-/// is ±`@tess.EXTRUDE_SCALE` (see `@tess.add_points`).
-pub const KIND_CIRCLE : Int32 = 3
-
-///|
-/// Labels of a symbol layer: the entry's vertex range holds them (docs/FORMATS.md,
-/// "Labels"); the worker glue lays them out into glyph quads.
-pub const KIND_SYMBOL : Int32 = 4
-
-///|
-/// Extruded polygons (`@tess.ExtrusionBuffers`), `EXTRUSION_VERTEX_BYTES` per vertex.
-pub const KIND_EXTRUSION : Int32 = 6
-
-///|
 /// Bytes per packed fill vertex: x, y as Int16.
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
@@ -282,7 +261,7 @@ fn PackedTile::add_fill(
   let n = fills.num_vertices()
   guard self.entry(
       style_layer,
-      KIND_FILL,
+      @core.KIND_FILL,
       n * FILL_VERTEX_BYTES,
       n,
       fills.indices.length(),
@@ -330,7 +309,7 @@ fn PackedTile::add_extrusion(
   let n = b.num_vertices()
   guard self.entry(
       style_layer,
-      KIND_EXTRUSION,
+      @core.KIND_EXTRUSION,
       n * EXTRUSION_VERTEX_BYTES,
       n,
       b.indices.length(),
@@ -367,7 +346,7 @@ fn PackedTile::add_line(
   lines : @tess.LineBuffers,
   extent~ : Int32 = @core.TILE_EXTENT,
 ) -> Bool {
-  self.add_extruded(style_layer, KIND_LINE, lines, extent)
+  self.add_extruded(style_layer, @core.KIND_LINE, lines, extent)
 }
 
 ///|
@@ -379,7 +358,7 @@ fn PackedTile::add_circles(
   points : @tess.LineBuffers,
   extent~ : Int32 = @core.TILE_EXTENT,
 ) -> Bool {
-  self.add_extruded(style_layer, KIND_CIRCLE, points, extent)
+  self.add_extruded(style_layer, @core.KIND_CIRCLE, points, extent)
 }
 
 ///|
@@ -525,7 +504,7 @@ fn PackedTile::add_labels(
   style_layer : Int32,
   labels : Bytes,
 ) -> Bool {
-  guard self.entry(style_layer, KIND_SYMBOL, labels.length(), 0, 0)
+  guard self.entry(style_layer, @core.KIND_SYMBOL, labels.length(), 0, 0)
     is Some((vstart, _, _)) else {
     return false
   }

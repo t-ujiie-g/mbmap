@@ -24,7 +24,10 @@ test "tables past their cell and point limits stop the reader" {
     p.set("a\{i}", Num(1.0))
     wide.emit(point(wide, 1.0), p, None)
   }
-  assert_eq(wide.limit, Some("more than \{MAX_KML_CELLS} property cells"))
+  assert_eq(
+    wide.limit,
+    Some("more than \{@geom.MAX_TABLE_CELLS} property cells"),
+  )
   let long = reader(100, 1)
   long.emit(point(long, 1.0), Props::new(), None)
   assert_true(!long.stopped())
@@ -35,7 +38,7 @@ test "tables past their cell and point limits stop the reader" {
   } noraise {
     _ => ""
   }
-  assert_eq(msg, "too large: more than \{MAX_KML_POINTS} points")
+  assert_eq(msg, "too large: more than \{@geom.MAX_TABLE_POINTS} points")
 }
 
 ///|
@@ -121,7 +124,7 @@ test "GPX extensions are charged as cells by names times points" {
     "</trkseg>"
   assert_true(!gpx_with(distinct, 100, 100).stopped())
   let r = gpx_with(distinct, 99, 100)
-  assert_eq(r.limit, Some("more than \{MAX_KML_CELLS} property cells"))
+  assert_eq(r.limit, Some("more than \{@geom.MAX_TABLE_CELLS} property cells"))
   assert_eq(r.out.table.length(), 0)
   let segment = "<trkseg>" + trkpt("a") + trkpt("a") + "</trkseg>"
   let segments = segment +
@@ -145,7 +148,7 @@ test "a GPX track stops at the extension names and points it may have" {
   assert_eq(r.limit, Some("more than \{MAX_KML_KEYS} extensions"))
   let two = "<trkseg>" + trkpt("a") + trkpt("a") + trkpt("a") + "</trkseg>"
   let q = gpx_with(two, 100, 2)
-  assert_eq(q.limit, Some("more than \{MAX_KML_POINTS} points"))
+  assert_eq(q.limit, Some("more than \{@geom.MAX_TABLE_POINTS} points"))
 }
 
 ///|

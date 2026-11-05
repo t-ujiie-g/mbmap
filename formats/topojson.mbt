@@ -9,7 +9,13 @@ pub fn read_topojson(
   object : String?,
   slow_number~ : (Int32, Int32) -> Double,
 ) -> (@geom.Table, Array[String]) raise ReadError {
-  topojson_table(bytes, object, slow_number, MAX_POINTS, MAX_GEOJSON_CELLS)
+  topojson_table(
+    bytes,
+    object,
+    slow_number,
+    @geom.MAX_TABLE_POINTS,
+    @geom.MAX_TABLE_CELLS,
+  )
 }
 
 ///|

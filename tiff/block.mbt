@@ -5,25 +5,48 @@
 pub const MAX_WINDOW_BYTES : Int32 = 256 * 1024 * 1024
 
 ///|
+/// TIFF's Compression values read here (JPEG and Deflate arrive already decoded).
+const COMPRESSION_NONE : Int32 = 1
+
+///|
+const COMPRESSION_LZW : Int32 = 5
+
+///|
+const COMPRESSION_PACKBITS : Int32 = 32773
+
+///|
+/// LZW's clear code, end code, first free code and table size.
+const LZW_CLEAR : Int32 = 256
+
+///|
+const LZW_END : Int32 = 257
+
+///|
+const LZW_FIRST : Int32 = 258
+
+///|
+const LZW_MAX : Int32 = 4096
+
+///|
 /// The LZW data of a block as geotiff's `LZWDecoder` decodes it (TIFF's early change, codes
 /// up to 12 bits; past the end of the data codes read as zeros, or as EOI from the byte after
 /// the last), stopping after `max` bytes.
 pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
-  let index = FixedArray::make(4096, 4096)
-  let chars = FixedArray::make(4096, b'\x00')
-  for i in 0..<256 {
+  let index = FixedArray::make(LZW_MAX, LZW_MAX)
+  let chars = FixedArray::make(LZW_MAX, b'\x00')
+  for i in 0..<LZW_CLEAR {
     chars[i] = i.to_byte()
   }
   let out = FixedArray::make(max, b'\x00')
   let mut n = 0
-  let mut size = 258
+  let mut size = LZW_FIRST
   let mut width = 9
   // A byte and a bit in it: one bit index would wrap at 256 MB of data.
   let mut pos = 0
   let mut bit = 0
   let next = () => {
     if pos >= data.length() {
-      return 257
+      return LZW_END
     }
     let mut v = 0
     for i in 0..<width {
@@ -40,7 +63,7 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
   let emit = (code : Int32) => {
     let mut len = 0
     let mut c = code
-    while c != 4096 && len < 4096 {
+    while c != LZW_MAX && len < LZW_MAX {
       len += 1
       c = index[c]
     }
@@ -56,7 +79,7 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
     out[start]
   }
   let add = (prev : Int32, c : Byte) => {
-    if size < 4096 {
+    if size < LZW_MAX {
       index[size] = prev
       chars[size] = c
     }
@@ -64,18 +87,18 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
   }
   let mut old = -1
   let mut code = next()
-  while code != 257 && n < max {
-    if code == 256 {
-      size = 258
+  while code != LZW_END && n < max {
+    if code == LZW_CLEAR {
+      size = LZW_FIRST
       width = 9
       code = next()
-      while code == 256 {
+      while code == LZW_CLEAR {
         code = next()
       }
-      if code == 257 {
+      if code == LZW_END {
         break
       }
-      if code > 256 {
+      if code > LZW_CLEAR {
         raise Invalid(pos, "corrupted LZW code \{code}")
       }
       emit(code) |> ignore
@@ -398,15 +421,15 @@ pub fn Window::block(
   let raw = (row_bytes(img.block_width.to_int64(), bits_per_pixel) *
   img.block_height.to_int64()).to_int()
   let mut b = match (decoded, img.compression) {
-    (true, _) | (false, 1) => {
+    (true, _) | (false, COMPRESSION_NONE) => {
       let copy = FixedArray::make(data.length(), b'\x00')
       for i in 0..<data.length() {
         copy[i] = data[i]
       }
       copy
     }
-    (false, 5) => lzw(data, raw)
-    (false, 32773) => packbits(data, raw)
+    (false, COMPRESSION_LZW) => lzw(data, raw)
+    (false, COMPRESSION_PACKBITS) => packbits(data, raw)
     (false, c) => raise Invalid(0, "unsupported compression \{c}")
   }
   let mut little = self.little

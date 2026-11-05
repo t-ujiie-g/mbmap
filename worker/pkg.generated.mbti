@@ -57,16 +57,6 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
-pub const KIND_CIRCLE : Int32 = 3
-
-pub const KIND_EXTRUSION : Int32 = 6
-
-pub const KIND_FILL : Int32 = 1
-
-pub const KIND_LINE : Int32 = 2
-
-pub const KIND_SYMBOL : Int32 = 4
-
 pub const LAYER_ENTRY_WORDS : Int32 = 23
 
 pub const LINE_VERTEX_BYTES : Int32 = 8

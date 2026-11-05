@@ -16,6 +16,20 @@ pub const GEOM_POINTS : Int32 = 1
 
 pub const GEOM_POLYGONS : Int32 = 3
 
+pub const KIND_CIRCLE : Int32 = 3
+
+pub const KIND_EXTRUSION : Int32 = 6
+
+pub const KIND_FILL : Int32 = 1
+
+pub const KIND_HILLSHADE : Int32 = 5
+
+pub const KIND_LINE : Int32 = 2
+
+pub const KIND_RASTER : Int32 = 7
+
+pub const KIND_SYMBOL : Int32 = 4
+
 pub const MAX_PITCH : Double = 85.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28

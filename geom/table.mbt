@@ -1,4 +1,13 @@
 ///|
+/// Most points a reader takes from one input (AGENTS.md §8.2).
+pub const MAX_TABLE_POINTS : Int32 = 20_000_000
+
+///|
+/// Most property cells (rows times columns, as `finish` pads every column) a
+/// reader makes from one input (AGENTS.md §8.2).
+pub const MAX_TABLE_CELLS : Int32 = 32_000_000
+
+///|
 /// A property value. Objects and arrays are kept as their JSON text, as
 /// geojson-vt and MVT encoders do, since style expressions cannot reach into them.
 pub(all) enum Prop {

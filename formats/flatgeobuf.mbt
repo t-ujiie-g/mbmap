@@ -17,10 +17,6 @@ const FGB_NODE_BYTES : Int32 = 40
 const MAX_FGB_COLUMNS : Int32 = 4096
 
 ///|
-/// Most property cells (columns times rows) a table from a FlatGeobuf may have.
-const MAX_FGB_CELLS : Int32 = 32_000_000
-
-///|
 /// Reads a FlatGeobuf file as flatgeobuf 4.6.1's `deserialize` does, collections
 /// flattened, Z and M dropped. With `ids` (a feature index each), `bytes` holds the
 /// header and only those features; otherwise the whole file, features numbered from 0.
@@ -28,7 +24,7 @@ pub fn read_flatgeobuf(
   bytes : BytesView,
   ids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  fgb_table(bytes, ids, MAX_POINTS, MAX_FGB_CELLS)
+  fgb_table(bytes, ids, @geom.MAX_TABLE_POINTS, @geom.MAX_TABLE_CELLS)
 }
 
 ///|

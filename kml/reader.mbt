@@ -6,14 +6,6 @@
 pub const MAX_KML_KEYS : Int32 = 4096
 
 ///|
-/// Most property cells (columns times rows) a table may have.
-pub const MAX_KML_CELLS : Int32 = 32_000_000
-
-///|
-/// Most points a table may have.
-pub const MAX_KML_POINTS : Int32 = 20_000_000
-
-///|
 /// A feature's properties as togeojson assigns them: a key set again keeps its
 /// place and takes the new value; `__proto__` is dropped, as assigning a string
 /// to it does nothing in JavaScript. `index` finds keys once there are many;
@@ -82,10 +74,7 @@ fn well_formed(s : String) -> String {
   while i < n {
     let c = s[i].to_int()
     if c >= 0xD800 && c <= 0xDFFF {
-      if c <= 0xDBFF &&
-        i + 1 < n &&
-        s[i + 1].to_int() >= 0xDC00 &&
-        s[i + 1].to_int() <= 0xDFFF {
+      if surrogate_pair(s, i) {
         i += 1
       } else {
         out.write_view(s.clamped_view(start=last, end=i))
@@ -249,8 +238,8 @@ fn Reader::new(
     limit: None,
     points: 0,
     charged: 0,
-    max_cells: MAX_KML_CELLS.to_int64(),
-    max_points: MAX_KML_POINTS,
+    max_cells: @geom.MAX_TABLE_CELLS.to_int64(),
+    max_points: @geom.MAX_TABLE_POINTS,
   }
 }
 
@@ -273,7 +262,7 @@ fn Reader::has_room(self : Reader, pending : Int32) -> Bool {
   if self.points + pending <= self.max_points {
     return true
   }
-  self.limit_at(MAX_KML_POINTS, "points")
+  self.limit_at(@geom.MAX_TABLE_POINTS, "points")
   false
 }
 
@@ -285,7 +274,7 @@ fn Reader::charge(self : Reader, cells : Int64) -> Bool {
   if self.charged <= self.max_cells {
     return true
   }
-  self.limit_at(MAX_KML_CELLS, "property cells")
+  self.limit_at(@geom.MAX_TABLE_CELLS, "property cells")
   false
 }
 
@@ -362,7 +351,7 @@ fn Reader::emit(
     if props.over {
       self.limit_at(MAX_KML_KEYS, "properties in a feature")
     } else if out.cells() > self.max_cells {
-      self.limit_at(MAX_KML_CELLS, "property cells")
+      self.limit_at(@geom.MAX_TABLE_CELLS, "property cells")
     }
     if self.stopped() {
       return

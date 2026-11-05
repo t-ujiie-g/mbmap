@@ -9,10 +9,6 @@ pub const MAX_CSV_COLUMNS : Int32 = 4096
 pub const MAX_CSV_FIELD_BYTES : Int32 = 16 * 1024 * 1024
 
 ///|
-/// Most property cells (rows times columns) a CSV input may make.
-pub const MAX_CSV_CELLS : Int32 = 32_000_000
-
-///|
 /// How `read_csv` reads its input. `delimiter`: a byte, or -1 to guess it as
 /// papaparse does; `header`: the first row names the columns (else they are named
 /// "0", "1", ...); `dynamic_typing`: fields become numbers, booleans and nulls as
@@ -73,7 +69,14 @@ pub fn read_csv(
   },
   srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  csv_table(bytes, options, slow_number, MAX_POINTS, MAX_CSV_CELLS, srids)
+  csv_table(
+    bytes,
+    options,
+    slow_number,
+    @geom.MAX_TABLE_POINTS,
+    @geom.MAX_TABLE_CELLS,
+    srids,
+  )
 }
 
 ///|

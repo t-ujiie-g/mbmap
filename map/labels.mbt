@@ -1,8 +1,4 @@
 ///|
-/// `@worker.KIND_SYMBOL`, mirrored like the other kinds.
-const KIND_SYMBOL : Int32 = 4
-
-///|
 /// Columns of a label's floats in a symbol entry's `labels` (docs/FORMATS.md
 /// "Symbol vertices"); mirrored in worker/js/symbols.mjs.
 const LABEL_X : Int32 = 0

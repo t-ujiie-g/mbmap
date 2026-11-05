@@ -1,8 +1,4 @@
 ///|
-/// Most points a reader takes from one input (AGENTS.md §8.2).
-pub const MAX_POINTS : Int32 = 20_000_000
-
-///|
 /// Deepest nesting of geometry collections in WKT and WKB input.
 pub const MAX_GEOMETRY_DEPTH : Int32 = 32
 

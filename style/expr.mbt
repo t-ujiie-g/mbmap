@@ -482,7 +482,7 @@ fn Compiler::compile_at(
     "heatmap-density" => HeatmapDensity
     "elevation" => Elevation
     "accumulated" => Accumulated
-    "pi" => Lit(Num(3.141592653589793))
+    "pi" => Lit(Num(pi))
     "e" => Lit(Num(2.718281828459045))
     "ln2" => Lit(Num(0.6931471805599453))
     "feature-state" => FeatureState(self.key(items[1], sub(path, 1)))

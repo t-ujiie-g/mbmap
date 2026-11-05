@@ -320,7 +320,7 @@ test "TopoJSON stops at its key and cell limits" {
   sb.write_string("]}}}")
   let many = @utf8.encode(sb.to_string())
   let error = limit_error(() => {
-    topojson_table(many[:], None, no_number, 100, MAX_GEOJSON_CELLS).0
+    topojson_table(many[:], None, no_number, 100, @geom.MAX_TABLE_CELLS).0
   })
   assert_true(error.has_suffix("more than 4096 property keys"))
   let two = b"{\"type\":\"Topology\",\"arcs\":[],\"objects\":{\"a\":{\"type\":\"GeometryCollection\",\"geometries\":[{\"properties\":{\"a\":0}},{\"properties\":{\"b\":0}}]}}}"
