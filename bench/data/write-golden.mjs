@@ -1,7 +1,6 @@
-// mbmap/data's writers (CSV in data.wasm, KML in xml.wasm) vs papaparse 5.7.0's `unparse` (WKT by
-// betterknown 1.2.0's `geoJSONToWkt`) and @placemarkio/tokml 0.4.0's `toKML`, each given the
-// FeatureCollection `toGeoJSON` makes of the same table: GSI features (国土地理院ベクトルタイル提供実験)
-// and hand-written cases, byte for byte. Usage: node data/write-golden.mjs; writes bench/results/write-golden.json.
+// mbmap/data's CSV and KML vs papaparse 5.7.0's `unparse` (WKT by betterknown 1.2.0) and tokml 0.4.0's
+// `toKML` of the table's `toGeoJSON`, on GSI features (国土地理院ベクトルタイル提供実験) and hand-written
+// cases, byte for byte. Usage: node data/write-golden.mjs; writes bench/results/write-golden.json.
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { VectorTile } from "@mapbox/vector-tile";

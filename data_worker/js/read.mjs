@@ -211,10 +211,8 @@ export function dataReader(wasm, imports, { proj, prj, xml }) {
     return { table: result.table, ids: result.ids ?? null, layer: result.layer ?? null, layers: result.layers ?? [] };
   }
   /**
-   * `table` (and its feature `ids`, property values, or null) as `format` ("csv" or "kml") in
-   * UTF-8. CSV `options`: `delimiter` (a character code), `header`, `geometryFormat` ("wkt",
-   * "lonlat" or "none"; by default "none" without geometry, "lonlat" for points, else "wkt"),
-   * the column names `geometry` (WKT, default "wkt"), `longitude` and `latitude`.
+   * `table` (and its `ids`, property values, or null) as `format` ("csv" or "kml") in UTF-8;
+   * CSV `options` as docs/FORMATS.md "Data worker messages" has them.
    */
   async function write(format, table, ids, options) {
     const t = new Uint8Array(table);

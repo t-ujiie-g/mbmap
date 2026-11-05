@@ -1,9 +1,7 @@
 ///|
 /// The rows of `table` as @placemarkio/tokml 0.4.0's `toKML` writes the FeatureCollection
-/// `toGeoJSON` gives them: a Placemark per row (its id from `ids` when a string or a number),
-/// `name`, `description` and `visibility` as elements, the other properties as `ExtendedData`,
-/// multi-geometries as `MultiGeometry`; text escaped as xast-util-to-xml escapes it.
-/// `number_text` is the host's `String(x)`.
+/// `toGeoJSON` gives them, text escaped as xast-util-to-xml does. `number_text` is the host's
+/// `String(x)`.
 pub fn write_kml(
   table : @geom.Table,
   number_text~ : (Double) -> String,

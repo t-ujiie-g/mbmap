@@ -11,11 +11,9 @@ const MAX_FGB_HEADER_BYTES : Int32 = 10 * 1024 * 1024
 const FGB_NODE_BYTES : Int32 = 40
 
 ///|
-/// Reads a FlatGeobuf file into rows as flatgeobuf 4.6.1's `deserialize` makes
-/// features of it, collections flattened, Z and M dropped (npm/README.md
-/// `mbmap/data`). With `ids` (a feature index each), `bytes` holds the header
-/// and only those features, one after another, and no index; otherwise every
-/// feature, numbered from 0.
+/// Reads a FlatGeobuf file as flatgeobuf 4.6.1's `deserialize` does, collections
+/// flattened, Z and M dropped. With `ids` (a feature index each), `bytes` holds the
+/// header and only those features; otherwise the whole file, features numbered from 0.
 pub fn read_flatgeobuf(
   bytes : BytesView,
   ids? : Array[Int32],

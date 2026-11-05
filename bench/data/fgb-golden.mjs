@@ -1,7 +1,6 @@
-// data.wasm's FlatGeobuf (with data_worker/js/fgb.mjs's index search and range requests) vs flatgeobuf
-// 4.6.1's `deserialize`: GSI features (国土地理院ベクトルタイル提供実験), every column type, every geometry
-// type, bboxes from bytes and over HTTP, hostile files; identical or refused by both.
-// Usage: node data/fgb-golden.mjs; writes bench/results/fgb-golden.json.
+// mbmap/data's FlatGeobuf vs flatgeobuf 4.6.1's `deserialize` on GSI features (国土地理院ベクトルタイル提供実験),
+// every column and geometry type, bboxes from bytes and over HTTP, hostile files: identical or refused
+// by both. Usage: node data/fgb-golden.mjs; writes bench/results/fgb-golden.json.
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";

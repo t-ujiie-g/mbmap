@@ -10,10 +10,8 @@ pub(all) enum CsvGeometry {
 
 ///|
 /// The rows of `table` as papaparse 5.7.0's `unparse` writes objects of their properties and
-/// geometry columns (`fields` the table's columns, then the geometry's): `delimiter` between
-/// values, CRLF between lines, values quoted where they hold a quote, a delimiter, CR, LF or a BOM
-/// or start or end with a space. `number_text` is the host's `String(x)`. Fails for `LonLat` and a
-/// row whose geometry is not a point.
+/// geometry columns (`fields` the table's, then the geometry's). `number_text` is the host's
+/// `String(x)`. Fails for `LonLat` and a row whose geometry is not a point.
 pub fn write_csv(
   table : @geom.Table,
   delimiter~ : Char = ',',
