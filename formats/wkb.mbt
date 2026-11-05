@@ -22,6 +22,32 @@ pub fn read_wkb_hex(
 }
 
 ///|
+/// `read_wkb` of binary WKB or `read_wkb_hex` of hexadecimal text, told apart by the
+/// first byte after ASCII white space: binary WKB starts with its byte order, 0 or 1.
+pub fn read_wkb_any(
+  bytes : BytesView,
+  srids? : Array[Int32],
+) -> @geom.Table raise ReadError {
+  let mut first = 0
+  while first < bytes.length() &&
+        (
+          bytes[first] == b' ' ||
+          bytes[first] == b'\t' ||
+          bytes[first] == b'\n' ||
+          bytes[first] == b'\r'
+        ) {
+    first += 1
+  }
+  if first == bytes.length() ||
+    bytes[first] == b'\x00' ||
+    bytes[first] == b'\x01' {
+    read_wkb(bytes, srids?)
+  } else {
+    read_wkb_hex(bytes, srids?)
+  }
+}
+
+///|
 /// The bytes the hexadecimal digits of `text[start:end]` spell, ASCII white space
 /// ignored; None for an odd count or another character.
 fn unhex(text : BytesView, start : Int32, end : Int32) -> Bytes? {

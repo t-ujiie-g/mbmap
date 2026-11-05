@@ -53,11 +53,8 @@ pub fn elevations(rgba : BytesView, unpack : Unpack) -> FixedArray[Double] {
 }
 
 ///|
-/// The equator's length in meters: the Web Mercator world's width.
-pub const WORLD_WIDTH : Double = 40075016.6855785
-
-///|
-/// `@math.log2(WORLD_WIDTH)`, written out so no log is computed.
+/// The log2 of the equator's length in meters (the Web Mercator world's width),
+/// written out so no log is computed.
 const LOG2_WORLD_WIDTH : Double = 25.256199785269995
 
 ///|

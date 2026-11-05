@@ -1,6 +1,6 @@
 ///|
 /// Deepest nesting of geometry collections in WKT and WKB input.
-pub const MAX_GEOMETRY_DEPTH : Int32 = 32
+const MAX_GEOMETRY_DEPTH : Int32 = 32
 
 ///|
 pub(all) suberror ReadError {

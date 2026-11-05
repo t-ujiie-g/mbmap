@@ -2,7 +2,7 @@
 
 ///|
 /// Most bytes of one window's bands.
-pub const MAX_WINDOW_BYTES : Int32 = 256 * 1024 * 1024
+const MAX_WINDOW_BYTES : Int32 = 256 * 1024 * 1024
 
 ///|
 /// TIFF's Compression values read here (JPEG and Deflate arrive already decoded).

@@ -52,6 +52,8 @@ pub const TILE_SIZE : Double = 512.0
 
 pub fn clamp_i16(Int32) -> Int32
 
+pub let exact_powers : FixedArray[Double]
+
 pub fn json_string_text(BytesView) -> String
 
 pub fn parse_json(BytesView, slow_number? : (Int32, Int32) -> Double, max_depth? : Int32) -> Json raise JsonError
@@ -65,6 +67,8 @@ pub fn polygon_hits_point(Array[(Double, Double)], (Double, Double), Double) -> 
 pub fn polygon_hits_polygon(Array[(Double, Double)], Array[(Double, Double)]) -> Bool
 
 pub fn polygon_hits_polygons(Array[(Double, Double)], Array[Array[(Double, Double)]]) -> Bool
+
+pub fn radians(Double) -> Double
 
 pub fn read_json_number(BytesView, Int32, (Int32, Int32) -> Double) -> (Double, Int32)
 
@@ -91,11 +95,9 @@ pub(all) struct BBox {
   max_x : Double
   max_y : Double
 } derive(Eq, @debug.Debug)
-pub fn BBox::add_point(Self, Double, Double) -> Self
 pub fn BBox::contains(Self, Double, Double) -> Bool
 pub fn BBox::empty() -> Self
 pub fn BBox::equal(Self, Self) -> Bool
-pub fn BBox::intersects(Self, Self) -> Bool
 pub fn BBox::is_empty(Self) -> Bool
 pub fn BBox::not_equal(Self, Self) -> Bool
 pub fn BBox::to_repr(Self) -> @debug.Repr
@@ -199,7 +201,6 @@ pub(all) struct LngLatBounds {
   north : Double
 } derive(Eq, @debug.Debug)
 pub fn LngLatBounds::equal(Self, Self) -> Bool
-pub fn LngLatBounds::including(Self, LngLat) -> Self
 pub fn LngLatBounds::not_equal(Self, Self) -> Bool
 pub fn LngLatBounds::to_repr(Self) -> @debug.Repr
 

@@ -90,7 +90,7 @@ pub const ENTRY_DASHES_COUNT : Int32 = 22
 
 ///|
 /// Largest packed tile; a bigger one is rejected rather than allocated.
-pub const MAX_PACKED_BYTES : Int32 = 64 * 1024 * 1024
+const MAX_PACKED_BYTES : Int32 = 64 * 1024 * 1024
 
 ///|
 /// One tile's GPU-ready buffers in one blob (docs/FORMATS.md, "Packed tile").
@@ -103,7 +103,7 @@ pub struct PackedTile {
 }
 
 ///|
-pub fn PackedTile::new() -> PackedTile {
+fn PackedTile::new() -> PackedTile {
   { store: Store::new(), len: 0, layers: 0, overflow: false, }
 }
 

@@ -24,7 +24,7 @@ fn LngLatBounds::empty() -> LngLatBounds {
 }
 
 ///|
-pub fn LngLatBounds::including(self : LngLatBounds, p : LngLat) -> LngLatBounds {
+fn LngLatBounds::including(self : LngLatBounds, p : LngLat) -> LngLatBounds {
   {
     west: @cmp.minimum(self.west, p.lng),
     south: @cmp.minimum(self.south, p.lat),

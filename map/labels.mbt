@@ -343,7 +343,7 @@ fn Map::place_labels(
         }
         // MapLibre places a `viewport-y` layer's labels from the bottom up.
         let order = if by_y {
-          y_order(s, -t.camera.bearing * @math.PI / 180.0)
+          y_order(s, @core.radians(-t.camera.bearing))
         } else {
           []
         }
@@ -397,7 +397,7 @@ fn Map::place_labels(
       let s = p.set
       // Labels that may overlap are drawn from the top of the screen down.
       if sorts && s.line is None {
-        let angle = -t.camera.bearing * @math.PI / 180.0
+        let angle = @core.radians(-t.camera.bearing)
         if s.sorted_at != angle {
           s.order = y_order(s, angle)
           s.sorted_at = angle

@@ -26,7 +26,7 @@ pub const LINE_VERTEX_STRIDE : Int32 = 6
 ///|
 /// Longest miter, and longest offset normal at a join (MapLibre's
 /// `MAX_OFFSET_MITER_LENGTH`), that still fits an Int8 extrusion component.
-pub const MAX_MITER_LIMIT : Double = 2.0
+const MAX_MITER_LIMIT : Double = 2.0
 
 ///|
 /// MapLibre's sharp corners for dashes: a corner whose half angle's cosine is

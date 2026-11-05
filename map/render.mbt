@@ -129,7 +129,7 @@ fn Map::translate_by(
     return at
   }
   let (x, y) = if viewport {
-    let a = self.transform.camera.bearing * @math.PI / 180.0
+    let a = @core.radians(self.transform.camera.bearing)
     let c = @math.cos(a)
     let s = @math.sin(a)
     (x * c - y * s, x * s + y * c)
@@ -354,7 +354,7 @@ fn Map::draw_layer(
           halo_blur=p.blur,
           two_pass=self.halo_apart(layer, p.halo_width),
           opacity=p.opacity,
-          gamma_scale=@math.cos(self.transform.camera.pitch * @math.PI / 180.0) *
+          gamma_scale=@math.cos(@core.radians(self.transform.camera.pitch)) *
             at.center_depth,
           height_scale~,
         )

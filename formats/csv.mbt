@@ -6,7 +6,7 @@ pub const MAX_CSV_COLUMNS : Int32 = 4096
 
 ///|
 /// Longest CSV field in bytes.
-pub const MAX_CSV_FIELD_BYTES : Int32 = 16 * 1024 * 1024
+const MAX_CSV_FIELD_BYTES : Int32 = 16 * 1024 * 1024
 
 ///|
 /// How `read_csv` reads its input. `delimiter`: a byte, or -1 to guess it as

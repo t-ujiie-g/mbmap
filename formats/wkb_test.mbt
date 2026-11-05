@@ -276,3 +276,27 @@ test "hexadecimal WKB in either case, white space ignored" {
     }
   }
 }
+
+///|
+test "read_wkb_any tells binary from hexadecimal text by the first byte" {
+  let binary = b"\x01\x01\x00\x00\x00" +
+    b"\x00\x00\x00\x00\x00\x00\xf0\x3f" +
+    b"\x00\x00\x00\x00\x00\x00\x00\x40"
+  let t = @formats.read_wkb_any(binary[:])
+  assert_eq(t.coords, [1.0, 2.0])
+  let hex = @formats.read_wkb_any(
+    b" \t\r\n0101000000000000000000F03F0000000000000040"[:],
+  )
+  assert_eq(hex.coords, [1.0, 2.0])
+  let blank = try @formats.read_wkb_any(b" \n"[:]) catch {
+    _ => None
+  } noraise {
+    t => Some(t)
+  }
+  assert_true(blank is None)
+  assert_eq(@formats.read_wkb_any(b""[:]).length(), 0)
+  let srids = []
+  let text = b"0101000020E6100000000000000000F03F0000000000000040"
+  assert_eq(@formats.read_wkb_any(text[:], srids~).length(), 1)
+  assert_eq(srids, [4326])
+}

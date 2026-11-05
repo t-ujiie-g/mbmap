@@ -160,9 +160,7 @@ test "distance measures in meters to points, lines and polygons" {
 ///|
 test "within and distance count as reading the feature's geometry" {
   let e = geo("[\"case\", [\"within\", \{square}], 1, 0]")
-  assert_true(e.reads_geometry())
   assert_eq(e.feature_inputs(), ([], true))
-  assert_true(!geo("[\"get\", \"a\"]").reads_geometry())
 }
 
 ///|

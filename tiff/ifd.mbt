@@ -2,7 +2,7 @@
 
 ///|
 /// Most images (IFDs) read from one file.
-pub const MAX_IMAGES : Int32 = 256
+const MAX_IMAGES : Int32 = 256
 
 ///|
 /// Most pixels a tile may reach past its image: a small overview keeps its file's tile size,
@@ -11,7 +11,7 @@ let max_tile_overhang : Double = 4096.0
 
 ///|
 /// Most entries in one IFD, and most values in one entry.
-pub const MAX_ENTRIES : Int32 = 4096
+const MAX_ENTRIES : Int32 = 4096
 
 ///|
 /// Most values of one tag (a tile offset per block, at most).
@@ -20,11 +20,11 @@ pub const MAX_VALUES : Int32 = 16 * 1024 * 1024
 ///|
 /// Most values of all tags of one file read as lists, over its IFDs: a block table
 /// at `MAX_VALUES` and its overviews fit, the same bytes named by every IFD do not.
-pub const MAX_FILE_VALUES : Int32 = 4 * MAX_VALUES
+const MAX_FILE_VALUES : Int32 = 4 * MAX_VALUES
 
 ///|
 /// Most bytes of one decoded block.
-pub const MAX_BLOCK_BYTES : Int32 = 256 * 1024 * 1024
+const MAX_BLOCK_BYTES : Int32 = 256 * 1024 * 1024
 
 ///|
 /// TIFF 6.0, GeoTIFF and GDAL tags this reader takes from an IFD.

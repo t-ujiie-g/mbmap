@@ -3,7 +3,7 @@
 
 ///|
 /// Turf's mean earth radius in meters.
-pub const EARTH_RADIUS : Double = 6371008.8
+const EARTH_RADIUS : Double = 6371008.8
 
 ///|
 /// The trigonometry measures use (`@core.Trig`): a wasm build passes the
