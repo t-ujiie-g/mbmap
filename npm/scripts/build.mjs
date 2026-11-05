@@ -27,7 +27,7 @@ await mkdir(DIST);
 
 const common = { bundle: true, minify: true, format: "esm", target: "es2022", logLevel: "warning", legalComments: "none" };
 // The GeoJSON module stays a file of its own, loaded only by maps that need it.
-const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/(geojson|pmtiles|legacy|sprite|media|custom|export|tilejson-merge)\.js$/ }, (a) => ({ path: a.path, external: true })) };
+const geojsonEntry = { name: "geojson-entry", setup: (b) => b.onResolve({ filter: /^\.\/(geojson|pmtiles|legacy|sprite|media|custom|export|tilejson-merge|geotiff-source)\.js$/ }, (a) => ({ path: a.path, external: true })) };
 await build({
   ...common,
   entryPoints: [path.join(PKG, "src/index.ts")],
@@ -43,6 +43,9 @@ await build({ ...common, entryPoints: [path.join(PKG, "src/media.ts")], outfile:
 await build({ ...common, entryPoints: [path.join(PKG, "src/custom.ts")], outfile: path.join(DIST, "custom.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/export.ts")], outfile: path.join(DIST, "export.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/tilejson-merge.ts")], outfile: path.join(DIST, "tilejson-merge.js") });
+// GeoTIFF sources ask mbmap/data's worker for their tiles: data.js is imported, not bundled.
+const dataEntry = { name: "data-entry", setup: (b) => b.onResolve({ filter: /^\.\/data$/ }, () => ({ path: "./data.js", external: true })) };
+await build({ ...common, entryPoints: [path.join(PKG, "src/geotiff-source.ts")], outfile: path.join(DIST, "geotiff-source.js"), plugins: [dataEntry] });
 // The controllers only take a `Map`: no part of the main entry is bundled into them.
 await build({ ...common, entryPoints: [path.join(PKG, "src/ui.ts")], outfile: path.join(DIST, "ui.js") });
 await build({ ...common, entryPoints: [path.join(PKG, "src/search.ts")], outfile: path.join(DIST, "search.js") });

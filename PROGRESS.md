@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-04）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）を始めた（下の節）。
-- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.6b、17.6c（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は #101、17.5 は #102、17.6a は下の節。
+- **次**（2026-11-04 にユーザーが決めた順）：Phase 17 の 17.6c（下の「Phase 17」の節）。17.7 は #97、17.1 は #98、17.2 は #99、17.4 は #100、17.3 は #101、17.5 は #102、17.6a は #103、17.6b は下の節。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
@@ -54,7 +54,33 @@
   - 書き出す数値は host の `String(x)` で表す。
   - d3-dsv 3.0.2 は公開されたばかりなので使わない。
 
-### 17.6a：GeoTIFF/COG の読み込みと解析の Grid（このブランチ）
+### 17.6b：GeoTIFF/COG の表示（EPSG:3857 と 4326、このブランチ）
+
+- **書き方**（2026-11-05 ユーザー判断）：mbmap 独自のソース型 `{ type: "geotiff", url, dem?, bands?, range?, colors?, resampling?, tileSize? }`。1 帯は `range` で灰色に、`colors`（`[値, 色]`）で色の帯に。
+- **作り**：
+  - エンジン（`style/source.mbt`）：`geotiff` は `tiles` のない raster ソース。`dem: true` なら Terrarium の raster-dem になり、hillshade・color-relief・terrain に使える。
+  - タイルは GeoJSON と同じプロバイダの経路で受け取り（`map/tiles.mbt`）、表示ワーカーがラスタか DEM のバイト列として読む。
+  - ファサードは TileJSON と同じ仕組みで、ファイルのヘッダーから `bounds` と `maxzoom` を決める（`GEOTIFF` の鍵、`geotiff-source.js`、0.2KB）。
+  - タイルは `mbmap/data` のワーカーが作る（`rasterTile` → `renderTile`）。
+    - 画素ごとに中心を EPSG:3857 か 4326 の座標にする。
+    - タイルより細かいうちでいちばん粗い画像の、必要なブロックだけを読む。
+    - 最近傍か双線形で引き、色を付ける（no data は透明）。標高は Terrarium にし、PNG にする。
+  - ヘッダー（8 ファイル）とブロック（32MB）は URL ごとにワーカーに残し、隣のタイルで使い回す。
+- **公開した API**：`mbmap/data` の `rasterInfo` と `rasterTile`。
+- **黄金テスト**（`npm run geotiff:tiles`、Chromium）：52 件すべて OK。
+  - GSI の標準地図の z14 のタイル 35 枚を、概観図つきの EPSG:3857 の COG にした。z14 のタイルは元の PNG と画素単位で一致し、地図に描いても PNG のタイルの地図と画素単位で一致した（差 0）。
+  - 富士山の DEM（EPSG:3857、float32）は Terrarium で 1/256 m 以内。
+  - EPSG:4326 の面は、z11〜z14 のタイルが独立に書いた最近傍の参照と一致した（灰色と色の帯）。
+- **pack test**：データページの地図に `geotiff` のソースを 2 つ足す（灰色の raster と、`dem: true` の hillshade）。中心の色を確かめ、`geotiff-source.js` は 1 回だけ読み込まれる。
+- **大きさ**（gzip -9）：表示（メイン）128.4KB / 135KB（+0.4KB）、GeoTIFF 18.6KB / 20KB（+2.0KB）、データワーカー 38.6KB / 40KB。
+- **残したもの**：
+  - ほかの座標系（17.6c）。
+  - 1 帯の色は直線の補間だけ（MapLibre の `raster-color` にあたるものはない）。
+  - 標高は Terrarium の 1/256 m 刻み。
+  - DEM の範囲の外は 0 m として描く。
+  - PNG に包んでから表示ワーカーで開くので、タイルごとに符号化と復号が 1 回ずつ余分にかかる。
+
+### 17.6a：GeoTIFF/COG の読み込みと解析の Grid（#103）
 
 - **API**（2026-11-05 ユーザー判断）：`mbmap/data` の `readRaster(input, options)` と、`mbmap/analysis` の `loadGrid(raster, { band, scale })`。
 - **読み手**：geotiff 3.0.5 の `readRasters` と同じ値を返す。

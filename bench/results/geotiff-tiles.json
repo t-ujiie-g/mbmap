@@ -1,0 +1,40 @@
+{
+  "results": {
+    "info": {
+      "cases": 1,
+      "ok": 1,
+      "failed": []
+    },
+    "std z14": {
+      "cases": 35,
+      "ok": 35,
+      "failed": []
+    },
+    "std": {
+      "cases": 2,
+      "ok": 2,
+      "failed": []
+    },
+    "dem z12": {
+      "cases": 4,
+      "ok": 4,
+      "failed": []
+    },
+    "dem": {
+      "cases": 1,
+      "ok": 1,
+      "failed": []
+    },
+    "lonlat": {
+      "cases": 8,
+      "ok": 8,
+      "failed": []
+    },
+    "map": {
+      "cases": 1,
+      "ok": 1,
+      "failed": []
+    }
+  },
+  "failed": 0
+}

@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 128004,
+      "bytes": 128383,
       "budget": 135000
     },
     {
@@ -18,6 +18,11 @@
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
       "bytes": 759,
       "budget": 2000
+    },
+    {
+      "name": "GeoTIFF sources (loaded by mbmap with the first one; tiles by mbmap/data)",
+      "bytes": 245,
+      "budget": 1000
     },
     {
       "name": "legacy filters and functions (loaded by mbmap when a style has them)",
@@ -101,7 +106,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3790,
+      "bytes": 3816,
       "budget": 5000
     },
     {
@@ -136,12 +141,12 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 4179,
+      "bytes": 4460,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 38460,
+      "bytes": 38642,
       "budget": 40000
     },
     {
@@ -171,7 +176,7 @@
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
-      "bytes": 16647,
+      "bytes": 18633,
       "budget": 20000
     },
     {

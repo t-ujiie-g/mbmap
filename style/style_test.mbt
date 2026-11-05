@@ -308,6 +308,51 @@ test "raster-dem sources and hillshade layers, with MapLibre's defaults" {
 }
 
 ///|
+test "geotiff sources are raster or Terrarium raster-dem sources without tiles" {
+  let s = @style.Style::parse(
+    (
+      #|{"sources": {
+      #|   "photo": {"type": "geotiff", "maxzoom": 17, "bounds": [139, 35, 140, 36]},
+      #|   "dem": {"type": "geotiff", "dem": true, "tileSize": 512}},
+      #| "layers": [{"id": "p", "type": "raster", "source": "photo"},
+      #|            {"id": "h", "type": "hillshade", "source": "dem"}],
+      #| "terrain": {"source": "dem"}}
+    ),
+  )
+  let photo = s.source("photo").unwrap()
+  assert_eq(
+    (photo.kind, photo.tiles, photo.tile_size, photo.max_zoom, photo.bounds),
+    (Raster, [], 256, 17, Some((139.0, 35.0, 140.0, 36.0))),
+  )
+  let dem = s.source("dem").unwrap()
+  assert_eq(
+    (dem.kind, dem.tile_size, dem.encoding),
+    (RasterDem, 512, Terrarium),
+  )
+  for
+    c in [
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geotiff\", \"dem\": 1}}, \"layers\": []}",
+        "sources.g.dem",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geotiff\", \"tileSize\": 128}}, \"layers\": []}",
+        "sources.g.tileSize",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"geotiff\", \"minzoom\": 9, \"maxzoom\": 3}}, \"layers\": []}",
+        "sources.g.minzoom",
+      ),
+    ] {
+    try @style.Style::parse(c.0) catch {
+      Invalid(path~, _) | Unsupported(path~, _) => assert_eq(path, c.1)
+    } noraise {
+      _ => fail("expected \{c.1} to be refused")
+    }
+  }
+}
+
+///|
 test "unknown DEM encodings, odd tile sizes, hillshade methods and resampling are refused" {
   let cases = [
     (

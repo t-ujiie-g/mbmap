@@ -265,6 +265,52 @@ export async function readRaster(input: Input, options: RasterOptions = {}): Pro
   return client.call<Raster>("readRaster", { ...source, options: { window: wnd, bbox, width, height, resX, resY, resampleMethod, image, samples, fillValue } }, transfer);
 }
 
+/** What `rasterInfo` gives: `crs` (EPSG code), `bounds` in longitude and latitude, `maxzoom` (256-px tiles), `samples`, `noData`, `range` (band 0's values in the coarsest image). */
+export interface RasterInfo {
+  crs: number;
+  bounds: [number, number, number, number];
+  maxzoom: number;
+  samples: number;
+  noData: number | null;
+  range: [number, number] | null;
+}
+
+/** How `rasterTile` draws (npm/README.md): `tileSize`, `bands`, `range`, `colors` (`[value, color]` stops), `dem`, `resampling`. */
+export interface RasterTileOptions extends DataOptions {
+  tileSize?: 256 | 512;
+  bands?: number[];
+  range?: [number, number];
+  colors?: [number, string][];
+  dem?: boolean;
+  resampling?: "nearest" | "bilinear";
+  transformRequest?: ReadOptions["transformRequest"];
+}
+
+/** What drawing the GeoTIFF (EPSG:3857 or 4326) of `input` needs. */
+export async function rasterInfo(input: Input, options: DataOptions & { transformRequest?: ReadOptions["transformRequest"] } = {}): Promise<RasterInfo> {
+  const transfer: Transferable[] = [];
+  const source = sourceOf(input, options, transfer);
+  start(options);
+  return client.call<RasterInfo>("rasterInfo", source, transfer);
+}
+
+/** XYZ tile `z`/`x`/`y` of the GeoTIFF (EPSG:3857 or 4326) of `input` as a PNG, or null where it has no pixel. */
+export async function rasterTile(input: Input, z: number, x: number, y: number, options: RasterTileOptions = {}): Promise<ArrayBuffer | null> {
+  const { tileSize = 256, bands, range, colors, dem, resampling } = options;
+  const fail = (what: string): never => {
+    throw new Error(`mbmap: data: invalid ${what}`);
+  };
+  if (![z, x, y].every(Number.isInteger) || z < 0 || z > 24 || x < 0 || y < 0 || x >= 2 ** z || y >= 2 ** z) fail("tile");
+  if (bands !== undefined && (!Array.isArray(bands) || bands.length < 1 || bands.length > 4 || !bands.every((b) => Number.isInteger(b) && b >= 0))) fail("bands");
+  if (range !== undefined && !(Array.isArray(range) && range.length === 2 && range.every(Number.isFinite))) fail("range");
+  if (colors !== undefined && !(Array.isArray(colors) && colors.every((c) => Array.isArray(c) && Number.isFinite(c[0]) && typeof c[1] === "string"))) fail("colors");
+  if (resampling !== undefined && resampling !== "nearest" && resampling !== "bilinear") fail("resampling");
+  const transfer: Transferable[] = [];
+  const source = sourceOf(input, options, transfer);
+  start(options);
+  return client.call<ArrayBuffer | null>("rasterTile", { ...source, options: { z, x, y, tileSize, bands, range, colors, dem: dem === true, resampling } }, transfer);
+}
+
 /** Stops the data worker; pending calls reject. */
 export function terminate(): void {
   client.terminate();

@@ -3,7 +3,10 @@
 import type { StyleSpecification } from "./style";
 import { PMTILES, httpUrl, pmtilesArchive } from "./urls.ts";
 
-const TYPES = new Set(["vector", "raster", "raster-dem"]);
+const TYPES = new Set(["vector", "raster", "raster-dem", "geotiff"]);
+
+/** The prefix of a GeoTIFF source's key among the documents: its "document" comes from the file's header. */
+export const GEOTIFF = "geotiff:";
 
 /**
  * The absolute URL of each source's TileJSON (http(s) only), by source id; a PMTiles archive
@@ -14,9 +17,9 @@ export function tileJSONUrls(style: StyleSpecification, base: URL): Map<string, 
   for (const [id, s] of Object.entries(style.sources ?? {})) {
     const src = s as { type?: unknown; url?: unknown; tiles?: unknown };
     if (!TYPES.has(String(src?.type)) || typeof src.url !== "string" || Array.isArray(src.tiles)) continue;
-    const archive = pmtilesArchive(src.url);
+    const archive = src.type === "geotiff" ? null : pmtilesArchive(src.url);
     const url = httpUrl(archive ?? src.url, base, `source "${id}": url`);
-    out.set(id, archive === null ? url : PMTILES + url);
+    out.set(id, src.type === "geotiff" ? GEOTIFF + url : archive === null ? url : PMTILES + url);
   }
   return out;
 }
