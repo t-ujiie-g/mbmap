@@ -1,22 +1,20 @@
 # PROGRESS
 
-## 現在の状況（2026-11-05）
+## 現在の状況（2026-11-06）
 
-- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。
-- **次**：Phase 17 のリファクタリングとセキュリティチェック（AGENTS §7、§8）。動作確認と計測を含めて Mac で進める（2026-11-05 ユーザー判断）。段階ごとの PR は 17.7 #97、17.1 #98、17.2 #99、17.4 #100、17.3 #101、17.5 #102、17.6a #103、17.6b #104、17.6c #105。
-- **Mac で回すもの**（クラウドでは回せず、たまっているもの）：
-  - Phase 17 の点検の範囲：パッケージ `formats`（CSV、WKT/WKB、Shapefile、TopoJSON、FlatGeobuf、書き出し）、`xml`、`kml`、`tiff`、`data_worker`、`xml_worker`、`geotiff_worker`、`analysis_worker` の `load_grid`、JS の `data_worker/js/*`、`npm/src/{data,zip,prjwkt,crs,geotiff-source}.ts`、`npm/src/ui/` の属性テーブル、`style/source.mbt` の `geotiff`。
-  - 黄金テスト（Phase 17）：`data:golden`、`xml:golden`、`fgb:golden`、`write:golden`、`geotiff:golden`、`geotiff:tiles`、`ui:golden`。クラウドではすべて差 0 / all ok。
-  - `terrain:golden`（GDAL が要る）：17.6a で GDAL が書いた COG を `readRaster` と `loadGrid` で読む段を足した。まだ一度も走らせていない。
-  - 速さ：Phase 17 の読み込みには速さのベンチがまだない（要るなら、JS の各ライブラリとの比べを足すところから）。17.6c の投影し直し（1 タイル 65,536 点を proj.wasm で）のコストも未計測。
-  - 以前からの残り：R4 で戻した線の `Emitter` のあとの `tess:browser`、「全体のレビュー」の「M2 で測ってから」の候補、各節の「本線で測ってほしいもの」（`labels:golden`・`style:golden`・`style:public` の結果を Mac のフォントと GPU で、`worker:browser`、`render`）。
+- **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
+- **次**：Phase 18 の範囲をユーザーと決める。
+- **Mac で回すもの**（残り）：
+  - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
+  - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
+  - 主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 128.4KB（GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示（メイン） | 132.9KB（GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
   | 表示ワーカー | 80.8KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
@@ -48,6 +46,11 @@
 - **moonc 0.10.20**（2026-11-06 ユーザー判断。作業中に Mac が 0.10.19 から 0.10.20 に変わり、原因は不明）：`derive(...)` は `#derive(...)` に（59 箇所、`moon fmt` が移した）。js バックエンドの `Array[T]` は JS の配列でなくなったので、JS に配列を返す `map_warnings` は `FixedArray` に。
   - 大きさ：表示（メイン）は 128.6KB → 132.9KB（+4.2KB、予算 135KB）。js の出力が増えた。wasm は減った（表示ワーカー -0.3KB、`xml.wasm` -0.1KB ほか）。
   - 0.10.20 で黄金テスト 26 種を回した。`track:golden` だけ 1 回 exit 1 になり、続く 7 回は通った。最初の回のログはなく、原因は分からない。
+- **計測**（M2、Chromium、0.10.20 の `render`、`worker:browser`、`tess:browser`、`bench/results`）：
+  - 同じコード（#112）を moonc 0.10.18 と 0.10.20 でビルドし、`render` を 3 回ずつ交互に測った。`rafCpuP50`（ms、中央値）は pan 1.0 → 1.0（+5.1%）、pan-back +0.5%、zoom-in +1.6%、zoom-out +1.7%、`idle` は 147.3 → 148.3 ms（+0.7%）。差はばらつきと同じくらいで、0.10.20 の低下は見えない。
+  - `worker process_tile` は 11-03 の記録と ±2.5% 以内。
+  - `rafCpuP50` は 11-03 の記録（pan 0.56 ms、zoom-in 0.39 ms）より 0.10.18 でも増えている（pan 約 1.0 ms、zoom-in 0.61 ms）。moonc ではなく、その後のコードか計測環境の差で、切り分けていない。
+  - `uncapped` の `rafCpuP50` は 0.12〜2.2 ms の二山に分かれ、回ごとに変わるので比べられない。
 - **大きさ**：`createAttributeTable` だけで 1996 / 2000 バイト、`xml.wasm` 26.0KB、GeoTIFF 19.9KB、データワーカー 39.4KB。`xml.wasm` の予算は 26KB → 27KB に引き上げた（2026-11-06 ユーザー判断。上限の確かめで約 350 バイト増え、CI の moonc 0.10.18 で 26,031 バイト。ローカルの 0.10.19 は 48 バイト小さい）。ほかの予算は変えていない。GeoTIFF には次の機能の余地がない。
 
 ## Phase 17：データ形式（2026-11-04〜）
