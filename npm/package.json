@@ -43,6 +43,10 @@
       "types": "./dist/data.d.ts",
       "default": "./dist/data.js"
     },
+    "./services": {
+      "types": "./dist/services.d.ts",
+      "default": "./dist/services.js"
+    },
     "./worker.js": "./dist/worker.js",
     "./worker-labels.js": "./dist/worker-labels.js",
     "./worker-pmtiles.js": "./dist/worker-pmtiles.js",

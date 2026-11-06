@@ -27,6 +27,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/draw.js` | 見た目を持たない作図（`mbmap/draw`） |
 | `dist/analysis.js` | 解析（`mbmap/analysis`）の入口 |
 | `dist/geodesic.js` | 楕円体の上の計測（`mbmap/geodesic`）の入口 |
+| `dist/services.js` | GIS の Web サービス（WMS・WMTS・WFS・OGC API・ArcGIS REST）を読み、スタイルのソースを作る（`mbmap/services`） |
 | `dist/data.js` | データの読み込み（CSV・WKT・WKB・Shapefile・TopoJSON・KML/KMZ・GPX・FlatGeobuf・GeoJSON）と書き出し（GeoJSON・CSV・KML、`mbmap/data`）の入口 |
 
 `index.js` が、使うときだけ動的 import で読み込むもの（`index.js` と同じ場所に置く）：
@@ -281,6 +282,31 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 - `direct(from, azimuth, distance)`：`position`、`azimuth`、`arc`。
 - `measure(positions, { closed, step })`：線の長さ、または閉じた多角形の周囲と面積（反時計回りが正）、各頂点までの距離（`distances`）。`step` を渡すと、測地線に沿って `step` m ごとに点を足した `path` も返す（経度は ±180 を越えても続けて数える）。
 - 初めて呼んだときに、専用の Worker と wasm（約 12KB）を読み込む。`terminate()` で止める。
+
+## GIS の Web サービス `mbmap/services`
+
+公開されている仕様の Web サービスを読み、MapLibre と同じ形のソースを作る。サーバーは作らない。要求は地図と同じく資格情報を送らず、トークンやヘッダーは `transformRequest`（`"Source"` で呼ぶ）で足す。
+
+```js
+import { arcgisService, arcgisSource, getCapabilities, ogcCollections, ogcTiles, wmsSource, wmtsSource } from "mbmap/services";
+const wms = await getCapabilities("https://example.com/wms", "WMS");
+map.addSource("wms", wmsSource(wms, { layers: ["roads", "rivers"] }));
+const wmts = await getCapabilities("https://example.com/wmts/1.0.0/WMTSCapabilities.xml", "WMTS");
+map.addSource("wmts", wmtsSource(wmts, { layer: "basemap" }));
+const url = "https://example.com/arcgis/rest/services/Topo/MapServer";
+map.addSource("topo", arcgisSource(await arcgisService(url), url));
+const [lakes] = await ogcCollections("https://example.com/ogcapi");
+map.addSource("lakes", await ogcTiles(lakes, "vector"));
+```
+
+- `getCapabilities(url, "WMS" | "WMTS" | "WFS", { transformRequest, signal })`：`url` はサービスの入口（`SERVICE` と `REQUEST=GetCapabilities` を足す）か、`.xml` で終わる文書。文書の中の相対 URL は文書の URL を基準にする。読み手の `readWMSCapabilities`・`readWMTSCapabilities`・`readWFSCapabilities` は、文字列か `Document` を受け取る。
+  - WMS は 1.1.1 と 1.3.0。レイヤーは WMS 1.3.0 の 7.2.4.8 のとおり親から受け継ぐ（CRS とスタイルは足し、範囲・縮尺・出典は無いときに親のもの）。
+  - WMTS は 1.0.0。WFS は 1.0.0、1.1.0、2.0。
+- `wmsSource(capabilities, { layers, styles, format, transparent, tileSize, params })`：タイルごとに EPSG:3857 の GetMap を送る `raster` のソース（`BBOX={bbox-epsg-3857}`）。範囲はレイヤーの地理的な範囲、出典はレイヤーの Attribution。EPSG:3857 を持たないレイヤーは断る（ほかの座標系は 18.6）。
+- `wmtsSource(capabilities, { layer, style, format, tileMatrixSet, dimensions })`：Web メルカトルの四分木の TileMatrixSet（名前がズームの番号になっているもの）のタイル。ResourceURL があれば REST、なければ KVP。次元（`Time` など）は既定値か `dimensions` の値。
+- `arcgisService(url)` と `arcgisSource(service, url, { layers, dynamic, format, transparent, dpi, tileSize, params })`：MapServer と ImageServer。Web メルカトルのキャッシュがあれば `tile/{z}/{y}/{x}`、なければ（`layers` を指定したときも）タイルごとの `export`（ImageServer は `exportImage`）。出典は `copyrightText`。
+- `ogcCollections(url)`、`ogcCollection(url)`、`ogcTiles(collection, "vector" | "map")`：OGC API のコレクションと、WebMercatorQuad のタイル（OGC API - Tiles）。
+- 文書は 32MB まで（`MAX_DOCUMENT_BYTES`）。サービスの例外報告（ServiceExceptionReport、ExceptionReport、ArcGIS の `error`）は、その内容をメッセージにして失敗する。
 
 ## データの読み込み `mbmap/data`
 

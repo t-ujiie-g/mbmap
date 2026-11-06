@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1（タイル URL の置き換え）を進めている。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1（#115）が終わり、18.2（`mbmap/services`）を進めている。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,6 +19,7 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
+  | `mbmap/services` | 6.5KB | 10KB（2026-11-06、ユーザー判断） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
@@ -43,6 +44,39 @@
   - `map/dom.mbt` の `tile_url` は MapLibre の `CanonicalTileID.url` と同じ順で置き換える。`{y}` だけを TMS で反転し、ほかの置き換えは XYZ の行を使う。`{ratio}` は端末の画素比が 1 より大きいとき `@2x` になる。ファサードの `resolveTemplate` は、URL が符号化した置き換えの括弧を戻す（`TILE_PLACEHOLDERS`）。
   - 表示（メイン）は 132.9KB → 133.2KB（+0.3KB、予算 135KB）。
   - `npm run raster:golden` は、置き換えをすべて含むテンプレートで両方のエンジンが要求した URL を比べる。比べる組み合わせは XYZ と TMS、画素比 1 と 2、z14・z15（回転）・z3.4 の 12 場面で、すべて同じだった。タイルはすべて同じ PNG で答える。404 だと MapLibre は親のタイルも要求するため。
+- **18.2**：新しい入口 `mbmap/services`（6.5KB / 10KB）。主スレッドの JS で、能力文書はブラウザの `DOMParser` で読む。エンジンには何も足していない（作るソースは 18.1 の置き換えで描ける）。
+  - 読むもの：
+    - WMS 1.1.1・1.3.0 の能力文書。継承は WMS 1.3.0 の 7.2.4.8 のとおり。
+    - WMTS 1.0.0 と WFS 1.0.0・1.1.0・2.0 の能力文書。
+    - OGC API のコレクションとタイルセット。
+    - ArcGIS REST の `?f=json`。
+  - 作るソース：
+    - `wmsSource`：EPSG:3857 の GetMap。
+    - `wmtsSource`：Web メルカトルの四分木で、TileMatrix の名前がズームのもの。REST を優先し、なければ KVP。
+    - `arcgisSource`：Web メルカトルのキャッシュならタイル、それ以外は `export` / `exportImage`。
+    - `ogcTiles`：WebMercatorQuad。
+  - 文書の中の相対 URL は文書の URL を基準にする。文書は 32MB まで。
+  - `npm run services:golden`：公開サービスから取った同じ文書を mbmap と既存の読み手に読ませ、46 件すべて一致した。
+    - WMS 4 本と WMTS 3 本は OpenLayers 10.11.0 と比べた。読み取った中身に加えて、`TileWMS`・`WMTS`・`TileArcGISRest` が作る URL も比べ、BBOX は数で比べた。
+    - WFS 4 本は @camptocamp/ogc-client 2.0.2 と比べた。
+    - 公開サービスは demo.mapserver.org、ArcGIS の sampleserver6、NASA GIBS、services.arcgisonline.com、pygeoapi のデモ。
+    - OGC API（pygeoapi の 17 コレクション）も ogc-client と比べた。
+    - 作ったソースのタイルは 1 枚ずつ実際に取得し、画像が返ることを確かめた。
+  - OpenLayers に合わせて比べたところ：
+    - OpenLayers は子レイヤーを、親が受け継いだものを足す前に読む。そのため孫は親自身の CRS やスタイルしか受け継がない。比べる前に、OpenLayers の木を仕様の規則で補った。
+    - 最上位のレイヤーの属性（`queryable`、`opaque`）は OpenLayers が読まないので、比べていない。
+    - WMTS では、OpenLayers は同じ形式の ResourceURL をタイルごとに使い分ける。mbmap は最初のものだけを使う。
+    - WMS の `TRANSPARENT` は、mbmap は仕様どおり `TRUE`、OpenLayers は `true`。大文字と小文字は区別せずに比べた。
+    - ArcGIS の `dpi` の既定は、OpenLayers の 90 ではなく ArcGIS と同じ 96。
+  - pack テストの `services` ページ：
+    - ローカルの WMTS の能力文書から作ったソースは、地理院タイルを直接描いたものと画素まで同じだった。
+    - WMS の GetMap は、入口の `map=` を残したまま送られる。
+    - 例外報告、壊れた XML、ない層、http(s) でない URL、404 は、何が起きたかを書いたメッセージで失敗する。
+    - pack テストに `--only=名前` を足した。
+  - 依存の追加（bench の devDependencies、AGENTS §8.1）：
+    - `ol` 10.11.0（BSD-2-Clause、OpenLayers の保守者）と `@camptocamp/ogc-client` 2.0.2（BSD-3-Clause、camptocamp）。
+    - どちらもインストールのスクリプトはなく、公開から 2 週間以上たった版。`npm audit` は 0 件。
+  - 公開サービスへの到達には、環境の許可ホストが要る（docs/CLOUD.md）。この黄金テストは CI では回さない。
 
 ## Phase 17 の後の点検（2026-11-06〜）
 

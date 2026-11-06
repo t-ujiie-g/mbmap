@@ -18,12 +18,20 @@ raw.githubusercontent.com
 build.protomaps.com
 cdn.playwright.dev
 playwright.download.prss.microsoft.com
+services.arcgisonline.com
+sampleserver6.arcgisonline.com
+basemaps.arcgis.com
+services.arcgis.com
+demo.mapserver.org
+demo.pygeoapi.io
+gibs.earthdata.nasa.gov
 ```
 
 - `cli.moonbitlang.com`：MoonBit のツールチェーン（`scripts/toolchain.env` で版と sha256 を固定）
 - `cyberjapandata.gsi.go.jp`：ベンチと黄金テストのフィクスチャ（国土地理院のタイル。manifest の sha256 と照合する）
 - `tiles.openfreemap.org`、`raw.githubusercontent.com`、`build.protomaps.com`：公開スタイルの比較（`npm run style:public`）に使うタイルとスプライト（manifest の sha256 と照合する）。Node の `fetch` はプロキシを読まないので `NODE_USE_ENV_PROXY=1` を付ける（`scripts/setup.sh` は付けている）
 - Playwright の 2 つ：黄金テストと npm パッケージのテストで使う Chromium
+- `services.arcgisonline.com` から `gibs.earthdata.nasa.gov` までの 7 つ：`mbmap/services` を公開されている GIS の Web サービスで確かめる黄金テスト（`npm run services:golden`）。応答は記録せず、毎回取りに行く
 
 GitHub と npm は既定の一覧に入っている。
 
