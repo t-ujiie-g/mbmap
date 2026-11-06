@@ -201,6 +201,8 @@ const checks = {
     await page.mouse.move(400, 300);
     await page.mouse.down({ button: "right" });
     await page.mouse.move(500, 260, { steps: 5 });
+    // Released after the 160 ms inertia buffer has emptied, so the map stops where the drag left it.
+    await page.waitForTimeout(250);
     await page.mouse.up({ button: "right" });
     const after = await page.evaluate(() => ({ bearing: document.querySelector("mb-map").bearing, pitch: document.querySelector("mb-map").pitch }));
     r.dragged = { before, after };
