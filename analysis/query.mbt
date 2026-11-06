@@ -114,7 +114,7 @@ pub fn collect(
 
 ///|
 /// Most cells `grid_count` fills.
-pub const MAX_GRID_CELLS : Int32 = 1 << 24
+const MAX_GRID_CELLS : Int32 = 1 << 24
 
 ///|
 /// Point counts of a `cols` x `rows` grid over the box, row by row from

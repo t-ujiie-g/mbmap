@@ -18,6 +18,7 @@ pub(all) struct Trig {
 }
 
 ///|
+/// The functions of `@math`.
 pub fn Trig::moonbit() -> Trig {
   {
     sin: @math.sin,
@@ -36,61 +37,73 @@ pub fn Trig::moonbit() -> Trig {
 }
 
 ///|
+/// The sine of `x` (radians), by this `Trig`'s implementation.
 pub fn Trig::sin(self : Trig, x : Double) -> Double {
   (self.sin)(x)
 }
 
 ///|
+/// The cosine of `x` (radians), by this `Trig`'s implementation.
 pub fn Trig::cos(self : Trig, x : Double) -> Double {
   (self.cos)(x)
 }
 
 ///|
+/// The tangent of `x` (radians), by this `Trig`'s implementation.
 pub fn Trig::tan(self : Trig, x : Double) -> Double {
   (self.tan)(x)
 }
 
 ///|
+/// The arcsine of `x`, in radians, by this `Trig`'s implementation.
 pub fn Trig::asin(self : Trig, x : Double) -> Double {
   (self.asin)(x)
 }
 
 ///|
+/// The arccosine of `x`, in radians, by this `Trig`'s implementation.
 pub fn Trig::acos(self : Trig, x : Double) -> Double {
   (self.acos)(x)
 }
 
 ///|
+/// The arctangent of `x`, in radians, by this `Trig`'s implementation.
 pub fn Trig::atan(self : Trig, x : Double) -> Double {
   (self.atan)(x)
 }
 
 ///|
+/// The angle of the point `(x, y)` in radians, by this `Trig`'s implementation.
 pub fn Trig::atan2(self : Trig, y : Double, x : Double) -> Double {
   (self.atan2)(y, x)
 }
 
 ///|
+/// e to the `x`, by this `Trig`'s implementation.
 pub fn Trig::exp(self : Trig, x : Double) -> Double {
   (self.exp)(x)
 }
 
 ///|
+/// The natural logarithm of `x`, by this `Trig`'s implementation.
 pub fn Trig::ln(self : Trig, x : Double) -> Double {
   (self.ln)(x)
 }
 
 ///|
+/// `x` to the `y`, by this `Trig`'s implementation.
 pub fn Trig::pow(self : Trig, x : Double, y : Double) -> Double {
   (self.pow)(x, y)
 }
 
 ///|
+/// The cube root of `x`, by this `Trig`'s implementation.
 pub fn Trig::cbrt(self : Trig, x : Double) -> Double {
   (self.cbrt)(x)
 }
 
 ///|
+/// The inverse hyperbolic tangent of `x`, by this `Trig`'s implementation.
 pub fn Trig::atanh(self : Trig, x : Double) -> Double {
   (self.atanh)(x)
 }

@@ -1,4 +1,5 @@
 ///|
+/// Why a map could not start: its style failed to parse, or the canvas has no WebGL2.
 pub(all) suberror MapError {
   BadStyle(@style.StyleError)
   NoWebGL2
@@ -91,19 +92,18 @@ const ROTATE_RATE : Double = 0.8
 const PITCH_RATE : Double = 0.5
 
 ///|
-/// A map drawn into a canvas. It owns its camera, workers and GPU resources;
-/// the camera can be read and replaced as a value (`camera`, `set_camera`).
+/// A map drawn into a canvas, its camera read and replaced as a value (`camera`, `set_camera`). `vertex_paint`: per
+/// style layer; `failed_workers`: per worker; `changed_images`: size changed since the workers were told; `images_held`:
+/// they hold tiles for a sprite; `ramps`, `relief_ramps`: by expression (and the DEM's encoding).
 pub struct Map {
   priv canvas : @render_webgl2.Canvas
   priv renderer : @render_webgl2.Renderer
   priv mut style : @style.Style
-  /// Per style layer: its per-vertex paint (`@style.StyleLayer::vertex_paint`).
   priv mut vertex_paint : Array[Array[@style.VertexPaint]]
   priv sources : Array[SourceTiles]
   priv geojson : Provider
   priv mut transform : @core.Transform
   priv workers : Array[Worker]
-  /// Per worker: whether it failed (`Map::worker_failed`) and gets no more work.
   priv failed_workers : Array[Bool]
   priv mut next_worker : Int32
   priv requests : @hashmap.HashMap[Int32, (Int32, Int64)]
@@ -152,15 +152,10 @@ pub struct Map {
   priv images : @hashmap.HashMap[String, @render_webgl2.StyleImage]
   priv missing_images : @hashset.HashSet[String]
   priv mut on_missing_image : (String) -> Unit
-  /// Images whose size changed since the workers were last told (icons are
-  /// laid out with it), whether a sprite is still loading and whether the
-  /// workers were told to hold tiles for it.
   priv changed_images : @hashset.HashSet[String]
   priv mut images_loading : Bool
   priv mut images_held : Bool
-  /// Heatmap color ramps by `heatmap-color` expression.
   priv ramps : Array[(@style.Expr, @render_webgl2.Gradient)]
-  /// Color relief ramps by `color-relief-color` and the DEM's encoding.
   priv relief_ramps : Array[
     (@style.Expr, @style.DemEncoding, @render_webgl2.Gradient),
   ]
@@ -313,6 +308,7 @@ pub fn Map::new(
 }
 
 ///|
+/// The current camera, as a value.
 pub fn Map::camera(self : Map) -> @core.Camera {
   self.transform.camera
 }
@@ -357,6 +353,7 @@ pub fn Map::on_render(self : Map, f : () -> Unit) -> Int32 {
 }
 
 ///|
+/// Removes the listener `id` from an `on_*` call.
 pub fn Map::off(self : Map, id : Int32) -> Unit {
   self.listeners.remove(id)
 }

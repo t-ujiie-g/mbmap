@@ -18,10 +18,11 @@ let cdata_name : Int32 = -2
 let document_name : Int32 = -3
 
 ///|
-/// `XMLNS` and `XML`: the namespaces of `xmlns` declarations and of the `xml` prefix.
+/// `XMLNS`: the namespace of `xmlns` declarations.
 pub let xmlns_namespace : String = "http://www.w3.org/2000/xmlns/"
 
 ///|
+/// `XML`: the namespace of the `xml` prefix.
 pub let xml_namespace : String = "http://www.w3.org/XML/1998/namespace"
 
 ///|
@@ -90,6 +91,7 @@ pub fn Document::length(self : Document) -> Int32 {
 }
 
 ///|
+/// What `node` is.
 pub fn Document::kind(self : Document, node : Int32) -> NodeKind {
   let n = self.names[node]
   if n >= 0 {

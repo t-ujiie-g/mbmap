@@ -262,7 +262,7 @@ Out:
   have (404, 204, or missing from a PMTiles archive) is `{type: "tile", id, layers: []}`.
 - `{type: "tile-error", id, message}`.
 - A raster tile's message has one entry `{entry: 0, layer: -1, kind: 7, image}` (kind
-  `KIND_RASTER` of `map/tiles.mbt`), `image` an ImageBitmap (transferred) for every
+  `KIND_RASTER` of `core/kinds.mbt`), `image` an ImageBitmap (transferred) for every
   raster layer of the source.
 - `{type: "ranges", id, entries}`: per packed entry with any of the ids,
   `{entry, ranges}`, `ranges` holding (first index, index count, outline first index,
@@ -274,7 +274,7 @@ Out:
   `properties`; no hits if the tile is gone or the request is refused (an `error`
   message says why it was refused).
 - A `raster-dem` tile's message has one entry `{layer: -1, kind: 5, image, edges,
-  elevations, size}` (kind `KIND_HILLSHADE` of `map/tiles.mbt`): `image` holds the
+  elevations, size}` (kind `KIND_HILLSHADE` of `core/kinds.mbt`): `image` holds the
   slopes (`@raster.hillshade_slopes`, two bytes per pixel of a `size` x `size` tile
   with a pixel of border, rows of `size + 2`; `size` from 2 to 1024), `edges` (Float64Array, 8 × `size`) its border
   elevations (`@raster.dem_edges`) and `elevations` (Float32Array) every pixel's
@@ -394,8 +394,8 @@ In:
   what the map's `transformRequest` gave, checked as a tile's (string `headers` and a
   `credentials` mode, else none are sent), up to `MAX_INPUT_BYTES` (256 MiB);
   `bytes` is the GeoJSON as UTF-8 (an ArrayBuffer). The reader takes at most
-  `@formats.MAX_GEOJSON_POINTS` points, `MAX_GEOJSON_KEYS` keys,
-  `MAX_GEOJSON_CELLS` property cells (features times keys) and `MAX_GEOJSON_DEPTH`
+  `@geom.MAX_TABLE_POINTS` points, `@formats.MAX_GEOJSON_KEYS` keys,
+  `@geom.MAX_TABLE_CELLS` property cells (features times keys) and `MAX_GEOJSON_DEPTH`
   levels of nesting. The options are MapLibre's GeoJSON source options in pixels,
   in the style's ranges (`geojson_tiles/tiles.mbt` `load`; else the load fails):
   `maxzoom` 0 to 24 (`@tiler.MAX_ZOOM`), `buffer` 0 to 512, `tolerance` 0 or more.

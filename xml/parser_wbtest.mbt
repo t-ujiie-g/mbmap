@@ -53,3 +53,27 @@ test "attributes of one namespace and local name replace each other per element"
   assert_eq(d.attribute(a, "q:y"), Some("3"))
   assert_eq(d.attribute(d.first(0, "b").unwrap(), "p:x"), Some("4"))
 }
+
+///|
+fn fatal_of(doc : Bytes) -> String? {
+  let p = Parser::new(doc, 100)
+  p.run()
+  p.fatal.map(f => f.1)
+}
+
+///|
+test "end tags without a name or with more than a name are fatal" {
+  assert_eq(fatal_of(b"<a></>"), Some("end tag name missing"))
+  let invalid = Some("end tag name contains invalid characters")
+  assert_eq(fatal_of(b"<a></1>"), invalid)
+  assert_eq(fatal_of(b"<a></a b>"), invalid)
+  assert_eq(fatal_of(b"<a></a \n b>"), None)
+}
+
+///|
+test "a doctype that does not end is fatal" {
+  let unended = Some("doctype not terminated")
+  assert_eq(fatal_of(b"<!DOCTYPE a"), unended)
+  assert_eq(fatal_of(b"<!DOCTYPE a \"x"), unended)
+  assert_eq(fatal_of(b"<!DOCTYPE a [ <!-- x"), unended)
+}

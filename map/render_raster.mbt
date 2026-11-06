@@ -38,9 +38,8 @@ fn Map::draw_hillshade(
   if exaggeration == 0.0 {
     return
   }
-  let radians = (degrees : Double) => degrees * @math.PI / 180.0
   let turn = if h.viewport {
-    radians(self.transform.camera.bearing)
+    @core.radians(self.transform.camera.bearing)
   } else {
     0.0
   }
@@ -52,11 +51,11 @@ fn Map::draw_hillshade(
   let angles = FixedArray::make(n * 2, 0.0)
   let colors = FixedArray::make(n * 8, 0.0)
   for i in 0..<n {
-    angles[i * 2] = radians(
+    angles[i * 2] = @core.radians(
         number_or(pick(h.direction, i).eval(zoom, ctx), 335.0),
       ) +
       turn
-    angles[i * 2 + 1] = radians(
+    angles[i * 2 + 1] = @core.radians(
       number_or(pick(h.altitude, i).eval(zoom, ctx), 45.0),
     )
     let shadow = color_of(pick(h.shadow, i), zoom, ctx)

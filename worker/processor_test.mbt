@@ -98,7 +98,7 @@ test "process packs fill and line layers of the source in style order" {
   // Layer 1 ("area"): a triangle of 4 points (closing point repeated).
   assert_eq(
     (entry(0, @worker.ENTRY_LAYER), entry(0, @worker.ENTRY_KIND)),
-    (1, @worker.KIND_FILL),
+    (1, @core.KIND_FILL),
   )
   assert_eq(
     (entry(0, @worker.ENTRY_VERTEX_BYTES), entry(0, @worker.ENTRY_INDEX_COUNT)),
@@ -110,7 +110,7 @@ test "process packs fill and line layers of the source in style order" {
   // "edge" filters out the polygon.
   assert_eq(
     (entry(1, @worker.ENTRY_LAYER), entry(1, @worker.ENTRY_KIND)),
-    (4, @worker.KIND_LINE),
+    (4, @core.KIND_LINE),
   )
   let lv = entry(1, @worker.ENTRY_VERTEX_OFFSET)
   assert_eq(entry(1, @worker.ENTRY_VERTEX_BYTES), 4 * @worker.LINE_VERTEX_BYTES)
@@ -123,7 +123,7 @@ test "process packs fill and line layers of the source in style order" {
     assert_eq(entry(k, @worker.ENTRY_INDEX_BYTES), 2)
     let count = entry(k, @worker.ENTRY_INDEX_COUNT)
     let vertices = entry(k, @worker.ENTRY_VERTEX_BYTES) /
-      (if entry(k, @worker.ENTRY_KIND) == @worker.KIND_FILL {
+      (if entry(k, @worker.ENTRY_KIND) == @core.KIND_FILL {
         @worker.FILL_VERTEX_BYTES
       } else {
         @worker.LINE_VERTEX_BYTES
@@ -485,7 +485,7 @@ test "GeoJSON sources draw from columnar tiles, with filters and properties" {
       entry(0, @worker.ENTRY_KIND),
       entry(0, @worker.ENTRY_INDEX_COUNT),
     ),
-    (0, @worker.KIND_FILL, 6),
+    (0, @core.KIND_FILL, 6),
   )
   assert_eq(entry(0, @worker.ENTRY_OUTLINE_COUNT), 8)
   let outline = Array::makei(8, i => {
@@ -496,7 +496,7 @@ test "GeoJSON sources draw from columnar tiles, with filters and properties" {
   // Only the point with k, its radius per vertex.
   assert_eq(
     (entry(1, @worker.ENTRY_LAYER), entry(1, @worker.ENTRY_KIND)),
-    (1, @worker.KIND_CIRCLE),
+    (1, @core.KIND_CIRCLE),
   )
   assert_eq(entry(1, @worker.ENTRY_VERTEX_BYTES), 4 * @worker.LINE_VERTEX_BYTES)
   assert_eq(
@@ -586,7 +586,7 @@ test "fill-extrusion layers pack walls, roofs and per-feature heights" {
   assert_eq(p.out.layer_count(), 2)
   assert_eq(
     (entry(1, @worker.ENTRY_LAYER), entry(1, @worker.ENTRY_KIND)),
-    (1, @worker.KIND_EXTRUSION),
+    (1, @core.KIND_EXTRUSION),
   )
   // A triangle: 3 walls and a 1-triangle roof of 3 vertices.
   let n = entry(1, @worker.ENTRY_VERTEX_BYTES) / @worker.EXTRUSION_VERTEX_BYTES
@@ -627,11 +627,11 @@ test "expressions read ids, compute and convert through the processor's hooks" {
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   assert_eq(p.out.layer_count(), 2)
-  assert_eq(entry(0, @worker.ENTRY_KIND), @worker.KIND_EXTRUSION)
+  assert_eq(entry(0, @worker.ENTRY_KIND), @core.KIND_EXTRUSION)
   assert_eq(props_of(b, 0), ["$id=\"square\""])
   assert_eq(
     (entry(1, @worker.ENTRY_KIND), entry(1, @worker.ENTRY_VERTEX_BYTES)),
-    (@worker.KIND_CIRCLE, 4 * @worker.LINE_VERTEX_BYTES),
+    (@core.KIND_CIRCLE, 4 * @worker.LINE_VERTEX_BYTES),
   )
   assert_eq(
     Float::reinterpret_from_int(u32_at(b, entry(1, @worker.ENTRY_PAINT_OFFSET))).to_double(),

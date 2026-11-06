@@ -189,7 +189,7 @@ fn Map::draw_icons(
         pitch=ic.pitch_with_map,
         rotate=ic.rotate_with_map,
         angle=if ic.pitch_with_map && !ic.rotate_with_map {
-          t.camera.bearing * @math.PI / 180.0
+          @core.radians(t.camera.bearing)
         } else {
           0.0
         },
@@ -206,7 +206,7 @@ fn Map::draw_icons(
         halo_width=n(paint.halo_width, 0.0),
         halo_blur=n(paint.halo_blur, 0.0),
         gamma_scale=if ic.pitch_with_map {
-          @math.cos(pitch * @math.PI / 180.0) * at.center_depth
+          @math.cos(@core.radians(pitch)) * at.center_depth
         } else {
           1.0
         },

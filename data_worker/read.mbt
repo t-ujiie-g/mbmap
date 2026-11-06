@@ -102,6 +102,25 @@ fn input_text(start : Int32, end : Int32) -> String {
 }
 
 ///|
+/// The three NUL-ended column names in the first `names` bytes of `input`, None
+/// for another count or bytes after the last.
+fn column_names(input : BytesView, names : Int32) -> Array[String]? {
+  let given = []
+  let mut start = 0
+  for i in 0..<names {
+    if input[i] == b'\x00' {
+      given.push(@core.utf8_lossy(input[start:i]))
+      start = i + 1
+    }
+  }
+  if given.length() == 3 && start == names {
+    Some(given)
+  } else {
+    None
+  }
+}
+
+///|
 /// Reads the CSV placed as input after `names` bytes of column names, as
 /// docs/FORMATS.md "Data worker messages" has it. Returns the length of the table
 /// written, or minus the length of a UTF-8 error message at `output_addr`.
@@ -116,23 +135,10 @@ pub fn read_csv(
   guard names >= 0 && names <= input.length() else {
     return @wasmio.fail_with("invalid column names")
   }
-  let given : Array[String?] = []
-  let mut start = 0
-  for i in 0..<names {
-    if input[i] == b'\x00' {
-      given.push(
-        if i > start {
-          Some(@core.utf8_lossy(input[start:i]))
-        } else {
-          None
-        },
-      )
-      start = i + 1
-    }
-  }
-  guard given.length() == 3 && start == names else {
+  guard column_names(input, names) is Some(given) else {
     return @wasmio.fail_with("invalid column names")
   }
+  let given = given.map(n => if n == "" { None } else { Some(n) })
   let options = @formats.CsvOptions::new(
     delimiter~,
     header=header == 1,
@@ -168,33 +174,13 @@ pub fn read_wkt() -> Int32 {
 }
 
 ///|
-/// Reads the WKB or EWKB placed as input (geometries one after another), binary
-/// or as hexadecimal text (told apart by the first byte: binary WKB starts with
-/// its byte order, 0 or 1), as `read_csv` returns.
+/// Reads the WKB or EWKB placed as input (`@formats.read_wkb_any`), as `read_csv`
+/// returns.
 #export_name("read_wkb")
 pub fn read_wkb() -> Int32 {
   let input = @wasmio.input_bytes()
-  let mut first = 0
-  while first < input.length() &&
-        (
-          input[first] == b' ' ||
-          input[first] == b'\t' ||
-          input[first] == b'\n' ||
-          input[first] == b'\r'
-        ) {
-    first += 1
-  }
-  let binary = first == input.length() ||
-    input[first] == b'\x00' ||
-    input[first] == b'\x01'
   let srids = begin()
-  let table = try {
-    if binary {
-      @formats.read_wkb(input[:], srids~)
-    } else {
-      @formats.read_wkb_hex(input[:], srids~)
-    }
-  } catch {
+  let table = @formats.read_wkb_any(input[:], srids~) catch {
     e => return @wasmio.fail_with(e.message())
   }
   table_out(table)
@@ -310,15 +296,7 @@ pub fn write_csv(
     mode <= 3 else {
     return @wasmio.fail_with("invalid arguments")
   }
-  let given = []
-  let mut start = 0
-  for i in 0..<names {
-    if input[i] == b'\x00' {
-      given.push(@core.utf8_lossy(input[start:i]))
-      start = i + 1
-    }
-  }
-  guard given.length() == 3 else {
+  guard column_names(input, names) is Some(given) else {
     return @wasmio.fail_with("invalid column names")
   }
   guard @geom.Table::from_bytes(input[names:]) is Some(table) else {

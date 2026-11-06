@@ -41,7 +41,7 @@ fn Map::draw_heatmap(
       continue
     }
     for m in d.meshes {
-      if m.layer == index && m.kind == KIND_CIRCLE {
+      if m.layer == index && m.kind == @core.KIND_CIRCLE {
         // Weights and radii read from feature state go by group and state range.
         let p = mesh_paint(m, layer, shared, zoom)
         self.draw_by_state(m, layer, p, zoom, p => {

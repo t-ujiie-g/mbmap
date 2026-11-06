@@ -9,7 +9,7 @@ pub fn read_wkt(
   },
   srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  wkt_table(bytes, slow_number, MAX_POINTS, srids)
+  wkt_table(bytes, slow_number, @geom.MAX_TABLE_POINTS, srids)
 }
 
 ///|

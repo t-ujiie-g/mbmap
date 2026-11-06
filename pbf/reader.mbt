@@ -10,6 +10,7 @@ pub struct Reader {
 }
 
 ///|
+/// A reader over `view`, at its start.
 pub fn Reader::new(view : BytesView) -> Reader {
   let start = view.start_offset()
   { data: view.data(), pos: start, end: start + view.length(), error: None, }
@@ -38,21 +39,25 @@ pub fn Reader::pos(self : Reader) -> Int32 {
 }
 
 ///|
+/// Whether nothing is left: the loop condition of a message, true after an error too.
 pub fn Reader::at_end(self : Reader) -> Bool {
   self.pos >= self.end
 }
 
 ///|
+/// Bytes left in the current range.
 pub fn Reader::remaining(self : Reader) -> Int32 {
   self.end - self.pos
 }
 
 ///|
+/// Whether a read has failed since the last `reset`.
 pub fn Reader::failed(self : Reader) -> Bool {
   self.error is Some(_)
 }
 
 ///|
+/// The first error since the last `reset`.
 pub fn Reader::error(self : Reader) -> PbfError? {
   self.error
 }
@@ -131,6 +136,7 @@ fn Reader::read_varint32_multi(self : Reader) -> Int32 {
 }
 
 ///|
+/// Reads a varint of at most 10 bytes; longer is an error.
 pub fn Reader::read_varint64(self : Reader) -> UInt64 {
   let start = self.pos
   let mut v = 0UL
@@ -157,17 +163,20 @@ fn zigzag32(v : Int32) -> Int32 {
 }
 
 ///|
+/// Reads an `int64`: a varint in two's complement.
 pub fn Reader::read_int64(self : Reader) -> Int64 {
   self.read_varint64().reinterpret_as_int64()
 }
 
 ///|
+/// Reads a zigzag-encoded `sint64`.
 pub fn Reader::read_sint64(self : Reader) -> Int64 {
   let v = self.read_varint64()
   (v >> 1).reinterpret_as_int64() ^ -(v & 1UL).reinterpret_as_int64()
 }
 
 ///|
+/// Reads a `bool`: any varint but 0 is true.
 pub fn Reader::read_bool(self : Reader) -> Bool {
   self.read_varint64() != 0UL
 }
@@ -185,6 +194,7 @@ fn Reader::take(self : Reader, n : Int32) -> Int32 {
 }
 
 ///|
+/// Reads a little-endian `fixed32`.
 pub fn Reader::read_fixed32(self : Reader) -> UInt32 {
   let p = self.take(4)
   if p < 0 {
@@ -198,6 +208,7 @@ pub fn Reader::read_fixed32(self : Reader) -> UInt32 {
 }
 
 ///|
+/// Reads a little-endian `fixed64`.
 pub fn Reader::read_fixed64(self : Reader) -> UInt64 {
   let lo = self.read_fixed32().to_uint64()
   let hi = self.read_fixed32().to_uint64()
@@ -205,11 +216,13 @@ pub fn Reader::read_fixed64(self : Reader) -> UInt64 {
 }
 
 ///|
+/// Reads a `float`: IEEE 754 bits as a `fixed32`.
 pub fn Reader::read_float(self : Reader) -> Float {
   Float::reinterpret_from_uint(self.read_fixed32())
 }
 
 ///|
+/// Reads a `double`: IEEE 754 bits as a `fixed64`.
 pub fn Reader::read_double(self : Reader) -> Double {
   self.read_fixed64().reinterpret_as_double()
 }

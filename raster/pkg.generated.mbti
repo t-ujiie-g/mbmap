@@ -2,8 +2,6 @@
 package "t-ujiie-g/mbmap/raster"
 
 // Values
-pub const WORLD_WIDTH : Double = 40075016.6855785
-
 pub fn dem_edges(FixedArray[Double], Int32) -> FixedArray[Double]
 
 pub fn edge_slopes(FixedArray[Double], FixedArray[Double], Int32, Int32, Int32) -> Bytes

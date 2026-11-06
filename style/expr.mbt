@@ -482,7 +482,7 @@ fn Compiler::compile_at(
     "heatmap-density" => HeatmapDensity
     "elevation" => Elevation
     "accumulated" => Accumulated
-    "pi" => Lit(Num(3.141592653589793))
+    "pi" => Lit(Num(pi))
     "e" => Lit(Num(2.718281828459045))
     "ln2" => Lit(Num(0.6931471805599453))
     "feature-state" => FeatureState(self.key(items[1], sub(path, 1)))
@@ -844,42 +844,6 @@ fn Compiler::format(
 }
 
 ///|
-/// The global state while a style's expressions compile: `global-state`
-/// takes its value from here.
-let style_state : Ref[Map[String, Json]] = { val: Map([]), }
-
-///|
-/// `f()` with `global-state` reading `state` (MapLibre's global state: each
-/// key's value), as `Style::from_json` compiles with its style's `state`.
-pub fn[T] with_global_state(
-  state : Map[String, Json],
-  f : () -> T raise StyleError,
-) -> T raise StyleError {
-  let saved = style_state.val
-  style_state.val = state
-  defer {
-    style_state.val = saved
-  }
-  f()
-}
-
-///|
-/// MapLibre's global state of a style: each key of its `state` with its
-/// `default` (null without one).
-fn state_defaults(json : Json) -> Map[String, Json] {
-  let out = Map([])
-  if json is Object(root) && root.get("state") is Some(Object(state)) {
-    for k, v in state {
-      out[k] = match v {
-        Object(o) => o.get("default").unwrap_or(Json::null())
-        _ => Json::null()
-      }
-    }
-  }
-  out
-}
-
-///|
 fn Compiler::literal(
   self : Compiler,
   value : Value,
@@ -948,35 +912,4 @@ fn op_of(name : String) -> (Op, Int32, Int32)? {
     }
   }
   Some((op, min, max))
-}
-
-///|
-/// A GeoJSON source's `clusterProperties` as MapLibre's GeoJSON worker takes them: per
-/// key its map expression and reduce expression (an operator's name `op` stands for
-/// `[op, ["accumulated"], ["get", key]]`).
-pub fn compile_cluster_properties(
-  json : Json,
-  path~ : String = "",
-) -> Array[(String, Expr, Expr)] raise StyleError {
-  guard json is Object(o) else { raise Invalid(path~, "not an object") }
-  let out = []
-  for key, v in o {
-    let at = "\{path}.\{key}"
-    guard v is Array([operator, map]) else {
-      raise Invalid(path=at, "not [operator, map expression]")
-    }
-    let reduce = match operator {
-      String(op) =>
-        Json::array([
-          Json::string(op),
-          Json::array([Json::string("accumulated")]),
-          Json::array([Json::string("get"), Json::string(key)]),
-        ])
-      j => j
-    }
-    out.push(
-      (key, compile(map, path="\{at}[1]"), compile(reduce, path="\{at}[0]")),
-    )
-  }
-  out
 }

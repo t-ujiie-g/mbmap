@@ -131,10 +131,9 @@ fn normalize_id(id : String) -> String {
 }
 
 ///|
-/// `buildStyleMap`: every `Style` by its id (or its `CascadingStyle` parent's),
-/// then every `StyleMap` as the style its first `styleUrl` names. Ids map to
-/// style numbers; style `k`'s properties are `styles.items` from `ends[k - 1]`
-/// to `ends[k]`.
+/// `buildStyleMap`: every `Style` by its id (or its `CascadingStyle` parent's), then every `StyleMap` as the
+/// style its first `styleUrl` names. Ids map to style numbers; style `k`'s properties are `styles.items`
+/// from `ends[k - 1]` to `ends[k]`.
 fn Reader::style_map(
   self : Reader,
   ids : Lookup,

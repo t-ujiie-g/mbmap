@@ -24,7 +24,10 @@ test "tables past their cell and point limits stop the reader" {
     p.set("a\{i}", Num(1.0))
     wide.emit(point(wide, 1.0), p, None)
   }
-  assert_eq(wide.limit, Some("more than \{MAX_KML_CELLS} property cells"))
+  assert_eq(
+    wide.limit,
+    Some("more than \{@geom.MAX_TABLE_CELLS} property cells"),
+  )
   let long = reader(100, 1)
   long.emit(point(long, 1.0), Props::new(), None)
   assert_true(!long.stopped())
@@ -35,7 +38,7 @@ test "tables past their cell and point limits stop the reader" {
   } noraise {
     _ => ""
   }
-  assert_eq(msg, "too large: more than \{MAX_KML_POINTS} points")
+  assert_eq(msg, "too large: more than \{@geom.MAX_TABLE_POINTS} points")
 }
 
 ///|
@@ -121,7 +124,7 @@ test "GPX extensions are charged as cells by names times points" {
     "</trkseg>"
   assert_true(!gpx_with(distinct, 100, 100).stopped())
   let r = gpx_with(distinct, 99, 100)
-  assert_eq(r.limit, Some("more than \{MAX_KML_CELLS} property cells"))
+  assert_eq(r.limit, Some("more than \{@geom.MAX_TABLE_CELLS} property cells"))
   assert_eq(r.out.table.length(), 0)
   let segment = "<trkseg>" + trkpt("a") + trkpt("a") + "</trkseg>"
   let segments = segment +
@@ -145,5 +148,72 @@ test "a GPX track stops at the extension names and points it may have" {
   assert_eq(r.limit, Some("more than \{MAX_KML_KEYS} extensions"))
   let two = "<trkseg>" + trkpt("a") + trkpt("a") + trkpt("a") + "</trkseg>"
   let q = gpx_with(two, 100, 2)
-  assert_eq(q.limit, Some("more than \{MAX_KML_POINTS} points"))
+  assert_eq(q.limit, Some("more than \{@geom.MAX_TABLE_POINTS} points"))
+}
+
+///|
+fn from_units(units : Array[Int32]) -> String {
+  let out = StringBuilder()
+  for u in units {
+    out.write_char(u.unsafe_to_char())
+  }
+  out.to_string()
+}
+
+///|
+test "json_string keeps surrogate pairs and escapes the rest as JSON.stringify" {
+  assert_eq(json_string("a\u{1F600}b"), "\"a\u{1F600}b\"")
+  assert_eq(
+    json_string("\"\\\u{08}\u{0C}\n\r\t"),
+    "\"\\\"\\\\\\b\\f\\n\\r\\t\"",
+  )
+  assert_eq(json_string("\u{01}\u{1F}é"), "\"\\u0001\\u001fé\"")
+  assert_eq(json_string(from_units([0xD83D])), "\"\\ud83d\"")
+  assert_eq(json_string(from_units([0xDE00, 0x61])), "\"\\ude00a\"")
+  assert_eq(json_string(from_units([0xD83D, 0x61])), "\"\\ud83da\"")
+  assert_eq(
+    json_string(from_units([0xD83D, 0xD83D, 0xDE00, 0xDE00])),
+    "\"\\ud83d\u{1F600}\\ude00\"",
+  )
+}
+
+///|
+test "well_formed turns lone surrogates into U+FFFD and keeps pairs" {
+  assert_eq(well_formed("a\u{1F600}b"), "a\u{1F600}b")
+  assert_eq(well_formed(from_units([0xD83D])), "\u{FFFD}")
+  assert_eq(well_formed(from_units([0x61, 0xDE00, 0x62])), "a\u{FFFD}b")
+  assert_eq(well_formed(from_units([0xD83D, 0x61])), "\u{FFFD}a")
+  assert_eq(
+    well_formed(from_units([0xDE00, 0xD83D, 0xDE00, 0xD83D])),
+    "\u{FFFD}\u{1F600}\u{FFFD}",
+  )
+}
+
+///|
+test "parse_hex2 is parseInt of two characters in base 16" {
+  assert_eq(parse_hex2("xFf", 1), 255.0)
+  assert_eq(parse_hex2("0a", 0), 10.0)
+  assert_eq(parse_hex2(" f", 0), 15.0)
+  assert_eq(parse_hex2("+f", 0), 15.0)
+  assert_eq(parse_hex2("-f", 0), -15.0)
+  assert_eq(parse_hex2("fz", 0), 15.0)
+  for bad in ["+x", " x", "gg", "0x", "0X"] {
+    assert_true(parse_hex2(bad, 0).is_nan(), msg=bad)
+  }
+}
+
+///|
+test "js_trim strips JavaScript's white space from both ends" {
+  assert_eq(js_trim(" a b\n"), "a b")
+  assert_eq(js_trim("\u{3000}a"), "a")
+  assert_eq(js_trim("a"), "a")
+  assert_eq(js_trim("  "), "")
+}
+
+///|
+test "json_number writes what is not finite as null" {
+  let r = reader(10, 10)
+  assert_eq(r.json_number(@double.not_a_number), "null")
+  assert_eq(r.json_number(@double.infinity), "null")
+  assert_eq(r.json_number(1.5), "1.5")
 }

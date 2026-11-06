@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub const MAX_TABLE_CELLS : Int32 = 32_000_000
+
+pub const MAX_TABLE_POINTS : Int32 = 20_000_000
+
 pub fn read_prop(@core.ByteReader) -> Prop?
 
 pub fn start_of(Array[Int32], Int32) -> Int32

@@ -77,17 +77,8 @@ fn utm(d : Definition, zone : Int32, south~ : Bool = false) -> Definition {
 }
 
 ///|
-/// The CRS with EPSG `code`, if this table has it:
-/// - longitude and latitude: 4326 (WGS 84), 4612 (JGD2000), 6668 (JGD2011),
-///   4301 (Tokyo);
-/// - Web Mercator: 3857 (and 3785, 900913);
-/// - Japan's plane rectangular zones I-XIX: 6669-6687 (JGD2011), 2443-2461
-///   (JGD2000), 30161-30179 (Tokyo);
-/// - UTM: 32601-32660 and 32701-32760 (WGS 84 north and south), 6688-6692
-///   (JGD2011, zones 51-55), 3097-3101 (JGD2000), 3092-3096 (Tokyo).
-///
-/// Other CRSs are made from their PROJ strings (`Crs::new`). Projected axes
-/// are easting, then northing; `trig` is as for `Crs::new`.
+/// The CRS with EPSG `code` if listed below (Japan's datums, plane rectangular zones and UTM, WGS 84 UTM,
+/// Web Mercator); other CRSs come from PROJ strings (`Crs::new`). Projected axes are easting, then northing.
 pub fn Crs::from_epsg(code : Int32, trig~ : Trig = Trig::moonbit()) -> Crs? {
   let d = match code {
     4326 => wgs84(LongLat)

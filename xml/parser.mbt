@@ -11,7 +11,7 @@ pub const MAX_XML_ATTRIBUTES : Int32 = 1024
 
 ///|
 /// Most elements, text and CDATA nodes one document may have.
-pub const MAX_XML_NODES : Int32 = 4_000_000
+const MAX_XML_NODES : Int32 = 4_000_000
 
 ///|
 /// `Malformed`: not XML as xmldom reads it; `Limit`: a document past one of the

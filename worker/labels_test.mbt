@@ -19,7 +19,7 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq(p.out.layer_count(), 2)
   assert_eq(
     (entry(0, @worker.ENTRY_KIND), entry(0, @worker.ENTRY_INDEX_COUNT)),
-    (@worker.KIND_SYMBOL, 0),
+    (@core.KIND_SYMBOL, 0),
   )
   assert_eq(props_of(b, 0), ["k=1"])
   let r = @core.ByteReader::new(

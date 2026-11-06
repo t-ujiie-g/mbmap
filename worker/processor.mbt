@@ -35,7 +35,7 @@ pub struct TileProcessor {
 }
 
 ///|
-pub fn TileProcessor::new(
+fn TileProcessor::new(
   style : @style.Style,
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,
@@ -84,7 +84,7 @@ pub fn TileProcessor::new(
 ///|
 /// A processor for the style compiled by the main thread
 /// (`@style.Style::to_compiled`).
-pub fn TileProcessor::from_compiled(
+fn TileProcessor::from_compiled(
   bytes : BytesView,
   text_number~ : (String) -> Double = @style.js_number,
   number_text~ : (Double) -> String = Double::to_string,

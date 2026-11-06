@@ -57,23 +57,11 @@ pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
-pub const KIND_CIRCLE : Int32 = 3
-
-pub const KIND_EXTRUSION : Int32 = 6
-
-pub const KIND_FILL : Int32 = 1
-
-pub const KIND_LINE : Int32 = 2
-
-pub const KIND_SYMBOL : Int32 = 4
-
 pub const LAYER_ENTRY_WORDS : Int32 = 23
 
 pub const LINE_VERTEX_BYTES : Int32 = 8
 
 pub const MAX_GROUPS : Int32 = 64
-
-pub const MAX_PACKED_BYTES : Int32 = 67108864
 
 // Errors
 
@@ -83,7 +71,6 @@ pub struct PackedTile {
 }
 pub fn PackedTile::layer_count(Self) -> Int32
 pub fn PackedTile::length(Self) -> Int32
-pub fn PackedTile::new() -> Self
 pub fn PackedTile::to_bytes(Self) -> Bytes
 
 pub struct TileProcessor {
@@ -95,9 +82,7 @@ pub fn TileProcessor::dem_tile(Self, Int32, BytesView, Int32, Int32) -> Bytes?
 pub fn TileProcessor::error(Self) -> String
 pub fn TileProcessor::error_utf8(Self) -> Bytes
 pub fn TileProcessor::feature_ranges(Self) -> Bytes
-pub fn TileProcessor::from_compiled(BytesView, text_number? : (String) -> Double, number_text? : (Double) -> String, trig? : @core.Trig, intl? : @style.Intl) -> Self raise @style.StyleError
 pub fn TileProcessor::from_utf8(BytesView, text_number? : (String) -> Double, number_text? : (Double) -> String, trig? : @core.Trig, intl? : @style.Intl) -> Self raise @style.StyleError
-pub fn TileProcessor::new(@style.Style, text_number? : (String) -> Double, number_text? : (Double) -> String, trig? : @core.Trig, intl? : @style.Intl) -> Self
 pub fn TileProcessor::process(Self, String, BytesView, Int32, x? : Int32, y? : Int32) -> Bool
 pub fn TileProcessor::query(Self, String, BytesView, Int32, BytesView, x? : Int32, y? : Int32) -> Bytes?
 pub fn TileProcessor::source_features(Self, String, BytesView, Int32, String, @style.Expr?, x? : Int32, y? : Int32) -> Bytes?
