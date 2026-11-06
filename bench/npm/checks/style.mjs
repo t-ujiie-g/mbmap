@@ -41,6 +41,8 @@ export async function styleChecks(page, requests) {
     const w = (e) => warned.push(...e.warnings);
     map.on("error", f);
     map.on("warning", w);
+    // The width changes below may reload the road's tiles; they are counted once the map settles.
+    const idle = map.once("idle");
     map.setPaintProperty("nope", "fill-color", "#000");
     map.removeSource("gsi");
     // Unsupported, so drawn at its default width with a warning; then put back.
@@ -49,10 +51,12 @@ export async function styleChecks(page, requests) {
     const width = map.getPaintProperty("road", "line-width");
     map.setPaintProperty("road", "line-width", before);
     await new Promise((r) => setTimeout(r, 0));
+    await idle;
     map.off("error", f);
     map.off("warning", w);
     return { out, warned, width, order: map.getLayersOrder().slice(0, 4) };
   });
+  const settled = tiles();
   await step(page, "style: setStyle", 'map.setStyle({ version: 8, sources: {}, state: { bg: { default: "#ff0000" } }, layers: [{ id: "bg", type: "background", paint: { "background-color": ["global-state", "bg"] } }] });');
   const red = await pixel(page, 400, 300);
   // Global state: set and read back, then null takes the style's default again.
@@ -87,12 +91,12 @@ export async function styleChecks(page, requests) {
     state?.[0].bg === "#ff0000" &&
     state?.[1].bg.default === "#ff0000" &&
     near(red2, [255, 0, 0]) &&
-    swapped === relaid &&
+    swapped === settled &&
     near(blue, [0, 0, 255]) &&
     near(moved, [255, 0, 0]) &&
     JSON.stringify(order) === JSON.stringify([["bg"], []]) &&
     restored.tiles > swapped &&
     !near(restored.center, [255, 0, 0]) &&
     restored.layers === original.layers.length;
-  return { ok, before, painted, kept, relaid, errors, red, read, green, state, red2, swapped, blue, moved, order, restored, terrain };
+  return { ok, before, painted, kept, relaid, settled, errors, red, read, green, state, red2, swapped, blue, moved, order, restored, terrain };
 }

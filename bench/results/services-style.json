@@ -1,0 +1,79 @@
+{
+  "env": {
+    "maplibre": "6.16.0",
+    "browser": "chromium",
+    "viewport": "800x600",
+    "date": "2026-11-06"
+  },
+  "styles": [
+    {
+      "name": "world-basemap-v2",
+      "url": "https://basemaps.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer",
+      "layers": {
+        "fill": 64,
+        "line": 74,
+        "symbol": 778
+      },
+      "source": {
+        "type": "vector",
+        "tiles": [
+          "https://basemaps.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer/tile/{z}/{y}/{x}.pbf"
+        ],
+        "minzoom": 0,
+        "maxzoom": 22,
+        "bounds": [
+          -179.9999885408437,
+          -85.05112779126246,
+          179.9999885408437,
+          85.05112779126245
+        ],
+        "attribution": "Sources: Esri, TomTom, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors, and the GIS User Community"
+      }
+    }
+  ],
+  "results": [
+    {
+      "scene": "world-basemap-v2-tokyo12",
+      "ok": true,
+      "mean": 0.073,
+      "p99": 1,
+      "limits": {
+        "mean": 0.1,
+        "p99": 2
+      },
+      "gap": "thin road and coast lines at a fractional zoom"
+    },
+    {
+      "scene": "world-basemap-v2-tokyo15",
+      "ok": true,
+      "mean": 0.199,
+      "p99": 4,
+      "limits": {
+        "mean": 0.25,
+        "p99": 5
+      },
+      "gap": "tiles of extent 8192 (Esri's at z15 here) quantized to mbmap's TILE_EXTENT 4096 (VISION §4-2): edges move by up to 1/16 px"
+    },
+    {
+      "scene": "world-basemap-v2-turned",
+      "ok": true,
+      "mean": 0.011,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "world-basemap-v2-japan",
+      "ok": true,
+      "mean": 0.1,
+      "p99": 2,
+      "limits": {
+        "mean": 0.13,
+        "p99": 3
+      },
+      "gap": "thin road and coast lines at a fractional zoom"
+    }
+  ]
+}

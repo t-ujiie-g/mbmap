@@ -1,0 +1,9 @@
+{
+  "version": 8,
+  "sources": { "esri": { "type": "vector", "url": "../../" } },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#f7f6d5" } },
+    { "id": "water", "type": "fill", "source": "esri", "source-layer": "waterarea", "paint": { "fill-color": "#9fc5e8" } },
+    { "id": "road", "type": "line", "source": "esri", "source-layer": "road", "paint": { "line-color": "#e06666", "line-width": 2 } }
+  ]
+}
