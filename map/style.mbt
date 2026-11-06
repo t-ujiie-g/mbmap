@@ -121,6 +121,9 @@ pub fn Map::set_style(
   self.sources.push_iter(sources.iter())
   self.prune_media(next.sources)
   self.style = next
+  if next.terrain.map(t => t.source) != old.terrain.map(t => t.source) {
+    self.raise_dem_tiles()
+  }
   self.vertex_paint = next.layers.map(l => l.vertex_paint())
   self.prune_ramps()
   self.has_labels = next.layers.iter().any(l => l.kind is Symbol)
