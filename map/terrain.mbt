@@ -145,6 +145,19 @@ fn dem_under(
 }
 
 ///|
+/// Gives the terrain source's loaded DEM tiles their elevations: tiles made for
+/// hillshade or color relief alone have none, and terrain does not draw those.
+fn Map::raise_dem_tiles(self : Map) -> Unit {
+  guard self.terrain_source() is Some(src) else { return }
+  for _, e in src.tiles {
+    if e.state is (Ready(meshes) | Stale(meshes)) &&
+      dem_of(meshes) is Some((mesh, d)) {
+      self.renderer.add_elevations(mesh, d.heights, d.size)
+    }
+  }
+}
+
+///|
 /// Draws the map onto terrain: each terrain tile (the display zoom, or the DEM's
 /// if deeper) gets a texture of the layers under it, redrawn when they change,
 /// on its grid raised by the DEM.
