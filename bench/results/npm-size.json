@@ -70,6 +70,11 @@
       "budget": 5000
     },
     {
+      "name": "mbmap/services",
+      "bytes": 6532,
+      "budget": 10000
+    },
+    {
       "name": "mbmap/draw",
       "bytes": 4867,
       "budget": 10000

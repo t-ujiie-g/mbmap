@@ -21,7 +21,7 @@ export async function prepareExamples() {
     await mkdir(modules, { recursive: true });
     run("tar", ["xzf", path.join(out, filename), "--strip-components=1", "-C", modules], ROOT);
   };
-  for (const page of ["npm", "element", "geojson", "analysis", "data", "media", "custom"]) await install(`bench/npm/pages/${page}`);
+  for (const page of ["npm", "element", "geojson", "analysis", "data", "media", "custom", "services"]) await install(`bench/npm/pages/${page}`);
   await install("examples/html");
   await install("examples/element");
   // npm ci empties node_modules, so the tarball goes in afterwards.

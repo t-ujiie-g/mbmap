@@ -1,0 +1,441 @@
+{
+  "env": {
+    "ol": "10.11.0",
+    "ogc-client": "2.0.2",
+    "node": "v22.23.4"
+  },
+  "results": [
+    {
+      "check": "wms capabilities",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "version": "1.3.0",
+      "layers": 5,
+      "leftOut": [
+        "queryable"
+      ],
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "layer": "bluemarble",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ]
+    },
+    {
+      "check": "wms source",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "layer": "continents",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        83.627419
+      ]
+    },
+    {
+      "check": "wms source",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "layer": "country_bounds",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        83.627419
+      ]
+    },
+    {
+      "check": "wms capabilities",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.1.1",
+      "version": "1.1.1",
+      "layers": 5,
+      "leftOut": [
+        "queryable"
+      ],
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.1.1",
+      "layer": "bluemarble",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ]
+    },
+    {
+      "check": "wms source",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.1.1",
+      "layer": "continents",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        83.627419
+      ]
+    },
+    {
+      "check": "wms source",
+      "url": "https://demo.mapserver.org/cgi-bin/wms?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.1.1",
+      "layer": "country_bounds",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        83.627419
+      ]
+    },
+    {
+      "check": "wms capabilities",
+      "url": "https://sampleserver6.arcgisonline.com/arcgis/services/SampleWorldCities/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "version": "1.3.0",
+      "layers": 4,
+      "leftOut": [],
+      "ok": true
+    },
+    {
+      "check": "wms capabilities",
+      "url": "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "version": "1.3.0",
+      "layers": 1610,
+      "leftOut": [],
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "url": "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "layer": "MERRA2_2m_Air_Temperature_Monthly",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ]
+    },
+    {
+      "check": "wms source",
+      "url": "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "layer": "MERRA2_2m_Air_Temperature_Assimilated_Monthly",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ]
+    },
+    {
+      "check": "wms source",
+      "url": "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0",
+      "layer": "MLS_Temperature_46hPa_Day",
+      "ok": true,
+      "fetched": true,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ]
+    },
+    {
+      "check": "wmts capabilities",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
+      "layers": 1332,
+      "sets": 7,
+      "ok": true
+    },
+    {
+      "check": "wmts source",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
+      "layer": "MERRA2_2m_Air_Temperature_Monthly",
+      "set": "GoogleMapsCompatible_Level6",
+      "encoding": "REST",
+      "zooms": [
+        0,
+        6
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "wmts source",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
+      "layer": "MERRA2_2m_Air_Temperature_Assimilated_Monthly",
+      "set": "GoogleMapsCompatible_Level6",
+      "encoding": "REST",
+      "zooms": [
+        0,
+        6
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "wmts source",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
+      "layer": "GEDI_ISS_L4B_Aboveground_Biomass_Density_Mean_201904-202303",
+      "set": "GoogleMapsCompatible_Level7",
+      "encoding": "REST",
+      "zooms": [
+        0,
+        7
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "wmts capabilities",
+      "url": "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "layers": 1,
+      "sets": 2,
+      "ok": true
+    },
+    {
+      "check": "wmts source",
+      "url": "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/WMTS/1.0.0/WMTSCapabilities.xml",
+      "layer": "World_Topo_Map",
+      "set": "GoogleMapsCompatible",
+      "encoding": "REST",
+      "zooms": [
+        0,
+        18
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "wmts capabilities",
+      "url": "https://demo.mapserver.org/mapcache/wmts?SERVICE=WMTS&REQUEST=GetCapabilities",
+      "layers": 1,
+      "sets": 1,
+      "ok": true
+    },
+    {
+      "check": "wmts source",
+      "url": "https://demo.mapserver.org/mapcache/wmts?SERVICE=WMTS&REQUEST=GetCapabilities",
+      "layer": "osm-mn-tileset",
+      "set": "GoogleMapsCompatible",
+      "encoding": "REST",
+      "zooms": [
+        0,
+        21
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "wfs capabilities",
+      "url": "https://demo.mapserver.org/cgi-bin/wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0",
+      "version": "2.0.0",
+      "types": 2,
+      "ok": true
+    },
+    {
+      "check": "wfs capabilities",
+      "url": "https://demo.mapserver.org/cgi-bin/wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=1.1.0",
+      "version": "1.1.0",
+      "types": 2,
+      "ok": true
+    },
+    {
+      "check": "wfs capabilities",
+      "url": "https://demo.mapserver.org/cgi-bin/wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=1.0.0",
+      "version": "1.0.0",
+      "types": 2,
+      "ok": true
+    },
+    {
+      "check": "wfs capabilities",
+      "url": "https://sampleserver6.arcgisonline.com/arcgis/services/SampleWorldCities/MapServer/WFSServer?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0",
+      "version": "2.0.0",
+      "types": 3,
+      "ok": true
+    },
+    {
+      "check": "ogc api collections",
+      "url": "https://demo.pygeoapi.io/master",
+      "collections": 17,
+      "ok": true
+    },
+    {
+      "check": "ogc api collection",
+      "id": "obs",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "lakes",
+      "ok": true,
+      "tiles": {
+        "vector": {
+          "same": true,
+          "type": "vector",
+          "zooms": [
+            null,
+            null
+          ],
+          "status": 200
+        }
+      }
+    },
+    {
+      "check": "ogc api collection",
+      "id": "dutch_windmills",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "dutch_castles",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "dutch_georef_stations",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "utah_city_locations",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "unesco_pois_italy",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "ogr_gpkg_poi",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "ogr_geojson_lakes",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "ogr_gpkg_wales_railway_lines",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "ogr_gpkg_wales_stations",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "ogr_addresses_sqlite",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "ogr_addresses_gpkg",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "gdps-temperature",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "icoads-sst",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "dutch-metadata",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "ogc api collection",
+      "id": "mapserver_world_map",
+      "ok": true,
+      "tiles": {}
+    },
+    {
+      "check": "arcgis source",
+      "url": "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer",
+      "cached": true,
+      "zooms": [
+        0,
+        23
+      ],
+      "bounds": [
+        -179.9999885408441,
+        -85.01472921614696,
+        179.9999885408441,
+        85.04907883292475
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "arcgis source",
+      "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer",
+      "cached": false,
+      "bounds": [
+        -180,
+        -90,
+        180,
+        90
+      ],
+      "ok": true,
+      "fetched": true
+    },
+    {
+      "check": "arcgis source",
+      "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Toronto/ImageServer",
+      "cached": true,
+      "zooms": [
+        0,
+        19
+      ],
+      "bounds": [
+        -79.45485558791692,
+        43.582523523975595,
+        -79.31216718818737,
+        43.711780840479065
+      ],
+      "ok": true,
+      "fetched": true
+    }
+  ]
+}

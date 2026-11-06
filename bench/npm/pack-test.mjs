@@ -1,6 +1,6 @@
 // Checks the examples built on the packed package in Chromium; without the
 // fixtures tiles 404 and maps load empty, so CI runs it too.
-// Usage: node npm/pack-test.mjs [--screenshots=dir]
+// Usage: node npm/pack-test.mjs [--screenshots=dir] [--only=check]
 import path from "node:path";
 import { chromium } from "playwright";
 import { serve } from "../lib/serve.mjs";
@@ -17,6 +17,7 @@ import { controlChecks } from "./checks/controls.mjs";
 import { atCentre } from "./checks/pixels.mjs";
 import { queryChecks } from "./checks/query.mjs";
 import { searchChecks } from "./checks/search.mjs";
+import { servicesChecks } from "./checks/services.mjs";
 import { tableChecks } from "./checks/table.mjs";
 import { stateChecks } from "./checks/state.mjs";
 import { styleChecks } from "./checks/style.mjs";
@@ -27,6 +28,7 @@ import { crumb, mapState, openTab, trail } from "./checks/step.mjs";
 import { arg } from "../lib/args.mjs";
 
 const shots = arg("screenshots");
+const only = arg("only");
 await prepareExamples();
 
 const ATTRIBUTION = "国土地理院ベクトルタイル提供実験";
@@ -39,6 +41,7 @@ const PAGES = {
   analysis: "bench/npm/pages/analysis/",
   data: "bench/npm/pages/data/",
   media: "bench/npm/pages/media/",
+  services: "bench/npm/pages/services/",
   custom: "bench/npm/pages/custom/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
@@ -360,6 +363,10 @@ const checks = {
     return customChecks(page);
   },
 
+  async services(page, requests) {
+    return servicesChecks(page, requests);
+  },
+
   // The examples that call the engine (bundle/main) directly: it starts and draws.
   async basic(page) {
     return engineStarted(page);
@@ -512,7 +519,7 @@ const gpu = process.platform === "darwin" ? ["--use-angle=metal", "--enable-gpu"
 const browser = await chromium.launch({ args: gpu });
 let failed = false;
 try {
-  for (const [example, check] of Object.entries(checks)) {
+  for (const [example, check] of Object.entries(checks).filter(([name]) => !only || name === only)) {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
     const errors = [];
     const requests = [];
@@ -520,7 +527,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression properties|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|missing required method/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression properties|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|Invalid layer|no layer named nope|missing required method/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);

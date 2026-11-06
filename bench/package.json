@@ -48,6 +48,7 @@
     "geotiff:golden": "cd .. && moon build data_worker geotiff_worker --release --target wasm-gc && cd bench && node --max-old-space-size=4096 data/geotiff-golden.mjs",
     "geotiff:tiles": "npm --prefix ../npm run build && node geotiff/tiles-golden.mjs",
     "write:golden": "cd .. && moon build data_worker xml_worker --release --target wasm-gc && cd bench && node data/write-golden.mjs",
+    "services:golden": "node lib/run-bundled.mjs bench/services/golden.mjs",
     "xml:golden": "cd .. && moon build xml_worker --release --target wasm-gc && cd bench && node data/xml-golden.mjs",
     "draw:setdata": "npm --prefix ../npm run build && node draw/run.mjs",
     "style:golden": "npm --prefix ../npm run build && node style/golden.mjs",
@@ -61,6 +62,7 @@
     "geometry:node": "npm run build:moon && node clipper/node.mjs"
   },
   "devDependencies": {
+    "@camptocamp/ogc-client": "2.0.2",
     "@mapbox/vector-tile": "3.0.0",
     "@maplibre/geojson-vt": "6.3.0",
     "@placemarkio/tokml": "0.4.0",
@@ -84,6 +86,7 @@
     "flatgeobuf": "4.6.1",
     "geotiff": "3.0.5",
     "maplibre-gl": "6.16.0",
+    "ol": "10.11.0",
     "papaparse": "5.7.0",
     "pbf": "5.1.2",
     "playwright": "1.64.1",

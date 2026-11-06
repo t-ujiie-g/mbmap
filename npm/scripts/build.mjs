@@ -1,4 +1,4 @@
-// Builds dist/: the facade and the files it loads, `<mb-map>`, the ui, search, draw, GeoJSON,
+// Builds dist/: the facade and the files it loads, `<mb-map>`, the ui, search, draw, services, GeoJSON,
 // analysis, geodesic and data modules, and their workers with their wasm. Usage: node scripts/build.mjs
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -58,6 +58,7 @@ const ENTRIES = [
   ["ui.js", "npm/src/ui.ts"],
   ["search.js", "npm/src/search.ts"],
   ["draw.js", "npm/src/draw.ts"],
+  ["services.js", "npm/src/services.ts"],
   ["geojson-worker.js", "geojson_worker/js/worker.mjs"],
   ["worker.js", "worker/js/worker.mjs", { plugins: [separate(WORKER_PARTS)] }],
   ...Object.entries(WORKER_PARTS).map(([source, file]) => [file.slice(2), path.join("worker/js", source)]),

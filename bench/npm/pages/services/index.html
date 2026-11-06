@@ -1,0 +1,9 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mbmap: services</title>
+<style>html, body { margin: 0; } #map { width: 600px; height: 400px; }</style>
+<!-- `npm --prefix bench run npm:pack` installs the packed tarball into ./node_modules. -->
+<script type="importmap">{ "imports": { "mbmap": "./node_modules/mbmap/dist/index.js", "mbmap/services": "./node_modules/mbmap/dist/services.js" } }</script>
+<div id="map"></div>
+<script type="module" src="./main.js"></script>
