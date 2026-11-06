@@ -41,11 +41,9 @@ fn Map::request_tile(
         tiles[(id.x + id.y) % tiles.length()],
         id.z,
         id.x,
-        if src.source.tms {
-          (1 << id.z) - 1 - id.y
-        } else {
-          id.y
-        },
+        id.y,
+        src.source.tms,
+        device_pixel_ratio(),
       ),
       src.index,
       id.z,

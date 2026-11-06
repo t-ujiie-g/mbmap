@@ -22,11 +22,16 @@ export function pmtilesArchive(url: string): string | null {
   return url.startsWith(PMTILES) ? url.slice(PMTILES.length) : null;
 }
 
+/** The tile URL placeholders the engine fills in, as MapLibre's `CanonicalTileID.url`. */
+export const TILE_PLACEHOLDERS = ["z", "x", "y", "prefix", "ratio", "quadkey", "bbox-epsg-3857", "bbox"];
+
+const ENCODED_PLACEHOLDER = new RegExp(`%7B(${TILE_PLACEHOLDERS.join("|")})%7D`, "g");
+
 /** A tile template resolved against `base`, its placeholders kept: http(s), or `pmtiles://` and an http(s) archive. */
 export function resolveTemplate(template: string, base: string | URL, what = "tiles"): string {
   const archive = pmtilesArchive(template);
   // URL() percent-encodes the placeholders' braces.
-  const href = httpUrl(archive ?? template, base, what).replace(/%7B([zxy])%7D/g, "{$1}");
+  const href = httpUrl(archive ?? template, base, what).replace(ENCODED_PLACEHOLDER, "{$1}");
   return archive === null ? href : PMTILES + href;
 }
 

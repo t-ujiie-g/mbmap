@@ -6,12 +6,12 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 132851,
+      "bytes": 133156,
       "budget": 135000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
-      "bytes": 1754,
+      "bytes": 1840,
       "budget": 5000
     },
     {
@@ -31,7 +31,7 @@
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 1677,
+      "bytes": 1762,
       "budget": 2000
     },
     {
@@ -106,7 +106,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3817,
+      "bytes": 3881,
       "budget": 5000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "mbmap/geodesic",
-      "bytes": 1141,
+      "bytes": 1225,
       "budget": 2000
     },
     {
@@ -141,7 +141,7 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 4441,
+      "bytes": 4528,
       "budget": 6000
     },
     {

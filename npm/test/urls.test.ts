@@ -8,8 +8,13 @@ test("tile templates resolve against the style and keep their placeholders", () 
   assert.equal(resolveTemplate("tiles/{z}/{x}/{y}.pbf", base), "https://example.com/styles/tiles/{z}/{x}/{y}.pbf");
   assert.equal(resolveTemplate("/t/{z}/{x}/{y}.pbf", base), "https://example.com/t/{z}/{x}/{y}.pbf");
   assert.equal(resolveTemplate("https://cdn.test/{z}/{x}/{y}", base), "https://cdn.test/{z}/{x}/{y}");
-  // Only the three placeholders are restored.
+  // Only the engine's placeholders are restored.
   assert.equal(resolveTemplate("t/{a}/{z}", base), "https://example.com/styles/t/%7Ba%7D/{z}");
+  assert.equal(
+    resolveTemplate("/{prefix}/{quadkey}{ratio}.png?bbox={bbox-epsg-3857}&b={bbox}", base),
+    "https://example.com/{prefix}/{quadkey}{ratio}.png?bbox={bbox-epsg-3857}&b={bbox}",
+  );
+  assert.equal(resolveTemplate("/q/{quadkey}/{bbox-epsg-3857}", base), "https://example.com/q/{quadkey}/{bbox-epsg-3857}");
 });
 
 test("httpUrl resolves against the base and refuses other schemes", () => {
