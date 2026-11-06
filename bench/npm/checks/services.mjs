@@ -1,7 +1,10 @@
 // mbmap/services on bench/npm/pages/services: a WMTS and an ArcGIS VectorTileServer draw the GSI tiles
 // they name pixel for pixel, a WMS layer by GetMap in EPSG:3857 keeping the endpoint's parameters, and
 // exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { decodePng } from "../../lib/png.mjs";
+import { ROOT } from "../../lib/root.mjs";
 
 export async function servicesChecks(page, requests) {
   const shot = async () => decodePng(await page.screenshot({ clip: { x: 0, y: 0, width: 600, height: 400 } })).rgba;
@@ -71,7 +74,10 @@ export async function servicesChecks(page, requests) {
   await restyle("./arcgis/rest/services/Test/VectorTileServer/resources/styles/root.json");
   const asIs = await top();
   const equal = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  // CI has no fixtures: the tiles 404 and all three maps show the background alone.
+  const fixtures = existsSync(path.join(ROOT, "bench/fixtures/gsi-bvmap/14"));
   const vector = {
+    fixtures,
     source: esriSource,
     same: equal(plain, esri),
     asIs: equal(plain, asIs),
@@ -97,7 +103,7 @@ export async function servicesChecks(page, requests) {
     /Invalid layer\(s\)/.test(r.refusals.exception) && /not well-formed/.test(r.refusals.malformed) && /not a WMS capabilities/.test(r.refusals.notWms) &&
     /no layer named nope/.test(r.refusals.unknown) && /must be an http\(s\) URL/.test(r.refusals.refused) && /HTTP 404/.test(r.refusals.missing) &&
     loaded.includes("services.js") && loaded.includes("wmts.xml") && loaded.includes("wms.xml") &&
-    vector.same && vector.asIs && vector.drawn &&
+    vector.same && vector.asIs && (vector.drawn || !fixtures) &&
     /\/bench\/fixtures\/gsi-bvmap\/\{z\}\/\{x\}\/\{y\}\.pbf$/.test(vector.source?.tiles?.[0]) &&
     vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験";
   return [ok, { ...r, same, drawn, vector, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
