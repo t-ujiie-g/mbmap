@@ -54,16 +54,32 @@ extern "js" fn cancel_frame(id : Int32) -> Unit =
   #|(id) => cancelAnimationFrame(id)
 
 ///|
-/// Absolute URL for a tile; `template` may be relative to the page. A
-/// PMTiles template (`pmtiles://` and an absolute URL) is kept as it is.
+/// Absolute URL for a tile, its placeholders filled as MapLibre's `CanonicalTileID.url`
+/// (only `{y}` flipped for `tms`); a `pmtiles://` template is kept as it is.
 extern "js" fn tile_url(
   template : String,
   z : Int32,
   x : Int32,
   y : Int32,
+  tms : Bool,
+  ratio : Double,
 ) -> String =
-  #|(t, z, x, y) => {
-  #|  const u = t.replace("{z}", z).replace("{x}", x).replace("{y}", y);
+  #|(t, z, x, y, tms, ratio) => {
+  #|  const n = Math.pow(2, z), quad = [];
+  #|  for (let i = z; i > 0; i--) { const m = 1 << (i - 1); quad.push((x & m ? 1 : 0) + (y & m ? 2 : 0)); }
+  #|  const bbox = () => {
+  #|    const r = Math.PI * 6378137, e = 2 * r / n, minX = -r, minY = r - 2 * r, row = n - y - 1;
+  #|    return `${minX + x * e},${minY + row * e},${minX + (x + 1) * e},${minY + (row + 1) * e}`;
+  #|  };
+  #|  const u = t
+  #|    .replace(/{prefix}/g, (x % 16).toString(16) + (y % 16).toString(16))
+  #|    .replace(/{z}/g, String(z))
+  #|    .replace(/{x}/g, String(x))
+  #|    .replace(/{y}/g, String(tms ? n - y - 1 : y))
+  #|    .replace(/{ratio}/g, ratio > 1 ? "@2x" : "")
+  #|    .replace(/{quadkey}/g, quad.join(""))
+  #|    .replace(/{bbox-epsg-3857}/g, bbox)
+  #|    .replace(/{bbox}/g, bbox);
   #|  return u.startsWith("pmtiles://") ? u : new URL(u, location.href).href;
   #|}
 

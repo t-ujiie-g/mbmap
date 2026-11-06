@@ -1,6 +1,7 @@
 // Raster sources and paints vs MapLibre GL JS 6.16.0 in Chromium, pixel by pixel, on GSI's standard
-// map (z14 fixtures). Writes bench/results/raster-golden.json. Needs `npm --prefix npm run build`.
-import { mkdir, writeFile } from "node:fs/promises";
+// map (z14 fixtures), and the tile URLs both request from templates with every placeholder.
+// Writes bench/results/raster-golden.json. Needs `npm --prefix npm run build`.
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
 import { decodePng } from "../lib/png.mjs";
@@ -53,6 +54,54 @@ try {
       if (!ok) failed++;
       results.push({ paint: name, view, ok, mean: Number(mean.toFixed(3)), p99, max: diffs.at(-1) });
       await page.close();
+    }
+  }
+
+  // Each engine's template carries its name, so the requests of the two can be told apart.
+  const tile = await readFile(path.join(ROOT, "bench/fixtures/gsi-std/14/14552/6451.png"));
+  const placeholders = "p={prefix}&q={quadkey}&r={ratio}&b={bbox-epsg-3857}&c={bbox}&z={z}&x={x}&y={y}";
+  const urlStyle = (engine, scheme) => ({
+    version: 8,
+    sources: {
+      s: {
+        type: "raster", scheme, tileSize: 256, minzoom: 0, maxzoom: 14,
+        tiles: ["a", "b"].map((host) => `{origin}/bench/fixtures/gsi-std/{z}/{x}/{y}.png?engine=${engine}&host=${host}&${placeholders}`),
+      },
+    },
+    layers: [{ id: "s", type: "raster", source: "s" }],
+  });
+  for (const scheme of ["xyz", "tms"]) {
+    for (const ratio of [1, 2]) {
+      for (const [view, camera] of Object.entries({ ...cameras, z3: { center: [139.7671, 35.6812], zoom: 3.4, bearing: 0, pitch: 0 } })) {
+        const files = {};
+        for (const engine of ["mbmap", "maplibre"]) {
+          files[engine] = `bench/dist/raster-urls-${engine}.json`;
+          await writeFile(path.join(ROOT, files[engine]), JSON.stringify(urlStyle(engine, scheme)));
+        }
+        const page = await browser.newPage({ viewport: { width: 800, height: 1200 }, deviceScaleFactor: ratio });
+        const urls = { mbmap: new Set(), maplibre: new Set() };
+        const record = (url) => {
+          const u = new URL(url);
+          const engine = u.searchParams.get("engine");
+          if (!urls[engine]) return;
+          u.searchParams.delete("engine");
+          urls[engine].add(u.pathname + u.search);
+        };
+        // Every tile is answered with one PNG: on a 404 MapLibre would also ask for the parent tiles.
+        await page.route((u) => u.searchParams.has("engine"), (route) => {
+          record(route.request().url());
+          return route.fulfill({ contentType: "image/png", body: tile });
+        });
+        page.on("pageerror", (e) => console.log("urls pageerror", e.message));
+        await page.goto(`${origin}/bench/query/index.html?style=/${files.mbmap}&mlstyle=/${files.maplibre}&ratio=${ratio}&camera=${encodeURIComponent(JSON.stringify(camera))}`);
+        await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
+        const only = (a, b) => [...urls[a]].filter((u) => !urls[b].has(u)).sort();
+        const [mbOnly, mlOnly] = [only("mbmap", "maplibre"), only("maplibre", "mbmap")];
+        const ok = urls.mbmap.size > 0 && mbOnly.length === 0 && mlOnly.length === 0;
+        if (!ok) failed++;
+        results.push({ urls: scheme, ratio, view, ok, requested: urls.mbmap.size, mbmapOnly: mbOnly.slice(0, 3), maplibreOnly: mlOnly.slice(0, 3) });
+        await page.close();
+      }
     }
   }
 } finally {

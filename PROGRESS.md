@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18 の範囲をユーザーと決める。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1（タイル URL の置き換え）を進めている。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -14,7 +14,7 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 132.9KB（GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示（メイン） | 133.2KB（GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
   | 表示ワーカー | 80.8KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
@@ -23,6 +23,26 @@
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
   | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+
+## Phase 18：GIS の Web サービス（2026-11-06〜）
+
+範囲・段階・予算は 2026-11-06 にユーザーが決めた。サーバーは作らず、すべて読み込みとして扱う。認証は `transformRequest` だけ。
+
+- **段階**（1 段階 1 PR）：
+  - 18.1：タイル URL の置き換え。MapLibre の `{bbox-epsg-3857}`・`{bbox}`・`{quadkey}`・`{ratio}`・`{prefix}`。これで Web メルカトルの WMS GetMap、ArcGIS の `export` とタイル、WMTS の GoogleMapsCompatible、OGC API Tiles が普通の `raster` ソースで描ける。
+  - 18.2：新しい入口 `mbmap/services`（主スレッドの JS、`DOMParser`）。WMS・WMTS・WFS の GetCapabilities、OGC API と ArcGIS のメタデータを読み、MapLibre のソースを返す。
+  - 18.3：ArcGIS VectorTileServer（`root.json`、スプライト、フォント）。
+  - 18.4：地物の取得。ArcGIS の `query`（Esri JSON と PBF）、OGC API Features、WFS の GeoJSON。ページ送りと範囲ごとの取得。
+  - 18.5：カメラに合わせた 1 枚画像（`export`、GetMap）と GetFeatureInfo・識別。
+  - 18.6：Web メルカトル以外のタイルとラスタ（4326・JGD2011 の TileMatrixSet。17.6c の再投影を使う）。
+  - 18.7：WFS の GML と example。
+- **予算**：`mbmap/services` は 10KB。表示（メイン）は 132.9 / 135KB で余裕がないので、18.1 のほかは遅延読み込みか新しい入口に置く。Esri JSON と PBF の読み手は新しい `services.wasm`（データワーカーは 39.4 / 40KB）。予算は 18.4 で決める。
+- **黄金テスト**：公開サービス（ArcGIS Online、OGC のデモサーバーなど）で確かめる。そのためユーザーが環境の許可ホストを広げる。比べる相手は OpenLayers、`@esri/arcgis-rest-*`、`@terraformer/arcgis`、MapLibre 6.16。
+- **Phase 19 に足したもの**：フィールド演算（2026-11-06 ユーザー判断）。属性テーブルのコントローラで列を足す・消す・名前を変える。値はスタイルの式で計算し（全件か選んだ地物、取り消しつき）、形から求める値は `mbmap/analysis` で計算する。
+- **18.1**：
+  - `map/dom.mbt` の `tile_url` は MapLibre の `CanonicalTileID.url` と同じ順で置き換える。`{y}` だけを TMS で反転し、ほかの置き換えは XYZ の行を使う。`{ratio}` は端末の画素比が 1 より大きいとき `@2x` になる。ファサードの `resolveTemplate` は、URL が符号化した置き換えの括弧を戻す（`TILE_PLACEHOLDERS`）。
+  - 表示（メイン）は 132.9KB → 133.2KB（+0.3KB、予算 135KB）。
+  - `npm run raster:golden` は、置き換えをすべて含むテンプレートで両方のエンジンが要求した URL を比べる。比べる組み合わせは XYZ と TMS、画素比 1 と 2、z14・z15（回転）・z3.4 の 12 場面で、すべて同じだった。タイルはすべて同じ PNG で答える。404 だと MapLibre は親のタイルも要求するため。
 
 ## Phase 17 の後の点検（2026-11-06〜）
 

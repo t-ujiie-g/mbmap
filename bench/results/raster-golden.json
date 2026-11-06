@@ -21,9 +21,9 @@
       "paint": "plain",
       "view": "z15",
       "ok": true,
-      "mean": 0,
+      "mean": 0.002,
       "p99": 0,
-      "max": 0
+      "max": 249
     },
     {
       "paint": "adjusted",
@@ -37,9 +37,9 @@
       "paint": "adjusted",
       "view": "z15",
       "ok": true,
-      "mean": 0,
+      "mean": 0.001,
       "p99": 0,
-      "max": 0
+      "max": 122
     },
     {
       "paint": "nearest",
@@ -53,9 +53,9 @@
       "paint": "nearest",
       "view": "z15",
       "ok": true,
-      "mean": 0,
+      "mean": 0.002,
       "p99": 0,
-      "max": 0
+      "max": 255
     },
     {
       "paint": "resampling",
@@ -69,9 +69,9 @@
       "paint": "resampling",
       "view": "z15",
       "ok": true,
-      "mean": 0,
+      "mean": 0.002,
       "p99": 0,
-      "max": 0
+      "max": 255
     },
     {
       "paint": "zoomed",
@@ -85,9 +85,117 @@
       "paint": "zoomed",
       "view": "z15",
       "ok": true,
-      "mean": 0,
+      "mean": 0.001,
       "p99": 0,
-      "max": 0
+      "max": 179
+    },
+    {
+      "urls": "xyz",
+      "ratio": 1,
+      "view": "z14",
+      "ok": true,
+      "requested": 4,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "xyz",
+      "ratio": 1,
+      "view": "z15",
+      "ok": true,
+      "requested": 2,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "xyz",
+      "ratio": 1,
+      "view": "z3",
+      "ok": true,
+      "requested": 9,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "xyz",
+      "ratio": 2,
+      "view": "z14",
+      "ok": true,
+      "requested": 4,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "xyz",
+      "ratio": 2,
+      "view": "z15",
+      "ok": true,
+      "requested": 2,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "xyz",
+      "ratio": 2,
+      "view": "z3",
+      "ok": true,
+      "requested": 9,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "tms",
+      "ratio": 1,
+      "view": "z14",
+      "ok": true,
+      "requested": 4,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "tms",
+      "ratio": 1,
+      "view": "z15",
+      "ok": true,
+      "requested": 2,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "tms",
+      "ratio": 1,
+      "view": "z3",
+      "ok": true,
+      "requested": 9,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "tms",
+      "ratio": 2,
+      "view": "z14",
+      "ok": true,
+      "requested": 4,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "tms",
+      "ratio": 2,
+      "view": "z15",
+      "ok": true,
+      "requested": 2,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "tms",
+      "ratio": 2,
+      "view": "z3",
+      "ok": true,
+      "requested": 9,
+      "mbmapOnly": [],
+      "maplibreOnly": []
     }
   ]
 }
