@@ -1,18 +1,20 @@
 ///|
 /// How line segments meet (`line-join`).
+#derive(Debug, Eq)
 pub(all) enum LineJoin {
   Miter
   Bevel
   Round
-} derive(Debug, Eq)
+}
 
 ///|
 /// How a line ends (`line-cap`).
+#derive(Debug, Eq)
 pub(all) enum LineCap {
   Butt
   Square
   Round
-} derive(Debug, Eq)
+}
 
 ///|
 /// Extrusion vectors are stored as integers scaled by this, so a unit normal

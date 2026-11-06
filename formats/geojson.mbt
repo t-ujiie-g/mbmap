@@ -10,9 +10,10 @@ pub const MAX_GEOJSON_KEYS : Int32 = 4096
 
 ///|
 /// Malformed GeoJSON: the byte offset where reading stopped and why.
+#derive(Debug)
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
-} derive(Debug)
+}
 
 ///|
 /// A one-line description, e.g. `malformed GeoJSON at 12: expected ':'`.

@@ -27,6 +27,7 @@ pub struct Column {
   values : Array[Prop?]
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum GeomKind {
   NoGeometry
   Point
@@ -35,17 +36,18 @@ pub(all) enum GeomKind {
   MultiLineString
   Polygon
   MultiPolygon
-} derive(Eq, @debug.Debug)
+}
 pub fn GeomKind::equal(Self, Self) -> Bool
 pub fn GeomKind::not_equal(Self, Self) -> Bool
 pub fn GeomKind::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Prop {
   Null
   Bool(Bool)
   Num(Double)
   Str(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn Prop::equal(Self, Self) -> Bool
 pub fn Prop::not_equal(Self, Self) -> Bool
 pub fn Prop::to_repr(Self) -> @debug.Repr

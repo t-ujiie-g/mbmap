@@ -2,6 +2,7 @@
 /// A value an expression produces. `Failed` is MapLibre's runtime error: it goes up through
 /// the expressions above it, and a property takes its default. `Collator` holds a
 /// collator's case and diacritic sensitivity and locale.
+#derive(Debug, Eq)
 pub(all) enum Value {
   Null
   Bool(Bool)
@@ -12,22 +13,24 @@ pub(all) enum Value {
   Formatted(Array[Section])
   Collator(Bool, Bool, String?)
   Failed
-} derive(Debug, Eq)
+}
 
 ///|
 /// A section of `format`'s text (MapLibre's `FormattedSection`): `font` is its
 /// `text-font` joined by commas, `align` its `vertical-align`; None where the
 /// section has no such option.
+#derive(Debug, Eq)
 pub(all) struct Section {
   text : String
   scale : Double?
   font : String?
   color : Color?
   align : String?
-} derive(Debug, Eq)
+}
 
 ///|
 /// The comparison operators `==`, `!=`, `<`, `<=`, `>` and `>=`.
+#derive(Debug, Eq)
 pub(all) enum CmpOp {
   Eq
   Ne
@@ -35,29 +38,32 @@ pub(all) enum CmpOp {
   Le
   Gt
   Ge
-} derive(Debug, Eq)
+}
 
 ///|
 /// How `interpolate` blends between stops: `Exponential(1.0)` is linear,
 /// `CubicBezier` takes the curve's two control points.
+#derive(Debug, Eq)
 pub(all) enum Interpolation {
   Exponential(Double)
   CubicBezier(Double, Double, Double, Double)
-} derive(Debug, Eq)
+}
 
 ///|
 /// The color space `interpolate` (`Rgb`), `interpolate-hcl` and
 /// `interpolate-lab` blend colors in.
+#derive(Debug, Eq)
 pub(all) enum ColorSpace {
   Rgb
   Hcl
   Lab
-} derive(Debug, Eq)
+}
 
 ///|
 /// The operators with fixed arguments (`-` with one argument negates). `Format` takes per
 /// section its text, `font-scale`, `text-font`, `text-color` and `vertical-align`, and
 /// `NumberFormat` and `Collator` their options in order; `Lit(Null)` where one is not given.
+#derive(Debug, Eq)
 pub(all) enum Op {
   Add
   Sub
@@ -97,12 +103,13 @@ pub(all) enum Op {
   Format
   NumberFormat
   Collator
-} derive(Debug, Eq)
+}
 
 ///|
 /// A compiled MapLibre expression (the subset this engine supports). Compiling resolves `let`,
 /// `var` and `global-state` (its value in the style's `state`); `Collate` compares with the
 /// collator last, `Within` holds polygons as rings of longitude, latitude pairs.
+#derive(Debug, Eq)
 pub(all) enum Expr {
   Lit(Value)
   Get(String)
@@ -131,12 +138,13 @@ pub(all) enum Expr {
   Collate(CmpOp, Expr, Expr, Expr)
   Within(Array[Array[Array[Double]]])
   Distance(Array[Shape])
-} derive(Debug, Eq)
+}
 
 ///|
 /// A type an expression produces or must produce: `AnyType` is MapLibre's
 /// `value`, `ArrayOf(item, n)` an array (`n` -1 for any length); `compile`
 /// annotates for it as MapLibre's parser does.
+#derive(Debug, Eq)
 pub(all) enum Expected {
   AnyType
   ColorType
@@ -144,7 +152,7 @@ pub(all) enum Expected {
   BoolType
   StringType
   ArrayOf(Expected, Int32)
-} derive(Debug, Eq)
+}
 
 ///|
 /// Deepest nesting of expressions and literal arrays a style may use; deeper

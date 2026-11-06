@@ -4,12 +4,13 @@
 ///|
 /// A geometry `distance` measures to, in longitude, latitude pairs (MapLibre's
 /// `SimpleGeometry`): `Other` is a type it skips.
+#derive(Debug, Eq)
 pub(all) enum Shape {
   Point(Double, Double)
   Line(Array[Double])
   Polygon(Array[Array[Double]])
   Other
-} derive(Debug, Eq)
+}
 
 ///|
 /// cheap-ruler's multipliers from degrees to meters at a latitude.

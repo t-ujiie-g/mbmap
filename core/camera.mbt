@@ -5,12 +5,13 @@
 ///|
 /// A box in longitude and latitude; `west` may exceed `east` across the
 /// antimeridian.
+#derive(Debug, Eq)
 pub(all) struct LngLatBounds {
   west : Double
   south : Double
   east : Double
   north : Double
-} derive(Debug, Eq)
+}
 
 ///|
 /// The bounds holding nothing yet (`extend` grows them).
@@ -128,12 +129,13 @@ pub fn Transform::at_point(
 
 ///|
 /// Space around a box fitted to the screen, in CSS pixels.
+#derive(Debug, Eq)
 pub(all) struct Padding {
   top : Double
   right : Double
   bottom : Double
   left : Double
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn Padding::uniform(p : Double) -> Padding {

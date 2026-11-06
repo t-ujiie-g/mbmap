@@ -4,12 +4,13 @@ const DEFAULT_EXTENT : Int32 = 4096
 
 ///|
 /// A feature's geometry type, as the MVT spec numbers them from 0 (§4.3.4).
+#derive(Debug, Eq)
 pub(all) enum GeomType {
   Unknown
   Point
   LineString
   Polygon
-} derive(Debug, Eq)
+}
 
 ///|
 /// A decoded tile. Layer tables, feature headers and tags are decoded and

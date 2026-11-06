@@ -45,6 +45,9 @@
 - **MoonBit のリファクタリング**：AGENTS §7 の順に。`String::view` の 5 箇所（`clamped_view` と 1 字ずつの書き出し。`exact_view` は孤立したサロゲートで止まるので使わない）、TIFF のタグと LZW の名前、`@geom.MAX_TABLE_POINTS` / `MAX_TABLE_CELLS`、`KIND_*` を `core/kinds.mbt` に、10 の累乗と `radians` を `core` に、使われていない公開項目の削除、`tiff/window.mbt` などファイルの分割、エラーの経路のテスト。
   - `write_units` は 1 字ずつ書くので長い文字列でわずかに遅い（未計測）。
 - **TS・JS と文書のリファクタリング**：`mirror.test.mjs` が Phase 17 の定数も確かめる。`crs`、`worker-client`、範囲リクエストの単体テスト、`writeInput`、`rangeReader`、`npm/scripts/build.mjs` の表、bench の共通化（`lib/args.mjs`、`data/common.mjs`）、`data_worker/js/geotiff-read.mjs` への分割、文書の更新。速さの候補はまだ試していない（M2 で測ってから）。
+- **moonc 0.10.20**（2026-11-06 ユーザー判断。作業中に Mac が 0.10.19 から 0.10.20 に変わり、原因は不明）：`derive(...)` は `#derive(...)` に（59 箇所、`moon fmt` が移した）。js バックエンドの `Array[T]` は JS の配列でなくなったので、JS に配列を返す `map_warnings` は `FixedArray` に。
+  - 大きさ：表示（メイン）は 128.6KB → 132.9KB（+4.2KB、予算 135KB）。js の出力が増えた。wasm は減った（表示ワーカー -0.3KB、`xml.wasm` -0.1KB ほか）。
+  - 0.10.20 で黄金テスト 26 種を回した。`track:golden` だけ 1 回 exit 1 になり、続く 7 回は通った。最初の回のログはなく、原因は分からない。
 - **大きさ**：`createAttributeTable` だけで 1996 / 2000 バイト、`xml.wasm` 26.0KB、GeoTIFF 19.9KB、データワーカー 39.4KB。`xml.wasm` の予算は 26KB → 27KB に引き上げた（2026-11-06 ユーザー判断。上限の確かめで約 350 バイト増え、CI の moonc 0.10.18 で 26,031 バイト。ローカルの 0.10.19 は 48 バイト小さい）。ほかの予算は変えていない。GeoTIFF には次の機能の余地がない。
 
 ## Phase 17：データ形式（2026-11-04〜）

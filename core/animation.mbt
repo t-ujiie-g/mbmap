@@ -104,6 +104,7 @@ fn normalize_center(p : LngLat, from : LngLat) -> LngLat {
 /// Where a camera move ends: what is left out stays as it is. `around` keeps
 /// that point at its screen position through the move; `offset` (pixels)
 /// places the new center that far from the screen center.
+#derive(Debug, Eq)
 pub(all) struct CameraTarget {
   center : LngLat?
   zoom : Double?
@@ -111,7 +112,7 @@ pub(all) struct CameraTarget {
   pitch : Double?
   around : LngLat?
   offset : (Double, Double)
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn CameraTarget::new(

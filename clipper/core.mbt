@@ -4,29 +4,32 @@
 
 ///|
 /// A point with integer coordinates (Clipper2's `Point64`).
+#derive(Debug, Eq)
 pub(all) struct Point64 {
   x : Int64
   y : Int64
-} derive(Debug, Eq)
+}
 
 ///|
 /// Which regions of a set of paths count as filled (Clipper2's `FillRule`).
+#derive(Debug, Eq)
 pub(all) enum FillRule {
   EvenOdd
   NonZero
   Positive
   Negative
-} derive(Debug, Eq)
+}
 
 ///|
 /// A boolean operation (Clipper2's `ClipType`; all but `Difference` commute).
+#derive(Debug, Eq)
 pub(all) enum ClipType {
   NoClip
   Intersection
   Union
   Difference
   Xor
-} derive(Debug, Eq)
+}
 
 ///|
 /// Largest coordinate Clipper2 accepts (`INT64_MAX >> 2`).
@@ -309,11 +312,12 @@ fn get_closest_point_on_segment(
 
 ///|
 /// Where a point lies relative to a polygon (`PointInPolygonResult`).
+#derive(Debug, Eq)
 pub(all) enum PointInPolygonResult {
   IsOn
   IsInside
   IsOutside
-} derive(Debug, Eq)
+}
 
 ///|
 /// Whether `pt` is on, inside or outside `polygon` (`PointInPolygon`).

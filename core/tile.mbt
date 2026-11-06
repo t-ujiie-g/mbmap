@@ -5,11 +5,12 @@ pub const MAX_TILE_ZOOM : Int32 = 28
 ///|
 /// A valid tile address in the XYZ scheme (y grows southwards). Construct it
 /// with `TileId::new`, which rejects out-of-range coordinates.
+#derive(Debug, Eq, Hash)
 pub struct TileId {
   z : Int32
   x : Int32
   y : Int32
-} derive(Debug, Eq, Hash)
+}
 
 ///|
 pub fn TileId::new(z : Int32, x : Int32, y : Int32) -> TileId? {

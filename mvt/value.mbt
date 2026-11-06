@@ -1,6 +1,7 @@
 ///|
 /// A feature property value. `Null` stands for a value message with no field
 /// set, which the spec forbids but other decoders accept.
+#derive(Debug, Eq)
 pub(all) enum Value {
   String(String)
   Float(Float)
@@ -10,7 +11,7 @@ pub(all) enum Value {
   SInt(Int64)
   Bool(Bool)
   Null
-} derive(Debug, Eq)
+}
 
 ///|
 fn parse_value(r : @pbf.Reader) -> Value {

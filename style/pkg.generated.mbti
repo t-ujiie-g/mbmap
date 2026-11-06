@@ -3,6 +3,7 @@ package "t-ujiie-g/mbmap/style"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
   "t-ujiie-g/mbmap/core",
 }
 
@@ -33,9 +34,9 @@ pub const SLOT_STROKE_WIDTH : Int32 = 5
 
 pub const SLOT_WEIGHT : Int32 = 1
 
-pub fn compile(Json, expected? : Expected, path? : String) -> Expr raise StyleError
+pub fn compile(@json.Json, expected? : Expected, path? : String) -> Expr raise StyleError
 
-pub fn compile_cluster_properties(Json, path? : String) -> Array[(String, Expr, Expr)] raise StyleError
+pub fn compile_cluster_properties(@json.Json, path? : String) -> Array[(String, Expr, Expr)] raise StyleError
 
 pub fn font_face(String) -> (String, String, String)
 
@@ -57,32 +58,35 @@ pub fn[C : FeatureContext] translate_at(Expr, Double, C) -> (Double, Double)
 
 pub fn vertex_paint_words(Array[VertexPaint]) -> Int32
 
-pub fn[T] with_global_state(Map[String, Json], () -> T raise StyleError) -> T raise StyleError
+pub fn[T] with_global_state(Map[String, @json.Json], () -> T raise StyleError) -> T raise StyleError
 
 pub fn write_cluster_properties(Array[(String, Expr, Expr)]) -> Bytes
 
 pub fn write_expr(@core.ByteWriter, Expr?) -> Unit
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror StyleError {
   Invalid(path~ : String, String)
   Unsupported(path~ : String, String)
-} derive(Eq, @debug.Debug)
+}
 pub fn StyleError::equal(Self, Self) -> Bool
 pub fn StyleError::message(Self) -> String
 pub fn StyleError::not_equal(Self, Self) -> Bool
 pub fn StyleError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum Cap {
   Butt
   Square
   Round
-} derive(Eq, @debug.Debug)
+}
 pub fn Cap::equal(Self, Self) -> Bool
 pub fn Cap::not_equal(Self, Self) -> Bool
 pub fn Cap::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum CmpOp {
   Eq
   Ne
@@ -90,17 +94,18 @@ pub(all) enum CmpOp {
   Le
   Gt
   Ge
-} derive(Eq, @debug.Debug)
+}
 pub fn CmpOp::equal(Self, Self) -> Bool
 pub fn CmpOp::not_equal(Self, Self) -> Bool
 pub fn CmpOp::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Color {
   r : Double
   g : Double
   b : Double
   a : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn Color::equal(Self, Self) -> Bool
 pub fn Color::not_equal(Self, Self) -> Bool
 pub fn Color::to_repr(Self) -> @debug.Repr
@@ -110,25 +115,28 @@ pub struct ColorReliefPaint {
   nearest : Bool
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum ColorSpace {
   Rgb
   Hcl
   Lab
-} derive(Eq, @debug.Debug)
+}
 pub fn ColorSpace::equal(Self, Self) -> Bool
 pub fn ColorSpace::not_equal(Self, Self) -> Bool
 pub fn ColorSpace::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum DemEncoding {
   Mapbox
   Terrarium
   Gsi
   Custom(Double, Double, Double, Double)
-} derive(Eq, @debug.Debug)
+}
 pub fn DemEncoding::equal(Self, Self) -> Bool
 pub fn DemEncoding::not_equal(Self, Self) -> Bool
 pub fn DemEncoding::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Expected {
   AnyType
   ColorType
@@ -136,11 +144,12 @@ pub(all) enum Expected {
   BoolType
   StringType
   ArrayOf(Expected, Int32)
-} derive(Eq, @debug.Debug)
+}
 pub fn Expected::equal(Self, Self) -> Bool
 pub fn Expected::not_equal(Self, Self) -> Bool
 pub fn Expected::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Expr {
   Lit(Value)
   Get(String)
@@ -169,7 +178,7 @@ pub(all) enum Expr {
   Collate(CmpOp, Expr, Expr, Expr)
   Within(Array[Array[Array[Double]]])
   Distance(Array[Shape])
-} derive(Eq, @debug.Debug)
+}
 pub fn Expr::equal(Self, Self) -> Bool
 pub fn[C : FeatureContext] Expr::eval(Self, Double, C) -> Value
 pub fn Expr::feature_inputs(Self) -> (Array[String], Bool)
@@ -177,11 +186,12 @@ pub fn Expr::not_equal(Self, Self) -> Bool
 pub fn Expr::reads_state(Self) -> Bool
 pub fn Expr::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub struct ExtrusionPaint {
   height : Expr
   base : Expr
   vertical_gradient : Bool
-} derive(Eq)
+}
 pub fn ExtrusionPaint::equal(Self, Self) -> Bool
 pub fn ExtrusionPaint::not_equal(Self, Self) -> Bool
 
@@ -212,7 +222,7 @@ pub struct HillshadePaint {
 }
 
 pub struct IconLayout {
-  layout : Json
+  layout : @json.Json
   image : Array[Expr]
   size : Expr
   rotate : Expr
@@ -242,20 +252,22 @@ pub struct IconPaint {
 }
 pub fn IconPaint::exprs(Self) -> Array[Expr]
 
+#derive(Eq, @debug.Debug)
 pub(all) enum IconTextFit {
   NoFit
   Width
   Height
   Both
-} derive(Eq, @debug.Debug)
+}
 pub fn IconTextFit::equal(Self, Self) -> Bool
 pub fn IconTextFit::not_equal(Self, Self) -> Bool
 pub fn IconTextFit::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Interpolation {
   Exponential(Double)
   CubicBezier(Double, Double, Double, Double)
-} derive(Eq, @debug.Debug)
+}
 pub fn Interpolation::equal(Self, Self) -> Bool
 pub fn Interpolation::not_equal(Self, Self) -> Bool
 pub fn Interpolation::to_repr(Self) -> @debug.Repr
@@ -267,15 +279,17 @@ pub(all) struct Intl {
 }
 pub fn Intl::fallback() -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Join {
   Miter
   Bevel
   Round
-} derive(Eq, @debug.Debug)
+}
 pub fn Join::equal(Self, Self) -> Bool
 pub fn Join::not_equal(Self, Self) -> Bool
 pub fn Join::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum LayerKind {
   Background
   Fill
@@ -288,7 +302,7 @@ pub(all) enum LayerKind {
   Heatmap
   ColorRelief
   Custom
-} derive(Eq, @debug.Debug)
+}
 pub fn LayerKind::equal(Self, Self) -> Bool
 pub fn LayerKind::not_equal(Self, Self) -> Bool
 pub fn LayerKind::to_repr(Self) -> @debug.Repr
@@ -320,6 +334,7 @@ pub fn NoFeature::trig(Self) -> @core.Trig
 pub fn NoFeature::within(Self, Array[Array[Array[Double]]]) -> Bool
 pub impl FeatureContext for NoFeature
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Op {
   Add
   Sub
@@ -359,21 +374,23 @@ pub(all) enum Op {
   Format
   NumberFormat
   Collator
-} derive(Eq, @debug.Debug)
+}
 pub fn Op::equal(Self, Self) -> Bool
 pub fn Op::not_equal(Self, Self) -> Bool
 pub fn Op::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum PromoteId {
   FeatureId
   Property(String)
   ByLayer(Map[String, String])
-} derive(Eq, @debug.Debug)
+}
 pub fn PromoteId::equal(Self, Self) -> Bool
 pub fn PromoteId::not_equal(Self, Self) -> Bool
 pub fn PromoteId::property(Self, String) -> String?
 pub fn PromoteId::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub struct RasterPaint {
   opacity : Expr
   hue_rotate : Expr
@@ -382,27 +399,29 @@ pub struct RasterPaint {
   saturation : Expr
   contrast : Expr
   nearest : Bool
-} derive(Eq)
+}
 pub fn RasterPaint::equal(Self, Self) -> Bool
 pub fn RasterPaint::not_equal(Self, Self) -> Bool
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Section {
   text : String
   scale : Double?
   font : String?
   color : Color?
   align : String?
-} derive(Eq, @debug.Debug)
+}
 pub fn Section::equal(Self, Self) -> Bool
 pub fn Section::not_equal(Self, Self) -> Bool
 pub fn Section::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Shape {
   Point(Double, Double)
   Line(Array[Double])
   Polygon(Array[Array[Double]])
   Other
-} derive(Eq, @debug.Debug)
+}
 pub fn Shape::equal(Self, Self) -> Bool
 pub fn Shape::not_equal(Self, Self) -> Bool
 pub fn Shape::to_repr(Self) -> @debug.Repr
@@ -433,13 +452,14 @@ pub struct Source {
 pub fn Source::covers(Self, Int32, Int32, Int32) -> Bool
 pub fn Source::same(Self, Self) -> Bool
 
+#derive(Eq, @debug.Debug)
 pub(all) enum SourceKind {
   Vector
   GeoJSON
   RasterDem
   Raster
   Image
-} derive(Eq, @debug.Debug)
+}
 pub fn SourceKind::equal(Self, Self) -> Bool
 pub fn SourceKind::not_equal(Self, Self) -> Bool
 pub fn SourceKind::to_repr(Self) -> @debug.Repr
@@ -453,9 +473,9 @@ pub struct Style {
   warnings : Array[StyleError]
 }
 pub fn Style::from_compiled(BytesView) -> Self raise StyleError
-pub fn Style::from_json(Json, strict? : Bool) -> Self raise StyleError
+pub fn Style::from_json(@json.Json, strict? : Bool) -> Self raise StyleError
 pub fn Style::parse(StringView, strict? : Bool) -> Self raise StyleError
-pub fn Style::report_ignored(Self, Json, strict? : Bool) -> Unit raise StyleError
+pub fn Style::report_ignored(Self, @json.Json, strict? : Bool) -> Unit raise StyleError
 pub fn Style::source(Self, String) -> Source?
 pub fn Style::to_compiled(Self) -> Bytes
 
@@ -512,20 +532,22 @@ pub fn StyleLayer::same_line_layout(Self, Self) -> Bool
 pub fn StyleLayer::same_tiles(Self, Self) -> Bool
 pub fn StyleLayer::vertex_paint(Self) -> Array[VertexPaint]
 
+#derive(Eq, @debug.Debug)
 pub(all) enum SymbolPlacement {
   Point
   Line
   LineCenter
-} derive(Eq, @debug.Debug)
+}
 pub fn SymbolPlacement::equal(Self, Self) -> Bool
 pub fn SymbolPlacement::not_equal(Self, Self) -> Bool
 pub fn SymbolPlacement::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum SymbolZOrder {
   Auto
   ViewportY
   Source
-} derive(Eq, @debug.Debug)
+}
 pub fn SymbolZOrder::equal(Self, Self) -> Bool
 pub fn SymbolZOrder::not_equal(Self, Self) -> Bool
 pub fn SymbolZOrder::to_repr(Self) -> @debug.Repr
@@ -535,6 +557,7 @@ pub struct Terrain {
   exaggeration : Double
 }
 
+#derive(Eq, @debug.Debug)
 pub(all) enum TextAnchor {
   Center
   Left
@@ -545,7 +568,7 @@ pub(all) enum TextAnchor {
   TopRight
   BottomLeft
   BottomRight
-} derive(Eq, @debug.Debug)
+}
 pub fn TextAnchor::align(Self) -> (Double, Double)
 pub fn TextAnchor::code(Self) -> Int32
 pub fn TextAnchor::equal(Self, Self) -> Bool
@@ -553,16 +576,18 @@ pub fn TextAnchor::from_code(Int32) -> Self
 pub fn TextAnchor::not_equal(Self, Self) -> Bool
 pub fn TextAnchor::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum TextJustify {
   Auto
   Left
   Center
   Right
-} derive(Eq, @debug.Debug)
+}
 pub fn TextJustify::equal(Self, Self) -> Bool
 pub fn TextJustify::not_equal(Self, Self) -> Bool
 pub fn TextJustify::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
@@ -588,7 +613,7 @@ pub struct TextLayout {
   rotate : Expr
   cooperative : Bool
   z_order : SymbolZOrder
-} derive(Eq)
+}
 pub fn TextLayout::equal(Self, Self) -> Bool
 pub fn TextLayout::not_equal(Self, Self) -> Bool
 pub fn TextLayout::variable_at(Self, Double) -> Array[(TextAnchor, Double, Double)]
@@ -602,6 +627,7 @@ pub(all) struct TileGeometry {
 }
 pub fn TileGeometry::new() -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Value {
   Null
   Bool(Bool)
@@ -612,7 +638,7 @@ pub(all) enum Value {
   Formatted(Array[Section])
   Collator(Bool, Bool, String?)
   Failed
-} derive(Eq, @debug.Debug)
+}
 pub fn Value::equal(Self, Self) -> Bool
 pub fn Value::not_equal(Self, Self) -> Bool
 pub fn Value::to_repr(Self) -> @debug.Repr

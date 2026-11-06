@@ -2,6 +2,7 @@
 /// A raster layer's paint: `opacity`, `hue_rotate` (degrees), `brightness_min`,
 /// `brightness_max`, `saturation` and `contrast` (-1 to 1), and `nearest` for
 /// `resampling` or `raster-resampling` `nearest`.
+#derive(Eq)
 pub struct RasterPaint {
   opacity : Expr
   hue_rotate : Expr
@@ -10,7 +11,7 @@ pub struct RasterPaint {
   saturation : Expr
   contrast : Expr
   nearest : Bool
-} derive(Eq)
+}
 
 ///|
 fn parse_raster(

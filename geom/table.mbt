@@ -10,15 +10,17 @@ pub const MAX_TABLE_CELLS : Int32 = 32_000_000
 ///|
 /// A property value. Objects and arrays are kept as their JSON text, as
 /// geojson-vt and MVT encoders do, since style expressions cannot reach into them.
+#derive(Debug, Eq)
 pub(all) enum Prop {
   Null
   Bool(Bool)
   Num(Double)
   Str(String)
-} derive(Debug, Eq)
+}
 
 ///|
 /// What a feature's geometry is, as in GeoJSON.
+#derive(Debug, Eq)
 pub(all) enum GeomKind {
   NoGeometry
   Point
@@ -27,7 +29,7 @@ pub(all) enum GeomKind {
   MultiLineString
   Polygon
   MultiPolygon
-} derive(Debug, Eq)
+}
 
 ///|
 /// A column of property values, one per feature: None where the feature

@@ -147,12 +147,13 @@ priv struct Laea {
 
 ///|
 /// Which of its forms a Lambert azimuthal equal area takes, by its center.
+#derive(Eq)
 priv enum LaeaMode {
   SPole
   NPole
   Equit
   Obliq
-} derive(Eq)
+}
 
 ///|
 fn Laea::new(p : Base) -> Laea {

@@ -16,10 +16,11 @@ const MAX_XML_NODES : Int32 = 4_000_000
 ///|
 /// `Malformed`: not XML as xmldom reads it; `Limit`: a document past one of the
 /// readers' limits.
+#derive(Debug)
 pub(all) suberror XmlError {
   Malformed(pos~ : Int32, String)
   Limit(String)
-} derive(Debug)
+}
 
 ///|
 /// A one-line description, e.g. `malformed XML at 12: unclosed tag`.

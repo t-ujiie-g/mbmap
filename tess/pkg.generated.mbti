@@ -68,20 +68,22 @@ pub fn LineBuffers::limit(Self, Int32) -> Unit
 pub fn LineBuffers::new() -> Self
 pub fn LineBuffers::num_vertices(Self) -> Int32
 
+#derive(Eq, @debug.Debug)
 pub(all) enum LineCap {
   Butt
   Square
   Round
-} derive(Eq, @debug.Debug)
+}
 pub fn LineCap::equal(Self, Self) -> Bool
 pub fn LineCap::not_equal(Self, Self) -> Bool
 pub fn LineCap::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum LineJoin {
   Miter
   Bevel
   Round
-} derive(Eq, @debug.Debug)
+}
 pub fn LineJoin::equal(Self, Self) -> Bool
 pub fn LineJoin::not_equal(Self, Self) -> Bool
 pub fn LineJoin::to_repr(Self) -> @debug.Repr

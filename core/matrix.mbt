@@ -2,9 +2,10 @@
 /// A 4x4 matrix in column-major order, as WebGL takes it: row `r` of column
 /// `c` is `m[c * 4 + r]`. Operations follow gl-matrix: `translate`, `scale`
 /// and the rotations multiply on the right.
+#derive(Debug, Eq)
 pub struct Mat4 {
   m : FixedArray[Double]
-} derive(Debug, Eq)
+}
 
 ///|
 /// The identity matrix.

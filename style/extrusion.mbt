@@ -2,11 +2,12 @@
 /// A fill-extrusion layer's paint besides its color and opacity: the heights in
 /// meters of the top (`height`) and bottom (`base`), and whether walls darken
 /// towards the ground (`vertical_gradient`).
+#derive(Eq)
 pub struct ExtrusionPaint {
   height : Expr
   base : Expr
   vertical_gradient : Bool
-} derive(Eq)
+}
 
 ///|
 fn parse_extrusion(

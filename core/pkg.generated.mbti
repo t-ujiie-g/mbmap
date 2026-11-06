@@ -3,6 +3,7 @@ package "t-ujiie-g/mbmap/core"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -56,7 +57,7 @@ pub let exact_powers : FixedArray[Double]
 
 pub fn json_string_text(BytesView) -> String
 
-pub fn parse_json(BytesView, slow_number? : (Int32, Int32) -> Double, max_depth? : Int32) -> Json raise JsonError
+pub fn parse_json(BytesView, slow_number? : (Int32, Int32) -> Double, max_depth? : Int32) -> @json.Json raise JsonError
 
 pub fn polygon_hits_box(Array[(Double, Double)], Double, Double, Double, Double) -> Bool
 
@@ -89,12 +90,13 @@ pub(all) suberror JsonError {
 pub fn JsonError::message(Self) -> String
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) struct BBox {
   min_x : Double
   min_y : Double
   max_x : Double
   max_y : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn BBox::contains(Self, Double, Double) -> Bool
 pub fn BBox::empty() -> Self
 pub fn BBox::equal(Self, Self) -> Bool
@@ -139,16 +141,18 @@ pub fn ByteWriter::u32(Self, Int32) -> Unit
 pub fn ByteWriter::u8(Self, Int32) -> Unit
 pub fn ByteWriter::utf8(Self, String) -> Unit
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Camera {
   center : LngLat
   zoom : Double
   bearing : Double
   pitch : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn Camera::equal(Self, Self) -> Bool
 pub fn Camera::not_equal(Self, Self) -> Bool
 pub fn Camera::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CameraTarget {
   center : LngLat?
   zoom : Double?
@@ -156,7 +160,7 @@ pub(all) struct CameraTarget {
   pitch : Double?
   around : LngLat?
   offset : (Double, Double)
-} derive(Eq, @debug.Debug)
+}
 pub fn CameraTarget::equal(Self, Self) -> Bool
 pub fn CameraTarget::new(center? : LngLat, zoom? : Double, bearing? : Double, pitch? : Double, around? : LngLat, offset? : (Double, Double)) -> Self
 pub fn CameraTarget::not_equal(Self, Self) -> Bool
@@ -173,40 +177,44 @@ pub struct Flight {
 }
 pub fn Flight::at(Self, Double) -> Camera
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Limits {
   min_zoom : Double
   max_zoom : Double
   min_pitch : Double
   max_pitch : Double
   bounds : LngLatBounds?
-} derive(Eq, @debug.Debug)
+}
 pub fn Limits::default() -> Self
 pub fn Limits::equal(Self, Self) -> Bool
 pub fn Limits::not_equal(Self, Self) -> Bool
 pub fn Limits::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LngLat {
   lng : Double
   lat : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn LngLat::equal(Self, Self) -> Bool
 pub fn LngLat::not_equal(Self, Self) -> Bool
 pub fn LngLat::to_mercator(Self) -> MercatorCoord
 pub fn LngLat::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct LngLatBounds {
   west : Double
   south : Double
   east : Double
   north : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn LngLatBounds::equal(Self, Self) -> Bool
 pub fn LngLatBounds::not_equal(Self, Self) -> Bool
 pub fn LngLatBounds::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub struct Mat4 {
   m : FixedArray[Double]
-} derive(Eq, @debug.Debug)
+}
 pub fn Mat4::apply(Self, Double, Double, Double, Double) -> (Double, Double, Double, Double)
 pub fn Mat4::equal(Self, Self) -> Bool
 pub fn Mat4::identity() -> Self
@@ -220,21 +228,23 @@ pub fn Mat4::scale(Self, Double, Double, Double) -> Self
 pub fn Mat4::to_repr(Self) -> @debug.Repr
 pub fn Mat4::translate(Self, Double, Double, Double) -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) struct MercatorCoord {
   x : Double
   y : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn MercatorCoord::equal(Self, Self) -> Bool
 pub fn MercatorCoord::not_equal(Self, Self) -> Bool
 pub fn MercatorCoord::to_lnglat(Self) -> LngLat
 pub fn MercatorCoord::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Padding {
   top : Double
   right : Double
   bottom : Double
   left : Double
-} derive(Eq, @debug.Debug)
+}
 pub fn Padding::equal(Self, Self) -> Bool
 pub fn Padding::not_equal(Self, Self) -> Bool
 pub fn Padding::to_repr(Self) -> @debug.Repr
@@ -246,11 +256,12 @@ pub(all) struct Terrain {
   highest : Double
 }
 
+#derive(Eq, Hash, @debug.Debug)
 pub struct TileId {
   z : Int32
   x : Int32
   y : Int32
-} derive(Eq, Hash, @debug.Debug)
+}
 pub fn TileId::children(Self) -> FixedArray[Self]?
 pub fn TileId::equal(Self, Self) -> Bool
 pub fn TileId::hash(Self) -> Int32
