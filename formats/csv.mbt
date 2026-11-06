@@ -453,10 +453,8 @@ fn csv_table(
       break
     }
     used += shapes.points()
-    shapes.emit(out, props, srids)
-    let t = out.table
-    if t.length().to_double() * t.columns.length().to_double() >
-      max_cells.to_double() {
+    shapes.emit(out, props, srids, max_cells~)
+    if out.cells() > max_cells.to_int64() {
       csv.fail(csv.pos, "too many property cells")
     }
   }

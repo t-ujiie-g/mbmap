@@ -112,11 +112,9 @@ let recover : Int32 = -1
 let stop : Int32 = -2
 
 ///|
-/// The sax reader's state over normalized source `b` (sticky errors: `fatal`
-/// holds the first). `open` holds the open elements and `bound` how many
-/// namespace bindings each found. A binding `i` binds prefix `bind_prefixes[i]`
-/// (a number of `prefixes`) to `bind_uris[i]`, shadowing `bind_prev[i]`;
-/// `heads` has each prefix's innermost one. `attr_*` hold the tag being read.
+/// The sax reader's state over normalized source `b`; `fatal` holds the first error.
+/// `bind_*`: namespace bindings, `heads` each prefix's innermost; `attr_*`: the tag
+/// being read; `next_gt`: the first `>` from where `end_tag` last looked (`n` if none).
 priv struct Parser {
   b : Bytes
   n : Int32
@@ -135,6 +133,9 @@ priv struct Parser {
   attr_names : Array[String]
   attr_values : Array[String]
   attr_starts : Array[Int32]
+  mut attr_tag : Int32
+  attr_seen : Map[String, Int32]
+  mut next_gt : Int32
   max_nodes : Int32
 }
 
@@ -158,6 +159,9 @@ fn Parser::new(b : Bytes, max_nodes : Int32) -> Parser {
     attr_names: [],
     attr_values: [],
     attr_starts: [],
+    attr_tag: 0,
+    attr_seen: Map([]),
+    next_gt: -1,
     max_nodes,
   }
   p.bind("", -1)
@@ -180,6 +184,21 @@ fn Parser::index_of(self : Parser, c : Byte, from : Int32) -> Int32 {
     }
   }
   -1
+}
+
+///|
+/// `index_of(b'>', from)` for `from`s that only grow, each byte read once: recovering
+/// from an end tag past the document would otherwise scan to one far `>` per tag.
+fn Parser::gt_from(self : Parser, from : Int32) -> Int32 {
+  if self.next_gt < from && self.next_gt < self.n {
+    let gt = self.index_of(b'>', from)
+    self.next_gt = if gt < 0 { self.n } else { gt }
+  }
+  if self.next_gt < self.n {
+    self.next_gt
+  } else {
+    -1
+  }
 }
 
 ///|
@@ -281,7 +300,7 @@ fn Parser::qname_end(self : Parser, i : Int32, end : Int32) -> Int32 {
 
 ///|
 fn Parser::end_tag(self : Parser, tag : Int32) -> Int32 {
-  let gt = self.index_of(b'>', tag + 2)
+  let gt = self.gt_from(tag + 2)
   let raw_end = if gt > 0 { gt } else { self.n }
   if raw_end == tag + 2 {
     self.fail(tag, "end tag name missing")

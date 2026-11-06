@@ -98,7 +98,7 @@ test "read_flatgeobuf refuses what is not a whole FlatGeobuf file" {
 ///|
 test "read_flatgeobuf caps its points" {
   assert_true(
-    fgb_error(() => fgb_table(two_features[:], None, 2)) ==
+    fgb_error(() => fgb_table(two_features[:], None, 2, 100)) ==
     Some("too many points"),
   )
 }
@@ -135,6 +135,8 @@ fn fgb_over(b : Bytes, names : Array[String], types : Array[Int32]) -> Fgb {
     props: [],
     max_points: 10,
     used: 0,
+    visits: 0,
+    max_visits: 100,
   }
 }
 

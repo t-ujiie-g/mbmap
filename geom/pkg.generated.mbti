@@ -70,6 +70,7 @@ pub struct TableBuilder {
   table : Table
   // private fields
 }
+pub fn TableBuilder::cells(Self) -> Int64
 pub fn TableBuilder::discard_feature(Self) -> Unit
 pub fn TableBuilder::end_feature(Self, GeomKind, id? : Prop?) -> Unit
 pub fn TableBuilder::end_part(Self) -> Unit

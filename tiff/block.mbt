@@ -18,18 +18,22 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
   let mut n = 0
   let mut size = 258
   let mut width = 9
+  // A byte and a bit in it: one bit index would wrap at 256 MB of data.
   let mut pos = 0
+  let mut bit = 0
   let next = () => {
-    if pos >> 3 >= data.length() {
+    if pos >= data.length() {
       return 257
     }
     let mut v = 0
     for i in 0..<width {
-      let p = pos + i
-      let byte = if p >> 3 < data.length() { data[p >> 3].to_int() } else { 0 }
+      let p = bit + i
+      let at = pos + (p >> 3)
+      let byte = if at < data.length() { data[at].to_int() } else { 0 }
       v = (v << 1) | ((byte >> (7 - (p & 7))) & 1)
     }
-    pos += width
+    pos += (bit + width) >> 3
+    bit = (bit + width) & 7
     v
   }
   // Appends entry `code`'s bytes; gives its first one.
@@ -49,11 +53,7 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
       }
       c = index[c]
     }
-    if start < max {
-      out[start]
-    } else {
-      b'\x00'
-    }
+    out[start]
   }
   let add = (prev : Int32, c : Byte) => {
     if size < 4096 {
@@ -76,7 +76,7 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
         break
       }
       if code > 256 {
-        raise Invalid(pos / 8, "corrupted LZW code \{code}")
+        raise Invalid(pos, "corrupted LZW code \{code}")
       }
       emit(code) |> ignore
       old = code
@@ -88,7 +88,7 @@ pub fn lzw(data : BytesView, max : Int32) -> FixedArray[Byte] raise TiffError {
       old = code
     } else {
       if old < 0 {
-        raise Invalid(pos / 8, "invalid LZW code \{code}")
+        raise Invalid(pos, "invalid LZW code \{code}")
       }
       let first = emit(old)
       if n < max {
@@ -141,8 +141,8 @@ pub fn packbits(data : BytesView, max : Int32) -> FixedArray[Byte] {
 
 ///|
 /// The bytes of one row of block data: `width` pixels of `bits` each (a row starts on a byte).
-fn row_bytes(width : Int32, bits : Int32) -> Int32 {
-  ((width.to_int64() * bits.to_int64() + 7L) / 8L).to_int()
+fn row_bytes(width : Int64, bits : Int32) -> Int64 {
+  (width * bits.to_int64() + 7L) / 8L
 }
 
 ///|
@@ -158,13 +158,21 @@ pub fn unpredict(
   bytes : Int32,
   little : Bool,
 ) -> Unit raise TiffError {
-  let row = width * stride * bytes
-  for y in 0..<height {
-    let start = y * row
+  let size = width.to_int64() * stride.to_int64() * bytes.to_int64()
+  if size <= 0L || b.length() == 0 {
+    return
+  }
+  if size > b.length().to_int64() {
+    raise Invalid(0, "a block shorter than its rows")
+  }
+  let row = size.to_int()
+  let mut start = -row
+  for _ in 0..<height {
+    start += row
     if start >= b.length() {
       break
     }
-    if start + row > b.length() {
+    if row > b.length() - start {
       raise Invalid(start, "a block shorter than its rows")
     }
     if predictor == 2 {
@@ -213,18 +221,24 @@ pub fn unpack_bits(
   count : Int32,
 ) -> FixedArray[Byte] raise TiffError {
   let size = if bits <= 8 { 1 } else if bits <= 16 { 2 } else { 4 }
-  let line = row_bytes(width * count, bits) * 8
-  let out = FixedArray::make(width * rows * count * size, b'\x00')
+  let samples = width.to_int64() * count.to_int64()
+  let bytes = samples * rows.to_int64() * size.to_int64()
+  if bytes > MAX_BLOCK_BYTES.to_int64() {
+    raise Invalid(0, "a block too large")
+  }
+  let line = row_bytes(samples, bits) * 8L
+  let out = FixedArray::make(bytes.to_int(), b'\x00')
   for y in 0..<rows {
-    for x in 0..<(width * count) {
-      let at = y * line + x * bits
-      if (at + bits + 7) / 8 > b.length() {
-        raise Invalid(at / 8, "a block shorter than its rows")
+    for x in 0..<samples.to_int() {
+      let at = y.to_int64() * line + x.to_int64() * bits.to_int64()
+      if (at + bits.to_int64() + 7L) / 8L > b.length().to_int64() {
+        raise Invalid((at / 8L).to_int(), "a block shorter than its rows")
       }
       let mut v = 0L
       for k in 0..<bits {
-        let p = at + k
-        v = (v << 1) | ((b[p >> 3].to_int64() >> (7 - (p & 7))) & 1L)
+        let p = at + k.to_int64()
+        let shift = 7 - (p & 7L).to_int()
+        v = (v << 1) | ((b[(p >> 3).to_int()].to_int64() >> shift) & 1L)
       }
       let o = (y * width * count + x) * size
       for k in 0..<size {
@@ -266,7 +280,7 @@ fn half_to_float(h : Int32) -> UInt32 {
 pub fn band_bytes(format : Int32, bits : Int32) -> Int32 {
   match format {
     1 if bits >= 1 && bits <= 8 => 1
-    1 if bits <= 16 => 2
+    1 if bits >= 1 && bits <= 16 => 2
     1 if bits == 32 => 4
     2 if bits == 8 => 1
     2 if bits == 16 => 2
@@ -333,7 +347,12 @@ pub fn Window::new(
   if x0 > x1 || y0 > y1 {
     raise Invalid(0, "invalid window")
   }
-  let pixels = (x1 - x0).to_int64() * (y1 - y0).to_int64()
+  let width = x1.to_int64() - x0.to_int64()
+  let height = y1.to_int64() - y0.to_int64()
+  if width > MAX_WINDOW_BYTES.to_int64() || height > MAX_WINDOW_BYTES.to_int64() {
+    raise Invalid(0, "a window too large")
+  }
+  let pixels = width * height
   let mut total = 0L
   let bands = []
   for s in samples {
@@ -376,7 +395,8 @@ pub fn Window::block(
   } else {
     img.bits.fold(init=0, (a, b) => a + b)
   }
-  let raw = row_bytes(img.block_width, bits_per_pixel) * img.block_height
+  let raw = (row_bytes(img.block_width.to_int64(), bits_per_pixel) *
+  img.block_height.to_int64()).to_int()
   let mut b = match (decoded, img.compression) {
     (true, _) | (false, 1) => {
       let copy = FixedArray::make(data.length(), b'\x00')

@@ -197,3 +197,47 @@ test "start_of and start_of_last read end offsets" {
   )
   assert_eq((@geom.start_of_last(ends), @geom.start_of_last([])), (9, 0))
 }
+
+///|
+test "TableBuilder::cells counts values set and the padding finish adds" {
+  let b = @geom.TableBuilder::new()
+  assert_eq(b.cells(), 0)
+  b.prop("a", Num(1))
+  b.prop("a", Num(2))
+  b.prop("a", Num(3))
+  b.end_feature(NoGeometry)
+  assert_eq(b.cells(), 3)
+  b.end_feature(NoGeometry)
+  b.end_feature(NoGeometry)
+  b.end_feature(NoGeometry)
+  assert_eq(b.cells(), 4)
+  b.prop("b", Num(1))
+  b.end_feature(NoGeometry)
+  assert_eq(b.cells(), 10)
+}
+
+///|
+test "Table::from_bytes ties geometry kinds to parts" {
+  let bytes = (kind : Int32, parts : Int32) => {
+    let w = @core.ByteWriter::new()
+    w.u32(1)
+    w.u32(parts)
+    w.u32(parts)
+    w.u32(parts)
+    w.u32(0)
+    w.u8(kind)
+    w.pad4()
+    w.u32(parts)
+    for _ in 0..<parts {
+      w.u32(1)
+      w.u32(1)
+      w.f64(0)
+      w.f64(0)
+    }
+    w.to_bytes()
+  }
+  assert_true(@geom.Table::from_bytes(bytes(0, 0)[:]) is Some(_))
+  assert_true(@geom.Table::from_bytes(bytes(1, 1)[:]) is Some(_))
+  assert_true(@geom.Table::from_bytes(bytes(1, 0)[:]) is None)
+  assert_true(@geom.Table::from_bytes(bytes(0, 1)[:]) is None)
+}

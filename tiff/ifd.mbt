@@ -18,6 +18,15 @@ pub const MAX_ENTRIES : Int32 = 4096
 pub const MAX_VALUES : Int32 = 16 * 1024 * 1024
 
 ///|
+/// Most values of all tags of one file read as lists, over its IFDs: a block table
+/// at `MAX_VALUES` and its overviews fit, the same bytes named by every IFD do not.
+pub const MAX_FILE_VALUES : Int32 = 4 * MAX_VALUES
+
+///|
+/// Most bytes of one decoded block.
+pub const MAX_BLOCK_BYTES : Int32 = 256 * 1024 * 1024
+
+///|
 /// Errors reading a TIFF: `Invalid(pos, message)`, or `Truncated(need)` when the bytes end
 /// before the IFDs do and `need` bytes from the start would hold what is missing.
 pub(all) suberror TiffError {
@@ -68,19 +77,26 @@ pub struct Image {
 ///|
 /// Blocks across the image.
 pub fn Image::across(self : Image) -> Int32 {
-  (self.width + self.block_width - 1) / self.block_width
+  blocks_over(self.width, self.block_width)
 }
 
 ///|
 /// Blocks down the image.
 pub fn Image::down(self : Image) -> Int32 {
-  (self.height + self.block_height - 1) / self.block_height
+  blocks_over(self.height, self.block_height)
+}
+
+///|
+/// Blocks of `block` pixels over `size` pixels.
+fn blocks_over(size : Int32, block : Int32) -> Int32 {
+  ((size.to_int64() + block.to_int64() - 1L) / block.to_int64()).to_int()
 }
 
 ///|
 /// Rows of block row `y`: a strip at the bottom may be shorter, a tile never is.
 pub fn Image::rows(self : Image, y : Int32) -> Int32 {
-  if self.tiled || (y + 1) * self.block_height <= self.height {
+  if self.tiled ||
+    (y + 1).to_int64() * self.block_height.to_int64() <= self.height.to_int64() {
     self.block_height
   } else {
     self.height - y * self.block_height
@@ -107,11 +123,14 @@ pub fn Image::pixel_bytes(self : Image, sample : Int32) -> Int32 {
 }
 
 ///|
-/// Reading state over a file's first bytes: byte order, BigTIFF, sticky error.
+/// Reading state over a file's first bytes: byte order, BigTIFF, the values read
+/// as lists so far and how many a file may have.
 priv struct Tiff {
   b : BytesView
   little : Bool
   big : Bool
+  mut values : Int64
+  max_values : Int32
 }
 
 ///|
@@ -194,7 +213,17 @@ priv struct Entry {
 }
 
 ///|
-fn Tiff::values(self : Tiff, e : Entry) -> Array[Double] {
+/// Counts entry `e`'s values against the file's.
+fn Tiff::charge(self : Tiff, e : Entry) -> Unit raise TiffError {
+  self.values += e.count.to_int64()
+  if self.values > self.max_values.to_int64() {
+    raise Invalid(e.at, "too many values in the file")
+  }
+}
+
+///|
+fn Tiff::list(self : Tiff, e : Entry) -> Array[Double] raise TiffError {
+  self.charge(e)
   let size = type_size(e.t)
   Array::makei(e.count, i => self.value(e.t, e.at + i * size))
 }
@@ -204,6 +233,15 @@ fn Tiff::values(self : Tiff, e : Entry) -> Array[Double] {
 /// `GeoTIFF.fromSource` and `getImage` read them; gives the images and whether the file is
 /// little-endian. Raises `Truncated` when an IFD or a tag's values lie past `b`.
 pub fn read_tiff(b : BytesView) -> (Array[Image], Bool) raise TiffError {
+  read_images(b, MAX_FILE_VALUES)
+}
+
+///|
+/// `read_tiff` taking at most `max_values` values.
+fn read_images(
+  b : BytesView,
+  max_values : Int32,
+) -> (Array[Image], Bool) raise TiffError {
   if b.length() < 8 {
     raise Truncated(16)
   }
@@ -212,14 +250,14 @@ pub fn read_tiff(b : BytesView) -> (Array[Image], Bool) raise TiffError {
     (b'M', b'M') => false
     _ => raise Invalid(0, "not a TIFF file")
   }
-  let t0 : Tiff = { b, little, big: false, }
+  let t0 : Tiff = { b, little, big: false, values: 0, max_values, }
   let version = t0.u16(2)
   let big = match version {
     42 => false
     43 => true
     _ => raise Invalid(2, "not a TIFF file")
   }
-  let t : Tiff = { b, little, big, }
+  let t : Tiff = { b, little, big, values: 0, max_values, }
   if big {
     t.need(0, 16)
     if t.u16(4) != 8 || t.u16(6) != 0 {
@@ -319,7 +357,7 @@ fn Tiff::image(
 ) -> Image raise TiffError {
   let all = (tag : Int32) => {
     match entries.get(tag) {
-      Some(e) => self.values(e)
+      Some(e) => self.list(e)
       None => []
     }
   }
@@ -346,6 +384,11 @@ fn Tiff::image(
   }
   let bits = all(258).map(x => x.to_int())
   let formats = all(339).map(x => x.to_int())
+  for i, n in bits {
+    if i < samples && (n < 1 || n > 64) {
+      fail("invalid bits per sample")
+    }
+  }
   // geotiff reads a sample without a SampleFormat as unsigned, without BitsPerSample as 0 bits.
   let bits = Array::makei(samples, i => {
     if i < bits.length() {
@@ -385,14 +428,29 @@ fn Tiff::image(
     block_height > height.to_double() + max_tile_overhang {
     fail("invalid tile size")
   }
+  let mut pixel = 0
+  for n in bits {
+    let bytes = (n + 7) / 8
+    pixel = if planar == 2 { @cmp.maximum(pixel, bytes) } else { pixel + bytes }
+  }
+  if block_width.to_int().to_int64() *
+    block_height.to_int().to_int64() *
+    pixel.to_int64() >
+    MAX_BLOCK_BYTES.to_int64() {
+    fail("a block too large")
+  }
   let offsets = all(if tiled { 324 } else { 273 })
   let counts = all(if tiled { 325 } else { 279 })
   let tables = match entries.get(347) {
-    Some(e) => Some(Bytes::makei(e.count, i => self.b[e.at + i]))
+    Some(e) => {
+      self.charge(e)
+      Some(Bytes::makei(e.count, i => self.b[e.at + i]))
+    }
     None => None
   }
   let nodata = match entries.get(42113) {
     Some(e) => {
+      self.charge(e)
       let sb = StringBuilder()
       for i in 0..<e.count {
         sb.write_char(self.b[e.at + i].to_int().unsafe_to_char())
@@ -444,13 +502,13 @@ fn geo_keys(dir : Array[Double]) -> (Int32, Int32) {
   if dir.length() < 4 {
     return (0, 0)
   }
-  let n = dir[3].to_int()
+  let n = @cmp.minimum(dir[3].to_int(), (dir.length() - 4) / 4)
   let mut projected = 0
   let mut geographic = 0
   let mut raster = 0
   for k in 0..<n {
     let at = 4 + k * 4
-    if at + 3 >= dir.length() || dir[at + 1] != 0.0 {
+    if dir[at + 1] != 0.0 {
       continue
     }
     let v = dir[at + 3].to_int()
