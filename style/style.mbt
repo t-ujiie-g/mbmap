@@ -1,13 +1,15 @@
 ///|
 /// Unusable style JSON. `path` is a JSON pointer-like location, e.g.
 /// `layers[3].paint.line-width`.
+#derive(Debug, Eq)
 pub(all) suberror StyleError {
   Invalid(path~ : String, String)
   Unsupported(path~ : String, String)
-} derive(Debug, Eq)
+}
 
 ///|
 /// A style layer's `type`; `Custom` is the facade's placeholder for a custom layer.
+#derive(Debug, Eq)
 pub(all) enum LayerKind {
   Background
   Fill
@@ -20,21 +22,23 @@ pub(all) enum LayerKind {
   Heatmap
   ColorRelief
   Custom
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 pub(all) enum Join {
   Miter
   Bevel
   Round
-} derive(Debug, Eq)
+}
 
 ///|
+#derive(Debug, Eq)
 pub(all) enum Cap {
   Butt
   Square
   Round
-} derive(Debug, Eq)
+}
 
 ///|
 /// One drawable layer, paint in CSS pixels, fields named as the Style Spec's: `text`, `icon`,

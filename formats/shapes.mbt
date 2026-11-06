@@ -4,9 +4,10 @@ const MAX_GEOMETRY_DEPTH : Int32 = 32
 
 ///|
 /// Input a reader refuses: its format's name, the byte offset (or row) and why.
+#derive(Debug)
 pub(all) suberror ReadError {
   Invalid(format~ : String, pos~ : Int32, String)
-} derive(Debug)
+}
 
 ///|
 /// A one-line description, e.g. `malformed CSV at 12: unterminated quoted field`.

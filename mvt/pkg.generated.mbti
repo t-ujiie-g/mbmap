@@ -9,24 +9,26 @@ import {
 // Values
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror MvtError {
   Malformed(@pbf.PbfError)
   InvalidCommand(pos~ : Int32, Int32)
   IndexOutOfRange(pos~ : Int32, Int32)
   OddTagCount(pos~ : Int32)
-} derive(Eq, @debug.Debug)
+}
 pub fn MvtError::equal(Self, Self) -> Bool
 pub fn MvtError::message(Self) -> String
 pub fn MvtError::not_equal(Self, Self) -> Bool
 pub fn MvtError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum GeomType {
   Unknown
   Point
   LineString
   Polygon
-} derive(Eq, @debug.Debug)
+}
 pub fn GeomType::equal(Self, Self) -> Bool
 pub fn GeomType::not_equal(Self, Self) -> Bool
 pub fn GeomType::to_repr(Self) -> @debug.Repr
@@ -67,6 +69,7 @@ pub struct Tile {
 pub fn Tile::layer(Self, String) -> Layer?
 pub fn Tile::parse(BytesView) -> Self raise MvtError
 
+#derive(Eq, @debug.Debug)
 pub(all) enum Value {
   String(String)
   Float(Float)
@@ -76,7 +79,7 @@ pub(all) enum Value {
   SInt(Int64)
   Bool(Bool)
   Null
-} derive(Eq, @debug.Debug)
+}
 pub fn Value::equal(Self, Self) -> Bool
 pub fn Value::not_equal(Self, Self) -> Bool
 pub fn Value::to_repr(Self) -> @debug.Repr

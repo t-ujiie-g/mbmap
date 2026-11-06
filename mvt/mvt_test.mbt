@@ -230,10 +230,11 @@ test "bad tag indices and odd tag counts fail Tile::parse" {
 }
 
 ///|
+#derive(Debug, Eq)
 priv enum MvtErrorKind {
   Index(Int32)
   Odd
-} derive(Debug, Eq)
+}
 
 ///|
 test "points, lines and closed polygons decode like loadGeometry" {

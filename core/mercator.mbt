@@ -3,18 +3,20 @@
 const MAX_LATITUDE : Double = 85.051128779806604
 
 ///|
+#derive(Debug, Eq)
 pub(all) struct LngLat {
   lng : Double
   lat : Double
-} derive(Debug, Eq)
+}
 
 ///|
 /// Position in Web Mercator world space: (0, 0) is the north-west corner and
 /// (1, 1) the south-east corner.
+#derive(Debug, Eq)
 pub(all) struct MercatorCoord {
   x : Double
   y : Double
-} derive(Debug, Eq)
+}
 
 ///|
 fn mercator_x_from_lng(lng : Double) -> Double {

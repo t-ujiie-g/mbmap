@@ -29,23 +29,25 @@ pub const FIELD_OF_VIEW : Double = 0.6435011087932844
 /// Where the map looks: its center and zoom, `bearing` in degrees clockwise
 /// from north (the direction screen-up points to) and `pitch` in degrees from
 /// looking straight down.
+#derive(Debug, Eq)
 pub(all) struct Camera {
   center : LngLat
   zoom : Double
   bearing : Double
   pitch : Double
-} derive(Debug, Eq)
+}
 
 ///|
 /// What a camera may do: zoom and pitch ranges and, if set, `bounds` the
 /// view may not leave (MapLibre's `maxBounds`).
+#derive(Debug, Eq)
 pub(all) struct Limits {
   min_zoom : Double
   max_zoom : Double
   min_pitch : Double
   max_pitch : Double
   bounds : LngLatBounds?
-} derive(Debug, Eq)
+}
 
 ///|
 /// Zoom 0 to 22, pitch 0 to `MAX_PITCH`, no bounds.

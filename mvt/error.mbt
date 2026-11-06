@@ -1,11 +1,12 @@
 ///|
 /// Malformed vector tile. `pos` is the absolute byte offset in the tile.
+#derive(Debug, Eq)
 pub(all) suberror MvtError {
   Malformed(@pbf.PbfError)
   InvalidCommand(pos~ : Int32, Int32)
   IndexOutOfRange(pos~ : Int32, Int32)
   OddTagCount(pos~ : Int32)
-} derive(Debug, Eq)
+}
 
 ///|
 /// A one-line description with the byte offset.

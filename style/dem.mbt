@@ -2,12 +2,13 @@
 /// How a `raster-dem` source packs elevations into RGB. `Custom` holds MapLibre's
 /// factors and `baseShift`; `Gsi` (an mbmap extension) is GSI's: 0.01 m steps of
 /// the 24-bit value, negative past 2^23, no data at 2^23.
+#derive(Debug, Eq)
 pub(all) enum DemEncoding {
   Mapbox
   Terrarium
   Gsi
   Custom(Double, Double, Double, Double)
-} derive(Debug, Eq)
+}
 
 ///|
 /// How a hillshade layer shades slopes (`hillshade-method`).

@@ -6,24 +6,26 @@
 /// How offset paths turn corners (`JoinType`): `Square` cuts them at exactly
 /// the offset distance, `Bevel` cuts them closer in, `Round` follows an arc,
 /// `Miter` extends edges up to the miter limit.
+#derive(Eq)
 pub(all) enum JoinType {
   Square
   Bevel
   Round
   Miter
-} derive(Eq)
+}
 
 ///|
 /// How offset paths end (`EndType`): `Polygon` one side of a closed path,
 /// `Joined` both sides with the ends joined, `Butt`, `Square` and `Round` both
 /// sides of an open path with those caps.
+#derive(Eq)
 pub(all) enum EndType {
   Polygon
   Joined
   Butt
   Square
   Round
-} derive(Eq)
+}
 
 ///|
 const FLOATING_POINT_TOLERANCE : Double = 1.0e-12

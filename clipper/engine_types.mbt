@@ -3,17 +3,19 @@
 // Up and down assume a y-down frame, as in Clipper2.
 
 ///|
+#derive(Eq)
 priv enum PathType {
   Subject
   Clip
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 priv enum JoinWith {
   NoJoin
   Left
   Right
-} derive(Eq)
+}
 
 ///|
 const VERTEX_OPEN_START : Int32 = 1

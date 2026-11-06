@@ -374,7 +374,7 @@ pub fn compile_cluster_properties(text : String) -> Bytes {
 ///|
 /// What the current style uses that is not drawn: path, message, path, ...
 #export_name("map_warnings")
-pub fn map_warnings(map : @map.Map) -> Array[String] {
+pub fn map_warnings(map : @map.Map) -> FixedArray[String] {
   let out = []
   for w in map.warnings() {
     let (path, message) = match w {
@@ -383,7 +383,7 @@ pub fn map_warnings(map : @map.Map) -> Array[String] {
     out.push(path)
     out.push(message)
   }
-  out
+  FixedArray::from_array(out)
 }
 
 ///|

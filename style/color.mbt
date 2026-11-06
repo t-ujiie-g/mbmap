@@ -1,11 +1,12 @@
 ///|
 /// A straight (not premultiplied) RGBA color with components in [0, 1].
+#derive(Debug, Eq)
 pub(all) struct Color {
   r : Double
   g : Double
   b : Double
   a : Double
-} derive(Debug, Eq)
+}
 
 ///|
 fn hex_digit(c : UInt16) -> Int32 {

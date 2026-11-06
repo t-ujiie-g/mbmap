@@ -5,12 +5,13 @@
 /// How a datum shifts to WGS 84: `Unknown` (no `towgs84`: never shifted),
 /// `Wgs84` (a zero shift), or a Helmert shift of three or seven parameters
 /// (rotations in radians, the scale as a factor).
+#derive(Eq)
 priv enum DatumKind {
   Unknown
   Wgs84
   ThreeParam
   SevenParam
-} derive(Eq)
+}
 
 ///|
 /// A datum: its Helmert shift to WGS 84 and its ellipsoid.

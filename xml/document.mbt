@@ -1,12 +1,13 @@
 ///|
 /// What a node is. The document itself is node 0; comments, processing
 /// instructions and the doctype are not kept.
+#derive(Debug, Eq)
 pub(all) enum NodeKind {
   DocumentNode
   Element
   Text
   CData
-} derive(Debug, Eq)
+}
 
 ///|
 let text_name : Int32 = -1

@@ -2,23 +2,25 @@
 /// What a source draws from: vector, image (`raster`) or elevation (`raster-dem`)
 /// tiles at URLs or made by the facade (`geotiff`, without `tiles`), GeoJSON the map
 /// cuts into tiles itself, or a picture placed by its corners (`image`, `video`, `canvas`).
+#derive(Debug, Eq)
 pub(all) enum SourceKind {
   Vector
   GeoJSON
   RasterDem
   Raster
   Image
-} derive(Debug, Eq)
+}
 
 ///|
 /// Where a feature's id comes from (MapLibre's `promoteId`): the tile's
 /// feature id, one property, or a property per source layer (the feature id
 /// for layers not listed).
+#derive(Debug, Eq)
 pub(all) enum PromoteId {
   FeatureId
   Property(String)
   ByLayer(Map[String, String])
-} derive(Debug, Eq)
+}
 
 ///|
 /// The property that holds the ids of `source_layer`'s features, or None for

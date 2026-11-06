@@ -28,8 +28,8 @@
     {
       "scene": "fixed-tilted",
       "same": true,
-      "maplibre": 139,
-      "mbmap": 139,
+      "maplibre": 138,
+      "mbmap": 138,
       "anchored": 0,
       "justified": 0,
       "icons": 0,
@@ -48,8 +48,8 @@
     {
       "scene": "radial-turned",
       "same": true,
-      "maplibre": 83,
-      "mbmap": 83,
+      "maplibre": 84,
+      "mbmap": 84,
       "anchored": 23,
       "justified": 14,
       "icons": 0,
@@ -58,9 +58,9 @@
     {
       "scene": "radial-tilted",
       "same": true,
-      "maplibre": 185,
-      "mbmap": 185,
-      "anchored": 60,
+      "maplibre": 186,
+      "mbmap": 186,
+      "anchored": 61,
       "justified": 13,
       "icons": 0,
       "boxDiff": 0
@@ -68,10 +68,10 @@
     {
       "scene": "radial-multiline",
       "same": true,
-      "maplibre": 108,
-      "mbmap": 108,
-      "anchored": 22,
-      "justified": 91,
+      "maplibre": 111,
+      "mbmap": 111,
+      "anchored": 26,
+      "justified": 90,
       "icons": 0,
       "boxDiff": 0
     },
@@ -90,7 +90,7 @@
       "same": true,
       "maplibre": 62,
       "mbmap": 62,
-      "anchored": 11,
+      "anchored": 10,
       "justified": 0,
       "icons": 0,
       "boxDiff": 0
@@ -98,9 +98,9 @@
     {
       "scene": "overlap-anchors",
       "same": true,
-      "maplibre": 184,
-      "mbmap": 184,
-      "anchored": 73,
+      "maplibre": 185,
+      "mbmap": 185,
+      "anchored": 74,
       "justified": 13,
       "icons": 0,
       "boxDiff": 0
@@ -110,6 +110,26 @@
       "same": true,
       "maplibre": 86,
       "mbmap": 86,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "z-order-viewport-y",
+      "same": true,
+      "maplibre": 63,
+      "mbmap": 63,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "z-order-source",
+      "same": true,
+      "maplibre": 87,
+      "mbmap": 87,
       "anchored": 0,
       "justified": 0,
       "icons": 0,
@@ -446,6 +466,152 @@
       "justified": 0,
       "icons": 0,
       "boxDiff": 0
+    },
+    {
+      "scene": "font-bold",
+      "same": true,
+      "maplibre": 85,
+      "mbmap": 85,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "font-by-feature",
+      "same": true,
+      "maplibre": 115,
+      "mbmap": 115,
+      "anchored": 37,
+      "justified": 28,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "format-fonts",
+      "same": true,
+      "maplibre": 73,
+      "mbmap": 73,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "transform-spacing",
+      "same": true,
+      "maplibre": 76,
+      "mbmap": 76,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "spacing-negative",
+      "same": true,
+      "maplibre": 79,
+      "mbmap": 79,
+      "anchored": 24,
+      "justified": 25,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "rotate",
+      "same": true,
+      "maplibre": 64,
+      "mbmap": 64,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "rotate-variable",
+      "same": true,
+      "maplibre": 125,
+      "mbmap": 125,
+      "anchored": 37,
+      "justified": 8,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "translate",
+      "same": true,
+      "maplibre": 82,
+      "mbmap": 82,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 82,
+      "boxDiff": 0
+    },
+    {
+      "scene": "translate-viewport",
+      "same": true,
+      "maplibre": 83,
+      "mbmap": 83,
+      "anchored": 22,
+      "justified": 14,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "overlap",
+      "same": true,
+      "maplibre": 301,
+      "mbmap": 301,
+      "anchored": 85,
+      "justified": 38,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "zoom-layout",
+      "same": true,
+      "maplibre": 101,
+      "mbmap": 101,
+      "anchored": 93,
+      "justified": 0,
+      "icons": 101,
+      "boxDiff": 0
+    },
+    {
+      "scene": "icon-overlap",
+      "same": true,
+      "maplibre": 227,
+      "mbmap": 227,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 227,
+      "boxDiff": 0
+    },
+    {
+      "scene": "contours-spacing",
+      "same": true,
+      "maplibre": 5,
+      "mbmap": 5,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0,
+      "glyphs": 15,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "contours-rotate",
+      "same": true,
+      "maplibre": 11,
+      "mbmap": 11,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0,
+      "glyphs": 33,
+      "glyphDiff": 0,
+      "angleDiff": 0
     }
   ]
 }

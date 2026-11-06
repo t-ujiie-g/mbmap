@@ -1,5 +1,6 @@
 ///|
 /// Where a label's text box sits against its anchor (`text-anchor`).
+#derive(Debug, Eq)
 pub(all) enum TextAnchor {
   Center
   Left
@@ -10,40 +11,44 @@ pub(all) enum TextAnchor {
   TopRight
   BottomLeft
   BottomRight
-} derive(Debug, Eq)
+}
 
 ///|
 /// How the lines of a label line up (`text-justify`); `Auto` follows the anchor.
+#derive(Debug, Eq)
 pub(all) enum TextJustify {
   Auto
   Left
   Center
   Right
-} derive(Debug, Eq)
+}
 
 ///|
 /// Where labels go (`symbol-placement`): on points, along lines at intervals,
 /// or at the middle of each line.
+#derive(Debug, Eq)
 pub(all) enum SymbolPlacement {
   Point
   Line
   LineCenter
-} derive(Debug, Eq)
+}
 
 ///|
 /// How a symbol layer's labels are ordered (`symbol-z-order`): `Auto` by the
 /// sort key if any, else as `ViewportY` when they may overlap; `Source` as the
 /// features come.
+#derive(Debug, Eq)
 pub(all) enum SymbolZOrder {
   Auto
   ViewportY
   Source
-} derive(Debug, Eq)
+}
 
 ///|
 /// A symbol layer's text layout by Style Spec name (CSS px, ems, degrees; `font` None for
 /// the map's font, `variable` and `variable_stops` as `variable_at` reads them,
 /// `cooperative` a `text-overlap` of `cooperative`).
+#derive(Eq)
 pub struct TextLayout {
   field : Array[Expr]
   size : Expr
@@ -69,7 +74,7 @@ pub struct TextLayout {
   rotate : Expr
   cooperative : Bool
   z_order : SymbolZOrder
-} derive(Eq)
+}
 
 ///|
 /// `text-field` as parts: a string with `{key}` tokens, `get`, `concat` and

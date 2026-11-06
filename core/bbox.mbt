@@ -1,12 +1,13 @@
 ///|
 /// Axis-aligned box; `min` is inclusive and `max` exclusive for containment.
 /// `BBox::empty()` contains nothing.
+#derive(Debug, Eq)
 pub(all) struct BBox {
   min_x : Double
   min_y : Double
   max_x : Double
   max_y : Double
-} derive(Debug, Eq)
+}
 
 ///|
 pub fn BBox::empty() -> BBox {

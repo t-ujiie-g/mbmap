@@ -36,15 +36,17 @@ pub fn wkt_of(@geom.Table, Int32, (Double) -> String) -> String?
 pub fn write_csv(@geom.Table, delimiter? : Char, header? : Bool, geometry~ : CsvGeometry, number_text~ : (Double) -> String) -> String raise ReadError
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
-} derive(@debug.Debug)
+}
 pub fn GeoJSONError::message(Self) -> String
 pub fn GeoJSONError::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) suberror ReadError {
   Invalid(format~ : String, pos~ : Int32, String)
-} derive(@debug.Debug)
+}
 pub fn ReadError::message(Self) -> String
 pub fn ReadError::to_repr(Self) -> @debug.Repr
 

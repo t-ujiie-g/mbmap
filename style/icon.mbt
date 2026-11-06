@@ -1,11 +1,12 @@
 ///|
 /// How an icon stretches around its label's text (`icon-text-fit`).
+#derive(Debug, Eq)
 pub(all) enum IconTextFit {
   NoFit
   Width
   Height
   Both
-} derive(Debug, Eq)
+}
 
 ///|
 /// A symbol layer's icon layout (`layout` as written: equal ones make the same tiles): `image`

@@ -1,9 +1,10 @@
 ///|
 /// Why a map could not start: its style failed to parse, or the canvas has no WebGL2.
+#derive(Debug)
 pub(all) suberror MapError {
   BadStyle(@style.StyleError)
   NoWebGL2
-} derive(Debug)
+}
 
 ///|
 /// `entry`: index in the worker's packed tile; `owned`: false when an earlier layer's; `paint`: the group's

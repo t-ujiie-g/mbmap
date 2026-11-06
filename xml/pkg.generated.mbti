@@ -19,10 +19,11 @@ pub let xml_namespace : String
 pub let xmlns_namespace : String
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror XmlError {
   Malformed(pos~ : Int32, String)
   Limit(String)
-} derive(@debug.Debug)
+}
 pub fn XmlError::message(Self) -> String
 pub fn XmlError::to_repr(Self) -> @debug.Repr
 
@@ -56,12 +57,13 @@ pub fn Names::find(Self, String) -> Int32
 pub fn Names::length(Self) -> Int32
 pub fn Names::new() -> Self
 
+#derive(Eq, @debug.Debug)
 pub(all) enum NodeKind {
   DocumentNode
   Element
   Text
   CData
-} derive(Eq, @debug.Debug)
+}
 pub fn NodeKind::equal(Self, Self) -> Bool
 pub fn NodeKind::not_equal(Self, Self) -> Bool
 pub fn NodeKind::to_repr(Self) -> @debug.Repr

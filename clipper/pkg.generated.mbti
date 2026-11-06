@@ -27,13 +27,14 @@ pub fn xor(Array[Array[Point64]], Array[Array[Point64]], FillRule) -> Array[Arra
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum ClipType {
   NoClip
   Intersection
   Union
   Difference
   Xor
-} derive(Eq, @debug.Debug)
+}
 pub fn ClipType::equal(Self, Self) -> Bool
 pub fn ClipType::not_equal(Self, Self) -> Bool
 pub fn ClipType::to_repr(Self) -> @debug.Repr
@@ -58,48 +59,53 @@ pub fn ClipperOffset::add_paths(Self, Array[Array[Point64]], JoinType, EndType) 
 pub fn ClipperOffset::execute(Self, Double) -> Array[Array[Point64]]
 pub fn ClipperOffset::new(miter_limit? : Double, arc_tolerance? : Double, preserve_collinear? : Bool, reverse_solution? : Bool) -> Self
 
+#derive(Eq)
 pub(all) enum EndType {
   Polygon
   Joined
   Butt
   Square
   Round
-} derive(Eq)
+}
 pub fn EndType::equal(Self, Self) -> Bool
 pub fn EndType::not_equal(Self, Self) -> Bool
 
+#derive(Eq, @debug.Debug)
 pub(all) enum FillRule {
   EvenOdd
   NonZero
   Positive
   Negative
-} derive(Eq, @debug.Debug)
+}
 pub fn FillRule::equal(Self, Self) -> Bool
 pub fn FillRule::not_equal(Self, Self) -> Bool
 pub fn FillRule::to_repr(Self) -> @debug.Repr
 
+#derive(Eq)
 pub(all) enum JoinType {
   Square
   Bevel
   Round
   Miter
-} derive(Eq)
+}
 pub fn JoinType::equal(Self, Self) -> Bool
 pub fn JoinType::not_equal(Self, Self) -> Bool
 
+#derive(Eq, @debug.Debug)
 pub(all) struct Point64 {
   x : Int64
   y : Int64
-} derive(Eq, @debug.Debug)
+}
 pub fn Point64::equal(Self, Self) -> Bool
 pub fn Point64::not_equal(Self, Self) -> Bool
 pub fn Point64::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum PointInPolygonResult {
   IsOn
   IsInside
   IsOutside
-} derive(Eq, @debug.Debug)
+}
 pub fn PointInPolygonResult::equal(Self, Self) -> Bool
 pub fn PointInPolygonResult::not_equal(Self, Self) -> Bool
 pub fn PointInPolygonResult::to_repr(Self) -> @debug.Repr
