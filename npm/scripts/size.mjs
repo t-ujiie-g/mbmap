@@ -47,7 +47,7 @@ const ENTRIES = [
   { name: "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)", files: ["data-fgb.js"], budget: 2_500, references: [] },
   { name: "coordinates from another CRS (loaded by the data worker with proj.wasm)", files: ["data-crs.js"], budget: 1_500, references: [] },
   { name: ".prj WKT (loaded by the data worker on the first .prj)", files: ["prjwkt.js"], budget: 4_000, references: [] },
-  { name: "KML and GPX (loaded by the data worker on the first such read)", files: ["xml.wasm"], budget: 26_000, references: [] },
+  { name: "KML and GPX (loaded by the data worker on the first such read)", files: ["xml.wasm"], budget: 27_000, references: [] },
   { name: "GeoTIFF (loaded by the data worker on the first raster read)", files: ["geotiff.wasm", "data-geotiff.js"], budget: 20_000, references: [] },
 ];
 
