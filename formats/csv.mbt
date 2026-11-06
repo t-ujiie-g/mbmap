@@ -1,3 +1,5 @@
+// Ported from papaparse 5.7.0: MIT License, Copyright (c) 2015 Matthew Holt. See NOTICE.
+
 ///|
 /// Most fields in a CSV row (AGENTS.md §8.2).
 pub const MAX_CSV_COLUMNS : Int32 = 4096
@@ -451,10 +453,8 @@ fn csv_table(
       break
     }
     used += shapes.points()
-    shapes.emit(out, props, srids)
-    let t = out.table
-    if t.length().to_double() * t.columns.length().to_double() >
-      max_cells.to_double() {
+    shapes.emit(out, props, srids, max_cells~)
+    if out.cells() > max_cells.to_int64() {
       csv.fail(csv.pos, "too many property cells")
     }
   }

@@ -1,7 +1,8 @@
+// Ported from papaparse 5.7.0: MIT License, Copyright (c) 2015 Matthew Holt. See NOTICE.
+
 ///|
-/// Where `write_csv` puts each row's geometry: `Wkt(name)` a column of WKT as betterknown 1.2.0's
-/// `geoJSONToWkt` writes it, `LonLat(longitude, latitude)` two columns of a point's coordinates,
-/// `Omitted` none. A column of the same name as a property takes that property's place.
+/// Where `write_csv` puts each row's geometry: `Wkt(name)` a column of WKT (`wkt_of`),
+/// `LonLat(longitude, latitude)` two columns of a point's coordinates, `Omitted` none. A column of the same name as a property takes that property's place.
 pub(all) enum CsvGeometry {
   Wkt(String)
   LonLat(String, String)
@@ -137,8 +138,8 @@ fn csv_cell(sb : StringBuilder, s : String, d : Int32) -> Unit {
 }
 
 ///|
-/// The geometry of row `row` in WKT as betterknown 1.2.0's `geoJSONToWkt` writes the GeoJSON
-/// `toGeoJSON` gives (`POINT (x y)`, positions joined by commas without spaces); None without one.
+/// The geometry of row `row` in WKT, `POINT (x y)` with positions joined by commas without spaces
+/// (bench/data/write-golden.mjs checks the text against betterknown's); None without one.
 pub fn wkt_of(
   table : @geom.Table,
   row : Int32,

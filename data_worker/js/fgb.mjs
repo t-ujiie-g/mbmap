@@ -71,16 +71,20 @@ export function headerCrs(crs) {
   return crs.wkt?.trim() ? { wkt: crs.wkt } : undefined;
 }
 
+/** A header's node size as flatgeobuf's `calcTreeSize` clamps it: one under 2 would never shrink a level. */
+const clampNodeSize = (nodeSize) => Math.min(Math.max(nodeSize, 2), 65535);
+
 /** Each level's node range in a packed R-tree of `count` items, leaves first (flatgeobuf's `generateLevelBounds`). */
 export function levelBounds(count, nodeSize) {
+  const perNode = clampNodeSize(nodeSize);
   let n = count;
   let nodes = n;
   const sizes = [n];
   do {
-    n = Math.ceil(n / nodeSize);
+    n = Math.ceil(n / perNode);
     nodes += n;
     sizes.push(n);
-  } while (n !== 1);
+  } while (n > 1);
   const bounds = [];
   for (const size of sizes) {
     bounds.push([nodes - size, nodes]);
@@ -91,8 +95,7 @@ export function levelBounds(count, nodeSize) {
 
 /** Bytes of a packed R-tree (flatgeobuf's `calcTreeSize`). */
 export function treeBytes(count, nodeSize) {
-  const b = levelBounds(count, Math.min(Math.max(nodeSize, 2), 65535));
-  return b[0][1] * NODE_BYTES;
+  return levelBounds(count, nodeSize)[0][1] * NODE_BYTES;
 }
 
 /**
@@ -101,7 +104,8 @@ export function treeBytes(count, nodeSize) {
  * `readNode(offset, length)` (a Promise of bytes, offsets into the tree).
  */
 export async function search(count, nodeSize, [minX, minY, maxX, maxY], readNode) {
-  const bounds = levelBounds(count, nodeSize);
+  const perNode = clampNodeSize(nodeSize);
+  const bounds = levelBounds(count, perNode);
   const firstLeaf = bounds[0][0];
   const queue = [{ nodes: [0, 1], level: bounds.length - 1 }];
   const found = [];
@@ -113,7 +117,7 @@ export async function search(count, nodeSize, [minX, minY, maxX, maxY], readNode
     const leaf = start >= firstLeaf;
     if (range.level < 0 || (range.level === 0) !== leaf) fail("a node at the wrong level");
     const [, levelEnd] = bounds[range.level];
-    const end = Math.min(range.nodes[1] + nodeSize, levelEnd);
+    const end = Math.min(range.nodes[1] + perNode, levelEnd);
     const readEnd = leaf && end < levelEnd ? end + 1 : end;
     budget -= readEnd - start;
     if (budget < 0 || found.length > count) fail("an index that does not form a tree");
@@ -151,18 +155,22 @@ function rect(bbox) {
   return bbox;
 }
 
-/** The header of `bytes` and the features `found` in `bytes` (at `featuresAt`), as data.wasm's `read_flatgeobuf` takes them with ids. */
-function pack(header, found, featureAt) {
+/**
+ * The header of `bytes` and the features `found` in `bytes` (at `featuresAt`), as data.wasm's
+ * `read_flatgeobuf` takes them with ids, at most `max` bytes: leaves may all name one large feature.
+ */
+function pack(header, found, featureAt, max) {
   const parts = [header];
   const ids = new Uint32Array(found.length);
-  let total = header.length;
+  let total = header.length + ids.length * 4;
   found.forEach((f, i) => {
     const bytes = featureAt(f);
     parts.push(bytes);
     total += bytes.length;
+    if (total > max) throw new Error(`data larger than ${max} bytes`);
     ids[i] = f[1];
   });
-  const out = new Uint8Array(total + ids.length * 4);
+  const out = new Uint8Array(total);
   let at = 0;
   for (const p of parts) {
     out.set(p, at);
@@ -182,16 +190,16 @@ function featureIn(bytes, at) {
 
 /**
  * The features of the FlatGeobuf `bytes` in `bbox`, as `{ bytes, ids }` for `read_flatgeobuf`
- * (bytes: its header, the features, then `ids` u32 indices).
+ * (bytes: its header, the features, then `ids` u32 indices), at most `max` bytes.
  */
-export async function selectBytes(bytes, bbox) {
+export async function selectBytes(bytes, bbox, max) {
   const header = readHeader(bytes);
   if (header.nodeSize === 0) throw new Error("the FlatGeobuf has no index to read a bbox with");
-  if (header.count === 0) return pack(bytes.subarray(0, 12 + header.length), [], null);
+  if (header.count === 0) return pack(bytes.subarray(0, 12 + header.length), [], null, max);
   const tree = 12 + header.length;
   const features = tree + treeBytes(header.count, header.nodeSize);
   const found = await search(header.count, header.nodeSize, rect(bbox), async (o, n) => bytes.subarray(tree + o, tree + o + n));
-  return pack(bytes.subarray(0, tree), found, ([offset]) => featureIn(bytes, features + offset));
+  return pack(bytes.subarray(0, tree), found, ([offset]) => featureIn(bytes, features + offset), max);
 }
 
 /**
@@ -224,18 +232,18 @@ export async function selectUrl(url, init, bbox, max, http) {
     return fetchRange(http, url, init, offset, length, max);
   };
   const first = await get(0, FIRST_BYTES);
-  if (first.whole) return selectBytes(first.whole, bbox);
+  if (first.whole) return selectBytes(first.whole, bbox, max);
   let start = first.bytes;
   const length = headerLength(start);
   if (start.length < 12 + length) {
     const more = await get(0, 12 + length + (1 + 16 + 256) * NODE_BYTES);
-    if (more.whole) return selectBytes(more.whole, bbox);
+    if (more.whole) return selectBytes(more.whole, bbox, max);
     start = more.bytes;
   }
   const header = readHeader(start);
   if (header.nodeSize === 0) throw new Error("the FlatGeobuf has no index to read a bbox with");
   const tree = 12 + header.length;
-  if (header.count === 0) return pack(start.subarray(0, tree), [], null);
+  if (header.count === 0) return pack(start.subarray(0, tree), [], null, max);
   const features = tree + treeBytes(header.count, header.nodeSize);
   const found = await search(header.count, header.nodeSize, rect(bbox), async (o, n) => {
     if (tree + o + n <= start.length) return start.subarray(tree + o, tree + o + n);
@@ -273,5 +281,5 @@ export async function selectUrl(url, init, bbox, max, http) {
       }
     }));
   }
-  return pack(start.subarray(0, tree), found, (f) => read.get(f[1]));
+  return pack(start.subarray(0, tree), found, (f) => read.get(f[1]), max);
 }

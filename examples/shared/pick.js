@@ -2,6 +2,7 @@
 // `knj` or the places' `name`, or its first properties), and the places'
 // hover highlight.
 import { createIdentify } from "mbmap/ui";
+import { showRows } from "./readout.js";
 
 /** Rows of [label, value] for the topmost of `features`, or null when there is none. */
 export function describeFeature(features) {
@@ -67,7 +68,7 @@ export function mountIdentify(map) {
     count.textContent = `${s.index + 1} / ${s.features.length}`;
     if (s.loading) return;
     const rows = selectedRows(s) ?? [["—", "何もありません"]];
-    dl.replaceChildren(...rows.flatMap(([k, v]) => [Object.assign(document.createElement("dt"), { textContent: k }), Object.assign(document.createElement("dd"), { textContent: v })]));
+    showRows(dl, rows);
     window.__picked = rows;
   });
   nav.hidden = true;

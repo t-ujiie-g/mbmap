@@ -1,3 +1,6 @@
+// Ported from shpjs 6.2.0 and parsedbf 2.0.0: MIT License, Copyright (c) 2013 Calvin Metcalf
+// and other shapefile-js contributors. See NOTICE.
+
 ///|
 /// Reads a shapefile's .shp and .dbf into a row per record not deleted (npm/README.md
 /// `mbmap/data`). `text` decodes `dbf[start:end]` where it is not ASCII, in the .dbf's
@@ -52,7 +55,7 @@ fn shapefile_table(
     None => None
   }
   let out = @geom.TableBuilder::new()
-  let rings = Rings::new()
+  let rings = Rings::new(MAX_RING_STEPS)
   let mut pos = 100
   let mut row = 0
   while pos + 8 <= shp.length() {
@@ -183,8 +186,17 @@ fn shape(
     }
     return if rings.rings.length() == 1 { LineString } else { MultiLineString }
   }
-  rings.write_polygons(out)
+  let kind = rings.write_polygons(out)
+  guard !rings.spent() else {
+    raise shp_error(at, "too many rings to tell apart")
+  }
+  kind
 }
+
+///|
+/// Most ring and point comparisons telling holes from outer rings in one file: a
+/// budget, as nothing else bounds holes times outer rings' points.
+const MAX_RING_STEPS : Int64 = 0x400000000
 
 ///|
 /// A polygon's rings while they are told apart: `start`, `end` (points into
@@ -203,11 +215,18 @@ priv struct Ring {
 priv struct Rings {
   coords : Array[Double]
   rings : Array[Ring]
+  mut steps : Int64
+  max_steps : Int64
 }
 
 ///|
-fn Rings::new() -> Rings {
-  { coords: [], rings: [], }
+fn Rings::new(max_steps : Int64) -> Rings {
+  { coords: [], rings: [], steps: 0, max_steps, }
+}
+
+///|
+fn Rings::spent(self : Rings) -> Bool {
+  self.steps > self.max_steps
 }
 
 ///|
@@ -278,8 +297,14 @@ fn Rings::locate(self : Rings, r : Ring, x : Double, y : Double) -> Int32 {
 ///|
 /// Gives each hole (a ring whose `cw` differs from `outer_cw`) the smallest outer
 /// ring that contains it, judged by its first vertex off that ring's edge; returns
-/// how many holes no outer ring contains.
+/// how many holes no outer ring contains. Stops where `spent`.
 fn Rings::assign(self : Rings, outer_cw : Bool) -> Int32 {
+  let outers = []
+  for k, o in self.rings {
+    if o.cw == outer_cw {
+      outers.push(k)
+    }
+  }
   let mut orphans = 0
   for h in self.rings {
     h.outer = -1
@@ -287,9 +312,10 @@ fn Rings::assign(self : Rings, outer_cw : Bool) -> Int32 {
       continue
     }
     let mut best = -1
-    for k, o in self.rings {
-      if o.cw != outer_cw ||
-        o.box[0] > h.box[0] ||
+    for k in outers {
+      let o = self.rings[k]
+      self.steps += 1
+      if o.box[0] > h.box[0] ||
         o.box[1] > h.box[1] ||
         o.box[2] < h.box[2] ||
         o.box[3] < h.box[3] ||
@@ -298,6 +324,10 @@ fn Rings::assign(self : Rings, outer_cw : Bool) -> Int32 {
       }
       let mut at = -1
       for i in h.start..<h.end {
+        self.steps += (o.end - o.start).to_int64()
+        if self.spent() {
+          return orphans
+        }
         at = self.locate(o, self.coords[i * 2], self.coords[i * 2 + 1])
         if at >= 0 {
           break
@@ -331,16 +361,24 @@ fn Rings::write_polygons(
       self.assign(true) |> ignore
     }
   }
+  // Each outer ring's holes as a list in ring order: `first` by outer, `next` by hole.
+  let first = Array::make(self.rings.length(), -1)
+  let next = Array::make(self.rings.length(), -1)
+  for k = self.rings.length() - 1; k >= 0; k = k - 1 {
+    let h = self.rings[k]
+    if h.outer >= 0 && h.cw != outer_cw {
+      next[k] = first[h.outer]
+      first[h.outer] = k
+    }
+  }
   let mut polygons = 0
   for k, o in self.rings {
     if o.cw != outer_cw && o.outer >= 0 {
       continue
     }
     self.write_ring(out, o, false)
-    for h in self.rings {
-      if h.outer == k && h.cw != outer_cw {
-        self.write_ring(out, h, true)
-      }
+    for h = first[k]; h >= 0; h = next[h] {
+      self.write_ring(out, self.rings[h], true)
     }
     out.end_part()
     polygons += 1

@@ -1,3 +1,6 @@
+// Ported from @xmldom/xmldom 0.9.12: MIT License, Copyright 2019 - present Christopher J. Brody
+// and other contributors, Copyright 2012 - 2017 @jindw and other contributors. See NOTICE.
+
 ///|
 /// `s` with its references replaced as xmldom replaces them (`/&#?\w+;?/`): the five
 /// XML entities and character references; anything else (a declared entity, a missing

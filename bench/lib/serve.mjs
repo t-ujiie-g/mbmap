@@ -41,7 +41,14 @@ export function byteRange(header, size) {
 
 export function serve(port = 0) {
   const server = http.createServer(async (req, res) => {
-    let file = resolveRequestPath(new URL(req.url, "http://x").pathname);
+    let pathname;
+    try {
+      pathname = new URL(req.url, "http://x").pathname;
+    } catch {
+      res.writeHead(400).end();
+      return;
+    }
+    let file = resolveRequestPath(pathname);
     if (!file) { res.writeHead(403).end(); return; }
     try {
       if ((await stat(file)).isDirectory()) file = path.join(file, "index.html");

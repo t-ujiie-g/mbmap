@@ -138,7 +138,7 @@ test "shapefiles and TopoJSON stop at their point and cell limits" {
   assert_eq(limit_error(() => read(2, 1)), "malformed DBF at 0: too many cells")
   let topo = b"{\"type\":\"Topology\",\"arcs\":[[[0,0],[1,1]]],\"objects\":{\"o\":{\"type\":\"MultiLineString\",\"arcs\":[[0],[0]]}}}"
   let topo_read = (points : Int32) => {
-    topojson_table(topo[:], None, slow_of(topo), points).0
+    topojson_table(topo[:], None, slow_of(topo), points, 100).0
   }
   assert_eq(topo_read(4).length(), 1)
   assert_true(limit_error(() => topo_read(3)).has_suffix("too many points"))

@@ -1,3 +1,6 @@
+// Ported from shpjs 6.2.0 and parsedbf 2.0.0: MIT License, Copyright (c) 2013 Calvin Metcalf
+// and other shapefile-js contributors. See NOTICE.
+
 ///|
 /// Most property cells (records times fields) a DBF may make (AGENTS.md §8.2).
 pub const MAX_DBF_CELLS : Int32 = 32_000_000

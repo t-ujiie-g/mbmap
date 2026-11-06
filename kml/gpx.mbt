@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 let gpxx_namespace : String = "http://www.garmin.com/xmlschemas/GpxExtensions/v3"
 
@@ -34,7 +37,7 @@ pub fn read_gpx(
     p.set("_gpxType", Str("rte"))
     r.gpx_props(p, ns, rte)
     r.line_style(p, rte)
-    let shapes = Shapes::new()
+    let shapes = Shapes::new(r)
     shapes.line(line.xy)
     shapes.end_part()
     shapes.end_member(LineString)
@@ -50,7 +53,7 @@ pub fn read_gpx(
     let p = Props::new()
     r.gpx_props(p, ns, w)
     r.val_into(p, w, "sym")
-    let shapes = Shapes::new()
+    let shapes = Shapes::new(r)
     shapes.point(x, y)
     shapes.end_ring()
     shapes.end_part()
@@ -133,7 +136,7 @@ fn Reader::line_style(self : Reader, p : Props, node : Int32) -> Unit {
 ///|
 /// A track's (or a route's) segments as `getPoints` reads them: x, y pairs with `ends` per segment,
 /// times as a JSON array (`""` without any), and extension values by plural name (`names`,
-/// `name_ends`), each a JSON array as long as the segment's points.
+/// `name_ends`), each a JSON array as long as the segment's points; `distinct` holds the names.
 priv struct Line {
   xy : Array[Double]
   ends : Array[Int32]
@@ -141,11 +144,20 @@ priv struct Line {
   names : Array[String]
   values : Array[String]
   name_ends : Array[Int32]
+  distinct : @xml.Names
 }
 
 ///|
 fn Line::new() -> Line {
-  { xy: [], ends: [], times: [], names: [], values: [], name_ends: [], }
+  {
+    xy: [],
+    ends: [],
+    times: [],
+    names: [],
+    values: [],
+    name_ends: [],
+    distinct: @xml.Names::new(),
+  }
 }
 
 ///|
@@ -199,7 +211,7 @@ fn Reader::extension_values(
 
 ///|
 /// `getPoints`: the `tag` points under `node` added to `line` as a segment;
-/// false (nothing added) for fewer than two with a position.
+/// false (nothing added) for fewer than two with a position, or past a limit.
 fn Reader::points(
   self : Reader,
   node : Int32,
@@ -211,7 +223,7 @@ fn Reader::points(
   let n = pts.length()
   let xy = []
   let times = []
-  let names = []
+  let names = @xml.Names::new()
   // Column-major: name k's values are `columns[k * n:(k + 1) * n]`.
   let columns = []
   let ext_names = []
@@ -220,6 +232,9 @@ fn Reader::points(
     let x = self.coordinate(pt, "lon")
     let y = self.coordinate(pt, "lat")
     guard !x.is_nan() && !y.is_nan() else { continue }
+    guard self.has_room((line.xy.length() + xy.length()) / 2 + 1) else {
+      return false
+    }
     xy.push(x)
     xy.push(y)
     if d.first(pt, "time") is Some(t) {
@@ -239,14 +254,15 @@ fn Reader::points(
       } else {
         replace_first(name, "gpxtpx:", "") + "s"
       }
-      let k = match names.search(plural) {
-        Some(k) => k
-        None => {
-          names.push(plural)
-          for _ in 0..<n {
-            columns.push("null")
-          }
-          names.length() - 1
+      let k = names.add(plural)
+      if k * n == columns.length() {
+        line.distinct.add(plural) |> ignore
+        if line.distinct.length() > MAX_KML_KEYS {
+          self.limit_at(MAX_KML_KEYS, "extensions")
+        }
+        guard !self.stopped() && self.charge(n.to_int64()) else { return false }
+        for _ in 0..<n {
+          columns.push("null")
         }
       }
       columns[k * n + i] = ext_values[j]
@@ -264,8 +280,8 @@ fn Reader::points(
       ""
     },
   )
-  for k, name in names {
-    line.names.push(name)
+  for k in 0..<names.length() {
+    line.names.push(names.at(k))
     line.values.push(json_array(columns, k * n, (k + 1) * n))
   }
   line.name_ends.push(line.names.length())
@@ -286,13 +302,21 @@ fn Reader::track_feature(
     self.points(s, "trkpt", line) |> ignore
   }
   let count = line.ends.length()
-  guard count > 0 else { return }
+  guard count > 0 && !self.stopped() else { return }
   let multi = count > 1
+  // With several segments every name gets a value from each, nulls for each point.
+  if multi {
+    let work = line.xy.length() / 2 + line.names.length()
+    guard self.charge(line.distinct.length().to_int64() * work.to_int64()) else {
+      return
+    }
+  }
   let p = Props::new()
   p.set("_gpxType", Str("trk"))
   self.gpx_props(p, ns, node)
   self.line_style(p, node)
   let keys = []
+  let known = @xml.Names::new()
   let values = []
   let times = []
   for t in line.times {
@@ -302,6 +326,7 @@ fn Reader::track_feature(
   }
   if times.length() > 0 {
     keys.push("times")
+    known.add("times") |> ignore
     values.push(
       if multi {
         json_array(times, 0, times.length())
@@ -312,25 +337,27 @@ fn Reader::track_feature(
   }
   for i in 0..<line.names.length() {
     let name = line.names[i]
-    let value = if multi {
+    let at = known.find(name)
+    if at >= 0 {
+      if !multi {
+        values[at] = line.values[i]
+      }
+      continue
+    }
+    known.add(name) |> ignore
+    keys.push(name)
+    if multi {
       let all = []
       for m in 0..<count {
         all.push(line.column(m, name))
       }
-      json_array(all, 0, count)
+      values.push(json_array(all, 0, count))
     } else {
-      line.values[i]
-    }
-    match keys.search(name) {
-      None => {
-        keys.push(name)
-        values.push(value)
-      }
-      Some(at) => if !multi { values[at] = value }
+      values.push(line.values[i])
     }
   }
   p.set("coordinateProperties", Str(json_object(keys, values)))
-  let shapes = Shapes::new()
+  let shapes = Shapes::new(self)
   for k in 0..<count {
     for i in @geom.start_of(line.ends, k)..<line.ends[k] {
       shapes.point(line.xy[i * 2], line.xy[i * 2 + 1])

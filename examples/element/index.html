@@ -2,56 +2,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mbmap showcase: Web Component</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="../shared/app.css">
 <!-- `npm --prefix bench run examples` installs the packed package into ./node_modules. -->
 <script type="importmap">
   {
     "imports": {
       "mbmap": "./node_modules/mbmap/dist/index.js",
-      "mbmap/element": "./node_modules/mbmap/dist/element.js",
-      "mbmap/ui": "./node_modules/mbmap/dist/ui.js",
-      "mbmap/search": "./node_modules/mbmap/dist/search.js",
       "mbmap/analysis": "./node_modules/mbmap/dist/analysis.js",
+      "mbmap/data": "./node_modules/mbmap/dist/data.js",
+      "mbmap/draw": "./node_modules/mbmap/dist/draw.js",
+      "mbmap/element": "./node_modules/mbmap/dist/element.js",
       "mbmap/geodesic": "./node_modules/mbmap/dist/geodesic.js",
-      "mbmap/draw": "./node_modules/mbmap/dist/draw.js"
+      "mbmap/search": "./node_modules/mbmap/dist/search.js",
+      "mbmap/ui": "./node_modules/mbmap/dist/ui.js"
     }
   }
 </script>
 <mb-map center="139.7671,35.6812" zoom="15" attribution-control="false"></mb-map>
-<aside class="panel">
-  <h1>mbmap</h1>
-  <p class="variant">Web Component（<code>&lt;mb-map&gt;</code>）</p>
-  <div id="search"></div>
-  <h2>表示</h2>
-  <div id="modes"><button data-mode="2d">2D</button><button data-mode="3d">3D</button></div>
-  <h2>背景地図</h2>
-  <div id="basemaps"></div>
-  <h2>レイヤー</h2>
-  <div id="layers"></div>
-  <button id="marker">中心に印を置く</button>
-  <button id="save">画像を保存</button>
-  <h2>凡例</h2>
-  <ul id="legend"></ul>
-  <h2>作図</h2>
-  <div id="draw-modes"></div>
-  <div id="draw-actions"></div>
-  <p id="drawn"></p>
-  <div id="draw-fields" hidden></div>
-  <h2>計測</h2>
-  <div id="measure"></div>
-  <dl id="measured"></dl>
-  <h2>断面図</h2>
-  <figure id="profile"></figure>
-  <h2>地点の一覧</h2>
-  <div id="table"></div>
-  <h2>クリックした地物</h2>
-  <dl id="picked"><dt>—</dt><dd>地図をクリック</dd></dl>
-  <h2>移動</h2>
-  <div id="destinations"></div>
-  <h2>カメラ</h2>
-  <dl id="camera"></dl>
-  <h2>中心から 5 km 以内の地点</h2>
-  <ul id="near"></ul>
-  <nav><a href="../html/">HTML</a><a href="../element/">Web Component</a><a href="../react/">React</a></nav>
-</aside>
 <script type="module" src="./main.js"></script>

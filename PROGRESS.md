@@ -24,7 +24,23 @@
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
-  | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（26KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+  | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+
+## Phase 17 の後の点検（2026-11-06〜）
+
+全体をリファクタリング（AGENTS §7）とセキュリティ（§8）の目で見た。`npm audit` は 3 か所とも 0 件、Dependabot の未対応なし。
+
+- **example の再設計（#107）**：12 節のパネルをタブ 5 つに分け、最初は地図だけを見せる（2026-11-06 ユーザー判断。1 アプリのまま、明るい色だけ）。データのタブで `mbmap/data` を example に入れた。
+- **JS のセキュリティ**：高 0、中 4、低 6。すべて可用性か管理の問題で、コード実行、DOM への注入、資格情報の漏れ、プロトタイプ汚染はなかった。
+  - FlatGeobuf の `index_node_size = 1` の無限ループ、`.prj` の幅の広いノードのメモリ、GeoTIFF の展開量の上限（1 回の読み込みで `8 * max`）、PMTiles のディレクトリの上限（1 アーカイブ 200 万項目）。
+  - データの取得は全体で 5 分の時間切れ（アイドルの時間切れではない。256MB には約 7Mbps が要る）。
+  - 残したもの：`createImageBitmap` は大きさを確かめる前に復号する。`keepBlock` は同じキーの古い長さを引かない（速さだけの問題）。
+- **MoonBit のセキュリティ**：高 0、中 8、低 5。線形メモリの範囲外アクセスはなかった。
+  - FlatGeobuf のオフセットの使い回しによる指数の仕事（1 ファイルの訪問はファイルのバイト数まで）、XML の `end_tag` の二次の走査、`TableBuilder` の欄の数の上限（TopoJSON と FlatGeobuf にも 3200 万）、GPX の拡張の列、KML と GPX の点の上限を読みながら確かめる、TIFF のビット数とブロックの大きさの折り返し（1 ブロック 256MB、1 ファイルのタグの値 6400 万）、Shapefile の輪の二次の処理。
+  - 大きなファイルで変わること：行 × 列が 3200 万を超える FlatGeobuf と TopoJSON は断る。256MB を超える非圧縮のブロックは開くときに断る。
+  - BitsPerSample のないファイルは、使わない IFD で全体を断らないよう読み、使うときに「unsupported data format」で失敗する。
+- **`idle` の競合**（#109 の CI で分かった）：TileJSON や PMTiles の文書が、エンジンが落ち着いたあとに届くと、ソースが入る前に `idle` が出ていた。文書の取得とスタイルの適用を同じ待ちに入れた。`tile-sources` の確認は文書を 400 ms 遅らせ、修正なしでは失敗する。
+- **大きさ**：`createAttributeTable` だけで 1996 / 2000 バイト、`xml.wasm` 26.0KB、GeoTIFF 19.9KB、データワーカー 39.4KB。`xml.wasm` の予算は 26KB → 27KB に引き上げた（2026-11-06 ユーザー判断。上限の確かめで約 350 バイト増え、CI の moonc 0.10.18 で 26,031 バイト。ローカルの 0.10.19 は 48 バイト小さい）。ほかの予算は変えていない。GeoTIFF には次の機能の余地がない。
 
 ## Phase 17：データ形式（2026-11-04〜）
 

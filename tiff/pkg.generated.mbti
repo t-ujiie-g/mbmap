@@ -2,7 +2,11 @@
 package "t-ujiie-g/mbmap/tiff"
 
 // Values
+pub const MAX_BLOCK_BYTES : Int32 = 268435456
+
 pub const MAX_ENTRIES : Int32 = 4096
+
+pub const MAX_FILE_VALUES : Int32 = 67108864
 
 pub const MAX_IMAGES : Int32 = 256
 

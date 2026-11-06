@@ -1,3 +1,6 @@
+// Ported from @placemarkio/tokml 0.4.0: MIT License, Copyright (c) 2022 Placemark, and the
+// escaping of xast-util-to-xml 4.0.0: MIT License, Copyright (c) Titus Wormer. See NOTICE.
+
 ///|
 /// The rows of `table` as @placemarkio/tokml 0.4.0's `toKML` writes the FeatureCollection
 /// `toGeoJSON` gives them, text escaped as xast-util-to-xml does. `number_text` is the host's

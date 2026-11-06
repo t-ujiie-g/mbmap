@@ -1,3 +1,5 @@
+// Ported from papaparse 5.7.0: MIT License, Copyright (c) 2015 Matthew Holt. See NOTICE.
+
 ///|
 /// 10^k for 0 <= k <= 22, exact: every partial product is a double exactly.
 fn exact_ten(k : Int32) -> Double {

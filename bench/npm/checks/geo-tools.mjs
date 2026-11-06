@@ -2,7 +2,7 @@
 // controllers over them), checked alike in all three examples by npm/pack-test.mjs.
 import path from "node:path";
 import { ROOT } from "../../lib/root.mjs";
-import { awaitAfter } from "./step.mjs";
+import { awaitAfter, openTab } from "./step.mjs";
 
 // The showcase's measurement: a line ended by a double click (no zoom, no identify) and an area
 // finished from the panel reach geographiclib-geodesic's numbers to the bit; 「消す」 empties the overlay.
@@ -22,6 +22,7 @@ export async function measureChecks(page) {
     return page.evaluate(() => window.__measurement.state);
   };
   const before = await page.evaluate(() => ({ zoom: window.__map.getZoom(), point: window.__identify.state.point }));
+  await openTab(page, "measure");
   await page.click("#measure button >> text=距離");
   await page.mouse.click(420, 160);
   await page.mouse.click(620, 200);
@@ -73,6 +74,7 @@ async function profileChecks(page, length) {
 // The showcase's drawing (mbmap/draw): a polygon closed on its first vertex, a line finished with
 // Enter, one cancelled with Escape, a circle by two clicks, undo and redo; measuring takes over.
 export async function drawChecks(page) {
+  await openTab(page, "draw");
   const state = () => page.evaluate(() => window.__draw.state);
   const clicks = async (points) => {
     for (const [x, y] of points) {
@@ -99,9 +101,11 @@ export async function drawChecks(page) {
   await page.click("#draw-actions button >> text=やり直す");
   const redone = (await state()).features.length;
   const after = await page.evaluate(() => JSON.stringify(window.__identify.state.point));
+  await openTab(page, "measure");
   await page.click("#measure button >> text=距離");
   const handed = await state();
   await page.click("#measure button >> text=消す");
+  await openTab(page, "draw");
   await page.click("#draw-actions button >> text=全部消す");
   const end = await page.evaluate(() => ({ features: window.__draw.state.features.length, dblclick: window.__map.doubleClickZoom.isEnabled() }));
   const ring = polygon.features[0]?.geometry.coordinates[0] ?? [];
@@ -121,6 +125,7 @@ export async function drawChecks(page) {
 // dragged into a vertex, one deleted by right click, the shape dragged whole, a vertex snapped
 // onto another shape's, a name set from the panel and undone, the shape deleted with Delete.
 export async function editChecks(page) {
+  await openTab(page, "draw");
   const clicks = async (points) => {
     for (const [x, y] of points) {
       await page.mouse.click(x, y);
@@ -193,6 +198,7 @@ export async function editChecks(page) {
 // Split and merge (mbmap/draw over mbmap/analysis's geometry module): a rectangle cut in two by a
 // line drawn across it, the halves selected with Shift and merged back, the merge undone.
 export async function splitChecks(page) {
+  await openTab(page, "draw");
   const clicks = async (points) => {
     for (const [x, y] of points) {
       await page.mouse.click(x, y);

@@ -67,11 +67,11 @@ export function pinSelection(map, search, parent) {
 export function mountSearch(map, places) {
   const search = createShowcaseSearch(map, places);
   const box = document.getElementById("search");
-  const input = Object.assign(document.createElement("input"), { type: "search", placeholder: "地点名・座標（35.68, 139.76 / 第IX系 X … Y … / 54N …）" });
+  const input = Object.assign(document.createElement("input"), { type: "search", placeholder: "地点名や座標で検索" });
   input.setAttribute("role", "combobox");
   input.setAttribute("aria-autocomplete", "list");
   input.setAttribute("aria-controls", "search-results");
-  const list = Object.assign(document.createElement("ul"), { id: "search-results" });
+  const list = Object.assign(document.createElement("ul"), { id: "search-results", hidden: true });
   list.setAttribute("role", "listbox");
   const status = document.createElement("p");
   status.className = "search-status";

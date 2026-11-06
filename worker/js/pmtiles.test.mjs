@@ -79,3 +79,40 @@ test("an Archive whose header fetch failed asks again", async () => {
   assert.ok((await archive.start()).header);
   assert.equal(fetches, 2);
 });
+
+// An Archive whose every directory is one of three entries, with its fetches counted.
+function directories(maxEntries) {
+  const header = Buffer.alloc(127);
+  header.write("PMTiles", 0, "ascii");
+  header[7] = 3;
+  header[97] = 1;
+  const fetches = [];
+  const archive = new Archive("a", async (_, offset, length) => {
+    if (offset === 0) return new Uint8Array(header);
+    fetches.push(offset);
+    if (offset === 666) throw new Error("offline");
+    return new Uint8Array([3, 5, 2, 13, 1, 3, 0, 10, 20, 30, 1, 0, 101]).subarray(0, length);
+  }, maxEntries);
+  return { archive, fetches };
+}
+
+test("an Archive drops its oldest directories past the limit in entries", async () => {
+  const { archive, fetches } = directories(7);
+  await archive.directory(1000, 13);
+  await archive.directory(2000, 13);
+  await archive.directory(1000, 13);
+  assert.deepEqual([archive.directories.size, archive.entries, fetches.length], [2, 6, 2]);
+  await archive.directory(3000, 13);
+  assert.deepEqual([archive.directories.size, archive.entries], [2, 6]);
+  await archive.directory(1000, 13);
+  assert.deepEqual(fetches, [1000, 2000, 3000, 1000]);
+});
+
+test("an Archive keeps the newest directory even past the limit, and none that failed", async () => {
+  const { archive } = directories(2);
+  await archive.directory(1000, 13);
+  await archive.directory(2000, 13);
+  assert.deepEqual([[...archive.directories.keys()], archive.entries], [["2000:13"], 3]);
+  await assert.rejects(archive.directory(666, 13), /offline/);
+  assert.deepEqual([[...archive.directories.keys()], archive.entries], [["2000:13"], 3]);
+});

@@ -24,7 +24,7 @@ export function createCoordinateReadout(map) {
   return c;
 }
 
-/** The readout as a box over the map, for the plain-DOM examples. */
+/** The readout in the status bar `parent`, for the plain-DOM examples. */
 export function mountCoordinates(map, parent) {
   const c = createCoordinateReadout(map);
   const box = document.createElement("dl");
@@ -32,10 +32,11 @@ export function mountCoordinates(map, parent) {
   parent.append(box);
   const draw = () =>
     box.replaceChildren(
-      ...c.state.values.flatMap((v) => [
-        Object.assign(document.createElement("dt"), { textContent: v.title }),
-        Object.assign(document.createElement("dd"), { textContent: v.text }),
-      ]),
+      ...c.state.values.map((v) => {
+        const item = document.createElement("div");
+        item.append(Object.assign(document.createElement("dt"), { textContent: v.title }), Object.assign(document.createElement("dd"), { textContent: v.text }));
+        return item;
+      }),
     );
   c.subscribe(draw);
   draw();

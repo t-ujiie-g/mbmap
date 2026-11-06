@@ -31,6 +31,9 @@ export async function readCapped(res, max = MAX_BODY_BYTES) {
   return out;
 }
 
+/** How long a fetch of data (files up to 256 MB, not map tiles) may take, its body included. */
+export const DATA_TIMEOUT_MS = 5 * 60 * 1000;
+
 // What a `transformRequest` may set on a fetch: string headers and a
 // credentials mode (none sent otherwise); anything else is left out.
 export function fetchInit(init, signal) {
@@ -43,3 +46,6 @@ export function fetchInit(init, signal) {
   }
   return out;
 }
+
+/** `fetchInit` with the data timeout: a stalled server must not hold the data worker's queue for good. */
+export const dataFetchInit = (init) => fetchInit(init, AbortSignal.timeout(DATA_TIMEOUT_MS));

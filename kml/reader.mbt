@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 /// Most properties one feature may have (AGENTS.md §8.2).
 pub const MAX_KML_KEYS : Int32 = 4096
@@ -109,7 +112,9 @@ fn Props::merge(self : Props, other : Props) -> Unit {
 ///|
 /// The geometries of one feature, in `@geom.Table`'s offsets with a member per
 /// row and z dropped: `kinds`, then part, ring and point ends over `coords`.
+/// `reader` counts the points.
 priv struct Shapes {
+  reader : Reader
   kinds : Array[@geom.GeomKind]
   part_ends : Array[Int32]
   ring_ends : Array[Int32]
@@ -118,14 +123,24 @@ priv struct Shapes {
 }
 
 ///|
-fn Shapes::new() -> Shapes {
-  { kinds: [], part_ends: [], ring_ends: [], point_ends: [], coords: [], }
+fn Shapes::new(reader : Reader) -> Shapes {
+  {
+    reader,
+    kinds: [],
+    part_ends: [],
+    ring_ends: [],
+    point_ends: [],
+    coords: [],
+  }
 }
 
 ///|
 fn Shapes::point(self : Shapes, x : Double, y : Double) -> Unit {
-  self.coords.push(x)
-  self.coords.push(y)
+  if self.reader.has_room(1) {
+    self.reader.points += 1
+    self.coords.push(x)
+    self.coords.push(y)
+  }
 }
 
 ///|
@@ -206,14 +221,16 @@ fn Lookup::set(self : Lookup, key : String, value : Int32) -> Unit {
 }
 
 ///|
-/// What both readers share: the document, the host's number conversions and the
-/// table being built.
+/// What both readers share: the document, the host's number conversions, the
+/// table being built, the points read into shapes and what `charge` has counted.
 priv struct Reader {
   doc : @xml.Document
   number : (String) -> Double
   number_text : (Double) -> String
   out : @geom.TableBuilder
   mut limit : String?
+  mut points : Int32
+  mut charged : Int64
   max_cells : Int64
   max_points : Int32
 }
@@ -230,6 +247,8 @@ fn Reader::new(
     number_text,
     out: @geom.TableBuilder::new(),
     limit: None,
+    points: 0,
+    charged: 0,
     max_cells: MAX_KML_CELLS.to_int64(),
     max_points: MAX_KML_POINTS,
   }
@@ -240,6 +259,34 @@ fn Reader::new(
 /// `finish` raises).
 fn Reader::stopped(self : Reader) -> Bool {
   self.limit is Some(_)
+}
+
+///|
+/// Stops reading past `max` of `what`.
+fn Reader::limit_at(self : Reader, max : Int32, what : String) -> Unit {
+  self.limit = Some("more than \{max} \{what}")
+}
+
+///|
+/// Whether `pending` more points fit; if not, reading stops.
+fn Reader::has_room(self : Reader, pending : Int32) -> Bool {
+  if self.points + pending <= self.max_points {
+    return true
+  }
+  self.limit_at(MAX_KML_POINTS, "points")
+  false
+}
+
+///|
+/// Counts `cells` of text about to be built that no table row holds yet, as a table's
+/// cells count; false past the limit, where reading stops.
+fn Reader::charge(self : Reader, cells : Int64) -> Bool {
+  self.charged += cells
+  if self.charged <= self.max_cells {
+    return true
+  }
+  self.limit_at(MAX_KML_CELLS, "property cells")
+  false
 }
 
 ///|
@@ -283,7 +330,7 @@ fn Reader::num1(self : Reader, node : Int32, tag : String) -> Double {
 
 ///|
 /// Adds a row per member of `shapes` with `props` (one without geometry if it
-/// has none).
+/// has none), up to the limits.
 fn Reader::emit(
   self : Reader,
   shapes : Shapes,
@@ -312,14 +359,13 @@ fn Reader::emit(
       out.prop(item.0, item.1)
     }
     out.end_feature(if members > 0 { shapes.kinds[m] } else { NoGeometry }, id~)
-  }
-  let t = out.table
-  if props.over {
-    self.limit = Some("more than \{MAX_KML_KEYS} properties in a feature")
-  } else if t.columns.length().to_int64() * t.length().to_int64() >
-    self.max_cells {
-    self.limit = Some("more than \{MAX_KML_CELLS} property cells")
-  } else if t.coords.length() / 2 > self.max_points {
-    self.limit = Some("more than \{MAX_KML_POINTS} points")
+    if props.over {
+      self.limit_at(MAX_KML_KEYS, "properties in a feature")
+    } else if out.cells() > self.max_cells {
+      self.limit_at(MAX_KML_CELLS, "property cells")
+    }
+    if self.stopped() {
+      return
+    }
   }
 }

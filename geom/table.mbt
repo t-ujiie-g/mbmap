@@ -102,11 +102,25 @@ pub fn Table::points(self : Table, r : Int32) -> (Int32, Int32) {
 pub struct TableBuilder {
   table : Table
   priv props : Array[(String, Prop)]
+  priv mut values_set : Int64
 }
 
 ///|
 pub fn TableBuilder::new() -> TableBuilder {
-  { table: Table::new(), props: [], }
+  { table: Table::new(), props: [], values_set: 0, }
+}
+
+///|
+/// Property cells so far, for readers' limits: the values set, or the rows times
+/// columns `finish` pads the table to if that is more.
+pub fn TableBuilder::cells(self : TableBuilder) -> Int64 {
+  let t = self.table
+  let padded = t.length().to_int64() * t.columns.length().to_int64()
+  if padded > self.values_set {
+    padded
+  } else {
+    self.values_set
+  }
 }
 
 ///|
@@ -181,6 +195,7 @@ pub fn TableBuilder::end_feature(
   )
   t.part_ends.push(parts)
   t.ids.push(id)
+  self.values_set += self.props.length().to_int64()
   // Columns are padded with None only when they get a value (and by
   // `finish`), so a feature costs its own properties, not every column.
   for p in self.props {

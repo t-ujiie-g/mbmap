@@ -1,7 +1,7 @@
 // The panel's basemaps, layer list and legend drawn with plain DOM from
 // `mbmap/ui`'s controllers (the React example draws them its own way).
 import { createBasemaps, createLayerList, createLegend } from "mbmap/ui";
-import { BASEMAPS, LAYER_GROUPS, LAYER_TITLES, createStyle, legendLabel } from "./style.js";
+import { BASEMAPS, LAYER_GROUPS, LAYER_TITLES, createStyle, datasets, legendLabel } from "./style.js";
 
 /** CSS for a straight RGBA color in 0 to 1. */
 export const css = ([r, g, b, a]) => `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
@@ -13,7 +13,7 @@ export const css = ([r, g, b, a]) => `rgba(${Math.round(r * 255)}, ${Math.round(
 export function panelControllers(map, mode, places) {
   const layers = createLayerList(map, { groups: LAYER_GROUPS.map((g) => ({ id: g.name, layers: g.ids })) });
   const hidden = () => new Set(layers.state.items.filter((i) => i.layers.length > 0 && !i.visible).map((i) => i.id));
-  const legend = createLegend(map, { title: (l) => LAYER_TITLES[l.id] ?? l.id, label: legendLabel });
+  const legend = createLegend(map, { title: (l) => LAYER_TITLES[l.id] ?? datasets.get(l.source)?.name ?? l.id, label: legendLabel });
   const basemaps = createBasemaps(map, {
     basemaps: BASEMAPS.map((b) => ({ ...b, style: () => createStyle(mode(), hidden(), places(), b.id) })),
     active: "map",
@@ -42,12 +42,12 @@ export function mountPanel(c) {
     );
     document.getElementById("layers").replaceChildren(
       ...c.layers.state.items.map((item) => {
-        const button = Object.assign(document.createElement("button"), { textContent: item.title });
-        button.setAttribute("aria-pressed", String(item.visible));
-        button.disabled = item.layers.length === 0;
-        button.classList.toggle("out-of-range", !item.inRange);
-        button.addEventListener("click", () => c.layers.toggle(item.id));
-        return button;
+        const label = Object.assign(document.createElement("label"), { textContent: item.title });
+        const input = Object.assign(document.createElement("input"), { type: "checkbox", checked: item.visible, indeterminate: item.mixed, disabled: item.layers.length === 0 });
+        label.classList.toggle("out-of-range", !item.inRange);
+        input.addEventListener("change", () => c.layers.toggle(item.id));
+        label.append(input);
+        return label;
       }),
     );
     const entries = c.legend.state.entries.filter((e) => e.visible && e.items.length > 0);
@@ -61,7 +61,7 @@ export function mountPanel(c) {
           const items = document.createElement("ul");
           items.append(...e.items.map((i) => Object.assign(document.createElement("li"), { textContent: ` ${i.label}` })));
           e.items.forEach((i, k) => items.children[k].prepend(swatch(e.type, i.paint)));
-          row.append(title, Object.assign(document.createElement("span"), { textContent: ` (${e.property})` }), items);
+          row.append(title, items);
         }
         return row;
       }),

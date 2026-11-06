@@ -1,9 +1,10 @@
 // The map's controls drawn with plain DOM from `mbmap/ui`'s controllers (the
 // React example draws the same controllers its own way): zoom, compass, home,
 // location, full screen, a scale bar and the attributions.
+import { icon } from "./icons.js";
 import { createAttribution, createFullscreen, createGeolocation, createNavigation, createScale } from "mbmap/ui";
 
-const LOCATION_LABELS = {
+export const LOCATION_LABELS = {
   unavailable: "現在地は使えません",
   off: "現在地を表示",
   waiting: "現在地を取得中",
@@ -13,17 +14,18 @@ const LOCATION_LABELS = {
   "background-error": "現在地を取得できません",
 };
 
-function button(label, onClick) {
+function button(label, name, onClick) {
   const b = document.createElement("button");
   b.type = "button";
+  b.append(icon(name));
   b.setAttribute("aria-label", label);
   b.title = label;
   b.addEventListener("click", onClick);
   return b;
 }
 
-/** Controls over `map` in `parent` (which covers the map); returns their removal. */
-export function mountControls(map, parent) {
+/** Controls over `map` in `parent` (which covers the map), the scale and credits in `status`; returns their removal. */
+export function mountControls(map, parent, status) {
   const nav = createNavigation(map);
   const geo = createGeolocation(map, { trackUserLocation: true });
   const full = createFullscreen(map, { container: document.documentElement });
@@ -33,22 +35,23 @@ export function mountControls(map, parent) {
 
   const box = document.createElement("div");
   box.className = "controls";
-  const zoomIn = button("拡大", () => nav.zoomIn());
-  zoomIn.textContent = "+";
-  const zoomOut = button("縮小", () => nav.zoomOut());
-  zoomOut.textContent = "−";
-  const compass = button("北を上に", () => nav.resetNorth(true));
+  const zoomIn = button("拡大", "plus", () => nav.zoomIn());
+  const zoomOut = button("縮小", "minus", () => nav.zoomOut());
+  const compass = button("北を上に", "north", () => nav.resetNorth(true));
   const needle = document.createElement("span");
   needle.className = "needle";
-  needle.textContent = "↑";
+  needle.append(compass.firstChild);
   compass.append(needle);
-  const home = button("最初の位置へ", () => nav.home());
-  home.textContent = "⌂";
-  const locate = button(LOCATION_LABELS.off, () => geo.trigger());
-  locate.textContent = "◎";
-  const fullscreen = button("全画面", () => full.toggle());
-  fullscreen.textContent = "⛶";
-  box.append(zoomIn, zoomOut, compass, home, locate, fullscreen);
+  const home = button("最初の位置へ", "home", () => nav.home());
+  const locate = button(LOCATION_LABELS.off, "locate", () => geo.trigger());
+  const fullscreen = button("全画面", "fullscreen", () => full.toggle());
+  const group = (...buttons) => {
+    const g = document.createElement("div");
+    g.className = "control-group";
+    g.append(...buttons);
+    return g;
+  };
+  box.append(group(zoomIn, zoomOut, compass), group(home, locate, fullscreen));
 
   const bar = document.createElement("div");
   bar.className = "scale";
@@ -58,7 +61,8 @@ export function mountControls(map, parent) {
   const dot = document.createElement("div");
   dot.className = "location";
   dot.hidden = true;
-  parent.append(box, bar, credits, dot);
+  parent.append(box, dot);
+  status.append(bar, credits);
   let tracker = null;
 
   const draw = () => {

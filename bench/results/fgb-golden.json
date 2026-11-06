@@ -47,10 +47,10 @@
     },
     "bbox http": {
       "cases": 92,
-      "rows": 57431,
-      "identical": 89,
+      "rows": 57436,
+      "identical": 91,
       "bothRefuse": 1,
-      "differ": 2
+      "differ": 0
     },
     "hostile": {
       "cases": 5,
@@ -64,28 +64,28 @@
     "building-16": {
       "bytes": 4925320,
       "requests": {
-        "ours": 27,
+        "ours": 29,
         "theirs": 29
       }
     },
     "road-16": {
       "bytes": 1803408,
       "requests": {
-        "ours": 26,
+        "ours": 28,
         "theirs": 28
       }
     },
     "contour-2": {
       "bytes": 66832,
       "requests": {
-        "ours": 23,
+        "ours": 22,
         "theirs": 22
       }
     },
     "label-16": {
       "bytes": 101792,
       "requests": {
-        "ours": 23,
+        "ours": 24,
         "theirs": 24
       }
     },
@@ -99,7 +99,7 @@
     "typed": {
       "bytes": 1288,
       "requests": {
-        "ours": 17,
+        "ours": 18,
         "theirs": 18
       }
     },
@@ -181,5 +181,5 @@
       "ok": true
     }
   ],
-  "differ": 2
+  "differ": 0
 }

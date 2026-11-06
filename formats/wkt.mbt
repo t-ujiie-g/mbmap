@@ -193,8 +193,8 @@ fn Wkt::geometry(self : Wkt, depth : Int32) -> Unit {
     self.fail("collections nested too deep")
     return
   }
-  let (s, e) = self.word()
-  if depth == 0 && self.named(s, e, "SRID") {
+  let mut first = self.word()
+  while depth == 0 && self.named(first.0, first.1, "SRID") {
     if !self.expect('=') {
       return
     }
@@ -212,9 +212,9 @@ fn Wkt::geometry(self : Wkt, depth : Int32) -> Unit {
       return
     }
     self.shapes.srid = srid
-    self.geometry(depth)
-    return
+    first = self.word()
   }
+  let (s, e) = first
   // The type, with its dimension attached (`POINTZ`) or after it (`POINT Z`).
   let mut code = 0
   let mut dims = -1

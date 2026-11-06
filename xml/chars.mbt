@@ -1,3 +1,6 @@
+// Ported from @xmldom/xmldom 0.9.12: MIT License, Copyright 2019 - present Christopher J. Brody
+// and other contributors, Copyright 2012 - 2017 @jindw and other contributors. See NOTICE.
+
 ///|
 /// Whether the code point at byte `j` is not XML's `Char`: a C0 control other
 /// than tab, line feed and carriage return, or U+FFFE / U+FFFF. (Malformed UTF-8

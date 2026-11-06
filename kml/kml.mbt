@@ -1,3 +1,6 @@
+// Ported from @tmcw/togeojson 7.1.3: BSD 2-Clause License, Copyright (c) 2019 Tom MacWright,
+// Mapbox. See NOTICE.
+
 ///|
 /// Reads a KML document into rows as togeojson's `kml()` does: every `Placemark`, then every
 /// `GroundOverlay` (no `NetworkLink`s); a multi-geometry gives a row per member, nested values are
@@ -41,7 +44,7 @@ pub fn read_kml(
         ] {
         r.val_into(p, f, t)
       }
-      let shapes = Shapes::new()
+      let shapes = Shapes::new(r)
       let times = []
       if k == 0 {
         r.geometry(f, shapes, times)
@@ -143,8 +146,8 @@ fn Reader::common(
 
 ///|
 /// The tuples of `s` as togeojson's `coord` reads them, four numbers each (a count, up to three
-/// values, NaN after): white space separates tuples, NaN parts are skipped, and tuples of fewer
-/// than two numbers are left out (unless `point`, which reads `s` as one tuple).
+/// values, NaN after); tuples of fewer than two numbers are left out (unless `point`, which
+/// reads `s` as one tuple). Stops past the point limit.
 fn Reader::tuples(self : Reader, s : String, point : Bool) -> Array[Double] {
   let out = []
   let n = s.length()
@@ -181,7 +184,7 @@ fn Reader::tuples(self : Reader, s : String, point : Bool) -> Array[Double] {
     if count < 2 && !point {
       out.truncate(at)
     }
-    if point {
+    if point || !self.has_room(out.length() / 4) {
       break
     }
   }
@@ -229,6 +232,9 @@ fn Reader::geometry(
 ) -> Unit {
   let d = self.doc
   for c in d.children(node) {
+    if self.stopped() {
+      return
+    }
     match d.name(c) {
       "MultiGeometry" | "MultiTrack" | "gx:MultiTrack" =>
         self.geometry(c, shapes, times)
@@ -253,6 +259,9 @@ fn Reader::geometry(
         }
       "Polygon" => {
         for ring in d.elements(c, "LinearRing") {
+          if self.stopped() {
+            return
+          }
           add_tuples(
             shapes,
             self.tuples(self.val(ring, "coordinates"), false),

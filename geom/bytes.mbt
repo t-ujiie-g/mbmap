@@ -151,6 +151,14 @@ pub fn Table::from_bytes(b : BytesView) -> Table? {
   if !r.ok() {
     return None
   }
+  // Only `NoGeometry` has no parts, as `end_feature` makes it: readers index a
+  // feature's first part by its kind.
+  for i in 0..<f {
+    if (t.kinds[i] is NoGeometry) !=
+      (t.part_ends[i] == start_of(t.part_ends, i)) {
+      return None
+    }
+  }
   for _ in 0..<(pts * 2) {
     t.coords.push(r.f64())
   }
