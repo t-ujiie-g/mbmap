@@ -1,29 +1,4 @@
 ///|
-/// `@worker.KIND_FILL`, `KIND_LINE` and `KIND_CIRCLE`, mirrored so the main
-/// bundle does not pull in the worker.
-const KIND_FILL : Int32 = 1
-
-///|
-const KIND_LINE : Int32 = 2
-
-///|
-const KIND_CIRCLE : Int32 = 3
-
-///|
-/// `@worker.KIND_EXTRUSION`, mirrored like the other kinds.
-const KIND_EXTRUSION : Int32 = 6
-
-///|
-/// A `raster-dem` tile's slopes for its source's hillshade layers (the worker's
-/// entry has layer -1: it serves every hillshade layer of the source).
-const KIND_HILLSHADE : Int32 = 5
-
-///|
-/// A raster tile's image: like a DEM tile's entry, layer -1 serves every
-/// raster layer of the source.
-const KIND_RASTER : Int32 = 7
-
-///|
 /// The tiles of one source the style's layers draw from: `index` is its
 /// position in the style's sources (the worker knows sources by it).
 priv struct SourceTiles {
@@ -286,9 +261,9 @@ fn Map::layer_mesh(
 ) -> LayerMesh {
   let shared = get_int(l, "shared")
   let kind = get_int(l, "kind")
-  let (mesh, labels) = if kind == KIND_RASTER {
+  let (mesh, labels) = if kind == @core.KIND_RASTER {
     (self.renderer.upload_raster(buffer_of(l, "image")), None)
-  } else if kind == KIND_HILLSHADE {
+  } else if kind == @core.KIND_HILLSHADE {
     let mesh = self.renderer.upload_slopes(
       buffer_of(l, "image"),
       get_int(l, "size"),
@@ -304,12 +279,12 @@ fn Map::layer_mesh(
       self.labels_dirty = true
     }
     (mesh, None)
-  } else if kind == KIND_SYMBOL {
+  } else if kind == @core.KIND_SYMBOL {
     let (mesh, labels) = self.symbol_mesh(l)
     (mesh, Some(labels))
   } else if shared >= 0 && shared < meshes.length() {
     (meshes[shared].mesh, None)
-  } else if kind == KIND_EXTRUSION {
+  } else if kind == @core.KIND_EXTRUSION {
     (
       self.renderer.upload_extrusion(
         buffer_of(l, "vertices"),
@@ -321,17 +296,17 @@ fn Map::layer_mesh(
     )
   } else {
     let mesh = self.renderer.upload(
-      kind != KIND_FILL,
+      kind != @core.KIND_FILL,
       buffer_of(l, "vertices"),
       buffer_of(l, "indices"),
       get_int(l, "count"),
       get_int(l, "indexBytes"),
     )
-    if kind == KIND_LINE && !is_null_value(distances_of_layer(l)) {
+    if kind == @core.KIND_LINE && !is_null_value(distances_of_layer(l)) {
       self.renderer.upload_distances(mesh, buffer_of(l, "distances"))
     }
     let patterns = dash_pattern_count(l)
-    if kind == KIND_LINE && patterns >= 0 {
+    if kind == @core.KIND_LINE && patterns >= 0 {
       let li = get_int(l, "layer")
       let round = li >= 0 &&
         li < self.style.layers.length() &&
@@ -346,13 +321,13 @@ fn Map::layer_mesh(
         buffer_of(l, "dashMarks"),
       )
     }
-    if kind == KIND_LINE && !is_null_value(offsets_of_layer(l)) {
+    if kind == @core.KIND_LINE && !is_null_value(offsets_of_layer(l)) {
       self.renderer.upload_offsets(mesh, buffer_of(l, "offsets"))
     }
-    if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
+    if kind == @core.KIND_LINE && !is_null_value(progress_of_layer(l)) {
       self.renderer.upload_progress(mesh, buffer_of(l, "progress"))
     }
-    if kind == KIND_FILL && get_int(l, "outlineCount") > 0 {
+    if kind == @core.KIND_FILL && get_int(l, "outlineCount") > 0 {
       self.renderer.upload_outline(
         mesh,
         buffer_of(l, "outline"),
@@ -387,7 +362,7 @@ fn Map::layer_mesh(
       Some(self.renderer.upload_paint(buffer_of(l, "paint")))
     },
     labels,
-    ground: if kind == KIND_EXTRUSION {
+    ground: if kind == @core.KIND_EXTRUSION {
       Some({
         runs: @render_webgl2.extrusion_runs(buffer_of(l, "vertices")),
         at: 0,
@@ -395,7 +370,7 @@ fn Map::layer_mesh(
     } else {
       None
     },
-    clips: if kind == KIND_LINE && !is_null_value(progress_of_layer(l)) {
+    clips: if kind == @core.KIND_LINE && !is_null_value(progress_of_layer(l)) {
       Some(self.ramp_clips(request, f64_array(buffer_of(l, "clips"))))
     } else {
       None
@@ -406,7 +381,7 @@ fn Map::layer_mesh(
       Some(f64_array(buffer_of(l, "keyRuns")))
     },
     gradient: None,
-    dem: if kind == KIND_HILLSHADE {
+    dem: if kind == @core.KIND_HILLSHADE {
       let heights = buffer_of(l, "elevations")
       let range = height_range(heights)
       Some({

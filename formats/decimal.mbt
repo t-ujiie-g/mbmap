@@ -1,16 +1,6 @@
 // Ported from papaparse 5.7.0: MIT License, Copyright (c) 2015 Matthew Holt. See NOTICE.
 
 ///|
-/// 10^k for 0 <= k <= 22, exact: every partial product is a double exactly.
-fn exact_ten(k : Int32) -> Double {
-  let mut v = 1.0
-  for _ in 0..<k {
-    v = v * 10.0
-  }
-  v
-}
-
-///|
 /// The decimal number at `start` of `b` before `limit` (`-`, or `+` if `plus`, then
 /// `1`, `1.`, `1.5` or `.5`, then an exponent) and the position after it, or `start`.
 /// Up to 15 digits and exponents within ±22 are exact (Clinger); `slow` takes the rest.
@@ -84,9 +74,9 @@ fn read_decimal(
   if digits <= 15 && exponent.abs() <= 22 {
     let m = mantissa.to_double()
     let v = if exponent < 0 {
-      m / exact_ten(-exponent)
+      m / @core.exact_powers[-exponent]
     } else {
-      m * exact_ten(exponent)
+      m * @core.exact_powers[exponent]
     }
     return (if negative { -v } else { v }, i)
   }

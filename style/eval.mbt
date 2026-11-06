@@ -522,13 +522,6 @@ fn Expr::any(self : Expr, pred : (Expr) -> Bool) -> Bool {
 }
 
 ///|
-/// Whether the expression reads the feature's geometry itself (`within`,
-/// `distance`), known only where tiles are read.
-pub fn Expr::reads_geometry(self : Expr) -> Bool {
-  self.any(e => e is (Within(_) | Distance(_)))
-}
-
-///|
 /// Whether the expression reads `line-progress`.
 fn Expr::reads_line_progress(self : Expr) -> Bool {
   self.any(e => e is LineProgress)

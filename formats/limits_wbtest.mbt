@@ -320,7 +320,7 @@ test "TopoJSON stops at its key and cell limits" {
   sb.write_string("]}}}")
   let many = @utf8.encode(sb.to_string())
   let error = limit_error(() => {
-    topojson_table(many[:], None, no_number, 100, MAX_GEOJSON_CELLS).0
+    topojson_table(many[:], None, no_number, 100, @geom.MAX_TABLE_CELLS).0
   })
   assert_true(error.has_suffix("more than 4096 property keys"))
   let two = b"{\"type\":\"Topology\",\"arcs\":[],\"objects\":{\"a\":{\"type\":\"GeometryCollection\",\"geometries\":[{\"properties\":{\"a\":0}},{\"properties\":{\"b\":0}}]}}}"
@@ -430,4 +430,34 @@ test "telling holes from outer rings stops at its budget" {
     _ => ""
   }
   assert_eq(e, "malformed shapefile at 7: too many rings to tell apart")
+}
+
+///|
+test "TopoJSON stops at its point limit" {
+  let line = b"{\"type\":\"Topology\",\"arcs\":[[[0,0],[1,1]]],\"objects\":{\"a\":{\"type\":\"LineString\",\"arcs\":[0]}}}"
+  let read = (points : Int32) => {
+    topojson_table(line[:], None, slow_of(line), points, @geom.MAX_TABLE_CELLS).0
+  }
+  assert_eq(read(2).length(), 1)
+  assert_true(limit_error(() => read(1)).has_suffix("too many points"))
+  let lines = b"{\"type\":\"Topology\",\"arcs\":[[[0,0],[1,1]]],\"objects\":{\"a\":{\"type\":\"GeometryCollection\",\"geometries\":[{\"type\":\"LineString\",\"arcs\":[0]},{\"type\":\"LineString\",\"arcs\":[0]}]}}}"
+  let read = (points : Int32) => {
+    topojson_table(
+      lines[:],
+      None,
+      slow_of(lines),
+      points,
+      @geom.MAX_TABLE_CELLS,
+    ).0
+  }
+  assert_eq(read(4).length(), 2)
+  assert_true(limit_error(() => read(3)).has_suffix("too many points"))
+}
+
+///|
+test "a hole in an outer ring's box but out of the ring becomes an outer ring" {
+  let c = polygon_record([[5, 0, 0, 5, 5, 10, 10, 5, 5, 0], square(0, 1, false)])
+  let out = @geom.TableBuilder::new()
+  assert_true(shape(c[:], 0, out, Rings::new(1000), 100) is MultiPolygon)
+  assert_eq(out.table.ring_ends, [1, 2])
 }

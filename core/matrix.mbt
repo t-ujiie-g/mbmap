@@ -7,6 +7,7 @@ pub struct Mat4 {
 } derive(Debug, Eq)
 
 ///|
+/// The identity matrix.
 pub fn Mat4::identity() -> Mat4 {
   let m = FixedArray::make(16, 0.0)
   m[0] = 1.0
@@ -55,6 +56,7 @@ pub fn Mat4::perspective(
 }
 
 ///|
+/// This matrix with a translation applied before it.
 pub fn Mat4::translate(self : Mat4, x : Double, y : Double, z : Double) -> Mat4 {
   let t = Mat4::identity()
   t.m[12] = x
@@ -64,6 +66,7 @@ pub fn Mat4::translate(self : Mat4, x : Double, y : Double, z : Double) -> Mat4 
 }
 
 ///|
+/// This matrix with a scaling applied before it.
 pub fn Mat4::scale(self : Mat4, x : Double, y : Double, z : Double) -> Mat4 {
   let s = Mat4::identity()
   s.m[0] = x

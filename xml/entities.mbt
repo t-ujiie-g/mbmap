@@ -116,5 +116,7 @@ fn write_units(
   start : Int32,
   end : Int32,
 ) -> Unit {
-  out.write_view(s.view(start_offset=start, end_offset=end))
+  for i in start..<end {
+    out.write_char(s[i].to_int().unsafe_to_char())
+  }
 }

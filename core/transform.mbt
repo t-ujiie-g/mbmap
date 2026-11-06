@@ -110,7 +110,8 @@ fn make(
 }
 
 ///|
-fn radians(degrees : Double) -> Double {
+/// `degrees` in radians.
+pub fn radians(degrees : Double) -> Double {
   degrees * @math.PI / 180.0
 }
 

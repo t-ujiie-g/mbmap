@@ -2,6 +2,17 @@
 let hex_digits : String = "0123456789abcdef"
 
 ///|
+/// Whether a surrogate pair starts at code unit `i` of `s`.
+fn surrogate_pair(s : String, i : Int32) -> Bool {
+  let c = s[i].to_int()
+  c >= 0xD800 &&
+  c <= 0xDBFF &&
+  i + 1 < s.length() &&
+  s[i + 1].to_int() >= 0xDC00 &&
+  s[i + 1].to_int() <= 0xDFFF
+}
+
+///|
 /// `JSON.stringify(s)` as well-formed `JSON.stringify` writes it: lone
 /// surrogates escaped.
 fn json_string(s : String) -> String {
@@ -11,13 +22,8 @@ fn json_string(s : String) -> String {
   let mut i = 0
   while i < n {
     let c = s[i].to_int()
-    let pair = c >= 0xD800 &&
-      c <= 0xDBFF &&
-      i + 1 < n &&
-      s[i + 1].to_int() >= 0xDC00 &&
-      s[i + 1].to_int() <= 0xDFFF
-    if pair {
-      out.write_view(s.view(start_offset=i, end_offset=i + 2))
+    if surrogate_pair(s, i) {
+      out.write_view(s.clamped_view(start=i, end=i + 2))
       i += 2
       continue
     }

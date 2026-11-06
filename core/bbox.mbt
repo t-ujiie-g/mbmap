@@ -1,6 +1,6 @@
 ///|
 /// Axis-aligned box; `min` is inclusive and `max` exclusive for containment.
-/// `BBox::empty()` contains nothing and is the identity for `add_point`.
+/// `BBox::empty()` contains nothing.
 pub(all) struct BBox {
   min_x : Double
   min_y : Double
@@ -24,24 +24,6 @@ pub fn BBox::is_empty(self : BBox) -> Bool {
 }
 
 ///|
-pub fn BBox::add_point(self : BBox, x : Double, y : Double) -> BBox {
-  {
-    min_x: @cmp.minimum(self.min_x, x),
-    min_y: @cmp.minimum(self.min_y, y),
-    max_x: @cmp.maximum(self.max_x, x),
-    max_y: @cmp.maximum(self.max_y, y),
-  }
-}
-
-///|
 pub fn BBox::contains(self : BBox, x : Double, y : Double) -> Bool {
   x >= self.min_x && x < self.max_x && y >= self.min_y && y < self.max_y
-}
-
-///|
-pub fn BBox::intersects(self : BBox, other : BBox) -> Bool {
-  self.min_x < other.max_x &&
-  other.min_x < self.max_x &&
-  self.min_y < other.max_y &&
-  other.min_y < self.max_y
 }

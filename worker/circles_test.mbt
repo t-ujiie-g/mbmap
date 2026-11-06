@@ -27,7 +27,7 @@ test "circle layers pack one quad per point and share buffers like other kinds" 
       entry(1, @worker.ENTRY_KIND),
       entry(2, @worker.ENTRY_KIND),
     ),
-    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
+    (@core.KIND_CIRCLE, @core.KIND_CIRCLE, @core.KIND_CIRCLE),
   )
   assert_eq(entry(2, @worker.ENTRY_INDEX_COUNT), 12)
   // Two points inside the tile: 8 vertices, 12 indices; "halo" reuses them.
@@ -65,7 +65,7 @@ test "heatmap layers pack circle quads with their weights per vertex" {
   // Circles of their own: a heatmap's buffers are not shared with circles.
   assert_eq(
     (entry(0, @worker.ENTRY_KIND), entry(1, @worker.ENTRY_KIND)),
-    (@worker.KIND_CIRCLE, @worker.KIND_CIRCLE),
+    (@core.KIND_CIRCLE, @core.KIND_CIRCLE),
   )
   assert_true(
     entry(1, @worker.ENTRY_VERTEX_OFFSET) !=
@@ -101,7 +101,7 @@ test "heatmaps reading feature state go by group, with their features' ranges" {
   assert_eq(p.out.layer_count(), 1)
   assert_eq(
     (entry(0, @worker.ENTRY_KIND), entry(0, @worker.ENTRY_PAINT_BYTES)),
-    (@worker.KIND_CIRCLE, 0),
+    (@core.KIND_CIRCLE, 0),
   )
   assert_eq(u32_at(b, entry(0, @worker.ENTRY_PROPS_OFFSET)), 0)
   // The feature's range in the entry, for its state.

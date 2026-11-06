@@ -33,7 +33,7 @@ license and source.
   (src/expression/definitions/within.ts, distance.ts, src/util/geometry_util.ts,
   cheap_ruler.ts, taken there from Mapbox's cheap-ruler, ISC License, and
   classify_rings.ts); style/color.mbt (`parseCssColor` and `hslToRgb` of
-  src/expression/types/parse_css_color.ts and color_spaces.ts); style/expr.mbt, style/eval.mbt and style/ops.mbt
+  src/expression/types/parse_css_color.ts and color_spaces.ts); style/expr.mbt, style/global_state.mbt, style/cluster_properties.mbt, style/eval.mbt and style/ops.mbt
   (the type annotations of src/expression/parsing_context.ts, `typeOf`, `checkSubtype`,
   `valueToString` and `typeToString` of src/expression/values.ts and types.ts, the
   interpolation factor of definitions/interpolate.ts); style/icon.mbt (`Padding` of
@@ -73,7 +73,7 @@ license and source.
   text above):
   - raster/dem.mbt: hillshade_prepare.fragment.glsl (slopes) and the border
     backfill of src/data/dem_data.ts
-  - render_webgl2/gl.mbt, gl_line.mbt, gl_pattern.mbt, gl_symbol.mbt, gl_raster.mbt,
+  - render_webgl2/gl.mbt, gl_shaders.mbt, gl_line.mbt, gl_pattern.mbt, gl_symbol.mbt, gl_raster.mbt,
     renderer.mbt, renderer_line.mbt, renderer_pattern.mbt, renderer_icon.mbt,
     renderer_3d.mbt and map/render_raster.mbt: the shaders of src/shaders/glsl/
     (hillshade.fragment.glsl, every method, with `getIlluminationProperties` of
@@ -123,7 +123,7 @@ license and source.
     src/util/verticalize_punctuation.ts, the line breaking of
     src/symbol/tagged_string.ts and `codePointAllowsIdeographicBreaking` of
     src/util/unicode_properties.g.ts
-  - style/anchor.mbt and map/labels.mbt: `evaluateVariableOffset` and
+  - style/anchor.mbt, map/labels.mbt and map/label_place.mbt: `evaluateVariableOffset` and
     `getTextVariableAnchorOffset` of src/style/style_layer/variable_text_anchor.ts,
     the placement of src/symbol/placement.ts (variable anchors, passes) and
     collision_index.ts, `GridIndex.hitTest` of grid_index.ts and the tile order
@@ -145,7 +145,7 @@ license and source.
     circle and fill-extrusion style layers, `getCameraQueryGeometry`,
     `maxPitchScaleFactor` and the result ordering of src/source/query_features.ts
     and src/style/style.ts
-  - render_webgl2/gl.mbt and render_webgl2/renderer.mbt: raster.fragment.glsl
+  - render_webgl2/gl_shaders.mbt and render_webgl2/renderer.mbt: raster.fragment.glsl
     and the raster uniforms of src/webgl/program/raster_program.ts;
     core/transform.mbt: the pixel-aligned projection (`alignedProjMatrix`) of
     mercator_transform.ts; style/source.mbt: `TileBounds.contains` of
@@ -261,7 +261,7 @@ license and source.
   lib/projections/eqearth.js, Copyright 2018 Bernie Jenny, Monash University, Melbourne, Australia,
   Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
-- formats/csv.mbt, formats/decimal.mbt and formats/write.mbt: papaparse 5.7.0's delimiter
+- formats/csv.mbt, formats/csv_table.mbt, formats/decimal.mbt and formats/write.mbt: papaparse 5.7.0's delimiter
   guessing (`guessDelimiter`), header renaming and `dynamicTyping` rules, and its
   `unparse` (`JsonToCsv`: rows, quoting) (papaparse.js)
   https://github.com/mholt/PapaParse — MIT License:

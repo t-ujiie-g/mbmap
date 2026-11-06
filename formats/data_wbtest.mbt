@@ -86,7 +86,6 @@ test "read_decimal takes the fast path or hands the number to slow" {
   assert_eq(read(b"0.1234567890123456789", false), (0.1234567890123456789, 21))
   assert_eq(read(b"1e23", false), (1.0e23, 4))
   assert_eq(calls, [(0, 21), (0, 4)])
-  assert_eq(exact_ten(22), 1.0e22)
 }
 
 ///|

@@ -9,14 +9,7 @@ pub const MAX_GEOJSON_DEPTH : Int32 = 64
 pub const MAX_GEOJSON_KEYS : Int32 = 4096
 
 ///|
-/// Most points and most property cells (features times keys, as `finish` pads
-/// every column) in GeoJSON input (AGENTS.md §8.2).
-pub const MAX_GEOJSON_POINTS : Int32 = 20_000_000
-
-///|
-pub const MAX_GEOJSON_CELLS : Int32 = 32_000_000
-
-///|
+/// Malformed GeoJSON: the byte offset where reading stopped and why.
 pub(all) suberror GeoJSONError {
   Malformed(pos~ : Int32, String)
 } derive(Debug)
@@ -39,7 +32,7 @@ pub fn read_geojson(
     @core.strconv_number(bytes[s:e])
   },
 ) -> @geom.Table raise GeoJSONError {
-  read_points(bytes, slow_number, MAX_GEOJSON_POINTS)
+  read_points(bytes, slow_number, @geom.MAX_TABLE_POINTS)
 }
 
 ///|
@@ -60,7 +53,7 @@ fn read_points(
     keys: [],
     next_key: 0,
     max_points,
-    max_cells: MAX_GEOJSON_CELLS,
+    max_cells: @geom.MAX_TABLE_CELLS,
   }
   p.feature_like()
   if p.error is None && p.peek() != -1 {
@@ -448,6 +441,6 @@ fn Parser::check_properties(self : Parser) -> Unit {
   if self.out.table.columns.length() > MAX_GEOJSON_KEYS {
     self.fail("more than \{MAX_GEOJSON_KEYS} property keys")
   } else if self.out.cells() > self.max_cells.to_int64() {
-    self.fail("more than \{MAX_GEOJSON_CELLS} property cells")
+    self.fail("more than \{@geom.MAX_TABLE_CELLS} property cells")
   }
 }

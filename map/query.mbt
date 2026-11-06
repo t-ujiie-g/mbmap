@@ -248,8 +248,7 @@ pub fn Map::query_rendered(
   // under the camera, so that buildings standing between are found.
   let camera_point = (
     t.width / 2.0,
-    t.height / 2.0 +
-    @math.tan(t.camera.pitch * @math.PI / 180.0) * t.center_depth(),
+    t.height / 2.0 + @math.tan(@core.radians(t.camera.pitch)) * t.center_depth(),
   )
   let camera_screen = if points.length() == 1 {
     [points[0], camera_point]
@@ -305,7 +304,7 @@ pub fn Map::query_rendered(
       w.f64(t.height)
       w.f64(t.center_depth())
       w.f64(t.pixels_per_meter())
-      w.f64(t.camera.bearing * @math.PI / 180.0)
+      w.f64(@core.radians(t.camera.bearing))
       for v in t.tile_matrix(id, @core.TILE_EXTENT).m {
         w.f64(v)
       }

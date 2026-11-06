@@ -2,10 +2,6 @@
 // and other shapefile-js contributors. See NOTICE.
 
 ///|
-/// Most property cells (records times fields) a DBF may make (AGENTS.md §8.2).
-pub const MAX_DBF_CELLS : Int32 = 32_000_000
-
-///|
 /// A DBF field read into a column: its name, type (`C`, `N`, `F`, `L` or `D`) and
 /// bytes within a record.
 priv struct DbfField {

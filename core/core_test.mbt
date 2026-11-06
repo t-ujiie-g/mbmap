@@ -55,7 +55,6 @@ test "parent and children are inverse" {
   assert_eq(kids.length(), 4)
   for k in kids {
     assert_eq(k.parent(), Some(t))
-    assert_true(k.mercator_bounds().intersects(t.mercator_bounds()))
   }
   assert_eq((kids[3].x, kids[3].y), (29105, 12903))
   assert_true(@core.TileId::new(0, 0, 0).unwrap().parent() is None)
@@ -84,15 +83,12 @@ test "tile keys are unique across zooms" {
 }
 
 ///|
-test "BBox add_point, contains and intersects" {
+test "BBox empty and contains" {
   let e = @core.BBox::empty()
   assert_true(e.is_empty())
   assert_false(e.contains(0.0, 0.0))
-  let b = e.add_point(1.0, 2.0).add_point(3.0, -1.0)
-  assert_eq(b, { min_x: 1.0, min_y: -1.0, max_x: 3.0, max_y: 2.0, })
+  let b : @core.BBox = { min_x: 1.0, min_y: -1.0, max_x: 3.0, max_y: 2.0, }
+  assert_false(b.is_empty())
   assert_true(b.contains(1.0, -1.0))
   assert_false(b.contains(3.0, 0.0))
-  let c : @core.BBox = { min_x: 3.0, min_y: 0.0, max_x: 4.0, max_y: 1.0, }
-  assert_false(b.intersects(c))
-  assert_true(b.intersects({ ..c, min_x: 2.5, }))
 }

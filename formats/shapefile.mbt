@@ -11,7 +11,14 @@ pub fn read_shapefile(
   text~ : (Int32, Int32) -> String,
   slow_number~ : (Int32, Int32) -> Double,
 ) -> @geom.Table raise ReadError {
-  shapefile_table(shp, dbf, text, slow_number, MAX_POINTS, MAX_DBF_CELLS)
+  shapefile_table(
+    shp,
+    dbf,
+    text,
+    slow_number,
+    @geom.MAX_TABLE_POINTS,
+    @geom.MAX_TABLE_CELLS,
+  )
 }
 
 ///|

@@ -22,6 +22,11 @@ export async function tileSourceChecks(page) {
   await writeFile(path.join(dir, "tiles.json"), JSON.stringify({ tilejson: "3.0.0", tiles: ["green.png"], attribution: "TileJSON test" }));
   await writeFile(path.join(dir, "blue.pmtiles"), writeArchive([{ z: 0, x: 0, y: 0, bytes: solid(0, 0, 255) }], { tileType: 2 }));
   const centre = () => pixel(page, 400, 300);
+  // Documents that come after the engine has settled: `idle` must wait for the source they bring.
+  await page.route(/\/(tiles\.json|blue\.pmtiles)$/, async (route) => {
+    await new Promise((r) => setTimeout(r, 400));
+    await route.continue();
+  });
   await step(page, "tiles: a raster template", `map.jumpTo({ center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 });
     map.addSource("t", { type: "raster", tiles: ["/bench/dist/pack/red.png"], tileSize: 256 });
     map.addLayer({ id: "t", type: "raster", source: "t" });`);
@@ -43,6 +48,7 @@ export async function tileSourceChecks(page) {
     map.addSource("x", { type: "raster", tiles: ["/bench/dist/pack/red.png"], tileSize: 256 });
     map.addLayer({ id: "x", type: "raster", source: "x" });`);
   const transformed = await centre();
+  await page.unrouteAll({ behavior: "wait" });
   const types = await page.evaluate(() => {
     const map = window.__map;
     map.removeLayer("x");

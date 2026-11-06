@@ -24,14 +24,14 @@ function jsConsts(path) {
 }
 
 const packed = moonConsts("../packed.mbt");
-const tiles = moonConsts("../../map/tiles.mbt");
+const kinds = moonConsts("../../core/kinds.mbt");
 const worker = jsConsts("./worker.mjs");
 
 test("worker.mjs mirrors the packed tile's entry size and kinds", () => {
   assert.equal(worker.LAYER_ENTRY_WORDS, packed.LAYER_ENTRY_WORDS);
-  assert.equal(worker.KIND_SYMBOL, packed.KIND_SYMBOL);
-  assert.equal(worker.KIND_HILLSHADE, tiles.KIND_HILLSHADE);
-  assert.equal(worker.KIND_RASTER, tiles.KIND_RASTER);
+  assert.equal(worker.KIND_SYMBOL, kinds.KIND_SYMBOL);
+  assert.equal(worker.KIND_HILLSHADE, kinds.KIND_HILLSHADE);
+  assert.equal(worker.KIND_RASTER, kinds.KIND_RASTER);
 });
 
 test("worker.mjs names an entry's words in worker/packed.mbt's ENTRY_* order", () => {
@@ -43,13 +43,6 @@ test("worker.mjs names an entry's words in worker/packed.mbt's ENTRY_* order", (
   assert.equal(moon.length, packed.LAYER_ENTRY_WORDS);
   assert.deepEqual(js, moon);
   assert.equal(js.indexOf("KIND"), 1, "hasSymbols reads word 1");
-});
-
-test("map's kinds are the worker's", () => {
-  for (const kind of ["KIND_FILL", "KIND_LINE", "KIND_CIRCLE", "KIND_SYMBOL", "KIND_EXTRUSION"]) {
-    const map = kind === "KIND_SYMBOL" ? moonConsts("../../map/labels.mbt") : tiles;
-    assert.equal(map[kind], packed[kind], kind);
-  }
 });
 
 test("symbols.mjs mirrors map's label columns and line levels", () => {

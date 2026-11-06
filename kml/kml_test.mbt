@@ -254,6 +254,7 @@ test "parse_float is JavaScript's parseFloat" {
   assert_eq(n("1e+x"), 1.0)
   assert_eq(n("0.1234567890123456789"), 0.1234567890123456789)
   assert_eq(n("123456789012345678x"), 123456789012345678.0)
+  assert_eq(n("1234567890123456789012"), 1234567890123456789012.0)
   assert_true(n("").is_nan())
   assert_true(n(".").is_nan())
   assert_true(n("-").is_nan())
@@ -289,4 +290,27 @@ test "a feature past MAX_KML_KEYS properties is refused" {
     _ => ""
   }
   assert_eq(msg, "too large: more than 4096 properties in a feature")
+}
+
+///|
+test "GPX links without href, line opacity and one segment's times" {
+  let t = gpx(
+    "<gpx><wpt lat=\"1\" lon=\"2\"><link><text>t</text></link></wpt>" +
+    "<rte><rtept lat=\"1\" lon=\"1\"/><rtept lat=\"2\" lon=\"2\"/><extensions><line><opacity>0.5</opacity></line></extensions></rte>" +
+    "<trk><trkseg><trkpt lat=\"1\" lon=\"1\"><time>a</time></trkpt><trkpt lat=\"2\" lon=\"2\"><time>b</time></trkpt></trkseg></trk></gpx>",
+  )
+  assert_eq(column(t, "links"), ["-", "-", "[{\"href\":null,\"text\":\"t\"}]"])
+  assert_eq(column(t, "stroke-opacity"), ["-", "0.5", "-"])
+  assert_eq(column(t, "coordinateProperties"), [
+    "{\"times\":[\"a\",\"b\"]}", "-", "-",
+  ])
+}
+
+///|
+test "a one-segment GPX track's extension named time takes the times' place" {
+  let t = gpx(
+    "<gpx><trk><trkseg><trkpt lat=\"1\" lon=\"1\"><time>a</time><extensions><time>3</time></extensions></trkpt>" +
+    "<trkpt lat=\"2\" lon=\"2\"><extensions><time>4</time></extensions></trkpt></trkseg></trk></gpx>",
+  )
+  assert_eq(column(t, "coordinateProperties"), ["{\"times\":[3,4]}"])
 }

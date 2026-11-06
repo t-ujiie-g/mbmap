@@ -6,7 +6,7 @@ pub fn read_wkb(
   bytes : BytesView,
   srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
-  wkb_table(bytes, MAX_POINTS, srids)
+  wkb_table(bytes, @geom.MAX_TABLE_POINTS, srids)
 }
 
 ///|
@@ -16,8 +16,34 @@ pub fn read_wkb_hex(
   srids? : Array[Int32],
 ) -> @geom.Table raise ReadError {
   match unhex(text, 0, text.length()) {
-    Some(bytes) => wkb_table(bytes[:], MAX_POINTS, srids)
+    Some(bytes) => wkb_table(bytes[:], @geom.MAX_TABLE_POINTS, srids)
     None => raise Invalid(format="WKB", pos=0, "invalid hexadecimal text")
+  }
+}
+
+///|
+/// `read_wkb` of binary WKB or `read_wkb_hex` of hexadecimal text, told apart by the
+/// first byte after ASCII white space: binary WKB starts with its byte order, 0 or 1.
+pub fn read_wkb_any(
+  bytes : BytesView,
+  srids? : Array[Int32],
+) -> @geom.Table raise ReadError {
+  let mut first = 0
+  while first < bytes.length() &&
+        (
+          bytes[first] == b' ' ||
+          bytes[first] == b'\t' ||
+          bytes[first] == b'\n' ||
+          bytes[first] == b'\r'
+        ) {
+    first += 1
+  }
+  if first == bytes.length() ||
+    bytes[first] == b'\x00' ||
+    bytes[first] == b'\x01' {
+    read_wkb(bytes, srids?)
+  } else {
+    read_wkb_hex(bytes, srids?)
   }
 }
 

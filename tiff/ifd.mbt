@@ -2,7 +2,7 @@
 
 ///|
 /// Most images (IFDs) read from one file.
-pub const MAX_IMAGES : Int32 = 256
+const MAX_IMAGES : Int32 = 256
 
 ///|
 /// Most pixels a tile may reach past its image: a small overview keeps its file's tile size,
@@ -11,7 +11,7 @@ let max_tile_overhang : Double = 4096.0
 
 ///|
 /// Most entries in one IFD, and most values in one entry.
-pub const MAX_ENTRIES : Int32 = 4096
+const MAX_ENTRIES : Int32 = 4096
 
 ///|
 /// Most values of one tag (a tile offset per block, at most).
@@ -20,11 +20,84 @@ pub const MAX_VALUES : Int32 = 16 * 1024 * 1024
 ///|
 /// Most values of all tags of one file read as lists, over its IFDs: a block table
 /// at `MAX_VALUES` and its overviews fit, the same bytes named by every IFD do not.
-pub const MAX_FILE_VALUES : Int32 = 4 * MAX_VALUES
+const MAX_FILE_VALUES : Int32 = 4 * MAX_VALUES
 
 ///|
 /// Most bytes of one decoded block.
-pub const MAX_BLOCK_BYTES : Int32 = 256 * 1024 * 1024
+const MAX_BLOCK_BYTES : Int32 = 256 * 1024 * 1024
+
+///|
+/// TIFF 6.0, GeoTIFF and GDAL tags this reader takes from an IFD.
+const TAG_NEW_SUBFILE_TYPE : Int32 = 254
+
+///|
+const TAG_SUBFILE_TYPE : Int32 = 255
+
+///|
+const TAG_IMAGE_WIDTH : Int32 = 256
+
+///|
+const TAG_IMAGE_LENGTH : Int32 = 257
+
+///|
+const TAG_BITS_PER_SAMPLE : Int32 = 258
+
+///|
+const TAG_COMPRESSION : Int32 = 259
+
+///|
+const TAG_PHOTOMETRIC : Int32 = 262
+
+///|
+const TAG_STRIP_OFFSETS : Int32 = 273
+
+///|
+const TAG_SAMPLES_PER_PIXEL : Int32 = 277
+
+///|
+const TAG_ROWS_PER_STRIP : Int32 = 278
+
+///|
+const TAG_STRIP_BYTE_COUNTS : Int32 = 279
+
+///|
+const TAG_PLANAR_CONFIGURATION : Int32 = 284
+
+///|
+const TAG_PREDICTOR : Int32 = 317
+
+///|
+const TAG_TILE_WIDTH : Int32 = 322
+
+///|
+const TAG_TILE_LENGTH : Int32 = 323
+
+///|
+const TAG_TILE_OFFSETS : Int32 = 324
+
+///|
+const TAG_TILE_BYTE_COUNTS : Int32 = 325
+
+///|
+const TAG_SAMPLE_FORMAT : Int32 = 339
+
+///|
+const TAG_JPEG_TABLES : Int32 = 347
+
+///|
+const TAG_MODEL_PIXEL_SCALE : Int32 = 33550
+
+///|
+const TAG_MODEL_TIEPOINT : Int32 = 33922
+
+///|
+const TAG_MODEL_TRANSFORMATION : Int32 = 34264
+
+///|
+const TAG_GEO_KEY_DIRECTORY : Int32 = 34735
+
+///|
+const TAG_GDAL_NODATA : Int32 = 42113
 
 ///|
 /// Errors reading a TIFF: `Invalid(pos, message)`, or `Truncated(need)` when the bytes end
@@ -35,6 +108,7 @@ pub(all) suberror TiffError {
 }
 
 ///|
+/// A one-line description, e.g. `malformed TIFF at 8: too many values`.
 pub fn TiffError::message(self : TiffError) -> String {
   match self {
     Invalid(pos, m) => "malformed TIFF at \{pos}: \{m}"
@@ -316,30 +390,30 @@ fn Tiff::ifd(self : Tiff, at : Double) -> (Image, Double) raise TiffError {
       self.uint(e + 4 + inline, inline)
     }
     if tag
-      is (254
-      | 255
-      | 256
-      | 257
-      | 258
-      | 259
-      | 262
-      | 273
-      | 277
-      | 278
-      | 279
-      | 284
-      | 317
-      | 322
-      | 323
-      | 324
-      | 325
-      | 339
-      | 347
-      | 33550
-      | 33922
-      | 34264
-      | 34735
-      | 42113) {
+      is (TAG_NEW_SUBFILE_TYPE
+      | TAG_SUBFILE_TYPE
+      | TAG_IMAGE_WIDTH
+      | TAG_IMAGE_LENGTH
+      | TAG_BITS_PER_SAMPLE
+      | TAG_COMPRESSION
+      | TAG_PHOTOMETRIC
+      | TAG_STRIP_OFFSETS
+      | TAG_SAMPLES_PER_PIXEL
+      | TAG_ROWS_PER_STRIP
+      | TAG_STRIP_BYTE_COUNTS
+      | TAG_PLANAR_CONFIGURATION
+      | TAG_PREDICTOR
+      | TAG_TILE_WIDTH
+      | TAG_TILE_LENGTH
+      | TAG_TILE_OFFSETS
+      | TAG_TILE_BYTE_COUNTS
+      | TAG_SAMPLE_FORMAT
+      | TAG_JPEG_TABLES
+      | TAG_MODEL_PIXEL_SCALE
+      | TAG_MODEL_TIEPOINT
+      | TAG_MODEL_TRANSFORMATION
+      | TAG_GEO_KEY_DIRECTORY
+      | TAG_GDAL_NODATA) {
       self.need(start, bytes)
       entries[tag] = { t: ty, count: count.to_int(), at: start.to_int(), }
     }
@@ -368,8 +442,8 @@ fn Tiff::image(
     }
   }
   let fail = (m : String) => raise Invalid(pos, m)
-  let width = one(256, 0)
-  let height = one(257, 0)
+  let width = one(TAG_IMAGE_WIDTH, 0)
+  let height = one(TAG_IMAGE_LENGTH, 0)
   if !(width >= 1.0 &&
     height >= 1.0 &&
     width < 2147483648.0 &&
@@ -378,12 +452,12 @@ fn Tiff::image(
   }
   let width = width.to_int()
   let height = height.to_int()
-  let samples = one(277, 1).to_int()
+  let samples = one(TAG_SAMPLES_PER_PIXEL, 1).to_int()
   if samples < 1 || samples > 64 {
     fail("invalid samples per pixel")
   }
-  let bits = all(258).map(x => x.to_int())
-  let formats = all(339).map(x => x.to_int())
+  let bits = all(TAG_BITS_PER_SAMPLE).map(x => x.to_int())
+  let formats = all(TAG_SAMPLE_FORMAT).map(x => x.to_int())
   for i, n in bits {
     if i < samples && (n < 1 || n > 64) {
       fail("invalid bits per sample")
@@ -404,15 +478,15 @@ fn Tiff::image(
       1
     }
   })
-  let planar = one(284, 1).to_int()
+  let planar = one(TAG_PLANAR_CONFIGURATION, 1).to_int()
   if planar != 1 && planar != 2 {
     fail("invalid planar configuration")
   }
-  let tiled = !entries.contains(273)
+  let tiled = !entries.contains(TAG_STRIP_OFFSETS)
   let (block_width, block_height) = if tiled {
-    (one(322, 0), one(323, 0))
+    (one(TAG_TILE_WIDTH, 0), one(TAG_TILE_LENGTH, 0))
   } else {
-    let rows = one(278, 0)
+    let rows = one(TAG_ROWS_PER_STRIP, 0)
     (
       width.to_double(),
       if rows > 0.0 {
@@ -439,16 +513,22 @@ fn Tiff::image(
     MAX_BLOCK_BYTES.to_int64() {
     fail("a block too large")
   }
-  let offsets = all(if tiled { 324 } else { 273 })
-  let counts = all(if tiled { 325 } else { 279 })
-  let tables = match entries.get(347) {
+  let offsets = all(if tiled { TAG_TILE_OFFSETS } else { TAG_STRIP_OFFSETS })
+  let counts = all(
+    if tiled {
+      TAG_TILE_BYTE_COUNTS
+    } else {
+      TAG_STRIP_BYTE_COUNTS
+    },
+  )
+  let tables = match entries.get(TAG_JPEG_TABLES) {
     Some(e) => {
       self.charge(e)
       Some(Bytes::makei(e.count, i => self.b[e.at + i]))
     }
     None => None
   }
-  let nodata = match entries.get(42113) {
+  let nodata = match entries.get(TAG_GDAL_NODATA) {
     Some(e) => {
       self.charge(e)
       let sb = StringBuilder()
@@ -459,7 +539,7 @@ fn Tiff::image(
     }
     None => None
   }
-  let (epsg, raster_type) = geo_keys(all(34735))
+  let (epsg, raster_type) = geo_keys(all(TAG_GEO_KEY_DIRECTORY))
   let image : Image = {
     width,
     height,
@@ -470,16 +550,16 @@ fn Tiff::image(
     bits,
     formats,
     planar,
-    compression: one(259, 1).to_int(),
-    predictor: one(317, 1).to_int(),
-    photometric: one(262, -1).to_int(),
-    subfile: one(254, 0).to_int(),
-    old_subfile: one(255, 0).to_int(),
+    compression: one(TAG_COMPRESSION, COMPRESSION_NONE.to_double()).to_int(),
+    predictor: one(TAG_PREDICTOR, 1).to_int(),
+    photometric: one(TAG_PHOTOMETRIC, -1).to_int(),
+    subfile: one(TAG_NEW_SUBFILE_TYPE, 0).to_int(),
+    old_subfile: one(TAG_SUBFILE_TYPE, 0).to_int(),
     offsets,
     counts,
-    pixel_scale: all(33550),
-    tiepoint: all(33922),
-    transform: all(34264),
+    pixel_scale: all(TAG_MODEL_PIXEL_SCALE),
+    tiepoint: all(TAG_MODEL_TIEPOINT),
+    transform: all(TAG_MODEL_TRANSFORMATION),
     epsg,
     raster_type,
     nodata,

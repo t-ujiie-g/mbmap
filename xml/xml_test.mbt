@@ -163,6 +163,8 @@ test "caps on depth, attributes and nodes" {
 ///|
 test "units copies code units, surrogate halves included" {
   assert_eq(@xml.units("a\u{1F600}b", 0, 2).length(), 2)
+  let s = "a\u{1F600}b"
+  assert_eq(@xml.units(s, 1, 2) + @xml.units(s, 2, 3), "\u{1F600}")
   assert_eq(@xml.units("abc", 1, 3), "bc")
 }
 

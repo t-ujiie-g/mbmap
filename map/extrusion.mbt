@@ -8,13 +8,13 @@ fn light_direction(
   bearing : Double,
 ) -> (Double, Double, Double) {
   let (r, azimuth, polar) = position
-  let a = (azimuth + 90.0) * @math.PI / 180.0
-  let p = polar * @math.PI / 180.0
+  let a = @core.radians(azimuth + 90.0)
+  let p = @core.radians(polar)
   let x = r * @math.cos(a) * @math.sin(p)
   let y = r * @math.sin(a) * @math.sin(p)
   let z = r * @math.cos(p)
   if viewport {
-    let b = bearing * @math.PI / 180.0
+    let b = @core.radians(bearing)
     (
       x * @math.cos(b) - y * @math.sin(b),
       x * @math.sin(b) + y * @math.cos(b),

@@ -1,12 +1,4 @@
 ///|
-/// Powers of ten that doubles hold exactly.
-let exact_powers : FixedArray[Double] = [
-  1.0e0, 1.0e1, 1.0e2, 1.0e3, 1.0e4, 1.0e5, 1.0e6, 1.0e7, 1.0e8, 1.0e9, 1.0e10, 1.0e11,
-  1.0e12, 1.0e13, 1.0e14, 1.0e15, 1.0e16, 1.0e17, 1.0e18, 1.0e19, 1.0e20, 1.0e21,
-  1.0e22,
-]
-
-///|
 fn is_digit(c : UInt16) -> Bool {
   c >= '0' && c <= '9'
 }
@@ -92,13 +84,13 @@ fn parse_float_in(
   if digits <= 15 && exponent.abs() <= 22 {
     let m = mantissa.to_double()
     let v = if exponent < 0 {
-      m / exact_powers[-exponent]
+      m / @core.exact_powers[-exponent]
     } else {
-      m * exact_powers[exponent]
+      m * @core.exact_powers[exponent]
     }
     return if negative { -v } else { v }
   }
-  number(s.view(start_offset=start, end_offset=i).to_owned())
+  number(s.clamped_view(start~, end=i).to_owned())
 }
 
 ///|

@@ -540,7 +540,7 @@ pub fn Renderer::draw_raster(
   contrast~ : Double,
   nearest~ : Bool,
 ) -> Unit {
-  let angle = hue_rotate * @math.PI / 180.0
+  let angle = @core.radians(hue_rotate)
   let s = @math.sin(angle)
   let c = @math.cos(angle)
   let root3 = 3.0.sqrt()

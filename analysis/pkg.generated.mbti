@@ -7,10 +7,6 @@ import {
 }
 
 // Values
-pub const EARTH_RADIUS : Double = 6371008.8
-
-pub const MAX_GRID_CELLS : Int32 = 16777216
-
 pub fn area(@geom.Table, @core.Trig, Int32) -> Double
 
 pub fn bbox(@geom.Table, Int32) -> (Double, Double, Double, Double)

@@ -1,12 +1,9 @@
 ///|
-/// Most points a reader takes from one input (AGENTS.md §8.2).
-pub const MAX_POINTS : Int32 = 20_000_000
-
-///|
 /// Deepest nesting of geometry collections in WKT and WKB input.
-pub const MAX_GEOMETRY_DEPTH : Int32 = 32
+const MAX_GEOMETRY_DEPTH : Int32 = 32
 
 ///|
+/// Input a reader refuses: its format's name, the byte offset (or row) and why.
 pub(all) suberror ReadError {
   Invalid(format~ : String, pos~ : Int32, String)
 } derive(Debug)

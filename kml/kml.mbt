@@ -302,7 +302,7 @@ fn Reader::track(
     let mut y = @double.not_a_number
     for i in 0..<=s.length() {
       if i == s.length() || s[i] == ' ' {
-        let v = parse_float(@xml.units(s, from, i), self.number)
+        let v = parse_float_in(s, from, i, self.number)
         if k == 0 {
           x = v
         } else if k == 1 {

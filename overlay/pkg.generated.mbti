@@ -7,10 +7,6 @@ import {
 }
 
 // Values
-pub const MAX_BUFFER_POINTS : Int32 = 10_000_000
-
-pub const MAX_COORDINATE : Double = 1.0e9
-
 pub fn buffer(@geom.Table, Double, mode? : BufferMode, join? : @clipper.JoinType, cap? : @clipper.EndType, arc_tolerance? : Double) -> @geom.Table
 
 pub fn buffer_refusal(Double, mode~ : BufferMode, arc_tolerance~ : Double) -> String?

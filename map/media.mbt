@@ -139,7 +139,7 @@ fn Map::media_draw(
     entry: 0,
     states: [],
     layer: -1,
-    kind: KIND_RASTER,
+    kind: @core.KIND_RASTER,
     mesh,
     owned: false,
     props: None,

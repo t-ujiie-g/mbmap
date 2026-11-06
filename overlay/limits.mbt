@@ -1,11 +1,11 @@
 ///|
 /// Largest coordinate the operations take: Clipper's integers (`@clipper.MAX_COORD`)
 /// hold it in 1e-7 degrees or millimeters with room to spare.
-pub const MAX_COORDINATE : Double = 1.0e9
+const MAX_COORDINATE : Double = 1.0e9
 
 ///|
 /// Most points a geodesic buffer may split its input's edges into.
-pub const MAX_BUFFER_POINTS : Int32 = 10_000_000
+const MAX_BUFFER_POINTS : Int32 = 10_000_000
 
 ///|
 /// Why `t` cannot go through the operations, or None: a coordinate not finite

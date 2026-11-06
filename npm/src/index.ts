@@ -282,9 +282,7 @@ export class Map {
     const ready = (s: StyleSpecification, base: URL) => {
       const missing = this.#missingTileJSON(s, base);
       if (missing.length === 0) return use(s, base);
-      this.#fetchTileJSON(missing)
-        .then(() => use(s, base))
-        .catch((err: unknown) => this.#fail(err));
+      this.#fetchTileJSON(missing, () => use(s, base)).catch((err: unknown) => this.#fail(err));
     };
     if (typeof style === "string") {
       const url = new URL(httpUrl(style, document.baseURI, "the style"));
@@ -354,9 +352,9 @@ export class Map {
     return [...tileJSONUrls(style, base).values()].filter((u) => !this.#tilejson.has(u));
   }
 
-  /** Fetches TileJSON documents (without credentials), or PMTiles headers, into the cache. */
-  #fetchTileJSON(urls: string[]): Promise<void> {
-    return this.#waitFor(this.#fetchDocuments(urls));
+  /** Fetches TileJSON documents (without credentials), or PMTiles headers, into the cache, then runs `use`: `idle` waits for both. */
+  #fetchTileJSON(urls: string[], use: () => void): Promise<void> {
+    return this.#waitFor(this.#fetchDocuments(urls).then(use));
   }
 
   /** Holds `load` and `idle` back until `p` settles; they come then if the engine is idle. */
@@ -581,9 +579,7 @@ export class Map {
     this.#edit((s) => edit.addSource(s, id, source));
     const missing = this.#missingTileJSON({ version: 8, sources: { [id]: source }, layers: [] }, this.#base);
     if (missing.length > 0) {
-      this.#fetchTileJSON(missing)
-        .then(() => this.#style && this.#apply(this.#style))
-        .catch((err: unknown) => this.#fail(err));
+      this.#fetchTileJSON(missing, () => this.#style && this.#apply(this.#style)).catch((err: unknown) => this.#fail(err));
     }
     return this;
   }
