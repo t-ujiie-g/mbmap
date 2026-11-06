@@ -8,19 +8,19 @@ import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
 
 const WGS84 = geodesic.Geodesic.WGS84;
-// Each mode's input: ["click" | "move", x, y] in page pixels.
+// Each mode's input: ["click" | "move", x, y] in page pixels. `edit` selects a square, drags a vertex,
+// drags a midpoint out, right-clicks that vertex and drags the shape; `snap` clicks a second polygon's
+// vertex 10 px from the first's, which snaps onto it.
 const SCRIPTS = {
   point: [["click", 400, 300]],
   linestring: [["click", 200, 200], ["move", 300, 250], ["click", 400, 200], ["click", 500, 400], ["move", 501, 401], ["click", 500, 400]],
   polygon: [["click", 200, 200], ["click", 500, 220], ["click", 450, 450], ["move", 230, 230], ["click", 205, 203]],
   rectangle: [["click", 250, 150], ["move", 400, 300], ["click", 550, 400]],
   circle: [["click", 400, 300], ["move", 450, 320], ["click", 520, 360]],
-  // Editing a square: select it, drag a vertex, drag a midpoint out, right-click that vertex, drag the shape.
   edit: [
     ["mode", "polygon"], ["click", 300, 200], ["click", 500, 200], ["click", 500, 400], ["click", 300, 400], ["click", 302, 202],
     ["mode", "select"], ["click", 400, 300], ["drag", 500, 400, 560, 440], ["drag", 300, 300, 260, 300], ["right", 260, 300], ["drag", 400, 300, 430, 300],
   ],
-  // A second polygon's vertex clicked 10 px from the first's: it snaps onto it.
   snap: [
     ["mode", "polygon"], ["click", 300, 200], ["click", 500, 200], ["click", 400, 350], ["click", 302, 202],
     ["click", 510, 208], ["click", 650, 250], ["click", 600, 400], ["click", 512, 210],

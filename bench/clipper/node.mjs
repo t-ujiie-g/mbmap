@@ -12,8 +12,8 @@ import intersect from "@turf/intersect";
 import { hostNumber } from "../../wasmio/js/host.mjs";
 import { tableToGeoJSON } from "../../wasmio/js/table.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const runs = Number(arg("runs", 5));
 const tileCount = Number(arg("tiles", 5));
 

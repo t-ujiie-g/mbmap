@@ -1,7 +1,7 @@
 // Glue around the wasm-gc build of `analysis_worker`; messages are in
 // docs/FORMATS.md ("Analysis worker messages").
 
-import { hostNumber, MAX_INPUT_BYTES } from "../../wasmio/js/host.mjs";
+import { hostNumber, MAX_INPUT_BYTES, writeInput } from "../../wasmio/js/host.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
 import { checkImageSize, decodeImage } from "../../worker/js/imagesize.mjs";
 import { tableToGeoJSON } from "../../wasmio/js/table.mjs";
@@ -17,19 +17,7 @@ const modules = { geometry: { url: null, exports: null, imports: {} }, proj: { u
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
 
-// Copies `bytes` (one after another) into `exports`' input area.
-function inputTo(exports, bytes) {
-  const len = bytes.reduce((s, b) => s + b.length, 0);
-  const addr = exports.prepare_input(len);
-  if (addr < 0) throw new Error(`input too large (${len} bytes)`);
-  let at = addr;
-  for (const b of bytes) {
-    new Uint8Array(exports.memory.buffer, at, b.length).set(b);
-    at += b.length;
-  }
-}
-
-const input = (bytes) => inputTo(wasm, [bytes]);
+const input = (bytes) => writeInput(wasm, [bytes]);
 
 // The result of an export that returns a count, or -1 / -2 / minus a message length.
 function counted(n) {
@@ -157,7 +145,7 @@ async function crsId(crs) {
   const key = Array.from(crs).join(",");
   if (!defined.has(key)) {
     const proj = await module("proj");
-    inputTo(proj, [new Uint8Array(crs.buffer, crs.byteOffset, crs.byteLength)]);
+    writeInput(proj, [new Uint8Array(crs.buffer, crs.byteOffset, crs.byteLength)]);
     defined.set(key, -1 - checked(proj, proj.define_crs()));
   }
   return defined.get(key);
@@ -168,7 +156,7 @@ async function crsId(crs) {
 async function geometryOp(tables, call) {
   const exports = await module("geometry");
   const bytes = tables.map((id) => outputOf(wasm, counted(wasm.table_out(id))));
-  inputTo(exports, bytes);
+  writeInput(exports, bytes);
   input(outputOf(exports, checked(exports, call(exports, bytes[0].length))));
   const dataset = counted(wasm.load_table());
   return { dataset, features: wasm.feature_count(dataset) };
@@ -179,7 +167,7 @@ async function geometryOp(tables, call) {
 async function reproject(dataset, from, to) {
   const proj = await module("proj");
   const n = counted(wasm.coords_out(dataset));
-  inputTo(proj, [outputOf(wasm, n * 8)]);
+  writeInput(proj, [outputOf(wasm, n * 8)]);
   input(outputOf(proj, checked(proj, proj.transform_coords(from, to)) * 8));
   const id = counted(wasm.with_coords(dataset));
   return { dataset: id, features: wasm.feature_count(id) };
@@ -305,7 +293,7 @@ const OPS = {
     check(coords instanceof ArrayBuffer && coords.byteLength % 16 === 0 && isCrs(from) && isCrs(to));
     const [f, t] = [await crsId(from), await crsId(to)];
     const proj = await module("proj");
-    inputTo(proj, [new Uint8Array(coords)]);
+    writeInput(proj, [new Uint8Array(coords)]);
     return new Float64Array(outputOf(proj, checked(proj, proj.transform_coords(f, t)) * 8).buffer);
   },
   grid({ dataset, bbox, cols, rows }) {

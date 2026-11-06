@@ -4,13 +4,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
-import { VectorTile } from "@mapbox/vector-tile";
 import { geojson } from "flatgeobuf";
-import { PbfReader } from "pbf";
 import proj4 from "proj4";
 import { dataImports, dataReader } from "../../data_worker/js/read.mjs";
 import { tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { byteRange } from "../lib/serve.mjs";
+import { GSI_TILES, gsiFeatures, same, wasmFile } from "./common.mjs";
 import { bboxOf, columnsOf, fgbFile, G, T } from "./fgb-write.mjs";
 import { ROOT } from "../lib/root.mjs";
 
@@ -19,10 +18,10 @@ console.debug = () => {};
 
 const imports = dataImports(() => instance.exports.memory);
 const { instance } = await WebAssembly.instantiate(
-  await readFile(path.join(ROOT, "_build/wasm-gc/release/build/data_worker/data_worker.wasm")),
+  await wasmFile("data_worker"),
   imports,
 );
-const projBytes = await readFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"));
+const projBytes = await wasmFile("proj_worker");
 let projModule = null;
 const reader = dataReader(instance.exports, imports, {
   proj: () => (projModule ??= WebAssembly.instantiate(projBytes, { Math }).then((r) => r.instance.exports)),
@@ -88,15 +87,6 @@ async function ours(parts, options = {}, json = []) {
 
 const byId = (rows) => ("error" in rows ? rows : [...rows].sort((a, b) => a.id - b.id));
 
-function same(a, b, eps = 0) {
-  if (typeof a === "number" && typeof b === "number") return eps > 0 ? Math.abs(a - b) <= eps : Object.is(a, b);
-  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return a === b;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  const ka = Object.keys(a);
-  const kb = Object.keys(b);
-  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && same(a[k], b[k], eps));
-}
-
 const results = {};
 const failures = [];
 function compare(group, label, got, want, eps = 0) {
@@ -121,18 +111,7 @@ function deviation(group, label, got, expectError, why) {
 }
 
 // --- GSI tile features ---
-const manifest = JSON.parse(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap.manifest.json"), "utf8"));
-const TILES = ["14/14552/6451", "14/14551/6450", "14/14553/6452"].filter((k) => k in manifest.tiles);
-if (TILES.length === 0) throw new Error("no GSI fixtures: run npm run fixtures");
-const byLayer = {};
-for (const key of TILES) {
-  const [z, x, y] = key.split("/").map(Number);
-  const tile = new VectorTile(new PbfReader(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap", `${key}.pbf`))));
-  for (const name of ["label", "road", "building", "contour", "railway", "waterarea"]) {
-    const layer = tile.layers[name];
-    for (let i = 0; layer && i < layer.length; i++) (byLayer[name] ??= []).push(layer.feature(i).toGeoJSON(x, y, z));
-  }
-}
+const byLayer = await gsiFeatures();
 // Features in the order of their box's center along x, as a Hilbert sort would group them.
 const sorted = (fs) => [...fs].sort((a, b) => {
   const [p, q] = [bboxOf(a.geometry), bboxOf(b.geometry)];
@@ -351,6 +330,6 @@ console.log(`${cases} cases, ${differ + badDeviations} differ`);
 const pkg = async (name) => JSON.parse(await readFile(path.join(ROOT, "bench/node_modules", name, "package.json"), "utf8")).version;
 await writeFile(
   path.join(ROOT, "bench/results/fgb-golden.json"),
-  JSON.stringify({ env: { node: process.version, flatgeobuf: await pkg("flatgeobuf"), proj4: await pkg("proj4"), tiles: TILES }, results, http, deviations, differ: differ + badDeviations }, null, 2) + "\n",
+  JSON.stringify({ env: { node: process.version, flatgeobuf: await pkg("flatgeobuf"), proj4: await pkg("proj4"), tiles: GSI_TILES }, results, http, deviations, differ: differ + badDeviations }, null, 2) + "\n",
 );
 if (differ + badDeviations > 0) process.exit(1);

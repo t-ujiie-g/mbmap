@@ -12,10 +12,10 @@ const style = await fujiTerrainStyle();
 await writeFile(path.join(ROOT, "bench/dist/track-style.json"), JSON.stringify(style));
 
 const fuji = [138.7274, 35.3606];
+// `flank` looks across the summit from its south-east flank: the far side is hidden.
 const cameras = {
   top: { center: fuji, zoom: 12.5, bearing: 0, pitch: 0 },
   tilted: { center: fuji, zoom: 12.2, bearing: 30, pitch: 60 },
-  // Looking across the summit from its south-east flank: the far side is hidden.
   flank: { center: [138.76, 35.33], zoom: 13, bearing: -40, pitch: 75 },
   low: { center: [138.70, 35.31], zoom: 13.5, bearing: 20, pitch: 80 },
 };

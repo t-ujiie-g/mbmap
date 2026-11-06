@@ -156,7 +156,7 @@ function rect(bbox) {
 }
 
 /**
- * The header of `bytes` and the features `found` in `bytes` (at `featuresAt`), as data.wasm's
+ * `header` (bytes) and the features `found`, each from `featureAt`, as data.wasm's
  * `read_flatgeobuf` takes them with ids, at most `max` bytes: leaves may all name one large feature.
  */
 function pack(header, found, featureAt, max) {
@@ -203,42 +203,26 @@ export async function selectBytes(bytes, bbox, max) {
 }
 
 /**
- * A range of `url` through `http` (worker/js/body.mjs's `fetchInit`, which takes `init`, and
- * `readCapped`); `{ whole }` if the server sent all of it.
+ * The features of the FlatGeobuf at `url` in `bbox`, read with `readRange` (read.mjs's `rangeReader`)
+ * as flatgeobuf's HttpReader reads them (header, index levels, then features in batches), at most
+ * `max` bytes in all; a server that answers with the whole file has it read from those bytes.
  */
-async function fetchRange({ fetchInit, readCapped }, url, init, offset, length, max) {
-  const options = fetchInit(init);
-  options.headers = { ...options.headers, Range: `bytes=${offset}-${offset + length - 1}` };
-  const res = await fetch(url, options);
-  if (res.status === 200) return { whole: await readCapped(res, max) };
-  if (res.status !== 206) throw new Error(`HTTP ${res.status} for ${url}`);
-  const start = /^bytes (\d+)-/.exec(res.headers.get("content-range") ?? "");
-  if (!start || Number(start[1]) !== offset) throw new Error(`${url} answered another range`);
-  const bytes = await readCapped(res, length);
-  return { bytes };
-}
-
-/**
- * The features of the FlatGeobuf at `url` in `bbox`, read with range requests (`http` as
- * `fetchRange` takes it) as flatgeobuf's HttpReader reads them (header, index levels, then features
- * in batches), at most `max` bytes in all; a server that answers with the whole file has it read from those bytes.
- */
-export async function selectUrl(url, init, bbox, max, http) {
+export async function selectUrl(url, bbox, max, readRange) {
   rect(bbox);
   let fetched = 0;
   const get = async (offset, length) => {
     fetched += length;
     if (fetched > max) throw new Error(`data larger than ${max} bytes`);
-    return fetchRange(http, url, init, offset, length, max);
+    return readRange(offset, length);
   };
   const first = await get(0, FIRST_BYTES);
   if (first.whole) return selectBytes(first.whole, bbox, max);
-  let start = first.bytes;
+  let start = first;
   const length = headerLength(start);
   if (start.length < 12 + length) {
     const more = await get(0, 12 + length + (1 + 16 + 256) * NODE_BYTES);
     if (more.whole) return selectBytes(more.whole, bbox, max);
-    start = more.bytes;
+    start = more;
   }
   const header = readHeader(start);
   if (header.nodeSize === 0) throw new Error("the FlatGeobuf has no index to read a bbox with");
@@ -249,7 +233,7 @@ export async function selectUrl(url, init, bbox, max, http) {
     if (tree + o + n <= start.length) return start.subarray(tree + o, tree + o + n);
     const r = await get(tree + o, n);
     if (r.whole) throw new Error(`${url} stopped answering range requests`);
-    return r.bytes;
+    return r;
   });
   // Batches of features no more than GAP_BYTES apart, each read in one request.
   const batches = [];
@@ -267,14 +251,14 @@ export async function selectUrl(url, init, bbox, max, http) {
       if (r.whole) throw new Error(`${url} stopped answering range requests`);
       for (const f of batch) {
         const at = f[0] - from;
-        if (at + 4 <= r.bytes.length) {
-          const n = new DataView(r.bytes.buffer, r.bytes.byteOffset + at, 4).getUint32(0, true);
-          if (at + 4 + n <= r.bytes.length) {
-            read.set(f[1], r.bytes.subarray(at, at + 4 + n));
+        if (at + 4 <= r.length) {
+          const n = new DataView(r.buffer, r.byteOffset + at, 4).getUint32(0, true);
+          if (at + 4 + n <= r.length) {
+            read.set(f[1], r.subarray(at, at + 4 + n));
             continue;
           }
           const rest = await get(features + f[0], 4 + n);
-          read.set(f[1], featureIn(rest.bytes ?? fail("feature past the end of the data"), 0));
+          read.set(f[1], featureIn(rest.whole ? fail("feature past the end of the data") : rest, 0));
         } else {
           fail("feature past the end of the data");
         }

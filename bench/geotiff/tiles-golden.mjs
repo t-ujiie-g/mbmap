@@ -1,7 +1,6 @@
-// GeoTIFF sources drawn by mbmap (mbmap/data's rasterTile in Chromium) vs the pixels they hold:
-// GSI's standard map tiles (国土地理院) made a COG in EPSG:3857 come back identical at their zoom,
-// the Mt Fuji DEM as Terrarium within 1/256 m, rasters in EPSG:4326 and in Japan's plane rectangular
-// zone IX (EPSG:6677, through proj4js 2.22.0) as an independent sampling gives them, and a map of the COG source looks as the map of the PNG tiles. Needs `npm --prefix npm run build`.
+// GeoTIFF sources drawn by mbmap (rasterTile in Chromium) vs the pixels they hold: GSI's map tiles (国土地理院)
+// as a COG identical, the Mt Fuji DEM within 1/256 m, EPSG:4326 and 6677 rasters as proj4js 2.22.0 samples
+// them, a map of the COG as one of the PNGs. Needs `npm --prefix npm run build`.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";

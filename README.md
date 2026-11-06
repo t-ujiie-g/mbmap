@@ -19,7 +19,7 @@ moon fmt && moon info
 
 ## パッケージ
 
-依存の向き（逆にしない。詳しくは [AGENTS.md](AGENTS.md) §4）：`core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_tiles ← geojson_worker`、`style/tiler ← cluster_props ← geojson_props_worker`、`geom ← analysis ← analysis_worker`、`geom/clipper ← overlay ← geometry_worker`、`proj ← proj_worker`、`core ← geodesic ← geodesic_worker`、`core ← render_webgl2 ← map ← bundle/main`。
+依存の向き（逆にしない。詳しくは [AGENTS.md](AGENTS.md) §4）：`core ← pbf ← mvt ← tess/style ← worker`、`core ← geom ← formats/tiler ← geojson_tiles ← geojson_worker`、`style/tiler ← cluster_props ← geojson_props_worker`、`formats ← data_worker`、`geom/xml ← kml ← xml_worker`、`tiff ← geotiff_worker`、`geom ← analysis ← analysis_worker`、`geom/clipper ← overlay ← geometry_worker`、`proj ← proj_worker`、`core ← geodesic ← geodesic_worker`、`core ← render_webgl2 ← map ← bundle/main`。
 
 表示（地図を描くもの）：
 
@@ -42,7 +42,7 @@ GeoJSON ソース：
 | パッケージ | 役割 | ターゲット |
 |---|---|---|
 | `geom/` | 列指向の地物の表（GeoArrow と同じオフセット、属性はキーごとの列） | 全 |
-| `formats/` | GeoJSON などの読み込み（`geom` の表へ） | 全 |
+| `formats/` | GeoJSON、CSV、WKT・WKB、シェープファイル、TopoJSON、FlatGeobuf の読み込み（`geom` の表へ）と CSV の書き出し | 全 |
 | `tiler/` | 地物の表からベクトルタイルを切り出す（geojson-vt の移植、クラスタを含む） | 全 |
 | `cluster_props/` | クラスタの `clusterProperties` を式で集計する | 全 |
 | `geojson_tiles/` | GeoJSON ソースの読み込み、索引、タイルの切り出し（2 つの GeoJSON の wasm が共有する） | wasm-gc |
@@ -59,9 +59,20 @@ GeoJSON ソース：
 | `overlay/` | 地物の表に対する buffer（測地線・平面）、dissolve、clip、erase、intersect、split、merge | 全 |
 | `geometry_worker/` | ジオメトリ演算の wasm（解析の Worker が初回に読み込む） | wasm-gc |
 | `proj/` | 座標系の変換（proj4js の移植：27 の投影、3・7 パラメータの測地系変換、EPSG コードと PROJ 文字列） | 全 |
-| `proj_worker/` | 座標系の wasm（解析の Worker が初回に読み込む） | wasm-gc |
+| `proj_worker/` | 座標系の wasm（解析とデータの Worker が初回に読み込む） | wasm-gc |
 | `geodesic/` | 楕円体の上の測地線（geographiclib-geodesic の移植：順・逆問題、多角形の面積、線に沿った点） | 全 |
 | `geodesic_worker/` | 測地線の wasm（`mbmap/geodesic`） | wasm-gc |
+
+データの読み書き（`mbmap/data`。Worker は 1 つ、wasm は形式ごとに初回に読み込む）：
+
+| パッケージ | 役割 | ターゲット |
+|---|---|---|
+| `data_worker/` | データの読み書きの wasm（`data.wasm`。`formats` の読み込みと CSV の書き出し） | wasm-gc |
+| `xml/` | xmldom 0.9.12 の DOMParser と同じだけ寛容な XML の読み込み | 全 |
+| `kml/` | KML・GPX の読み込み（togeojson 7.1.3 の移植）と KML の書き出し（tokml の移植） | 全 |
+| `xml_worker/` | KML・GPX の wasm（`xml.wasm`。データの Worker が初回に読み込む） | wasm-gc |
+| `tiff/` | TIFF・BigTIFF の読み込み（geotiff 3.0.5 と同じ IFD とブロックのデコード） | 全 |
+| `geotiff_worker/` | GeoTIFF の wasm（`geotiff.wasm`。データの Worker が初回に読み込む） | wasm-gc |
 
 共通：
 

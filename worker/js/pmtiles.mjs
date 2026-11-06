@@ -7,14 +7,11 @@ import { readCapped } from "./body.mjs";
 /** Bytes fetched first: the 127-byte header and, in most archives, the root directory. */
 export const FIRST_BYTES = 16384;
 /** Largest directory or tile read, before and after decompression. */
-export const MAX_PART_BYTES = 32 * 1024 * 1024;
+const MAX_PART_BYTES = 32 * 1024 * 1024;
 const MAX_LEAF_DEPTH = 3;
 const MAX_DIRECTORIES = 64;
 /** Most directory entries an Archive keeps: each is an object, from as little as 4 bytes of a directory. */
 export const MAX_DIRECTORY_ENTRIES = 2_000_000;
-
-/** Tile types of the header: what `tileType` holds. */
-export const TILE_TYPES = ["unknown", "mvt", "png", "jpeg", "webp", "avif"];
 
 function uint64(v, at) {
   return v.getUint32(at + 4, true) * 2 ** 32 + v.getUint32(at, true);

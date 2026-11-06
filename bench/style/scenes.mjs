@@ -99,7 +99,7 @@ const dem = (layers) => style(layers, { dem: FUJI_DEM });
 const hillshade = (paint) => dem([{ id: "hillshade", type: "hillshade", source: "dem", paint }]);
 const RELIEF = ["interpolate", ["linear"], ["elevation"], 0, "#1a9641", 800, "#a6d96a", 1600, "#ffffbf", 2400, "#fdae61", 3200, "#d7191c", 3776, "rgba(255, 255, 255, 0.6)"];
 
-export const SCENES = {
+const FILLS_SCENES = {
   fills: {
     style: style([
       { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-color": "#a8d4f0" } },
@@ -108,7 +108,10 @@ export const SCENES = {
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
   },
-  // A global-state default, a collator in a filter, split / join / is-supported-script in paint.
+};
+
+// A global-state default, a collator in a filter, split / join / is-supported-script in paint.
+const EXPRESSIONS_STRINGS_SCENES = {
   "expressions-strings": {
     style: {
       ...style([
@@ -124,7 +127,10 @@ export const SCENES = {
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
   },
-  // within in a filter and distance in per-vertex paint, on the features' geometry in their tiles.
+};
+
+// within in a filter and distance in per-vertex paint, on the features' geometry in their tiles.
+const WITHIN_DISTANCE_SCENES = {
   "within-distance": {
     style: style([
       { id: "building", type: "fill", source: "gsi", "source-layer": "building",
@@ -173,9 +179,12 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 30, pitch: 45 },
     limits: { mean: 0.7, p99: 21 },
   },
-  // Data-driven paint per vertex: a radius and a color continuous in the labels' `arrngAgl`
-  // (angles, hundreds of values past the 64 groups paint used to split into), and a width varying
-  // with zoom and `rdCtg` seen at z16.5 on z14 tiles (each zoom stop's value is kept per vertex).
+};
+
+// Data-driven paint per vertex: a radius and a color continuous in the labels' `arrngAgl`
+// (angles, hundreds of values past the 64 groups paint used to split into), and a width varying
+// with zoom and `rdCtg` seen at z16.5 on z14 tiles (each zoom stop's value is kept per vertex).
+const DATA_CIRCLES_SCENES = {
   "data-circles": {
     style: style([
       { id: "pt", type: "circle", source: "gsi", "source-layer": "label",
@@ -200,8 +209,11 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 16.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Lines beside their geometry (`line-offset`, per feature too), cased by a gap (`line-gap-width`)
-  // and blurred (`line-blur`), through miter, bevel and round joins.
+};
+
+// Lines beside their geometry (`line-offset`, per feature too), cased by a gap (`line-gap-width`)
+// and blurred (`line-blur`), through miter, bevel and round joins.
+const LINE_OFFSET_SCENES = {
   "line-offset": {
     style: style([
       { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-join": "round", "line-cap": "round" },
@@ -224,8 +236,11 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.6, bearing: 25, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Sort keys: fills and lines in key order within each tile, circles across tiles (large ones
-  // overlapping tile borders), all against tile order.
+};
+
+// Sort keys: fills and lines in key order within each tile, circles across tiles (large ones
+// overlapping tile borders), all against tile order.
+const SORT_KEYS_SCENES = {
   "sort-keys": {
     style: style([
       { id: "building", type: "fill", source: "gsi", "source-layer": "building",
@@ -240,7 +255,10 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.12, p99: 1 },
   },
-  // Every layer kind's `*-translate`, anchored to the map or to the turned viewport.
+};
+
+// Every layer kind's `*-translate`, anchored to the map or to the turned viewport.
+const TRANSLATE_SCENES = {
   translate: {
     style: style([
       { id: "water", type: "fill", source: "gsi", "source-layer": "waterarea", paint: { "fill-color": "#a8d4f0", "fill-translate": [12, -6] } },
@@ -254,8 +272,11 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15, bearing: -35, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Circles under pitch: on the map or facing the viewer, growing with the map or kept on screen,
-  // blurred.
+};
+
+// Circles under pitch: on the map or facing the viewer, growing with the map or kept on screen,
+// blurred.
+const CIRCLE_PITCH_SCENES = {
   "circle-pitch": {
     style: style([
       { id: "map-map", type: "circle", source: "gsi", "source-layer": "symbol", filter: ["==", ["%", ["get", "ftCode"], 4], 0],
@@ -270,7 +291,10 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 20, pitch: 55 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // A clustered GeoJSON source: circles sized and colored by `point_count`, and the points left alone.
+};
+
+// A clustered GeoJSON source: circles sized and colored by `point_count`, and the points left alone.
+const CLUSTERS_SCENES = {
   clusters: {
     style: style([
       { id: "clusters", type: "circle", source: "pts", filter: isCluster,
@@ -284,7 +308,10 @@ export const SCENES = {
     camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },
-  // Cluster properties reduced in the GeoJSON worker (its module with expressions) drawn as color and size.
+};
+
+// Cluster properties reduced in the GeoJSON worker (its module with expressions) drawn as color and size.
+const CLUSTER_PROPERTIES_SCENES = {
   "cluster-properties": {
     style: style([
       { id: "clusters", type: "circle", source: "pts", filter: isCluster,
@@ -298,8 +325,11 @@ export const SCENES = {
     camera: { center: [139.75, 35.7], zoom: 11, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },
-  // Dashes (MapLibre's line_sdf over the line atlas): a railway's white dashes over its casing, butt
-  // and round dash ends, boundaries; at a fractional zoom the pattern is measured at the integer one.
+};
+
+// Dashes (MapLibre's line_sdf over the line atlas): a railway's white dashes over its casing, butt
+// and round dash ends, boundaries; at a fractional zoom the pattern is measured at the integer one.
+const DASHES_SCENES = {
   dashes: {
     style: style([
       { id: "rail-casing", type: "line", source: "gsi", "source-layer": "railway", paint: { "line-color": "#555555", "line-width": 4 } },
@@ -322,8 +352,11 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 16.6, bearing: 0, pitch: 0 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Dashes by feature (MapLibre's dasharray attributes): road classes, round ends, a pattern that
-  // fails (drawn solid by both), at a fractional zoom where edges are smoothed as zooming in.
+};
+
+// Dashes by feature (MapLibre's dasharray attributes): road classes, round ends, a pattern that
+// fails (drawn solid by both), at a fractional zoom where edges are smoothed as zooming in.
+const DASHES_BY_FEATURE_SCENES = {
   "dashes-by-feature": {
     style: style([
       { id: "road", type: "line", source: "gsi", "source-layer": "road", layout: { "line-cap": "round" },
@@ -359,8 +392,11 @@ export const SCENES = {
     camera: TOKYO,
     limits: { mean: 0.05, p99: 1 },
   },
-  // Line gradients over line metrics (MapLibre's line_gradient and renderColorRamp): an
-  // interpolated ramp with a translucent end, and a step ramp.
+};
+
+// Line gradients over line metrics (MapLibre's line_gradient and renderColorRamp): an
+// interpolated ramp with a translucent end, and a step ramp.
+const GRADIENTS_SCENES = {
   gradients: {
     style: style([
       { id: "smooth", type: "line", source: "routes", filter: ["==", ["get", "k"], 1], layout: { "line-cap": "round", "line-join": "round" },
@@ -371,8 +407,11 @@ export const SCENES = {
     camera: { center: [139.767, 35.678], zoom: 12.5, bearing: 0, pitch: 0 },
     limits: { mean: 0.07, p99: 1 },
   },
-  // Icons from a sprite (MapLibre's symbol_icon, and symbol_sdf for SDF icons with halos): at
-  // size 1 sampled as they are, then turned, scaled and pitched with the map, then at 2x.
+};
+
+// Icons from a sprite (MapLibre's symbol_icon, and symbol_sdf for SDF icons with halos): at
+// size 1 sampled as they are, then turned, scaled and pitched with the map, then at 2x.
+const ICONS_SCENES = {
   icons: {
     style: ICONS(),
     camera: { center: [139.7671, 35.6812], zoom: 15.3, bearing: 0, pitch: 0 },
@@ -383,7 +422,10 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: 30, pitch: 40 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Icons along GSI contours, turned to the line (pins) or upright on it (SDF rings), then tilted.
+};
+
+// Icons along GSI contours, turned to the line (pins) or upright on it (SDF rings), then tilted.
+const ICONS_LINES_SCENES = {
   "icons-lines": {
     style: LINE_ICONS,
     camera: { center: [139.702, 35.664], zoom: 14.7, bearing: 40, pitch: 0 },
@@ -400,9 +442,12 @@ export const SCENES = {
     dpr: 2,
     limits: { mean: 0.05, p99: 1 },
   },
-  // Text (MapLibre's symbol_sdf): a wide blurred halo in a pass of its own; a thin one with the
-  // text, translucent, spaced, turned and moved; format sections' colors and fonts; along lines
-  // (where glyphs lie as MapLibre's, so the halo and its blur are compared); on a 2x screen.
+};
+
+// Text (MapLibre's symbol_sdf): a wide blurred halo in a pass of its own; a thin one with the
+// text, translucent, spaced, turned and moved; format sections' colors and fonts; along lines
+// (where glyphs lie as MapLibre's, so the halo and its blur are compared); on a 2x screen.
+const TEXT_SCENES = {
   text: {
     style: TEXT(),
     camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 0, pitch: 0 },
@@ -433,9 +478,12 @@ export const SCENES = {
     dpr: 2,
     limits: { mean: 0.2, p99: 7 },
   },
-  // Patterns from a sprite (MapLibre's fill_pattern, fill_outline_pattern, background_pattern):
-  // a constant and a per-feature pattern, an outline in the pattern and one in a color, a
-  // translucent background; then the @2x sheet on a 2x screen at a fractional zoom.
+};
+
+// Patterns from a sprite (MapLibre's fill_pattern, fill_outline_pattern, background_pattern):
+// a constant and a per-feature pattern, an outline in the pattern and one in a color, a
+// translucent background; then the @2x sheet on a 2x screen at a fractional zoom.
+const PATTERNS_SCENES = {
   patterns: {
     style: patterned(PATTERN_LAYERS),
     camera: TOKYO,
@@ -449,9 +497,12 @@ export const SCENES = {
     limits: { mean: 0.08, p99: 2 },
     gap: "translucent patterns: 1-2 levels of rounding, and edge pixels where antialiased outlines meet",
   },
-  // Heatmaps (kernels into a quarter-size float texture, colored by a 256-px ramp of density): the
-  // default ramp over GeoJSON points and over a tile's labels, then a step ramp with data-driven
-  // radii on a turned and pitched map.
+};
+
+// Heatmaps (kernels into a quarter-size float texture, colored by a 256-px ramp of density): the
+// default ramp over GeoJSON points and over a tile's labels, then a step ramp with data-driven
+// radii on a turned and pitched map.
+const HEATMAP_SCENES = {
   heatmap: {
     style: style([
       { id: "heat", type: "heatmap", source: "pts",
@@ -466,8 +517,11 @@ export const SCENES = {
     limits: { mean: 0.5, p99: 5 },
     gap: "GeoJSON tiles of extent 4096 (MapLibre's 8192) move points up to 1/16 px, about 1% of the density",
   },
-  // Weights and radii from feature state (set on both maps before the shot, `states`), the rest at
-  // their defaults: drawn by group and state range.
+};
+
+// Weights and radii from feature state (set on both maps before the shot, `states`), the rest at
+// their defaults: drawn by group and state range.
+const HEATMAP_STATE_SCENES = {
   "heatmap-state": {
     style: style([
       { id: "heat", type: "heatmap", source: "pts",
@@ -503,8 +557,11 @@ export const SCENES = {
     camera: { center: [139.7671, 35.6812], zoom: 15.2, bearing: 25, pitch: 50 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Image sources (MapLibre's ImageSource and raster draw): a rectangle reaching past its tile, a
-  // trapezoid warped projectively and a strongly foreshortened one blended over a grid, with paint.
+};
+
+// Image sources (MapLibre's ImageSource and raster draw): a rectangle reaching past its tile, a
+// trapezoid warped projectively and a strongly foreshortened one blended over a grid, with paint.
+const IMAGES_SCENES = {
   images: {
     style: IMAGES,
     camera: { center: [139.767, 35.677], zoom: 13.6, bearing: 0, pitch: 0 },
@@ -515,8 +572,11 @@ export const SCENES = {
     camera: { center: [139.767, 35.677], zoom: 13.9, bearing: -25, pitch: 50 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Line and extrusion patterns (MapLibre's line_pattern and fill_extrusion_pattern): images as
-  // tall as the line, along its distance; walls by their distance and height, roofs by tile units.
+};
+
+// Line and extrusion patterns (MapLibre's line_pattern and fill_extrusion_pattern): images as
+// tall as the line, along its distance; walls by their distance and height, roofs by tile units.
+const LINE_PATTERNS_SCENES = {
   "line-patterns": {
     style: {
       ...style([
@@ -546,8 +606,11 @@ export const SCENES = {
     limits: { mean: 0.2, p99: 1 },
   },
 
-  // Translucent extrusions: each pixel colored once by its nearest surface, coincident roofs too
-  // (MapLibre's depth pass, then a color pass counted by the stencil).
+};
+
+// Translucent extrusions: each pixel colored once by its nearest surface, coincident roofs too
+// (MapLibre's depth pass, then a color pass counted by the stencil).
+const EXTRUSIONS_TRANSLUCENT_SCENES = {
   "extrusions-translucent": {
     style: style([{ id: "building-3d", type: "fill-extrusion", source: "gsi", "source-layer": "building",
       paint: { "fill-extrusion-color": "#1e8c46", "fill-extrusion-height": ["match", ["get", "ftCode"], 3103, 40, 12], "fill-extrusion-opacity": 0.9 } }]),
@@ -574,7 +637,10 @@ export const SCENES = {
     camera: FUJI,
     limits: { mean: 0.05, p99: 1 },
   },
-  // Four lights, colors and altitudes per light (a list shorter than the colors repeats its last).
+};
+
+// Four lights, colors and altitudes per light (a list shorter than the colors repeats its last).
+const HILLSHADE_MULTIDIRECTIONAL_SCENES = {
   "hillshade-multidirectional": {
     style: hillshade({
       "hillshade-method": "multidirectional",
@@ -586,14 +652,20 @@ export const SCENES = {
     camera: FUJI,
     limits: { mean: 0.05, p99: 1 },
   },
-  // The light anchored to the viewport turns with the map; slopes sampled nearest.
+};
+
+// The light anchored to the viewport turns with the map; slopes sampled nearest.
+const HILLSHADE_TURNED_SCENES = {
   "hillshade-turned": {
     style: hillshade({ "hillshade-method": "basic", resampling: "nearest" }),
     camera: { ...FUJI, bearing: 40 },
     limits: { mean: 0.05, p99: 1 },
   },
-  // Color relief (MapLibre's color_relief): a ramp over elevation with a translucent top stop, under
-  // a hillshade; then sampled nearest at its opacity.
+};
+
+// Color relief (MapLibre's color_relief): a ramp over elevation with a translucent top stop, under
+// a hillshade; then sampled nearest at its opacity.
+const COLOR_RELIEF_SCENES = {
   "color-relief": {
     style: dem([
       { id: "relief", type: "color-relief", source: "dem", paint: { "color-relief-color": RELIEF } },
@@ -607,4 +679,32 @@ export const SCENES = {
     camera: { ...FUJI, zoom: 11.95, bearing: -20 },
     limits: { mean: 0.05, p99: 1 },
   },
+};
+
+export const SCENES = {
+  ...FILLS_SCENES,
+  ...EXPRESSIONS_STRINGS_SCENES,
+  ...WITHIN_DISTANCE_SCENES,
+  ...DATA_CIRCLES_SCENES,
+  ...LINE_OFFSET_SCENES,
+  ...SORT_KEYS_SCENES,
+  ...TRANSLATE_SCENES,
+  ...CIRCLE_PITCH_SCENES,
+  ...CLUSTERS_SCENES,
+  ...CLUSTER_PROPERTIES_SCENES,
+  ...DASHES_SCENES,
+  ...DASHES_BY_FEATURE_SCENES,
+  ...GRADIENTS_SCENES,
+  ...ICONS_SCENES,
+  ...ICONS_LINES_SCENES,
+  ...TEXT_SCENES,
+  ...PATTERNS_SCENES,
+  ...HEATMAP_SCENES,
+  ...HEATMAP_STATE_SCENES,
+  ...IMAGES_SCENES,
+  ...LINE_PATTERNS_SCENES,
+  ...EXTRUSIONS_TRANSLUCENT_SCENES,
+  ...HILLSHADE_MULTIDIRECTIONAL_SCENES,
+  ...HILLSHADE_TURNED_SCENES,
+  ...COLOR_RELIEF_SCENES,
 };

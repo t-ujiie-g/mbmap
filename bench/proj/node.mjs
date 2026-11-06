@@ -6,8 +6,9 @@ import path from "node:path";
 import proj4 from "proj4";
 import { parseProjString } from "../../npm/src/projstring.ts";
 import { ROOT } from "../lib/root.mjs";
+import { arg } from "../lib/args.mjs";
+import { median } from "../lib/rows.mjs";
 
-const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const POINTS = Number(arg("points", 1_000_000));
 const RUNS = Number(arg("runs", 7));
 const wasm = await readFile(path.join(ROOT, "_build/wasm-gc/release/build/proj_worker/proj_worker.wasm"));
@@ -31,7 +32,6 @@ function crsId(c) {
   input(new Uint8Array(parseProjString(c.def).buffer));
   return -1 - p.define_crs();
 }
-const median = (xs) => xs.slice().sort((a, b) => a - b)[xs.length >> 1];
 
 let seed = 7;
 const rand = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296;

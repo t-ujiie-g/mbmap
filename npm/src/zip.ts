@@ -14,8 +14,8 @@ export interface ZipLimits {
   bytes?: number;
 }
 
-export const MAX_ZIP_ENTRIES = 10_000;
-export const MAX_ZIP_BYTES = 256 * 1024 * 1024;
+const MAX_ZIP_ENTRIES = 10_000;
+const MAX_ZIP_BYTES = 256 * 1024 * 1024;
 
 interface Entry extends ZipEntry {
   flags: number;

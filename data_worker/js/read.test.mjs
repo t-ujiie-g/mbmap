@@ -115,3 +115,42 @@ test("a raster source's range requests time out", async (t) => {
   assert.ok(options.signal instanceof AbortSignal);
   assert.equal(options.headers.Range, "bytes=8-11");
 });
+
+// Answers ranges of `file` by the mock's fetch; `answer(from)` may give a Response instead.
+function serve(t, file, answer = () => undefined) {
+  t.mock.method(globalThis, "fetch", async (_, { headers }) => {
+    const [, from, to] = /^bytes=(\d+)-(\d+)$/.exec(headers.Range).map(Number);
+    const end = Math.min(to + 1, file.length);
+    return answer(from) ?? new Response(file.subarray(from, end), { status: 206, headers: { "content-range": `bytes ${from}-${end - 1}/${file.length}` } });
+  });
+}
+
+const FILE = Uint8Array.from({ length: 64 }, (_, i) => i);
+const source = (max = 1000) => rasterSource({ url: "https://x.org/a.tif" }, max);
+
+test("a raster source reads the range it is answered", async (t) => {
+  serve(t, FILE);
+  assert.deepEqual(Array.from(await source().read(8, 4)), [8, 9, 10, 11]);
+});
+
+test("a raster source takes a 200 as the whole file, up to max", async (t) => {
+  serve(t, FILE, () => new Response(FILE));
+  assert.deepEqual(await source().read(8, 4), { whole: FILE });
+  await assert.rejects(source(63).read(8, 4), /response larger than 63 bytes/);
+});
+
+test("a raster source refuses another range and any other status", async (t) => {
+  serve(t, FILE, (from) => new Response(FILE, { status: 206, headers: { "content-range": `bytes ${from + 1}-20/64` } }));
+  await assert.rejects(source().read(8, 4), /^Error: https:\/\/x\.org\/a\.tif answered another range$/);
+  t.mock.restoreAll();
+  serve(t, FILE, () => new Response(FILE, { status: 206 }));
+  await assert.rejects(source().read(8, 4), /answered another range/);
+  t.mock.restoreAll();
+  serve(t, FILE, () => new Response(null, { status: 404 }));
+  await assert.rejects(source().read(8, 4), /^Error: HTTP 404 for https:\/\/x\.org\/a\.tif$/);
+});
+
+test("a raster source reads no more of a range than it asked for", async (t) => {
+  serve(t, FILE, () => new Response(FILE, { status: 206, headers: { "content-range": "bytes 8-63/64" } }));
+  await assert.rejects(source().read(8, 4), /response larger than 4 bytes/);
+});

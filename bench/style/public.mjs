@@ -7,8 +7,8 @@ import { ROOT } from "../lib/root.mjs";
 import { compareScenes } from "./compare.mjs";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import { loadPublicStyle } from "./public-styles.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 const fixture = (set) => ({ type: "vector", tiles: [`{origin}/bench/fixtures/${set}/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 });
 const TILES = fixture("ofm-planet");
 const FLAVORS = ["light", "dark", "white", "grayscale", "black"];

@@ -2,7 +2,7 @@
 // (awaited inside the timing) must equal `expect(tile)`; negative is a failure.
 import { CENTER_TILE } from "./fixtures.mjs";
 
-const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[s.length >> 1]; };
+export const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[s.length >> 1]; };
 
 export async function runRows(tiles, rows, { warmup = 5, iterations = 15 } = {}) {
   const out = [];

@@ -6,8 +6,8 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
+import { arg } from "../lib/args.mjs";
 
-const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1];
 // How far a glyph along a line may lie from MapLibre's (CSS px) and turn from it (radians).
 const GLYPH_TOLERANCE = 0.5;
 const ANGLE_TOLERANCE = 0.01;
@@ -218,7 +218,8 @@ function iconScenes() {
   };
 }
 
-// GSI contours (west of the fixtures) labeled with their heights along the lines.
+// GSI contours (west of the fixtures) labeled with their heights along the lines; `contours-icons*`:
+// icons along them (page.mjs's images), under the heights, alone, turned, tilted, upright to the viewport.
 function contourScenes() {
   const west = [139.702, 35.664];
   const contours = (layout = {}) => ({
@@ -245,8 +246,6 @@ function contourScenes() {
       style: style(contours(), label("l", { "text-max-width": 8 })),
       camera: { center: west, zoom: 14.8 }, along: true,
     },
-    // Icons along lines (page.mjs's images): with the heights on them, alone, turned and tilted, upright
-    // to the viewport, and optional text.
     "contours-icons": { style: style(contours({ "icon-image": "dot", "icon-size": 1.4 })), camera: { center: west, zoom: 14.5 }, along: true },
     "contours-icons-alone": {
       style: style({ ...contours({ "icon-image": "box", "symbol-spacing": 120 }), layout: { "symbol-placement": "line", "icon-image": "box", "symbol-spacing": 120 } }),

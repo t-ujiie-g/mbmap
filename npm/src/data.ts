@@ -1,10 +1,10 @@
-// `mbmap/data`: CSV, WKT, WKB, shapefiles, TopoJSON, KML/KMZ, GPX and FlatGeobuf read in a worker of its own
-// (KML and GPX by a second wasm), started on the first call, into tables that are both a GeoJSON
-// source's data (`toGeoJSON`) and an mbmap/analysis dataset (`load(table)`).
+// `mbmap/data`: CSV, WKT, WKB, shapefiles, TopoJSON, KML/KMZ, GPX, FlatGeobuf and GeoJSON read in a worker
+// of its own, started on the first call, into tables that are both a GeoJSON source's data (`toGeoJSON`)
+// and an mbmap/analysis dataset (`load(table)`); tables written out; GeoTIFF pixels and tiles.
 import { tableInfo, tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { crsArg, type Crs } from "./crs";
 import { bboxArg, csvArgs, csvWriteArgs, formatOf, shapefileParts, type CsvOptions, type CsvWriteOptions, type DataFormat, type ShapefileParts, type WriteFormat } from "./data-format";
-import { httpUrl, wasmUrl } from "./urls";
+import { httpUrl, wasmUrl, type TransformedRequest } from "./urls";
 import { WorkerClient } from "./worker-client";
 
 export type { CsvOptions, CsvWriteOptions, DataFormat, ShapefileParts, WriteFormat, Crs };
@@ -37,7 +37,7 @@ export interface DataOptions {
  */
 export interface ReadOptions extends DataOptions, CsvOptions {
   format?: DataFormat;
-  transformRequest?: (url: string) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
+  transformRequest?: (url: string) => TransformedRequest | undefined;
   crs?: Crs;
   layer?: string;
   encoding?: string;
@@ -171,7 +171,7 @@ export async function read(input: Input | ArrayLike<File> | ShapefileParts<Input
   return call(formatFor(options, name), sourceOf(single, options, transfer), options, transfer);
 }
 
-/** Reads `text` (CSV, WKT, hexadecimal WKB, TopoJSON, KML or GPX) as `options.format`. */
+/** Reads `text` (CSV, WKT, hexadecimal WKB, TopoJSON, KML, GPX or GeoJSON) as `options.format`. */
 export async function parse(text: string, options: ReadOptions & { format: DataFormat }): Promise<DataTable> {
   if (typeof text !== "string") throw new Error("mbmap: data: parse takes a string");
   const bytes = new TextEncoder().encode(text).buffer;
@@ -240,6 +240,10 @@ export interface Raster {
   pixelIsPoint: boolean;
 }
 
+const fail = (what: string): never => {
+  throw new Error(`mbmap: data: invalid ${what}`);
+};
+
 const isFour = (v: unknown): boolean => Array.isArray(v) && v.length === 4 && v.every(Number.isFinite);
 
 /**
@@ -248,9 +252,6 @@ const isFour = (v: unknown): boolean => Array.isArray(v) && v.length === 4 && v.
  */
 export async function readRaster(input: Input, options: RasterOptions = {}): Promise<Raster> {
   const { window: wnd, bbox, width, height, resX, resY, resampleMethod, image, samples, fillValue } = options;
-  const fail = (what: string): never => {
-    throw new Error(`mbmap: data: invalid ${what}`);
-  };
   if (wnd !== undefined && (!isFour(wnd) || !wnd.every(Number.isInteger))) fail("window");
   if (bbox !== undefined && !isFour(bbox)) fail("bbox");
   for (const [what, n] of [["width", width], ["height", height], ["image", image]] as const) {
@@ -286,7 +287,7 @@ export interface RasterTileOptions extends DataOptions {
   transformRequest?: ReadOptions["transformRequest"];
 }
 
-/** What drawing the GeoTIFF (EPSG:3857 or 4326) of `input` needs. */
+/** What drawing the GeoTIFF of `input` needs: it must carry an EPSG code proj.wasm knows. */
 export async function rasterInfo(input: Input, options: DataOptions & { transformRequest?: ReadOptions["transformRequest"] } = {}): Promise<RasterInfo> {
   const transfer: Transferable[] = [];
   const source = sourceOf(input, options, transfer);
@@ -294,12 +295,9 @@ export async function rasterInfo(input: Input, options: DataOptions & { transfor
   return client.call<RasterInfo>("rasterInfo", source, transfer);
 }
 
-/** XYZ tile `z`/`x`/`y` of the GeoTIFF (EPSG:3857 or 4326) of `input` as a PNG, or null where it has no pixel. */
+/** XYZ tile `z`/`x`/`y` of the GeoTIFF of `input` as a PNG, or null where it has no pixel. */
 export async function rasterTile(input: Input, z: number, x: number, y: number, options: RasterTileOptions = {}): Promise<ArrayBuffer | null> {
   const { tileSize = 256, bands, range, colors, dem, resampling } = options;
-  const fail = (what: string): never => {
-    throw new Error(`mbmap: data: invalid ${what}`);
-  };
   if (![z, x, y].every(Number.isInteger) || z < 0 || z > 24 || x < 0 || y < 0 || x >= 2 ** z || y >= 2 ** z) fail("tile");
   if (bands !== undefined && (!Array.isArray(bands) || bands.length < 1 || bands.length > 4 || !bands.every((b) => Number.isInteger(b) && b >= 0))) fail("bands");
   if (range !== undefined && !(Array.isArray(range) && range.length === 2 && range.every(Number.isFinite))) fail("range");

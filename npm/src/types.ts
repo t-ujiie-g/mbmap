@@ -3,6 +3,7 @@ import type { FitBoundsOptions, LngLat, LngLatBoundsLike, LngLatLike } from "./c
 import type { Map } from "./index";
 import type { GeoJSONFeature } from "./query";
 import type { LayerSpecification, StyleSpecification } from "./style";
+import type { TransformedRequest } from "./urls";
 
 /** A rendered feature: the style layer that drew it (as in the style), its source, source layer and state. */
 export interface MapGeoJSONFeature extends GeoJSONFeature {
@@ -42,7 +43,7 @@ export type ResourceType = "Style" | "Source" | "Tile" | "SpriteJSON" | "SpriteI
 export type RequestTransformFunction = (
   url: string,
   resourceType: ResourceType,
-) => { url: string; headers?: Record<string, string>; credentials?: RequestCredentials } | undefined;
+) => TransformedRequest | undefined;
 
 /**
  * What `getSource` gives, with MapLibre's members for its type: its `promoteId`; GeoJSON `setData`, `getData` (a copy of the data, fetched if a URL) and cluster queries (null without

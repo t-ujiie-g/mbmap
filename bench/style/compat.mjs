@@ -9,8 +9,9 @@ import { serve } from "../lib/serve.mjs";
 import { ROOT } from "../lib/root.mjs";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import { PUBLIC_STYLES, loadPublicStyle as load } from "./public-styles.mjs";
+import { arg } from "../lib/args.mjs";
 
-const only = process.argv.find((a) => a.startsWith("--style="))?.split("=")[1];
+const only = arg("style");
 const NOWHERE = "https://tiles.invalid";
 
 // Sources as plain `tiles` templates (no TileJSON to wait for) on a host that never answers.

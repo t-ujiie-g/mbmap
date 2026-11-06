@@ -1,14 +1,10 @@
 // Table bytes (docs/FORMATS.md "Table") taken to longitude and latitude through
 // proj.wasm (proj_worker): each row from its SRID, or from the CRS the data does
-// not state otherwise. Imports nothing.
+// not state otherwise.
+
+import { writeInput } from "../../wasmio/js/host.mjs";
 
 const decoder = new TextDecoder();
-
-function inputTo(exports, bytes) {
-  const addr = exports.prepare_input(bytes.length);
-  if (addr < 0) throw new Error(`input too large (${bytes.length} bytes)`);
-  new Uint8Array(exports.memory.buffer, addr, bytes.length).set(bytes);
-}
 
 function checked(exports, n) {
   if (n < 0) {
@@ -33,7 +29,7 @@ function crsId(proj, crs) {
     defined.set(proj, made);
     const key = crs.join();
     if (!made.has(key)) {
-      inputTo(proj, new Uint8Array(crs.buffer, crs.byteOffset, crs.byteLength));
+      writeInput(proj, [new Uint8Array(crs.buffer, crs.byteOffset, crs.byteLength)]);
       made.set(key, -1 - checked(proj, proj.define_crs()));
     }
     return made.get(key);
@@ -76,18 +72,16 @@ export async function toLonLat(table, srids, fallback, proj) {
     if (lonLat(crs)) continue;
     let count = 0;
     for (let i = 0; i < list.length; i += 2) count += list[i + 1] - list[i];
-    const xy = new Uint8Array(count * 16);
+    const xy = new Float64Array(count * 2);
+    const xyBytes = new Uint8Array(xy.buffer);
     for (let i = 0, at = 0; i < list.length; i += 2) {
       const len = (list[i + 1] - list[i]) * 16;
-      xy.set(bytes.subarray(coordsAt + list[i] * 16, coordsAt + list[i] * 16 + len), at);
+      xyBytes.set(bytes.subarray(coordsAt + list[i] * 16, coordsAt + list[i] * 16 + len), at);
       at += len;
     }
     let out;
     try {
-      const id = crsId(exports, crs);
-      inputTo(exports, xy);
-      const m = checked(exports, exports.transform_coords(id, 4326));
-      out = new Float64Array(exports.memory.buffer.slice(exports.output_addr(), exports.output_addr() + m * 8));
+      out = transformPairs(exports, crs, 4326, xy);
     } catch (err) {
       throw key === 0 ? err : new Error(`SRID ${key}: ${err.message}`);
     }
@@ -102,10 +96,10 @@ export async function toLonLat(table, srids, fallback, proj) {
   return table;
 }
 
-/** The longitude, latitude pairs of `xy` (a Float64Array) taken from EPSG:`from` to EPSG:`to` by proj.wasm (`exports`); NaN out of reach. */
+/** The x, y pairs of `xy` (a Float64Array) taken from the CRS `from` to `to` (as `toLonLat`'s fallback) by proj.wasm (`exports`); NaN out of reach. */
 export function transformPairs(exports, from, to, xy) {
   const [a, b] = [crsId(exports, from), crsId(exports, to)];
-  inputTo(exports, new Uint8Array(xy.buffer, xy.byteOffset, xy.byteLength));
+  writeInput(exports, [new Uint8Array(xy.buffer, xy.byteOffset, xy.byteLength)]);
   const m = checked(exports, exports.transform_coords(a, b));
   return new Float64Array(exports.memory.buffer.slice(exports.output_addr(), exports.output_addr() + m * 8));
 }

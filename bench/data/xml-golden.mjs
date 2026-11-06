@@ -4,17 +4,16 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { VectorTile } from "@mapbox/vector-tile";
 import { gpx, kml } from "@tmcw/togeojson";
 import { DOMParser } from "@xmldom/xmldom";
-import { PbfReader } from "pbf";
 import { kmlOfKmz } from "../../data_worker/js/read.mjs";
 import { hostText } from "../../wasmio/js/host.mjs";
 import { tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { ROOT } from "../lib/root.mjs";
+import { GSI_TILES, gsiFeatures, same, wasmFile } from "./common.mjs";
 
 const { instance } = await WebAssembly.instantiate(
-  await readFile(path.join(ROOT, "_build/wasm-gc/release/build/xml_worker/xml_worker.wasm")),
+  await wasmFile("xml_worker"),
   { Math, host: hostText() },
 );
 const w = instance.exports;
@@ -80,16 +79,6 @@ function theirs(format, data) {
     return null;
   }
   return rowsOf(format === "kml" ? kml(doc) : gpx(doc));
-}
-
-// Equal as JSON with numbers by Object.is.
-function same(a, b) {
-  if (typeof a === "number" || typeof b === "number") return Object.is(a, b);
-  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return a === b;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  const ka = Object.keys(a);
-  const kb = Object.keys(b);
-  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && same(a[k], b[k]));
 }
 
 const results = {};
@@ -283,18 +272,7 @@ deviation("hostile", "XML declaration version 2", ours("kml", '<?xml version="2.
 deviation("hostile", "XML declaration with a bad encoding", ours("kml", '<?xml version="1.0" encoding="?"?><kml/>'), false, "as above");
 
 // --- GSI tile features written as KML and GPX ---
-const manifest = JSON.parse(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap.manifest.json"), "utf8"));
-const TILES = ["14/14552/6451", "14/14551/6450", "14/14553/6452"].filter((k) => k in manifest.tiles);
-if (TILES.length === 0) throw new Error("no GSI fixtures: run npm run fixtures");
-const byLayer = {};
-for (const key of TILES) {
-  const [z, x, y] = key.split("/").map(Number);
-  const tile = new VectorTile(new PbfReader(await readFile(path.join(ROOT, "bench/fixtures/gsi-bvmap", `${key}.pbf`))));
-  for (const name of ["label", "road", "building", "contour", "railway", "waterarea", "symbol"]) {
-    const layer = tile.layers[name];
-    for (let i = 0; layer && i < layer.length; i++) (byLayer[name] ??= []).push(layer.feature(i).toGeoJSON(x, y, z));
-  }
-}
+const byLayer = await gsiFeatures({ more: ["symbol"] });
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const tuple = (p, i) => (i % 3 === 0 ? `${p[0]},${p[1]},${i}` : `${p[0]},${p[1]}`);
 const coords = (ring) => ring.map(tuple).join(" ");
@@ -408,7 +386,7 @@ const pkg = async (name) => JSON.parse(await readFile(path.join(ROOT, "bench/nod
 await writeFile(
   path.join(ROOT, "bench/results/xml-golden.json"),
   JSON.stringify({
-    env: { node: process.version, togeojson: await pkg("@tmcw/togeojson"), xmldom: await pkg("@xmldom/xmldom"), tiles: TILES },
+    env: { node: process.version, togeojson: await pkg("@tmcw/togeojson"), xmldom: await pkg("@xmldom/xmldom"), tiles: GSI_TILES },
     normalized: [
       "togeojson's GeometryCollections are a row per member, with the feature's properties",
       "coordinates are x and y; a member with a coordinate that is not finite or missing is left out, as are empty rings",
