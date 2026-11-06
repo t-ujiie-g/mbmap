@@ -19,7 +19,7 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 6.4KB | 10KB（2026-11-06、ユーザー判断） |
+  | `mbmap/services` | 6.5KB | 10KB（2026-11-06、ユーザー判断） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
@@ -44,7 +44,7 @@
   - `map/dom.mbt` の `tile_url` は MapLibre の `CanonicalTileID.url` と同じ順で置き換える。`{y}` だけを TMS で反転し、ほかの置き換えは XYZ の行を使う。`{ratio}` は端末の画素比が 1 より大きいとき `@2x` になる。ファサードの `resolveTemplate` は、URL が符号化した置き換えの括弧を戻す（`TILE_PLACEHOLDERS`）。
   - 表示（メイン）は 132.9KB → 133.2KB（+0.3KB、予算 135KB）。
   - `npm run raster:golden` は、置き換えをすべて含むテンプレートで両方のエンジンが要求した URL を比べる。比べる組み合わせは XYZ と TMS、画素比 1 と 2、z14・z15（回転）・z3.4 の 12 場面で、すべて同じだった。タイルはすべて同じ PNG で答える。404 だと MapLibre は親のタイルも要求するため。
-- **18.2**：新しい入口 `mbmap/services`（6.4KB / 10KB）。主スレッドの JS で、能力文書はブラウザの `DOMParser` で読む。エンジンには何も足していない（作るソースは 18.1 の置き換えで描ける）。
+- **18.2**：新しい入口 `mbmap/services`（6.5KB / 10KB）。主スレッドの JS で、能力文書はブラウザの `DOMParser` で読む。エンジンには何も足していない（作るソースは 18.1 の置き換えで描ける）。
   - 読むもの：
     - WMS 1.1.1・1.3.0 の能力文書。継承は WMS 1.3.0 の 7.2.4.8 のとおり。
     - WMTS 1.0.0 と WFS 1.0.0・1.1.0・2.0 の能力文書。
