@@ -1,0 +1,16 @@
+// The module the analysis worker loads on its first network: geojson-path-finder's
+// graphs of a dataset's lines, kept by handle for repeated routes.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/route",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

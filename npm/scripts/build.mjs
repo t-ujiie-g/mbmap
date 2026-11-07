@@ -22,6 +22,7 @@ const WASM = {
   shapes_worker: "shapes.wasm",
   surface_worker: "surface.wasm",
   viewshed_worker: "viewshed.wasm",
+  route_worker: "route.wasm",
   proj_worker: "proj.wasm",
   geodesic_worker: "geodesic.wasm",
   data_worker: "data.wasm",

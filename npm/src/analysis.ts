@@ -19,8 +19,9 @@ export type BBox = [number, number, number, number];
 /**
  * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the geometry module
  * (`geometryWasmUrl`), the spatial relation module (`relateWasmUrl`), the shape module
- * (`shapesWasmUrl`), the surface module (`surfaceWasmUrl`), the viewshed module (`viewshedWasmUrl`) and
- * the coordinate system module (`projWasmUrl`) are served; by default next to this module.
+ * (`shapesWasmUrl`), the surface module (`surfaceWasmUrl`), the viewshed module (`viewshedWasmUrl`), the
+ * routing module (`routeWasmUrl`) and the coordinate system module (`projWasmUrl`) are served; by default
+ * next to this module.
  */
 export interface AnalysisOptions {
   workerUrl?: string | URL;
@@ -30,6 +31,7 @@ export interface AnalysisOptions {
   shapesWasmUrl?: string | URL;
   surfaceWasmUrl?: string | URL;
   viewshedWasmUrl?: string | URL;
+  routeWasmUrl?: string | URL;
   projWasmUrl?: string | URL;
 }
 
@@ -104,6 +106,36 @@ export interface LineOfSightOptions {
 const VIEWSHED_MODES = { normal: 0, dem: 1, ground: 2 } as const;
 const MAX_SIGHT_SAMPLES = 100_000;
 
+/** A routable graph of lines (`Dataset.network`). */
+export class Network {
+  #id: number;
+  #disposed = false;
+
+  /** @internal */
+  constructor(id: number) {
+    this.#id = id;
+  }
+
+  /**
+   * The shortest path between two vertices of the network (`[lng, lat]`, within its tolerance) as
+   * geojson-path-finder finds it: its coordinates and length in kilometers; null where none joins them.
+   */
+  async route(from: [number, number], to: [number, number]): Promise<{ path: [number, number][]; weight: number } | null> {
+    if (this.#disposed) throw new Error("mbmap: analysis: the network was disposed");
+    if (![...from, ...to].every(Number.isFinite) || from.length !== 2 || to.length !== 2) throw new Error("mbmap: analysis: invalid points");
+    const v = await call<Float64Array>("route", { network: this.#id, from, to });
+    if (v.length === 0) return null;
+    return { weight: v[0], path: Array.from({ length: (v.length - 1) / 2 }, (_, i): [number, number] => [v[1 + i * 2], v[2 + i * 2]]) };
+  }
+
+  /** Frees the network in the worker; later routes reject. */
+  dispose(): void {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    void call("disposeNetwork", { network: this.#id });
+  }
+}
+
 /** `Dataset.interpolate`'s options. */
 export interface InterpolateOptions {
   gridType?: "square" | "point" | "hex" | "triangle";
@@ -171,6 +203,7 @@ function start(options: AnalysisOptions): void {
     shapes: wasmUrl(options.shapesWasmUrl ?? new URL("./shapes.wasm", import.meta.url), page),
     surface: wasmUrl(options.surfaceWasmUrl ?? new URL("./surface.wasm", import.meta.url), page),
     viewshed: wasmUrl(options.viewshedWasmUrl ?? new URL("./viewshed.wasm", import.meta.url), page),
+    route: wasmUrl(options.routeWasmUrl ?? new URL("./route.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
   }));
 }
@@ -426,6 +459,15 @@ export class Dataset {
     const v = await this.#call<Float64Array>("surface", { fn: "kmeans", args: [k ?? 0] });
     const n = v[0];
     return { clusters: Int32Array.from(v.subarray(1, 1 + n)), centroids: v.slice(1 + n) };
+  }
+
+  /**
+   * geojson-path-finder's graph of the lines here (`tolerance` in degrees: vertices this close are one), kept
+   * in the worker for `Network.route` until disposed.
+   */
+  async network({ tolerance = 1e-5 }: { tolerance?: number } = {}): Promise<Network> {
+    if (!(tolerance > 0)) throw new Error("mbmap: analysis: invalid tolerance");
+    return new Network(await this.#call<number>("network", { tolerance }));
   }
 
   /** The DE-9IM matrix of feature `i` here and feature `j` of `other`, as JTS writes it (`"FF2F11212"`). */

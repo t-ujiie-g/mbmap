@@ -121,7 +121,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 7554,
+      "bytes": 7708,
       "budget": 9000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 29787,
+      "bytes": 29919,
       "budget": 30000
     },
     {
@@ -158,6 +158,11 @@
       "name": "viewshed (GDAL's; loaded by the analysis worker on first use)",
       "bytes": 9956,
       "budget": 12000
+    },
+    {
+      "name": "routing (geojson-path-finder; loaded by the analysis worker on first use)",
+      "bytes": 12949,
+      "budget": 15000
     },
     {
       "name": "coordinate systems (loaded by the analysis and data workers on first use)",

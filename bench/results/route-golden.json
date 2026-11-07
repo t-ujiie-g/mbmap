@@ -1,0 +1,18 @@
+{
+  "tiles": 4,
+  "queries": 200,
+  "results": {
+    "grid": {
+      "cases": 600,
+      "identical": 600,
+      "paths": 539
+    },
+    "gsi roads": {
+      "cases": 800,
+      "identical": 800,
+      "paths": 697
+    }
+  },
+  "failures": [],
+  "ok": true
+}

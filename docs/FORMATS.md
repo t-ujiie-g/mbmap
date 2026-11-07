@@ -470,6 +470,9 @@ In:
     pattern packed three bits a cell, `npm/src/relate-pattern.ts`): an Int32Array of row
     pairs, both datasets sent to the relation module as Table bytes; with `pair` [i, j],
     the matrix of those rows as JTS writes it (`"FF2F11212"`);
+  - `network` (`dataset`, `tolerance`): a handle of the routing module's graph of the dataset's
+    lines; `route` (`network`, `from`, `to`): an f64 array, the weight in km then x, y pairs,
+    empty for no path; `disposeNetwork` (`network`);
   - `viewshed` (`grid`, `observer` [lng, lat], `options` observerHeight, targetHeight,
     maxDistance, curvatureCoeff, mode 0 normal, 1 DEM, 2 ground, visible, invisible, outOfRange):
     `{width, height, bounds, values}` from the viewshed module, which takes the elevations as f64s

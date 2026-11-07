@@ -91,7 +91,7 @@ const checks = {
       // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("surface") || n.startsWith("viewshed") || n.startsWith("proj") || n.startsWith("data")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("surface") || n.startsWith("viewshed") || n.startsWith("route") || n.startsWith("proj") || n.startsWith("data")),
         styleError,
         thrown,
         warned,
@@ -315,6 +315,12 @@ const checks = {
         dbscan: (await spots.dbscan(1, { minPoints: 1 })).kinds,
         kmeans: Array.from((await spots.kmeans(2)).clusters),
       };
+      // Routing (route.wasm, loaded now): around a square of four streets with a diagonal.
+      const streets = await load(fc([[[0, 0], [1, 0]], [[1, 0], [1, 1]], [[1, 1], [0, 1]], [[0, 1], [0, 0]], [[0, 0], [1, 1]]].map((c) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: c } }))));
+      const net = await streets.network();
+      const routes = { diagonal: (await net.route([0, 0], [1, 1]))?.path, off: await net.route([0, 0], [5, 5]) };
+      net.dispose();
+      const disposedRoute = await net.route([0, 0], [1, 1]).then(() => "", (e) => e.message);
       // Classes and statistics on the main thread.
       const { classBreaks, classStep, statistics } = await import("mbmap/analysis");
       const numbers = [1, 2, 4, 5, 7, 9, 10, 20, 21, 22];
@@ -358,6 +364,8 @@ const checks = {
         shapes,
         classes,
         surfaces,
+        routes,
+        disposedRoute,
         ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
         back: back.map((v) => Math.round(v * 1e7) / 1e7),
         inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
@@ -370,9 +378,9 @@ const checks = {
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|surface|viewshed|proj/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|surface|viewshed|route|proj/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "surface.wasm", "viewshed.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "surface.wasm", "viewshed.wasm", "route.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -401,6 +409,7 @@ const checks = {
       r.geometry.surfaces.hexes === 5 && r.geometry.surfaces.idw === 20 && r.geometry.surfaces.lines === 1 && r.geometry.surfaces.density &&
       JSON.stringify(r.geometry.surfaces.bands) === JSON.stringify(["10-20", "20-30", "30-40", "40-50"]) &&
       JSON.stringify(r.geometry.surfaces.dbscan) === JSON.stringify(["core", "core", "core", "core"]) && r.geometry.surfaces.kmeans.length === 4 &&
+      JSON.stringify(r.geometry.routes) === JSON.stringify({ diagonal: [[0, 0], [1, 1]], off: null }) && /disposed/.test(r.geometry.disposedRoute) &&
       JSON.stringify(r.geometry.classes) === JSON.stringify({ jenks: [1, 7, 20, 22], mean: 10.1, step: ["step", ["get", "v"], "a", 7, "b", 20, "c"] }) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&
