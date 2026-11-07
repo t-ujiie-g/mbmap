@@ -10,7 +10,7 @@ const style = await load(params.get("style"));
 const mlStyle = params.get("mlstyle") ? await load(params.get("mlstyle")) : style;
 const camera = JSON.parse(params.get("camera"));
 
-const mb = new MbMap({ container: "mbmap", style: structuredClone(style), ...camera, maxPitch: 85 });
+const mb = new MbMap({ container: "mbmap", style: structuredClone(style), ...camera, maxPitch: 85, attributionControl: false });
 // MapLibre 6 splits tiles deeper than a source's maxzoom by default, which changes what
 // queries return (`zoomLevelsToOverscale`); mbmap draws, and queries, the source's own tiles.
 const ml = new maplibregl.Map({ container: "maplibre", style: structuredClone(mlStyle), ...camera, maxPitch: 85, attributionControl: false, pixelRatio: Number(params.get("ratio") ?? 1), fadeDuration: 0, zoomLevelsToOverscale: undefined });

@@ -66,6 +66,8 @@ const get = async (url) => {
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.text();
 };
+// mbmap resolves a document's URLs against the document, which drops default ports (`:443`).
+const href = (u, base) => (u === undefined ? u : new URL(u, base).href);
 const trim = (s) => (typeof s === "string" ? s.trim() || undefined : s);
 const close = (a, b) => (a === undefined && b === undefined) || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) <= 1e-9 * Math.max(1, Math.abs(v))));
 // The first difference between `ours` and `theirs`, as a path and the two values.
@@ -165,8 +167,8 @@ for (const url of WMS) {
       version: ol.version,
       title: trim(ol.Service.Title) ?? "",
       abstract: trim(ol.Service.Abstract),
-      getMapUrl: ol.Capability.Request.GetMap.DCPType[0].HTTP.Get.OnlineResource,
-      getFeatureInfoUrl: ol.Capability.Request.GetFeatureInfo?.DCPType[0].HTTP.Get.OnlineResource,
+      getMapUrl: href(ol.Capability.Request.GetMap.DCPType[0].HTTP.Get.OnlineResource, url),
+      getFeatureInfoUrl: href(ol.Capability.Request.GetFeatureInfo?.DCPType[0].HTTP.Get.OnlineResource, url),
       mapFormats: ol.Capability.Request.GetMap.Format,
       infoFormats: ol.Capability.Request.GetFeatureInfo?.Format ?? [],
       layers: [inherit(olLayer(ol.Capability.Layer), null, null)],
@@ -266,7 +268,7 @@ for (const url of WFS) {
     const urls = wfsCaps.readOperationUrlsFromCapabilities(doc);
     const theirs = {
       version: wfsCaps.readVersionFromCapabilities(doc),
-      getFeatureUrl: urls.GetFeature?.Get,
+      getFeatureUrl: href(urls.GetFeature?.Get, url),
       outputFormats: wfsCaps.readOutputFormatsFromCapabilities(doc),
       featureTypes: wfsCaps.readFeatureTypesFromCapabilities(doc).map((f) => ({
         name: f.name,

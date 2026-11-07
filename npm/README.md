@@ -288,13 +288,14 @@ const { length, area, path } = await measure(ring, { closed: true, step: 1000 })
 公開されている仕様の Web サービスを読み、MapLibre と同じ形のソースを作る。サーバーは作らない。要求は地図と同じく資格情報を送らず、トークンやヘッダーは `transformRequest`（`"Source"` で呼ぶ）で足す。
 
 ```js
-import { arcgisService, arcgisSource, getCapabilities, ogcCollections, ogcTiles, wmsSource, wmtsSource } from "mbmap/services";
+import { arcgisService, arcgisSource, arcgisStyle, getCapabilities, ogcCollections, ogcTiles, wmsSource, wmtsSource } from "mbmap/services";
 const wms = await getCapabilities("https://example.com/wms", "WMS");
 map.addSource("wms", wmsSource(wms, { layers: ["roads", "rivers"] }));
 const wmts = await getCapabilities("https://example.com/wmts/1.0.0/WMTSCapabilities.xml", "WMTS");
 map.addSource("wmts", wmtsSource(wmts, { layer: "basemap" }));
 const url = "https://example.com/arcgis/rest/services/Topo/MapServer";
 map.addSource("topo", arcgisSource(await arcgisService(url), url));
+map.setStyle(await arcgisStyle("https://basemaps.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer"));
 const [lakes] = await ogcCollections("https://example.com/ogcapi");
 map.addSource("lakes", await ogcTiles(lakes, "vector"));
 ```
@@ -304,7 +305,11 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
   - WMTS は 1.0.0。WFS は 1.0.0、1.1.0、2.0。
 - `wmsSource(capabilities, { layers, styles, format, transparent, tileSize, params })`：タイルごとに EPSG:3857 の GetMap を送る `raster` のソース（`BBOX={bbox-epsg-3857}`）。範囲はレイヤーの地理的な範囲、出典はレイヤーの Attribution。EPSG:3857 を持たないレイヤーは断る（ほかの座標系は 18.6）。
 - `wmtsSource(capabilities, { layer, style, format, tileMatrixSet, dimensions })`：Web メルカトルの四分木の TileMatrixSet（名前がズームの番号になっているもの）のタイル。ResourceURL があれば REST、なければ KVP。次元（`Time` など）は既定値か `dimensions` の値。
-- `arcgisService(url)` と `arcgisSource(service, url, { layers, dynamic, format, transparent, dpi, tileSize, params })`：MapServer と ImageServer。Web メルカトルのキャッシュがあれば `tile/{z}/{y}/{x}`、なければ（`layers` を指定したときも）タイルごとの `export`（ImageServer は `exportImage`）。出典は `copyrightText`。
+- `arcgisService(url)` と `arcgisSource(service, url, { layers, dynamic, format, transparent, dpi, tileSize, params })`：MapServer、ImageServer、VectorTileServer。
+  - MapServer と ImageServer は、Web メルカトルのキャッシュがあれば `tile/{z}/{y}/{x}`、なければ（`layers` を指定したときも）タイルごとの `export`（ImageServer は `exportImage`）。
+  - VectorTileServer はベクトルタイルのソース。ズームはサービスの `minzoom`・`maxzoom`（なければ `minLOD`・`maxLOD`）。
+  - 出典は `copyrightText`。
+- `arcgisStyle(url, { style })`：VectorTileServer のスタイル（既定は `defaultStyles` の `root.json`）。Esri のスタイルの相対 URL（ソースの `../../`、スプライト、グリフ）を絶対 URL にし、サービスのソースはタイルの URL とズームを書いたものにする。MapLibre は書き換えたものしか読めない。mbmap は `root.json` の URL をそのまま `setStyle` に渡しても描ける。
 - `ogcCollections(url)`、`ogcCollection(url)`、`ogcTiles(collection, "vector" | "map")`：OGC API のコレクションと、WebMercatorQuad のタイル（OGC API - Tiles）。
 - 文書は 32MB まで（`MAX_DOCUMENT_BYTES`）。サービスの例外報告（ServiceExceptionReport、ExceptionReport、ArcGIS の `error`）は、その内容をメッセージにして失敗する。
 

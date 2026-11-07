@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { arcgisBounds, arcgisSource, arcgisZooms, type ArcGISService } from "../src/services/arcgis.ts";
+import { arcgisBounds, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService } from "../src/services/arcgis.ts";
 import { clampBounds, isWebMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, resolved, validBounds, withQuery, zoomTemplate } from "../src/services/common.ts";
 import { isWebMercatorQuad, ogcLink, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections } from "../src/services/ogcapi.ts";
 import { allLayers, type WMSCapabilities, type WMSLayer, wmsSource } from "../src/services/wms.ts";
@@ -167,7 +167,55 @@ test("arcgisSource uses a Web Mercator cache, else export or exportImage", () =>
   assert.deepEqual(arcgisBounds({ fullExtent: { xmin: 1, ymin: 2, xmax: 3, ymax: 4, spatialReference: { wkid: 4326 } } }), [1, 2, 3, 4]);
   assert.equal(arcgisBounds({ fullExtent: { xmin: 1, ymin: 2, xmax: 3, ymax: 4, spatialReference: { wkid: 6677 } } }), undefined);
   assert.equal(arcgisBounds({}), undefined);
-  assert.throws(() => arcgisSource(cached, "https://a.test/s/FeatureServer"), /not an ArcGIS MapServer or ImageServer/);
+  assert.throws(() => arcgisSource(cached, "https://a.test/s/FeatureServer"), /not an ArcGIS MapServer, ImageServer or VectorTileServer/);
+});
+
+const vectorService: ArcGISService = {
+  copyrightText: "Esri",
+  tiles: ["tile/{z}/{y}/{x}.pbf"],
+  maxzoom: 22,
+  minLOD: 0,
+  maxLOD: 16,
+  spatialReference: { wkid: 102100 },
+  fullExtent: cached.fullExtent,
+  tileInfo: { ...cached.tileInfo!, rows: 512, cols: 512 },
+};
+
+test("arcgisSource makes a VectorTileServer's vector source with its TileJSON zooms", () => {
+  const url = "https://a.test/arcgis/rest/services/B/VectorTileServer";
+  const s = arcgisSource(vectorService, `${url}/`);
+  assert.deepEqual(s, { type: "vector", tiles: [`${url}/tile/{z}/{y}/{x}.pbf`], minzoom: 0, maxzoom: 22, bounds: arcgisBounds(vectorService), attribution: "Esri" });
+  assert.equal(s.bounds?.[0], -180);
+  assert.equal(arcgisSource({ ...vectorService, maxzoom: undefined, tiles: undefined }, url).maxzoom, 16);
+  const small = arcgisSource({ tileInfo: { ...cached.tileInfo!, lods: lods(0, 5) } }, url);
+  assert.deepEqual([small.minzoom, small.maxzoom, small.tileSize, small.tiles[0]], [0, 5, 256, `${url}/tile/{z}/{y}/{x}.pbf`]);
+});
+
+test("arcgisVectorStyle makes Esri's relative URLs absolute and the service's source explicit", () => {
+  const service = "https://a.test/arcgis/rest/services/B/VectorTileServer";
+  const styleUrl = `${service}/resources/styles/root.json`;
+  const style = {
+    version: 8,
+    sprite: "../sprites/sprite",
+    glyphs: "../fonts/{fontstack}/{range}.pbf",
+    sources: {
+      esri: { type: "vector", url: "../../" },
+      other: { type: "vector", url: "https://b.test/tiles.json" },
+      local: { type: "raster", tiles: ["../t/{z}/{x}/{y}.png"] },
+      inline: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+    },
+    layers: [{ id: "bg", type: "background" }],
+  };
+  const out = arcgisVectorStyle(style, styleUrl, vectorService, service);
+  assert.equal(out.sprite, `${service}/resources/sprites/sprite`);
+  assert.equal(out.glyphs, `${service}/resources/fonts/{fontstack}/{range}.pbf`);
+  assert.deepEqual(out.sources.esri, arcgisSource(vectorService, service));
+  assert.deepEqual(out.sources.other, { type: "vector", url: "https://b.test/tiles.json" });
+  assert.deepEqual(out.sources.local, { type: "raster", tiles: [`${service}/resources/t/{z}/{x}/{y}.png`] });
+  assert.equal(out.sources.inline, style.sources.inline);
+  assert.equal(out.layers, style.layers);
+  const sprites = arcgisVectorStyle({ ...style, sprite: [{ id: "a", url: "../s/a" }] }, styleUrl, vectorService, service).sprite;
+  assert.deepEqual(sprites, [{ id: "a", url: `${service}/resources/s/a` }]);
 });
 
 const base = "https://api.test/collections";

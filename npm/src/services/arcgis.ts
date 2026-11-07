@@ -1,4 +1,4 @@
-import { type Bounds, clampBounds, isWebMercator, mercatorToLngLat, mercatorZoom, MERCATOR_HALF, type TileSource, validBounds, withQuery } from "./common.ts";
+import { type Bounds, clampBounds, isWebMercator, mercatorToLngLat, mercatorZoom, MERCATOR_HALF, resolved, type TileSource, validBounds, withQuery } from "./common.ts";
 
 /** The parts of an ArcGIS REST service's `?f=json` that mbmap reads; the rest is kept as given. */
 export interface ArcGISService {
@@ -21,6 +21,12 @@ export interface ArcGISService {
   };
   layers?: { id: number; name: string; parentLayerId?: number; subLayerIds?: number[] | null; defaultVisibility?: boolean; minScale?: number; maxScale?: number; type?: string; geometryType?: string }[];
   maxRecordCount?: number;
+  tiles?: string[];
+  defaultStyles?: string;
+  minzoom?: number;
+  maxzoom?: number;
+  minLOD?: number;
+  maxLOD?: number;
   [key: string]: unknown;
 }
 
@@ -62,17 +68,30 @@ export interface ArcGISSourceOptions {
   params?: Record<string, string | number>;
 }
 
+/** `url` without its query and trailing slashes: the service's base URL. */
+const serviceBase = (url: string): string => url.replace(/[?#].*$/, "").replace(/\/+$/, "");
+
 /**
- * A raster source for an ArcGIS MapServer or ImageServer at `url` with its `?f=json` `service`:
- * its cache (`tile/{z}/{y}/{x}`) when it is in Web Mercator's quadtree, else an `export` (or
- * ImageServer `exportImage`) per tile in EPSG:3857.
+ * A source for an ArcGIS service at `url` with its `?f=json` `service`: a VectorTileServer's vector tiles (zooms from its
+ * `minzoom`/`maxzoom`), a MapServer's or ImageServer's Web Mercator cache, else an `export` (`exportImage`) per tile in EPSG:3857.
  */
 export function arcgisSource(service: ArcGISService, url: string, options: ArcGISSourceOptions = {}): TileSource {
-  const base = url.replace(/[?#].*$/, "").replace(/\/+$/, "");
-  const kind = /\/(MapServer|ImageServer)$/i.exec(base)?.[1].toLowerCase();
-  if (!kind) throw new Error("mbmap: services: the URL is not an ArcGIS MapServer or ImageServer");
+  const base = serviceBase(url);
+  const kind = /\/(MapServer|ImageServer|VectorTileServer)$/i.exec(base)?.[1].toLowerCase();
+  if (!kind) throw new Error("mbmap: services: the URL is not an ArcGIS MapServer, ImageServer or VectorTileServer");
   const bounds = arcgisBounds(service);
   const extra = { ...(bounds && { bounds: clampBounds(bounds) }), ...(service.copyrightText && { attribution: service.copyrightText }) };
+  if (kind === "vectortileserver") {
+    const size = service.tileInfo?.rows;
+    return {
+      type: "vector",
+      tiles: (service.tiles?.length ? service.tiles : ["tile/{z}/{y}/{x}.pbf"]).map((t) => resolved(t, `${base}/`)),
+      minzoom: service.minzoom ?? service.minLOD ?? 0,
+      maxzoom: service.maxzoom ?? service.maxLOD ?? Math.max(...(service.tileInfo?.lods ?? [{ level: 22 }]).map((l) => l.level)),
+      ...(size && size !== 512 && { tileSize: size }),
+      ...extra,
+    };
+  }
   const zooms = arcgisZooms(service);
   if (zooms && !options.layers && !options.dynamic && (service.singleFusedMapCache || kind === "imageserver")) {
     return { type: "raster", tiles: [`${base}/tile/{z}/{y}/{x}`], tileSize: service.tileInfo!.rows, minzoom: zooms[0], maxzoom: zooms[1], ...extra };
@@ -92,4 +111,36 @@ export function arcgisSource(service: ArcGISService, url: string, options: ArcGI
     ...options.params,
   });
   return { type: "raster", tiles: [tiles], tileSize: size, ...extra };
+}
+
+/**
+ * A VectorTileServer's `style` (read from `styleUrl`) with every URL absolute, as MapLibre needs: the source naming the
+ * service (`serviceUrl`) becomes `arcgisSource`'s vector tiles; the sprite and glyphs are resolved against the style.
+ */
+export function arcgisVectorStyle<S extends { sources?: Record<string, unknown>; sprite?: unknown; glyphs?: unknown }>(
+  style: S,
+  styleUrl: string,
+  service: ArcGISService,
+  serviceUrl: string,
+): S {
+  const self = serviceBase(serviceUrl);
+  const sources: Record<string, unknown> = {};
+  for (const [id, source] of Object.entries(style.sources ?? {})) {
+    const s = source as { url?: unknown; tiles?: unknown };
+    const url = typeof s.url === "string" ? resolved(s.url, styleUrl) : undefined;
+    sources[id] =
+      url !== undefined && serviceBase(url) === self ? arcgisSource(service, serviceUrl)
+      : url !== undefined ? { ...s, url }
+      : Array.isArray(s.tiles) ? { ...s, tiles: s.tiles.map((t) => (typeof t === "string" ? resolved(t, styleUrl) : t)) }
+      : source;
+  }
+  const sprite = typeof style.sprite === "string" ? resolved(style.sprite, styleUrl)
+    : Array.isArray(style.sprite) ? style.sprite.map((e) => (e && typeof e.url === "string" ? { ...e, url: resolved(e.url, styleUrl) } : e))
+    : style.sprite;
+  return {
+    ...style,
+    sources,
+    ...(sprite !== undefined && { sprite }),
+    ...(typeof style.glyphs === "string" && { glyphs: resolved(style.glyphs, styleUrl) }),
+  };
 }

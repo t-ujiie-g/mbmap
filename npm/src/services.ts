@@ -1,15 +1,16 @@
 // mbmap/services: reading GIS web services (OGC WMS, WMTS, WFS and OGC API; ArcGIS REST) into
 // style sources. Requests go through `transformRequest` as the map's do; no credentials otherwise.
 import { readOGCCollection, readOGCCollections, type OGCCollection, ogcTileSource, ogcTilesetUrl, ogcLink, ogcLinks } from "./services/ogcapi";
-import type { ArcGISService } from "./services/arcgis";
+import { arcgisVectorStyle, type ArcGISService } from "./services/arcgis";
 import type { TileSource } from "./services/common";
 import { readWFSCapabilities, type WFSCapabilities } from "./services/wfs";
 import { readWMSCapabilities, type WMSCapabilities } from "./services/wms";
 import { readWMTSCapabilities, type WMTSCapabilities } from "./services/wmts";
 import { withQuery } from "./services/common";
+import type { StyleSpecification } from "./style";
 import { httpUrl, type TransformedRequest } from "./urls";
 
-export { arcgisBounds, arcgisSource, arcgisZooms, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
+export { arcgisBounds, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
 export { isWebMercator, resolved, withQuery, type Bounds, type TileSource } from "./services/common";
 export { isWebMercatorQuad, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections, type OGCCollection, type OGCLink } from "./services/ogcapi";
 export { readWFSCapabilities, type WFSCapabilities, type WFSFeatureType } from "./services/wfs";
@@ -90,6 +91,19 @@ export async function arcgisService(url: string, options: ServiceOptions = {}): 
   const error = (json as { error?: { code?: number; message?: string } }).error;
   if (error) throw new Error(`mbmap: services: ArcGIS error ${error.code ?? ""}: ${error.message ?? ""}`);
   return json as ArcGISService;
+}
+
+/**
+ * Fetches an ArcGIS VectorTileServer's style with its URLs made absolute (`arcgisVectorStyle`):
+ * `options.style` names another style of the service's (default its `defaultStyles` root.json).
+ */
+export async function arcgisStyle(url: string, options: ServiceOptions & { style?: string } = {}): Promise<StyleSpecification> {
+  const absolute = httpUrl(url, document.baseURI, "services: the URL").replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const service = await arcgisService(absolute, options);
+  const styleUrl = httpUrl(options.style ?? `${service.defaultStyles ?? "resources/styles"}/root.json`, `${absolute}/`, "services: the style");
+  const style = await loadJSON(styleUrl, options);
+  if (style === null || typeof style !== "object" || (style as { version?: unknown }).version !== 8) throw new Error("mbmap: services: not a version 8 style");
+  return arcgisVectorStyle(style as StyleSpecification, styleUrl, service, absolute);
 }
 
 /** Fetches the collections of the OGC API at `url` (its landing page, whose `data` link is followed). */

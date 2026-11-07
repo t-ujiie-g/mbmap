@@ -1,7 +1,10 @@
-// mbmap/services on bench/npm/pages/services: a WMTS from its capabilities draws the GSI tiles it
-// names pixel for pixel, a WMS layer by GetMap in EPSG:3857 keeping the endpoint's parameters, and
+// mbmap/services on bench/npm/pages/services: a WMTS and an ArcGIS VectorTileServer draw the GSI tiles
+// they name pixel for pixel, a WMS layer by GetMap in EPSG:3857 keeping the endpoint's parameters, and
 // exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { decodePng } from "../../lib/png.mjs";
+import { ROOT } from "../../lib/root.mjs";
 
 export async function servicesChecks(page, requests) {
   const shot = async () => decodePng(await page.screenshot({ clip: { x: 0, y: 0, width: 600, height: 400 } })).rgba;
@@ -53,6 +56,34 @@ export async function servicesChecks(page, requests) {
     map.addLayer({ id: "wms", type: "raster", source: "wms" });
     await map.once("idle");
   });
+  // An ArcGIS VectorTileServer (bench/npm/pages/services/arcgis/..., its tiles the GSI vector
+  // fixtures): its style made absolute, and its root.json read as is, draw what a plain source does.
+  const top = async () => decodePng(await page.screenshot({ clip: { x: 0, y: 0, width: 600, height: 360 } })).rgba;
+  const restyle = (style) => page.evaluate(async (s) => {
+    const map = window.__map;
+    const services = await import("mbmap/services");
+    map.setStyle(s === "arcgis" ? await services.arcgisStyle("./arcgis/rest/services/Test/VectorTileServer") : s);
+    await map.once("idle");
+    return s === "arcgis" ? map.getStyle().sources.esri : null;
+  }, style);
+  const root = await (await fetch(new URL("arcgis/rest/services/Test/VectorTileServer/resources/styles/root.json", page.url()))).json();
+  await restyle({ ...root, sources: { esri: { type: "vector", tiles: ["../../../fixtures/gsi-bvmap/{z}/{x}/{y}.pbf"], minzoom: 14, maxzoom: 14 } } });
+  const plain = await top();
+  const esriSource = await restyle("arcgis");
+  const esri = await top();
+  await restyle("./arcgis/rest/services/Test/VectorTileServer/resources/styles/root.json");
+  const asIs = await top();
+  const equal = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  // CI has no fixtures: the tiles 404 and all three maps show the background alone.
+  const fixtures = existsSync(path.join(ROOT, "bench/fixtures/gsi-bvmap/14"));
+  const vector = {
+    fixtures,
+    source: esriSource,
+    same: equal(plain, esri),
+    asIs: equal(plain, asIs),
+    drawn: new Set(Array.from({ length: plain.length / 4 }, (_, i) => plain[i * 4] * 65536 + plain[i * 4 + 1] * 256 + plain[i * 4 + 2])).size > 2,
+  };
+
   const getMaps = requests.filter((u) => /REQUEST=GetMap/.test(u)).map((u) => Object.fromEntries(new URL(u).searchParams));
   const wmsShot = await shot();
   const drawn = wmsShot.some((v, i) => i % 4 < 3 && v !== 255);
@@ -71,6 +102,9 @@ export async function servicesChecks(page, requests) {
     first.WIDTH === "256" && bbox.length === 4 && bbox.every(Number.isFinite) &&
     /Invalid layer\(s\)/.test(r.refusals.exception) && /not well-formed/.test(r.refusals.malformed) && /not a WMS capabilities/.test(r.refusals.notWms) &&
     /no layer named nope/.test(r.refusals.unknown) && /must be an http\(s\) URL/.test(r.refusals.refused) && /HTTP 404/.test(r.refusals.missing) &&
-    loaded.includes("services.js") && loaded.includes("wmts.xml") && loaded.includes("wms.xml");
-  return [ok, { ...r, same, drawn, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
+    loaded.includes("services.js") && loaded.includes("wmts.xml") && loaded.includes("wms.xml") &&
+    vector.same && vector.asIs && (vector.drawn || !fixtures) &&
+    /\/bench\/fixtures\/gsi-bvmap\/\{z\}\/\{x\}\/\{y\}\.pbf$/.test(vector.source?.tiles?.[0]) &&
+    vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験";
+  return [ok, { ...r, same, drawn, vector, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
 }

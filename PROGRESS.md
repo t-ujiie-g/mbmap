@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1（#115）が終わり、18.2（`mbmap/services`）を進めている。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1（#115）と 18.2（#116）が終わり、18.3（ArcGIS VectorTileServer）を進めている。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,7 +19,7 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 6.5KB | 10KB（2026-11-06、ユーザー判断） |
+  | `mbmap/services` | 7.0KB | 10KB（2026-11-06、ユーザー判断） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
@@ -77,6 +77,27 @@
     - `ol` 10.11.0（BSD-2-Clause、OpenLayers の保守者）と `@camptocamp/ogc-client` 2.0.2（BSD-3-Clause、camptocamp）。
     - どちらもインストールのスクリプトはなく、公開から 2 週間以上たった版。`npm audit` は 0 件。
   - 公開サービスへの到達には、環境の許可ホストが要る（docs/CLOUD.md）。この黄金テストは CI では回さない。
+- **18.3**：ArcGIS VectorTileServer。
+  - `arcgisSource` は VectorTileServer をベクトルのソースにする。ズームはサービスの TileJSON 風の `minzoom`・`maxzoom` を使い、なければ `minLOD`・`maxLOD` を使う。
+  - `arcgisVectorStyle` と `arcgisStyle` は、Esri の `root.json` の相対 URL を絶対 URL にし、サービスのソースをタイルの URL とズームを書いたものにする。相対 URL はソースの `../../`、スプライト、グリフ。
+  - MapLibre 6.16 は Esri の `root.json` をそのままでは描けない。スプライトとソースの相対 URL を拒み、TileJSON の相対 `tiles` はページのスクリプトの場所で解決する。
+  - mbmap のファサードは `root.json` の URL のまま描ける。相対 URL をスタイルや TileJSON の URL で解決するため。pack テストで、書き換えたものと同じ画素になることを確かめた。
+  - `npm run services:style`：World_Basemap_v2 を書き換えたスタイルで、mbmap と MapLibre 6.16 を画素で比べた。記号のレイヤーは除き、タイルは公開サービスから取る。4 場面の結果（mean / p99）と残る差：
+    - z12：0.073 / 1。差は小数のズームの細い道路と海岸線。
+    - z15：0.199 / 4。Esri の z15 のタイルの一部は extent 8192 で、mbmap は `TILE_EXTENT` 4096 に量子化する（VISION §4-2）。そのため縁が最大 1/16 px ずれる。
+    - 回転：0.011 / 0。
+    - 日本全体：0.1 / 2。差は細い線。
+    - 上限は測った値のすぐ上に置き、理由を書いた。
+  - mbmap が World_Basemap_v2 のスタイルから省くものは 395 件で、すべて記号のレイヤー：
+    - `symbol-avoid-edges`（未描画）180
+    - `symbol-spacing` の式 78
+    - 線に沿った `text-rotation-alignment` 68 と `text-offset` 67
+    - `text-max-width` の式 2
+  - `bench/query/page.mjs` の mbmap も出典を出さないようにした（MapLibre と同じ）。出典のあるスタイルの比較で、文字の分だけ差が出ていた。
+  - pack テストの直し：
+    - `npm` の `style` の確認は、`line-width` を変えて戻す手順で道路のタイルを読み直すことがある。その要求が `idle` の前か後かで数が変わり、ときどき落ちていた。手順のあとで `idle` を待ってから数えるようにした。
+    - `element` の右ドラッグは、慣性の 160 ms が過ぎてから離す（#116 で直した）。
+  - 未解決：`npm run style:golden` の `heatmap`（mean 0.567 / p99 8、上限 0.5 / 5）と `extrusion-patterns`（0.215 / 1、上限 0.2 / 1）が、この環境では main でも上限を超える。この PR の変更の前後で同じ値なので、別に扱う。
 
 ## Phase 17 の後の点検（2026-11-06〜）
 
