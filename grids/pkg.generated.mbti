@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/grids"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const MAX_GRID_CELLS : Int32 = 1_000_000
+
+pub const MAX_INTERPOLATE_PAIRS : Int32 = 100_000_000
+
+pub fn hex_grid(Double, Double, Double, Double, Double, triangles? : Bool, trig? : @core.Trig) -> @geom.Table?
+
+pub fn interpolate(@geom.Table, Double, Int32, String, Double, trig? : @core.Trig) -> @geom.Table?
+
+pub fn point_grid(Double, Double, Double, Double, Double, trig? : @core.Trig) -> @geom.Table?
+
+pub fn square_grid(Double, Double, Double, Double, Double, trig? : @core.Trig) -> @geom.Table?
+
+pub fn triangle_grid(Double, Double, Double, Double, Double, trig? : @core.Trig) -> @geom.Table?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @core {type Trig}
+
+// Traits

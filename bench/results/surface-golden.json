@@ -1,0 +1,83 @@
+{
+  "tiles": 4,
+  "results": {
+    "grid point_grid": {
+      "cases": 11,
+      "identical": 11
+    },
+    "grid square_grid": {
+      "cases": 11,
+      "identical": 11
+    },
+    "grid hex_grid": {
+      "cases": 11,
+      "identical": 11
+    },
+    "grid triangle_grid": {
+      "cases": 11,
+      "identical": 11
+    },
+    "grid hex triangles": {
+      "cases": 12,
+      "identical": 12
+    },
+    "interpolate point": {
+      "cases": 36,
+      "identical": 36
+    },
+    "interpolate square": {
+      "cases": 36,
+      "identical": 36
+    },
+    "interpolate hex": {
+      "cases": 36,
+      "identical": 36
+    },
+    "interpolate triangle": {
+      "cases": 36,
+      "identical": 36
+    },
+    "isolines": {
+      "cases": 10,
+      "identical": 10
+    },
+    "isobands": {
+      "cases": 10,
+      "identical": 10
+    },
+    "density": {
+      "cases": 12,
+      "identical": 12
+    },
+    "random dbscan": {
+      "cases": 30,
+      "identical": 30
+    },
+    "random kmeans": {
+      "cases": 30,
+      "identical": 30
+    },
+    "random kmeans centroids": {
+      "cases": 30,
+      "identical": 30
+    },
+    "gsi dbscan": {
+      "cases": 12,
+      "identical": 12
+    },
+    "gsi kmeans": {
+      "cases": 12,
+      "identical": 12
+    },
+    "gsi kmeans centroids": {
+      "cases": 12,
+      "identical": 12
+    },
+    "gsi density": {
+      "cases": 4,
+      "identical": 4
+    }
+  },
+  "failures": [],
+  "ok": true
+}

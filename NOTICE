@@ -626,7 +626,12 @@ Test / benchmark data:
   @turf/centroid and @turf/bbox 7.4.0; lineops/ ports @turf/nearest-point-on-line
   and @turf/line-slice 7.4.0 (with the parts of @turf/distance and @turf/helpers
   they use); simplify/ ports @turf/simplify, @turf/clean-coords and
-  @turf/boolean-point-on-line 7.4.0, and hull/ @turf/convex 7.4.0
+  @turf/boolean-point-on-line 7.4.0, hull/ @turf/convex 7.4.0, and clusters/
+  @turf/clusters-dbscan and @turf/clusters-kmeans 7.4.0, and grids/ @turf/point-grid,
+  square-grid, rectangle-grid, hex-grid, triangle-grid, interpolate, bbox and
+  centroid 7.4.0 (without `mask`), and isolines/ @turf/isolines and
+  @turf/isobands 7.4.0 (with @turf/area, bbox, boolean-point-in-polygon and explode;
+  point in polygon as point-in-polygon-hao 1.2.4, below)
   https://github.com/Turfjs/turf — MIT License:
 
     The MIT License (MIT)
@@ -1076,3 +1081,50 @@ Test / benchmark data (continued):
     COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
     IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+- clusters/kmeans.mbt: port of skmeans 0.9.7 (main.js, distance.js)
+  https://github.com/solzimer/skmeans — MIT License (its package.json; the package
+  ships no LICENSE file), Copyright (c) David Gómez Matarrodona.
+
+- density/contours.mbt and density/density.mbt: ports of d3-contour 4.0.3
+  (contours, contourDensity) https://github.com/d3/d3-contour — ISC License:
+
+    Copyright 2012-2026 Mike Bostock
+
+    Permission to use, copy, modify, and/or distribute this software for any purpose
+    with or without fee is hereby granted, provided that the above copyright notice
+    and this permission notice appear in all copies.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+    FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+    OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+    TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+    THIS SOFTWARE.
+
+  and density/ticks.mbt of d3-array 3.2.5 (ticks, tickSpec, max, blur2)
+  https://github.com/d3/d3-array — ISC License:
+
+    Copyright 2010-2023 Mike Bostock
+
+    Permission to use, copy, modify, and/or distribute this software for any purpose
+    with or without fee is hereby granted, provided that the above copyright notice
+    and this permission notice appear in all copies.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+    FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+    OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+    TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+    THIS SOFTWARE.
+
+  Its log10 follows fdlibm's e_log10.c, as V8 computes Math.log10:
+
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.

@@ -55,6 +55,7 @@ Worker と wasm：
 | `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析の Worker と wasm。`mbmap/analysis` を初めて呼んだときに起こす |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect、split、merge）。解析の Worker が、初めて演算を呼んだときだけ読む |
 | `dist/relate.wasm` | 空間関係（DE-9IM）。解析の Worker が、初めて `relate` を呼んだときだけ読む |
+| `dist/surface.wasm` | グリッド、IDW、DBSCAN・k-means、等値線・等値帯、カーネル密度。解析の Worker が、初めて呼んだときだけ読む |
 | `dist/shapes.wasm` | 単純化、凸包・凹包、ドロネー・ボロノイ、線上の最近点と切り出し。解析の Worker が、初めて呼んだときだけ読む |
 | `dist/proj.wasm` | 座標系の変換。解析の Worker とデータの Worker が、初めて座標系を使ったときだけ読む |
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` と `data.js` が、初めて PROJ 文字列を受け取ったときだけ自分の隣から読む |
@@ -69,7 +70,7 @@ Worker と wasm：
 - `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
 - `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
 - `index.js` の動的 import（上の表）、`analysis.js` と `data.js` の `projstring.js`、`data.js` の `prjwkt.js`、`data-worker.js` の `data-zip.js` と `data-crs.js` は、場所を変えられない。それぞれの隣に置く。
-- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`surfaceWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
 
 Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
@@ -233,6 +234,12 @@ blocks.dispose();
   - `delaunay()`：点のドロネー三角形を多角形で返す。`voronoi(bbox)`：点ごとのボロノイ領域を `bbox` で切って、その点の属性とともに返す（重なった点は形なし）。
   - `nearestPointOnLine(x, y)`：地物ごとに、線の上で (x, y) にいちばん近い点 `{ point, dist, location, index, multiFeatureIndex }`（km。線のない地物は null）。`lineSlice(start, stop)`：線ごとに、`start` と `stop` にいちばん近い点の間を切り出す。
   - 線どうしの分割は `split(lines)`（Clipper2）を使う。
+- 面と点の集まり（Turf.js 7.4.0 と d3-contour 4.0.3 の移植で、座標・値・クラスタが同じになることを黄金テストで確かめている。初めて呼んだときに `surface.wasm` を読む）。距離は Turf と同じく km：
+  - `grid(bbox, cellSide, type, { triangles })`：`bbox` を覆う格子の `Dataset`。`type` は `"square"`（既定）・`"point"`・`"hex"`（`triangles` で六角形を 6 つの三角形に）・`"triangle"`。100 万セルまで。六角形ごとの点の集計は `grid(...).collect(points, property)`。
+  - `interpolate(cellSize, { gridType, property, weight })`：点の `property`（既定 `"elevation"`）を逆距離加重で補間した格子（Turf の `interpolate`。`mask` は使えない）。
+  - `isolines(breaks, { zProperty })` / `isobands(breaks, { zProperty })`：点の格子（`grid(..., "point")` や `interpolate` の結果）の等値線・等値帯。どの格子とも交わらない線・帯は形なしの行になる。
+  - `density({ bbox, width, height, cellSize, bandwidth, thresholds, weight })`：点のカーネル密度の等値線（d3-contour の `contourDensity`。`bbox`（既定は点の範囲）の上に `width` × `height` 画素の格子を置いて計算し、MultiPolygon と密度の `value` を返す）。
+  - `dbscan(maxDistance, { minPoints })`：地物ごとのクラスタ番号（なければ -1）と `"core"`・`"edge"`・`"noise"`。`kmeans(k)`：地物ごとのクラスタ番号と重心（k の既定は Turf と同じく round(√(n/2))）。点の地物だけを数える。
 - 分類と統計（メインスレッドで計算し、Worker は起こさない。simple-statistics 8.0.0 と geostats 2.1.0 の移植で、値が同じになることを黄金テストで確かめている）：
   - `classBreaks(values, classes, method, { matchBounds })`：数値の配列（数でないもの、NaN、無限大は除く）を `classes` 個の級に分ける区切り（`classes + 1` 個、小さい順）。`method` は `"jenks"`（既定、自然分類）・`"ckmeans"`（最適な 1 次元 k-means）・`"quantile"`（等量）・`"equalInterval"`（等間隔）・`"standardDeviation"`（平均のまわりに標準偏差ごと。geostats の並べ方で、`matchBounds` で両端を最小値と最大値に合わせる）。値がない、級が値より多い（jenks では値の種類より多い）ときは null。値は 100 万個まで、級は 256 まで。
   - `statistics(values)`：`count`、`min`、`max`、`sum`（補正つきの和）、`mean`、`median`、`variance`、`standardDeviation`（母分散・母標準偏差）。

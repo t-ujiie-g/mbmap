@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/clusters"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const DBSCAN_CORE : Int32 = 0
+
+pub const DBSCAN_EDGE : Int32 = 1
+
+pub const DBSCAN_NOISE : Int32 = 2
+
+pub const DBSCAN_SKIPPED : Int32 = 3
+
+pub const MAX_CLUSTER_POINTS : Int32 = 1_000_000
+
+pub fn dbscan(@geom.Table, Double, Int32, trig? : @core.Trig) -> FixedArray[Int32]
+
+pub fn dbscan_checked(@geom.Table, Double, Int32, trig? : @core.Trig) -> FixedArray[Int32]?
+
+pub fn kmeans(@geom.Table, Int32) -> (FixedArray[Int32], FixedArray[Double])
+
+pub fn kmeans_checked(@geom.Table, Int32) -> (FixedArray[Int32], FixedArray[Double])?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

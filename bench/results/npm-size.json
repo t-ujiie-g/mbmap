@@ -121,8 +121,8 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 6319,
-      "budget": 7000
+      "bytes": 6953,
+      "budget": 9000
     },
     {
       "name": "PROJ strings (loaded by mbmap/analysis and mbmap/data on the first one)",
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28996,
+      "bytes": 29587,
       "budget": 30000
     },
     {
@@ -147,6 +147,11 @@
     {
       "name": "shapes (simplify, hulls, Delaunay, Voronoi, line slices; loaded by the analysis worker on first use)",
       "bytes": 27936,
+      "budget": 30000
+    },
+    {
+      "name": "surfaces (grids, IDW, clusters, contours, density; loaded by the analysis worker on first use)",
+      "bytes": 28117,
       "budget": 30000
     },
     {

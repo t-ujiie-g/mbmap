@@ -91,7 +91,7 @@ const checks = {
       // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("proj") || n.startsWith("data")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("surface") || n.startsWith("proj") || n.startsWith("data")),
         styleError,
         thrown,
         warned,
@@ -294,6 +294,20 @@ const checks = {
         nearest: (await zigzag.nearestPointOnLine(1.5, 1)).map((n) => n && n.index),
         badBox: await five.voronoi([3, 3, -1, -1]).then(() => "", (e) => e.message),
       };
+      // Surfaces (surface.wasm, loaded now): a grid, IDW, contours, density and clusters (counts as Turf gives them).
+      const { grid: makeGrid } = await import("mbmap/analysis");
+      const hexes = await makeGrid([139.7, 35.6, 139.8, 35.7], 2, "hex");
+      const spots = await load(fc([[139.71, 35.61, 10], [139.79, 35.62, 30], [139.75, 35.69, 50], [139.72, 35.68, 20]].map(([x, y, e]) => ({ type: "Feature", properties: { elevation: e }, geometry: { type: "Point", coordinates: [x, y] } }))));
+      const idw = await spots.interpolate(2, { gridType: "point" });
+      const surfaces = {
+        hexes: hexes.length,
+        idw: idw.length,
+        bands: (await (await idw.isobands([10, 20, 30, 40, 50])).toGeoJSON()).features.map((f) => f.properties.elevation),
+        lines: (await idw.isolines([25])).length,
+        density: (await spots.density({ thresholds: 3 })).length > 0,
+        dbscan: (await spots.dbscan(1, { minPoints: 1 })).kinds,
+        kmeans: Array.from((await spots.kmeans(2)).clusters),
+      };
       // Classes and statistics on the main thread.
       const { classBreaks, classStep, statistics } = await import("mbmap/analysis");
       const numbers = [1, 2, 4, 5, 7, 9, 10, 20, 21, 22];
@@ -336,6 +350,7 @@ const checks = {
         relations,
         shapes,
         classes,
+        surfaces,
         ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
         back: back.map((v) => Math.round(v * 1e7) / 1e7),
         inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
@@ -348,9 +363,9 @@ const checks = {
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|proj/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|surface|proj/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "surface.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -375,6 +390,9 @@ const checks = {
       JSON.stringify(r.geometry.shapes.cells) === JSON.stringify(["0,0", "2,0", "2,2", "0,2", "1,1"]) &&
       JSON.stringify(r.geometry.shapes.simplified) === "[[0,0],[3,0]]" && r.geometry.shapes.sliced >= 3 &&
       JSON.stringify(r.geometry.shapes.nearest) === "[1]" && /invalid bbox/.test(r.geometry.shapes.badBox) &&
+      r.geometry.surfaces.hexes === 5 && r.geometry.surfaces.idw === 20 && r.geometry.surfaces.lines === 1 && r.geometry.surfaces.density &&
+      JSON.stringify(r.geometry.surfaces.bands) === JSON.stringify(["10-20", "20-30", "30-40", "40-50"]) &&
+      JSON.stringify(r.geometry.surfaces.dbscan) === JSON.stringify(["core", "core", "core", "core"]) && r.geometry.surfaces.kmeans.length === 4 &&
       JSON.stringify(r.geometry.classes) === JSON.stringify({ jenks: [1, 7, 20, 22], mean: 10.1, step: ["step", ["get", "v"], "a", 7, "b", 20, "c"] }) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&

@@ -470,6 +470,11 @@ In:
     pattern packed three bits a cell, `npm/src/relate-pattern.ts`): an Int32Array of row
     pairs, both datasets sent to the relation module as Table bytes; with `pair` [i, j],
     the matrix of those rows as JTS writes it (`"FF2F11212"`);
+  - `surface` (`dataset`, -1 for the grids, `fn` an export of surface_worker, `args` its numbers,
+    `text` a property name, `numbers` f64s such as breaks): the module's input is the table, the
+    text as UTF-8 and the f64s one after another; a new dataset, or for `dbscan` two f64s per
+    feature (cluster, 0 core, 1 edge, 2 noise, 3 not a point) and for `kmeans` the row count,
+    each row's cluster and the centroids;
   - `shapes` (`dataset`, `shape` one of `simplify` (tolerance, high quality 0 or 1), `convex`,
     `concave` (concavity, length threshold), `delaunay`, `voronoi` (min x, min y, max x,
     max y), `line_slice` (start x, y, stop x, y), `args` those numbers): a new dataset from
