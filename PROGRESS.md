@@ -1,9 +1,9 @@
 # PROGRESS
 
-## 現在の状況（2026-11-06）
+## 現在の状況（2026-11-07）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example）に分けた。18.7b を報告中で、これで Phase 18 の段階はすべて終わる。次は Phase 18 の後の点検（リファクタリングとセキュリティ、AGENTS §2）。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（リファクタリングとセキュリティ、下の節）を報告中。次の Phase はその後にユーザーと決める。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,11 +19,30 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 11.0KB ＋ GML 2.0KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
+  | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
-  | `mbmap/data` | 4.5KB ＋ ワーカー 39.8KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+  | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+
+## Phase 18 の後の点検（2026-11-07）
+
+Phase 18 で足したもの（`mbmap/services`、`services.wasm` の Esri の読み手、`reprojected` のソース）を AGENTS §7・§8 で見直した。ユーザーの判断（2026-11-07）で、見つけたものは速さの候補を除いてすべて 1 PR で直した。
+
+- **セキュリティ（高）**：
+  - GML の `srsDimension` が 0・負・小数だと `positions` が進まず無限ループになった。2〜4 の整数以外は 2 として読む。
+  - Esri の多角形（JSON・PBF）は terraformer どおり外周と穴を総当たりで突き合わせるので、細かい輪を大量に並べると二乗で止まらなくなった。シェープファイルの読み手と同じく手数の予算（`MAX_RING_STEPS`）で打ち切り、範囲の箱が離れた組は調べない。PBF の座標は表の点の上限を超えた時点で読むのをやめる（以前は全部読んでから断っていた）。
+- **セキュリティ（中）**：
+  - 地物の取得のページは 1 つずつは 32MB までだが、合わせての上限がなかった。1 回の取得で 256MB まで（`MAX_GATHERED_BYTES`）。
+  - WMS の能力文書のレイヤーの数に上限がなかった。1 万まで（`MAX_WMS_LAYERS`）。
+  - `reprojected` のタイルの画像は、頼んだ大きさを超えるものを使わず、1 枚 30 秒で打ち切り、ワーカーに残すのは枚数でなく画素で数える（`MAX_KEPT_PIXELS`、6400 万画素）。`reprojectTile` はデータワーカーの列に並ばず、ほかの読み込みを待たせない。
+- **セキュリティ（低）**：テンプレートの `{name}` は自身のキーだけ（`Object.hasOwn`、`{constructor}` を埋めない）、`withQuery` と OGC API のタイル URL の壊れた `%` で URIError を投げない、ArcGIS のソースの表を `Object.create(null)` に。
+- **正しさ**：`EPSG:3587`（誤記）を Web メルカトルから外し、`102113` を `reproject.mjs`・`geotiff.mjs` にも足した。`wmsSource` の `crs` が EPSG:3857 なら普通の `raster` に、`tileSize: 512` は `reprojected` にも渡す。ArcGIS のサービスの JSON の `error` を例外にする。ArcGIS の PBF の `Transform` と各フィールドを wire type まで見て読む（型の違うフィールドは飛ばす）、multipatch は形を持たない。
+- **整理**：定数（`EARTH_RADIUS`、`MERCATOR_WORLD`、`MERCATOR_LATITUDE`、`OGC_PIXEL_METERS`、`CLICK_PIXELS`、`MAX_IMAGE_SIZE`、`REPROJECTED_TILE_SIZE`、PBF のフィールド番号、`reproject.mjs` の上限）に名前を付け、`followImage` の計算を純粋な `imageView` に、XML の箱の読み取りを `attributeBox`・`corners` に、`serviceBase`・`arcgisError`・`property_limit`・`Shapes::lines`/`multipoint`・ワーカーの `checkTile`・WFS のページ送りの規則 `wfsPagesOn` を一か所にまとめた。
+- **見送ったもの**：レビューで出た「PBF の uint64 が符号付きで読まれる」は誤り（`read_varint64` は符号なし）。Esri の輪の補助はシェープファイルのものと意味が違うので共通化しない。`geotiff.mjs` と `reproject.mjs` のタイルの格子の共通化はバイトが減らないので見送り。`reprojected` のタイルの `transformRequest` はテンプレートに 1 回だけ（README に書いた）。
+- **依存**：`npm audit` は `npm/`・`bench/`・`examples/react/` とも 0 件。Dependabot の警告はこの環境から読めない（403）ので未確認。
+- **大きさ**：`services.wasm` は 18.7KB → 20.0KB（19,966 / 20,000 バイト、輪の予算と箱、点の打ち切り）。次に Esri の読み手に足すものは予算の見直しが要る。
+- **確認**：`npm test` 323、`moon test --target all`、`esri:golden` 19/19、`services:golden` 65/65、`reproject:golden` 32/32、`geotiff:tiles` all ok、`npm:pack` 通過。
 
 ## Phase 18：GIS の Web サービス（2026-11-06〜）
 

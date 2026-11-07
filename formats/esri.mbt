@@ -86,7 +86,8 @@ fn esri_json_table(
   if p.error is None {
     let shapes = Shapes::new()
     p.pos = features
-    p.array(() => esri_feature(p, shapes, id_field))
+    let steps = Ref(0L)
+    p.array(() => esri_feature(p, shapes, id_field, steps))
   }
   match p.error {
     Some((pos, m)) => raise Invalid(format="ArcGIS JSON", pos~, m)
@@ -122,7 +123,12 @@ fn esri_id(
 
 ///|
 /// Adds the feature at the parser's position: its attributes and its geometry.
-fn esri_feature(p : Parser, shapes : Shapes, id_field : String?) -> Unit {
+fn esri_feature(
+  p : Parser,
+  shapes : Shapes,
+  id_field : String?,
+  steps : Ref[Int64],
+) -> Unit {
   let props = []
   shapes.clear()
   if p.peek() != '{'.to_int() {
@@ -140,7 +146,7 @@ fn esri_feature(p : Parser, shapes : Shapes, id_field : String?) -> Unit {
       }
     } else if p.matches(s, e, "geometry") {
       if p.peek() == '{'.to_int() {
-        esri_geometry(p, shapes)
+        esri_geometry(p, shapes, steps)
       } else {
         p.skip()
       }
@@ -164,8 +170,14 @@ fn esri_feature(p : Parser, shapes : Shapes, id_field : String?) -> Unit {
 }
 
 ///|
-/// The x and y of the position at the parser (more values ignored), pushed to `into`.
-fn esri_position(p : Parser, into : Array[Double]) -> Unit {
+/// The x and y of the position at the parser (more values ignored), pushed to `into`;
+/// past the table's points with the feature's earlier ones (`seen`) it fails.
+fn esri_position(p : Parser, into : Array[Double], seen : Ref[Int32]) -> Unit {
+  seen.val += 1
+  if p.out.table.coords.length() / 2 + seen.val > p.max_points {
+    p.fail("too many points")
+    return
+  }
   let mut n = 0
   p.array(() => {
     let v = p.number()
@@ -181,11 +193,11 @@ fn esri_position(p : Parser, into : Array[Double]) -> Unit {
 
 ///|
 /// The lists of positions at the parser (`paths`, `rings`), each flat x, y.
-fn esri_paths(p : Parser) -> Array[Array[Double]] {
+fn esri_paths(p : Parser, seen : Ref[Int32]) -> Array[Array[Double]] {
   let out = []
   p.array(() => {
     let path = []
-    p.array(() => esri_position(p, path))
+    p.array(() => esri_position(p, path, seen))
     out.push(path)
   })
   out
@@ -194,7 +206,8 @@ fn esri_paths(p : Parser) -> Array[Array[Double]] {
 ///|
 /// Reads a geometry object into `shapes` as `arcgisToGeoJSON` reads it: an envelope
 /// over rings over paths over points over a point when it has several.
-fn esri_geometry(p : Parser, s : Shapes) -> Unit {
+fn esri_geometry(p : Parser, s : Shapes, steps : Ref[Int64]) -> Unit {
+  let seen = Ref(0)
   let xy : FixedArray[Double?] = FixedArray::make(6, None)
   let mut points : Array[Double]? = None
   let mut paths : Array[Array[Double]]? = None
@@ -212,12 +225,12 @@ fn esri_geometry(p : Parser, s : Shapes) -> Unit {
       }
     } else if !esc && p.matches(k, e, "points") {
       let flat = []
-      p.array(() => esri_position(p, flat))
+      p.array(() => esri_position(p, flat, seen))
       points = Some(flat)
     } else if !esc && p.matches(k, e, "paths") {
-      paths = Some(esri_paths(p))
+      paths = Some(esri_paths(p, seen))
     } else if !esc && p.matches(k, e, "rings") {
-      rings = Some(esri_paths(p))
+      rings = Some(esri_paths(p, seen))
     } else {
       p.skip()
     }
@@ -234,31 +247,12 @@ fn esri_geometry(p : Parser, s : Shapes) -> Unit {
       s.end_part()
       s.end_member(Polygon)
     }
-    (_, _, _, _, Some(r), _, _, _, _) => esri_rings(r, s)
-    (_, _, _, _, _, Some(lines), _, _, _) => {
-      for line in lines {
-        for c in line {
-          s.coords.push(c)
-        }
-        s.end_ring()
-        s.end_part()
+    (_, _, _, _, Some(r), _, _, _, _) =>
+      if !esri_rings(r, s, steps) {
+        p.fail("too many rings to tell apart")
       }
-      s.end_member(
-        if lines.length() == 1 {
-          LineString
-        } else {
-          MultiLineString
-        },
-      )
-    }
-    (_, _, _, _, _, _, Some(flat), _, _) => {
-      for c in flat {
-        s.coords.push(c)
-      }
-      s.end_ring()
-      s.end_part()
-      s.end_member(MultiPoint)
-    }
+    (_, _, _, _, _, Some(lines), _, _, _) => s.lines(lines)
+    (_, _, _, _, _, _, Some(flat), _, _) => s.multipoint(flat)
     (_, _, _, _, _, _, _, Some(x), Some(y)) => {
       s.point(x, y)
       s.end_ring()
@@ -351,11 +345,41 @@ fn reversed_ring(r : Array[Double]) -> Array[Double] {
 }
 
 ///|
+/// The bounding box of the flat ring `r`: min x, min y, max x, max y.
+fn ring_box(r : Array[Double]) -> FixedArray[Double] {
+  let b : FixedArray[Double] = [
+    @double.infinity, @double.infinity, @double.neg_infinity, @double.neg_infinity,
+  ]
+  let mut i = 0
+  while i + 1 < r.length() {
+    b[0] = @cmp.minimum(b[0], r[i])
+    b[1] = @cmp.minimum(b[1], r[i + 1])
+    b[2] = @cmp.maximum(b[2], r[i])
+    b[3] = @cmp.maximum(b[3], r[i + 1])
+    i += 2
+  }
+  b
+}
+
+///|
+/// Whether boxes `a` and `b` may share a point: rings whose boxes do not can neither
+/// cross nor hold one another, so terraformer's tests are skipped for them (NaN never skips).
+fn boxes_meet(a : FixedArray[Double], b : FixedArray[Double]) -> Bool {
+  !(a[2] < b[0] || b[2] < a[0] || a[3] < b[1] || b[3] < a[1])
+}
+
+///|
 /// terraformer's `convertRingsToGeoJSON`: rings closed; clockwise ones are outer
 /// rings, wound counter-clockwise; the others holes, wound clockwise, given to the
 /// last outer ring that holds them (else one they cross, else made outer rings).
-fn esri_rings(rings : Array[Array[Double]], s : Shapes) -> Unit {
+/// `steps` counts the edge and point comparisons of a read: false once past `MAX_RING_STEPS`.
+fn esri_rings(
+  rings : Array[Array[Double]],
+  s : Shapes,
+  steps : Ref[Int64],
+) -> Bool {
   let outers : Array[Array[Array[Double]]] = []
+  let boxes : Array[FixedArray[Double]] = []
   let holes = []
   for ring in rings {
     let r = ring.copy()
@@ -369,15 +393,29 @@ fn esri_rings(rings : Array[Array[Double]], s : Shapes) -> Unit {
     }
     if ring_is_clockwise(r) {
       outers.push([reversed_ring(r)])
+      boxes.push(ring_box(r))
     } else {
       holes.push(reversed_ring(r))
     }
   }
+  // Each test of `hole` against an outer ring costs its edges times the hole's.
+  let cost = (outer : Array[Double], hole : Array[Double]) => {
+    steps.val += (outer.length() / 2).to_int64() *
+      (hole.length() / 2 + 1).to_int64()
+    steps.val <= MAX_RING_STEPS
+  }
   let uncontained = []
   while holes.pop() is Some(hole) {
+    let box = ring_box(hole)
     let mut contained = false
     for x = outers.length() - 1; x >= 0; x = x - 1 {
       let outer = outers[x][0]
+      if !boxes_meet(boxes[x], box) {
+        continue
+      }
+      if !cost(outer, hole) {
+        return false
+      }
       if !rings_intersect(outer, hole) &&
         ring_contains_point(outer, hole[0], hole[1]) {
         outers[x].push(hole)
@@ -390,8 +428,15 @@ fn esri_rings(rings : Array[Array[Double]], s : Shapes) -> Unit {
     }
   }
   while uncontained.pop() is Some(hole) {
+    let box = ring_box(hole)
     let mut crossing = false
     for x = outers.length() - 1; x >= 0; x = x - 1 {
+      if !boxes_meet(boxes[x], box) {
+        continue
+      }
+      if !cost(outers[x][0], hole) {
+        return false
+      }
       if rings_intersect(outers[x][0], hole) {
         outers[x].push(hole)
         crossing = true
@@ -400,6 +445,7 @@ fn esri_rings(rings : Array[Array[Double]], s : Shapes) -> Unit {
     }
     if !crossing {
       outers.push([reversed_ring(hole)])
+      boxes.push(box)
     }
   }
   for polygon in outers {
@@ -412,4 +458,5 @@ fn esri_rings(rings : Array[Array[Double]], s : Shapes) -> Unit {
     s.end_part()
   }
   s.end_member(if outers.length() == 1 { Polygon } else { MultiPolygon })
+  true
 }

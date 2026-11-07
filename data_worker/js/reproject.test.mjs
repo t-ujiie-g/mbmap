@@ -10,8 +10,9 @@ const grid = { crs: 4326, grid: { template: "https://a.test/{TileMatrix}/{TileRo
 function context(asked, missing = () => false) {
   return {
     transform: async () => assert.fail("EPSG:4326 needs no transform"),
-    image: async (url) => {
+    image: async (url, max) => {
       asked.push(url);
+      assert.deepEqual(max, [256, 256]);
       if (missing(url)) return null;
       const [, m, r, c] = /\/m(\d+)\/(\d+)\/(\d+)\.png$/.exec(url).map(Number);
       const data = new Uint8ClampedArray(256 * 256 * 4);
@@ -33,7 +34,8 @@ test("isReprojected takes a grid or an image of an EPSG code, nothing else", () 
   assert.ok(!isReprojected(null));
 });
 
-test("filled puts values in the template, encoded, and refuses other schemes", () => {
+test("filled puts values in the template, encoded, its own keys only, and refuses other schemes", () => {
+  assert.equal(filled("https://a.test/{constructor}", {}), "https://a.test/{constructor}");
   assert.equal(filled("https://a.test/{TileMatrix}/{a}?b={bbox}", { TileMatrix: "EPSG:4326:3", bbox: "1,2,3,4" }), "https://a.test/EPSG%3A4326%3A3/{a}?b=1,2,3,4");
   assert.throws(() => filled("{x}", { x: "javascript:alert(1)" }), /http\(s\)/);
 });
@@ -75,10 +77,11 @@ test("reprojectTile asks one GetMap of the tile's box, north first when told, an
   const asked = [];
   const ctx = {
     transform: async () => assert.fail("no transform"),
-    image: async (url) => {
+    image: async (url, max) => {
       asked.push(url);
       const q = new URL(url).searchParams;
       const [w, h] = [Number(q.get("w")), Number(q.get("h"))];
+      assert.deepEqual(max, [w, h]);
       const data = new Uint8ClampedArray(w * h * 4);
       for (let k = 0; k < data.length; k += 4) data.set([9, 8, 7, 255], k);
       return { width: w, height: h, data };

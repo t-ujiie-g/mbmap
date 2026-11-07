@@ -1,4 +1,4 @@
-import { type Bounds, withQuery } from "./common.ts";
+import { type Bounds, serviceBase, withQuery } from "./common.ts";
 
 /** A GeoJSON FeatureCollection as the services return it; `exceeded` when paging stopped at a cap with features left. */
 export interface FeatureCollection {
@@ -85,9 +85,12 @@ export interface ArcGISQueryOptions {
   count?: number;
 }
 
-/** An ArcGIS FeatureServer or MapServer layer's `query` for GeoJSON in EPSG:4326 (`layerUrl`: `.../FeatureServer/0`). */
+/**
+ * An ArcGIS FeatureServer or MapServer layer's `query` in EPSG:4326 (`layerUrl`: `.../FeatureServer/0`), its answer in
+ * `format` (`geojson`, `json` or `pbf`).
+ */
 export function arcgisQueryUrl(layerUrl: string, options: ArcGISQueryOptions = {}, format = "geojson"): string {
-  const base = layerUrl.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const base = serviceBase(layerUrl);
   const b = options.bbox;
   return withQuery(`${base}/query`, {
     where: options.where ?? "1=1",
@@ -107,19 +110,27 @@ export function arcgisFormat(layer: unknown): "geojson" | "json" | "pbf" {
   return listed.includes("pbf") ? "pbf" : listed.includes("geojson") ? "geojson" : "json";
 }
 
+/** Throws the ArcGIS error a JSON answer (`json`, to `what` when named) holds, if any. */
+export function arcgisError(json: unknown, what?: string): void {
+  const error = (json as { error?: { code?: number; message?: string } } | null)?.error;
+  if (error) throw new Error(`mbmap: services: ${what ? `${what}: ` : ""}ArcGIS error ${error.code ?? ""}: ${error.message ?? ""}`);
+}
+
 /** The features of a GeoJSON page; anything else throws. */
 export function pageFeatures(page: unknown, what: string): unknown[] {
   const features = (page as { features?: unknown } | null)?.features;
-  const error = (page as { error?: { code?: number; message?: string } } | null)?.error;
-  if (error) throw new Error(`mbmap: services: ${what}: ArcGIS error ${error.code ?? ""}: ${error.message ?? ""}`);
+  arcgisError(page, what);
   if (!Array.isArray(features)) throw new Error(`mbmap: services: ${what} did not answer with GeoJSON features`);
   return features;
 }
 
+/** Whether WFS 2.0 paging by `count` goes on after `gathered` features: only while every page came back full. */
+export const wfsPagesOn = (count: number, gathered: number): boolean => count > 0 && gathered % count === 0;
+
 /**
- * Gathers pages until `next` gives none: `next(page, features)` is the URL of the page after
- * `page` (with `features` gathered so far), or undefined. Stops at `max` features (then
- * `exceeded`) and at `MAX_PAGES`, so a server cannot keep a client paging.
+ * Gathers pages until `next` gives none: `next(page, url, gathered)` is the URL of the page after
+ * `page` (read from `url`, with `gathered` features so far), or undefined. Stops at `max` features,
+ * at `MAX_PAGES` and at a page URL seen before (then `exceeded`), so a server cannot keep a client paging.
  */
 export async function gather(
   first: string,

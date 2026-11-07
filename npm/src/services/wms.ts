@@ -1,6 +1,6 @@
-import { type Bounds, clampBounds, clickWindow, epsgCode, type ImageRequest, isWebMercator, lngLatToMercator, northFirst, type ReprojectedSource, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
+import { type Bounds, clampBounds, CLICK_PIXEL, CLICK_PIXELS, clickWindow, epsgCode, type ImageRequest, isWebMercator, lngLatToMercator, northFirst, OGC_PIXEL_METERS, type ReprojectedSource, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
 import { geojsonFormat } from "./features.ts";
-import { at, children, first, href, optional, parseXml, text, texts } from "./xml.ts";
+import { at, attributeBox, children, first, href, optional, parseXml, text, texts } from "./xml.ts";
 
 /** A layer style; `legendUrl` the first LegendURL's. */
 export interface WMSStyle {
@@ -54,19 +54,23 @@ const decimal = (e: Element | null): number | undefined => {
 
 // ScaleHint gives the diagonal of a pixel in meters; its scale denominator as ogc-client reckons it.
 const fromHint = (v: string | null): number | undefined =>
-  v === null || v === "" ? undefined : Math.sqrt(0.5 * Number(v) ** 2) / 0.00028;
+  v === null || v === "" ? undefined : Math.sqrt(0.5 * Number(v) ** 2) / OGC_PIXEL_METERS;
 
-function readLayer(e: Element, v13: boolean, parent: WMSLayer | null): WMSLayer {
+/** The most layers read from one capabilities document: each copies its parent's CRS and styles. */
+export const MAX_WMS_LAYERS = 10_000;
+
+function readLayer(e: Element, v13: boolean, parent: WMSLayer | null, count: { layers: number }): WMSLayer {
+  if (++count.layers > MAX_WMS_LAYERS) throw new Error(`mbmap: services: the WMS capabilities have more than ${MAX_WMS_LAYERS} layers`);
   const geo = first(e, v13 ? "EX_GeographicBoundingBox" : "LatLonBoundingBox");
   const ownBounds = geo
     ? v13
       ? (["westBoundLongitude", "southBoundLatitude", "eastBoundLongitude", "northBoundLatitude"].map((n) => decimal(first(geo, n))) as number[])
-      : ["minx", "miny", "maxx", "maxy"].map((n) => Number(geo.getAttribute(n)))
+      : attributeBox(geo)
     : undefined;
   const crsKey = v13 ? "CRS" : "SRS";
   const boxes = children(e, "BoundingBox").map((b) => ({
     crs: b.getAttribute(crsKey) ?? "",
-    bbox: ["minx", "miny", "maxx", "maxy"].map((n) => Number(b.getAttribute(n))) as [number, number, number, number],
+    bbox: attributeBox(b) as [number, number, number, number],
   }));
   const hint = v13 ? null : first(e, "ScaleHint");
   const attribution = first(e, "Attribution");
@@ -92,7 +96,7 @@ function readLayer(e: Element, v13: boolean, parent: WMSLayer | null): WMSLayer 
     attribution: attribution ? { title: optional(attribution, "Title"), url: href(first(attribution, "OnlineResource")) } : parent?.attribution,
     layers: [],
   };
-  layer.layers = children(e, "Layer").map((child) => readLayer(child, v13, layer));
+  layer.layers = children(e, "Layer").map((child) => readLayer(child, v13, layer, count));
   return layer;
 }
 
@@ -112,6 +116,7 @@ export function readWMSCapabilities(xml: string | Document, base?: string): WMSC
   const getMapUrl = getUrl(getMap);
   const infoUrl = getUrl(info);
   if (!getMapUrl) throw new Error("mbmap: services: the WMS capabilities have no GetMap URL");
+  const count = { layers: 0 };
   return {
     service: "WMS",
     version,
@@ -121,7 +126,7 @@ export function readWMSCapabilities(xml: string | Document, base?: string): WMSC
     getFeatureInfoUrl: infoUrl && resolved(infoUrl, base),
     mapFormats: texts(getMap, "Format"),
     infoFormats: texts(info, "Format"),
-    layers: children(capability, "Layer").map((l) => readLayer(l, v13, null)),
+    layers: children(capability, "Layer").map((l) => readLayer(l, v13, null, count)),
   };
 }
 
@@ -146,12 +151,17 @@ export interface WMSSourceOptions {
 }
 
 /** The layers `options` names (each offering `crs`, by default EPSG:3857), the GetMap parameters but size and BBOX, and the CRS key. */
-function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions, crs?: string) {
+/** The names `options.layers` gives and the layers of `capabilities` named so (undefined for none). */
+function named(capabilities: WMSCapabilities, options: WMSSourceOptions) {
   const names = typeof options.layers === "string" ? [options.layers] : options.layers;
   const all = allLayers(capabilities.layers);
+  return { names, found: names.map((n) => all.find((l) => l.name === n)) };
+}
+
+function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions, crs?: string, { names, found } = named(capabilities, options)) {
   const offers = (l: WMSLayer) => (crs === undefined ? l.crs.some(isWebMercator) : l.crs.some((c) => c.toUpperCase() === crs.toUpperCase()));
-  const layers = names.map((name) => {
-    const layer = all.find((l) => l.name === name);
+  const layers = names.map((name, i) => {
+    const layer = found[i];
     if (!layer) throw new Error(`mbmap: services: the WMS has no layer named ${name}`);
     if (!offers(layer)) throw new Error(`mbmap: services: the WMS layer ${name} is not offered in ${crs ?? "EPSG:3857"}`);
     return layer;
@@ -176,14 +186,13 @@ function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions, crs?: 
  * EPSG:4326 if all offer it, else the first layer's first EPSG CRS that all offer) and drawn by mbmap/data's worker.
  */
 export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptions): TileSource | ReprojectedSource {
-  const names = typeof options.layers === "string" ? [options.layers] : options.layers;
-  const all = allLayers(capabilities.layers);
-  const named = names.map((n) => all.find((l) => l.name === n));
-  const mercator = named.every((l) => !l || l.crs.some(isWebMercator)) && options.crs === undefined;
-  const common = (c: string) => named.every((l) => !l || l.crs.some((d) => d.toUpperCase() === c.toUpperCase()));
-  const crs = mercator ? undefined : options.crs ?? (common("EPSG:4326") ? "EPSG:4326" : named[0]?.crs.find((c) => epsgCode(c) !== undefined && common(c)));
+  const lookup = named(capabilities, options);
+  const { names, found } = lookup;
+  const mercator = options.crs === undefined ? found.every((l) => !l || l.crs.some(isWebMercator)) : isWebMercator(options.crs);
+  const common = (c: string) => found.every((l) => !l || l.crs.some((d) => d.toUpperCase() === c.toUpperCase()));
+  const crs = mercator ? undefined : options.crs ?? (common("EPSG:4326") ? "EPSG:4326" : found[0]?.crs.find((c) => epsgCode(c) !== undefined && common(c)));
   if (!mercator && crs === undefined) throw new Error(`mbmap: services: the WMS layers ${names.join(",")} share no EPSG CRS`);
-  const { layers, params, crs: crsParam, v13 } = getMap(capabilities, options, crs);
+  const { layers, params, crs: crsParam, v13 } = getMap(capabilities, options, crs, lookup);
   const size = options.tileSize ?? 256;
   const bounds = layers.map((l) => l.bounds).filter((b) => b !== undefined);
   const titles = [...new Set(layers.map((l) => l.attribution?.title).filter((t) => t))];
@@ -197,7 +206,7 @@ export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptio
     const code = epsgCode(crs);
     if (code === undefined) throw new Error(`mbmap: services: ${crs} is not an EPSG CRS`);
     const template = withQuery(capabilities.getMapUrl, { ...params, WIDTH: "{width}", HEIGHT: "{height}", ...crsParam, BBOX: "{bbox}", ...options.params });
-    return { type: "reprojected", crs: code, image: { template, northFirst: v13 && northFirst(crs) }, ...extra };
+    return { type: "reprojected", crs: code, image: { template, northFirst: v13 && northFirst(crs) }, ...(options.tileSize === 512 && { tileSize: 512 }), ...extra };
   }
   const url = withQuery(capabilities.getMapUrl, { ...params, WIDTH: size, HEIGHT: size, ...crsParam, BBOX: "{bbox-epsg-3857}", ...options.params });
   return { type: "raster", tiles: [url], tileSize: size, ...extra };
@@ -238,10 +247,10 @@ export function wmsFeatureInfoUrl(capabilities: WMSCapabilities, options: WMSFea
     QUERY_LAYERS: typeof query === "string" ? query : query.join(","),
     INFO_FORMAT: format,
     FEATURE_COUNT: options.featureCount,
-    [v13 ? "I" : "X"]: Math.floor((x - bbox[0]) / resolution),
-    [v13 ? "J" : "Y"]: Math.floor((bbox[3] - y) / resolution),
-    WIDTH: 101,
-    HEIGHT: 101,
+    [v13 ? "I" : "X"]: CLICK_PIXEL,
+    [v13 ? "J" : "Y"]: CLICK_PIXEL,
+    WIDTH: CLICK_PIXELS,
+    HEIGHT: CLICK_PIXELS,
     ...crs,
     BBOX: bbox.join(","),
     ...options.params,

@@ -71,17 +71,17 @@
     },
     {
       "name": "mbmap/services",
-      "bytes": 10953,
+      "bytes": 11232,
       "budget": 12000
     },
     {
       "name": "WFS GML (loaded by mbmap/services with the first GML answer)",
-      "bytes": 1993,
+      "bytes": 2010,
       "budget": 2500
     },
     {
       "name": "services worker (ArcGIS f=json and f=pbf; loaded by mbmap/services on the first such read)",
-      "bytes": 18698,
+      "bytes": 19966,
       "budget": 20000
     },
     {
@@ -111,12 +111,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29556,
+      "bytes": 29569,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49298,
+      "bytes": 49290,
       "budget": 50000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28651,
+      "bytes": 28703,
       "budget": 30000
     },
     {
@@ -161,7 +161,7 @@
     },
     {
       "name": "data worker",
-      "bytes": 39795,
+      "bytes": 39925,
       "budget": 40000
     },
     {
@@ -176,7 +176,7 @@
     },
     {
       "name": "reprojected sources' tiles (loaded by the data worker with the first one)",
-      "bytes": 1799,
+      "bytes": 1847,
       "budget": 2000
     },
     {
@@ -196,7 +196,7 @@
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
-      "bytes": 19795,
+      "bytes": 19798,
       "budget": 20000
     },
     {
