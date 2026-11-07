@@ -81,7 +81,7 @@
     },
     {
       "name": "services worker (ArcGIS f=json and f=pbf; loaded by mbmap/services on the first such read)",
-      "bytes": 19966,
+      "bytes": 19969,
       "budget": 20000
     },
     {
@@ -111,17 +111,17 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29569,
+      "bytes": 29573,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49290,
+      "bytes": 49291,
       "budget": 50000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 3881,
+      "bytes": 4270,
       "budget": 5000
     },
     {
@@ -131,13 +131,18 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28703,
+      "bytes": 28841,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
       "bytes": 41740,
       "budget": 50000
+    },
+    {
+      "name": "spatial relations (DE-9IM; loaded by the analysis worker on first use)",
+      "bytes": 26508,
+      "budget": 30000
     },
     {
       "name": "coordinate systems (loaded by the analysis and data workers on first use)",
@@ -161,7 +166,7 @@
     },
     {
       "name": "data worker",
-      "bytes": 39925,
+      "bytes": 39923,
       "budget": 40000
     },
     {

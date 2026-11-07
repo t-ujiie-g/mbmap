@@ -1,0 +1,249 @@
+{
+  "jsts": "2.12.1",
+  "cases": 20000,
+  "tiles": 4,
+  "groups": {
+    "hand": {
+      "cases": 40,
+      "identical": 40,
+      "pairs": 0
+    },
+    "hand reversed": {
+      "cases": 40,
+      "identical": 40,
+      "pairs": 0
+    },
+    "random": {
+      "cases": 20000,
+      "identical": 20000,
+      "pairs": 0
+    },
+    "random sets intersects": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 26045
+    },
+    "random sets contains": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 402
+    },
+    "random sets within": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 385
+    },
+    "random sets covers": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 1062
+    },
+    "random sets coveredBy": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 995
+    },
+    "random sets touches": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 9717
+    },
+    "random sets crosses": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 10475
+    },
+    "random sets overlaps": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 5085
+    },
+    "random sets equals": {
+      "cases": 20,
+      "identical": 20,
+      "pairs": 19
+    },
+    "gsi buildings x roads intersects": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 24
+    },
+    "gsi buildings x roads contains": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 2
+    },
+    "gsi buildings x roads within": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi buildings x roads covers": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 2
+    },
+    "gsi buildings x roads coveredBy": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi buildings x roads touches": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi buildings x roads crosses": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 22
+    },
+    "gsi buildings x roads overlaps": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi buildings x roads equals": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads intersects": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 51
+    },
+    "gsi water x roads contains": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads within": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads covers": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads coveredBy": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads touches": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads crosses": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 51
+    },
+    "gsi water x roads overlaps": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi water x roads equals": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi roads x roads intersects": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 2824
+    },
+    "gsi roads x roads contains": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi roads x roads within": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi roads x roads covers": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi roads x roads coveredBy": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi roads x roads touches": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 2014
+    },
+    "gsi roads x roads crosses": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 10
+    },
+    "gsi roads x roads overlaps": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi roads x roads equals": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi buildings x buildings intersects": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 818
+    },
+    "gsi buildings x buildings contains": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi buildings x buildings within": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi buildings x buildings covers": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi buildings x buildings coveredBy": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    },
+    "gsi buildings x buildings touches": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 10
+    },
+    "gsi buildings x buildings crosses": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 0
+    },
+    "gsi buildings x buildings overlaps": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 8
+    },
+    "gsi buildings x buildings equals": {
+      "cases": 4,
+      "identical": 4,
+      "pairs": 800
+    }
+  },
+  "failures": [],
+  "ok": true
+}

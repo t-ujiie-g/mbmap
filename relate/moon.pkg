@@ -1,0 +1,11 @@
+// The DE-9IM relate operation over `@geom.Table` rows: a port of JTS's
+// RelateOp as JSTS 2.12.1 ships it. Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+} for "test"

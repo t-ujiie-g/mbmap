@@ -10,10 +10,14 @@ const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let wasm = null;
 let ready = null;
-// The geometry (geometry_worker) and coordinate system (proj_worker)
-// modules, each instantiated on its first use.
+// The geometry (geometry_worker), spatial relation (relate_worker) and coordinate
+// system (proj_worker) modules, each instantiated on its first use.
 // proj_worker computes with the host's Math, as proj4js does.
-const modules = { geometry: { url: null, exports: null, imports: {} }, proj: { url: null, exports: null, imports: { Math } } };
+const modules = {
+  geometry: { url: null, exports: null, imports: {} },
+  relate: { url: null, exports: null, imports: {} },
+  proj: { url: null, exports: null, imports: { Math } },
+};
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
 
@@ -275,6 +279,18 @@ const OPS = {
     check(isId(dataset));
     return geometryOp([dataset], (g) => g.merge());
   },
+  // Pairs of rows of `a` and `b` in relation `predicate` (a code of relate_worker), or matching
+  // a packed DE-9IM `pattern` (predicate -1); with `pair`, the matrix of rows `pair` as text.
+  async relate({ a, b, predicate, pattern, pair }) {
+    check(isId(a) && isId(b) && Number.isInteger(predicate) && Number.isInteger(pattern));
+    check(pair === undefined || (Array.isArray(pair) && pair.length === 2 && pair.every(isId)));
+    const exports = await module("relate");
+    const bytes = [a, b].map((id) => outputOf(wasm, counted(wasm.table_out(id))));
+    writeInput(exports, bytes);
+    if (pair) return decoder.decode(outputOf(exports, checked(exports, exports.relate_matrix(bytes[0].length, ...pair))));
+    const n = checked(exports, exports.relate_pairs(bytes[0].length, predicate, pattern));
+    return new Int32Array(outputOf(exports, n * 4).buffer);
+  },
   overlay({ a, b, kind }) {
     check(isId(a) && isId(b) && [0, 1, 2, 3].includes(kind));
     return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
@@ -313,6 +329,7 @@ onmessage = (e) => {
   const msg = e.data;
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
     modules.geometry.url = typeof msg.geometry === "string" ? msg.geometry : null;
+    modules.relate.url = typeof msg.relate === "string" ? msg.relate : null;
     modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })

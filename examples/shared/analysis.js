@@ -1,6 +1,6 @@
 // What the showcase computes off the map, in mbmap/analysis's worker: the
-// places within 5 km of the view's center (a geodesic buffer, then a
-// point-in-polygon test) and the center in Japan's plane rectangular system.
+// places within 5 km of the view's center (a geodesic buffer, then the places
+// it covers, DE-9IM's coveredBy) and the center in Japan's plane rectangular system.
 import { load, transform } from "mbmap/analysis";
 import { PLACES } from "./places.js";
 
@@ -32,7 +32,8 @@ export async function describe(center) {
   const all = await places;
   const point = await load({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [center.lng, center.lat] } });
   const zone = await point.buffer(RADIUS_METERS);
-  const inside = await all.pointsWithin(zone);
+  const pairs = await all.relate(zone, "coveredBy");
+  const inside = pairs.filter((_, k) => k % 2 === 0);
   point.dispose();
   zone.dispose();
   const z = nearestZone(center.lng, center.lat);

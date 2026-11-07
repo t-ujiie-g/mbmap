@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/relate"
+
+import {
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const MAX_RELATE_POINTS : Int32 = 1_000_000
+
+pub fn dimension(@geom.Table, Int32) -> Int32
+
+pub fn predicate(@geom.Table, Int32, @geom.Table, Int32, String) -> Bool
+
+pub fn relate(@geom.Table, Int32, @geom.Table, Int32) -> Matrix
+
+pub fn relate_checked(@geom.Table, Int32, @geom.Table, Int32) -> Matrix?
+
+pub fn within_limit(@geom.Table, Int32, @geom.Table, Int32) -> Bool
+
+// Errors
+
+// Types and methods
+pub struct Matrix {
+  // private fields
+}
+pub fn Matrix::get(Self, Int32, Int32) -> Int32
+pub fn Matrix::is_contains(Self) -> Bool
+pub fn Matrix::is_covered_by(Self) -> Bool
+pub fn Matrix::is_covers(Self) -> Bool
+pub fn Matrix::is_crosses(Self, Int32, Int32) -> Bool
+pub fn Matrix::is_disjoint(Self) -> Bool
+pub fn Matrix::is_equals(Self, Int32, Int32) -> Bool
+pub fn Matrix::is_intersects(Self) -> Bool
+pub fn Matrix::is_overlaps(Self, Int32, Int32) -> Bool
+pub fn Matrix::is_touches(Self, Int32, Int32) -> Bool
+pub fn Matrix::is_within(Self) -> Bool
+pub fn Matrix::matches(Self, String) -> Bool
+pub fn Matrix::to_string(Self) -> String
+
+// Type aliases
+
+// Traits

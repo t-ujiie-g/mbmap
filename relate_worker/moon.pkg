@@ -1,0 +1,17 @@
+// The module the analysis worker loads on its first DE-9IM call: `@relate` over
+// pairs of table rows, candidates found by their boxes (`@analysis.Index`).
+
+import {
+  "t-ujiie-g/mbmap/analysis",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/relate",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)
