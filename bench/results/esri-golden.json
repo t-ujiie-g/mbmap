@@ -1,0 +1,150 @@
+{
+  "env": {
+    "@terraformer/arcgis": "2.2.2",
+    "arcgis-pbf-parser": "0.0.4",
+    "node": "v22.23.4"
+  },
+  "results": [
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0",
+      "features": 1000,
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/1",
+      "features": 679,
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/2",
+      "features": 51,
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/3",
+      "features": 1000,
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Military/FeatureServer/3",
+      "features": 117,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Military/FeatureServer/3",
+      "features": 117,
+      "bytes": [
+        8475,
+        35480
+      ],
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Military/FeatureServer/4",
+      "features": 6,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Military/FeatureServer/4",
+      "features": 6,
+      "bytes": [
+        1051,
+        3683
+      ],
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Military/FeatureServer/9",
+      "features": 144,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Military/FeatureServer/9",
+      "features": 144,
+      "bytes": [
+        14600,
+        52421
+      ],
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/1",
+      "features": 70,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/1",
+      "features": 70,
+      "bytes": [
+        14887,
+        95453
+      ],
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/2",
+      "features": 1000,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/2",
+      "features": 1000,
+      "bytes": [
+        174696,
+        693339
+      ],
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/USA_Major_Cities_/FeatureServer/0",
+      "features": 1000,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/USA_Major_Cities_/FeatureServer/0",
+      "features": 1000,
+      "bytes": [
+        112608,
+        270324
+      ],
+      "ok": true
+    },
+    {
+      "check": "f=json",
+      "layer": "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/World_Countries_(Generalized)/FeatureServer/0",
+      "features": 251,
+      "ok": true
+    },
+    {
+      "check": "f=pbf",
+      "layer": "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/World_Countries_(Generalized)/FeatureServer/0",
+      "features": 251,
+      "bytes": [
+        1934580,
+        8722482
+      ],
+      "ok": true
+    },
+    {
+      "check": "malformed",
+      "cases": 5,
+      "ok": true
+    }
+  ]
+}

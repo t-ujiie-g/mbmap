@@ -1,0 +1,18 @@
+// The services module: ArcGIS query results (`f=json`, `f=pbf`) read into
+// `@geom.Table` bytes, numbers past the fast path parsed by the host.
+// js/worker.mjs is its glue.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/formats",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

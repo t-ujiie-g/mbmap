@@ -1,6 +1,6 @@
-// mbmap/services on bench/npm/pages/services: a WMTS and an ArcGIS VectorTileServer draw the GSI tiles
-// they name pixel for pixel, a WMS layer by GetMap in EPSG:3857 keeping the endpoint's parameters, and
-// exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
+// mbmap/services on bench/npm/pages/services: WMTS, ArcGIS VectorTileServer and WMS layers draw the GSI
+// tiles they name, ArcGIS layers' features are read from f=pbf and f=json, and exceptions, malformed
+// documents, unknown layers and non-http URLs are refused with the reason.
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { decodePng } from "../../lib/png.mjs";
@@ -123,6 +123,26 @@ export async function servicesChecks(page, requests) {
   await new Promise((r) => setTimeout(r, 300));
   follow.stillStopped = asked() === follow.stopped;
 
+  // arcgisFeatures on a static FeatureServer (bench/npm/pages/services/arcgis/.../FeatureServer): layer 0
+  // lists PBF, so its three stations come as f=pbf, layer 1 only JSON; both read by services.wasm.
+  const features = await page.evaluate(async () => {
+    const services = await import("mbmap/services");
+    const layer = (n) => `./arcgis/rest/services/Test/FeatureServer/${n}`;
+    const pbf = await services.arcgisFeatures(layer(0));
+    const json = await services.arcgisFeatures(layer(1));
+    const refused = await services.arcgisFeatures(layer(0), { format: "json" }).then(() => "", (e) => e.message);
+    return { pbf, json, refused };
+  });
+  const near = (a, b) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1e-9);
+  const esriOk =
+    JSON.stringify(features.pbf.features.map((f) => [f.id, f.properties.name])) === JSON.stringify([[1, "東京"], [2, "有楽町"], [3, "神田"]]) &&
+    near(features.pbf.features[2].geometry.coordinates, [139.7709, 35.6918]) &&
+    features.json.features.length === 1 && features.json.features[0].id === 1 && features.json.features[0].properties.name === "丸の内" &&
+    features.json.features[0].geometry.type === "Polygon" && features.json.features[0].geometry.coordinates.length === 2 &&
+    near(features.json.features[0].geometry.coordinates[0][1], [139.765, 35.68]) &&
+    /malformed ArcGIS JSON/.test(features.refused) &&
+    requests.some((u) => /\/query\?.*f=pbf/.test(u)) && requests.some((u) => /\/query\?.*f=json/.test(u));
+
   const getMaps = requests.filter((u) => /REQUEST=GetMap/.test(u)).map((u) => Object.fromEntries(new URL(u).searchParams));
   const wmsShot = await shot();
   const drawn = wmsShot.some((v, i) => i % 4 < 3 && v !== 255);
@@ -146,6 +166,7 @@ export async function servicesChecks(page, requests) {
     /\/bench\/fixtures\/gsi-bvmap\/\{z\}\/\{x\}\/\{y\}\.pbf$/.test(vector.source?.tiles?.[0]) &&
     vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験" &&
     JSON.stringify(follow.features) === JSON.stringify(["tokyo", "yurakucho", "kanda"]) && follow.bounds >= 1 && follow.first.length === 4 &&
-    follow.kanda[0] > 200 && follow.kanda[1] < 80 && follow.moved && follow.stillStopped;
-  return [ok, { ...r, same, drawn, vector, follow, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
+    follow.kanda[0] > 200 && follow.kanda[1] < 80 && follow.moved && follow.stillStopped &&
+    esriOk && loaded.includes("services-worker.js") && loaded.includes("services.wasm");
+  return [ok, { ...r, same, drawn, vector, follow, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
 }

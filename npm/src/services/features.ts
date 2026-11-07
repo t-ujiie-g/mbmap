@@ -93,6 +93,13 @@ export function arcgisQueryUrl(layerUrl: string, options: ArcGISQueryOptions = {
   });
 }
 
+/** The format `arcgisFeatures` asks a layer for by default (services.ts `ArcGISFeatureOptions`): PBF, else GeoJSON, else JSON, as `supportedQueryFormats` lists them. */
+export function arcgisFormat(layer: unknown): "geojson" | "json" | "pbf" {
+  const formats = (layer as { supportedQueryFormats?: unknown } | null)?.supportedQueryFormats;
+  const listed = typeof formats === "string" ? formats.split(",").map((f) => f.trim().toLowerCase()) : [];
+  return listed.includes("pbf") ? "pbf" : listed.includes("geojson") ? "geojson" : "json";
+}
+
 /** The features of a GeoJSON page; anything else throws. */
 export function pageFeatures(page: unknown, what: string): unknown[] {
   const features = (page as { features?: unknown } | null)?.features;
