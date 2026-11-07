@@ -1,0 +1,7 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "id": "kanda", "properties": { "name": "神田駅" }, "geometry": { "type": "Point", "coordinates": [139.7709, 35.6918] } }
+  ],
+  "links": []
+}

@@ -84,6 +84,45 @@ export async function servicesChecks(page, requests) {
     drawn: new Set(Array.from({ length: plain.length / 4 }, (_, i) => plain[i * 4] * 65536 + plain[i * 4 + 1] * 256 + plain[i * 4 + 2])).size > 2,
   };
 
+  // followView: an OGC API collection's two pages (bench/npm/pages/services/ogc) fill a GeoJSON source
+  // for the view, asked again after a move and no more once stopped.
+  const asked = () => requests.filter((u) => /\/ogc\/items\.json/.test(u)).length;
+  const followed = await page.evaluate(async () => {
+    const map = window.__map;
+    const services = await import("mbmap/services");
+    map.jumpTo({ center: [139.7671, 35.6812], zoom: 13 });
+    map.setStyle({ version: 8, sources: { view: { type: "geojson", data: { type: "FeatureCollection", features: [] } } }, layers: [
+      { id: "bg", type: "background", paint: { "background-color": "#ffffff" } },
+      { id: "view", type: "circle", source: "view", paint: { "circle-radius": 8, "circle-color": "#ff0000" } },
+    ] });
+    await map.once("idle");
+    const bounds = [];
+    const loaded = map.once("sourcedata");
+    const stop = services.followView(map, "view", (b, signal) => {
+      bounds.push(b);
+      return services.ogcFeatures("./ogc/items.json", { bbox: b, limit: 2, signal });
+    });
+    await loaded;
+    await map.once("idle");
+    const data = map.getSource("view").getData ? await map.getSource("view").getData() : null;
+    const at = map.project([139.7709, 35.6918]);
+    return { stop: (window.__stopFollow = stop) && true, features: data?.features?.map((f) => f.id), bounds: bounds.length, first: bounds[0], at };
+  });
+  const kanda = await page.screenshot({ clip: { x: Math.round(followed.at.x), y: Math.round(followed.at.y), width: 1, height: 1 } }).then((b) => [...decodePng(b).rgba.slice(0, 3)]);
+  const askedBefore = asked();
+  await page.evaluate(async () => {
+    const map = window.__map;
+    map.jumpTo({ center: [139.77, 35.69] });
+    await map.once("idle");
+    await new Promise((r) => setTimeout(r, 200));
+    window.__stopFollow();
+    map.jumpTo({ center: [139.76, 35.68] });
+    await map.once("idle");
+  });
+  const follow = { ...followed, kanda, moved: askedBefore > 0 && asked() > askedBefore, stopped: asked() };
+  await new Promise((r) => setTimeout(r, 300));
+  follow.stillStopped = asked() === follow.stopped;
+
   const getMaps = requests.filter((u) => /REQUEST=GetMap/.test(u)).map((u) => Object.fromEntries(new URL(u).searchParams));
   const wmsShot = await shot();
   const drawn = wmsShot.some((v, i) => i % 4 < 3 && v !== 255);
@@ -105,6 +144,8 @@ export async function servicesChecks(page, requests) {
     loaded.includes("services.js") && loaded.includes("wmts.xml") && loaded.includes("wms.xml") &&
     vector.same && vector.asIs && (vector.drawn || !fixtures) &&
     /\/bench\/fixtures\/gsi-bvmap\/\{z\}\/\{x\}\/\{y\}\.pbf$/.test(vector.source?.tiles?.[0]) &&
-    vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験";
-  return [ok, { ...r, same, drawn, vector, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
+    vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験" &&
+    JSON.stringify(follow.features) === JSON.stringify(["tokyo", "yurakucho", "kanda"]) && follow.bounds >= 1 && follow.first.length === 4 &&
+    follow.kanda[0] > 200 && follow.kanda[1] < 80 && follow.moved && follow.stillStopped;
+  return [ok, { ...r, same, drawn, vector, follow, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
 }
