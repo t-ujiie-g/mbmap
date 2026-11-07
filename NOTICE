@@ -627,7 +627,9 @@ Test / benchmark data:
   and @turf/line-slice 7.4.0 (with the parts of @turf/distance and @turf/helpers
   they use); simplify/ ports @turf/simplify, @turf/clean-coords and
   @turf/boolean-point-on-line 7.4.0, hull/ @turf/convex 7.4.0, and clusters/
-  @turf/clusters-dbscan and @turf/clusters-kmeans 7.4.0
+  @turf/clusters-dbscan and @turf/clusters-kmeans 7.4.0, and grids/ @turf/point-grid,
+  square-grid, rectangle-grid, hex-grid, triangle-grid, interpolate, bbox and
+  centroid 7.4.0 (without `mask`)
   https://github.com/Turfjs/turf — MIT License:
 
     The MIT License (MIT)
