@@ -1,0 +1,13 @@
+// Turf.js grids (point, square, hex, triangle) and IDW interpolation over
+// `@geom.Table`s. Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+} for "test"
