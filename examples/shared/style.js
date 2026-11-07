@@ -62,6 +62,18 @@ export const HIDDEN_AT_START = new Set(["駅の密度", "散歩道", "駅の略�
 /** The datasets read with mbmap/data by id, as `{ name, data }`: overlays that every new style keeps. */
 export const datasets = new Map();
 
+/** The raster overlays of Web services (services.js) by id, as `{ name, source }`: kept by every new style too. */
+export const serviceLayers = new Map();
+
+/** The first vector overlay of `layers` (a style's), which raster overlays go under. */
+export const firstVectorOverlay = (layers) => layers.find((l) => l.metadata?.["mbmap:overlay"] && !serviceLayers.has(l.id))?.id;
+
+/** A service overlay's layer. */
+export const serviceLayer = (id) => ({ id, type: "raster", source: id, metadata: { "mbmap:overlay": true }, paint: { "raster-opacity": 0.85 } });
+
+/** A tile URL as the showcase reads it: GSI's pale map from the fixtures' standard map with `?local=1`. */
+export const tileUrl = (url) => (local ? url.replace(`${GSI}/pale/`, `${fixtures}gsi-std/`) : url);
+
 /** The basemaps (`createStyle`'s `basemap`): GSI's vector map, or its aerial photos with labels. */
 export const BASEMAPS = [
   { id: "map", title: "地図" },
@@ -198,6 +210,10 @@ export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, bas
       paint: { "text-color": "#8c2d1f", "text-halo-color": "#ffffff", "text-halo-width": 2 },
     },
   ];
+  // Raster overlays go under the vector ones (places, stations, datasets).
+  const under = layers.findIndex((l) => l.metadata?.["mbmap:overlay"]);
+  for (const [id, { source }] of serviceLayers) sources[id] = source;
+  layers.splice(under < 0 ? layers.length : under, 0, ...[...serviceLayers.keys()].map(serviceLayer));
   for (const [id, { data }] of datasets) {
     sources[id] = datasetSource(data);
     layers.push(...datasetLayers(id));

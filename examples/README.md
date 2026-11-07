@@ -32,6 +32,7 @@
 - 検索（`mbmap/search`）：座標（度、度分秒、平面直角座標系、UTM）と地点の名前。`?gsi-search=1` で国土地理院の地名検索を外部のプロバイダとして足す（利用条件は [npm/README.md](../npm/README.md) の検索の節）。
 - 作図（`mbmap/draw`）：点、線、多角形、矩形、円（`mbmap/geodesic` で楕円体の上の円）、フリーハンド、選択と編集、スナップ、分割と結合（`mbmap/analysis` の `splitFeatures`・`mergeFeatures`）、名前とメモの属性、取り消しとやり直し。
 - データの読み込み（`mbmap/data`）：ファイルの選択かドロップ、または「サンプルを読む」（東京の公園の CSV）。CSV、Shapefile（zip）、KML/KMZ、GPX、TopoJSON、FlatGeobuf、GeoJSON を GeoJSON ソースとして重ね、範囲に移動する。読んだデータは GeoJSON、CSV、KML に書き出せる。スタイルを切り替えても残る。
+- Web サービス（`mbmap/services`、「データ」のタブ）：WMS・WMTS の GetCapabilities の URL か ArcGIS の MapServer・ImageServer・FeatureServer のレイヤーの URL を読み、レイヤーを選んで地図に重ねる（WMS・WMTS・ArcGIS はラスタのソース、Web メルカトル以外の座標系は `reprojected`、FeatureServer のレイヤーは地物）。「地理院タイル（WMTS）を読む」は、同梱した地理院の淡色地図の WMTS の GetCapabilities を読む。重ねたラスタは地点などのベクトルの重ねの下に入り、スタイルを切り替えても残る。
 - 計測（`createMeasurement` と `mbmap/geodesic` の `measure`）：距離と面積。距離を測り終えると、その線の断面図（`createProfile`。標高は `mbmap/analysis` の `sampleDem` で国土地理院の標高タイルから。グラフの上のポインタの位置は地図にも点で出る）。
 - 画像の保存（`toBlob`。画面の 2 倍の解像度の PNG）。
 - 画面の中心から 5 km 以内の地点：中心の点を測地線で 5 km 広げ（`buffer`）、その中にある地点を数える（`pointsWithin`）。移動が終わるたびに計算する。

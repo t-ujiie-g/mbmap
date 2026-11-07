@@ -4,6 +4,7 @@ import { describe } from "./analysis.js";
 import { mountControls } from "./controls.js";
 import { mountCoordinates } from "./coordinates.js";
 import { mountData } from "./data.js";
+import { mountServices } from "./services.js";
 import { mountDraw } from "./draw.js";
 import { identifyWhenIdle, mountMeasurement } from "./measure.js";
 import { pinDestinations, saveImage } from "./overlay.js";
@@ -42,6 +43,7 @@ export function mountApp(map, status, applyStyle) {
   mountSearch(map, () => places);
   mountTable(map);
   mountData(map);
+  mountServices(map);
 
   const showButtons = () => {
     for (const b of document.querySelectorAll("#modes button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));

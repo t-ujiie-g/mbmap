@@ -24,6 +24,7 @@ import { styleChecks } from "./checks/style.mjs";
 import { tileSourceChecks } from "./checks/tile-sources.mjs";
 import { trackExportChecks } from "./checks/track-export.mjs";
 import { showcaseDataChecks } from "./checks/showcase-data.mjs";
+import { showcaseServicesChecks } from "./checks/showcase-services.mjs";
 import { crumb, mapState, openTab, trail } from "./checks/step.mjs";
 import { arg } from "../lib/args.mjs";
 
@@ -488,6 +489,8 @@ async function showcase(page) {
     .then(() => true, () => false);
   crumb("showcaseDataChecks");
   const read = await showcaseDataChecks(page);
+  crumb("showcaseServicesChecks");
+  const services = await showcaseServicesChecks(page);
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
     identified.count >= 1 && identified.index === 0 && identified.selected === true &&
@@ -504,8 +507,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && read.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, read, measured, drew, edited, cut, clustered }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && read.ok && services.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, read, services, measured, drew, edited, cut, clustered }];
 }
 
 async function engineStarted(page) {
