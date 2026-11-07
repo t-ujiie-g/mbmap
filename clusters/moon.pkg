@@ -1,0 +1,15 @@
+// Clusters of `@geom.Table` points as @turf/clusters-dbscan and
+// @turf/clusters-kmeans 7.4.0 (with skmeans 0.9.7). Pure MoonBit, tested on
+// every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+} for "test"

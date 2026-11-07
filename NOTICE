@@ -626,7 +626,8 @@ Test / benchmark data:
   @turf/centroid and @turf/bbox 7.4.0; lineops/ ports @turf/nearest-point-on-line
   and @turf/line-slice 7.4.0 (with the parts of @turf/distance and @turf/helpers
   they use); simplify/ ports @turf/simplify, @turf/clean-coords and
-  @turf/boolean-point-on-line 7.4.0, and hull/ @turf/convex 7.4.0
+  @turf/boolean-point-on-line 7.4.0, hull/ @turf/convex 7.4.0, and clusters/
+  @turf/clusters-dbscan and @turf/clusters-kmeans 7.4.0
   https://github.com/Turfjs/turf — MIT License:
 
     The MIT License (MIT)
@@ -1076,3 +1077,7 @@ Test / benchmark data (continued):
     COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
     IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+- clusters/kmeans.mbt: port of skmeans 0.9.7 (main.js, distance.js)
+  https://github.com/solzimer/skmeans — MIT License (its package.json; the package
+  ships no LICENSE file), Copyright (c) David Gómez Matarrodona.
