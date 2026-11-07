@@ -32,7 +32,10 @@ test "a point lands at its tile position; empty tiles are None" {
   // Longitude 0, latitude 0 is the world's center: tile 1/1/1's corner.
   let d = t.tile(1, 1, 1).unwrap()
   assert_eq((d.types, d.rows, d.xy), ([1], [0], [0, 0]))
-  assert_eq(t.tile(0, 0, 0).unwrap().xy, [2048, 2048])
+  assert_eq(t.tile(0, 0, 0).unwrap().xy, [
+    @core.TILE_EXTENT / 2,
+    @core.TILE_EXTENT / 2,
+  ])
   assert_eq(t.tile(3, 0, 0).map(d => d.types.length()), None)
   assert_eq(t.tile(-1, 0, 0).map(d => d.types.length()), None)
 }
@@ -54,7 +57,7 @@ test "polygons are clipped to the tile and its buffer and wound for MVT" {
   assert_eq((d.types, d.ring_ends), ([3], [2]))
   let outer = ring(d, 0)
   // Cut at the buffer (64 units) past the tile's left and bottom edges.
-  assert_true(outer.iter().all(v => v >= -64 && v <= 4096 + 64))
+  assert_true(outer.iter().all(v => v >= -64 && v <= @core.TILE_EXTENT + 64))
   assert_true(outer.contains(-64))
   // Exterior clockwise in tile space: positive shoelace sum with y down.
   let area = (r : Array[Int32]) => {
@@ -105,7 +108,12 @@ test "tiles below the index are cut on demand, up to max_zoom" {
   // z14 (max_zoom) is past the index: cut from z2 on request.
   let d = t.tile(14, 14552, 6451).unwrap()
   assert_eq(d.types, [1])
-  assert_true(d.xy[0] >= 0 && d.xy[0] < 4096 && d.xy[1] >= 0 && d.xy[1] < 4096)
+  assert_true(
+    d.xy[0] >= 0 &&
+    d.xy[0] < @core.TILE_EXTENT &&
+    d.xy[1] >= 0 &&
+    d.xy[1] < @core.TILE_EXTENT,
+  )
   // Beyond max_zoom there are no tiles (callers overzoom), as in geojson-vt.
   assert_eq(t.tile(18, 232847, 103226).map(d => d.types), None)
 }
@@ -171,7 +179,7 @@ test "line metrics tell where each tile's slice lies along its line" {
     b.end_part()
     b.end_feature(LineString)
   })
-  let buffer = 64.0 / 4096.0 / 2.0
+  let buffer = 64.0 / @core.TILE_EXTENT.to_double() / 2.0
   let left = metrics_tiler(t).tile(1, 0, 0).unwrap()
   assert_eq(left.clips.length(), 2)
   assert_eq(left.clips[0], 0.0)

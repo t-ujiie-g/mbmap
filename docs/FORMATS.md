@@ -39,7 +39,7 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   | 7, 8 | `PROPS_OFFSET`, `PROPS_BYTES` | group properties' byte offset and length |
   | 9, 10 | `PAINT_OFFSET`, `PAINT_BYTES` | per-vertex paint ("Vertex paint") byte offset and length; an entry sharing another's geometry has its own |
   | 11, 12 | `OUTLINE_OFFSET`, `OUTLINE_COUNT` | fills: the outline's index byte offset and count (pairs of vertex indices, one per ring edge, in the entry's index size) |
-  | 13, 14 | `DISTANCES_OFFSET`, `DISTANCES_COUNT` | dashed lines: their distances, u16 per vertex, the distance from the line's start in `@core.TILE_EXTENT` units (MapLibre's `linesofar` halved, starting again from 0 past `@tess.MAX_LINE_DISTANCE`) |
+  | 13, 14 | `DISTANCES_OFFSET`, `DISTANCES_COUNT` | dashed lines: their distances, u16 per vertex, the distance from the line's start in `@core.TILE_EXTENT` units, even (MapLibre's `linesofar`, starting again from 0 past `@tess.MAX_LINE_DISTANCE`) |
   | 15, 16 | `PROGRESS_OFFSET`, `PROGRESS_ROWS` | gradient lines (8-aligned): per vertex an f32 share of its line's length and an f32 row, then per row its line's clip start and end (f64s, MapLibre's `lineClips`; 0 and 1 without line metrics), then the longest line in tiles (f64) |
   | 17, 18 | `OFFSETS_OFFSET`, `OFFSETS_COUNT` | offset lines: their offset normals per vertex, two i8 (`@tess.EXTRUDE_SCALE` per unit, MapLibre's `a_offset_normal`) |
   | 19, 20 | `KEY_RUNS_OFFSET`, `KEY_RUNS_COUNT` | circles with a sort key (8-aligned): per run of equal keys the key (f64), first index and index count (u32s) |
@@ -52,7 +52,7 @@ What the display worker writes for a tile, read by `worker/js/worker.mjs`:
   along as i8 (`LINE_VERTEX_BYTES` 8). Extrusion vertices
   (`EXTRUSION_VERTEX_BYTES` 24) are x, y, normal x, y, z (times 2^14; x's lowest
   bit set on the top edge), the distance along the ring's walls (0 on roofs;
-  MapLibre's `edgeDistance` halved), and the feature's centroid x, y as i16, then its
+  MapLibre's `edgeDistance`), and the feature's centroid x, y as i16, then its
   base and height at the tile's zoom and one deeper as u16 decimeters (0 to
   6553.5 m). Coordinates are in `@core.TILE_EXTENT` units. A symbol entry's vertex
   range holds its labels and it has no indices.

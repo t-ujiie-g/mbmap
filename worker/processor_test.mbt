@@ -105,7 +105,7 @@ test "process packs fill and line layers of the source in style order" {
     (4 * @worker.FILL_VERTEX_BYTES, 3),
   )
   let v = entry(0, @worker.ENTRY_VERTEX_OFFSET)
-  assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (100, 0))
+  assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (200, 0))
   // Layer 4 ("road"); "other" is another source, "late" starts at z15 and
   // "edge" filters out the polygon.
   assert_eq(
@@ -116,7 +116,7 @@ test "process packs fill and line layers of the source in style order" {
   assert_eq(entry(1, @worker.ENTRY_VERTEX_BYTES), 4 * @worker.LINE_VERTEX_BYTES)
   assert_eq(
     (i16_at(b, lv), i16_at(b, lv + 2), b[lv + 5].to_int(), b[lv + 6].to_int()),
-    (-10, 5, 63, 1),
+    (-20, 10, 63, 1),
   )
   for k in 0..<2 {
     // Small layers use 16-bit indices.
@@ -238,12 +238,12 @@ test "layers are rescaled to TILE_EXTENT" {
     cmd(7, 1),
   ])
   l.write_tag(5, @pbf.WIRE_VARINT)
-  l.write_varint32(8192)
+  l.write_varint32(2048)
   let p = @worker.TileProcessor::from_utf8(@utf8.encode(style_json)[:])
   assert_true(p.process("a", tile_of([l])[:], 14))
   let b = p.out.to_bytes()[:]
   let v = u32_at(b, 4 + 2 * 4)
-  assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (50, 0))
+  assert_eq((i16_at(b, v + 4), i16_at(b, v + 6)), (400, 0))
 }
 
 ///|
@@ -509,7 +509,10 @@ test "GeoJSON sources draw from columnar tiles, with filters and properties" {
   )
   // The point at 0, 0 lands in the tile's center.
   let v = entry(1, @worker.ENTRY_VERTEX_OFFSET)
-  assert_eq((i16_at(b, v), i16_at(b, v + 2)), (2048, 2048))
+  assert_eq(
+    (i16_at(b, v), i16_at(b, v + 2)),
+    (@core.TILE_EXTENT / 2, @core.TILE_EXTENT / 2),
+  )
 }
 
 ///|
@@ -593,9 +596,10 @@ test "fill-extrusion layers pack walls, roofs and per-feature heights" {
   assert_eq((n, entry(1, @worker.ENTRY_INDEX_COUNT)), (3 * 4 + 4, 3 * 6 + 3))
   let v = entry(1, @worker.ENTRY_VERTEX_OFFSET)
   let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
-  // Centroid of (0, 0), (100, 0), (100, 100) (the commands are deltas); base
-  // clamped to 0; height 10 m at z14 and 25.3 m (decimeters) at z15.
-  assert_eq((i16_at(b, v + 12), i16_at(b, v + 14)), (66, 33))
+  // Centroid of (0, 0), (100, 0), (100, 100) (the commands are deltas) in the
+  // layer's 4096 units; base clamped to 0; height 10 m at z14 and 25.3 m
+  // (decimeters) at z15.
+  assert_eq((i16_at(b, v + 12), i16_at(b, v + 14)), (132, 66))
   assert_eq(
     (u16(v + 16), u16(v + 18), u16(v + 20), u16(v + 22)),
     (0, 0, 100, 253),
@@ -658,13 +662,13 @@ test "sort keys order features within the tile, and circles pack their runs of e
     u32_at(b, 4 + (k * @worker.LAYER_ENTRY_WORDS + w) * 4)
   }
   assert_eq(p.out.layer_count(), 3)
-  assert_eq(i16_at(b, entry(0, @worker.ENTRY_VERTEX_OFFSET)), 20)
+  assert_eq(i16_at(b, entry(0, @worker.ENTRY_VERTEX_OFFSET)), 40)
   // The sorted circles do not share the plain ones' buffers.
   assert_true(
     entry(2, @worker.ENTRY_VERTEX_OFFSET) !=
     entry(1, @worker.ENTRY_VERTEX_OFFSET),
   )
-  assert_eq(i16_at(b, entry(1, @worker.ENTRY_VERTEX_OFFSET)), 20)
+  assert_eq(i16_at(b, entry(1, @worker.ENTRY_VERTEX_OFFSET)), 40)
   assert_eq(i16_at(b, entry(2, @worker.ENTRY_VERTEX_OFFSET)), 0)
   // Two runs: key 0 over four circles (24 indices), key 1 over two.
   assert_eq(

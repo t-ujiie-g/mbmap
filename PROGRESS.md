@@ -98,6 +98,17 @@
     - `npm` の `style` の確認は、`line-width` を変えて戻す手順で道路のタイルを読み直すことがある。その要求が `idle` の前か後かで数が変わり、ときどき落ちていた。手順のあとで `idle` を待ってから数えるようにした。
     - `element` の右ドラッグは、慣性の 160 ms が過ぎてから離す（#116 で直した）。
   - 未解決：`npm run style:golden` の `heatmap`（mean 0.567 / p99 8、上限 0.5 / 5）と `extrusion-patterns`（0.215 / 1、上限 0.2 / 1）が、この環境では main でも上限を超える。この PR の変更の前後で同じ値なので、別に扱う。
+- **`TILE_EXTENT` を 8192 に**（2026-11-07 ユーザー判断、18.3 と並行の別 PR）：MapLibre の `EXTENT` と同じにした。位置は Int16 のまま。
+  - 4096 の MVT は 2 倍するだけなので、GSI のタイルの出力は同じ。fixtures 35 枚の packed tile は前後とも計 77,448,536 バイトで、1 枚も変わらない（`bench/maplibre/style.json`）。
+  - 座標は ±32767 で切る。8192 の単位で ±4 タイル分で、MapLibre の `loadGeometry`（15 ビット、±2 タイル分）より広い。
+  - 破線の距離は 8192 の単位で、MapLibre の `linesofar` と同じく偶数にそろえる（半分にして切り捨て、2 倍）。`MAX_LINE_DISTANCE` は 16384（MapLibre の `MAX_LINE_DISTANCE / 2`）。4096 のタイルでは前と同じ値。
+  - 2 倍や半分の換算をなくした：ラベルの y 順、`map_placed_labels`、線に沿うラベルの `TO_EXTENT`、押し出しの壁の距離と `u_height_factor`、画像ソースの角。`worker/js/mirror.test.mjs` が `symbols.mjs` と `media.ts` の `TILE_EXTENT` を確かめる。
+  - GeoJSON のタイルも MapLibre と同じ 8192 で切るようになった（バッファ、許容誤差、クラスタの半径）。`npm run geojson:golden` の `maplibre` と `lineMetrics` の組を 8192 にした（0 differ。この環境では Node の既定のヒープでは main でも足りず、`--max-old-space-size` が要る）。
+  - 結果（mean / p99、前 → 後）：
+    - `npm run services:style` の tokyo15：0.199 / 4 → 0.006 / 0。ほかの 3 場面は同じ。
+    - `npm run style:golden`：`heatmap` 0.567 / 8 → 0.001 / 0、`heatmap-state` 0.345 / 4 → 0.001 / 0、`clusters` 0.061 / 1 → 0 / 0、`cluster-properties` 0.047 / 1 → 0 / 0、`gradients` 0.053 / 1 → 0.003 / 0、`icons-lines` 0.017 / 0 → 0.001 / 0、`icons-lines-tilted` 0.033 / 1 → 0.005 / 0。ほかは同じで、`extrusion-patterns`（0.215 / 1）だけが上限を超えたまま。
+    - `query`、`labels`、`raster`、`track`、`pmtiles`、`tess`、`mvt`、`cluster` の黄金テストは前後で同じ。`export` は分けて描いた画像の差の画素が 1366 → 1365。
+  - 速さ（`worker:browser`、`render`）は M2 で測る必要がある。出力のバイト数は同じなので、変わらない見込み。
 
 ## Phase 17 の後の点検（2026-11-06〜）
 

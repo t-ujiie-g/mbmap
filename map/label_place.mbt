@@ -139,7 +139,7 @@ fn Map::place_labels(
       }
       p.next += 1
       // MapLibre lays labels out in tiles of the display zoom, 512 px and
-      // 8192 units wide, deeper than the source's (`overscaling`).
+      // `TILE_EXTENT` units wide, deeper than the source's (`overscaling`).
       let deeper = @cmp.maximum(0, zoom.to_int() - p.draw.id.z)
       let unit = (1 << deeper).to_double() / 16.0
       if p.set.line is Some(l) {
@@ -250,7 +250,7 @@ fn sorts_by_y(layer : @style.StyleLayer) -> Bool {
 
 ///|
 /// MapLibre's `getSortedSymbolIndexes`: labels by their anchors' y on the map
-/// turned by `angle` (in its 8192-unit tiles, rounded as `Math.round`), the later
+/// turned by `angle` (in tile units, rounded as `Math.round`), the later
 /// feature first on ties.
 fn y_order(s : LabelSet, angle : Double) -> FixedArray[Int32] {
   let sin = @math.sin(angle)
@@ -258,7 +258,7 @@ fn y_order(s : LabelSet, angle : Double) -> FixedArray[Int32] {
   let at = (i : Int32, col : Int32) => f32_at(s.labels, i * LABEL_FLOATS + col)
   // Rounded y first, then the feature index backwards (below 2^24).
   let keys = Array::makei(s.count, i => {
-    let y = (sin * 2.0 * at(i, LABEL_X) + cos * 2.0 * at(i, LABEL_Y) + 0.5).floor()
+    let y = (sin * at(i, LABEL_X) + cos * at(i, LABEL_Y) + 0.5).floor()
     y * 16777216.0 - at(i, LABEL_FEATURE)
   })
   @core.stable_order(keys[:])

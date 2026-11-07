@@ -26,8 +26,8 @@ pub fn Map::placed_labels(self : Map) -> String {
           out.write_string(
             "\{self.style.layers[m.layer].id},\{d.id.z},\{d.id.x},\{d.id.y},\{f32_at(s.labels, row + LABEL_FEATURE).to_int()},",
           )
-          let ax = (f32_at(s.labels, row) * 2.0).to_int()
-          let ay = (f32_at(s.labels, row + LABEL_Y) * 2.0).to_int()
+          let ax = f32_at(s.labels, row).to_int()
+          let ay = f32_at(s.labels, row + LABEL_Y).to_int()
           let flag = (v : Bool) => if v { 1 } else { 0 }
           let layout = if s.shown[i] &&
             f32_at(s.labels, row + LABEL_LAYOUTS) > 1.0 {

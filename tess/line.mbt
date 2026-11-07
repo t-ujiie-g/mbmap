@@ -42,13 +42,10 @@ const COS_HALF_SHARP_CORNER : Double = 0.7933533402912352
 const SHARP_CORNER_OFFSET : Double = 15.0
 
 ///|
-/// Distances along a line are kept in `@core.TILE_EXTENT` units (MapLibre's
-/// `linesofar` halved, in `MAPLIBRE_EXTENT` units) and start again from 0 past this.
-pub const MAX_LINE_DISTANCE : Int32 = 8192
-
-///|
-/// MapLibre's tile extent, whatever the source's.
-const MAPLIBRE_EXTENT : Double = 8192.0
+/// Distances along a line are kept in `@core.TILE_EXTENT` units, even as
+/// MapLibre's `linesofar` (halved, then doubled), and start again from 0 past
+/// this (its `MAX_LINE_DISTANCE / 2`).
+pub const MAX_LINE_DISTANCE : Int32 = 16384
 
 ///|
 /// Fan segments per half turn of a round join.

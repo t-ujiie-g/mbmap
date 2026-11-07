@@ -308,7 +308,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_color"]);
   #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
-  #|  // walls along their distance (a_normal.w, in 8192 units) and height (u_height_factor); its
+  #|  // walls along their distance (a_normal.w, in tile units) and height (u_height_factor); its
   #|  // light differs from the plain one's.
   #|  const extrusionPattern = program(
   #|    patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele; uniform mat4 u_matrix;" +
@@ -323,7 +323,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float t = float(a_normal.x & 1); float elevation = t > 0.0 ? height : base; v_pos = a_pos;" +
   #|    "  gl_Position = u_matrix * vec4(a_pos, elevation * u_scale, 1.0);" +
   #|    "  bool roof = a_normal.x == 1 && a_normal.y == 0 && a_normal.z == 16384;" +
-  #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w) * 0.5, elevation * u_height_factor));" +
+  #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w), elevation * u_height_factor));" +
   #|    "  float directional = clamp(dot(normal / 16383.0, u_lightpos), 0.0, 1.0);" +
   #|    "  directional = mix(1.0 - u_lightintensity, max(0.5 + u_lightintensity, 1.0), directional);" +
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +

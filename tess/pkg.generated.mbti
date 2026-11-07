@@ -15,7 +15,7 @@ pub const EXTRUSION_VERTEX_STRIDE : Int32 = 8
 
 pub const LINE_VERTEX_STRIDE : Int32 = 6
 
-pub const MAX_LINE_DISTANCE : Int32 = 8192
+pub const MAX_LINE_DISTANCE : Int32 = 16384
 
 pub fn add_points(ArrayView[Int32], LineBuffers, extent? : Int32) -> Unit
 

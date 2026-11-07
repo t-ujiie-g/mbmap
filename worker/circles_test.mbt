@@ -40,9 +40,9 @@ test "circle layers pack one quad per point and share buffers like other kinds" 
     (1, entry(0, @worker.ENTRY_VERTEX_OFFSET)),
   )
   let v = entry(0, @worker.ENTRY_VERTEX_OFFSET)
-  assert_eq((i16_at(b, v), i16_at(b, v + 2)), (10, 20))
+  assert_eq((i16_at(b, v), i16_at(b, v + 2)), (20, 40))
   assert_eq((b[v + 4].to_int(), b[v + 5].to_int()), (256 - 63, 256 - 63))
-  assert_eq((i16_at(b, v + 32), i16_at(b, v + 34)), (20, 30))
+  assert_eq((i16_at(b, v + 32), i16_at(b, v + 34)), (40, 60))
 }
 
 ///|

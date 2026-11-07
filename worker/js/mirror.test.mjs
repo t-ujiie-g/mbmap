@@ -59,6 +59,12 @@ test("symbols.mjs mirrors map's label row and quad sizes", () => {
   assert.equal(symbols.QUAD_INDICES, moonConsts("../../map/label_boxes.mbt").QUAD_INDICES);
 });
 
+test("symbols.mjs and media.ts mirror core's tile extent", () => {
+  const { TILE_EXTENT } = moonConsts("../../core/transform.mbt");
+  assert.equal(jsConsts("./symbols.mjs").TILE_EXTENT, TILE_EXTENT);
+  assert.equal(jsConsts("../../npm/src/media.ts").TILE_EXTENT, TILE_EXTENT);
+});
+
 test("CRS definitions have proj/encoding.mbt's slots everywhere", () => {
   const { DEFINITION_SLOTS } = moonConsts("../../proj/encoding.mbt");
   assert.equal(jsConsts("../../npm/src/prjwkt.ts").SLOTS, DEFINITION_SLOTS);

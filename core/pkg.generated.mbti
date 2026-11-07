@@ -47,7 +47,7 @@ pub const PROP_STRING : Int32 = 4
 
 pub const PROP_TRUE : Int32 = 2
 
-pub const TILE_EXTENT : Int32 = 4096
+pub const TILE_EXTENT : Int32 = 8192
 
 pub const TILE_SIZE : Double = 512.0
 

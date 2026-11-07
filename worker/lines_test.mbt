@@ -35,11 +35,12 @@ test "dashed lines pack their distances and share buffers only with dashed lines
       entry(1, @worker.ENTRY_DISTANCES_COUNT),
     ),
   )
-  // Four vertices along a line of 50 units: 0 at the start, 50 at the end.
+  // Four vertices along a line of 50 units of a 4096-unit layer: 0 at the
+  // start, 100 at the end.
   assert_eq(entry(1, @worker.ENTRY_DISTANCES_COUNT), 4)
   let d = entry(1, @worker.ENTRY_DISTANCES_OFFSET)
   let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)
-  assert_eq((u16(d), u16(d + 2), u16(d + 4), u16(d + 6)), (0, 0, 50, 50))
+  assert_eq((u16(d), u16(d + 2), u16(d + 4), u16(d + 6)), (0, 0, 100, 100))
 }
 
 ///|

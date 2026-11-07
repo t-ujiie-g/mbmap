@@ -27,9 +27,8 @@ test "a square building gets four walls facing out and a roof" {
   assert_eq((v(2, 0), v(2, 1)), (100, 100))
   // The last wall closes the ring, from (100, 100) back to (100, 200): +x.
   assert_eq((v(12, 0), v(12, 1), v(12, 2), v(12, 3)), (100, 100, 16384, 0))
-  // Distances along the walls in 8192 units: each wall starts where the last
-  // ended.
-  assert_eq((v(0, 5), v(2, 5), v(4, 5), v(14, 5)), (0, 200, 200, 800))
+  // Distances along the walls: each wall starts where the last ended.
+  assert_eq((v(0, 5), v(2, 5), v(4, 5), v(14, 5)), (0, 100, 100, 400))
   // Roof vertices point up and sit on the top edge, at distance 0; every
   // vertex knows the centroid.
   assert_eq(
@@ -45,7 +44,7 @@ test "walls along the tile's cut lines and rings off the tile are skipped" {
   // A building cut at x = -64 (outside the tile): its west wall is the
   // neighbor's. A second ring lies wholly beyond the right edge.
   let coords = [
-    -64, 100, 50, 100, 50, 200, -64, 200, 5000, 0, 5100, 0, 5100, 50,
+    -64, 100, 50, 100, 50, 200, -64, 200, 9000, 0, 9100, 0, 9100, 50,
   ]
   let out = @tess.ExtrusionBuffers::new()
   @tess.ExtrusionTessellator::new().add_polygons(

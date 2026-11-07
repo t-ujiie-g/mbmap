@@ -4,8 +4,9 @@
 pub const TILE_SIZE : Double = 512.0
 
 ///|
-/// Tile units per tile edge in packed tiles: workers rescale every layer to it.
-pub const TILE_EXTENT : Int32 = 4096
+/// Tile units per tile edge in packed tiles, MapLibre's `EXTENT`: workers
+/// rescale every layer to it.
+pub const TILE_EXTENT : Int32 = 8192
 
 ///|
 /// Highest pitch in degrees, as in MapLibre. Above about 70° the horizon comes
