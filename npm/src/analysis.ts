@@ -1,8 +1,9 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
-// geometry operations are Clipper2's, spatial relations JTS's (DE-9IM), and
+// geometry operations are Clipper2's, spatial relations JTS's (DE-9IM),
 // simplification, hulls, Delaunay, Voronoi and line operations Turf's, concaveman's
-// and d3-delaunay's, each in a module loaded on their first use.
+// and d3-delaunay's, and grids, IDW, clusters, contours and density Turf's and
+// d3-contour's, each in a module loaded on their first use.
 import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
 import { packPattern } from "./relate-pattern";
@@ -17,8 +18,8 @@ export type BBox = [number, number, number, number];
 /**
  * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the geometry module
  * (`geometryWasmUrl`), the spatial relation module (`relateWasmUrl`), the shape module
- * (`shapesWasmUrl`) and the coordinate system module (`projWasmUrl`) are served; by default next
- * to this module.
+ * (`shapesWasmUrl`), the surface module (`surfaceWasmUrl`) and the coordinate system module
+ * (`projWasmUrl`) are served; by default next to this module.
  */
 export interface AnalysisOptions {
   workerUrl?: string | URL;
@@ -26,6 +27,7 @@ export interface AnalysisOptions {
   geometryWasmUrl?: string | URL;
   relateWasmUrl?: string | URL;
   shapesWasmUrl?: string | URL;
+  surfaceWasmUrl?: string | URL;
   projWasmUrl?: string | URL;
 }
 
@@ -69,6 +71,46 @@ export interface LoadOptions extends AnalysisOptions {
   crs?: Crs;
 }
 
+/** `Dataset.interpolate`'s options. */
+export interface InterpolateOptions {
+  gridType?: "square" | "point" | "hex" | "triangle";
+  property?: string;
+  weight?: number;
+}
+
+/** `Dataset.density`'s options. */
+export interface DensityOptions {
+  bbox?: BBox;
+  width?: number;
+  height?: number;
+  cellSize?: number;
+  bandwidth?: number;
+  thresholds?: number;
+  weight?: string;
+}
+
+/** What a DBSCAN point is. */
+export type DbscanKind = "core" | "edge" | "noise";
+const DBSCAN_KINDS: DbscanKind[] = ["core", "edge", "noise"];
+
+// surface_worker's grid codes.
+const GRIDS = { point: 0, square: 1, hex: 2, triangle: 3 } as const;
+
+/**
+ * A grid over `bbox` as Turf makes it (`cellSide` in kilometers): `point` (pointGrid), `square`
+ * (squareGrid), `hex` (hexGrid; `triangles` splits each hexagon in six) or `triangle` (triangleGrid).
+ */
+export function grid(bbox: BBox, cellSide: number, type: keyof typeof GRIDS = "square", options: AnalysisOptions & { triangles?: boolean } = {}): Promise<Dataset> {
+  if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every(Number.isFinite) || !(cellSide > 0) || !(type in GRIDS)) {
+    return Promise.reject(new Error("mbmap: analysis: invalid grid"));
+  }
+  start(options);
+  const fn = ["point_grid", "square_grid", "hex_grid", "triangle_grid"][GRIDS[type]];
+  return call<{ dataset: number; features: number }>("surface", { dataset: -1, fn, args: [...bbox, cellSide, options.triangles ? 1 : 0] }).then(
+    ({ dataset, features }) => new Dataset(dataset, features),
+  );
+}
+
 /** Where a feature's lines come nearest to a point (`Dataset.nearestPointOnLine`). */
 export interface NearestOnLine {
   point: [number, number];
@@ -94,6 +136,7 @@ function start(options: AnalysisOptions): void {
     geometry: wasmUrl(options.geometryWasmUrl ?? new URL("./geometry.wasm", import.meta.url), page),
     relate: wasmUrl(options.relateWasmUrl ?? new URL("./relate.wasm", import.meta.url), page),
     shapes: wasmUrl(options.shapesWasmUrl ?? new URL("./shapes.wasm", import.meta.url), page),
+    surface: wasmUrl(options.surfaceWasmUrl ?? new URL("./surface.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
   }));
 }
@@ -279,6 +322,76 @@ export class Dataset {
       const [px, py, dist, location, index, multiFeatureIndex] = v.subarray(i * 6, i * 6 + 6);
       return Number.isNaN(px) ? null : { point: [px, py] as [number, number], dist, location, index, multiFeatureIndex };
     });
+  }
+
+  #surface(fn: string, args: number[], text = "", numbers: number[] = []): Promise<Dataset> {
+    try {
+      return this.#geometry("surface", { dataset: Dataset.#idOf(this, "used"), fn, args, text, numbers });
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
+  /**
+   * A grid over the box of the points here, each cell with the `property` value interpolated from
+   * the points' by inverse distance weighting (Turf's `interpolate`): `gridType` `square` (default),
+   * `point`, `hex` or `triangle`, `cellSize` in kilometers, `weight` the power of the distance.
+   */
+  interpolate(cellSize: number, { gridType = "square", property = "elevation", weight = 1 }: InterpolateOptions = {}): Promise<Dataset> {
+    if (!(cellSize > 0) || !(gridType in GRIDS) || !Number.isFinite(weight)) return Promise.reject(new Error("mbmap: analysis: invalid interpolation options"));
+    return this.#surface("interpolate", [cellSize, GRIDS[gridType], weight], property);
+  }
+
+  /** Lines where the grid of points here (a `pointGrid`) crosses each of `breaks` in `zProperty` (Turf's `isolines`). */
+  isolines(breaks: number[], { zProperty = "elevation" }: { zProperty?: string } = {}): Promise<Dataset> {
+    if (!Array.isArray(breaks) || !breaks.every(Number.isFinite)) return Promise.reject(new Error("mbmap: analysis: invalid breaks"));
+    return this.#surface("isolines", [], zProperty, breaks);
+  }
+
+  /** Polygons of the grid of points here between each two of `breaks` in `zProperty` (Turf's `isobands`). */
+  isobands(breaks: number[], { zProperty = "elevation" }: { zProperty?: string } = {}): Promise<Dataset> {
+    if (!Array.isArray(breaks) || !breaks.every(Number.isFinite)) return Promise.reject(new Error("mbmap: analysis: invalid breaks"));
+    return this.#surface("isobands", [], zProperty, breaks);
+  }
+
+  /**
+   * Contours of the points' kernel density as d3-contour's `contourDensity` draws them, on a `width`
+   * x `height` pixel grid over `bbox` (by default the points' box; `cellSize`, `bandwidth` in pixels,
+   * `thresholds` how many), each a MultiPolygon with its density `value`; `weight` names a property.
+   */
+  density({ bbox, width = 960, height = 500, cellSize = 4, bandwidth = 20.4939015319192, thresholds = 20, weight }: DensityOptions = {}): Promise<Dataset> {
+    const box = bbox ?? [NaN, NaN, NaN, NaN];
+    if (!(width > 0 && height > 0 && cellSize >= 1 && bandwidth >= 0 && Number.isInteger(thresholds) && thresholds >= 0) || box.length !== 4) {
+      return Promise.reject(new Error("mbmap: analysis: invalid density options"));
+    }
+    return this.#surface("density", [...box, width, height, cellSize, bandwidth, thresholds, weight === undefined ? 0 : 1], weight ?? "");
+  }
+
+  /**
+   * DBSCAN over the points here as Turf's `clustersDbscan` (`maxDistance` in kilometers): per feature its
+   * cluster (-1 for none) and whether it is a `core`, `edge` or `noise` point (null for other features).
+   */
+  async dbscan(maxDistance: number, { minPoints = 3 }: { minPoints?: number } = {}): Promise<{ clusters: Int32Array; kinds: (DbscanKind | null)[] }> {
+    if (!(maxDistance >= 0) || !Number.isInteger(minPoints) || minPoints < 1) throw new Error("mbmap: analysis: invalid DBSCAN options");
+    const v = await this.#call<Float64Array>("surface", { fn: "dbscan", args: [maxDistance, minPoints] });
+    const kinds: (DbscanKind | null)[] = [];
+    const clusters = new Int32Array(v.length / 2);
+    for (let i = 0; i < clusters.length; i++) {
+      clusters[i] = v[i * 2];
+      kinds.push(DBSCAN_KINDS[v[i * 2 + 1]] ?? null);
+    }
+    return { clusters, kinds };
+  }
+
+  /**
+   * k-means over the points here as Turf's `clustersKmeans` (`k` by default `round(sqrt(n / 2))`): per
+   * feature its cluster (-1 for features that are not points) and the centroids as x, y pairs.
+   */
+  async kmeans(k?: number): Promise<{ clusters: Int32Array; centroids: Float64Array }> {
+    if (k !== undefined && !(Number.isInteger(k) && k > 0)) throw new Error("mbmap: analysis: invalid k");
+    const v = await this.#call<Float64Array>("surface", { fn: "kmeans", args: [k ?? 0] });
+    const n = v[0];
+    return { clusters: Int32Array.from(v.subarray(1, 1 + n)), centroids: v.slice(1 + n) };
   }
 
   /** The DE-9IM matrix of feature `i` here and feature `j` of `other`, as JTS writes it (`"FF2F11212"`). */

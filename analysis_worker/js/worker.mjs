@@ -18,6 +18,7 @@ const modules = {
   geometry: { url: null, exports: null, imports: {} },
   relate: { url: null, exports: null, imports: {} },
   shapes: { url: null, exports: null, imports: { Math } },
+  surface: { url: null, exports: null, imports: { Math } },
   proj: { url: null, exports: null, imports: { Math } },
 };
 // Calls run one after another, after init, in the order they came.
@@ -45,6 +46,9 @@ const i32s = (n) => {
 const isId = (v) => Number.isInteger(v) && v >= 0;
 // The exports of shapes_worker that give a table.
 const SHAPE_OPS = ["simplify", "convex", "concave", "delaunay", "voronoi", "line_slice"];
+// The exports of surface_worker: those giving a table, then those giving f64s.
+const SURFACE_TABLES = ["point_grid", "square_grid", "hex_grid", "triangle_grid", "interpolate", "isolines", "isobands", "density"];
+const SURFACE_VALUES = ["dbscan", "kmeans"];
 // `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
 const DEFINITION_SLOTS = 34;
 // An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it.
@@ -307,6 +311,23 @@ const OPS = {
     writeInput(exports, [outputOf(wasm, counted(wasm.table_out(dataset)))]);
     return new Float64Array(outputOf(exports, checked(exports, exports.nearest_on_line(x, y)) * 8).buffer);
   },
+  // A surface_worker export `fn` over `dataset` (-1 for none) with `args` numbers; its input is the
+  // dataset's table, then `text` (a property name) as UTF-8, then `numbers` as f64s. A table result
+  // becomes a new dataset; the f64s of dbscan and kmeans are returned as they are.
+  async surface({ dataset, fn, args, text = "", numbers = [] }) {
+    const values = SURFACE_VALUES.includes(fn);
+    check((dataset === -1 || isId(dataset)) && (values || SURFACE_TABLES.includes(fn)) && typeof text === "string");
+    check([args, numbers].every((a) => Array.isArray(a) && a.every((v) => typeof v === "number")));
+    const exports = await module("surface");
+    const table = dataset === -1 ? new Uint8Array(0) : outputOf(wasm, counted(wasm.table_out(dataset)));
+    const name = encoder.encode(text);
+    writeInput(exports, [table, name, new Uint8Array(Float64Array.from(numbers).buffer)]);
+    const n = checked(exports, exports[fn](table.length, name.length, ...args));
+    if (values) return new Float64Array(outputOf(exports, n * 8).buffer);
+    input(outputOf(exports, n));
+    const id = counted(wasm.load_table());
+    return { dataset: id, features: wasm.feature_count(id) };
+  },
   overlay({ a, b, kind }) {
     check(isId(a) && isId(b) && [0, 1, 2, 3].includes(kind));
     return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
@@ -347,6 +368,7 @@ onmessage = (e) => {
     modules.geometry.url = typeof msg.geometry === "string" ? msg.geometry : null;
     modules.relate.url = typeof msg.relate === "string" ? msg.relate : null;
     modules.shapes.url = typeof msg.shapes === "string" ? msg.shapes : null;
+    modules.surface.url = typeof msg.surface === "string" ? msg.surface : null;
     modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })
