@@ -1,24 +1,24 @@
 // mbmap/services: reading GIS web services (OGC WMS, WMTS, WFS and OGC API; ArcGIS REST) into
 // style sources. Requests go through `transformRequest` as the map's do; no credentials otherwise.
 import { readOGCCollection, readOGCCollections, type OGCCollection, ogcTileSource, ogcTilesetUrl, ogcLink, ogcLinks } from "./services/ogcapi";
-import { arcgisVectorStyle, type ArcGISService } from "./services/arcgis";
-import type { TileSource } from "./services/common";
+import { type ArcGISIdentifyOptions, arcgisIdentifyUrl, arcgisVectorStyle, type ArcGISService } from "./services/arcgis";
+
 import { readWFSCapabilities, type WFSCapabilities } from "./services/wfs";
-import { readWMSCapabilities, type WMSCapabilities } from "./services/wms";
+import { readWMSCapabilities, type WMSCapabilities, type WMSFeatureInfoOptions, wmsFeatureInfoUrl } from "./services/wms";
 import { readWMTSCapabilities, type WMTSCapabilities } from "./services/wmts";
-import { type Bounds, withQuery } from "./services/common";
-import { arcgisFormat, arcgisQueryUrl, type ArcGISQueryOptions, type FeatureCollection, gather, geojsonFormat, MAX_FEATURES, ogcItemsUrl, type OGCItemsOptions, wfsFeatureUrl, type WFSFeatureOptions } from "./services/features";
+import { type Bounds, clampBounds, type ImageRequest, lngLatToMercator, mercatorToLngLat, type TileSource, withQuery, zoomResolution } from "./services/common";
+import { arcgisFormat, arcgisQueryUrl, type ArcGISQueryOptions, type FeatureCollection, gather, geojsonFormat, MAX_FEATURES, ogcItemsUrl, type OGCItemsOptions, pageFeatures, wfsFeatureUrl, type WFSFeatureOptions } from "./services/features";
 import { parseXml } from "./services/xml";
 import type { StyleSpecification } from "./style";
 import { httpUrl, type TransformedRequest, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
-export { arcgisBounds, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
-export { isWebMercator, resolved, withQuery, type Bounds, type TileSource } from "./services/common";
+export { arcgisBounds, arcgisIdentifyUrl, arcgisImage, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISIdentifyOptions, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
+export { isWebMercator, resolved, withQuery, type Bounds, type ImageRequest, type TileSource } from "./services/common";
 export { arcgisFormat, arcgisQueryUrl, MAX_FEATURES, MAX_PAGES, ogcItemsUrl, wfsFeatureUrl, type ArcGISQueryOptions, type FeatureCollection, type OGCItemsOptions, type WFSFeatureOptions } from "./services/features";
 export { isWebMercatorQuad, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections, type OGCCollection, type OGCLink } from "./services/ogcapi";
 export { readWFSCapabilities, type WFSCapabilities, type WFSFeatureType } from "./services/wfs";
-export { allLayers, readWMSCapabilities, wmsSource, type WMSCapabilities, type WMSLayer, type WMSSourceOptions, type WMSStyle } from "./services/wms";
+export { allLayers, readWMSCapabilities, wmsFeatureInfoUrl, wmsImage, wmsSource, type WMSCapabilities, type WMSFeatureInfoOptions, type WMSLayer, type WMSSourceOptions, type WMSStyle } from "./services/wms";
 export { mercatorZooms, readWMTSCapabilities, wmtsSource, type WMTSCapabilities, type WMTSLayer, type WMTSResource, type WMTSSourceOptions, type WMTSTileMatrix, type WMTSTileMatrixSet } from "./services/wmts";
 
 /** The most a service document may weigh, in bytes. */
@@ -183,8 +183,12 @@ export async function wfsFeatures(capabilities: WFSCapabilities, options: WFSFea
  * `format`: `"geojson"` (ArcGIS Server 10.4 and later), or `"json"` or `"pbf"` read by services.wasm in its own
  * worker; by default as `arcgisFormat`. `workerUrl`, `wasmUrl`: where they are served (default: beside this module).
  */
-export interface ArcGISFeatureOptions extends ArcGISQueryOptions, FeatureOptions {
+export interface ArcGISFeatureOptions extends ArcGISQueryOptions, FeatureOptions, WorkerOptions {
   format?: "geojson" | "json" | "pbf";
+}
+
+/** Where the worker reading Esri's formats (`workerUrl`) and its wasm (`wasmUrl`) are served; by default beside this module. */
+export interface WorkerOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
 }
@@ -193,7 +197,11 @@ const esriClient = new WorkerClient("services");
 
 /** A page of an ArcGIS query in `format` ("json" or "pbf") read by services.wasm, as its GeoJSON would be. */
 async function loadEsri(url: string, format: "json" | "pbf", options: ArcGISFeatureOptions): Promise<unknown> {
-  const bytes = await loadBytes(url, options);
+  return readEsri(await loadBytes(url, options), format, options);
+}
+
+/** An ArcGIS query result's bytes read by services.wasm, as its GeoJSON would be. */
+async function readEsri(bytes: Uint8Array<ArrayBuffer>, format: "json" | "pbf", options: WorkerOptions): Promise<FeatureCollection & { exceededTransferLimit: boolean }> {
   esriClient.start(options.workerUrl ?? new URL("./services-worker.js", import.meta.url), (page) => ({
     wasm: wasmUrl(options.wasmUrl ?? new URL("./services.wasm", import.meta.url), page),
   }));
@@ -229,6 +237,41 @@ export function terminate(): void {
   esriClient.terminate();
 }
 
+/**
+ * The features a WMS's GetFeatureInfo gives at `lngLat` on a map at `zoom` (`wmsFeatureInfoUrl`), in a JSON
+ * format; a server's exception report throws with its message.
+ */
+export async function wmsFeatureInfo(
+  capabilities: WMSCapabilities,
+  options: WMSFeatureInfoOptions,
+  lngLat: [number, number],
+  zoom: number,
+  serviceOptions: ServiceOptions = {},
+): Promise<FeatureCollection> {
+  const url = wmsFeatureInfoUrl(capabilities, options, lngLat, zoom);
+  return { type: "FeatureCollection", features: pageFeatures(await loadJSON(url, serviceOptions), "WMS GetFeatureInfo") };
+}
+
+/**
+ * The features a MapServer's `identify` finds at `lngLat` on a map at `zoom` (`arcgisIdentifyUrl`), as GeoJSON in
+ * EPSG:4326 read by services.wasm; each feature's `layer` names the layer it was found in (`id`, `name`).
+ */
+export async function arcgisIdentify(
+  url: string,
+  lngLat: [number, number],
+  zoom: number,
+  options: ArcGISIdentifyOptions & ServiceOptions & WorkerOptions = {},
+): Promise<FeatureCollection> {
+  const doc = (await loadJSON(arcgisIdentifyUrl(httpUrl(url, document.baseURI, "services: the URL"), lngLat, zoom, options), options)) as {
+    results?: { layerId?: number; layerName?: string; attributes?: unknown; geometry?: unknown }[];
+    error?: unknown;
+  };
+  const results = Array.isArray(doc?.results) ? doc.results : [];
+  const set = doc?.error ? doc : { features: results.map((r) => ({ attributes: r.attributes, geometry: r.geometry })) };
+  const { features } = await readEsri(new TextEncoder().encode(JSON.stringify(set)), "json", options);
+  return { type: "FeatureCollection", features: features.map((f, i) => ({ ...(f as object), layer: { id: results[i].layerId, name: results[i].layerName } })) };
+}
+
 /** What `followView` needs of a map: mbmap's `Map` or MapLibre's. */
 export interface ViewMap {
   getBounds(): { getWest(): number; getSouth(): number; getEast(): number; getNorth(): number } | { west: number; south: number; east: number; north: number };
@@ -246,6 +289,12 @@ export interface FollowOptions {
 
 const EMPTY: FeatureCollection = { type: "FeatureCollection", features: [] };
 
+/** What `map` shows, in degrees within the world's. */
+function viewBounds(map: ViewMap): Bounds {
+  const b = map.getBounds() as { west?: number; south?: number; east?: number; north?: number; getWest?: () => number; getSouth?: () => number; getEast?: () => number; getNorth?: () => number };
+  return clampBounds(b.getWest ? [b.getWest(), b.getSouth!(), b.getEast!(), b.getNorth!()] : [b.west!, b.south!, b.east!, b.north!]);
+}
+
 /**
  * Keeps GeoJSON source `sourceId` filled with `query(bounds, signal)` for what the map shows: asked
  * again after each move, the previous query aborted. Returns the function that stops it.
@@ -262,9 +311,7 @@ export function followView(
     current?.abort();
     current = null;
     if (map.getZoom() < (options.minzoom ?? 0)) return set(EMPTY);
-    const b = map.getBounds() as { west?: number; south?: number; east?: number; north?: number; getWest?: () => number; getSouth?: () => number; getEast?: () => number; getNorth?: () => number };
-    const bounds: Bounds = b.getWest ? [b.getWest(), b.getSouth!(), b.getEast!(), b.getNorth!()] : [b.west!, b.south!, b.east!, b.north!];
-    const clamped: Bounds = [Math.max(bounds[0], -180), Math.max(bounds[1], -90), Math.min(bounds[2], 180), Math.min(bounds[3], 90)];
+    const clamped = viewBounds(map);
     const controller = (current = new AbortController());
     query(clamped, controller.signal).then(
       (data) => controller === current && set(data),
@@ -277,4 +324,43 @@ export function followView(
     current?.abort();
     map.off("moveend", update);
   };
+}
+
+/** What `followImage` needs of a map besides `ViewMap`'s: adding the image source. */
+export interface ImageMap extends ViewMap {
+  addSource(id: string, source: { type: "image"; url: string; coordinates: number[][] }): unknown;
+}
+
+/** `pixelRatio`: device pixels per CSS pixel asked for (default `devicePixelRatio`); `maxSize`: the most pixels on a side (default 4096). */
+export interface FollowImageOptions {
+  pixelRatio?: number;
+  maxSize?: number;
+}
+
+/**
+ * Keeps image source `sourceId` (added unless the map has it) showing one image of what the map shows, as
+ * OpenLayers' `ImageWMS` and `ImageArcGISRest` do: `image` (`wmsImage`, `arcgisImage`) asked again after each
+ * move for the view's EPSG:3857 box at its resolution. Returns the function that stops it.
+ */
+export function followImage(map: ImageMap, sourceId: string, image: ImageRequest, options: FollowImageOptions = {}): () => void {
+  const update = () => {
+    const [w, s, e, n] = viewBounds(map);
+    const lat = (v: number) => Math.min(Math.max(v, -85.051129), 85.051129);
+    const [x0, y0] = lngLatToMercator(w, lat(s));
+    const [x1, y1] = lngLatToMercator(e, lat(n));
+    const ratio = options.pixelRatio ?? globalThis.devicePixelRatio ?? 1;
+    const scale = Math.min(ratio / zoomResolution(map.getZoom()), (options.maxSize ?? 4096) / Math.max(x1 - x0, y1 - y0));
+    const width = Math.max(1, Math.round((x1 - x0) * scale));
+    const height = Math.max(1, Math.round((y1 - y0) * scale));
+    const url = image([x0, y0, x1, y1], width, height, ratio);
+    const [west, south] = mercatorToLngLat(x0, y0);
+    const [east, north] = mercatorToLngLat(x1, y1);
+    const coordinates = [[west, north], [east, north], [east, south], [west, south]];
+    const source = map.getSource(sourceId) as { updateImage?: (o: { url: string; coordinates: number[][] }) => unknown } | undefined;
+    if (source) source.updateImage?.({ url, coordinates });
+    else map.addSource(sourceId, { type: "image", url, coordinates });
+  };
+  map.on("moveend", update);
+  update();
+  return () => map.off("moveend", update);
 }

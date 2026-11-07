@@ -10,6 +10,11 @@
         <Format>image/png</Format>
         <DCPType><HTTP><Get><OnlineResource xlink:href="../../../fixtures/gsi-std/14/14552/6451.png?map=test"/></Get></HTTP></DCPType>
       </GetMap>
+      <GetFeatureInfo>
+        <Format>text/html</Format>
+        <Format>application/geo+json</Format>
+        <DCPType><HTTP><Get><OnlineResource xlink:href="info.json?map=test"/></Get></HTTP></DCPType>
+      </GetFeatureInfo>
     </Request>
     <Layer>
       <Title>Root</Title>

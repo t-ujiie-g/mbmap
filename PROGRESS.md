@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（`services.wasm` で Esri JSON と PBF）を報告中。次は 18.5（カメラに合わせた 1 枚画像と識別）。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）が終わった。18.5（カメラに合わせた 1 枚画像と識別）を報告中。次は 18.6（Web メルカトル以外のタイルとラスタ）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,7 +19,7 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 9.1KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 10KB ＋ 20KB（2026-11-06・11-07、ユーザー判断） |
+  | `mbmap/services` | 10.1KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
@@ -124,6 +124,13 @@
     - 壊れた入力 5 つはどれも理由を付けて断る。
   - pack テストの `services` に静的な FeatureServer を置いた。PBF を挙げるレイヤーは `f=pbf` で、JSON だけのレイヤーは `f=json` で読み、どちらも `services.wasm` で読む。
   - 依存：bench の devDependencies に @terraformer/arcgis 2.2.2（MIT）と arcgis-pbf-parser 0.0.4（Apache-2.0）を足した。どちらもインストールスクリプトなし、`npm audit` は 0 件。移植の出典は NOTICE。
+- **18.5**：カメラに合わせた 1 枚画像と識別（`mbmap/services` 9.1KB → 10.1KB）。
+  - 予算は 2026-11-07 のユーザー判断で 10KB → 12KB（18.5 で 101 バイト超え、18.7 の GML の分も見込む）。
+  - `followImage` は表示している範囲を 1 枚の画像のソースで見せる（OpenLayers の `ImageWMS`・`ImageArcGISRest` と同じ考え方）。`moveend` ごとに、表示の EPSG:3857 の範囲をそのズームの解像度（512 画素のタイル、`pixelRatio`）で頼み直し、`updateImage` で差し替える。1 辺は 4096 画素まで。画像は `wmsImage`（GetMap）か `arcgisImage`（`export`・`exportImage`、dpi は `pixelRatio` 倍）で作る。
+  - `wmsFeatureInfo` と `arcgisIdentify` はクリックした点のまわり 101 × 101 画素を問い合わせる（OpenLayers の `getFeatureInfoUrl` と同じ窓）。GetFeatureInfo の形式は既定でサービスが挙げる JSON。`identify` は EPSG:4326 で問い合わせ、結果の幾何は `services.wasm` で GeoJSON にする。
+  - `wmsSource` と `arcgisSource` は GetMap・`export` の組み立てを 1 枚画像と共有するように分けた（タイルの URL は前と同じ）。
+  - `services:golden` は 53 件すべて一致：1 枚画像の URL は OpenLayers の `getImageSrc`（WMS 3 つ）と arcgisRest の `getRequestUrl`（ArcGIS 3 つ）と同じ要求で、どれも画像が返った。GetFeatureInfo の URL は `getFeatureInfoUrl` と同じ要求で、サーバーは 200 を返した。SampleWorldCities の `identify` は東京で Tokyo を見つけた（ArcGIS の WMS は EPSG:3857 を挙げないので、GeoJSON の GetFeatureInfo を実際に読む確認は pack テストで行う）。
+  - pack テストの `services` は、静的な GetMap の PNG を `followImage` で 600 × 400 の 1 枚画像として描き、静的な GetFeatureInfo（GeoJSON）と `identify` の答えを読む。
 - **`TILE_EXTENT` を 8192 に**（2026-11-07 ユーザー判断、18.3 と並行の別 PR）：MapLibre の `EXTENT` と同じにした。位置は Int16 のまま。
   - 4096 の MVT は 2 倍するだけなので、GSI のタイルの出力は同じ。fixtures 35 枚の packed tile は前後とも計 77,448,536 バイトで、1 枚も変わらない（`bench/maplibre/style.json`）。
   - 座標は ±32767 で切る。8192 の単位で ±4 タイル分で、MapLibre の `loadGeometry`（15 ビット、±2 タイル分）より広い。

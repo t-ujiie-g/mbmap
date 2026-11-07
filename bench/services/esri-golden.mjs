@@ -1,8 +1,6 @@
-// services.wasm's ArcGIS readers vs @terraformer/arcgis 2.2.2 (`f=json`) and arcgis-pbf-parser 0.0.4
-// (`f=pbf`) on live public layers (AGENTS.md §1 `esri:golden`): `f=json` as arcgisToGeoJSON makes
-// it, exactly; `f=pbf` with the attributes and ids arcgis-pbf-parser reads and the geometry of the
-// same query's `f=json` within its quantization. Writes bench/results/esri-golden.json; behind a
-// proxy Node needs NODE_USE_ENV_PROXY=1.
+// services.wasm's ArcGIS readers on live public layers (AGENTS.md §1 `esri:golden`): f=json vs @terraformer/arcgis
+// 2.2.2 exactly; f=pbf attributes and ids vs arcgis-pbf-parser 0.0.4, geometry within quantization of f=json.
+// Writes bench/results/esri-golden.json; behind a proxy Node needs NODE_USE_ENV_PROXY=1.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { arcgisToGeoJSON } from "@terraformer/arcgis";

@@ -320,6 +320,15 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
   ```js
   const stop = followView(map, "cities", (bbox, signal) => arcgisFeatures(layerUrl, { bbox, signal }), { minzoom: 10 });
   ```
+- `followImage(map, sourceId, image, { pixelRatio, maxSize })`：表示している範囲を 1 枚の画像で見せる（OpenLayers の `ImageWMS`・`ImageArcGISRest` と同じ）。`image` は `wmsImage(capabilities, { layers, styles, format, transparent, params })` か `arcgisImage(url, { layers, format, transparent, dpi, params })` で作る。動かすたびに、表示の EPSG:3857 の範囲をその解像度（`pixelRatio`、既定は `devicePixelRatio`）で頼み直し、画像のソース（なければ足す）を `updateImage` で差し替える。1 辺は `maxSize`（既定 4096）画素まで。戻り値の関数で止める。
+  ```js
+  const stop = followImage(map, "wms", wmsImage(capabilities, { layers: "std" }));
+  map.addLayer({ id: "wms", type: "raster", source: "wms" });
+  ```
+- 識別（クリックした場所の地物）。`zoom` は地図のズームで、点のまわりの 101 × 101 画素を問い合わせる（OpenLayers の `getFeatureInfoUrl` と同じ）。
+  - `wmsFeatureInfo(capabilities, { layers, queryLayers, infoFormat, featureCount }, lngLat, zoom)`：WMS の GetFeatureInfo。形式は既定でサービスが挙げる JSON（GeoJSON を優先）。GML は 18.7。
+  - `arcgisIdentify(MapServer の URL, lngLat, zoom, { layers, tolerance, returnGeometry })`：MapServer の `identify`。`layers` は既定で `all`、`tolerance` は 3 画素。結果は EPSG:4326 の GeoJSON で、各地物の `layer` に見つけたレイヤー（`id`、`name`）が入る。
+  - URL だけを作る `wmsFeatureInfoUrl` と `arcgisIdentifyUrl` もある。
 - 文書は 32MB まで（`MAX_DOCUMENT_BYTES`）。サービスの例外報告（ServiceExceptionReport、ExceptionReport、ArcGIS の `error`）は、その内容をメッセージにして失敗する。
 
 ## データの読み込み `mbmap/data`

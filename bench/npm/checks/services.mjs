@@ -1,6 +1,6 @@
-// mbmap/services on bench/npm/pages/services: WMTS, ArcGIS VectorTileServer and WMS layers draw the GSI
-// tiles they name, ArcGIS layers' features are read from f=pbf and f=json, and exceptions, malformed
-// documents, unknown layers and non-http URLs are refused with the reason.
+// mbmap/services on bench/npm/pages/services: WMTS, ArcGIS VectorTileServer and WMS layers (tiled or one image
+// of the view) draw the GSI tiles they name, features come from f=pbf, f=json, GetFeatureInfo and identify, and
+// exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { decodePng } from "../../lib/png.mjs";
@@ -143,6 +143,37 @@ export async function servicesChecks(page, requests) {
     /malformed ArcGIS JSON/.test(features.refused) &&
     requests.some((u) => /\/query\?.*f=pbf/.test(u)) && requests.some((u) => /\/query\?.*f=json/.test(u));
 
+  // followImage keeps an image source on one GetMap of the view (the static PNG of wms.xml); GetFeatureInfo
+  // (info.json) and a MapServer's identify (arcgis/.../MapServer/identify) answer a click.
+  const single = await page.evaluate(async () => {
+    const map = window.__map;
+    const services = await import("mbmap/services");
+    map.setStyle({ version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ffffff" } }] });
+    await map.once("idle");
+    const caps = await services.getCapabilities("./wms.xml", "WMS");
+    const stop = services.followImage(map, "single", services.wmsImage(caps, { layers: "std" }), { pixelRatio: 1 });
+    map.addLayer({ id: "single", type: "raster", source: "single" });
+    await map.once("idle");
+    const coordinates = map.getStyle().sources.single?.coordinates;
+    const bounds = map.getBounds();
+    stop();
+    const at = [139.7671, 35.6812];
+    const info = await services.wmsFeatureInfo(caps, { layers: "std" }, at, 14);
+    const identified = await services.arcgisIdentify("./arcgis/rest/services/Test/MapServer", at, 14);
+    return { coordinates, bounds: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()], info, identified };
+  });
+  const singleShot = await shot();
+  const imageMap = requests.filter((u) => /REQUEST=GetMap/.test(u) && !/WIDTH=256&/.test(u)).map((u) => Object.fromEntries(new URL(u).searchParams))[0] ?? {};
+  const corners = single.coordinates ?? [];
+  const singleOk =
+    singleShot.some((v, i) => i % 4 < 3 && v !== 255) &&
+    Number(imageMap.WIDTH) > 256 && Number(imageMap.HEIGHT) > 256 && imageMap.BBOX?.split(",").length === 4 &&
+    corners.length === 4 && Math.abs(corners[0][0] - single.bounds[0]) < 1e-6 && Math.abs(corners[0][1] - single.bounds[3]) < 1e-6 &&
+    single.info.features?.[0]?.properties?.name === "東京駅" &&
+    requests.some((u) => /info\.json\?.*REQUEST=GetFeatureInfo.*INFO_FORMAT=application%2Fgeo%2Bjson/.test(u)) &&
+    single.identified.features?.[0]?.id === "1" && single.identified.features[0].layer?.name === "Stations" &&
+    JSON.stringify(single.identified.features[0].geometry) === JSON.stringify({ type: "Point", coordinates: [139.7671, 35.6812] });
+
   const getMaps = requests.filter((u) => /REQUEST=GetMap/.test(u)).map((u) => Object.fromEntries(new URL(u).searchParams));
   const wmsShot = await shot();
   const drawn = wmsShot.some((v, i) => i % 4 < 3 && v !== 255);
@@ -167,6 +198,6 @@ export async function servicesChecks(page, requests) {
     vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験" &&
     JSON.stringify(follow.features) === JSON.stringify(["tokyo", "yurakucho", "kanda"]) && follow.bounds >= 1 && follow.first.length === 4 &&
     follow.kanda[0] > 200 && follow.kanda[1] < 80 && follow.moved && follow.stillStopped &&
-    esriOk && loaded.includes("services-worker.js") && loaded.includes("services.wasm");
-  return [ok, { ...r, same, drawn, vector, follow, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
+    esriOk && loaded.includes("services-worker.js") && loaded.includes("services.wasm") && singleOk;
+  return [ok, { ...r, same, drawn, vector, follow, single: { ok: singleOk, request: imageMap, coordinates: corners, bounds: single.bounds, info: single.info, identified: single.identified }, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
 }

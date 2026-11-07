@@ -36,6 +36,26 @@ export function mercatorZoom(resolution: number, tileSize: number): number {
 /** OGC's standardized pixel size, 0.28 mm, which scale denominators are reckoned in. */
 export const OGC_PIXEL_METERS = 0.00028;
 
+/** Meters in Web Mercator of `[lng, lat]` degrees. */
+export function lngLatToMercator(lng: number, lat: number): [number, number] {
+  return [(lng / 180) * MERCATOR_HALF, Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 6378137];
+}
+
+/** Meters per pixel of Web Mercator at `zoom`, with MapLibre's 512-pixel tiles. */
+export const zoomResolution = (zoom: number): number => (2 * MERCATOR_HALF) / (512 * 2 ** zoom);
+
+/**
+ * A single image's URL for `bbox` (`[minX, minY, maxX, maxY]` in EPSG:3857 meters) at `width` by `height`
+ * pixels, `pixelRatio` device pixels to a CSS pixel.
+ */
+export type ImageRequest = (bbox: Bounds, width: number, height: number, pixelRatio: number) => string;
+
+/** OpenLayers' window for a click: 101 by 101 pixels at `resolution` around `[x, y]`, the click at pixel 50, 50. */
+export function clickWindow(x: number, y: number, resolution: number): Bounds {
+  const half = 50.5 * resolution;
+  return [x - half, y - half, x + half, y + half];
+}
+
 /** Degrees of `[x, y]` meters in Web Mercator. */
 export function mercatorToLngLat(x: number, y: number): [number, number] {
   return [(x / MERCATOR_HALF) * 180, (Math.atan(Math.exp(y / 6378137)) * 360) / Math.PI - 90];

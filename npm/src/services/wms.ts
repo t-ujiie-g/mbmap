@@ -1,4 +1,5 @@
-import { type Bounds, clampBounds, isWebMercator, resolved, type TileSource, validBounds, withQuery } from "./common.ts";
+import { type Bounds, clampBounds, clickWindow, type ImageRequest, isWebMercator, lngLatToMercator, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
+import { geojsonFormat } from "./features.ts";
 import { at, children, first, href, optional, parseXml, text, texts } from "./xml.ts";
 
 /** A layer style; `legendUrl` the first LegendURL's. */
@@ -143,11 +144,8 @@ export interface WMSSourceOptions {
   params?: Record<string, string | number>;
 }
 
-/**
- * A raster source drawing `options.layers` of a WMS by GetMap requests in EPSG:3857, one per tile,
- * with the layers' geographic bounds and attribution. The layers must offer EPSG:3857.
- */
-export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptions): TileSource {
+/** The layers `options` names (each offering EPSG:3857), the GetMap parameters but size and BBOX, and the CRS key. */
+function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions) {
   const names = typeof options.layers === "string" ? [options.layers] : options.layers;
   const all = allLayers(capabilities.layers);
   const layers = names.map((name) => {
@@ -157,9 +155,8 @@ export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptio
     return layer;
   });
   const v13 = !capabilities.version.startsWith("1.1");
-  const size = options.tileSize ?? 256;
   const crs = layers[0].crs.find((c) => c.toUpperCase() === "EPSG:3857") ?? layers[0].crs.find(isWebMercator)!;
-  const url = withQuery(capabilities.getMapUrl, {
+  const params = {
     SERVICE: "WMS",
     VERSION: capabilities.version,
     REQUEST: "GetMap",
@@ -167,12 +164,18 @@ export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptio
     STYLES: typeof options.styles === "string" ? options.styles : (options.styles ?? []).join(","),
     FORMAT: options.format ?? "image/png",
     TRANSPARENT: options.transparent === false ? "FALSE" : "TRUE",
-    WIDTH: size,
-    HEIGHT: size,
-    [v13 ? "CRS" : "SRS"]: crs,
-    BBOX: "{bbox-epsg-3857}",
-    ...options.params,
-  });
+  };
+  return { layers, names, params, v13, crs: { [v13 ? "CRS" : "SRS"]: crs } };
+}
+
+/**
+ * A raster source drawing `options.layers` of a WMS by GetMap requests in EPSG:3857, one per tile,
+ * with the layers' geographic bounds and attribution. The layers must offer EPSG:3857.
+ */
+export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptions): TileSource {
+  const { layers, params, crs } = getMap(capabilities, options);
+  const size = options.tileSize ?? 256;
+  const url = withQuery(capabilities.getMapUrl, { ...params, WIDTH: size, HEIGHT: size, ...crs, BBOX: "{bbox-epsg-3857}", ...options.params });
   const bounds = layers.map((l) => l.bounds).filter((b) => b !== undefined);
   const titles = [...new Set(layers.map((l) => l.attribution?.title).filter((t) => t))];
   return {
@@ -184,4 +187,49 @@ export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptio
     }),
     ...(titles.length && { attribution: titles.join(" | ") }),
   };
+}
+
+/** GetMap requests for one image of `options.layers` (`tileSize` unused), as `followImage` asks for the view. */
+export function wmsImage(capabilities: WMSCapabilities, options: WMSSourceOptions): ImageRequest {
+  const { params, crs } = getMap(capabilities, options);
+  return (bbox, width, height) => withQuery(capabilities.getMapUrl, { ...params, WIDTH: width, HEIGHT: height, ...crs, BBOX: bbox.join(","), ...options.params });
+}
+
+/**
+ * `queryLayers` (default `layers`), `infoFormat` (default the first JSON format the service offers)
+ * and `featureCount` of a GetFeatureInfo request; the rest as `WMSSourceOptions`.
+ */
+export interface WMSFeatureInfoOptions extends WMSSourceOptions {
+  queryLayers?: string | string[];
+  infoFormat?: string;
+  featureCount?: number;
+}
+
+/**
+ * The GetFeatureInfo request for `lngLat` on a map at `zoom`, as OpenLayers' `getFeatureInfoUrl` makes it: a 101 by 101
+ * pixel window in EPSG:3857 around the point.
+ */
+export function wmsFeatureInfoUrl(capabilities: WMSCapabilities, options: WMSFeatureInfoOptions, lngLat: [number, number], zoom: number): string {
+  if (!capabilities.getFeatureInfoUrl) throw new Error("mbmap: services: the WMS has no GetFeatureInfo");
+  const { names, params, v13, crs } = getMap(capabilities, options);
+  const format = options.infoFormat ?? geojsonFormat(capabilities.infoFormats);
+  if (!format) throw new Error("mbmap: services: the WMS offers GetFeatureInfo in no JSON format");
+  const [x, y] = lngLatToMercator(...lngLat);
+  const resolution = zoomResolution(zoom);
+  const bbox = clickWindow(x, y, resolution);
+  const query = options.queryLayers ?? names;
+  return withQuery(capabilities.getFeatureInfoUrl, {
+    ...params,
+    REQUEST: "GetFeatureInfo",
+    QUERY_LAYERS: typeof query === "string" ? query : query.join(","),
+    INFO_FORMAT: format,
+    FEATURE_COUNT: options.featureCount,
+    [v13 ? "I" : "X"]: Math.floor((x - bbox[0]) / resolution),
+    [v13 ? "J" : "Y"]: Math.floor((bbox[3] - y) / resolution),
+    WIDTH: 101,
+    HEIGHT: 101,
+    ...crs,
+    BBOX: bbox.join(","),
+    ...options.params,
+  });
 }
