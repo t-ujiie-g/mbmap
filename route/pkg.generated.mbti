@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/route"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const MAX_ROUTE_VERTICES : Int32 = 2_000_000
+
+// Errors
+
+// Types and methods
+pub struct Network {
+  // private fields
+}
+pub fn Network::compacted_vertices(Self) -> Int32
+pub fn Network::find_path(Self, Double, Double, Double, Double) -> (Array[(Double, Double)], Double)?
+pub fn Network::new(@geom.Table, tolerance? : Double, trig? : @core.Trig) -> Self?
+pub fn Network::vertices(Self) -> Int32
+
+// Type aliases
+
+// Traits

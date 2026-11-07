@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-07）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM、#126）。19.2（形の操作、#127）。19.3（分類と統計、#128）。19.4（面と点の集まり、#129）。19.5（可視域と見通し）を報告中（GDAL との突き合わせは Mac で）。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
+- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM、#126）。19.2（形の操作、#127）。19.3（分類と統計、#128）。19.4（面と点の集まり、#129）。19.5（可視域と見通し、#130。GDAL との突き合わせは Mac で）。19.6（経路探索）を報告中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -22,7 +22,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 7.0KB（分類と統計 1.8KB を含む） ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB。viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 7.0KB（分類と統計 1.8KB を含む） ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.0KB、route.wasm 12.9KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19：解析 第2弾（2026-11-07〜）
@@ -81,6 +81,13 @@
   - API：`DemGrid.viewshed(observer, options)`、`DemGrid.lineOfSight(from, to)`（標高を双一次で取り、`npm/src/sight.ts` で gdal_viewshed と同じ曲がりの補正をして決める）。
   - 確かめたこと：移植のテスト 19 件（平面、壁、柱、峰、範囲、曲がり、モード、無効な入力）、`sight.ts` の単体テスト、pack test（富士山の DEM で山頂から 3 km）。
   - **GDAL との突き合わせ（`npm run viewshed:golden`）はまだ回していない**。Web の環境には GDAL がなく、入れることもできなかった（conda を入れる操作は権限で止められた）。M2 の GDAL 3.13.3 で回す：富士山の DEM（EPSG:3857 の GeoTIFF、北西の角を原点に地上のメートルのセル）で、山頂・斜面・谷・端の 4 か所 × 3 モード × 3 通り（観測点・目標の高さ、距離、曲がり）の出力の大きさ・ジオトランスフォーム・全セルを比べる。clang（arm64）が `a*b + c` を FMA にすると DEM・GROUND の値が 1 ulp ずれる可能性がある（移植は x86-64 の GDAL と同じ）。
+
+- **19.6 の結果**：
+  - `route`（純粋な MoonBit、全バックエンド）：geojson-path-finder 2.1.0 の移植（前処理、頂点の丸め、縮約、ファントム頂点、tinyqueue 2.0.3 の Dijkstra、@turf/distance の重み）。JS の頂点キー（丸めた座標の文字列）は、-0 と NaN をそろえた double のビットで置き換えても同じにまとまる。近傍の並びは JS のオブジェクトの挿入順（消して入れ直すと最後）まで写したので、同じ長さの経路の選び方も同じ。長い鎖の座標はロープでつなぎ（JS は配列のコピーで二乗）、問い合わせのたびに状態を戻す。MultiLineString は線ごとに分ける（JS は LineString だけ）。
+  - `route_worker`（route.wasm 12.9KB、予算 15KB）：網を番号で持ち、同じ網に何度でも問い合わせられる。
+  - API：`Dataset.network({ tolerance })` → `Network.route(from, to)` → `{ path, weight }` または null、`dispose()`。
+  - `npm run route:golden`：揺らした格子の網 3 つ（600 件）と GSI の 4 タイルの道路（800 件）の経路が、座標も重み（`Object.is`）もすべて geojson-path-finder と同じ。
+  - 大きさ：解析ワーカーはつなぎを足して 29.9 / 30KB。19.7 で足りなくなれば、可視域と同じくつなぎを別ファイルに出す。
 
 ## Phase 18 の後の点検（2026-11-07）
 

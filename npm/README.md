@@ -55,6 +55,7 @@ Worker と wasm：
 | `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析の Worker と wasm。`mbmap/analysis` を初めて呼んだときに起こす |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect、split、merge）。解析の Worker が、初めて演算を呼んだときだけ読む |
 | `dist/relate.wasm` | 空間関係（DE-9IM）。解析の Worker が、初めて `relate` を呼んだときだけ読む |
+| `dist/route.wasm` | 経路探索（geojson-path-finder）。解析の Worker が、初めて `network` を呼んだときだけ読む |
 | `dist/viewshed.wasm`, `dist/analysis-viewshed.js` | 可視域（GDAL の gdal_viewshed）。解析の Worker が、初めて `viewshed` を呼んだときだけ読む |
 | `dist/surface.wasm` | グリッド、IDW、DBSCAN・k-means、等値線・等値帯、カーネル密度。解析の Worker が、初めて呼んだときだけ読む |
 | `dist/shapes.wasm` | 単純化、凸包・凹包、ドロネー・ボロノイ、線上の最近点と切り出し。解析の Worker が、初めて呼んだときだけ読む |
@@ -71,7 +72,7 @@ Worker と wasm：
 - `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
 - `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
 - `index.js` の動的 import（上の表）、`analysis.js` と `data.js` の `projstring.js`、`data.js` の `prjwkt.js`、`data-worker.js` の `data-zip.js` と `data-crs.js` は、場所を変えられない。それぞれの隣に置く。
-- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`surfaceWasmUrl`、`viewshedWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`surfaceWasmUrl`、`viewshedWasmUrl`、`routeWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
 
 Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
@@ -241,6 +242,9 @@ blocks.dispose();
   - `isolines(breaks, { zProperty })` / `isobands(breaks, { zProperty })`：点の格子（`grid(..., "point")` や `interpolate` の結果）の等値線・等値帯。どの格子とも交わらない線・帯は形なしの行になる。
   - `density({ bbox, width, height, cellSize, bandwidth, thresholds, weight })`：点のカーネル密度の等値線（d3-contour の `contourDensity`。`bbox`（既定は点の範囲）の上に `width` × `height` 画素の格子を置いて計算し、MultiPolygon と密度の `value` を返す）。
   - `dbscan(maxDistance, { minPoints })`：地物ごとのクラスタ番号（なければ -1）と `"core"`・`"edge"`・`"noise"`。`kmeans(k)`：地物ごとのクラスタ番号と重心（k の既定は Turf と同じく round(√(n/2))）。点の地物だけを数える。
+- 経路探索（geojson-path-finder 2.1.0 の移植で、経路の座標と重みが同じになることを黄金テストで確かめている。初めて呼んだときに `route.wasm` を読む）：
+  - `network({ tolerance })`：線の地物（LineString。MultiLineString は線ごと）から道路網を作り、Worker の中に置く（`tolerance` 度より近い頂点は同じ点。既定 1e-5）。
+  - `Network.route(from, to)`：網の頂点どうし（`tolerance` の範囲で）の最短経路を `{ path, weight }`（座標と km）で返す。つながっていない、または頂点でないときは null。同じ網に何度でも問い合わせられる。`dispose()` で放す。
 - 分類と統計（メインスレッドで計算し、Worker は起こさない。simple-statistics 8.0.0 と geostats 2.1.0 の移植で、値が同じになることを黄金テストで確かめている）：
   - `classBreaks(values, classes, method, { matchBounds })`：数値の配列（数でないもの、NaN、無限大は除く）を `classes` 個の級に分ける区切り（`classes + 1` 個、小さい順）。`method` は `"jenks"`（既定、自然分類）・`"ckmeans"`（最適な 1 次元 k-means）・`"quantile"`（等量）・`"equalInterval"`（等間隔）・`"standardDeviation"`（平均のまわりに標準偏差ごと。geostats の並べ方で、`matchBounds` で両端を最小値と最大値に合わせる）。値がない、級が値より多い（jenks では値の種類より多い）ときは null。値は 100 万個まで、級は 256 まで。
   - `statistics(values)`：`count`、`min`、`max`、`sum`（補正つきの和）、`mean`、`median`、`variance`、`standardDeviation`（母分散・母標準偏差）。
