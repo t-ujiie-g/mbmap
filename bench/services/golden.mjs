@@ -10,6 +10,10 @@ import TileWMS from "ol/source/TileWMS.js";
 import WMTS, { optionsFromCapabilities } from "ol/source/WMTS.js";
 import TileArcGISRest from "ol/source/TileArcGISRest.js";
 import { getFeatureInfoUrl, getImageSrc } from "ol/source/wms.js";
+import WFSFormat from "ol/format/WFS.js";
+import GML2 from "ol/format/GML2.js";
+import GML3 from "ol/format/GML3.js";
+import GML32 from "ol/format/GML32.js";
 import { getRequestUrl as arcgisRequestUrl } from "ol/source/arcgisRest.js";
 import { fromLonLat } from "ol/proj.js";
 import { get as getProjection } from "ol/proj.js";
@@ -19,6 +23,7 @@ import * as wfsCaps from "../node_modules/@camptocamp/ogc-client/dist/wfs/capabi
 import { generateGetFeatureUrl } from "../node_modules/@camptocamp/ogc-client/dist/wfs/url.js";
 import { simplifyEpsgUrn } from "../node_modules/@camptocamp/ogc-client/dist/shared/crs-utils.js";
 import * as services from "../../npm/src/services.ts";
+import { readGml } from "../../npm/src/services/gml.ts";
 import { ROOT } from "../lib/root.mjs";
 
 globalThis.DOMParser = DOMParser;
@@ -433,6 +438,96 @@ try {
   report({ check: "arcgis features", url: layer, features: all.features.length, boxed: boxed.features.length, ok: d === null && db === null && all.features.length > 300, ...((d ?? db) && { diff: d ?? db }) });
 } catch (e) {
   report({ check: "arcgis features", ok: false, error: String(e) });
+}
+
+// GML: hand-written documents against what they hold, then the live WFS's GML formats: geometry against its GeoJSON
+// answer to the same query, properties against OpenLayers' WFS reader (attributes it adds as `_content_` objects read
+// as their content; boundedBy left out).
+const GML_NS = 'xmlns:gml="http://www.opengis.net/gml" xmlns:wfs="http://www.opengis.net/wfs" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:a="urn:a"';
+const GML_CASES = [
+  {
+    name: "GML 2 coordinates, polygons with holes, nil and nested values",
+    xml: `<wfs:FeatureCollection ${GML_NS}><gml:featureMember><a:t fid="t.1"><a:geom><gml:MultiPolygon srsName="http://www.opengis.net/gml/srs/epsg.xml#4326"><gml:polygonMember><gml:Polygon><gml:outerBoundaryIs><gml:LinearRing><gml:coordinates cs=";" ts="|">0;0|4;0|4;4|0;0</gml:coordinates></gml:LinearRing></gml:outerBoundaryIs><gml:innerBoundaryIs><gml:LinearRing><gml:coordinates>1,1 2,1 2,2 1,1</gml:coordinates></gml:LinearRing></gml:innerBoundaryIs></gml:Polygon></gml:polygonMember></gml:MultiPolygon></a:geom><a:name>x</a:name><a:empty xsi:nil="true"/><a:tag>p</a:tag><a:tag>q</a:tag><a:addr><a:city>c</a:city></a:addr></a:t></gml:featureMember></wfs:FeatureCollection>`,
+    want: [{ type: "Feature", id: "t.1", geometry: { type: "MultiPolygon", coordinates: [[[[0, 0], [4, 0], [4, 4], [0, 0]], [[1, 1], [2, 1], [2, 2], [1, 1]]]] }, properties: { name: "x", empty: null, tag: ["p", "q"], addr: { city: "c" } } }],
+  },
+  {
+    name: "GML 3 posList in a URN of EPSG:4326 (latitude first), 3D, Surface patches and Curve segments",
+    xml: `<wfs:FeatureCollection ${GML_NS}><gml:featureMembers><a:t gml:id="t.2"><a:geom><gml:Surface srsName="urn:ogc:def:crs:EPSG::4326"><gml:patches><gml:PolygonPatch><gml:exterior><gml:LinearRing><gml:posList srsDimension="3">35 139 9 35 140 9 36 140 9 35 139 9</gml:posList></gml:LinearRing></gml:exterior></gml:PolygonPatch></gml:patches></gml:Surface></a:geom></a:t><a:t gml:id="t.3"><a:geom><gml:Curve srsName="urn:ogc:def:crs:EPSG::4326"><gml:segments><gml:LineStringSegment><gml:posList>35 139 36 140</gml:posList></gml:LineStringSegment><gml:LineStringSegment><gml:pos>36 140</gml:pos><gml:pos>37 141</gml:pos></gml:LineStringSegment></gml:segments></gml:Curve></a:geom></a:t></gml:featureMembers></wfs:FeatureCollection>`,
+    want: [
+      { type: "Feature", id: "t.2", geometry: { type: "Polygon", coordinates: [[[139, 35], [140, 35], [140, 36], [139, 35]]] }, properties: {} },
+      { type: "Feature", id: "t.3", geometry: { type: "LineString", coordinates: [[139, 35], [140, 36], [140, 36], [141, 37]] }, properties: {} },
+    ],
+  },
+  {
+    name: "a bare EPSG:4326 as asked, CRS84, multi points and curves",
+    latitudeFirst: true,
+    xml: `<wfs:FeatureCollection ${GML_NS}><gml:featureMember><a:t><a:p><gml:Point srsName="EPSG:4326"><gml:pos>35 139</gml:pos></gml:Point></a:p></a:t></gml:featureMember><gml:featureMember><a:t><a:p><gml:MultiPoint srsName="urn:ogc:def:crs:OGC:1.3:CRS84"><gml:pointMember><gml:Point><gml:pos>139 35</gml:pos></gml:Point></gml:pointMember><gml:pointMembers><gml:Point><gml:pos>140 36</gml:pos></gml:Point></gml:pointMembers></gml:MultiPoint></a:p></a:t></gml:featureMember><gml:featureMember><a:t><a:p><gml:MultiCurve srsName="CRS:84"><gml:curveMember><gml:LineString><gml:posList>1 2 3 4</gml:posList></gml:LineString></gml:curveMember></gml:MultiCurve></a:p></a:t></gml:featureMember></wfs:FeatureCollection>`,
+    want: [
+      { type: "Feature", geometry: { type: "Point", coordinates: [139, 35] }, properties: {} },
+      { type: "Feature", geometry: { type: "MultiPoint", coordinates: [[139, 35], [140, 36]] }, properties: {} },
+      { type: "Feature", geometry: { type: "MultiLineString", coordinates: [[[1, 2], [3, 4]]] }, properties: {} },
+    ],
+  },
+];
+for (const c of GML_CASES) {
+  try {
+    const got = readGml(c.xml, c.latitudeFirst ?? false).features;
+    const d = diff(JSON.parse(JSON.stringify(got)), c.want);
+    report({ check: "gml case", name: c.name, ok: d === null, ...(d && { diff: d }) });
+  } catch (e) {
+    report({ check: "gml case", name: c.name, ok: false, error: String(e) });
+  }
+}
+try {
+  readGml(`<wfs:FeatureCollection ${GML_NS}><gml:featureMember><a:t><a:p><gml:Point srsName="EPSG:6677"><gml:pos>1 2</gml:pos></gml:Point></a:p></a:t></gml:featureMember></wfs:FeatureCollection>`);
+  report({ check: "gml case", name: "another CRS is refused", ok: false });
+} catch (e) {
+  report({ check: "gml case", name: "another CRS is refused", ok: /EPSG:6677 is not read/.test(String(e)) });
+}
+// OpenLayers' properties of a feature: its values but the geometry and boundedBy, `{ _content_ }` objects as their content.
+function olProperties(f) {
+  const out = {};
+  const plain = (v) => (v && typeof v === "object" && !Array.isArray(v) && "_content_" in v ? (v._content_ ?? null) : Array.isArray(v) ? v.map(plain) : v);
+  for (const [k, v] of Object.entries(f.getProperties())) if (k !== f.getGeometryName() && k !== "boundedBy" && v !== undefined) out[k] = plain(v);
+  return out;
+}
+for (const url of WFS.slice(0, 3)) {
+  try {
+    const caps = services.readWFSCapabilities(await get(url), url);
+    const type = caps.featureTypes.find((t) => /^(ms:)?cities$/.test(t.name));
+    const formats = (type.outputFormats.length ? type.outputFormats : caps.outputFormats).filter((f) => /gml/i.test(f));
+    const options = { typeName: type.name, bbox: JAPAN };
+    const json = await services.wfsFeatures(caps, { ...options, outputFormat: services.geojsonFormat(type.outputFormats.length ? type.outputFormats : caps.outputFormats) });
+    // Each feature's name and position (to 1e-5°, as the formats print them), in one order.
+    const points = (fc) => fc.features.map((f) => `${f.properties.NAME} ${f.geometry.coordinates.map((v) => (Math.round(v * 1e5) / 1e5).toFixed(5))}`).sort();
+    for (const format of formats) {
+      const ours = await services.wfsFeatures(caps, { ...options, outputFormat: format });
+      const geometry = diff(points(ours), points(json));
+      const v10 = caps.version.startsWith("1.0");
+      const gmlUrl = services.wfsFeatureUrl(caps.getFeatureUrl, caps.version, { ...options, outputFormat: format, crs: v10 ? "EPSG:4326" : "urn:ogc:def:crs:EPSG::4326" });
+      const gmlFormat = /3\.2/.test(format) ? new GML32() : /3\.1|GML3/i.test(format) ? new GML3() : new GML2();
+      const ol = new WFSFormat({ version: caps.version, gmlFormat }).readFeatures(await get(gmlUrl));
+      const properties = diff(ours.features.map((f) => f.properties), ol.map(olProperties));
+      const ids = diff(ours.features.map((f) => f.id), ol.map((f) => f.getId()));
+      const d = geometry ?? properties ?? ids;
+      report({ check: "wfs gml", version: caps.version, format, features: ours.features.length, ok: d === null && ours.features.length > 0 && ours.features.length === json.features.length, ...(d && { diff: d }) });
+    }
+  } catch (e) {
+    report({ check: "wfs gml", url, ok: false, error: String(e) });
+  }
+}
+
+// ArcGIS Server's WFS in GML: the cities around Japan come back inside the box asked.
+try {
+  const url = WFS[3];
+  const caps = services.readWFSCapabilities(await get(url), url);
+  const type = caps.featureTypes[0];
+  const format = services.gmlFormat(type.outputFormats.length ? type.outputFormats : caps.outputFormats);
+  const got = await services.wfsFeatures(caps, { typeName: type.name, bbox: JAPAN, outputFormat: format });
+  const inside = got.features.every((f) => f.geometry.type === "Point" && f.geometry.coordinates[0] >= JAPAN[0] && f.geometry.coordinates[0] <= JAPAN[2] && f.geometry.coordinates[1] >= JAPAN[1] && f.geometry.coordinates[1] <= JAPAN[3]);
+  report({ check: "wfs gml", url, format, features: got.features.length, ok: got.features.length > 0 && inside });
+} catch (e) {
+  report({ check: "wfs gml", url: WFS[3], ok: false, error: String(e) });
 }
 
 // A WMTS of EPSG:4326 only (GIBS): a reprojected source, its first matrix at the world's top-left corner, its tiles images.

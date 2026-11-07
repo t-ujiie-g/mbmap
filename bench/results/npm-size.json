@@ -71,8 +71,13 @@
     },
     {
       "name": "mbmap/services",
-      "bytes": 10786,
+      "bytes": 10953,
       "budget": 12000
+    },
+    {
+      "name": "WFS GML (loaded by mbmap/services with the first GML answer)",
+      "bytes": 1993,
+      "budget": 2500
     },
     {
       "name": "services worker (ArcGIS f=json and f=pbf; loaded by mbmap/services on the first such read)",
@@ -156,7 +161,7 @@
     },
     {
       "name": "data worker",
-      "bytes": 39752,
+      "bytes": 39795,
       "budget": 40000
     },
     {
@@ -171,7 +176,7 @@
     },
     {
       "name": "reprojected sources' tiles (loaded by the data worker with the first one)",
-      "bytes": 1797,
+      "bytes": 1799,
       "budget": 2000
     },
     {

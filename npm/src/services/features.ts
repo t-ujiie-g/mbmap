@@ -30,8 +30,8 @@ export function ogcItemsUrl(itemsUrl: string, options: OGCItemsOptions = {}): st
 }
 
 /**
- * `typeName`; `bbox` in degrees; `count` per page; `startIndex`; `outputFormat` (default the
- * first GeoJSON one the service offers); `crs` for the output (`SRSNAME`, default the type's own).
+ * `typeName`; `bbox` in degrees; `count` per page; `startIndex`; `outputFormat` (default the first GeoJSON one the
+ * service offers, else its latest GML); `crs` for the output (`SRSNAME`; for GML, read in EPSG:4326 only, that).
  */
 export interface WFSFeatureOptions {
   typeName: string;
@@ -45,6 +45,13 @@ export interface WFSFeatureOptions {
 /** The GeoJSON output format among `formats`, or undefined. */
 export function geojsonFormat(formats: string[]): string | undefined {
   return formats.find((f) => /geo\+?json/i.test(f)) ?? formats.find((f) => /json/i.test(f));
+}
+
+/** The GML output format among `formats`, the latest version first, or undefined (the server's default is GML). */
+export function gmlFormat(formats: string[]): string | undefined {
+  const gml = formats.filter((f) => /gml/i.test(f));
+  const version = (f: string) => Number(/(\d)(?:\.(\d))?/.exec(f.replace(/^.*gml/i, ""))?.slice(1).join(".") ?? 0);
+  return gml.sort((a, b) => version(b) - version(a))[0];
 }
 
 /**

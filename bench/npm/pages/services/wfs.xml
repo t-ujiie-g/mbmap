@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WFS_Capabilities xmlns="http://www.opengis.net/wfs" xmlns:ows="http://www.opengis.net/ows" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1.0">
+  <ows:ServiceIdentification><ows:Title>Stations</ows:Title></ows:ServiceIdentification>
+  <ows:OperationsMetadata>
+    <ows:Operation name="GetFeature">
+      <ows:DCP><ows:HTTP><ows:Get xlink:href="wfs-gml.xml?map=test"/></ows:HTTP></ows:DCP>
+      <ows:Parameter name="outputFormat"><ows:Value>text/xml; subtype=gml/3.1.1</ows:Value></ows:Parameter>
+    </ows:Operation>
+  </ows:OperationsMetadata>
+  <FeatureTypeList>
+    <FeatureType>
+      <Name>st:stations</Name>
+      <Title>駅</Title>
+      <DefaultSRS>urn:ogc:def:crs:EPSG::4326</DefaultSRS>
+      <ows:WGS84BoundingBox><ows:LowerCorner>139.7 35.6</ows:LowerCorner><ows:UpperCorner>139.8 35.7</ows:UpperCorner></ows:WGS84BoundingBox>
+    </FeatureType>
+  </FeatureTypeList>
+</WFS_Capabilities>

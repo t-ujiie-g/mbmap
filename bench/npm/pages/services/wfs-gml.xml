@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs" xmlns:gml="http://www.opengis.net/gml" xmlns:st="urn:stations">
+  <gml:featureMember>
+    <st:stations gml:id="stations.1">
+      <st:geom><gml:Point srsName="EPSG:4326"><gml:pos>35.6812 139.7671</gml:pos></gml:Point></st:geom>
+      <st:name>東京</st:name>
+    </st:stations>
+  </gml:featureMember>
+  <gml:featureMember>
+    <st:stations gml:id="stations.2">
+      <st:geom><gml:Point srsName="EPSG:4326"><gml:pos>35.6918 139.7709</gml:pos></gml:Point></st:geom>
+      <st:name>神田</st:name>
+    </st:stations>
+  </gml:featureMember>
+</wfs:FeatureCollection>
