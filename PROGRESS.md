@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-07）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（リファクタリングとセキュリティ、下の節）を報告中。次の Phase はその後にユーザーと決める。
+- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM）を作業中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -24,6 +24,28 @@
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+
+## Phase 19：解析 第2弾（2026-11-07〜）
+
+範囲・段階・予算の扱いは 2026-11-07 にユーザーが決めた。VISION §8 の Phase 19 の項目のうち、測地線の計測は Phase 14 で済んでいるので除く。
+
+- **段階**（1 段階 1 PR）：
+  - 19.1：空間関係（DE-9IM）。JSTS 2.12.1 の `RelateOp`（GeometryGraph 方式）と `Geometry` の述語を移植し、`Dataset.relate(other, relation)` と `relateMatrix` にする。
+  - 19.2：単純化、凸包・凹包、ボロノイ・ドロネー、線の分割と線上の最近点。
+  - 19.3：分類（自然分類、等量、等間隔、標準偏差）と統計、凡例とのつなぎ。
+  - 19.4：カーネル密度、六角形の集計、DBSCAN・k-means、IDW、等高線。
+  - 19.5：可視域と見通し。
+  - 19.6：作り手のデータの道路網での経路探索。
+  - 19.7：フィールド演算（属性テーブルの列の追加・削除・名前の変更と、スタイルの式による値の計算）。
+  - 19.8：example の仕上げ。
+- **予算**：解析ワーカーは 28.6 / 30KB、geometry.wasm は 41.8 / 50KB で余裕がないので、機能のまとまりごとに wasm を分け、解析ワーカーが初めて使うときに読み込む。予算は各段階で測ってから決める。
+- **比較の相手**（2026-11-07 の調べ。すべて MIT・ISC・BSD・Unlicense・EDL/EPL）：
+  - 19.1：`jsts` 2.12.1（EDL-1.0 / EPL-1.0。依存は `fastpriorityqueue` だけ、インストール時のスクリプトなし。`npm audit` 0 件）。
+  - 19.2：`@turf/simplify`（simplify-js と同じ）、凸包は `@turf/convex`（`concaveman` の `Infinity`）、凹包は `concaveman` 2.0.0（`@turf/concave` は別の重い方式）、ドロネー・ボロノイは `delaunator` 5.1.0 と `d3-delaunay` 6.0.6（`@turf/voronoi` は古い `d3-voronoi`）、線は `@turf/line-split`・`nearest-point-on-line`（7.x は球面のベクトル計算で、ホストの `Math` が要る）・`line-slice`。`robust-predicates` の `orient2d`、`rbush`、`tinyqueue` は一度だけ移植して共有する。
+  - 19.3：`simple-statistics` 8.0.0（ckmeans と jenks は区切りが違うので、名前で分ける）、標準偏差などの分類は `geostats` 2.1.0。
+  - 19.4：密度は `d3-contour` 4.0.3 の `contourDensity`（Turf にない）、六角形は `@turf/hex-grid`、`@turf/clusters-dbscan`・`clusters-kmeans`（`skmeans` 0.9.7、最初の k 点で始めるので決まった結果）、`@turf/interpolate`、等高線は `@turf/isolines`・`isobands`（`marchingsquares` は AGPL なので使わない）か `d3-contour`。
+  - 19.5：GDAL の `gdal_viewshed`（M2 の GDAL 3.13.3。Web の環境に GDAL はないので、`terrain:golden` と同じく Mac で回す）。
+  - 19.6：`geojson-path-finder` 2.1.0（作り手と同じ GeoJSON の線から網を作る）。`ngraph.path` で経路の長さを確かめる。
 
 ## Phase 18 の後の点検（2026-11-07）
 

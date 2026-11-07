@@ -91,7 +91,7 @@ const checks = {
       // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("proj") || n.startsWith("data")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("proj") || n.startsWith("data")),
         styleError,
         thrown,
         warned,
@@ -273,6 +273,14 @@ const checks = {
       const erased = (await (await squares.erase(await load(fc([sq(0.5, "c")])))).toGeoJSON()).features;
       const overlaid = (await (await squares.intersect(await load(fc([sq(0.5, "c")])))).toGeoJSON()).features;
       const badBuffer = await pt.buffer(NaN).then(() => "", (e) => e.message);
+      // Spatial relations (relate.wasm, loaded now): a overlaps c, b equals it.
+      const third = await load(fc([sq(0.5, "c")]));
+      const relations = {
+        overlaps: Array.from(await squares.relate(third, "overlaps")),
+        equals: Array.from(await squares.relate(third, { pattern: "T*F**FFF*" })),
+        matrix: await squares.relateMatrix(third, 0, 0),
+        disjoint: await squares.relate(third, { pattern: "FF*FF****" }).then(() => "", (e) => e.message),
+      };
       // Coordinate systems: Tokyo Station in plane rectangular IX (EPSG:6677).
       const { transform } = await import("mbmap/analysis");
       const ix = await transform([139.7671, 35.6812], "EPSG:4326", "EPSG:6677");
@@ -308,6 +316,7 @@ const checks = {
         erased: erased.map((f) => f.properties.name),
         overlaid: overlaid.map((f) => `${f.properties.name}/${f.properties.name_2}`),
         badBuffer,
+        relations,
         ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
         back: back.map((v) => Math.round(v * 1e7) / 1e7),
         inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
@@ -320,9 +329,9 @@ const checks = {
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|proj/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|proj/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -341,6 +350,8 @@ const checks = {
       JSON.stringify(r.geometry.erased) === JSON.stringify(["a"]) &&
       JSON.stringify(r.geometry.overlaid) === JSON.stringify(["a/c", "b/c"]) &&
       /invalid buffer options/.test(r.geometry.badBuffer) &&
+      JSON.stringify(r.geometry.relations.overlaps) === "[0,0]" && JSON.stringify(r.geometry.relations.equals) === "[1,0]" &&
+      r.geometry.relations.matrix === "212101212" && /disjoint features match/.test(r.geometry.relations.disjoint) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&
       JSON.stringify(r.geometry.back) === JSON.stringify([139.7671, 35.6812]) &&

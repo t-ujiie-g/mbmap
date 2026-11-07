@@ -465,6 +465,11 @@ In:
     a planar buffer is measured in), `dissolve` (`dataset`), `merge` (`dataset`) and
     `overlay` (`a`, `b`, `kind` 0 clip, 1 erase, 2 intersect, 3 split); the datasets go to
     the geometry module and back as Table bytes;
+  - `relate` (`a`, `b`, `predicate` 0 intersects, 1 contains, 2 within, 3 covers, 4
+    coveredBy, 5 touches, 6 crosses, 7 overlaps, 8 equals, or -1 with `pattern` a DE-9IM
+    pattern packed three bits a cell, `npm/src/relate-pattern.ts`): an Int32Array of row
+    pairs, both datasets sent to the relation module as Table bytes; with `pair` [i, j],
+    the matrix of those rows as JTS writes it (`"FF2F11212"`);
   - `toGeoJSON` (`dataset`, `crs`): its Table bytes, transformed to `crs` when
     given, decoded into a FeatureCollection (`wasmio/js/table.mjs`);
   - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to`): the

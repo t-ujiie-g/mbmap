@@ -18,6 +18,7 @@ const WASM = {
   geojson_props_worker: "geojson-properties.wasm",
   analysis_worker: "analysis.wasm",
   geometry_worker: "geometry.wasm",
+  relate_worker: "relate.wasm",
   proj_worker: "proj.wasm",
   geodesic_worker: "geodesic.wasm",
   data_worker: "data.wasm",

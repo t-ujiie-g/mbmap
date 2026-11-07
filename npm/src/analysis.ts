@@ -1,8 +1,10 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
-// geometry operations are Clipper2's, in a module loaded on their first use.
+// geometry operations are Clipper2's and spatial relations JTS's (DE-9IM), each
+// in a module loaded on their first use.
 import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
+import { packPattern } from "./relate-pattern";
 import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -11,13 +13,14 @@ export type BBox = [number, number, number, number];
 
 /**
  * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the geometry module
- * (`geometryWasmUrl`) and the coordinate system module (`projWasmUrl`) are served; by default
- * next to this module.
+ * (`geometryWasmUrl`), the spatial relation module (`relateWasmUrl`) and the coordinate system
+ * module (`projWasmUrl`) are served; by default next to this module.
  */
 export interface AnalysisOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
   geometryWasmUrl?: string | URL;
+  relateWasmUrl?: string | URL;
   projWasmUrl?: string | URL;
 }
 
@@ -75,6 +78,7 @@ function start(options: AnalysisOptions): void {
   client.start(options.workerUrl ?? new URL("./analysis-worker.js", import.meta.url), (page) => ({
     wasm: wasmUrl(options.wasmUrl ?? new URL("./analysis.wasm", import.meta.url), page),
     geometry: wasmUrl(options.geometryWasmUrl ?? new URL("./geometry.wasm", import.meta.url), page),
+    relate: wasmUrl(options.relateWasmUrl ?? new URL("./relate.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
   }));
 }
@@ -88,6 +92,12 @@ function call<T>(op: string, args: object, transfer: Transferable[] = []): Promi
 const JOIN = { round: 0, miter: 1, square: 2, bevel: 3 } as const;
 const CAP = { round: 0, butt: 1, square: 2 } as const;
 const OVERLAY = { clip: 0, erase: 1, intersect: 2, split: 3 } as const;
+
+// The predicates of relate_worker/relate.mbt, by code.
+const RELATIONS = ["intersects", "contains", "within", "covers", "coveredBy", "touches", "crosses", "overlaps", "equals"] as const;
+
+/** A spatial relation as JTS names it (`Geometry.intersects`, `contains`, …, `equals` for `equalsTopo`). */
+export type Relation = (typeof RELATIONS)[number];
 
 // Mirrors MEASURE_* in analysis_worker/datasets.mbt.
 const MEASURE = { area: 0, length: 1, centroid: 2, bbox: 3 } as const;
@@ -167,6 +177,34 @@ export class Dataset {
   /** Point counts of a `cols` x `rows` grid over `bbox`, row by row from its south edge. */
   grid(bbox: BBox, cols: number, rows: number): Promise<Int32Array> {
     return this.#call("grid", { bbox, cols, rows });
+  }
+
+  /**
+   * The pairs of a feature here and a feature of `other` in `relation` (JTS's predicates on
+   * longitude and latitude as a plane) or matching a DE-9IM `pattern`, as `[i0, j0, i1, j1, …]`
+   * by `i` then `j`. Only features whose boxes meet are tested, so `disjoint` is not offered.
+   */
+  relate(other: Dataset, relation: Relation | { pattern: string }): Promise<Int32Array> {
+    let predicate: number;
+    let pattern = 0;
+    try {
+      predicate = typeof relation === "string" ? RELATIONS.indexOf(relation) : -1;
+      if (typeof relation === "string" && predicate < 0) throw new Error(`mbmap: analysis: unknown relation ${relation}`);
+      if (typeof relation !== "string") pattern = packPattern(relation.pattern);
+      return call("relate", { a: Dataset.#idOf(this, "related"), b: Dataset.#idOf(other, "relating"), predicate, pattern });
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
+  /** The DE-9IM matrix of feature `i` here and feature `j` of `other`, as JTS writes it (`"FF2F11212"`). */
+  relateMatrix(other: Dataset, i: number, j: number): Promise<string> {
+    if (!Number.isInteger(i) || !Number.isInteger(j) || i < 0 || j < 0) return Promise.reject(new Error("mbmap: analysis: invalid feature indices"));
+    try {
+      return call("relate", { a: Dataset.#idOf(this, "related"), b: Dataset.#idOf(other, "relating"), predicate: 0, pattern: 0, pair: [i, j] });
+    } catch (err) {
+      return Promise.reject(err);
+    }
   }
 
   async #geometry(op: string, args: object): Promise<Dataset> {
