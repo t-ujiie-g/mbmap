@@ -1,0 +1,126 @@
+{
+  "results": {
+    "random statistics": {
+      "cases": 40,
+      "identical": 40
+    },
+    "random jenks": {
+      "cases": 240,
+      "identical": 240
+    },
+    "random ckmeans": {
+      "cases": 240,
+      "identical": 240
+    },
+    "random quantile": {
+      "cases": 240,
+      "identical": 240
+    },
+    "random equalInterval": {
+      "cases": 240,
+      "identical": 240
+    },
+    "random standardDeviation": {
+      "cases": 480,
+      "identical": 480
+    },
+    "ties statistics": {
+      "cases": 40,
+      "identical": 40
+    },
+    "ties jenks": {
+      "cases": 240,
+      "identical": 240
+    },
+    "ties ckmeans": {
+      "cases": 240,
+      "identical": 240
+    },
+    "ties quantile": {
+      "cases": 240,
+      "identical": 240
+    },
+    "ties equalInterval": {
+      "cases": 240,
+      "identical": 240
+    },
+    "ties standardDeviation": {
+      "cases": 480,
+      "identical": 480
+    },
+    "one value statistics": {
+      "cases": 1,
+      "identical": 1
+    },
+    "one value jenks": {
+      "cases": 6,
+      "identical": 6
+    },
+    "one value ckmeans": {
+      "cases": 6,
+      "identical": 6
+    },
+    "one value quantile": {
+      "cases": 6,
+      "identical": 6
+    },
+    "one value equalInterval": {
+      "cases": 6,
+      "identical": 6
+    },
+    "one value standardDeviation": {
+      "cases": 12,
+      "identical": 12
+    },
+    "two values statistics": {
+      "cases": 1,
+      "identical": 1
+    },
+    "two values jenks": {
+      "cases": 6,
+      "identical": 6
+    },
+    "two values ckmeans": {
+      "cases": 6,
+      "identical": 6
+    },
+    "two values quantile": {
+      "cases": 6,
+      "identical": 6
+    },
+    "two values equalInterval": {
+      "cases": 6,
+      "identical": 6
+    },
+    "two values standardDeviation": {
+      "cases": 12,
+      "identical": 12
+    },
+    "gsi statistics": {
+      "cases": 152,
+      "identical": 152
+    },
+    "gsi ckmeans": {
+      "cases": 912,
+      "identical": 912
+    },
+    "gsi quantile": {
+      "cases": 912,
+      "identical": 912
+    },
+    "gsi equalInterval": {
+      "cases": 912,
+      "identical": 912
+    },
+    "gsi standardDeviation": {
+      "cases": 1824,
+      "identical": 1824
+    },
+    "gsi jenks": {
+      "cases": 630,
+      "identical": 630
+    }
+  },
+  "failures": [],
+  "ok": true
+}

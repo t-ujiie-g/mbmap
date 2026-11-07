@@ -6,6 +6,8 @@
 import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
 import { packPattern } from "./relate-pattern";
+
+export { classBreaks, classStep, MAX_CLASS_VALUES, MAX_CLASSES, statistics, type ClassMethod, type Statistics } from "./classify";
 import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 

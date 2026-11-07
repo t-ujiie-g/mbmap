@@ -233,6 +233,14 @@ blocks.dispose();
   - `delaunay()`：点のドロネー三角形を多角形で返す。`voronoi(bbox)`：点ごとのボロノイ領域を `bbox` で切って、その点の属性とともに返す（重なった点は形なし）。
   - `nearestPointOnLine(x, y)`：地物ごとに、線の上で (x, y) にいちばん近い点 `{ point, dist, location, index, multiFeatureIndex }`（km。線のない地物は null）。`lineSlice(start, stop)`：線ごとに、`start` と `stop` にいちばん近い点の間を切り出す。
   - 線どうしの分割は `split(lines)`（Clipper2）を使う。
+- 分類と統計（メインスレッドで計算し、Worker は起こさない。simple-statistics 8.0.0 と geostats 2.1.0 の移植で、値が同じになることを黄金テストで確かめている）：
+  - `classBreaks(values, classes, method, { matchBounds })`：数値の配列（数でないもの、NaN、無限大は除く）を `classes` 個の級に分ける区切り（`classes + 1` 個、小さい順）。`method` は `"jenks"`（既定、自然分類）・`"ckmeans"`（最適な 1 次元 k-means）・`"quantile"`（等量）・`"equalInterval"`（等間隔）・`"standardDeviation"`（平均のまわりに標準偏差ごと。geostats の並べ方で、`matchBounds` で両端を最小値と最大値に合わせる）。値がない、級が値より多い（jenks では値の種類より多い）ときは null。値は 100 万個まで、級は 256 まで。
+  - `statistics(values)`：`count`、`min`、`max`、`sum`（補正つきの和）、`mean`、`median`、`variance`、`standardDeviation`（母分散・母標準偏差）。
+  - `classStep(input, breaks, outputs)`：級ごとの色などを `["step", input, outputs[0], breaks[1], outputs[1], …]` にする。`mbmap/ui` の凡例はこの式を級ごとの項目にする。
+    ```js
+    const breaks = classBreaks(values, 5, "jenks");
+    map.setPaintProperty("blocks", "fill-color", classStep(["get", "population"], breaks, ["#f1eef6", "#bdc9e1", "#74a9cf", "#2b8cbe", "#045a8d"]));
+    ```
 - 座標系：`load(data, { crs })` で投影座標のデータを読める（読み込むときに経緯度へ変換する）。`buffer` の `mode: "planar"` は `crs`（既定は 3857）の平面で測る。`transform(coords, from, to)` は `[x, y, x, y, …]` を別の座標系に変換して `Float64Array` で返す（投影の範囲外の点は NaN）。初めて座標系を使ったときに `proj.wasm` を読む。
   - `crs` に渡せるもの：EPSG コード（`6677`、`"EPSG:6677"`、`"urn:ogc:def:crs:EPSG::6677"`）、`"CRS84"`、PROJ 文字列（`"+proj=lcc +lat_0=46.5 …"`。epsg.io などにある形）、`defineCrs(name, projString)` で名前を付けたもの（`proj4.defs` と同じ使い方。`defineCrs("EPSG:2154", "+proj=lcc …")`）。
   - PROJ 文字列なしで使える EPSG コード：経緯度 4326（WGS84）・4612（JGD2000）・6668（JGD2011）・4301（日本測地系）、Web メルカトル 3857（3785、900913）、平面直角座標系 I〜XIX 系 6669〜6687（JGD2011）・2443〜2461（JGD2000）・30161〜30179（日本測地系）、UTM 32601〜32660・32701〜32760（WGS84）・6688〜6692（JGD2011、51〜55 帯）・3097〜3101（JGD2000）・3092〜3096（日本測地系）。

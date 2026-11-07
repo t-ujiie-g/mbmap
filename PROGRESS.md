@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-07）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM、#126）。19.2（形の操作）を報告中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
+- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM、#126）。19.2（形の操作、#127）。19.3（分類と統計）を報告中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -22,7 +22,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 4.3KB ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB） | 5KB ＋ 30KB（50KB、30KB、30KB。relate.wasm と shapes.wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 6.3KB（分類と統計 1.8KB を含む） ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB） | 7KB ＋ 30KB（50KB、30KB、30KB。入口の 7KB（5KB から）と relate.wasm・shapes.wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19：解析 第2弾（2026-11-07〜）
@@ -59,6 +59,13 @@
   - JS と違うところ：NaN・無限の点は凸包・凹包・ドロネーから外す（JS は壊れた結果か無限ループ）、点が 3 つに満たないドロネーは三角形なし、Turf が例外を投げる入力（負の許容値、閉じていない環）は元の形のまま返す。上限は `MAX_HULL_POINTS`・`MAX_DELAUNAY_POINTS`（100 万）。
   - `npm run shapes:golden`：ランダムな点・格子の点・一直線の点の三角形とボロノイの領域（61 組）、凸包・凹包（ランダム・格子・GSI の建物と水域、凹度と長さのしきい値を 4 通り）、GSI の道路・建物・等高線・水域の単純化（許容値 3 通り × highQuality）、GSI の線の最近点と切り出し（80）がすべて Turf・concaveman・d3-delaunay と同じ（`Object.is`）。
   - 途中の不具合：解析ワーカーへのメッセージの引数に `op` という名前を使ったため、呼ぶ操作の名前を上書きして無視され、pack test が止まった。引数を `shape` に改めた。
+
+- **19.3 の結果**：
+  - `npm/src/classify.ts`（import のない TS、`mbmap/analysis` から出す。Worker も wasm も使わない）：`classBreaks(values, classes, method)`（simple-statistics 8.0.0 の `jenks`・`ckmeansBreaks`・`quantile`・`equalIntervalBreaks`、geostats 2.1.0 の標準偏差の級）、`statistics(values)`（simple-statistics の補正つきの和、平均、中央値、母分散）、`classStep(input, breaks, outputs)`（`mbmap/ui` の凡例が級ごとの項目にする `step` の式）。
+  - geostats は平均と標準偏差を `roundlength`（既定で小数 2 桁）に丸めるので、標準偏差の級は geostats の並べ方に丸めない値を使う。ゴールデンでは geostats に同じ値を入れてから比べる。
+  - simple-statistics の `jenks` は同じ値ばかりの入力で例外を投げるか、undefined を含む区切りを返す。どちらも null にした。ckmeans の再帰は同じ順の明示的なスタックに直した（深い入力でもスタックがあふれない）。
+  - 大きさ：`mbmap/analysis` の入口が 4.3 → 6.3KB になり、予算を 5KB から 7KB に上げた（2026-11-07 ユーザー判断。別の入口に分ける案もあった）。
+  - `npm run classify:golden`：ランダムな数（40 組）、同じ値の多い整数（40 組）、1 種類・2 個の値、GSI の 6 タイルの数値の属性について、統計と 5 つの方式（級 1〜10、標準偏差は `matchBounds` の有無）がすべて同じ（`Object.is`）。example への組み込み（凡例つきの階級区分図）は 19.8 でまとめて行う。
 
 ## Phase 18 の後の点検（2026-11-07）
 

@@ -294,6 +294,10 @@ const checks = {
         nearest: (await zigzag.nearestPointOnLine(1.5, 1)).map((n) => n && n.index),
         badBox: await five.voronoi([3, 3, -1, -1]).then(() => "", (e) => e.message),
       };
+      // Classes and statistics on the main thread.
+      const { classBreaks, classStep, statistics } = await import("mbmap/analysis");
+      const numbers = [1, 2, 4, 5, 7, 9, 10, 20, 21, 22];
+      const classes = { jenks: classBreaks(numbers, 3), mean: statistics(numbers).mean, step: classStep(["get", "v"], [1, 7, 20, 22], ["a", "b", "c"]) };
       // Coordinate systems: Tokyo Station in plane rectangular IX (EPSG:6677).
       const { transform } = await import("mbmap/analysis");
       const ix = await transform([139.7671, 35.6812], "EPSG:4326", "EPSG:6677");
@@ -331,6 +335,7 @@ const checks = {
         badBuffer,
         relations,
         shapes,
+        classes,
         ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
         back: back.map((v) => Math.round(v * 1e7) / 1e7),
         inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
@@ -370,6 +375,7 @@ const checks = {
       JSON.stringify(r.geometry.shapes.cells) === JSON.stringify(["0,0", "2,0", "2,2", "0,2", "1,1"]) &&
       JSON.stringify(r.geometry.shapes.simplified) === "[[0,0],[3,0]]" && r.geometry.shapes.sliced >= 3 &&
       JSON.stringify(r.geometry.shapes.nearest) === "[1]" && /invalid bbox/.test(r.geometry.shapes.badBox) &&
+      JSON.stringify(r.geometry.classes) === JSON.stringify({ jenks: [1, 7, 20, 22], mean: 10.1, step: ["step", ["get", "v"], "a", 7, "b", 20, "c"] }) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&
       JSON.stringify(r.geometry.back) === JSON.stringify([139.7671, 35.6812]) &&
