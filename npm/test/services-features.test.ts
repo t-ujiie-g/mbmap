@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { srsNorthFirst } from "../src/services/gml.ts";
-import { arcgisFormat, arcgisQueryUrl, gather, gmlFormat, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl } from "../src/services/features.ts";
+import { arcgisFormat, arcgisQueryUrl, gather, gmlFormat, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl, wfsPagesOn } from "../src/services/features.ts";
 
 const query = (url: string) => Object.fromEntries(new URL(url).searchParams);
 
@@ -87,4 +87,8 @@ test("srsNorthFirst reads URNs and URLs by the CRS, GML 2 URLs east first, a bar
   );
   assert.equal(srsNorthFirst("EPSG:4326", true), true);
   assert.equal(srsNorthFirst("EPSG:32654", true), false);
+});
+
+test("wfsPagesOn goes on only while every page came back full", () => {
+  assert.deepEqual([wfsPagesOn(10, 10), wfsPagesOn(10, 20), wfsPagesOn(10, 15), wfsPagesOn(10, 0), wfsPagesOn(0, 0)], [true, true, false, true, false]);
 });

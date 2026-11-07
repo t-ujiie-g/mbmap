@@ -372,3 +372,19 @@ test "malformed Esri PBF is refused" {
   let negative = pbf_result(2, [pbf_feature([], [-1], [1L, 1L])])
   assert_true(esri_pbf_error(negative).has_suffix("malformed geometry"))
 }
+
+///|
+test "Esri PBF multipatches give no geometry, and a field of another wire type is skipped" {
+  let ring = pbf_feature([], [4], [0L, 0L, 0L, -4L, 4L, 0L, 0L, 4L])
+  let (t, _) = @formats.read_esri_pbf(pbf_result(4, [ring])[:])
+  assert_eq(t.kinds, [NoGeometry])
+  // The geometry type sent as a string is not read as one: the points stay points.
+  let point = pbf_feature([], [1], [2L, 3L])
+  let (p, _) = @formats.read_esri_pbf(
+    pbf_result(0, [point], head=w => {
+      w.write_tag(7, @pbf.WIRE_LEN)
+      w.write_string("\u{3}")
+    })[:],
+  )
+  assert_eq(p.kinds, [Point])
+}

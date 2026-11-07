@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { arcgisBounds, arcgisIdentifyUrl, arcgisImage, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService } from "../src/services/arcgis.ts";
-import { clampBounds, clickWindow, epsgCode, isWebMercator, lngLatToMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, northFirst, resolved, validBounds, withQuery, zoomForResolution, zoomResolution, zoomTemplate } from "../src/services/common.ts";
+import { clampBounds, clickWindow, epsgCode, imageView, isWebMercator, lngLatToMercator, MAX_IMAGE_SIZE, MERCATOR_HALF, MERCATOR_LATITUDE, mercatorToLngLat, metersPerUnit, mercatorZoom, northFirst, resolved, validBounds, withQuery, zoomForResolution, zoomResolution, zoomTemplate } from "../src/services/common.ts";
 import { isWebMercatorQuad, ogcLink, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections } from "../src/services/ogcapi.ts";
 import { allLayers, type WMSCapabilities, wmsFeatureInfoUrl, wmsImage, type WMSLayer, wmsSource } from "../src/services/wms.ts";
 import { mercatorZooms, type WMTSCapabilities, type WMTSTileMatrixSet, wmtsSource } from "../src/services/wmts.ts";
@@ -19,7 +19,7 @@ test("isWebMercator knows EPSG:3857 and its aliases in every form", () => {
   for (const crs of ["EPSG:3857", "epsg:3857", "urn:ogc:def:crs:EPSG::3857", "http://www.opengis.net/def/crs/EPSG/0/3857", "EPSG:900913", 102100, "102113"]) {
     assert.equal(isWebMercator(crs), true, String(crs));
   }
-  for (const crs of ["EPSG:4326", "CRS:84", "", undefined, "EPSG:38570"]) assert.equal(isWebMercator(crs), false, String(crs));
+  for (const crs of ["EPSG:4326", "CRS:84", "", undefined, "EPSG:38570", "EPSG:3587", "EPSG:3395"]) assert.equal(isWebMercator(crs), false, String(crs));
 });
 
 test("mercatorZoom finds the zoom of a resolution, NaN off the pyramid", () => {
@@ -100,6 +100,10 @@ test("wmsSource asks GetMap in EPSG:3857 with the layers' bounds and attribution
   assert.throws(() => wmsSource(wms("1.3.0", [layer("a", { crs: ["EPSG:6677"] }), layer("b", { crs: ["EPSG:4326"] })]), { layers: ["a", "b"] }), /share no EPSG CRS/);
   assert.throws(() => wmsImage(caps, { layers: "c" }), /not offered in EPSG:3857/);
   assert.throws(() => wmsSource(caps, { layers: "x" }), /no layer named x/);
+  const both = wms("1.3.0", [layer("d", { crs: ["EPSG:4326", "EPSG:3857"] })]);
+  assert.equal(wmsSource(both, { layers: "d", crs: "urn:ogc:def:crs:EPSG::3857" }).type, "raster");
+  const big = wmsSource(both, { layers: "d", crs: "EPSG:4326", tileSize: 512 });
+  assert.ok(big.type === "reprojected" && big.tileSize === 512);
 });
 
 const quad = (from: number, to: number, ids = (z: number) => String(z)): WMTSTileMatrixSet => ({
@@ -370,6 +374,26 @@ test("wmtsSource makes a reprojected source of a set in another EPSG CRS, its co
   const plane = { ...geographic, id: "JGD", crs: "EPSG:6677", matrices: [{ ...geographic.matrices[0], scale: 1000, topLeft: [100, -200] as [number, number] }] };
   const p = wmtsSource({ ...caps, tileMatrixSets: [plane], layers: [{ ...caps.layers[0], tileMatrixSets: ["JGD"] }] }, { layer: "l" });
   assert.ok(p.type === "reprojected" && p.crs === 6677 && p.grid!.matrices[0].x === -200 && p.grid!.matrices[0].y === 100 && Math.abs(p.grid!.matrices[0].resolution - 0.28) < 1e-12);
+});
+
+test("metersPerUnit gives OGC's degree for geographic CRSs, else a meter", () => {
+  assert.equal(metersPerUnit("EPSG:4326"), (2 * MERCATOR_HALF) / 360);
+  assert.equal(metersPerUnit("urn:ogc:def:crs:EPSG::6668"), (2 * MERCATOR_HALF) / 360);
+  assert.equal(metersPerUnit("EPSG:6677"), 1);
+  assert.equal(metersPerUnit("EPSG:3857"), 1);
+});
+
+test("imageView cuts the bounds to Web Mercator's latitudes and sizes the image by zoom, pixel ratio and cap", () => {
+  const v = imageView([-180, -90, 180, 90], 0, 1);
+  assert.ok(Math.abs(v.bbox[0] + MERCATOR_HALF) < 1e-6 && Math.abs(v.bbox[3] - MERCATOR_HALF) < 1);
+  assert.deepEqual([v.width, v.height], [512, 512]);
+  assert.ok(Math.abs(v.coordinates[0][1] - MERCATOR_LATITUDE) < 1e-6 && v.coordinates[2][0] === 180);
+  assert.deepEqual([imageView([-180, -90, 180, 90], 1, 2).width, imageView([-180, -90, 180, 90], 10, 1).width], [2048, MAX_IMAGE_SIZE]);
+  assert.equal(imageView([0, 0, 1e-9, 1e-9], 0, 1).width, 1);
+});
+
+test("withQuery keeps a parameter whose name has a malformed escape", () => {
+  assert.equal(withQuery("https://a.test/x?%zz=1", { f: "json" }), "https://a.test/x?%zz=1&f=json");
 });
 
 test("epsgCode, northFirst and zoomForResolution", () => {

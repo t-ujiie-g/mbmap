@@ -1,5 +1,5 @@
-import { type Bounds, clampBounds, epsgCode, isWebMercator, MERCATOR_HALF, mercatorZoom, metersPerUnit, northFirst, OGC_PIXEL_METERS, type ReprojectedSource, resolved, type TileSource, validBounds, withQuery, zoomForResolution, zoomTemplate } from "./common.ts";
-import { at, children, first, href, numbers, optional, parseXml, text, texts } from "./xml.ts";
+import { type Bounds, clampBounds, epsgCode, isWebMercator, MERCATOR_HALF, mercatorZoom, metersPerUnit, northFirst, OGC_PIXEL_METERS, REPROJECTED_TILE_SIZE, type ReprojectedSource, resolved, type TileSource, validBounds, withQuery, zoomForResolution, zoomTemplate } from "./common.ts";
+import { at, children, corners, first, href, numbers, optional, parseXml, text, texts } from "./xml.ts";
 
 /** A tile matrix: `topLeft` as written (in the CRS's axis order). */
 export interface WMTSTileMatrix {
@@ -50,8 +50,7 @@ export interface WMTSCapabilities {
   tileMatrixSets: WMTSTileMatrixSet[];
 }
 
-const corners = (box: Element | null): Bounds | undefined =>
-  box ? validBounds([...numbers(text(first(box, "LowerCorner"))), ...numbers(text(first(box, "UpperCorner")))]) : undefined;
+const boxBounds = (box: Element | null): Bounds | undefined => (box ? validBounds(corners(box)) : undefined);
 
 /** Reads a WMTS 1.0.0 GetCapabilities document; `base`: its URL, which relative URLs in it are resolved against. */
 export function readWMTSCapabilities(xml: string | Document, base?: string): WMTSCapabilities {
@@ -73,7 +72,7 @@ export function readWMTSCapabilities(xml: string | Document, base?: string): WMT
       id: text(first(l, "Identifier")),
       title: text(first(l, "Title")),
       abstract: optional(l, "Abstract"),
-      bounds: corners(first(l, "WGS84BoundingBox")),
+      bounds: boxBounds(first(l, "WGS84BoundingBox")),
       styles: children(l, "Style").map((s) => ({
         id: text(first(s, "Identifier")),
         title: optional(s, "Title"),
@@ -143,12 +142,12 @@ export function wmtsSource(capabilities: WMTSCapabilities, options: WMTSSourceOp
   if (!layer) throw new Error(`mbmap: services: the WMTS has no layer ${options.layer}`);
   const sets = capabilities.tileMatrixSets.filter((s) => layer.tileMatrixSets.includes(s.id) && (options.tileMatrixSet === undefined || s.id === options.tileMatrixSet));
   const bounds = layer.bounds && { bounds: clampBounds(layer.bounds) };
-  const set = sets.find((s) => mercatorZooms(s));
+  const set = sets.map((s) => ({ s, zooms: mercatorZooms(s) })).find((m) => m.zooms);
   if (set) {
-    const [minzoom, maxzoom] = mercatorZooms(set)!;
-    const matrix = zoomTemplate(set.matrices.map((m) => m.id), minzoom);
-    if (matrix === null) throw new Error(`mbmap: services: the tile matrices of ${set.id} are not named by zoom`);
-    return { type: "raster", tiles: [tileTemplate(capabilities, layer, set, options, matrix, "{y}", "{x}")], tileSize: set.matrices[0].tileWidth, minzoom, maxzoom, ...bounds };
+    const [minzoom, maxzoom] = set.zooms!;
+    const matrix = zoomTemplate(set.s.matrices.map((m) => m.id), minzoom);
+    if (matrix === null) throw new Error(`mbmap: services: the tile matrices of ${set.s.id} are not named by zoom`);
+    return { type: "raster", tiles: [tileTemplate(capabilities, layer, set.s, options, matrix, "{y}", "{x}")], tileSize: set.s.matrices[0].tileWidth, minzoom, maxzoom, ...bounds };
   }
   // Another CRS: drawn by mbmap/data's worker, which reprojects the set's tiles.
   const other = sets.find((s) => epsgCode(s.crs) !== undefined && s.matrices.length > 0);
@@ -164,7 +163,7 @@ export function wmtsSource(capabilities: WMTSCapabilities, options: WMTSSourceOp
     crs: epsgCode(other.crs)!,
     grid: { template: tileTemplate(capabilities, layer, other, options, "{TileMatrix}", "{TileRow}", "{TileCol}"), matrices },
     minzoom: 0,
-    maxzoom: zoomForResolution(finest, 256),
+    maxzoom: zoomForResolution(finest, REPROJECTED_TILE_SIZE),
     ...bounds,
   };
 }

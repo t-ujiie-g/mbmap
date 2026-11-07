@@ -540,3 +540,20 @@ test "Esri PBF stops at its point, key and cell limits" {
   })
   assert_true(error.has_suffix("more than 4096 property keys"))
 }
+
+///|
+test "esri_rings stops past its step budget, and rings whose boxes are apart cost nothing" {
+  let outer = [0.0, 0.0, 0.0, 10.0, 10.0, 10.0, 10.0, 0.0, 0.0, 0.0]
+  let hole = [2.0, 2.0, 4.0, 2.0, 4.0, 4.0, 2.0, 4.0, 2.0, 2.0]
+  let far = [50.0, 50.0, 52.0, 50.0, 52.0, 52.0, 50.0, 52.0, 50.0, 50.0]
+  let steps = Ref(0L)
+  assert_true(esri_rings([outer, hole], Shapes::new(), steps))
+  assert_true(steps.val > 0L)
+  let spent = Ref(MAX_RING_STEPS)
+  assert_false(esri_rings([outer, hole], Shapes::new(), spent))
+  let apart = Ref(MAX_RING_STEPS)
+  let s = Shapes::new()
+  assert_true(esri_rings([outer, far], s, apart))
+  assert_eq(apart.val, MAX_RING_STEPS)
+  assert_eq(s.kinds, [MultiPolygon])
+}

@@ -303,7 +303,7 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
 - `getCapabilities(url, "WMS" | "WMTS" | "WFS", { transformRequest, signal })`：`url` はサービスの入口（`SERVICE` と `REQUEST=GetCapabilities` を足す）か、`.xml` で終わる文書。文書の中の相対 URL は文書の URL を基準にする。読み手の `readWMSCapabilities`・`readWMTSCapabilities`・`readWFSCapabilities` は、文字列か `Document` を受け取る。
   - WMS は 1.1.1 と 1.3.0。レイヤーは WMS 1.3.0 の 7.2.4.8 のとおり親から受け継ぐ（CRS とスタイルは足し、範囲・縮尺・出典は無いときに親のもの）。
   - WMTS は 1.0.0。WFS は 1.0.0、1.1.0、2.0。
-- `wmsSource(capabilities, { layers, styles, format, transparent, tileSize, crs, params })`：タイルごとに EPSG:3857 の GetMap を送る `raster` のソース（`BBOX={bbox-epsg-3857}`）。範囲はレイヤーの地理的な範囲、出典はレイヤーの Attribution。EPSG:3857 を持たないレイヤーは `reprojected` のソース（下）になり、`crs`（既定はすべてのレイヤーが持つなら EPSG:4326、なければ最初のレイヤーの EPSG の座標系のうち、すべてが持つもの）で GetMap を送る。WMS 1.3.0 の EPSG:4326 や平面直角座標系の BBOX は北から書く。
+- `wmsSource(capabilities, { layers, styles, format, transparent, tileSize, crs, params })`：タイルごとに EPSG:3857 の GetMap を送る `raster` のソース（`BBOX={bbox-epsg-3857}`）。範囲はレイヤーの地理的な範囲、出典はレイヤーの Attribution。EPSG:3857 を持たないレイヤーは `reprojected` のソース（下）になり、`crs`（既定はすべてのレイヤーが持つなら EPSG:4326、なければ最初のレイヤーの EPSG の座標系のうち、すべてが持つもの）で GetMap を送る。`crs` に EPSG:3857 を渡すと、ふつうの `raster` のソースになる。`tileSize: 512` は `reprojected` のソースにも渡る。WMS 1.3.0 の EPSG:4326 や平面直角座標系の BBOX は北から書く。
 - `wmtsSource(capabilities, { layer, style, format, tileMatrixSet, dimensions })`：Web メルカトルの四分木の TileMatrixSet（名前がズームの番号になっているもの）のタイル。それがなければ、EPSG の座標系の TileMatrixSet（EPSG:4326、JGD2011、平面直角座標系など）の `reprojected` のソース（下）。ResourceURL があれば REST、なければ KVP。次元（`Time` など）は既定値か `dimensions` の値。
 - `arcgisService(url)` と `arcgisSource(service, url, { layers, dynamic, format, transparent, dpi, tileSize, params })`：MapServer、ImageServer、VectorTileServer。
   - MapServer と ImageServer は、Web メルカトルのキャッシュがあれば `tile/{z}/{y}/{x}`、なければ（`layers` を指定したときも）タイルごとの `export`（ImageServer は `exportImage`）。
@@ -326,10 +326,10 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
   map.addLayer({ id: "wms", type: "raster", source: "wms" });
   ```
 - 識別（クリックした場所の地物）。`zoom` は地図のズームで、点のまわりの 101 × 101 画素を問い合わせる（OpenLayers の `getFeatureInfoUrl` と同じ）。
-  - `wmsFeatureInfo(capabilities, { layers, queryLayers, infoFormat, featureCount }, lngLat, zoom)`：WMS の GetFeatureInfo。形式は既定でサービスが挙げる JSON（GeoJSON を優先）。GML は 18.7。
+  - `wmsFeatureInfo(capabilities, { layers, queryLayers, infoFormat, featureCount }, lngLat, zoom)`：WMS の GetFeatureInfo。形式は既定でサービスが挙げる JSON（GeoJSON を優先）。GML の答えは読まない。
   - `arcgisIdentify(MapServer の URL, lngLat, zoom, { layers, tolerance, returnGeometry })`：MapServer の `identify`。`layers` は既定で `all`、`tolerance` は 3 画素。結果は EPSG:4326 の GeoJSON で、各地物の `layer` に見つけたレイヤー（`id`、`name`）が入る。
   - URL だけを作る `wmsFeatureInfoUrl` と `arcgisIdentifyUrl` もある。
-- 文書は 32MB まで（`MAX_DOCUMENT_BYTES`）。サービスの例外報告（ServiceExceptionReport、ExceptionReport、ArcGIS の `error`）は、その内容をメッセージにして失敗する。
+- 文書は 32MB まで（`MAX_DOCUMENT_BYTES`）、地物の取得で読むページは合わせて 256MB まで（`MAX_GATHERED_BYTES`）、WMS の能力文書のレイヤーは 1 万まで（`MAX_WMS_LAYERS`）。サービスの例外報告（ServiceExceptionReport、ExceptionReport、ArcGIS の `error`）は、その内容をメッセージにして失敗する。
 
 ## データの読み込み `mbmap/data`
 
@@ -439,8 +439,8 @@ MapLibre の Style Spec（v8）を、MapLibre 6.16 と同じ描き方で描く�
   - 標高は Terrarium の PNG にしてから描くので、1/256 m 刻みになる。
   - 描いたタイルは、GSI の標準地図から作った COG を元の PNG タイルと画素単位で比べて一致すること、平面直角座標系 IX 系（EPSG:6677）のファイルを proj4js で独立に引いた画素と一致することを確かめている（`npm run geotiff:tiles`）。
   - `mbmap/data` の `rasterInfo(input)` と `rasterTile(input, z, x, y, options)` で、同じ情報とタイル（PNG）を直接得られる。
-- 別の座標系の WMTS・WMS（mbmap 独自のソース型 `reprojected`）：`mbmap/services` の `wmtsSource`・`wmsSource` が作り、`raster` レイヤーで描く。`{ type: "reprojected", crs: 6677, grid: { template, matrices } }`（WMTS の TileMatrixSet。`template` は `{TileMatrix}`・`{TileRow}`・`{TileCol}` を持ち、各行列は id、座標系の単位での画素の大きさ、左上の `x`・`y`、タイルの幅・高さ、列・行の数）か、`{ type: "reprojected", crs: 4326, image: { template, northFirst } }`（タイルごとに 1 枚の GetMap。`{bbox}`・`{width}`・`{height}`）。
-  - 表示する EPSG:3857 のタイルの画素ごとの中心を `proj.wasm` でその座標系にし（EPSG:4326・JGD2011 の経緯度はそのまま）、WMTS ならタイルの画素より細かいうちでいちばん粗い行列の、重なるタイル（64 枚まで）を、WMS なら重なる範囲の画像（1 辺 2048 画素まで）を取って、最近傍で引く。取った画像はワーカーに 128 枚まで残して使い回す。
+- 別の座標系の WMTS・WMS（mbmap 独自のソース型 `reprojected`）：`mbmap/services` の `wmtsSource`・`wmsSource` が作り、`raster` レイヤーで描く。`{ type: "reprojected", crs: 6677, grid: { template, matrices } }`（WMTS の TileMatrixSet。`template` は `{TileMatrix}`・`{TileRow}`・`{TileCol}` を持ち、各行列は id、座標系の単位での画素の大きさ、左上の `x`・`y`、タイルの幅・高さ、列・行の数）か、`{ type: "reprojected", crs: 4326, image: { template, northFirst } }`（タイルごとに 1 枚の GetMap。`{bbox}`・`{width}`・`{height}`）。`tileSize` は 256（既定）か 512。
+  - 表示する EPSG:3857 のタイルの画素ごとの中心を `proj.wasm` でその座標系にし（EPSG:4326・JGD2011 の経緯度はそのまま）、WMTS ならタイルの画素より細かいうちでいちばん粗い行列の、重なるタイル（64 枚まで）を、WMS なら重なる範囲の画像（1 辺 2048 画素まで）を取って、最近傍で引く。頼んだ大きさを超える画像は使わない。取った画像は合わせて 6400 万画素ほど（`MAX_KEPT_PIXELS`）までワーカーに残して使い回し、1 枚の取得は 30 秒で打ち切る。
   - `transformRequest` はテンプレートで 1 回だけ呼び、その headers と credentials をすべての要求に付ける。
   - 引いた画素は、EPSG:4326・6677・32654 の WMTS と WMS（1.1.1・1.3.0）で、proj4js で独立に求めた元の画素と一致することを確かめている（`npm run reproject:golden`）。
   - `mbmap/data` の `reprojectTile(source, z, x, y)` で、同じタイル（PNG）を直接得られる。

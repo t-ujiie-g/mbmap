@@ -147,3 +147,45 @@ fn Shapes::emit(
     }
   }
 }
+
+///|
+/// Adds a line member of `lines` (each flat x, y): a LineString for one, else a MultiLineString.
+fn Shapes::lines(self : Shapes, lines : Array[Array[Double]]) -> Unit {
+  for line in lines {
+    for c in line {
+      self.coords.push(c)
+    }
+    self.end_ring()
+    self.end_part()
+  }
+  self.end_member(
+    if lines.length() == 1 {
+      LineString
+    } else {
+      MultiLineString
+    },
+  )
+}
+
+///|
+/// Adds a MultiPoint member of the flat x, y `points`.
+fn Shapes::multipoint(self : Shapes, points : Array[Double]) -> Unit {
+  for c in points {
+    self.coords.push(c)
+  }
+  self.end_ring()
+  self.end_part()
+  self.end_member(MultiPoint)
+}
+
+///|
+/// Why `out` is past a reader's limits on property keys and cells (`max_cells`), if it is.
+fn property_limit(out : @geom.TableBuilder, max_cells : Int32) -> String? {
+  if out.table.columns.length() > MAX_GEOJSON_KEYS {
+    Some("more than \{MAX_GEOJSON_KEYS} property keys")
+  } else if out.cells() > max_cells.to_int64() {
+    Some("more than \{@geom.MAX_TABLE_CELLS} property cells")
+  } else {
+    None
+  }
+}

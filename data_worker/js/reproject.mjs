@@ -3,12 +3,15 @@
 
 const R = 6378137;
 const WORLD = 2 * Math.PI * R;
-const MERCATOR = new Set([3857, 900913, 3785, 102100]);
+// Web Mercator's codes, as npm/src/services/common.ts `isWebMercator` takes them.
+const MERCATOR = new Set([3857, 900913, 3785, 102100, 102113]);
 // Geographic CRSs drawn as EPSG:4326 (JGD2011 and JGD2000 lie within centimeters of it).
 const LONLAT = new Set([4326, 6668, 4612]);
-/** The most source tiles one tile reads, and the most pixels on a side of one GetMap. */
+/** The most source tiles one tile reads, the most pixels on a side of one GetMap, the most matrices and their tiles' side. */
 export const MAX_SOURCE_TILES = 64;
 export const MAX_IMAGE_SIZE = 2048;
+export const MAX_MATRICES = 64;
+export const MAX_MATRIX_TILE = 4096;
 const lonOf = (mx) => (mx / R) * (180 / Math.PI);
 const latOf = (my) => (Math.atan(Math.sinh(my / R)) * 180) / Math.PI;
 
@@ -22,15 +25,15 @@ export function isReprojected(spec) {
       typeof grid?.template === "string" &&
       Array.isArray(grid.matrices) &&
       grid.matrices.length > 0 &&
-      grid.matrices.length <= 64 &&
+      grid.matrices.length <= MAX_MATRICES &&
       grid.matrices.every(
         (m) =>
           typeof m?.id === "string" &&
           [m.resolution, m.x, m.y, m.width, m.height, m.cols, m.rows].every(Number.isFinite) &&
           m.resolution > 0 &&
           [m.width, m.height, m.cols, m.rows].every((v) => Number.isInteger(v) && v > 0) &&
-          m.width <= 4096 &&
-          m.height <= 4096,
+          m.width <= MAX_MATRIX_TILE &&
+          m.height <= MAX_MATRIX_TILE,
       )
     );
   }
@@ -39,7 +42,7 @@ export function isReprojected(spec) {
 
 /** `template` with its `{name}`s from `values` (percent-encoded), refused unless the result is http(s). */
 export function filled(template, values) {
-  const url = template.replace(/\{(\w+)\}/g, (all, name) => (name in values ? encodeURIComponent(String(values[name])).replace(/%2C/g, ",") : all));
+  const url = template.replace(/\{(\w+)\}/g, (all, name) => (Object.hasOwn(values, name) ? encodeURIComponent(String(values[name])).replace(/%2C/g, ",") : all));
   if (!/^https?:\/\//i.test(url)) throw new Error("reprojected tiles must be http(s) URLs");
   return url;
 }
@@ -64,7 +67,8 @@ export function tilesOf(m, [x0, y0, x1, y1]) {
 
 /**
  * XYZ tile `z`/`x`/`y` of reprojected source `spec` as a PNG, or null where it shows nothing. `ctx.transform(from, to, xy)`
- * takes pairs between EPSG codes; `ctx.image(url)` gives a URL's ImageData (null for a missing tile).
+ * takes pairs between EPSG codes; `ctx.image(url, [width, height])` gives a URL's ImageData no larger than that (null for
+ * a missing tile).
  */
 export async function reprojectTile(spec, { z, x, y, tileSize: size = 256 }, ctx) {
   const crs = spec.crs;
@@ -72,17 +76,18 @@ export async function reprojectTile(spec, { z, x, y, tileSize: size = 256 }, ctx
   const mx0 = -WORLD / 2 + x * (WORLD / 2 ** z);
   const my0 = WORLD / 2 - y * (WORLD / 2 ** z);
   const n = size * size;
+  const mercator = MERCATOR.has(crs);
   let xy = new Float64Array(n * 2);
   for (let j = 0; j < size; j++) {
     for (let i = 0; i < size; i++) {
       const mx = mx0 + (i + 0.5) * px;
       const my = my0 - (j + 0.5) * px;
       const k = (j * size + i) * 2;
-      xy[k] = MERCATOR.has(crs) ? mx : lonOf(mx);
-      xy[k + 1] = MERCATOR.has(crs) ? my : latOf(my);
+      xy[k] = mercator ? mx : lonOf(mx);
+      xy[k + 1] = mercator ? my : latOf(my);
     }
   }
-  if (!MERCATOR.has(crs) && !LONLAT.has(crs)) {
+  if (!mercator && !LONLAT.has(crs)) {
     try {
       xy = await ctx.transform(4326, crs, xy);
     } catch (err) {
@@ -115,7 +120,7 @@ export async function reprojectTile(spec, { z, x, y, tileSize: size = 256 }, ctx
     for (let r = r0; r <= r1; r++) {
       for (let col = c0; col <= c1; col++) {
         const url = filled(spec.grid.template, { TileMatrix: m.id, TileRow: r, TileCol: col });
-        loads.push(ctx.image(url).then((data) => data && byTile.set(r * m.cols + col, data)));
+        loads.push(ctx.image(url, [m.width, m.height]).then((data) => data && byTile.set(r * m.cols + col, data)));
       }
     }
     await Promise.all(loads);
@@ -139,7 +144,7 @@ export async function reprojectTile(spec, { z, x, y, tileSize: size = 256 }, ctx
     const width = Math.max(1, Math.min(MAX_IMAGE_SIZE, Math.ceil((x1 - x0) / want)));
     const height = Math.max(1, Math.min(MAX_IMAGE_SIZE, Math.ceil((y1 - y0) / want)));
     const bbox = (spec.image.northFirst ? [y0, x0, y1, x1] : [x0, y0, x1, y1]).join(",");
-    const data = await ctx.image(filled(spec.image.template, { bbox, width, height }));
+    const data = await ctx.image(filled(spec.image.template, { bbox, width, height }), [width, height]);
     if (!data) return null;
     const [rx, ry] = [(x1 - x0) / data.width, (y1 - y0) / data.height];
     hit = data;

@@ -7,7 +7,8 @@ export { readRaster };
 
 const R = 6378137;
 const WORLD = 2 * Math.PI * R;
-const MERCATOR = new Set([3857, 900913, 3785, 102100]);
+// Web Mercator's codes, as npm/src/services/common.ts `isWebMercator` takes them.
+const MERCATOR = new Set([3857, 900913, 3785, 102100, 102113]);
 // Geographic CRSs drawn as EPSG:4326 (JGD2011 and JGD2000 lie within centimeters of it).
 const LONLAT = new Set([4326, 6668, 4612]);
 const EDGE_STEPS = 32;

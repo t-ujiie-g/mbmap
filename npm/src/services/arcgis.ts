@@ -1,4 +1,4 @@
-import { type Bounds, clampBounds, clickWindow, type ImageRequest, isWebMercator, lngLatToMercator, mercatorToLngLat, mercatorZoom, MERCATOR_HALF, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
+import { type Bounds, clampBounds, CLICK_PIXELS, clickWindow, type ImageRequest, isWebMercator, lngLatToMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, resolved, serviceBase, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
 
 /** The parts of an ArcGIS REST service's `?f=json` that mbmap reads; the rest is kept as given. */
 export interface ArcGISService {
@@ -68,8 +68,6 @@ export interface ArcGISSourceOptions {
   params?: Record<string, string | number>;
 }
 
-/** `url` without its query and trailing slashes: the service's base URL. */
-const serviceBase = (url: string): string => url.replace(/[?#].*$/, "").replace(/\/+$/, "");
 
 /**
  * A source for an ArcGIS service at `url` with its `?f=json` `service`: a VectorTileServer's vector tiles (zooms from its
@@ -149,7 +147,7 @@ export function arcgisIdentifyUrl(url: string, lngLat: [number, number], zoom: n
     layers: options.layers ?? "all",
     tolerance: options.tolerance ?? 3,
     mapExtent: [...mercatorToLngLat(x0, y0), ...mercatorToLngLat(x1, y1)].join(","),
-    imageDisplay: "101,101,96",
+    imageDisplay: `${CLICK_PIXELS},${CLICK_PIXELS},96`,
     returnGeometry: options.returnGeometry === false ? "false" : "true",
     f: "json",
     ...options.params,
@@ -167,7 +165,8 @@ export function arcgisVectorStyle<S extends { sources?: Record<string, unknown>;
   serviceUrl: string,
 ): S {
   const self = serviceBase(serviceUrl);
-  const sources: Record<string, unknown> = {};
+  // Prototype-less: a source named `__proto__` stays a source.
+  const sources: Record<string, unknown> = Object.create(null);
   for (const [id, source] of Object.entries(style.sources ?? {})) {
     const s = source as { url?: unknown; tiles?: unknown };
     const url = typeof s.url === "string" ? resolved(s.url, styleUrl) : undefined;

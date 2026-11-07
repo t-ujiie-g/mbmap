@@ -79,6 +79,11 @@ async function read(msg) {
   return reader.read(format, files, options);
 }
 
+/** Throws unless `z`/`x`/`y` is a tile of zooms 0 to 24 and `tileSize` 256 or 512. */
+function checkTile({ z, x, y, tileSize = 256 }) {
+  check([z, x, y].every(Number.isInteger) && z >= 0 && z <= 24 && x >= 0 && y >= 0 && x < 2 ** z && y < 2 ** z && (tileSize === 256 || tileSize === 512));
+}
+
 async function run(msg) {
   try {
     await ready;
@@ -88,10 +93,7 @@ async function run(msg) {
       check(bytes instanceof ArrayBuffer || blob instanceof Blob || (typeof url === "string" && /^https?:/i.test(url)));
       if (bytes) check(bytes.byteLength <= MAX_INPUT_BYTES);
       const source = rasterSource({ bytes: bytes && new Uint8Array(bytes), blob, url, init }, MAX_INPUT_BYTES);
-      if (msg.op === "rasterTile") {
-        const { z, x, y, tileSize = 256 } = options;
-        check([z, x, y].every(Number.isInteger) && z >= 0 && z <= 24 && x >= 0 && y >= 0 && x < 2 ** z && y < 2 ** z && (tileSize === 256 || tileSize === 512));
-      }
+      if (msg.op === "rasterTile") checkTile(options);
       const value = await (msg.op === "readRaster" ? reader.readRaster(source, options) : msg.op === "rasterInfo" ? reader.rasterInfo(source) : reader.rasterTile(source, options));
       postMessage({ type: "result", id: msg.id, value }, msg.op === "readRaster" ? [...new Set(value.bands.map((b) => b.buffer))] : value instanceof ArrayBuffer ? [value] : []);
       return;
@@ -100,7 +102,7 @@ async function run(msg) {
       const { spec, options = {}, init } = msg;
       const { z, x, y, tileSize = 256 } = options ?? {};
       check((await import("./reproject.mjs")).isReprojected(spec));
-      check([z, x, y].every(Number.isInteger) && z >= 0 && z <= 24 && x >= 0 && y >= 0 && x < 2 ** z && y < 2 ** z && (tileSize === 256 || tileSize === 512));
+      checkTile({ z, x, y, tileSize });
       const value = await reader.reprojectTile(spec, { z, x, y, tileSize }, init);
       postMessage({ type: "result", id: msg.id, value }, value ? [value] : []);
       return;
@@ -133,6 +135,8 @@ onmessage = (e) => {
       reader = dataReader(wasm, imports, { proj, prj, xml, geotiff });
     });
   } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && ["read", "write", "readRaster", "rasterInfo", "rasterTile", "reprojectTile"].includes(msg.op)) {
-    queue = queue.then(() => run(msg));
+    // Reprojected tiles use proj.wasm and the browser, not data.wasm's output, so they need not wait their turn.
+    if (msg.op === "reprojectTile") void run(msg);
+    else queue = queue.then(() => run(msg));
   }
 };

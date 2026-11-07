@@ -12,10 +12,11 @@ const crsModule = () => import("./crs.mjs");
 const fgbModule = () => import("./fgb.mjs");
 const geotiffModule = () => import("./geotiff.mjs");
 const reprojectModule = () => import("./reproject.mjs");
-// Source images of reprojected tiles kept by URL (decoded), so that neighbouring tiles share them.
-const MAX_KEPT_IMAGES = 128;
-// The widest and tallest such image read: a few compressed bytes must not become a huge canvas.
-const MAX_IMAGE_SIDE = 4096;
+// Source images of reprojected tiles kept by URL (decoded), so that neighbouring tiles share them: at most
+// this many pixels in all (256 MB of RGBA).
+const MAX_KEPT_PIXELS = 64 * 1024 * 1024;
+// How long one source image may take: a stalled server fails its tiles instead of holding them.
+const IMAGE_TIMEOUT_MS = 30_000;
 const lonLat = (crs) => crs === undefined || crs === 4326;
 
 const decoder = new TextDecoder();
@@ -261,27 +262,41 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     return m[op](...args, { wasm: g, input: writeInput, output, max: MAX_INPUT_BYTES, transform });
   }
   const images = new Map();
-  // A URL's image as ImageData, or null for a 404; at most MAX_INPUT_BYTES.
-  function image(url, init) {
+  let kept = 0;
+  // A URL's image as ImageData, or null for a 404; refused past `max` pixels on a side (the size asked), at most
+  // MAX_INPUT_BYTES. Kept until the images held pass MAX_KEPT_PIXELS, the oldest dropped first.
+  function image(url, init, [maxWidth, maxHeight]) {
     let got = images.get(url);
     if (!got) {
-      got = fetch(url, dataFetchInit(init)).then(async (res) => {
+      got = fetch(url, fetchInit(init, AbortSignal.timeout(IMAGE_TIMEOUT_MS))).then(async (res) => {
         if (res.status === 404) return null;
         if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
         const bitmap = await createImageBitmap(new Blob([await readCapped(res, MAX_INPUT_BYTES)]));
-        if (bitmap.width > MAX_IMAGE_SIDE || bitmap.height > MAX_IMAGE_SIDE) {
+        if (bitmap.width > maxWidth || bitmap.height > maxHeight) {
           bitmap.close();
-          throw new Error(`${url} is larger than ${MAX_IMAGE_SIDE} pixels on a side`);
+          throw new Error(`${url} is larger than the ${maxWidth} × ${maxHeight} pixels asked`);
         }
         const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
         const c2d = canvas.getContext("2d", { willReadFrequently: true });
         c2d.drawImage(bitmap, 0, 0);
         bitmap.close();
-        return c2d.getImageData(0, 0, canvas.width, canvas.height);
+        const data = c2d.getImageData(0, 0, canvas.width, canvas.height);
+        // Counted only while still kept: another image may have dropped this one meanwhile.
+        if (images.get(url) === got) {
+          got.pixels = data.width * data.height;
+          kept += got.pixels;
+          for (const [old, entry] of images) {
+            if (kept <= MAX_KEPT_PIXELS) break;
+            if (old === url) continue;
+            images.delete(old);
+            kept -= entry.pixels;
+          }
+        }
+        return data;
       });
-      got.catch(() => images.delete(url));
+      got.pixels = 0;
+      got.catch(() => images.get(url) === got && images.delete(url));
       images.set(url, got);
-      if (images.size > MAX_KEPT_IMAGES) images.delete(images.keys().next().value);
     }
     return got;
   }
@@ -295,7 +310,7 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
   async function reprojectTile(spec, options, init) {
     const [m, crs] = [await reprojectModule(), await crsModule()];
     const transform = async (from, to, xy) => crs.transformPairs(await proj(), from, to, xy);
-    return m.reprojectTile(spec, options, { transform, image: (url) => image(url, init), png });
+    return m.reprojectTile(spec, options, { transform, image: (url, max) => image(url, init, max), png });
   }
   return {
     read,

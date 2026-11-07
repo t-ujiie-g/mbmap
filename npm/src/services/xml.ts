@@ -66,3 +66,9 @@ export function href(e: Element | null | undefined): string | undefined {
 export function numbers(s: string): number[] {
   return s.split(/\s+/).filter(Boolean).map(Number);
 }
+
+/** The `minx`, `miny`, `maxx`, `maxy` attributes of a WMS or WFS 1.0 box. */
+export const attributeBox = (e: Element): number[] => ["minx", "miny", "maxx", "maxy"].map((n) => Number(e.getAttribute(n)));
+
+/** An OWS box's LowerCorner then UpperCorner. */
+export const corners = (e: Element): number[] => [...numbers(text(first(e, "LowerCorner"))), ...numbers(text(first(e, "UpperCorner")))];

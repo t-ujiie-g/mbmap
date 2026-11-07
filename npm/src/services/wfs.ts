@@ -1,5 +1,5 @@
 import { type Bounds, resolved, validBounds } from "./common.ts";
-import { at, children, first, href, numbers, optional, parseXml, text, texts } from "./xml.ts";
+import { at, attributeBox, children, corners, first, href, optional, parseXml, text, texts } from "./xml.ts";
 
 /** A feature type: `bounds` from its WGS84BoundingBox (1.0.0's LatLongBoundingBox); CRSs as written. */
 export interface WFSFeatureType {
@@ -52,9 +52,7 @@ export function readWFSCapabilities(xml: string | Document, base?: string): WFSC
         defaultCrs: optional(f, v10 ? "SRS" : `Default${crs}`),
         otherCrs: v10 ? [] : texts(f, `Other${crs}`),
         bounds: validBounds(
-          latLong ? ["minx", "miny", "maxx", "maxy"].map((n) => Number(latLong.getAttribute(n)))
-          : wgs84 ? [...numbers(text(first(wgs84, "LowerCorner"))), ...numbers(text(first(wgs84, "UpperCorner")))]
-          : undefined,
+          latLong ? attributeBox(latLong) : wgs84 ? corners(wgs84) : undefined,
         ),
         outputFormats: texts(first(f, "OutputFormats"), "Format"),
       };

@@ -439,9 +439,7 @@ fn Parser::feature_like(self : Parser) -> Unit {
 ///|
 /// Fails past `MAX_GEOJSON_KEYS` keys or `max_cells` cells.
 fn Parser::check_properties(self : Parser) -> Unit {
-  if self.out.table.columns.length() > MAX_GEOJSON_KEYS {
-    self.fail("more than \{MAX_GEOJSON_KEYS} property keys")
-  } else if self.out.cells() > self.max_cells.to_int64() {
-    self.fail("more than \{@geom.MAX_TABLE_CELLS} property cells")
+  if property_limit(self.out, self.max_cells) is Some(m) {
+    self.fail(m)
   }
 }

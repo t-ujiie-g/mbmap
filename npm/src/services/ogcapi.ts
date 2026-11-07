@@ -97,6 +97,14 @@ export function ogcTilesetUrl(list: unknown, base: string): string | undefined {
   return set && ogcLink(ogcLinks(set, base), ["self"], /json/);
 }
 
+function decoded(url: string): string {
+  try {
+    return decodeURI(url);
+  } catch {
+    throw new Error(`mbmap: services: the tile URL ${url} is malformed`);
+  }
+}
+
 /**
  * A source for an OGC API tileset on WebMercatorQuad (`base`: its URL): vector for `dataType:
  * "vector"` (Mapbox vector tiles), raster otherwise, zooms from its `tileMatrixSetLimits`.
@@ -107,7 +115,7 @@ export function ogcTileSource(tileset: unknown, base: string): TileSource {
   const vector = t.dataType === "vector";
   const item = ogcLink(ogcLinks(t, base), ["item"], vector ? /mapbox-vector-tile|mvt|protobuf/ : /image\/(png|jpeg|webp)/);
   if (!item) throw new Error("mbmap: services: the tileset has no tile URL");
-  const tiles = decodeURI(item).replace(/\{tileMatrix\}/g, "{z}").replace(/\{tileRow\}/g, "{y}").replace(/\{tileCol\}/g, "{x}");
+  const tiles = decoded(item).replace(/\{tileMatrix\}/g, "{z}").replace(/\{tileRow\}/g, "{y}").replace(/\{tileCol\}/g, "{x}");
   const limits = Array.isArray(t.tileMatrixSetLimits) ? t.tileMatrixSetLimits.map((l) => Number(record(l).tileMatrix)).filter(Number.isInteger) : [];
   const box = record(t.boundingBox);
   const lower = box.lowerLeft, upper = box.upperRight;
