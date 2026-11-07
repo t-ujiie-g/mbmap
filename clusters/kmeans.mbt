@@ -27,12 +27,9 @@ fn js_round(x : Double) -> Double {
 }
 
 ///|
-/// `@turf/clusters-kmeans` over `t`'s Point rows: per row its
-/// `properties.cluster` (-1 for other rows, which take no part), and each
-/// cluster's centroid as x, y pairs (`properties.centroid`). `k` <= 0 is
-/// Turf's default, `round(sqrt(points / 2))`; past the point count it is the
-/// point count. skmeans starts from the first `k` points, so the result is
-/// deterministic. None past `MAX_CLUSTER_POINTS`.
+/// `@turf/clusters-kmeans` over `t`'s Point rows (`k` <= 0 is Turf's default):
+/// per row its cluster (-1 for other rows) and each centroid as x, y. None past
+/// `MAX_CLUSTER_POINTS`.
 pub fn kmeans_checked(
   t : @geom.Table,
   k : Int32,

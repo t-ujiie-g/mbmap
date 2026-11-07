@@ -1,0 +1,14 @@
+// Contour polygons of a grid and density contours of points: ports of
+// d3-contour 4.0.3's `contours` and `contourDensity` with what they use of
+// d3-array 3.2.5. Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "moonbitlang/core/double",
+} for "test"

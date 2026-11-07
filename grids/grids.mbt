@@ -150,11 +150,9 @@ fn rectangle_grid(
 }
 
 ///|
-/// Turf's `squareGrid([x0, y0, x1, y1], cell_side)` (kilometers, turned into
-/// degrees along a great circle, so `trig` goes unused): Polygon rows by
-/// column from the west, each ring closed. `None` for a `cell_side` that is
-/// NaN or not positive, where Turf throws (a ring starting at NaN) or past
-/// `MAX_GRID_CELLS`.
+/// Turf's `squareGrid` (km; `trig` unused, as Turf needs none): Polygon rows by
+/// column from the west. None for a cell side not positive, where Turf throws,
+/// or past `MAX_GRID_CELLS`.
 pub fn square_grid(
   x0 : Double,
   y0 : Double,
@@ -168,11 +166,9 @@ pub fn square_grid(
 }
 
 ///|
-/// Turf's `hexGrid([x0, y0, x1, y1], cell_side, { triangles })` (kilometers):
-/// flat-topped hexagons (or each one's six triangles from its center) as
-/// Polygon rows by column from the west. `None` for a `cell_side` that is NaN
-/// or not positive, where Turf throws (a ring starting at NaN) or past
-/// `MAX_GRID_CELLS`.
+/// Turf's `hexGrid` (km): flat-topped hexagons, or their six triangles, as
+/// Polygon rows by column from the west. None for a cell side not positive,
+/// where Turf throws, or past `MAX_GRID_CELLS`.
 pub fn hex_grid(
   x0 : Double,
   y0 : Double,
@@ -258,11 +254,9 @@ pub fn hex_grid(
 }
 
 ///|
-/// Turf's `triangleGrid([x0, y0, x1, y1], cell_side)` (kilometers): two
-/// Polygon rows per cell, by column from the west, the diagonals alternating
-/// as Turf's do. `None` for a `cell_side` that is NaN or not positive, where
-/// Turf throws (a ring starting at NaN, as on a flat box) or past
-/// `MAX_GRID_CELLS`.
+/// Turf's `triangleGrid` (km): two Polygon rows per cell by column from the
+/// west. None for a cell side not positive, where Turf throws (also a flat
+/// box), or past `MAX_GRID_CELLS`.
 pub fn triangle_grid(
   x0 : Double,
   y0 : Double,

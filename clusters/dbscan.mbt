@@ -153,11 +153,9 @@ fn Region::query(self : Region, i : Int32) -> Unit {
 }
 
 ///|
-/// `@turf/clusters-dbscan` over `t`'s Point rows, `max_distance` in
-/// kilometers: two ints per row, Turf's `properties.cluster` (-1 when it has
-/// none) and its `properties.dbscan` as `DBSCAN_CORE`, `DBSCAN_EDGE`,
-/// `DBSCAN_NOISE` (or `DBSCAN_SKIPPED` for other rows, which take no part).
-/// `min_points` 0 is Turf's default, 3. None past `MAX_CLUSTER_POINTS`.
+/// `@turf/clusters-dbscan` over `t`'s Point rows (km; `min_points` 0 is 3): per
+/// row its `cluster` (-1 for none) and `DBSCAN_*` kind (`DBSCAN_SKIPPED` for
+/// other rows). None past `MAX_CLUSTER_POINTS`.
 pub fn dbscan_checked(
   t : @geom.Table,
   max_distance : Double,

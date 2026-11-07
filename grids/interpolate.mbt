@@ -66,15 +66,9 @@ fn z_value(p : @geom.Prop?) -> Double? {
 }
 
 ///|
-/// Turf's `interpolate(points, cell_side, { gridType, property, weight })`
-/// (kilometers) over the table's Point rows, other rows left out: inverse
-/// distance weighting of each point's `property` at each grid row (the point
-/// itself for `grid` 0, else the cell's centroid) of the points' bounding box,
-/// with `grid` 0 point, 1 square, 2 hex, 3 triangle. The rows carry only
-/// `property`, the weighted mean (NaN where a grid point lies on a data point
-/// with `weight` > 0, as in Turf). `None` for another `grid`, a point whose
-/// `property` is missing or a string, a `cell_side` that is NaN or not
-/// positive, past `MAX_GRID_CELLS` or past `MAX_INTERPOLATE_PAIRS`.
+/// Turf's `interpolate` (km; `grid` 0 point, 1 square, 2 hex, 3 triangle) of
+/// the Point rows' `property`: grid rows carrying only `property`. None where
+/// Turf throws (a value missing or a string) or past the caps.
 pub fn interpolate(
   t : @geom.Table,
   cell_side : Double,

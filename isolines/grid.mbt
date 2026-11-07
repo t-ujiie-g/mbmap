@@ -46,10 +46,8 @@ fn Grid::at(self : Grid, y : Int32, x : Int32) -> Double {
 }
 
 ///|
-/// A grid value as Turf's `gridToMatrix` reads it: falsy values (missing,
-/// null, false, "", 0, NaN) are 0; other numbers as they are; None for what
-/// Turf would keep as a non-number (true, a non-empty string), whose JS
-/// coercions this port does not follow, and for values past `MAX_ABS_VALUE`.
+/// A grid value as `gridToMatrix` reads it (falsy ones as 0); None for
+/// non-numbers Turf keeps (true, a non-empty string) and past `MAX_ABS_VALUE`.
 fn grid_value(p : @geom.Prop??) -> Double? {
   match p {
     None | Some(None) | Some(Some(Null | Bool(false) | Str(""))) => Some(0.0)
@@ -66,12 +64,8 @@ fn grid_value(p : @geom.Prop??) -> Double? {
 }
 
 ///|
-/// Turf's `gridToMatrix(grid, { zProperty, flip: true })` and `bbox(grid)`:
-/// points grouped into rows by latitude (rows from south to north, each from
-/// west to east, ties in table order), checked as Turf checks them (Point rows
-/// only, at least 2 x 2, rows of equal length). Rows need not line up: Turf
-/// uses positions in the matrix, not coordinates. None also for non-finite
-/// coordinates, which Turf sorts inconsistently.
+/// Turf's `gridToMatrix(grid, { zProperty, flip: true })` and `bbox(grid)`,
+/// None where Turf throws or for non-finite coordinates.
 fn grid_of(t : @geom.Table, z_property : String) -> Grid? {
   let n = t.length()
   if n > MAX_GRID_POINTS {
@@ -144,7 +138,7 @@ fn grid_of(t : @geom.Table, z_property : String) -> Grid? {
       return None
     }
   }
-  Some({ rows, cols, z, min_x, min_y, max_x, max_y })
+  Some({ rows, cols, z, min_x, min_y, max_x, max_y, })
 }
 
 ///|

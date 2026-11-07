@@ -1,12 +1,33 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "t-ujiie-g/mbmap/isolines"
 
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+}
+
 // Values
+pub const MAX_ABS_VALUE : Double = 1.0e300
+
+pub const MAX_BREAKS : Int32 = 4096
+
+pub const MAX_CELL_BREAKS : Int64 = 67_108_864
+
+pub const MAX_GRID_POINTS : Int32 = 4_194_304
+
+pub const MAX_NESTING_TESTS : Int64 = 100_000_000
+
+pub const MAX_SEGMENTS : Int32 = 4_000_000
+
+pub fn isobands(@geom.Table, Array[Double], String, trig? : @core.Trig, number_text? : (Double) -> String) -> @geom.Table?
+
+pub fn isolines(@geom.Table, Array[Double], String) -> @geom.Table?
 
 // Errors
 
 // Types and methods
 
 // Type aliases
+pub using @core {type Trig}
 
 // Traits

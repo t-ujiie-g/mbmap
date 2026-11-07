@@ -1,0 +1,32 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/density"
+
+import {
+  "t-ujiie-g/mbmap/core",
+}
+
+// Values
+pub const MAX_CONTOUR_CELLS : Int64 = 16_777_216
+
+pub const MAX_CONTOUR_WORK : Int64 = 134_217_728
+
+pub const MAX_THRESHOLDS : Int32 = 4096
+
+pub const MAX_TICKS : Int32 = 16384
+
+pub fn contour_density(FixedArray[Double], FixedArray[Double], FixedArray[Double]?, Int32, Int32, Int32, Double, Int32, trig? : @core.Trig) -> Array[Contour]?
+
+pub fn contours(FixedArray[Double], Int32, Int32, Array[Double], Bool) -> Array[Contour]?
+
+// Errors
+
+// Types and methods
+pub struct Contour {
+  value : Double
+  coordinates : Array[Array[Array[(Double, Double)]]]
+}
+
+// Type aliases
+pub using @core {type Trig}
+
+// Traits

@@ -37,7 +37,7 @@ const ENTRIES = [
   { name: "feature queries (loaded by the display worker with the first query)", files: ["worker-query.js"], budget: 1_500, references: [] },
   { name: "GeoJSON worker", files: ["geojson-worker.js", "geojson.wasm"], budget: 30_000, references: [] },
   { name: "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)", files: ["geojson-worker.js", "geojson-properties.wasm"], budget: 50_000, references: [] },
-  { name: "mbmap/analysis", files: ["analysis.js"], budget: 7_000, references: ["./projstring.js", "./analysis-worker.js", "./analysis.wasm", "./geometry.wasm", "./relate.wasm", "./shapes.wasm", "./surface.wasm", "./proj.wasm"] },
+  { name: "mbmap/analysis", files: ["analysis.js"], budget: 9_000, references: ["./projstring.js", "./analysis-worker.js", "./analysis.wasm", "./geometry.wasm", "./relate.wasm", "./shapes.wasm", "./surface.wasm", "./proj.wasm"] },
   { name: "PROJ strings (loaded by mbmap/analysis and mbmap/data on the first one)", files: ["projstring.js"], budget: 5_000, references: [] },
   { name: "analysis worker", files: ["analysis-worker.js", "analysis.wasm"], budget: 30_000, references: [] },
   { name: "geometry (loaded by the analysis worker on first use)", files: ["geometry.wasm"], budget: 50_000, references: [] },
