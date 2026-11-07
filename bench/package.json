@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker bench/worker/compile_entry analysis_worker geometry_worker relate_worker shapes_worker surface_worker proj_worker geodesic_worker data_worker geotiff_worker services_worker --release --target wasm-gc && moon build bundle/main bench/expr --release --target js && npm --prefix bench run opt",
+    "build:moon": "cd .. && for t in wasm wasm-gc js; do moon build bench/backend/entry --release --target $t || exit 1; done && for t in wasm-gc js; do moon build bench/entry --release --target $t || exit 1; done && moon build worker bench/worker/compile_entry analysis_worker geometry_worker relate_worker shapes_worker surface_worker viewshed_worker proj_worker geodesic_worker data_worker geotiff_worker services_worker --release --target wasm-gc && moon build bundle/main bench/expr --release --target js && npm --prefix bench run opt",
     "opt": "node backend/opt.mjs",
     "test": "node --test lib/*.test.mjs",
     "fixtures": "node maplibre/fetch-tiles.mjs",
@@ -47,6 +47,7 @@
     "classify:golden": "node --experimental-strip-types classify/golden.mjs",
     "shapes:golden": "npm run build:moon && node shapes/golden.mjs",
     "surface:golden": "npm run build:moon && node surface/golden.mjs",
+    "viewshed:golden": "npm run build:moon && node viewshed/golden.mjs",
     "data:golden": "cd .. && moon build data_worker proj_worker --release --target wasm-gc && cd bench && node data/golden.mjs",
     "fgb:golden": "cd .. && moon build data_worker proj_worker --release --target wasm-gc && cd bench && node data/fgb-golden.mjs",
     "geotiff:golden": "cd .. && moon build data_worker geotiff_worker --release --target wasm-gc && cd bench && node --max-old-space-size=4096 data/geotiff-golden.mjs",

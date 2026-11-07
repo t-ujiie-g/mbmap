@@ -1,0 +1,64 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/viewshed"
+
+import {
+  "t-ujiie-g/mbmap/core",
+}
+
+// Values
+pub const DEFAULT_CURVATURE_COEFF : Double = 0.85714
+
+pub const MAX_VIEWSHED_CELLS : Int32 = 16_777_216
+
+pub fn viewshed(FixedArray[Double], Int32, Int32, FixedArray[Double], Double?, ViewshedOptions, trig? : @core.Trig) -> ViewshedResult?
+
+// Errors
+
+// Types and methods
+pub(all) enum CellMode {
+  Diagonal
+  Edge
+  Max
+  Min
+}
+
+pub(all) enum ViewshedMode {
+  Normal
+  Dem
+  Ground
+}
+
+pub(all) struct ViewshedOptions {
+  observer_x : Double
+  observer_y : Double
+  observer_height : Double
+  target_height : Double
+  max_distance : Double
+  min_distance : Double
+  start_angle : Double
+  end_angle : Double
+  low_pitch : Double
+  high_pitch : Double
+  curvature_coeff : Double?
+  semi_major : Double?
+  visible_value : Double
+  invisible_value : Double
+  out_of_range_value : Double
+  nodata : Double
+  mode : ViewshedMode
+  cell_mode : CellMode
+}
+pub fn ViewshedOptions::new(Double, Double, observer_height? : Double, target_height? : Double, max_distance? : Double, min_distance? : Double, start_angle? : Double, end_angle? : Double, low_pitch? : Double, high_pitch? : Double, curvature_coeff? : Double, semi_major? : Double, visible_value? : Double, invisible_value? : Double, out_of_range_value? : Double, nodata? : Double, mode? : ViewshedMode, cell_mode? : CellMode) -> Self
+
+pub struct ViewshedResult {
+  values : FixedArray[Double]
+  width : Int32
+  height : Int32
+  geotransform : FixedArray[Double]
+  nodata : Double?
+  found_nodata : Bool
+}
+
+// Type aliases
+
+// Traits

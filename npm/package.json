@@ -62,6 +62,8 @@
     "./relate.wasm": "./dist/relate.wasm",
     "./shapes.wasm": "./dist/shapes.wasm",
     "./surface.wasm": "./dist/surface.wasm",
+    "./viewshed.wasm": "./dist/viewshed.wasm",
+    "./analysis-viewshed.js": "./dist/analysis-viewshed.js",
     "./proj.wasm": "./dist/proj.wasm",
     "./geodesic-worker.js": "./dist/geodesic-worker.js",
     "./geodesic.wasm": "./dist/geodesic.wasm",

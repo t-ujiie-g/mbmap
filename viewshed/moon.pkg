@@ -1,0 +1,7 @@
+// Viewshed of a DEM raster, a port of GDAL 3.13.3's viewshed (what
+// gdal_viewshed runs). Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "moonbitlang/core/double",
+}

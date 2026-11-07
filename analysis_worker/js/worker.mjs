@@ -19,6 +19,7 @@ const modules = {
   relate: { url: null, exports: null, imports: {} },
   shapes: { url: null, exports: null, imports: { Math } },
   surface: { url: null, exports: null, imports: { Math, host: hostText() } },
+  viewshed: { url: null, exports: null, imports: { Math } },
   proj: { url: null, exports: null, imports: { Math } },
 };
 // Calls run one after another, after init, in the order they came.
@@ -81,6 +82,8 @@ async function load({ url, bytes, table, crs }) {
 
 const WORLD_WIDTH = 40075016.6855785;
 const MAX_GRID_SIDE = 4096; // analysis_worker/dem.mbt
+// Each grid's width and height in cells, for `viewshed`.
+const gridSizes = new Map();
 // Each DEM grid's zoom, north-west tile and tile size, for `gridSample`.
 const demTiles = new Map();
 // Fetches the DEM tiles of `url` (a {z}/{x}/{y} template) at zoom `z` covering
@@ -123,6 +126,7 @@ async function loadDem({ url, z, bounds, encoding }) {
   const lat = Math.atan(Math.sinh(Math.PI * (1 - ((y0 + y1 + 1) / 2) * (2 / n))));
   const res = (WORLD_WIDTH / n / size) * Math.cos(lat);
   const grid = counted(wasm.load_dem(width, height, ...encoding, res, res));
+  gridSizes.set(grid, { width, height });
   demTiles.set(grid, [z, x0, y0, size]);
   const lng = (x) => (x / n) * 360 - 180;
   const latOf = (y) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n))) * 180) / Math.PI;
@@ -195,6 +199,7 @@ async function loadGrid({ values, width, height, res, origin, step, crs = 4326 }
   if (width > MAX_GRID_SIDE || height > MAX_GRID_SIDE) throw new Error(`a grid of ${width} x ${height} cells is too large`);
   input(new Uint8Array(values));
   const grid = counted(wasm.load_grid(width, height, res[0], res[1]));
+  gridSizes.set(grid, { width, height });
   rasterGrids.set(grid, { origin, step, crs });
   const corners = new Float64Array([0, 0, width, 0, 0, height, width, height].map((v, i) => origin[i % 2] + v * step[i % 2]));
   const ll = crs === 4326 ? corners : await OPS.transform({ coords: corners.buffer, from: crs, to: 4326 });
@@ -217,10 +222,21 @@ const OPS = {
     const at = wasm.output_addr();
     return new Uint8Array(wasm.memory.buffer.slice(at, at + n));
   },
+  // GDAL's viewshed of a grid (viewshed_worker), in its own file loaded with the first one.
+  async viewshed({ grid, observer, options }) {
+    check((demTiles.has(grid) || rasterGrids.has(grid)) && Array.isArray(observer) && observer.length === 2 && observer.every(Number.isFinite));
+    const values = f64s(wasm.grid_values(grid, 0));
+    const { viewshed } = await import("./viewshed.mjs");
+    return viewshed({
+      values, size: gridSizes.get(grid), dem: demTiles.get(grid), raster: rasterGrids.get(grid), observer, options,
+      check, checked, writeInput, outputOf, module, crsId, transform: OPS.transform, worldWidth: WORLD_WIDTH,
+    });
+  },
   dispose({ dataset }) {
     check(isId(dataset));
     wasm.dispose(dataset);
     demTiles.delete(dataset);
+    gridSizes.delete(dataset);
     rasterGrids.delete(dataset);
     return null;
   },
@@ -369,6 +385,7 @@ onmessage = (e) => {
     modules.relate.url = typeof msg.relate === "string" ? msg.relate : null;
     modules.shapes.url = typeof msg.shapes === "string" ? msg.shapes : null;
     modules.surface.url = typeof msg.surface === "string" ? msg.surface : null;
+    modules.viewshed.url = typeof msg.viewshed === "string" ? msg.viewshed : null;
     modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })

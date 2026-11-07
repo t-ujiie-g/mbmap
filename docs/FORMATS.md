@@ -470,6 +470,10 @@ In:
     pattern packed three bits a cell, `npm/src/relate-pattern.ts`): an Int32Array of row
     pairs, both datasets sent to the relation module as Table bytes; with `pair` [i, j],
     the matrix of those rows as JTS writes it (`"FF2F11212"`);
+  - `viewshed` (`grid`, `observer` [lng, lat], `options` observerHeight, targetHeight,
+    maxDistance, curvatureCoeff, mode 0 normal, 1 DEM, 2 ground, visible, invisible, outOfRange):
+    `{width, height, bounds, values}` from the viewshed module, which takes the elevations as f64s
+    and answers the output's width, height and geotransform, then its cells;
   - `surface` (`dataset`, -1 for the grids, `fn` an export of surface_worker, `args` its numbers,
     `text` a property name, `numbers` f64s such as breaks): the module's input is the table, the
     text as UTF-8 and the f64s one after another; a new dataset, or for `dbscan` two f64s per

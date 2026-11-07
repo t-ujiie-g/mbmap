@@ -121,7 +121,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 6953,
+      "bytes": 7554,
       "budget": 9000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 29587,
+      "bytes": 29787,
       "budget": 30000
     },
     {
@@ -153,6 +153,11 @@
       "name": "surfaces (grids, IDW, clusters, contours, density; loaded by the analysis worker on first use)",
       "bytes": 28117,
       "budget": 30000
+    },
+    {
+      "name": "viewshed (GDAL's; loaded by the analysis worker on first use)",
+      "bytes": 9956,
+      "budget": 12000
     },
     {
       "name": "coordinate systems (loaded by the analysis and data workers on first use)",

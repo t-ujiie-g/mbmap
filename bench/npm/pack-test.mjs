@@ -91,7 +91,7 @@ const checks = {
       // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("surface") || n.startsWith("proj") || n.startsWith("data")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("surface") || n.startsWith("viewshed") || n.startsWith("proj") || n.startsWith("data")),
         styleError,
         thrown,
         warned,
@@ -258,7 +258,14 @@ const checks = {
       const dem = await loadDem("/bench/fixtures/gsi-dem-fuji/{z}/{x}/{y}.png", { zoom: 12, bounds: [138.6, 35.25, 138.85, 35.45], encoding: "gsi" });
       const slope = await dem.slope();
       const shade = await dem.hillshade();
-      const grid = { width: dem.width, height: dem.height, slopes: slope.length, shades: shade.length, west: Math.round(dem.bounds[0] * 1000) / 1000 };
+      // GDAL's viewshed from the summit within 3 km (viewshed.wasm, loaded now) and a line of sight.
+      const seen = await dem.viewshed([138.7274, 35.3606], { maxDistance: 3000 });
+      const sightLine = await dem.lineOfSight([138.7274, 35.3606], [138.74, 35.37]);
+      const grid = {
+        width: dem.width, height: dem.height, slopes: slope.length, shades: shade.length, west: Math.round(dem.bounds[0] * 1000) / 1000,
+        viewshed: [seen.width === seen.values.length / seen.height, seen.width < 400, seen.values.includes(255), seen.bounds[0] > 138.68 && seen.bounds[2] < 138.78],
+        sight: typeof sightLine.visible,
+      };
       dem.dispose();
       // Geometry operations (geometry.wasm, loaded now): a 500 m circle, a line
       // cut by a square, two squares merged, erased and overlaid.
@@ -363,9 +370,9 @@ const checks = {
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|surface|proj/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|surface|viewshed|proj/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "surface.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "surface.wasm", "viewshed.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -378,6 +385,7 @@ const checks = {
       r.grid.width === 1024 && r.grid.height === 768 &&
       r.grid.slopes === 1024 * 768 && r.grid.shades === 1024 * 768 &&
       r.grid.west === 138.516 &&
+      JSON.stringify(r.grid.viewshed) === "[true,true,true,true]" && r.grid.sight === "boolean" &&
       r.geometry.circle[0] === "Polygon" && r.geometry.circle[1] > 40 && r.geometry.circle[2] === 1 &&
       JSON.stringify(r.geometry.clipped) === JSON.stringify(["LineString", [[0, 0.5], [1.5, 0.5]], "l"]) &&
       r.geometry.merged[0] === 1 && r.geometry.merged[1] >= 5 &&
