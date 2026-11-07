@@ -15,6 +15,34 @@ export interface TileSource {
   attribution?: string;
 }
 
+/**
+ * mbmap's own source of a raster in another CRS (`crs`, an EPSG code), drawn on Web Mercator tiles by mbmap/data's worker:
+ * a WMTS set (`grid`) or one GetMap per tile (`image`, its box northing first when `northFirst`); npm/README.md has the fields.
+ */
+export interface ReprojectedSource {
+  type: "reprojected";
+  crs: number;
+  grid?: { template: string; matrices: ReprojectedMatrix[] };
+  image?: { template: string; northFirst: boolean };
+  tileSize?: 256 | 512;
+  minzoom?: number;
+  maxzoom?: number;
+  bounds?: Bounds;
+  attribution?: string;
+}
+
+/** One matrix of a `ReprojectedSource`'s grid. */
+export interface ReprojectedMatrix {
+  id: string;
+  resolution: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  cols: number;
+  rows: number;
+}
+
 /** Half the side of the Web Mercator square, in meters (EPSG:3857). */
 export const MERCATOR_HALF = Math.PI * 6378137;
 
@@ -35,6 +63,30 @@ export function mercatorZoom(resolution: number, tileSize: number): number {
 
 /** OGC's standardized pixel size, 0.28 mm, which scale denominators are reckoned in. */
 export const OGC_PIXEL_METERS = 0.00028;
+
+/** The EPSG code `crs` names (`EPSG:6677`, an OGC URN or URL; CRS84 as 4326), or undefined. */
+export function epsgCode(crs: string): number | undefined {
+  if (/CRS:?84$/i.test(crs)) return 4326;
+  const code = /EPSG/i.test(crs) ? /(\d+)\D*$/.exec(crs)?.[1] : undefined;
+  return code === undefined ? undefined : Number(code);
+}
+
+// EPSG geographic CRSs, and Japan's plane rectangular zones (JGD2000, JGD2011), whose first axis is northing.
+const NORTH_FIRST = new Set([4326, 4612, 6668, 4301, 4258, 4269, 4283, 4019]);
+
+/** Whether `crs` lists its northing (latitude) first, as WMS 1.3.0 boxes and WMTS corners in it are written; CRS84 does not. */
+export function northFirst(crs: string): boolean {
+  if (/CRS:?84$/i.test(crs)) return false;
+  const code = epsgCode(crs);
+  return code !== undefined && (NORTH_FIRST.has(code) || (code >= 2443 && code <= 2461) || (code >= 6669 && code <= 6687));
+}
+
+/** Meters per unit of `crs`: OGC's degree on a 6378137 m sphere for geographic CRSs, else 1. */
+export const metersPerUnit = (crs: string): number => (epsgCode(crs) !== undefined && NORTH_FIRST.has(epsgCode(crs)!) ? (2 * MERCATOR_HALF) / 360 : 1);
+
+/** The first zoom whose `tileSize`-pixel tiles are at least as fine as `meters` per pixel (0 to 22). */
+export const zoomForResolution = (meters: number, tileSize: number): number =>
+  Math.min(22, Math.max(0, Math.ceil(Math.log2((2 * MERCATOR_HALF) / (tileSize * meters)) - 1e-9)));
 
 /** Meters in Web Mercator of `[lng, lat]` degrees. */
 export function lngLatToMercator(lng: number, lat: number): [number, number] {

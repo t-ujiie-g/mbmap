@@ -1,4 +1,4 @@
-import { type Bounds, clampBounds, clickWindow, type ImageRequest, isWebMercator, lngLatToMercator, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
+import { type Bounds, clampBounds, clickWindow, epsgCode, type ImageRequest, isWebMercator, lngLatToMercator, northFirst, type ReprojectedSource, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
 import { geojsonFormat } from "./features.ts";
 import { at, children, first, href, optional, parseXml, text, texts } from "./xml.ts";
 
@@ -131,12 +131,13 @@ export function allLayers<T extends { layers: T[] }>(layers: T[]): T[] {
 }
 
 /**
- * `layers`: the names to draw, bottom first; `styles` theirs (default the server's); `format`
- * (default `image/png`); `transparent` (default true); `tileSize` (default 256); `params`: more
- * GetMap parameters, such as a dimension's `TIME`.
+ * `layers`: the names to draw, bottom first; `styles` theirs (default the server's); `format` (default `image/png`);
+ * `transparent` (default true); `tileSize` (default 256); `crs`: the CRS a `reprojected` `wmsSource` asks in; `params`:
+ * more GetMap parameters, such as a dimension's `TIME`.
  */
 export interface WMSSourceOptions {
   layers: string | string[];
+  crs?: string;
   styles?: string | string[];
   format?: string;
   transparent?: boolean;
@@ -144,18 +145,19 @@ export interface WMSSourceOptions {
   params?: Record<string, string | number>;
 }
 
-/** The layers `options` names (each offering EPSG:3857), the GetMap parameters but size and BBOX, and the CRS key. */
-function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions) {
+/** The layers `options` names (each offering `crs`, by default EPSG:3857), the GetMap parameters but size and BBOX, and the CRS key. */
+function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions, crs?: string) {
   const names = typeof options.layers === "string" ? [options.layers] : options.layers;
   const all = allLayers(capabilities.layers);
+  const offers = (l: WMSLayer) => (crs === undefined ? l.crs.some(isWebMercator) : l.crs.some((c) => c.toUpperCase() === crs.toUpperCase()));
   const layers = names.map((name) => {
     const layer = all.find((l) => l.name === name);
     if (!layer) throw new Error(`mbmap: services: the WMS has no layer named ${name}`);
-    if (!layer.crs.some(isWebMercator)) throw new Error(`mbmap: services: the WMS layer ${name} is not offered in EPSG:3857`);
+    if (!offers(layer)) throw new Error(`mbmap: services: the WMS layer ${name} is not offered in ${crs ?? "EPSG:3857"}`);
     return layer;
   });
   const v13 = !capabilities.version.startsWith("1.1");
-  const crs = layers[0].crs.find((c) => c.toUpperCase() === "EPSG:3857") ?? layers[0].crs.find(isWebMercator)!;
+  const code = crs ?? layers[0].crs.find((c) => c.toUpperCase() === "EPSG:3857") ?? layers[0].crs.find(isWebMercator)!;
   const params = {
     SERVICE: "WMS",
     VERSION: capabilities.version,
@@ -165,28 +167,40 @@ function getMap(capabilities: WMSCapabilities, options: WMSSourceOptions) {
     FORMAT: options.format ?? "image/png",
     TRANSPARENT: options.transparent === false ? "FALSE" : "TRUE",
   };
-  return { layers, names, params, v13, crs: { [v13 ? "CRS" : "SRS"]: crs } };
+  return { layers, names, params, v13, crs: { [v13 ? "CRS" : "SRS"]: code } };
 }
 
 /**
- * A raster source drawing `options.layers` of a WMS by GetMap requests in EPSG:3857, one per tile,
- * with the layers' geographic bounds and attribution. The layers must offer EPSG:3857.
+ * A raster source drawing `options.layers` of a WMS by GetMap requests in EPSG:3857, one per tile, with the layers' geographic
+ * bounds and attribution. Layers without EPSG:3857 make a `reprojected` source instead, asked in `options.crs` (by default
+ * EPSG:4326 if all offer it, else the first layer's first EPSG CRS that all offer) and drawn by mbmap/data's worker.
  */
-export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptions): TileSource {
-  const { layers, params, crs } = getMap(capabilities, options);
+export function wmsSource(capabilities: WMSCapabilities, options: WMSSourceOptions): TileSource | ReprojectedSource {
+  const names = typeof options.layers === "string" ? [options.layers] : options.layers;
+  const all = allLayers(capabilities.layers);
+  const named = names.map((n) => all.find((l) => l.name === n));
+  const mercator = named.every((l) => !l || l.crs.some(isWebMercator)) && options.crs === undefined;
+  const common = (c: string) => named.every((l) => !l || l.crs.some((d) => d.toUpperCase() === c.toUpperCase()));
+  const crs = mercator ? undefined : options.crs ?? (common("EPSG:4326") ? "EPSG:4326" : named[0]?.crs.find((c) => epsgCode(c) !== undefined && common(c)));
+  if (!mercator && crs === undefined) throw new Error(`mbmap: services: the WMS layers ${names.join(",")} share no EPSG CRS`);
+  const { layers, params, crs: crsParam, v13 } = getMap(capabilities, options, crs);
   const size = options.tileSize ?? 256;
-  const url = withQuery(capabilities.getMapUrl, { ...params, WIDTH: size, HEIGHT: size, ...crs, BBOX: "{bbox-epsg-3857}", ...options.params });
   const bounds = layers.map((l) => l.bounds).filter((b) => b !== undefined);
   const titles = [...new Set(layers.map((l) => l.attribution?.title).filter((t) => t))];
-  return {
-    type: "raster",
-    tiles: [url],
-    tileSize: size,
+  const extra = {
     ...(bounds.length === layers.length && {
       bounds: clampBounds([Math.min(...bounds.map((b) => b[0])), Math.min(...bounds.map((b) => b[1])), Math.max(...bounds.map((b) => b[2])), Math.max(...bounds.map((b) => b[3]))]),
     }),
     ...(titles.length && { attribution: titles.join(" | ") }),
   };
+  if (crs !== undefined) {
+    const code = epsgCode(crs);
+    if (code === undefined) throw new Error(`mbmap: services: ${crs} is not an EPSG CRS`);
+    const template = withQuery(capabilities.getMapUrl, { ...params, WIDTH: "{width}", HEIGHT: "{height}", ...crsParam, BBOX: "{bbox}", ...options.params });
+    return { type: "reprojected", crs: code, image: { template, northFirst: v13 && northFirst(crs) }, ...extra };
+  }
+  const url = withQuery(capabilities.getMapUrl, { ...params, WIDTH: size, HEIGHT: size, ...crsParam, BBOX: "{bbox-epsg-3857}", ...options.params });
+  return { type: "raster", tiles: [url], tileSize: size, ...extra };
 }
 
 /** GetMap requests for one image of `options.layers` (`tileSize` unused), as `followImage` asks for the view. */

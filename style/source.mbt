@@ -1,6 +1,6 @@
 ///|
 /// What a source draws from: vector, image (`raster`) or elevation (`raster-dem`)
-/// tiles at URLs or made by the facade (`geotiff`, without `tiles`), GeoJSON the map
+/// tiles at URLs or made by the facade (`geotiff`, `reprojected`, without `tiles`), GeoJSON the map
 /// cuts into tiles itself, or a picture placed by its corners (`image`, `video`, `canvas`).
 #derive(Debug, Eq)
 pub(all) enum SourceKind {
@@ -185,12 +185,13 @@ fn parse_source(id : String, json : Json) -> Source? raise StyleError {
       tms: false,
     })
   }
-  // GeoTIFF tiles come from the facade (npm/src/geotiff-source.ts), which completes
-  // `bounds` and the zooms from the file; a DEM's are Terrarium PNGs.
-  if s.get("type") is Some(String("geotiff")) {
+  // GeoTIFF and reprojected tiles come from the facade (npm/src/geotiff-source.ts), which
+  // completes a GeoTIFF's `bounds` and zooms from the file; a DEM's are Terrarium PNGs.
+  if s.get("type") is Some(String("geotiff" | "reprojected") as kind) {
     let dem = match s.get("dem") {
       None | Some(False) => false
-      Some(True) => true
+      Some(True) if kind == "geotiff" => true
+      Some(True) => raise Unsupported(path="\{path}.dem", "only for geotiff")
       Some(_) => raise Invalid(path="\{path}.dem", "not a boolean")
     }
     let tile_size = number_or(s, "tileSize", path, 256.0).to_int()

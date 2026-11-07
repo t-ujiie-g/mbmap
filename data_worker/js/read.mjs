@@ -11,6 +11,11 @@ const zipModule = () => import("../../npm/src/zip.ts");
 const crsModule = () => import("./crs.mjs");
 const fgbModule = () => import("./fgb.mjs");
 const geotiffModule = () => import("./geotiff.mjs");
+const reprojectModule = () => import("./reproject.mjs");
+// Source images of reprojected tiles kept by URL (decoded), so that neighbouring tiles share them.
+const MAX_KEPT_IMAGES = 128;
+// The widest and tallest such image read: a few compressed bytes must not become a huge canvas.
+const MAX_IMAGE_SIDE = 4096;
 const lonLat = (crs) => crs === undefined || crs === 4326;
 
 const decoder = new TextDecoder();
@@ -255,9 +260,47 @@ export function dataReader(wasm, imports, { proj, prj, xml, geotiff }) {
     const transform = async (from, to, xy) => (await crsModule()).transformPairs(await proj(), from, to, xy);
     return m[op](...args, { wasm: g, input: writeInput, output, max: MAX_INPUT_BYTES, transform });
   }
+  const images = new Map();
+  // A URL's image as ImageData, or null for a 404; at most MAX_INPUT_BYTES.
+  function image(url, init) {
+    let got = images.get(url);
+    if (!got) {
+      got = fetch(url, dataFetchInit(init)).then(async (res) => {
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+        const bitmap = await createImageBitmap(new Blob([await readCapped(res, MAX_INPUT_BYTES)]));
+        if (bitmap.width > MAX_IMAGE_SIDE || bitmap.height > MAX_IMAGE_SIDE) {
+          bitmap.close();
+          throw new Error(`${url} is larger than ${MAX_IMAGE_SIDE} pixels on a side`);
+        }
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+        const c2d = canvas.getContext("2d", { willReadFrequently: true });
+        c2d.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        return c2d.getImageData(0, 0, canvas.width, canvas.height);
+      });
+      got.catch(() => images.delete(url));
+      images.set(url, got);
+      if (images.size > MAX_KEPT_IMAGES) images.delete(images.keys().next().value);
+    }
+    return got;
+  }
+  // RGBA pixels of a `size`-pixel square tile as a PNG.
+  async function png(rgba, size) {
+    const canvas = new OffscreenCanvas(size, size);
+    canvas.getContext("2d").putImageData(new ImageData(rgba, size, size), 0, 0);
+    return (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer();
+  }
+  // A tile of a reprojected source (`spec`, checked by `isReprojected`), its images fetched with `init`.
+  async function reprojectTile(spec, options, init) {
+    const [m, crs] = [await reprojectModule(), await crsModule()];
+    const transform = async (from, to, xy) => crs.transformPairs(await proj(), from, to, xy);
+    return m.reprojectTile(spec, options, { transform, image: (url) => image(url, init), png });
+  }
   return {
     read,
     write,
+    reprojectTile,
     readRaster: (source, options) => raster("readRaster", source, options),
     rasterInfo: (source) => raster("rasterInfo", source),
     rasterTile: (source, options) => raster("renderTile", source, options),

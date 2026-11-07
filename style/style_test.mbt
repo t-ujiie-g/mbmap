@@ -308,13 +308,15 @@ test "raster-dem sources and hillshade layers, with MapLibre's defaults" {
 }
 
 ///|
-test "geotiff sources are raster or Terrarium raster-dem sources without tiles" {
+test "geotiff and reprojected sources are raster (geotiff also Terrarium raster-dem) sources without tiles" {
   let s = @style.Style::parse(
     (
       #|{"sources": {
       #|   "photo": {"type": "geotiff", "maxzoom": 17, "bounds": [139, 35, 140, 36]},
-      #|   "dem": {"type": "geotiff", "dem": true, "tileSize": 512}},
+      #|   "dem": {"type": "geotiff", "dem": true, "tileSize": 512},
+      #|   "wms": {"type": "reprojected", "maxzoom": 18}},
       #| "layers": [{"id": "p", "type": "raster", "source": "photo"},
+      #|            {"id": "w", "type": "raster", "source": "wms"},
       #|            {"id": "h", "type": "hillshade", "source": "dem"}],
       #| "terrain": {"source": "dem"}}
     ),
@@ -329,10 +331,16 @@ test "geotiff sources are raster or Terrarium raster-dem sources without tiles" 
     (dem.kind, dem.tile_size, dem.encoding),
     (RasterDem, 512, Terrarium),
   )
+  let wms = s.source("wms").unwrap()
+  assert_eq((wms.kind, wms.tiles, wms.max_zoom), (Raster, [], 18))
   for
     c in [
       (
         "{\"sources\": {\"g\": {\"type\": \"geotiff\", \"dem\": 1}}, \"layers\": []}",
+        "sources.g.dem",
+      ),
+      (
+        "{\"sources\": {\"g\": {\"type\": \"reprojected\", \"dem\": true}}, \"layers\": []}",
         "sources.g.dem",
       ),
       (

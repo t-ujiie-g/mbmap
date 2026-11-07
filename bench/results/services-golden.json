@@ -494,6 +494,16 @@
       "ok": true
     },
     {
+      "check": "wmts reprojected",
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml",
+      "layer": "BlueMarble_ShadedRelief",
+      "crs": 4326,
+      "matrices": 8,
+      "maxzoom": 9,
+      "ok": true,
+      "fetched": true
+    },
+    {
       "check": "arcgis identify",
       "found": [
         [

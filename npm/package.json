@@ -67,6 +67,7 @@
     "./data-zip.js": "./dist/data-zip.js",
     "./data-crs.js": "./dist/data-crs.js",
     "./data-fgb.js": "./dist/data-fgb.js",
+    "./data-reproject.js": "./dist/data-reproject.js",
     "./prjwkt.js": "./dist/prjwkt.js",
     "./xml.wasm": "./dist/xml.wasm",
     "./geotiff.wasm": "./dist/geotiff.wasm",

@@ -96,6 +96,15 @@ async function run(msg) {
       postMessage({ type: "result", id: msg.id, value }, msg.op === "readRaster" ? [...new Set(value.bands.map((b) => b.buffer))] : value instanceof ArrayBuffer ? [value] : []);
       return;
     }
+    if (msg.op === "reprojectTile") {
+      const { spec, options = {}, init } = msg;
+      const { z, x, y, tileSize = 256 } = options ?? {};
+      check((await import("./reproject.mjs")).isReprojected(spec));
+      check([z, x, y].every(Number.isInteger) && z >= 0 && z <= 24 && x >= 0 && y >= 0 && x < 2 ** z && y < 2 ** z && (tileSize === 256 || tileSize === 512));
+      const value = await reader.reprojectTile(spec, { z, x, y, tileSize }, init);
+      postMessage({ type: "result", id: msg.id, value }, value ? [value] : []);
+      return;
+    }
     if (msg.op === "write") {
       const { format, table, ids = null, options = {} } = msg;
       check(["csv", "kml"].includes(format) && table instanceof ArrayBuffer && (ids === null || ids instanceof ArrayBuffer) && options && typeof options === "object");
@@ -123,7 +132,7 @@ onmessage = (e) => {
       wasm = exports;
       reader = dataReader(wasm, imports, { proj, prj, xml, geotiff });
     });
-  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && ["read", "write", "readRaster", "rasterInfo", "rasterTile"].includes(msg.op)) {
+  } else if (msg?.type === "call" && ready && Number.isInteger(msg.id) && ["read", "write", "readRaster", "rasterInfo", "rasterTile", "reprojectTile"].includes(msg.op)) {
     queue = queue.then(() => run(msg));
   }
 };

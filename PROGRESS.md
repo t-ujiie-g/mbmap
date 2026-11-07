@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）が終わった。18.5（カメラに合わせた 1 枚画像と識別）を報告中。次は 18.6（Web メルカトル以外のタイルとラスタ）。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）と 18.5（#121）が終わった。18.6（Web メルカトル以外のタイルとラスタ）を報告中。次は 18.7（WFS の GML と example）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,11 +19,11 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 10.1KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
+  | `mbmap/services` | 10.8KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
-  | `mbmap/data` | 4.5KB ＋ ワーカー 38.7KB（`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+  | `mbmap/data` | 4.5KB ＋ ワーカー 39.8KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 18：GIS の Web サービス（2026-11-06〜）
 
@@ -131,6 +131,16 @@
   - `wmsSource` と `arcgisSource` は GetMap・`export` の組み立てを 1 枚画像と共有するように分けた（タイルの URL は前と同じ）。
   - `services:golden` は 53 件すべて一致：1 枚画像の URL は OpenLayers の `getImageSrc`（WMS 3 つ）と arcgisRest の `getRequestUrl`（ArcGIS 3 つ）と同じ要求で、どれも画像が返った。GetFeatureInfo の URL は `getFeatureInfoUrl` と同じ要求で、サーバーは 200 を返した。SampleWorldCities の `identify` は東京で Tokyo を見つけた（ArcGIS の WMS は EPSG:3857 を挙げないので、GeoJSON の GetFeatureInfo を実際に読む確認は pack テストで行う）。
   - pack テストの `services` は、静的な GetMap の PNG を `followImage` で 600 × 400 の 1 枚画像として描き、静的な GetFeatureInfo（GeoJSON）と `identify` の答えを読む。
+- **18.6**：Web メルカトル以外のタイルとラスタ。作りと範囲は 2026-11-07 のユーザー判断（独自のソース型で再投影、`proj.wasm` が知る座標系すべて）。
+  - mbmap 独自のソース型 `reprojected`（エンジンでは `geotiff` と同じ `tiles` のない raster）。`wmtsSource` は Web メルカトルのセットがなければ EPSG の座標系のセットから、`wmsSource` は EPSG:3857 を持たないレイヤーなら `crs`（既定は EPSG:4326）の GetMap から作る。
+  - タイルは `mbmap/data` のワーカーが作る（`reprojectTile`、`data-reproject.js` 1.8KB / 2KB）。3857 のタイルの画素ごとの中心を `proj.wasm` でその座標系にし、WMTS はタイルの画素より細かいうちでいちばん粗い行列の重なるタイル（64 枚まで）、WMS は範囲の画像（1 辺 2048 画素まで、2.5 画素の余白）を取り、最近傍で引く。画像は 128 枚までワーカーに残す。
+  - 軸の順：WMTS の TopLeftCorner と WMS 1.3.0 の BBOX は、EPSG の地理座標系と日本の平面直角座標系（2443〜2461、6669〜6687）で北が先（`northFirst`）。CRS84 と UTM は東が先。
+  - `transformRequest` はテンプレートで 1 回だけ呼び、その headers と credentials を付ける（URL の書き換えは使わない）。
+  - `npm run reproject:golden`（新設、Chromium）は 32 件すべて一致。合成の WMTS（EPSG:4326 の世界、EPSG:6677 の 50〜800 m）と WMS（1.3.0 の 4326・6677・32654、1.1.1 の 4326）の画素に自分の番号を書き、z9〜z15 のタイルの全画素が proj4js 2.22.0 で求めた元の画素と一致した（画素の境目から 1e-6 画素以内は除く）。
+  - `services:golden` は 54 件すべて一致（+1）。NASA GIBS の EPSG:4326 の WMTS から `reprojected` のソースができ、最初の行列が世界の左上にあり、タイルが画像で返る。
+  - pack テストの `services` は、EPSG:4326 の静的な WMTS（西半分が青、東が緑）を地図に描き、両側の色を確かめる。
+  - 大きさ：`mbmap/services` 10.1KB → 10.8KB、データワーカー 39.3KB → 39.8KB / 40KB（画像の取得と PNG にする部分）、表示（メイン）133.2KB → 133.3KB。
+  - 残したもの：ArcGIS のキャッシュで 3857 以外のタイル方式（`arcgisSource` は `export` で 3857 にしてもらうので描ける）。`followImage` は 3857 のレイヤーだけ。双線形の補間はしない。速さは M2 で測っていない。
 - **`TILE_EXTENT` を 8192 に**（2026-11-07 ユーザー判断、18.3 と並行の別 PR）：MapLibre の `EXTENT` と同じにした。位置は Int16 のまま。
   - 4096 の MVT は 2 倍するだけなので、GSI のタイルの出力は同じ。fixtures 35 枚の packed tile は前後とも計 77,448,536 バイトで、1 枚も変わらない（`bench/maplibre/style.json`）。
   - 座標は ±32767 で切る。8192 の単位で ±4 タイル分で、MapLibre の `loadGeometry`（15 ビット、±2 タイル分）より広い。

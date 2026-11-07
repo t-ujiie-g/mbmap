@@ -39,7 +39,7 @@ map.on("load", () => console.log(map.getCenter(), map.getZoom()));
 | `dist/sprite.js` | スタイルに `sprite` があるとき |
 | `dist/tilejson-merge.js` | `url` を持つソース（TileJSON か PMTiles）があるとき |
 | `dist/pmtiles.js` | `pmtiles://` のソースがあるとき（アーカイブのヘッダーを読む） |
-| `dist/geotiff-source.js` | `geotiff` のソースがあるとき（タイルは `mbmap/data` のワーカーが作るので、`data.js` と `data-worker.js`・`data.wasm`・`geotiff.wasm`・`data-geotiff.js` も隣に置く） |
+| `dist/geotiff-source.js` | `geotiff` か `reprojected` のソースがあるとき（タイルは `mbmap/data` のワーカーが作るので、`data.js` と `data-worker.js`・`data.wasm`・`geotiff.wasm`・`data-geotiff.js`・`data-reproject.js`・`data-crs.js`・`proj.wasm` も隣に置く） |
 | `dist/media.js` | image・video・canvas のソースがあるとき |
 | `dist/custom.js` | 最初のカスタムレイヤーを足したとき |
 | `dist/export.js` | 最初に `toBlob` を呼んだとき |
@@ -58,7 +58,7 @@ Worker と wasm：
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` と `data.js` が、初めて PROJ 文字列を受け取ったときだけ自分の隣から読む |
 | `dist/geodesic-worker.js`, `dist/geodesic.wasm` | `mbmap/geodesic` の Worker と wasm。初めて呼んだときに起こす |
 | `dist/data-worker.js`, `dist/data.wasm` | `mbmap/data` の Worker と wasm。初めて呼んだときに起こす |
-| `dist/data-zip.js`, `dist/data-crs.js`, `dist/data-fgb.js`, `dist/prjwkt.js` | データの Worker の部品。zip、4326 以外の座標、FlatGeobuf、`.prj` を初めて扱うときに、`data-worker.js` が自分の隣から読む（`prjwkt.js` は `data.js` の隣） |
+| `dist/data-zip.js`, `dist/data-crs.js`, `dist/data-fgb.js`, `dist/data-reproject.js`, `dist/prjwkt.js` | データの Worker の部品。zip、4326 以外の座標、FlatGeobuf、`reprojected` のソースのタイル、`.prj` を初めて扱うときに、`data-worker.js` が自分の隣から読む（`prjwkt.js` は `data.js` の隣） |
 | `dist/xml.wasm` | KML と GPX の読み込みと KML の書き出し。データの Worker が、初めて KML か GPX を扱うときだけ読む |
 | `dist/geotiff.wasm`, `dist/data-geotiff.js` | GeoTIFF・COG の読み込み。データの Worker が、初めて `readRaster` を呼ぶときだけ読む |
 
@@ -303,8 +303,8 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
 - `getCapabilities(url, "WMS" | "WMTS" | "WFS", { transformRequest, signal })`：`url` はサービスの入口（`SERVICE` と `REQUEST=GetCapabilities` を足す）か、`.xml` で終わる文書。文書の中の相対 URL は文書の URL を基準にする。読み手の `readWMSCapabilities`・`readWMTSCapabilities`・`readWFSCapabilities` は、文字列か `Document` を受け取る。
   - WMS は 1.1.1 と 1.3.0。レイヤーは WMS 1.3.0 の 7.2.4.8 のとおり親から受け継ぐ（CRS とスタイルは足し、範囲・縮尺・出典は無いときに親のもの）。
   - WMTS は 1.0.0。WFS は 1.0.0、1.1.0、2.0。
-- `wmsSource(capabilities, { layers, styles, format, transparent, tileSize, params })`：タイルごとに EPSG:3857 の GetMap を送る `raster` のソース（`BBOX={bbox-epsg-3857}`）。範囲はレイヤーの地理的な範囲、出典はレイヤーの Attribution。EPSG:3857 を持たないレイヤーは断る（ほかの座標系は 18.6）。
-- `wmtsSource(capabilities, { layer, style, format, tileMatrixSet, dimensions })`：Web メルカトルの四分木の TileMatrixSet（名前がズームの番号になっているもの）のタイル。ResourceURL があれば REST、なければ KVP。次元（`Time` など）は既定値か `dimensions` の値。
+- `wmsSource(capabilities, { layers, styles, format, transparent, tileSize, crs, params })`：タイルごとに EPSG:3857 の GetMap を送る `raster` のソース（`BBOX={bbox-epsg-3857}`）。範囲はレイヤーの地理的な範囲、出典はレイヤーの Attribution。EPSG:3857 を持たないレイヤーは `reprojected` のソース（下）になり、`crs`（既定はすべてのレイヤーが持つなら EPSG:4326、なければ最初のレイヤーの EPSG の座標系のうち、すべてが持つもの）で GetMap を送る。WMS 1.3.0 の EPSG:4326 や平面直角座標系の BBOX は北から書く。
+- `wmtsSource(capabilities, { layer, style, format, tileMatrixSet, dimensions })`：Web メルカトルの四分木の TileMatrixSet（名前がズームの番号になっているもの）のタイル。それがなければ、EPSG の座標系の TileMatrixSet（EPSG:4326、JGD2011、平面直角座標系など）の `reprojected` のソース（下）。ResourceURL があれば REST、なければ KVP。次元（`Time` など）は既定値か `dimensions` の値。
 - `arcgisService(url)` と `arcgisSource(service, url, { layers, dynamic, format, transparent, dpi, tileSize, params })`：MapServer、ImageServer、VectorTileServer。
   - MapServer と ImageServer は、Web メルカトルのキャッシュがあれば `tile/{z}/{y}/{x}`、なければ（`layers` を指定したときも）タイルごとの `export`（ImageServer は `exportImage`）。
   - VectorTileServer はベクトルタイルのソース。ズームはサービスの `minzoom`・`maxzoom`（なければ `minLOD`・`maxLOD`）。
@@ -439,6 +439,11 @@ MapLibre の Style Spec（v8）を、MapLibre 6.16 と同じ描き方で描く�
   - 標高は Terrarium の PNG にしてから描くので、1/256 m 刻みになる。
   - 描いたタイルは、GSI の標準地図から作った COG を元の PNG タイルと画素単位で比べて一致すること、平面直角座標系 IX 系（EPSG:6677）のファイルを proj4js で独立に引いた画素と一致することを確かめている（`npm run geotiff:tiles`）。
   - `mbmap/data` の `rasterInfo(input)` と `rasterTile(input, z, x, y, options)` で、同じ情報とタイル（PNG）を直接得られる。
+- 別の座標系の WMTS・WMS（mbmap 独自のソース型 `reprojected`）：`mbmap/services` の `wmtsSource`・`wmsSource` が作り、`raster` レイヤーで描く。`{ type: "reprojected", crs: 6677, grid: { template, matrices } }`（WMTS の TileMatrixSet。`template` は `{TileMatrix}`・`{TileRow}`・`{TileCol}` を持ち、各行列は id、座標系の単位での画素の大きさ、左上の `x`・`y`、タイルの幅・高さ、列・行の数）か、`{ type: "reprojected", crs: 4326, image: { template, northFirst } }`（タイルごとに 1 枚の GetMap。`{bbox}`・`{width}`・`{height}`）。
+  - 表示する EPSG:3857 のタイルの画素ごとの中心を `proj.wasm` でその座標系にし（EPSG:4326・JGD2011 の経緯度はそのまま）、WMTS ならタイルの画素より細かいうちでいちばん粗い行列の、重なるタイル（64 枚まで）を、WMS なら重なる範囲の画像（1 辺 2048 画素まで）を取って、最近傍で引く。取った画像はワーカーに 128 枚まで残して使い回す。
+  - `transformRequest` はテンプレートで 1 回だけ呼び、その headers と credentials をすべての要求に付ける。
+  - 引いた画素は、EPSG:4326・6677・32654 の WMTS と WMS（1.1.1・1.3.0）で、proj4js で独立に求めた元の画素と一致することを確かめている（`npm run reproject:golden`）。
+  - `mbmap/data` の `reprojectTile(source, z, x, y)` で、同じタイル（PNG）を直接得られる。
 - PMTiles：`url: "pmtiles://https://…/x.pmtiles"`。プラグインは不要。ワーカーが範囲リクエストでディレクトリとタイルを読む。圧縮は none と gzip に対応する。サーバーは Range に対応している必要がある。
 - `geojson`：`data` に URL（認証情報なしで取得し、http(s) に限る）かオブジェクト。`maxzoom`、`buffer`、`tolerance`、`lineMetrics`、`promoteId`、`cluster`、`clusterRadius`、`clusterMaxZoom`、`clusterMinPoints`、`clusterProperties`。GeoJSON は専用の Worker の中で、MoonBit（wasm）で読み込んでタイルに切る（geojson-vt と同じタイル）。`clusterProperties` のあるソースは、式を持つ別の wasm `geojson-properties.wasm` で読む。
 - `image`（`url`、`coordinates`）、`video`（`urls`、`coordinates`。音を消してループ再生する）、`canvas`（`canvas` に要素の id、または `addSource` に要素そのもの、`animate`、`coordinates`）。四隅の位置は MapLibre と同じく計算し、四角形でない配置は MapLibre と同じくゆがめて描く。再生中の動画と `animate` の canvas は毎フレーム描き直す（MapLibre と違い、そのあいだも `idle` になる）。
