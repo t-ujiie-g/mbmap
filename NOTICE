@@ -623,7 +623,9 @@ Test / benchmark data:
     THIS SOFTWARE.
 
 - analysis/measure.mbt: follows @turf/area, @turf/length, @turf/distance,
-  @turf/centroid and @turf/bbox 7.4.0
+  @turf/centroid and @turf/bbox 7.4.0; lineops/ ports @turf/nearest-point-on-line
+  and @turf/line-slice 7.4.0 (with the parts of @turf/distance and @turf/helpers
+  they use); simplify/ ports @turf/simplify 7.4.0 and hull/ @turf/convex 7.4.0
   https://github.com/Turfjs/turf — MIT License:
 
     The MIT License (MIT)

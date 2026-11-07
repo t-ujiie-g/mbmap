@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/lineops"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const NEAREST_WORDS : Int32 = 6
+
+pub fn line_slice(@geom.Table, Double, Double, Double, Double, trig? : @core.Trig) -> @geom.Table
+
+pub fn nearest_point_on_line(@geom.Table, Double, Double, trig? : @core.Trig) -> FixedArray[Double]
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @core {type Trig}
+
+// Traits
