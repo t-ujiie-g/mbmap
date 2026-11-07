@@ -1,4 +1,4 @@
-import { type Bounds, clampBounds, isWebMercator, mercatorToLngLat, mercatorZoom, MERCATOR_HALF, resolved, type TileSource, validBounds, withQuery } from "./common.ts";
+import { type Bounds, clampBounds, clickWindow, type ImageRequest, isWebMercator, lngLatToMercator, mercatorToLngLat, mercatorZoom, MERCATOR_HALF, resolved, type TileSource, validBounds, withQuery, zoomResolution } from "./common.ts";
 
 /** The parts of an ArcGIS REST service's `?f=json` that mbmap reads; the rest is kept as given. */
 export interface ArcGISService {
@@ -97,20 +97,63 @@ export function arcgisSource(service: ArcGISService, url: string, options: ArcGI
     return { type: "raster", tiles: [`${base}/tile/{z}/{y}/{x}`], tileSize: service.tileInfo!.rows, minzoom: zooms[0], maxzoom: zooms[1], ...extra };
   }
   const size = options.tileSize ?? 256;
+  return { type: "raster", tiles: [exportUrl(base, kind, options, "{bbox-epsg-3857}", size, size, 1)], tileSize: size, ...extra };
+}
+
+/** `export` (an ImageServer's `exportImage`) of `bbox` in EPSG:3857 at `width` by `height`, the dpi scaled by `pixelRatio`. */
+function exportUrl(base: string, kind: string, options: ArcGISSourceOptions, bbox: string, width: number, height: number, pixelRatio: number): string {
   const image = kind === "imageserver";
-  const tiles = withQuery(`${base}/${image ? "exportImage" : "export"}`, {
-    bbox: "{bbox-epsg-3857}",
+  return withQuery(`${base}/${image ? "exportImage" : "export"}`, {
+    bbox,
     bboxSR: 3857,
     imageSR: 3857,
-    size: `${size},${size}`,
-    ...(!image && { dpi: options.dpi ?? 96 }),
+    size: `${width},${height}`,
+    ...(!image && { dpi: Math.round((options.dpi ?? 96) * pixelRatio) }),
     format: options.format ?? (image ? "png" : "png32"),
     transparent: options.transparent === false ? "false" : "true",
     ...(options.layers && { layers: `show:${options.layers.join(",")}` }),
     f: "image",
     ...options.params,
   });
-  return { type: "raster", tiles: [tiles], tileSize: size, ...extra };
+}
+
+/** `export` (or `exportImage`) requests for one image of a MapServer or ImageServer at `url`, as `followImage` asks for the view. */
+export function arcgisImage(url: string, options: ArcGISSourceOptions = {}): ImageRequest {
+  const base = serviceBase(url);
+  const kind = /\/(MapServer|ImageServer)$/i.exec(base)?.[1].toLowerCase();
+  if (!kind) throw new Error("mbmap: services: the URL is not an ArcGIS MapServer or ImageServer");
+  return (bbox, width, height, pixelRatio) => exportUrl(base, kind, options, bbox.join(","), width, height, pixelRatio);
+}
+
+/**
+ * `layers` (default `all`: `top`, `visible`, `all`, optionally `:` ids), `tolerance` in pixels (default 3) and
+ * `returnGeometry` (default true) of a MapServer `identify`; `params`: more parameters.
+ */
+export interface ArcGISIdentifyOptions {
+  layers?: string;
+  tolerance?: number;
+  returnGeometry?: boolean;
+  params?: Record<string, string | number>;
+}
+
+/** A MapServer's `identify` at `lngLat` on a map at `zoom`, in EPSG:4326 over a 101 by 101 pixel window around it. */
+export function arcgisIdentifyUrl(url: string, lngLat: [number, number], zoom: number, options: ArcGISIdentifyOptions = {}): string {
+  const base = serviceBase(url);
+  if (!/\/MapServer$/i.test(base)) throw new Error("mbmap: services: the URL is not an ArcGIS MapServer");
+  const [x, y] = lngLatToMercator(...lngLat);
+  const [x0, y0, x1, y1] = clickWindow(x, y, zoomResolution(zoom));
+  return withQuery(`${base}/identify`, {
+    geometry: lngLat.join(","),
+    geometryType: "esriGeometryPoint",
+    sr: 4326,
+    layers: options.layers ?? "all",
+    tolerance: options.tolerance ?? 3,
+    mapExtent: [...mercatorToLngLat(x0, y0), ...mercatorToLngLat(x1, y1)].join(","),
+    imageDisplay: "101,101,96",
+    returnGeometry: options.returnGeometry === false ? "false" : "true",
+    f: "json",
+    ...options.params,
+  });
 }
 
 /**

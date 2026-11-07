@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { arcgisBounds, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService } from "../src/services/arcgis.ts";
-import { clampBounds, isWebMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, resolved, validBounds, withQuery, zoomTemplate } from "../src/services/common.ts";
+import { arcgisBounds, arcgisIdentifyUrl, arcgisImage, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService } from "../src/services/arcgis.ts";
+import { clampBounds, clickWindow, isWebMercator, lngLatToMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, resolved, validBounds, withQuery, zoomResolution, zoomTemplate } from "../src/services/common.ts";
 import { isWebMercatorQuad, ogcLink, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections } from "../src/services/ogcapi.ts";
-import { allLayers, type WMSCapabilities, type WMSLayer, wmsSource } from "../src/services/wms.ts";
+import { allLayers, type WMSCapabilities, wmsFeatureInfoUrl, wmsImage, type WMSLayer, wmsSource } from "../src/services/wms.ts";
 import { mercatorZooms, type WMTSCapabilities, type WMTSTileMatrixSet, wmtsSource } from "../src/services/wmts.ts";
 
 test("withQuery replaces parameters in any case, keeps others and the engine's placeholders", () => {
@@ -276,4 +276,64 @@ test("OGC API tilesets on WebMercatorQuad become sources", () => {
   assert.deepEqual(ogcTileSource({ ...tileset, dataType: "map", tileMatrixSetLimits: undefined, boundingBox: undefined }, base), { type: "raster", tiles: ["https://api.test/png/{z}/{y}/{x}"] });
   assert.throws(() => ogcTileSource({ ...tileset, tileMatrixSetId: "WorldCRS84Quad" }, base), /not on WebMercatorQuad/);
   assert.throws(() => ogcTileSource({ ...tileset, links: [] }, base), /no tile URL/);
+});
+
+const query = (url: string) => Object.fromEntries(new URL(url).searchParams);
+
+test("lngLatToMercator, zoomResolution and clickWindow", () => {
+  const [x, y] = lngLatToMercator(139.7671, 35.6812);
+  const back = mercatorToLngLat(x, y);
+  assert.ok(Math.abs(back[0] - 139.7671) < 1e-12 && Math.abs(back[1] - 35.6812) < 1e-12);
+  const [east, equator] = lngLatToMercator(180, 0);
+  assert.ok(east === MERCATOR_HALF && Math.abs(equator) < 1e-9);
+  assert.equal(zoomResolution(0), (2 * MERCATOR_HALF) / 512);
+  assert.equal(zoomResolution(3), zoomResolution(0) / 8);
+  assert.deepEqual(clickWindow(100, 200, 2), [-1, 99, 201, 301]);
+});
+
+test("wmsImage asks one GetMap of the box and size given", () => {
+  const caps = wms("1.3.0", [layer("a")]);
+  assert.equal(
+    wmsImage(caps, { layers: "a", params: { TIME: "2020" } })([-10, -20, 30.5, 40], 300, 200, 2),
+    "https://a.test/wms?map=m&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=a&STYLES=&FORMAT=image%2Fpng&TRANSPARENT=TRUE&WIDTH=300&HEIGHT=200&CRS=EPSG%3A3857&BBOX=-10%2C-20%2C30.5%2C40&TIME=2020",
+  );
+  assert.throws(() => wmsImage(caps, { layers: "x" }), /no layer named x/);
+});
+
+test("wmsFeatureInfoUrl asks for the click's pixel of a 101-pixel window, in a JSON format", () => {
+  const caps = { ...wms("1.3.0", [layer("a"), layer("b")]), getFeatureInfoUrl: "https://a.test/info", infoFormats: ["text/html", "application/json", "application/geo+json"] };
+  const r = zoomResolution(2);
+  assert.deepEqual(query(wmsFeatureInfoUrl(caps, { layers: ["a", "b"], queryLayers: "b", featureCount: 5 }, [0, 0], 2)), {
+    SERVICE: "WMS", VERSION: "1.3.0", REQUEST: "GetFeatureInfo", LAYERS: "a,b", STYLES: "", FORMAT: "image/png", TRANSPARENT: "TRUE",
+    QUERY_LAYERS: "b", INFO_FORMAT: "application/geo+json", FEATURE_COUNT: "5", I: "50", J: "50", WIDTH: "101", HEIGHT: "101",
+    CRS: "EPSG:3857", BBOX: clickWindow(...lngLatToMercator(0, 0), r).join(","),
+  });
+  const old = { ...wms("1.1.1", [layer("a")]), getFeatureInfoUrl: "https://a.test/info", infoFormats: ["application/json"] };
+  const q = query(wmsFeatureInfoUrl(old, { layers: "a", infoFormat: "text/plain" }, [139, 35], 10));
+  assert.deepEqual([q.X, q.Y, q.SRS, q.INFO_FORMAT, q.QUERY_LAYERS], ["50", "50", "EPSG:3857", "text/plain", "a"]);
+  assert.throws(() => wmsFeatureInfoUrl({ ...caps, infoFormats: ["text/html"] }, { layers: "a" }, [0, 0], 0), /no JSON format/);
+  assert.throws(() => wmsFeatureInfoUrl({ ...caps, getFeatureInfoUrl: undefined }, { layers: "a" }, [0, 0], 0), /no GetFeatureInfo/);
+});
+
+test("arcgisImage asks export or exportImage of the box, its dpi scaled by the pixel ratio", () => {
+  assert.equal(
+    arcgisImage("https://a.test/s/MapServer?f=json", { layers: [3] })([1, 2, 3, 4], 640, 480, 2),
+    "https://a.test/s/MapServer/export?bbox=1%2C2%2C3%2C4&bboxSR=3857&imageSR=3857&size=640%2C480&dpi=192&format=png32&transparent=true&layers=show%3A3&f=image",
+  );
+  assert.equal(
+    arcgisImage("https://a.test/s/ImageServer/", { format: "jpg" })([1, 2, 3, 4], 10, 20, 1),
+    "https://a.test/s/ImageServer/exportImage?bbox=1%2C2%2C3%2C4&bboxSR=3857&imageSR=3857&size=10%2C20&format=jpg&transparent=true&f=image",
+  );
+  assert.throws(() => arcgisImage("https://a.test/s/VectorTileServer"), /not an ArcGIS MapServer or ImageServer/);
+});
+
+test("arcgisIdentifyUrl asks a MapServer's identify around the point in EPSG:4326", () => {
+  const q = query(arcgisIdentifyUrl("https://a.test/s/MapServer/", [0, 0], 0, { layers: "visible:1", tolerance: 5, returnGeometry: false }));
+  const [x0, y0, x1, y1] = clickWindow(...lngLatToMercator(0, 0), zoomResolution(0));
+  assert.deepEqual(q, {
+    geometry: "0,0", geometryType: "esriGeometryPoint", sr: "4326", layers: "visible:1", tolerance: "5",
+    mapExtent: [...mercatorToLngLat(x0, y0), ...mercatorToLngLat(x1, y1)].join(","), imageDisplay: "101,101,96", returnGeometry: "false", f: "json",
+  });
+  assert.equal(query(arcgisIdentifyUrl("https://a.test/s/MapServer", [1, 2], 3)).layers, "all");
+  assert.throws(() => arcgisIdentifyUrl("https://a.test/s/FeatureServer/0", [0, 0], 0), /not an ArcGIS MapServer/);
 });

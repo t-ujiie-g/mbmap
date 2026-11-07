@@ -71,8 +71,8 @@
     },
     {
       "name": "mbmap/services",
-      "bytes": 9094,
-      "budget": 10000
+      "bytes": 10125,
+      "budget": 12000
     },
     {
       "name": "services worker (ArcGIS f=json and f=pbf; loaded by mbmap/services on the first such read)",

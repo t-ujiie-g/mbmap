@@ -9,6 +9,9 @@ import WMTSCapabilities from "ol/format/WMTSCapabilities.js";
 import TileWMS from "ol/source/TileWMS.js";
 import WMTS, { optionsFromCapabilities } from "ol/source/WMTS.js";
 import TileArcGISRest from "ol/source/TileArcGISRest.js";
+import { getFeatureInfoUrl, getImageSrc } from "ol/source/wms.js";
+import { getRequestUrl as arcgisRequestUrl } from "ol/source/arcgisRest.js";
+import { fromLonLat } from "ol/proj.js";
 import { get as getProjection } from "ol/proj.js";
 import { OgcApiEndpoint } from "@camptocamp/ogc-client";
 import { parseXmlString } from "../node_modules/@camptocamp/ogc-client/dist/shared/xml-utils.js";
@@ -47,11 +50,17 @@ const WFS = [
   "https://sampleserver6.arcgisonline.com/arcgis/services/SampleWorldCities/MapServer/WFSServer?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0",
 ];
 const OGC_API = "https://demo.pygeoapi.io/master";
+const SAMPLE_CITIES = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer";
 const ARCGIS = [
   "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer",
   "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer",
   "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Toronto/ImageServer",
 ];
+// One image of an 800 by 600 view at zoom 10 over Tokyo (MapLibre's 512-pixel zooms), and a click at its center.
+const TOKYO = [139.80908203125, 35.68310546875];
+const RESOLUTION = (2 * Math.PI * 6378137) / (512 * 2 ** 10);
+const [CX, CY] = fromLonLat(TOKYO);
+const VIEW = [CX - 400 * RESOLUTION, CY - 300 * RESOLUTION, CX + 400 * RESOLUTION, CY + 300 * RESOLUTION];
 // Tiles whose URLs both make: around Tokyo and the world.
 const TILES = [[0, 0, 0], [3, 7, 3], [5, 28, 12], [10, 909, 403]];
 
@@ -205,6 +214,22 @@ for (const url of WMS) {
       const fetched = await fetchesImage(expand(source.tiles[0], TILES[2]));
       report({ check: "wms source", url, layer: layer.name, ok: !mismatch && fetched === true, ...(mismatch && { diff: mismatch }), fetched, bounds: source.bounds });
     }
+    // One image and GetFeatureInfo as OpenLayers' ImageWMS asks them (ratio 1).
+    const queryable = all.filter((l) => l.name && l.queryable && l.crs.some(services.isWebMercator));
+    for (const layer of [queryable[0] ?? named[0]].filter(Boolean)) {
+      const params = { SERVICE: "WMS", VERSION: ours.version, LAYERS: layer.name, STYLES: "", FORMAT: "image/png", TRANSPARENT: "TRUE" };
+      const image = services.wmsImage(ours, { layers: layer.name })(VIEW, 800, 600, 1);
+      const di = sameRequest(image, getImageSrc(VIEW, RESOLUTION, 1, getProjection("EPSG:3857"), ours.getMapUrl, params));
+      const fetched = await fetchesImage(image);
+      let info = null;
+      if (layer.queryable && ours.getFeatureInfoUrl && ours.infoFormats.length) {
+        const format = ours.infoFormats.find((f) => /json/i.test(f)) ?? ours.infoFormats[0];
+        const mine = services.wmsFeatureInfoUrl(ours, { layers: layer.name, infoFormat: format }, TOKYO, 10);
+        const theirs = getFeatureInfoUrl({ url: ours.getFeatureInfoUrl, params: { ...params, INFO_FORMAT: format }, projection: "EPSG:3857" }, [CX, CY], RESOLUTION);
+        info = { format, diff: sameRequest(mine, theirs), status: (await fetch(mine)).status };
+      }
+      report({ check: "wms image", url, layer: layer.name, ok: di === null && fetched === true && (!info || (info.diff === null && info.status === 200)), ...(di && { diff: di }), fetched, info });
+    }
   } catch (e) {
     report({ check: "wms", url, ok: false, error: String(e) });
   }
@@ -347,9 +372,18 @@ for (const url of ARCGIS) {
         return diff(ours, theirs);
       }).find((x) => x);
     }
+    // One image as OpenLayers' ImageArcGISRest asks it (ratio 1, dpi 96).
+    let image = null;
+    if (/(MapServer|ImageServer)$/.test(url)) {
+      const ours = services.arcgisImage(url)(VIEW, 800, 600, 1);
+      const theirs = request(arcgisRequestUrl(url, VIEW, RESOLUTION, 1, getProjection("EPSG:3857"), /ImageServer$/.test(url) ? { FORMAT: "png", TRANSPARENT: true, F: "image" } : { dpi: 96, FORMAT: "png32", TRANSPARENT: true, F: "image" }));
+      if (/ImageServer$/.test(url)) delete theirs.params.DPI;
+      image = { diff: diff(request(ours), theirs), fetched: await fetchesImage(ours) };
+      mismatch ??= image.diff;
+    }
     const tile = cached ? tileAt(source.bounds, Math.max(source.minzoom ?? 0, 12)) : TILES[2];
     const fetched = await fetchesImage(expand(source.tiles[0], tile));
-    report({ check: "arcgis source", url, cached, zooms: cached ? [source.minzoom, source.maxzoom] : undefined, bounds: source.bounds, ok: !mismatch && fetched === true, ...(mismatch && { diff: mismatch }), fetched });
+    report({ check: "arcgis source", url, cached, zooms: cached ? [source.minzoom, source.maxzoom] : undefined, bounds: source.bounds, ok: !mismatch && fetched === true && (!image || image.fetched === true), ...(mismatch && { diff: mismatch }), fetched, image: image?.fetched });
   } catch (e) {
     report({ check: "arcgis", url, ok: false, error: String(e) });
   }
@@ -399,6 +433,15 @@ try {
   report({ check: "arcgis features", url: layer, features: all.features.length, boxed: boxed.features.length, ok: d === null && db === null && all.features.length > 300, ...((d ?? db) && { diff: d ?? db }) });
 } catch (e) {
   report({ check: "arcgis features", ok: false, error: String(e) });
+}
+
+// A click on Tokyo in SampleWorldCities: identify finds the city.
+try {
+  const identify = JSON.parse(await get(services.arcgisIdentifyUrl(SAMPLE_CITIES, TOKYO, 10, { layers: "all:0" })));
+  const found = (identify.results ?? []).map((r) => [r.layerId, r.attributes?.CITY_NAME, r.geometryType]);
+  report({ check: "arcgis identify", found, ok: found.some(([id, name, type]) => id === 0 && name === "Tokyo" && type === "esriGeometryPoint") });
+} catch (e) {
+  report({ check: "arcgis identify", ok: false, error: String(e) });
 }
 
 await writeFile(path.join(ROOT, "bench/results/services-golden.json"), JSON.stringify({ env: { ol: "10.11.0", "ogc-client": "2.0.2", node: process.version }, results }, null, 2) + "\n");
