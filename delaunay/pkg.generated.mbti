@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/delaunay"
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub const MAX_DELAUNAY_POINTS : Int32 = 1_000_000
+
+pub fn triangles(@geom.Table, trig? : @core.Trig) -> @geom.Table
+
+pub fn triangles_checked(@geom.Table, trig? : @core.Trig) -> @geom.Table?
+
+pub fn voronoi(@geom.Table, Double, Double, Double, Double, trig? : @core.Trig) -> @geom.Table
+
+pub fn voronoi_checked(@geom.Table, Double, Double, Double, Double, trig? : @core.Trig) -> @geom.Table?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
