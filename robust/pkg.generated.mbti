@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/robust"
+
+// Values
+pub fn orient2d(Double, Double, Double, Double, Double, Double) -> Double
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

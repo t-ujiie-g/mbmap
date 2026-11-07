@@ -1,0 +1,20 @@
+// The module the analysis worker loads on its first shape operation: Turf's
+// simplify, convex, nearestPointOnLine and lineSlice, concaveman and
+// d3-delaunay over a dataset's table, computing with the host's Math.
+
+import {
+  "t-ujiie-g/mbmap/delaunay",
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/hull",
+  "t-ujiie-g/mbmap/lineops",
+  "t-ujiie-g/mbmap/simplify",
+  "t-ujiie-g/mbmap/wasmio",
+}
+
+supported_targets = "+wasm-gc"
+
+pkgtype(kind: "foreign_library")
+
+options(
+  link: { "wasm-gc": { "export-memory-name": "memory" } },
+)

@@ -55,6 +55,7 @@ Worker と wasm：
 | `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析の Worker と wasm。`mbmap/analysis` を初めて呼んだときに起こす |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect、split、merge）。解析の Worker が、初めて演算を呼んだときだけ読む |
 | `dist/relate.wasm` | 空間関係（DE-9IM）。解析の Worker が、初めて `relate` を呼んだときだけ読む |
+| `dist/shapes.wasm` | 単純化、凸包・凹包、ドロネー・ボロノイ、線上の最近点と切り出し。解析の Worker が、初めて呼んだときだけ読む |
 | `dist/proj.wasm` | 座標系の変換。解析の Worker とデータの Worker が、初めて座標系を使ったときだけ読む |
 | `dist/projstring.js` | PROJ 文字列のパーサ。`analysis.js` と `data.js` が、初めて PROJ 文字列を受け取ったときだけ自分の隣から読む |
 | `dist/geodesic-worker.js`, `dist/geodesic.wasm` | `mbmap/geodesic` の Worker と wasm。初めて呼んだときに起こす |
@@ -68,7 +69,7 @@ Worker と wasm：
 - `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
 - `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
 - `index.js` の動的 import（上の表）、`analysis.js` と `data.js` の `projstring.js`、`data.js` の `prjwkt.js`、`data-worker.js` の `data-zip.js` と `data-crs.js` は、場所を変えられない。それぞれの隣に置く。
-- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
 
 Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
@@ -226,6 +227,12 @@ blocks.dispose();
   - `relate(other, relation)`：この `Dataset` の地物 `i` と `other` の地物 `j` の組のうち、`relation` が成り立つものを `Int32Array`（`[i0, j0, i1, j1, …]`、`i`、`j` の順）で返す。`relation` は `"intersects"`・`"contains"`・`"within"`・`"covers"`・`"coveredBy"`・`"touches"`・`"crosses"`・`"overlaps"`・`"equals"`（JTS の `equalsTopo`）か、`{ pattern: "T*F**FFF*" }`（DE-9IM のパターン）。経緯度をそのまま平面として扱う。
   - 範囲の箱が重なる組だけを調べるので、`disjoint` と、離れた組が当てはまるパターン（内部と境界の 4 つのセルがすべて F か `*`）は受け付けない。組は 1000 万まで、1 組の点は合わせて `MAX_RELATE_POINTS` まで。
   - `relateMatrix(other, i, j)`：地物 `i` と `other` の地物 `j` の DE-9IM 行列を JTS と同じ文字列で返す（`"FF2F11212"`）。
+- 形の操作（Turf.js 7.4.0、concaveman 2.0.0、d3-delaunay 6.0.6 の移植で、座標が同じになることを黄金テストで確かめている。初めて呼んだときに `shapes.wasm` を読む）。経緯度をそのまま平面として扱う（`nearestPointOnLine` と `lineSlice` は Turf と同じく球面）：
+  - `simplify({ tolerance, highQuality })`：Turf の `simplify` と同じ（既定の `tolerance` は 1 度、`highQuality` で前段の間引きを飛ばす）。属性は残る。
+  - `convexHull()` / `concaveHull({ concavity, lengthThreshold })`：全部の頂点を囲む多角形 1 つ（Turf の `convex`、concaveman。`concavity` の既定は 2、1 でいちばん細かい）。3 点に満たなければ地物なし。
+  - `delaunay()`：点のドロネー三角形を多角形で返す。`voronoi(bbox)`：点ごとのボロノイ領域を `bbox` で切って、その点の属性とともに返す（重なった点は形なし）。
+  - `nearestPointOnLine(x, y)`：地物ごとに、線の上で (x, y) にいちばん近い点 `{ point, dist, location, index, multiFeatureIndex }`（km。線のない地物は null）。`lineSlice(start, stop)`：線ごとに、`start` と `stop` にいちばん近い点の間を切り出す。
+  - 線どうしの分割は `split(lines)`（Clipper2）を使う。
 - 座標系：`load(data, { crs })` で投影座標のデータを読める（読み込むときに経緯度へ変換する）。`buffer` の `mode: "planar"` は `crs`（既定は 3857）の平面で測る。`transform(coords, from, to)` は `[x, y, x, y, …]` を別の座標系に変換して `Float64Array` で返す（投影の範囲外の点は NaN）。初めて座標系を使ったときに `proj.wasm` を読む。
   - `crs` に渡せるもの：EPSG コード（`6677`、`"EPSG:6677"`、`"urn:ogc:def:crs:EPSG::6677"`）、`"CRS84"`、PROJ 文字列（`"+proj=lcc +lat_0=46.5 …"`。epsg.io などにある形）、`defineCrs(name, projString)` で名前を付けたもの（`proj4.defs` と同じ使い方。`defineCrs("EPSG:2154", "+proj=lcc …")`）。
   - PROJ 文字列なしで使える EPSG コード：経緯度 4326（WGS84）・4612（JGD2000）・6668（JGD2011）・4301（日本測地系）、Web メルカトル 3857（3785、900913）、平面直角座標系 I〜XIX 系 6669〜6687（JGD2011）・2443〜2461（JGD2000）・30161〜30179（日本測地系）、UTM 32601〜32660・32701〜32760（WGS84）・6688〜6692（JGD2011、51〜55 帯）・3097〜3101（JGD2000）・3092〜3096（日本測地系）。

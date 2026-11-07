@@ -1,0 +1,15 @@
+// Operations along lines over `@geom.Table`s, matching Turf.js: the nearest
+// point on a line and slices between two points. Pure MoonBit, tested on
+// every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/double",
+} for "test"

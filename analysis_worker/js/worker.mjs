@@ -10,12 +10,14 @@ const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 let wasm = null;
 let ready = null;
-// The geometry (geometry_worker), spatial relation (relate_worker) and coordinate
-// system (proj_worker) modules, each instantiated on its first use.
-// proj_worker computes with the host's Math, as proj4js does.
+// The geometry (geometry_worker), spatial relation (relate_worker), shape
+// (shapes_worker) and coordinate system (proj_worker) modules, each instantiated
+// on its first use. shapes_worker and proj_worker compute with the host's Math,
+// as Turf and proj4js do.
 const modules = {
   geometry: { url: null, exports: null, imports: {} },
   relate: { url: null, exports: null, imports: {} },
+  shapes: { url: null, exports: null, imports: { Math } },
   proj: { url: null, exports: null, imports: { Math } },
 };
 // Calls run one after another, after init, in the order they came.
@@ -41,6 +43,8 @@ const i32s = (n) => {
 };
 
 const isId = (v) => Number.isInteger(v) && v >= 0;
+// The exports of shapes_worker that give a table.
+const SHAPE_OPS = ["simplify", "convex", "concave", "delaunay", "voronoi", "line_slice"];
 // `@proj.DEFINITION_SLOTS` (proj/encoding.mbt).
 const DEFINITION_SLOTS = 34;
 // An EPSG code, or a definition as docs/FORMATS.md "CRS definition" encodes it.
@@ -157,8 +161,8 @@ async function crsId(crs) {
 
 // Runs `call` in the geometry module on `tables` (datasets, in Table bytes)
 // and keeps its result as a new dataset.
-async function geometryOp(tables, call) {
-  const exports = await module("geometry");
+async function geometryOp(tables, call, name = "geometry") {
+  const exports = await module(name);
   const bytes = tables.map((id) => outputOf(wasm, counted(wasm.table_out(id))));
   writeInput(exports, bytes);
   input(outputOf(exports, checked(exports, call(exports, bytes[0].length))));
@@ -291,6 +295,18 @@ const OPS = {
     const n = checked(exports, exports.relate_pairs(bytes[0].length, predicate, pattern));
     return new Int32Array(outputOf(exports, n * 4).buffer);
   },
+  // A shape operation of shapes_worker on one dataset: `shape` an export giving a table, with `args` numbers.
+  shapes({ dataset, shape, args }) {
+    check(isId(dataset) && SHAPE_OPS.includes(shape) && Array.isArray(args) && args.every((v) => typeof v === "number"));
+    return geometryOp([dataset], (s) => s[shape](...args), "shapes");
+  },
+  // Per feature of `dataset`, the point of its lines nearest to (x, y) as Turf's nearestPointOnLine: 6 f64s.
+  async nearestOnLine({ dataset, x, y }) {
+    check(isId(dataset) && Number.isFinite(x) && Number.isFinite(y));
+    const exports = await module("shapes");
+    writeInput(exports, [outputOf(wasm, counted(wasm.table_out(dataset)))]);
+    return new Float64Array(outputOf(exports, checked(exports, exports.nearest_on_line(x, y)) * 8).buffer);
+  },
   overlay({ a, b, kind }) {
     check(isId(a) && isId(b) && [0, 1, 2, 3].includes(kind));
     return geometryOp([a, b], (g, lenA) => g.overlay(lenA, kind));
@@ -330,6 +346,7 @@ onmessage = (e) => {
   if (msg?.type === "init" && !ready && typeof msg.wasm === "string") {
     modules.geometry.url = typeof msg.geometry === "string" ? msg.geometry : null;
     modules.relate.url = typeof msg.relate === "string" ? msg.relate : null;
+    modules.shapes.url = typeof msg.shapes === "string" ? msg.shapes : null;
     modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })

@@ -470,6 +470,11 @@ In:
     pattern packed three bits a cell, `npm/src/relate-pattern.ts`): an Int32Array of row
     pairs, both datasets sent to the relation module as Table bytes; with `pair` [i, j],
     the matrix of those rows as JTS writes it (`"FF2F11212"`);
+  - `shapes` (`dataset`, `shape` one of `simplify` (tolerance, high quality 0 or 1), `convex`,
+    `concave` (concavity, length threshold), `delaunay`, `voronoi` (min x, min y, max x,
+    max y), `line_slice` (start x, y, stop x, y), `args` those numbers): a new dataset from
+    the shape module; `nearestOnLine` (`dataset`, `x`, `y`): six f64s per feature (x, y,
+    dist, location, index, multiFeatureIndex; NaN without lines);
   - `toGeoJSON` (`dataset`, `crs`): its Table bytes, transformed to `crs` when
     given, decoded into a FeatureCollection (`wasmio/js/table.mjs`);
   - `transform` (`coords` an ArrayBuffer of f64 x, y pairs, `from`, `to`): the

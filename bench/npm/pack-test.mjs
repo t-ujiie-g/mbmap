@@ -91,7 +91,7 @@ const checks = {
       // `lazy`: a style without GeoJSON sources never loads their module.
       const loaded = performance.getEntriesByType("resource").map((r) => r.name.split("/").pop());
       return {
-        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("proj") || n.startsWith("data")),
+        lazy: !loaded.some((n) => n.startsWith("geojson") || n.startsWith("analysis") || n.startsWith("geometry") || n.startsWith("relate") || n.startsWith("shapes") || n.startsWith("proj") || n.startsWith("data")),
         styleError,
         thrown,
         warned,
@@ -281,6 +281,19 @@ const checks = {
         matrix: await squares.relateMatrix(third, 0, 0),
         disjoint: await squares.relate(third, { pattern: "FF*FF****" }).then(() => "", (e) => e.message),
       };
+      // Shapes (shapes.wasm, loaded now): hulls, Delaunay and Voronoi of five points, a line simplified,
+      // sliced and the point on it nearest to another.
+      const five = await load(fc([[0, 0], [2, 0], [2, 2], [0, 2], [1, 1]].map((c) => ({ type: "Feature", properties: { c: c.join() }, geometry: { type: "Point", coordinates: c } }))));
+      const zigzag = await load(fc([{ type: "Feature", properties: { name: "z" }, geometry: { type: "LineString", coordinates: [[0, 0], [1, 0.001], [2, 0], [3, 0]] } }]));
+      const shapes = {
+        convex: (await (await five.convexHull()).toGeoJSON()).features.map((f) => f.geometry.coordinates[0].length),
+        triangles: (await (await five.delaunay()).toGeoJSON()).features.length,
+        cells: (await (await five.voronoi([-1, -1, 3, 3])).toGeoJSON()).features.map((f) => f.properties.c),
+        simplified: (await (await zigzag.simplify({ tolerance: 0.01 })).toGeoJSON()).features[0].geometry.coordinates,
+        sliced: (await (await zigzag.lineSlice([0.5, 0], [2.5, 0])).toGeoJSON()).features[0].geometry.coordinates.length,
+        nearest: (await zigzag.nearestPointOnLine(1.5, 1)).map((n) => n && n.index),
+        badBox: await five.voronoi([3, 3, -1, -1]).then(() => "", (e) => e.message),
+      };
       // Coordinate systems: Tokyo Station in plane rectangular IX (EPSG:6677).
       const { transform } = await import("mbmap/analysis");
       const ix = await transform([139.7671, 35.6812], "EPSG:4326", "EPSG:6677");
@@ -317,6 +330,7 @@ const checks = {
         overlaid: overlaid.map((f) => `${f.properties.name}/${f.properties.name_2}`),
         badBuffer,
         relations,
+        shapes,
         ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
         back: back.map((v) => Math.round(v * 1e7) / 1e7),
         inIx: inIx.map((v) => Math.round(v * 1000) / 1000),
@@ -329,9 +343,9 @@ const checks = {
       };
       return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
-    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|proj/.test(n));
+    const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|proj/.test(n));
     const ok =
-      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
+      ["analysis.js", "analysis-worker.js", "analysis.wasm", "geometry.wasm", "relate.wasm", "shapes.wasm", "proj.wasm", "projstring.js"].every((n) => loaded.includes(n)) &&
       r.areas.length === 6 &&
       r.areas.every((a) => a > 90000 && a < 120000) &&
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
@@ -352,6 +366,10 @@ const checks = {
       /invalid buffer options/.test(r.geometry.badBuffer) &&
       JSON.stringify(r.geometry.relations.overlaps) === "[0,0]" && JSON.stringify(r.geometry.relations.equals) === "[1,0]" &&
       r.geometry.relations.matrix === "212111212" && /disjoint features match/.test(r.geometry.relations.disjoint) &&
+      JSON.stringify(r.geometry.shapes.convex) === "[5]" && r.geometry.shapes.triangles === 4 &&
+      JSON.stringify(r.geometry.shapes.cells) === JSON.stringify(["0,0", "2,0", "2,2", "0,2", "1,1"]) &&
+      JSON.stringify(r.geometry.shapes.simplified) === "[[0,0],[3,0]]" && r.geometry.shapes.sliced >= 3 &&
+      JSON.stringify(r.geometry.shapes.nearest) === "[1]" && /invalid bbox/.test(r.geometry.shapes.badBox) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&
       JSON.stringify(r.geometry.back) === JSON.stringify([139.7671, 35.6812]) &&
