@@ -83,6 +83,8 @@ for (const e of ENTRIES) {
 
 // A page pays for the `mbmap/ui` controllers it imports: each alone, tree-shaken from dist/ui.js.
 const UI_CONTROLLER_BUDGET = 2_000;
+// The attribute table also serves the field editor (setColumns, passing): 2026-11-07, user decision.
+const UI_CONTROLLER_BUDGETS = { createAttributeTable: 2_200 };
 const uiSource = await readFile(path.join(PKG, "src/ui.ts"), "utf8");
 for (const name of [...new Set(uiSource.match(/\bcreate[A-Z]\w*/g))]) {
   const out = await build({
@@ -94,8 +96,9 @@ for (const name of [...new Set(uiSource.match(/\bcreate[A-Z]\w*/g))]) {
     logLevel: "silent",
   });
   const bytes = gzipSync(out.outputFiles[0].contents, { level: 9 }).length;
-  if (bytes > UI_CONTROLLER_BUDGET) failures.push(`mbmap/ui ${name}: ${bytes} bytes is over its budget of ${UI_CONTROLLER_BUDGET}`);
-  rows.push({ name: `mbmap/ui ${name} alone`, bytes, budget: UI_CONTROLLER_BUDGET });
+  const budget = UI_CONTROLLER_BUDGETS[name] ?? UI_CONTROLLER_BUDGET;
+  if (bytes > budget) failures.push(`mbmap/ui ${name}: ${bytes} bytes is over its budget of ${budget}`);
+  rows.push({ name: `mbmap/ui ${name} alone`, bytes, budget });
 }
 
 const kb = (n) => `${(n / 1000).toFixed(1)}KB`;

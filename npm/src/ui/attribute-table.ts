@@ -66,6 +66,10 @@ export interface AttributeTable extends Controller<AttributeTableState> {
   clear(): void;
   /** Fits the map to feature `id`'s bounds; false when no row of that id has a geometry. */
   zoomTo(id: FeatureId, options?: FitBoundsOptions): boolean;
+  /** Shows `columns` (null for every property key); the field editor keeps them up to date. */
+  setColumns(columns: string[] | null): void;
+  /** Those of `rows` that pass the query and filter. */
+  passing(rows: TableRow[]): TableRow[];
 }
 
 const atLeastOne = (n: number) => Math.max(1, Math.floor(n) || 1);
@@ -84,7 +88,7 @@ class AttributeTableStore extends Store<AttributeTableState> implements Attribut
     const pageSize = atLeastOne(options.pageSize ?? 50);
     super({ columns: options.columns ?? [], rows: [], total: 0, filtered: 0, page: 0, pages: 1, pageSize, sort: null, query: "", selected: [], loading: false, error: null });
     this.#map = map;
-    this.#options = options;
+    this.#options = { ...options };
     this.#collator = new Intl.Collator(options.locale, { numeric: true });
     this.#filter = options.filter ?? null;
     const id = options.source;
@@ -184,6 +188,15 @@ class AttributeTableStore extends Store<AttributeTableState> implements Attribut
     if (!box) return false;
     this.#map.fitBounds(box, { padding: 40, maxZoom: 17, ...this.#options.fitBoundsOptions, ...options });
     return true;
+  }
+
+  setColumns(columns: string[] | null): void {
+    this.#options.columns = columns ?? undefined;
+    this.#update(true);
+  }
+
+  passing(rows: TableRow[]): TableRow[] {
+    return filterRows(rows, this.state.query, this.#options.searchColumns ?? this.state.columns, this.#filter);
   }
 
   /** Selects `next`, moving the highlight from the features selected before to those of `next`. */

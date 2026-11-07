@@ -1,6 +1,7 @@
 // The places as an attribute table from `mbmap/ui`: sorted by header, filtered, paged; a row's
-// click selects the place (the places layer's `selected` feature state) and fits the map to it.
-import { cellText, createAttributeTable } from "mbmap/ui";
+// click selects the place (the places layer's `selected` feature state) and fits the map to it;
+// its columns are edited by a field editor.
+import { cellText, createAttributeTable, createFieldEditor } from "mbmap/ui";
 
 /** Each column's key and heading. */
 export const TABLE_COLUMNS = [
@@ -11,6 +12,7 @@ export const TABLE_COLUMNS = [
 export function createPlacesTable(map) {
   const table = createAttributeTable(map, { source: "places", columns: TABLE_COLUMNS.map(([k]) => k), pageSize: 6, locale: "ja" });
   window.__table = table;
+  window.__fields = createFieldEditor(map, { source: "places", table });
   return table;
 }
 

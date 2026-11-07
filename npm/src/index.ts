@@ -144,6 +144,30 @@ function filterText(filter: unknown): string {
   return engineFilter(filter, legacy && legacy.convertFilter);
 }
 
+/** A feature an expression is evaluated for (a GeoJSON Feature will do): `["id"]` reads `id`, `["geometry-type"]` its geometry's type. */
+export interface ExpressionFeature {
+  id?: unknown;
+  properties?: Record<string, unknown> | null;
+  geometry?: { type: string } | null;
+}
+
+/**
+ * Style expression `expression` for each of `features` at `zoom` (default 0), as style-spec evaluates it: colors
+ * as `to-string` writes them, `format` as its text, errors and NaN as null; object or array properties read as null.
+ * Throws when it does not compile.
+ */
+export function evaluateExpression(expression: unknown, features: readonly ExpressionFeature[], { zoom = 0 }: { zoom?: number } = {}): unknown[] {
+  const objects = features.map((f) => {
+    const o: Record<string, unknown> = Object.assign(Object.create(null), f.properties);
+    if (f.id !== undefined && f.id !== null) o.$id = f.id;
+    if (f.geometry?.type) o.$type = f.geometry.type;
+    return o;
+  });
+  const out = engine.evaluate_expression(JSON.stringify(expression), objects, zoom);
+  if (typeof out === "string") throw new Error(`mbmap: expression: ${out}`);
+  return out.map((v) => (typeof v === "number" && Number.isNaN(v) ? null : v));
+}
+
 export class Map {
   #container: HTMLElement;
   #canvas: HTMLCanvasElement;
@@ -819,6 +843,11 @@ export class Map {
    */
   evaluatePaint(id: string, properties: Record<string, unknown> = {}): PaintValues | null {
     return this.#engine ? engine.map_paint_at(this.#engine, id, properties) : null;
+  }
+
+  /** `evaluateExpression` at the map's zoom unless `zoom` is given. */
+  evaluateExpression(expression: unknown, features: readonly ExpressionFeature[], options: { zoom?: number } = {}): unknown[] {
+    return evaluateExpression(expression, features, { zoom: options.zoom ?? this.getZoom() });
   }
 
   /** The attributions MapLibre's AttributionControl would show now: of the sources the layers shown or the terrain use. */

@@ -16,4 +16,5 @@ export { createIdentify, type Identify, type IdentifyOptions, type IdentifyState
 export { createMeasurement, type Measure, type Measurement, type MeasurementOptions, type MeasurementState, type Position } from "./ui/measurement";
 export { createProfile, type Elevation, type Profile, type ProfileOptions, type ProfileState } from "./ui/profile";
 export { createAttributeTable, type AttributeTable, type AttributeTableOptions, type AttributeTableState, type FeatureId, type TableRow } from "./ui/attribute-table";
+export { createFieldEditor, type CalculateOptions, type FieldEditor, type FieldEditorOptions } from "./ui/field-editor";
 export { cellText } from "./ui/table-rows";
