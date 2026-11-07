@@ -504,6 +504,16 @@ with `op` and its arguments, positions as `[lng, lat]`:
 
 Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
+## Services worker messages (`services_worker/js/worker.mjs`)
+
+In: `{type: "init", wasm}` (instantiated with `host.number`, `wasmio/js/host.mjs`), then
+`{type: "call", id, op: "esri", bytes, format}`: `bytes` an ArrayBuffer of an ArcGIS query
+result, `format` `"json"` (`f=json`, `@formats.read_esri_json`) or `"pbf"` (`f=pbf`,
+FeatureCollection.proto's `FeatureResult`, `@formats.read_esri_pbf`).
+
+Out: `{type: "result", id, value: {features, exceeded}}`, the GeoJSON features (each with its
+`id` when it has one) and the result's `exceededTransferLimit`, or `{type: "result", id, error}`.
+
 ## Data worker messages (`data_worker/js/worker.mjs`)
 
 In: `{type: "init", wasm, proj, prj, xml, geotiff}` (data.wasm instantiated with `{ host: { number,

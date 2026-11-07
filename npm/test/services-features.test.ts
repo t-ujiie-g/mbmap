@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { arcgisQueryUrl, gather, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl } from "../src/services/features.ts";
+import { arcgisFormat, arcgisQueryUrl, gather, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl } from "../src/services/features.ts";
 
 const query = (url: string) => Object.fromEntries(new URL(url).searchParams);
 
@@ -63,4 +63,12 @@ test("gather follows pages until there is no next, a cap or a loop", async () =>
   const endless = await gather("p0", async () => ({ features: [n] }), () => `p${++n}`, Infinity, "t");
   assert.equal(endless.features.length, MAX_PAGES);
   assert.equal(endless.exceeded, true);
+});
+
+test("arcgisFormat prefers PBF, then GeoJSON, then JSON among a layer's query formats", () => {
+  assert.equal(arcgisFormat({ supportedQueryFormats: "JSON, geoJSON, PBF" }), "pbf");
+  assert.equal(arcgisFormat({ supportedQueryFormats: "JSON, geoJSON" }), "geojson");
+  assert.equal(arcgisFormat({ supportedQueryFormats: "JSON" }), "json");
+  assert.equal(arcgisFormat({}), "json");
+  assert.equal(arcgisFormat(null), "json");
 });

@@ -314,7 +314,7 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
 - 地物の取得。結果は GeoJSON の FeatureCollection で、GeoJSON ソースの `setData` にそのまま渡せる。ページを続けて取り、`maxFeatures`（既定で上限の `MAX_FEATURES`、100 万件）か 1 万ページで止める。止めたときは `exceeded: true`。
   - `ogcFeatures(collection または items の URL, { bbox, limit, datetime, properties, maxFeatures })`：OGC API - Features。各ページの `next` のリンクをたどる。
   - `wfsFeatures(capabilities, { typeName, bbox, count, startIndex, outputFormat, crs, maxFeatures })`：WFS の GetFeature で、GeoJSON の出力形式を選ぶ。WFS 2.0 で `count` を渡すと、STARTINDEX でページを送る。`bbox` は経緯度で渡す（WFS 1.1 と 2.0 には EPSG:4326 の緯度・経度の順で送る）。
-  - `arcgisFeatures(レイヤーの URL, { where, bbox, outFields, offset, count, maxFeatures })`：FeatureServer と MapServer のレイヤーの `query`（`f=geojson`、ArcGIS Server 10.4 以降）。レイヤーがページ送りに対応していれば、`exceededTransferLimit` の間 `resultOffset` で続けて取る。
+  - `arcgisFeatures(レイヤーの URL, { where, bbox, outFields, offset, count, maxFeatures, format })`：FeatureServer と MapServer のレイヤーの `query`。`format` は `"pbf"`・`"geojson"`（ArcGIS Server 10.4 以降）・`"json"` で、既定はレイヤーの `supportedQueryFormats` にあれば PBF、なければ GeoJSON、なければ JSON。PBF と JSON は別のワーカー（`services-worker.js` と `services.wasm`、最初の読み込みで起動）で読み、@terraformer/arcgis の `arcgisToGeoJSON` と同じ GeoJSON にする。レイヤーがページ送りに対応していれば、`exceededTransferLimit` の間 `resultOffset` で続けて取る。`terminate()` でそのワーカーを止める。
   - URL だけを作る `ogcItemsUrl`、`wfsFeatureUrl`、`arcgisQueryUrl` もある。
 - `followView(map, sourceId, query, { minzoom, onError })`：表示している範囲の地物で GeoJSON ソースを埋める。`query(bounds, signal)` を動かすたびに呼び直し、前の要求は中止する。`minzoom` より引いているときはソースを空にする。戻り値の関数で止める。
   ```js

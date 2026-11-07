@@ -390,10 +390,10 @@ try {
 }
 try {
   const layer = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0";
-  const all = await services.arcgisFeatures(layer, { count: 300 });
+  const all = await services.arcgisFeatures(layer, { count: 300, format: "geojson" });
   const known = JSON.parse(await get(`${layer}/query?where=1%3D1&returnIdsOnly=true&f=json`)).objectIds.map(String).sort();
   const d = diff(ids(all), known);
-  const boxed = await services.arcgisFeatures(layer, { bbox: JAPAN });
+  const boxed = await services.arcgisFeatures(layer, { bbox: JAPAN, format: "geojson" });
   const inBox = JSON.parse(await get(`${layer}/query?where=1%3D1&geometry=${JAPAN.join(",")}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&returnIdsOnly=true&f=json`)).objectIds.map(String).sort();
   const db = diff(ids(boxed), inBox);
   report({ check: "arcgis features", url: layer, features: all.features.length, boxed: boxed.features.length, ok: d === null && db === null && all.features.length > 300, ...((d ?? db) && { diff: d ?? db }) });

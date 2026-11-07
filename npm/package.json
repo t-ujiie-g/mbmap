@@ -70,6 +70,8 @@
     "./prjwkt.js": "./dist/prjwkt.js",
     "./xml.wasm": "./dist/xml.wasm",
     "./geotiff.wasm": "./dist/geotiff.wasm",
+    "./services-worker.js": "./dist/services-worker.js",
+    "./services.wasm": "./dist/services.wasm",
     "./data-geotiff.js": "./dist/data-geotiff.js"
   },
   "types": "./dist/index.d.ts",
@@ -84,7 +86,7 @@
     "build": "node scripts/build.mjs",
     "size": "node scripts/size.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test test/*.test.ts ../element/*.test.ts ../worker/js/*.test.mjs ../geojson_worker/js/*.test.mjs ../wasmio/js/*.test.mjs ../data_worker/js/*.test.mjs"
+    "test": "node --test test/*.test.ts ../element/*.test.ts ../worker/js/*.test.mjs ../geojson_worker/js/*.test.mjs ../wasmio/js/*.test.mjs ../data_worker/js/*.test.mjs ../services_worker/js/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

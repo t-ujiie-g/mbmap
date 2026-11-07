@@ -23,6 +23,7 @@ const WASM = {
   data_worker: "data.wasm",
   xml_worker: "xml.wasm",
   geotiff_worker: "geotiff.wasm",
+  services_worker: "services.wasm",
 };
 
 run("moon", ["build", "bundle/main", "--target", "js", "--release"], ROOT);
@@ -59,6 +60,7 @@ const ENTRIES = [
   ["search.js", "npm/src/search.ts"],
   ["draw.js", "npm/src/draw.ts"],
   ["services.js", "npm/src/services.ts"],
+  ["services-worker.js", "services_worker/js/worker.mjs"],
   ["geojson-worker.js", "geojson_worker/js/worker.mjs"],
   ["worker.js", "worker/js/worker.mjs", { plugins: [separate(WORKER_PARTS)] }],
   ...Object.entries(WORKER_PARTS).map(([source, file]) => [file.slice(2), path.join("worker/js", source)]),

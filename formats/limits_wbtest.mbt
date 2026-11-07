@@ -461,3 +461,82 @@ test "a hole in an outer ring's box but out of the ring becomes an outer ring" {
   assert_true(shape(c[:], 0, out, Rings::new(1000), 100) is MultiPolygon)
   assert_eq(out.table.ring_ends, [1, 2])
 }
+
+///|
+test "Esri JSON stops at its point, key and cell limits" {
+  let two = b"{\"features\":[{\"geometry\":{\"x\":1,\"y\":2}},{\"attributes\":{\"a\":1},\"geometry\":{\"points\":[[1,2],[3,4]]}}]}"
+  let read = (points : Int32, cells : Int32) => {
+    esri_json_table(two[:], slow_of(two), points, cells).0
+  }
+  assert_eq(read(3, 2).length(), 2)
+  assert_true(limit_error(() => read(2, 2)).has_suffix("too many points"))
+  assert_true(limit_error(() => read(3, 1)).has_suffix("property cells"))
+  let sb = StringBuilder()
+  sb.write_string("{\"features\":[{\"attributes\":{")
+  for i in 0..<=MAX_GEOJSON_KEYS {
+    sb.write_string(if i > 0 { ",\"k\{i}\":0" } else { "\"k0\":0" })
+  }
+  sb.write_string("}}]}")
+  let many = @utf8.encode(sb.to_string())
+  let error = limit_error(() => {
+    esri_json_table(many[:], slow_of(many), 100, @geom.MAX_TABLE_CELLS).0
+  })
+  assert_true(error.has_suffix("more than 4096 property keys"))
+}
+
+///|
+/// A PBF query result of points with `fields` field names, each feature
+/// `attributes` sint values and the point (1, 2).
+fn esri_points(fields : Int32, features : Int32, attributes : Int32) -> Bytes {
+  let len = (w : @pbf.Writer, field : Int32, inner : @pbf.Writer) => {
+    w.write_tag(field, @pbf.WIRE_LEN)
+    w.write_bytes(inner.to_bytes()[:])
+  }
+  let result = @pbf.Writer::new()
+  result.write_tag(7, @pbf.WIRE_VARINT)
+  result.write_varint32(0)
+  for i in 0..<fields {
+    let f = @pbf.Writer::new()
+    f.write_tag(1, @pbf.WIRE_LEN)
+    f.write_string("k\{i}")
+    len(result, 13, f)
+  }
+  for _ in 0..<features {
+    let feature = @pbf.Writer::new()
+    for _ in 0..<attributes {
+      let v = @pbf.Writer::new()
+      v.write_tag(4, @pbf.WIRE_VARINT)
+      v.write_svarint32(1)
+      len(feature, 1, v)
+    }
+    let g = @pbf.Writer::new()
+    g.write_tag(3, @pbf.WIRE_VARINT)
+    g.write_sint64(1L)
+    g.write_tag(3, @pbf.WIRE_VARINT)
+    g.write_sint64(2L)
+    len(feature, 2, g)
+    len(result, 15, feature)
+  }
+  let query = @pbf.Writer::new()
+  len(query, 1, result)
+  let top = @pbf.Writer::new()
+  len(top, 2, query)
+  top.to_bytes()
+}
+
+///|
+test "Esri PBF stops at its point, key and cell limits" {
+  let two = esri_points(1, 2, 1)
+  let read = (points : Int32, cells : Int32) => {
+    esri_pbf_table(two[:], points, cells).0
+  }
+  let t = read(2, 2)
+  assert_eq((t.length(), t.coords), (2, [1.0, 2.0, 1.0, 2.0]))
+  assert_true(limit_error(() => read(1, 2)).has_suffix("too many points"))
+  assert_true(limit_error(() => read(2, 1)).has_suffix("property cells"))
+  let many = esri_points(MAX_GEOJSON_KEYS + 1, 1, MAX_GEOJSON_KEYS + 1)
+  let error = limit_error(() => {
+    esri_pbf_table(many[:], 100, @geom.MAX_TABLE_CELLS).0
+  })
+  assert_true(error.has_suffix("more than 4096 property keys"))
+}

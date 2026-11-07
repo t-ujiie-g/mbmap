@@ -7,14 +7,15 @@ import { readWFSCapabilities, type WFSCapabilities } from "./services/wfs";
 import { readWMSCapabilities, type WMSCapabilities } from "./services/wms";
 import { readWMTSCapabilities, type WMTSCapabilities } from "./services/wmts";
 import { type Bounds, withQuery } from "./services/common";
-import { arcgisQueryUrl, type ArcGISQueryOptions, type FeatureCollection, gather, geojsonFormat, MAX_FEATURES, ogcItemsUrl, type OGCItemsOptions, wfsFeatureUrl, type WFSFeatureOptions } from "./services/features";
+import { arcgisFormat, arcgisQueryUrl, type ArcGISQueryOptions, type FeatureCollection, gather, geojsonFormat, MAX_FEATURES, ogcItemsUrl, type OGCItemsOptions, wfsFeatureUrl, type WFSFeatureOptions } from "./services/features";
 import { parseXml } from "./services/xml";
 import type { StyleSpecification } from "./style";
-import { httpUrl, type TransformedRequest } from "./urls";
+import { httpUrl, type TransformedRequest, wasmUrl } from "./urls";
+import { WorkerClient } from "./worker-client";
 
 export { arcgisBounds, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
 export { isWebMercator, resolved, withQuery, type Bounds, type TileSource } from "./services/common";
-export { arcgisQueryUrl, MAX_FEATURES, MAX_PAGES, ogcItemsUrl, wfsFeatureUrl, type ArcGISQueryOptions, type FeatureCollection, type OGCItemsOptions, type WFSFeatureOptions } from "./services/features";
+export { arcgisFormat, arcgisQueryUrl, MAX_FEATURES, MAX_PAGES, ogcItemsUrl, wfsFeatureUrl, type ArcGISQueryOptions, type FeatureCollection, type OGCItemsOptions, type WFSFeatureOptions } from "./services/features";
 export { isWebMercatorQuad, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections, type OGCCollection, type OGCLink } from "./services/ogcapi";
 export { readWFSCapabilities, type WFSCapabilities, type WFSFeatureType } from "./services/wfs";
 export { allLayers, readWMSCapabilities, wmsSource, type WMSCapabilities, type WMSLayer, type WMSSourceOptions, type WMSStyle } from "./services/wms";
@@ -29,8 +30,8 @@ export interface ServiceOptions {
   signal?: AbortSignal;
 }
 
-/** The text at `url` (http(s), resolved against the page), refused past `MAX_DOCUMENT_BYTES`. */
-async function load(url: string, options: ServiceOptions, accept?: string): Promise<string> {
+/** The bytes at `url` (http(s), resolved against the page), refused past `MAX_DOCUMENT_BYTES`. */
+async function loadBytes(url: string, options: ServiceOptions, accept?: string): Promise<Uint8Array<ArrayBuffer>> {
   const href = httpUrl(url, document.baseURI, "services: the URL");
   const r = options.transformRequest?.(href, "Source");
   const res = await fetch(r ? httpUrl(r.url, document.baseURI, "services: the URL") : href, {
@@ -40,7 +41,7 @@ async function load(url: string, options: ServiceOptions, accept?: string): Prom
   });
   if (!res.ok) throw new Error(`mbmap: services: HTTP ${res.status} for ${href}`);
   const tooLarge = () => new Error(`mbmap: services: ${href} is larger than ${MAX_DOCUMENT_BYTES} bytes`);
-  if (!res.body) return res.text();
+  if (!res.body) return new Uint8Array(await res.arrayBuffer());
   if (Number(res.headers.get("content-length")) > MAX_DOCUMENT_BYTES) {
     await res.body.cancel();
     throw tooLarge();
@@ -61,7 +62,12 @@ async function load(url: string, options: ServiceOptions, accept?: string): Prom
   const bytes = new Uint8Array(size);
   let at = 0;
   for (const p of parts) bytes.set(p, (at += p.byteLength) - p.byteLength);
-  return new TextDecoder().decode(bytes);
+  return bytes;
+}
+
+/** The text at `url`, as `loadBytes`. */
+async function load(url: string, options: ServiceOptions, accept?: string): Promise<string> {
+  return new TextDecoder().decode(await loadBytes(url, options, accept));
 }
 
 async function loadJSON(url: string, options: ServiceOptions, accept?: string): Promise<unknown> {
@@ -174,22 +180,53 @@ export async function wfsFeatures(capabilities: WFSCapabilities, options: WFSFea
 }
 
 /**
- * An ArcGIS FeatureServer or MapServer layer's features as GeoJSON (`f=geojson`, ArcGIS Server
- * 10.4 and later), paged by `resultOffset` while the layer supports it and answers
+ * `format`: `"geojson"` (ArcGIS Server 10.4 and later), or `"json"` or `"pbf"` read by services.wasm in its own
+ * worker; by default as `arcgisFormat`. `workerUrl`, `wasmUrl`: where they are served (default: beside this module).
+ */
+export interface ArcGISFeatureOptions extends ArcGISQueryOptions, FeatureOptions {
+  format?: "geojson" | "json" | "pbf";
+  workerUrl?: string | URL;
+  wasmUrl?: string | URL;
+}
+
+const esriClient = new WorkerClient("services");
+
+/** A page of an ArcGIS query in `format` ("json" or "pbf") read by services.wasm, as its GeoJSON would be. */
+async function loadEsri(url: string, format: "json" | "pbf", options: ArcGISFeatureOptions): Promise<unknown> {
+  const bytes = await loadBytes(url, options);
+  esriClient.start(options.workerUrl ?? new URL("./services-worker.js", import.meta.url), (page) => ({
+    wasm: wasmUrl(options.wasmUrl ?? new URL("./services.wasm", import.meta.url), page),
+  }));
+  // A server refuses a query with a JSON error whatever the format asked.
+  const as = bytes[0] === 0x7b ? "json" : format;
+  const { features, exceeded } = await esriClient.call<{ features: unknown[]; exceeded: boolean }>("esri", { bytes: bytes.buffer, format: as }, [bytes.buffer]);
+  return { type: "FeatureCollection", features, exceededTransferLimit: exceeded };
+}
+
+/**
+ * An ArcGIS FeatureServer or MapServer layer's features as GeoJSON, in the layer's best format
+ * (`ArcGISFeatureOptions`), paged by `resultOffset` while the layer supports it and answers
  * `exceededTransferLimit`.
  */
-export async function arcgisFeatures(layerUrl: string, options: ArcGISQueryOptions & FeatureOptions = {}): Promise<FeatureCollection> {
+export async function arcgisFeatures(layerUrl: string, options: ArcGISFeatureOptions = {}): Promise<FeatureCollection> {
   const url = httpUrl(layerUrl, document.baseURI, "services: the URL");
   const layer = await arcgisService(url, options);
+  const format = options.format ?? arcgisFormat(layer);
   const paging = (layer as { advancedQueryCapabilities?: { supportsPagination?: boolean } }).advancedQueryCapabilities?.supportsPagination === true;
   const count = options.count ?? (paging ? layer.maxRecordCount : undefined);
-  const page = (offset: number) => arcgisQueryUrl(url, { ...options, offset: paging ? (options.offset ?? 0) + offset : options.offset, count: paging ? count : options.count });
+  const page = (offset: number) =>
+    arcgisQueryUrl(url, { ...options, offset: paging ? (options.offset ?? 0) + offset : options.offset, count: paging ? count : options.count }, format);
   const more = (p: unknown) => {
     const r = p as { exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean } };
     return r.exceededTransferLimit === true || r.properties?.exceededTransferLimit === true;
   };
-  const result = await gather(page(0), (u) => loadJSON(u, options), (p, _, n) => (paging && more(p) ? page(n) : undefined), most(options), "ArcGIS query");
-  return result;
+  const read = (u: string) => (format === "geojson" ? loadJSON(u, options) : loadEsri(u, format, options));
+  return gather(page(0), read, (p, _, n) => (paging && more(p) ? page(n) : undefined), most(options), "ArcGIS query");
+}
+
+/** Stops the worker that reads ArcGIS `f=json` and `f=pbf` (`arcgisFeatures`); pending reads reject. */
+export function terminate(): void {
+  esriClient.terminate();
 }
 
 /** What `followView` needs of a map: mbmap's `Map` or MapLibre's. */
