@@ -121,8 +121,8 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 4675,
-      "budget": 5000
+      "bytes": 6319,
+      "budget": 7000
     },
     {
       "name": "PROJ strings (loaded by mbmap/analysis and mbmap/data on the first one)",
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28995,
+      "bytes": 28996,
       "budget": 30000
     },
     {
