@@ -19,6 +19,7 @@ const WASM = {
   analysis_worker: "analysis.wasm",
   geometry_worker: "geometry.wasm",
   relate_worker: "relate.wasm",
+  shapes_worker: "shapes.wasm",
   proj_worker: "proj.wasm",
   geodesic_worker: "geodesic.wasm",
   data_worker: "data.wasm",

@@ -1,7 +1,8 @@
 // `mbmap/analysis`: spatial analysis in a worker of its own, started on the
 // first `load`. Measures and predicates match Turf.js; the index is flatbush;
-// geometry operations are Clipper2's and spatial relations JTS's (DE-9IM), each
-// in a module loaded on their first use.
+// geometry operations are Clipper2's, spatial relations JTS's (DE-9IM), and
+// simplification, hulls, Delaunay, Voronoi and line operations Turf's, concaveman's
+// and d3-delaunay's, each in a module loaded on their first use.
 import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
 import { packPattern } from "./relate-pattern";
@@ -13,14 +14,16 @@ export type BBox = [number, number, number, number];
 
 /**
  * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the geometry module
- * (`geometryWasmUrl`), the spatial relation module (`relateWasmUrl`) and the coordinate system
- * module (`projWasmUrl`) are served; by default next to this module.
+ * (`geometryWasmUrl`), the spatial relation module (`relateWasmUrl`), the shape module
+ * (`shapesWasmUrl`) and the coordinate system module (`projWasmUrl`) are served; by default next
+ * to this module.
  */
 export interface AnalysisOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
   geometryWasmUrl?: string | URL;
   relateWasmUrl?: string | URL;
+  shapesWasmUrl?: string | URL;
   projWasmUrl?: string | URL;
 }
 
@@ -64,6 +67,15 @@ export interface LoadOptions extends AnalysisOptions {
   crs?: Crs;
 }
 
+/** Where a feature's lines come nearest to a point (`Dataset.nearestPointOnLine`). */
+export interface NearestOnLine {
+  point: [number, number];
+  dist: number;
+  location: number;
+  index: number;
+  multiFeatureIndex: number;
+}
+
 /** Per polygon: the points inside, how many have a numeric value, their sum and mean (NaN without one). */
 export interface Collected {
   count: Float64Array;
@@ -79,6 +91,7 @@ function start(options: AnalysisOptions): void {
     wasm: wasmUrl(options.wasmUrl ?? new URL("./analysis.wasm", import.meta.url), page),
     geometry: wasmUrl(options.geometryWasmUrl ?? new URL("./geometry.wasm", import.meta.url), page),
     relate: wasmUrl(options.relateWasmUrl ?? new URL("./relate.wasm", import.meta.url), page),
+    shapes: wasmUrl(options.shapesWasmUrl ?? new URL("./shapes.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
   }));
 }
@@ -195,6 +208,75 @@ export class Dataset {
     } catch (err) {
       return Promise.reject(err);
     }
+  }
+
+  #shapes(op: string, args: number[] = []): Promise<Dataset> {
+    try {
+      return this.#geometry("shapes", { dataset: Dataset.#idOf(this, "shaped"), op, args });
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
+  /**
+   * Every feature simplified as Turf's `simplify` does (radial distance, then Douglas-Peucker;
+   * `highQuality` skips the first), `tolerance` in degrees; properties kept.
+   */
+  simplify({ tolerance = 1, highQuality = false }: { tolerance?: number; highQuality?: boolean } = {}): Promise<Dataset> {
+    if (!(tolerance >= 0)) return Promise.reject(new Error("mbmap: analysis: invalid tolerance"));
+    return this.#shapes("simplify", [tolerance, highQuality ? 1 : 0]);
+  }
+
+  /** The convex hull of every vertex here as one polygon (Turf's `convex`), or no feature for fewer than three. */
+  convexHull(): Promise<Dataset> {
+    return this.#shapes("convex");
+  }
+
+  /**
+   * A concave hull of every vertex here as one polygon (concaveman's: `concavity` from 1, tight, up;
+   * edges shorter than `lengthThreshold` degrees stay), or no feature for fewer than three.
+   */
+  concaveHull({ concavity = 2, lengthThreshold = 0 }: { concavity?: number; lengthThreshold?: number } = {}): Promise<Dataset> {
+    if (!(concavity > 0) || !(lengthThreshold >= 0)) return Promise.reject(new Error("mbmap: analysis: invalid concave hull options"));
+    return this.#shapes("concave", [concavity, lengthThreshold]);
+  }
+
+  /** The Delaunay triangles of the points here as polygons, in d3-delaunay's order. */
+  delaunay(): Promise<Dataset> {
+    return this.#shapes("delaunay");
+  }
+
+  /**
+   * The Voronoi cell of each point here, cut to `bbox`, with that point's properties (d3-delaunay's
+   * `cellPolygon`); a point without a cell (a duplicate) keeps its row without geometry.
+   */
+  voronoi(bbox: BBox): Promise<Dataset> {
+    if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every(Number.isFinite) || bbox[0] > bbox[2] || bbox[1] > bbox[3]) {
+      return Promise.reject(new Error("mbmap: analysis: invalid bbox"));
+    }
+    return this.#shapes("voronoi", bbox);
+  }
+
+  /** Each line cut between the points on it nearest to `start` and `stop`, as Turf's `lineSlice`; properties kept. */
+  lineSlice(start: [number, number], stop: [number, number]): Promise<Dataset> {
+    if (![...start, ...stop].every(Number.isFinite) || start.length !== 2 || stop.length !== 2) {
+      return Promise.reject(new Error("mbmap: analysis: invalid points"));
+    }
+    return this.#shapes("line_slice", [...start, ...stop]);
+  }
+
+  /**
+   * Per feature, the point of its lines nearest to (x, y) as Turf's `nearestPointOnLine`: where it is,
+   * its distance (`dist`, km), how far along the line (`location`, km), the segment (`index`) and line
+   * (`multiFeatureIndex`); null for features without lines.
+   */
+  async nearestPointOnLine(x: number, y: number): Promise<(NearestOnLine | null)[]> {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("mbmap: analysis: invalid point");
+    const v = await this.#call<Float64Array>("nearestOnLine", { x, y });
+    return Array.from({ length: v.length / 6 }, (_, i) => {
+      const [px, py, dist, location, index, multiFeatureIndex] = v.subarray(i * 6, i * 6 + 6);
+      return Number.isNaN(px) ? null : { point: [px, py] as [number, number], dist, location, index, multiFeatureIndex };
+    });
   }
 
   /** The DE-9IM matrix of feature `i` here and feature `j` of `other`, as JTS writes it (`"FF2F11212"`). */
