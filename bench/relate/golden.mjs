@@ -1,6 +1,5 @@
-// relate.wasm (DE-9IM) vs JSTS 2.12.1's RelateOp and Geometry predicates: hand-written cases, random
-// shapes on a small grid (so that they touch, share edges and overlap) and GSI features; every matrix
-// and every predicate's pairs must be identical.
+// relate.wasm (DE-9IM) vs JSTS 2.12.1's RelateOp and predicates on hand-written, random grid and GSI
+// features; every matrix and every predicate's pairs must be identical.
 // Usage: node relate/golden.mjs [--cases=N] [--tiles=N]; writes bench/results/relate-golden.json.
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -27,7 +26,10 @@ a = ai.exports;
 const { instance: ri } = await WebAssembly.instantiate(await readFile(path.join(ROOT, "_build/wasm-gc/release/build/relate_worker/relate_worker.wasm")), {});
 const r = ri.exports;
 const decoder = new TextDecoder();
-const put = (e, bytes) => new Uint8Array(e.memory.buffer, e.prepare_input(bytes.length), bytes.length).set(bytes);
+const put = (e, bytes) => {
+  const at = e.prepare_input(bytes.length);
+  new Uint8Array(e.memory.buffer, at, bytes.length).set(bytes);
+};
 const out = (e, n) => {
   if (n < 0) throw new Error(decoder.decode(out(e, -n)));
   return new Uint8Array(e.memory.buffer.slice(e.output_addr(), e.output_addr() + n));
@@ -57,9 +59,10 @@ function pairs(ta, tb, code) {
 const reader = new GeoJSONReader();
 const results = {};
 const failures = [];
-function check(group, label, want, got) {
-  const s = (results[group] ??= { cases: 0, identical: 0 });
+function check(group, label, want, got, pairs = 0) {
+  const s = (results[group] ??= { cases: 0, identical: 0, pairs: 0 });
   s.cases++;
+  s.pairs += pairs;
   if (want === got) s.identical++;
   else if (failures.length < 30) failures.push({ group, label, want, got });
 }
@@ -84,7 +87,7 @@ function matrices(group, left, right) {
 }
 
 // Every predicate's pairs over two sets, against JSTS on the pairs whose boxes meet.
-function predicates(group, left, right) {
+function predicates(group, left, right, label = "") {
   const [ta, tb] = [load(left), load(right)];
   const [gl, gr] = [left.map((g) => reader.read(g)), right.map((g) => reader.read(g))];
   const meet = [];
@@ -100,7 +103,7 @@ function predicates(group, left, right) {
     } catch (err) {
       got = `error: ${err.message}`;
     }
-    check(`${group} ${name}`, `${left.length} x ${right.length}`, want, got);
+    check(`${group} ${name}`, `${label}: ${left.length} x ${right.length}`, want, got, want ? want.split(",").length / 2 : 0);
   });
 }
 
@@ -198,24 +201,18 @@ for (const x of (await readdir(dir)).sort()) {
     };
     const areas = (t) => /Polygon/.test(t);
     const lines = (t) => /LineString/.test(t);
-    const buildings = layer("building", areas).slice(0, 400);
+    const buildings = layer("building", areas);
     const water = layer("waterarea", areas);
-    const roads = layer("road", lines).slice(0, 400);
+    const roads = layer("road", lines);
     const label = `${x}/${f}`;
-    predicates(`gsi buildings x roads ${label}`, buildings, roads);
-    predicates(`gsi water x roads ${label}`, water, roads);
-    predicates(`gsi roads x roads ${label}`, roads.slice(0, 200), roads.slice(0, 200));
-    predicates(`gsi buildings x buildings ${label}`, buildings.slice(0, 200), buildings.slice(0, 200));
+    predicates("gsi buildings x roads", buildings, roads, label);
+    predicates("gsi water x roads", water, roads, label);
+    predicates("gsi roads x roads", roads.slice(0, 200), roads.slice(0, 200), label);
+    predicates("gsi buildings x buildings", buildings.slice(0, 200), buildings.slice(0, 200), label);
   }
 }
 
-const groups = {};
-for (const [g, s] of Object.entries(results)) {
-  const key = g.replace(/ \d+\/\d+\.pbf$/, "").replace(/ \d+\/\d+$/, "");
-  const t = (groups[key] ??= { cases: 0, identical: 0 });
-  t.cases += s.cases;
-  t.identical += s.identical;
-}
+const groups = results;
 console.table(groups);
 for (const f of failures.slice(0, 10)) console.log(JSON.stringify(f).slice(0, 600));
 const ok = failures.length === 0;

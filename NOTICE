@@ -827,6 +827,49 @@ Test / benchmark data:
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 
+- relate/*.mbt: port of JTS's DE-9IM relate operation as JSTS 2.12.1 ships it
+  (org/locationtech/jts: operation/relate/, the geomgraph/ and geomgraph/index/
+  classes RelateOp reaches, algorithm/RobustLineIntersector, LineIntersector,
+  Orientation, CGAlgorithmsDD and the part of math/DD it uses, Intersection,
+  Distance.pointToSegment, PointLocator, RayCrossingCounter,
+  locate/SimplePointInAreaLocator, RectangleLineIntersector,
+  operation/predicate/RectangleContains and RectangleIntersects,
+  geom/IntersectionMatrix, the RelateOp predicates of monkey.js, and
+  java/util/TreeMap.js's red-black tree)
+  https://github.com/locationtech/jts and https://github.com/bjornharrtell/jsts
+  — Eclipse Distribution License 1.0 (chosen of EDL-1.0 OR EPL-1.0):
+
+    Copyright (c) Vivid Solutions, and LocationTech JTS and JSTS contributors
+
+    Eclipse Distribution License - v 1.0
+
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met:
+
+    - Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+    - Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    - Neither the name of the Eclipse Foundation, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived from
+      this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+    IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 Test / benchmark data (continued):
 - bench/fixtures/gsi-dem/, bench/fixtures/gsi-dem-fuji/ (downloaded, not committed):
   国土地理院 標高タイル (GSI Japan, dem_png)

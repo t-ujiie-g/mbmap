@@ -351,7 +351,7 @@ const checks = {
       JSON.stringify(r.geometry.overlaid) === JSON.stringify(["a/c", "b/c"]) &&
       /invalid buffer options/.test(r.geometry.badBuffer) &&
       JSON.stringify(r.geometry.relations.overlaps) === "[0,0]" && JSON.stringify(r.geometry.relations.equals) === "[1,0]" &&
-      r.geometry.relations.matrix === "212101212" && /disjoint features match/.test(r.geometry.relations.disjoint) &&
+      r.geometry.relations.matrix === "212111212" && /disjoint features match/.test(r.geometry.relations.disjoint) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&
       JSON.stringify(r.geometry.back) === JSON.stringify([139.7671, 35.6812]) &&

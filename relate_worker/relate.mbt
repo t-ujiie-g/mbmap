@@ -43,7 +43,7 @@ let predicates : FixedArray[String] = [
 /// 3 2, 4 T, 5 `*`; None for another code.
 fn unpack_pattern(packed : Int32) -> String? {
   let chars = ['F', '0', '1', '2', 'T', '*']
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for k in 0..<9 {
     let c = (packed >> (k * 3)) & 7
     if c >= chars.length() {
@@ -55,11 +55,9 @@ fn unpack_pattern(packed : Int32) -> String? {
 }
 
 ///|
-/// Pairs of a row of the first table and a row of the second whose boxes meet
-/// and whose relation holds: predicate `code` (an index of `predicates`), or
-/// with `code` -1 the DE-9IM pattern `pattern` (`unpack_pattern`). Writes the
-/// pairs as i32s (row of the first, row of the second) and returns how many
-/// i32s, or minus an error's length.
+/// Pairs (row of the first table, row of the second) whose boxes meet and that
+/// hold predicate `code` (an index of `predicates`) or, with `code` -1, match
+/// `pattern` (`unpack_pattern`); writes them as i32s and returns their count.
 #export_name("relate_pairs")
 pub fn relate_pairs(len_a : Int32, code : Int32, pattern : Int32) -> Int32 {
   guard tables(len_a) is Some((a, b)) else {
@@ -84,17 +82,16 @@ pub fn relate_pairs(len_a : Int32, code : Int32, pattern : Int32) -> Int32 {
     index.search(x0, y0, x1, y1, found)
     found.sort()
     for j in found {
+      if !@relate.within_limit(a, i, b, j) {
+        return @wasmio.fail_with(too_many_points)
+      }
       let holds = match pattern {
         Some(p) =>
           match @relate.relate_checked(a, i, b, j) {
             Some(m) => m.matches(p)
-            None => return @wasmio.fail_with(too_many_points)
+            None => return @wasmio.fail_with(unrelated(i, j))
           }
-        None =>
-          match @relate.predicate_checked(a, i, b, j, predicates[code]) {
-            Some(h) => h
-            None => return @wasmio.fail_with(too_many_points)
-          }
+        None => @relate.predicate(a, i, b, j, predicates[code])
       }
       if holds {
         if out.length() >= MAX_RELATE_PAIRS * 2 {
@@ -106,6 +103,12 @@ pub fn relate_pairs(len_a : Int32, code : Int32, pattern : Int32) -> Int32 {
     }
   }
   @wasmio.write_i32s(out[:])
+}
+
+///|
+/// Why a pair JTS would throw on (invalid geometry) has no matrix.
+fn unrelated(i : Int32, j : Int32) -> String {
+  "features \{i} and \{j} are invalid where they meet (JTS throws a topology error)"
 }
 
 ///|
@@ -123,6 +126,9 @@ pub fn relate_matrix(len_a : Int32, i : Int32, j : Int32) -> Int32 {
   guard i >= 0 && i < a.length() && j >= 0 && j < b.length() else {
     return @wasmio.fail_with("no feature \{i} or \{j}")
   }
+  if !@relate.within_limit(a, i, b, j) {
+    return @wasmio.fail_with(too_many_points)
+  }
   match @relate.relate_checked(a, i, b, j) {
     Some(m) => {
       let s = m.to_string()
@@ -132,6 +138,6 @@ pub fn relate_matrix(len_a : Int32, i : Int32, j : Int32) -> Int32 {
       }
       @wasmio.write_bytes(Bytes::from_array(bytes)[:])
     }
-    None => @wasmio.fail_with(too_many_points)
+    None => @wasmio.fail_with(unrelated(i, j))
   }
 }
