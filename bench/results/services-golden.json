@@ -436,6 +436,27 @@
       ],
       "ok": true,
       "fetched": true
+    },
+    {
+      "check": "ogc api features",
+      "url": "https://demo.pygeoapi.io/master/collections/lakes/items",
+      "features": 25,
+      "boxed": 7,
+      "ok": true
+    },
+    {
+      "check": "wfs features",
+      "url": "https://demo.mapserver.org/cgi-bin/wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0",
+      "features": 12686,
+      "boxed": 76,
+      "ok": true
+    },
+    {
+      "check": "arcgis features",
+      "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0",
+      "features": 2232,
+      "boxed": 19,
+      "ok": true
     }
   ]
 }

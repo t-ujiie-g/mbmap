@@ -13,6 +13,7 @@ import { get as getProjection } from "ol/proj.js";
 import { OgcApiEndpoint } from "@camptocamp/ogc-client";
 import { parseXmlString } from "../node_modules/@camptocamp/ogc-client/dist/shared/xml-utils.js";
 import * as wfsCaps from "../node_modules/@camptocamp/ogc-client/dist/wfs/capabilities.js";
+import { generateGetFeatureUrl } from "../node_modules/@camptocamp/ogc-client/dist/wfs/url.js";
 import { simplifyEpsgUrn } from "../node_modules/@camptocamp/ogc-client/dist/shared/crs-utils.js";
 import * as services from "../../npm/src/services.ts";
 import { ROOT } from "../lib/root.mjs";
@@ -103,7 +104,7 @@ function request(url) {
   const params = {};
   for (const [k, v] of u.searchParams) {
     const name = k.toUpperCase();
-    params[name] = name === "BBOX" ? v.split(",").map(Number) : name === "TRANSPARENT" ? v.toUpperCase() : v;
+    params[name] = name === "BBOX" ? v.split(",").map((x) => (Number.isFinite(Number(x)) ? Number(x) : x)) : name === "TRANSPARENT" ? v.toUpperCase() : v;
   }
   return { path: u.origin + decodeURIComponent(u.pathname), params };
 }
@@ -352,6 +353,52 @@ for (const url of ARCGIS) {
   } catch (e) {
     report({ check: "arcgis", url, ok: false, error: String(e) });
   }
+}
+
+// Features: every page gathered, against what one request (or the server's id list) gives.
+const ids = (fc) => fc.features.map((f) => f.id ?? JSON.stringify(f.properties)).map(String).sort();
+const JAPAN = [129, 30, 146, 46];
+try {
+  const items = `${OGC_API}/collections/lakes/items`;
+  // ogc-client's getCollectionItems takes one page and the server caps a page at 10: the reference
+  // is the count the server says matches, every id once.
+  const { numberMatched } = JSON.parse(await get(`${items}?f=json&limit=1`));
+  const ours = await services.ogcFeatures(items, { limit: 5 });
+  const d = diff([ours.features.length, new Set(ids(ours)).size], [numberMatched, numberMatched]);
+  const boxed = await services.ogcFeatures(items, { limit: 3, bbox: [-100, 40, -70, 60] });
+  const single = JSON.parse(await get(`${items}?f=json&limit=1000&bbox=-100,40,-70,60`));
+  const db = diff(ids(boxed), ids(single));
+  report({ check: "ogc api features", url: items, features: ours.features.length, boxed: boxed.features.length, ok: d === null && db === null && ours.features.length > 5, ...((d ?? db) && { diff: d ?? db }) });
+} catch (e) {
+  report({ check: "ogc api features", ok: false, error: String(e) });
+}
+try {
+  const url = WFS[0];
+  const caps = services.readWFSCapabilities(await get(url), url);
+  const format = "application/json; subtype=geojson";
+  const paged = await services.wfsFeatures(caps, { typeName: "ms:cities", count: 3000 });
+  const whole = JSON.parse(await get(services.wfsFeatureUrl(caps.getFeatureUrl, caps.version, { typeName: "ms:cities", outputFormat: format })));
+  const d = diff(ids(paged), ids(whole));
+  const ours = services.wfsFeatureUrl(caps.getFeatureUrl, "2.0.0", { typeName: "ms:cities", outputFormat: format, count: 40, startIndex: 80, bbox: [139, 35, 140, 36] });
+  const theirs = generateGetFeatureUrl(caps.getFeatureUrl, "2.0.0", "ms:cities", format, 40, undefined, false, undefined, [35, 139, 36, 140], "urn:ogc:def:crs:EPSG::4326", 80);
+  const du = sameRequest(ours, theirs);
+  const boxed = await services.wfsFeatures(caps, { typeName: "ms:cities", bbox: [139, 35, 140, 36] });
+  const japan = boxed.features.every((f) => f.geometry.coordinates[0] >= 139 && f.geometry.coordinates[0] <= 140 && f.geometry.coordinates[1] >= 35 && f.geometry.coordinates[1] <= 36);
+  report({ check: "wfs features", url, features: paged.features.length, boxed: boxed.features.length, ok: d === null && du === null && paged.features.length > 3000 && boxed.features.length > 0 && japan, ...((d ?? du) && { diff: d ?? du }) });
+} catch (e) {
+  report({ check: "wfs features", ok: false, error: String(e) });
+}
+try {
+  const layer = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0";
+  const all = await services.arcgisFeatures(layer, { count: 300 });
+  const known = JSON.parse(await get(`${layer}/query?where=1%3D1&returnIdsOnly=true&f=json`)).objectIds.map(String).sort();
+  const d = diff(ids(all), known);
+  const boxed = await services.arcgisFeatures(layer, { bbox: JAPAN });
+  const inBox = JSON.parse(await get(`${layer}/query?where=1%3D1&geometry=${JAPAN.join(",")}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&returnIdsOnly=true&f=json`)).objectIds.map(String).sort();
+  const db = diff(ids(boxed), inBox);
+  report({ check: "arcgis features", url: layer, features: all.features.length, boxed: boxed.features.length, ok: d === null && db === null && all.features.length > 300, ...((d ?? db) && { diff: d ?? db }) });
+} catch (e) {
+  report({ check: "arcgis features", ok: false, error: String(e) });
 }
 
 await writeFile(path.join(ROOT, "bench/results/services-golden.json"), JSON.stringify({ env: { ol: "10.11.0", "ogc-client": "2.0.2", node: process.version }, results }, null, 2) + "\n");

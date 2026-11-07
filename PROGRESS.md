@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1（#115）と 18.2（#116）が終わり、18.3（ArcGIS VectorTileServer）を進めている。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.3（#115〜#117）が終わり、18.4a（地物の取得）を進めている。並行して `TILE_EXTENT` 8192 を試している（別の PR）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,7 +19,7 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 7.0KB | 10KB（2026-11-06、ユーザー判断） |
+  | `mbmap/services` | 8.4KB | 10KB（2026-11-06、ユーザー判断） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
@@ -98,6 +98,21 @@
     - `npm` の `style` の確認は、`line-width` を変えて戻す手順で道路のタイルを読み直すことがある。その要求が `idle` の前か後かで数が変わり、ときどき落ちていた。手順のあとで `idle` を待ってから数えるようにした。
     - `element` の右ドラッグは、慣性の 160 ms が過ぎてから離す（#116 で直した）。
   - 未解決：`npm run style:golden` の `heatmap`（mean 0.567 / p99 8、上限 0.5 / 5）と `extrusion-patterns`（0.215 / 1、上限 0.2 / 1）が、この環境では main でも上限を超える。この PR の変更の前後で同じ値なので、別に扱う。
+- **18.4 の分け方と予算**（2026-11-07、ユーザー判断）：
+  - 18.4a は JS だけでできる地物の取得。18.4b は Esri JSON と PBF の読み手を新しい `services.wasm` に置く（予算 20KB）。
+  - `TILE_EXTENT` を 8192 にする件はすぐ試す（別の PR で並行して進める）。
+- **18.4a**：地物の取得（`mbmap/services` 7.0KB → 8.4KB）。
+  - `ogcFeatures` は OGC API - Features の items を、`next` のリンクをたどって取る。
+  - `wfsFeatures` は WFS の GetFeature を GeoJSON の出力形式で取る。WFS 2.0 で `count` を渡すと STARTINDEX でページを送る。bbox は WFS 1.1 と 2.0 には EPSG:4326 の緯度・経度の順で、1.0 には経度・緯度の順で送る。
+  - `arcgisFeatures` は ArcGIS のレイヤーの `query` を `f=geojson` で取る。レイヤーが `supportsPagination` なら、`exceededTransferLimit` の間 `resultOffset` で続けて取る。
+  - 3 つともページを `gather` でまとめる。上限は `MAX_FEATURES`（100 万件）と `MAX_PAGES`（1 万ページ）。同じページの URL が繰り返されたら止め、`exceeded` を立てる。
+  - `followView` は表示している範囲の地物で GeoJSON ソースを埋める。`moveend` で取り直し、前の要求は中止する。
+  - XML の例外報告で答えたサービスは、その内容をエラーのメッセージにする。
+  - `services:golden` に地物の取得を足し、49 件すべて一致した：
+    - OGC API（pygeoapi の lakes、1 ページ 5 件）は、サーバーの `numberMatched` と同じ 25 件を、重複なく取った。サーバーは 1 ページを 10 件までに切るので、1 回で全部を取る要求は比べる相手にならない。ogc-client の `getCollectionItems` もページを送らない。
+    - WFS（MapServer の ms:cities）は、1 ページ 3000 件で 12686 件を取り、ページを送らずに取った結果と同じだった。GetFeature の URL は ogc-client の `generateGetFeatureUrl` と同じ要求になった。bbox で取った 76 件は、すべて範囲の中にある。
+    - ArcGIS（SampleWorldCities の Cities）は、1 ページ 300 件で 2232 件を取った。bbox で取った 19 件と合わせて、サーバーの `returnIdsOnly` の id と同じだった。
+  - pack テストの `services` では、ローカルの 2 ページの items を `followView` でソースに入れて描いた。動かすと取り直し、止めたあとは取り直さない。
 
 ## Phase 17 の後の点検（2026-11-06〜）
 

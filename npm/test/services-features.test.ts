@@ -1,0 +1,66 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { arcgisQueryUrl, gather, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl } from "../src/services/features.ts";
+
+const query = (url: string) => Object.fromEntries(new URL(url).searchParams);
+
+test("ogcItemsUrl adds the bbox, limit, datetime and properties", () => {
+  assert.equal(ogcItemsUrl("https://a.test/collections/lakes/items"), "https://a.test/collections/lakes/items");
+  assert.deepEqual(query(ogcItemsUrl("https://a.test/items?f=json", { bbox: [1, 2, 3, 4], limit: 10, datetime: "2020-01-01/..", properties: ["a", "b"] })), {
+    f: "json", bbox: "1,2,3,4", limit: "10", datetime: "2020-01-01/..", properties: "a,b",
+  });
+});
+
+test("wfsFeatureUrl follows each version's names and the bbox's axis order", () => {
+  assert.deepEqual(query(wfsFeatureUrl("https://a.test/wfs?map=m", "2.0.0", { typeName: "t", bbox: [139, 35, 140, 36], count: 10, startIndex: 20, outputFormat: "application/json" })), {
+    map: "m", SERVICE: "WFS", VERSION: "2.0.0", REQUEST: "GetFeature", TYPENAMES: "t", OUTPUTFORMAT: "application/json", COUNT: "10", STARTINDEX: "20",
+    BBOX: "35,139,36,140,urn:ogc:def:crs:EPSG::4326",
+  });
+  assert.deepEqual(query(wfsFeatureUrl("https://a.test/wfs", "1.1.0", { typeName: "t", count: 5, startIndex: 0, crs: "EPSG:4326" })), {
+    SERVICE: "WFS", VERSION: "1.1.0", REQUEST: "GetFeature", TYPENAME: "t", MAXFEATURES: "5", SRSNAME: "EPSG:4326",
+  });
+  assert.equal(query(wfsFeatureUrl("https://a.test/wfs", "1.0.0", { typeName: "t", bbox: [139, 35, 140, 36] })).BBOX, "139,35,140,36");
+});
+
+test("geojsonFormat prefers a GeoJSON format to other JSON", () => {
+  assert.equal(geojsonFormat(["text/xml; subtype=gml/3.2.1", "application/json; subtype=geojson", "json"]), "application/json; subtype=geojson");
+  assert.equal(geojsonFormat(["GML2", "json"]), "json");
+  assert.equal(geojsonFormat(["application/geo+json"]), "application/geo+json");
+  assert.equal(geojsonFormat(["GML2"]), undefined);
+});
+
+test("arcgisQueryUrl asks GeoJSON in EPSG:4326 within an envelope", () => {
+  assert.deepEqual(query(arcgisQueryUrl("https://a.test/rest/services/S/FeatureServer/0/?token=x", { bbox: [1, 2, 3, 4], outFields: ["NAME"], offset: 10, count: 5 })), {
+    where: "1=1", outFields: "NAME", geometry: "1,2,3,4", geometryType: "esriGeometryEnvelope", inSR: "4326", spatialRel: "esriSpatialRelIntersects",
+    outSR: "4326", resultOffset: "10", resultRecordCount: "5", f: "geojson",
+  });
+  assert.deepEqual(query(arcgisQueryUrl("https://a.test/S/MapServer/1", { where: "POP > 10" }, "pbf")), { where: "POP > 10", outFields: "*", outSR: "4326", f: "pbf" });
+});
+
+test("pageFeatures takes a page's features and refuses anything else", () => {
+  assert.deepEqual(pageFeatures({ type: "FeatureCollection", features: [1] }, "x"), [1]);
+  assert.throws(() => pageFeatures({ error: { code: 400, message: "bad where" } }, "q"), /q: ArcGIS error 400: bad where/);
+  assert.throws(() => pageFeatures({ type: "Feature" }, "q"), /did not answer with GeoJSON features/);
+  assert.throws(() => pageFeatures(null, "q"), /did not answer with GeoJSON features/);
+});
+
+test("gather follows pages until there is no next, a cap or a loop", async () => {
+  const pages: Record<string, unknown> = {
+    a: { features: [1, 2], next: "b" },
+    b: { features: [3, 4], next: "c" },
+    c: { features: [5] },
+    loop: { features: [9], next: "loop" },
+    empty: { features: [], next: "a" },
+  };
+  const load = async (u: string) => pages[u];
+  const next = (p: unknown) => (p as { next?: string }).next;
+  assert.deepEqual(await gather("a", load, next, 100, "t"), { type: "FeatureCollection", features: [1, 2, 3, 4, 5] });
+  assert.deepEqual(await gather("a", load, next, 3, "t"), { type: "FeatureCollection", features: [1, 2, 3], exceeded: true });
+  assert.deepEqual(await gather("a", load, next, 5, "t"), { type: "FeatureCollection", features: [1, 2, 3, 4, 5] });
+  assert.deepEqual(await gather("loop", load, next, 100, "t"), { type: "FeatureCollection", features: [9], exceeded: true });
+  assert.deepEqual(await gather("empty", load, next, 100, "t"), { type: "FeatureCollection", features: [] });
+  let n = 0;
+  const endless = await gather("p0", async () => ({ features: [n] }), () => `p${++n}`, Infinity, "t");
+  assert.equal(endless.features.length, MAX_PAGES);
+  assert.equal(endless.exceeded, true);
+});

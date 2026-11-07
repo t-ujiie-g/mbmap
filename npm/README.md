@@ -311,6 +311,15 @@ map.addSource("lakes", await ogcTiles(lakes, "vector"));
   - 出典は `copyrightText`。
 - `arcgisStyle(url, { style })`：VectorTileServer のスタイル（既定は `defaultStyles` の `root.json`）。Esri のスタイルの相対 URL（ソースの `../../`、スプライト、グリフ）を絶対 URL にし、サービスのソースはタイルの URL とズームを書いたものにする。MapLibre は書き換えたものしか読めない。mbmap は `root.json` の URL をそのまま `setStyle` に渡しても描ける。
 - `ogcCollections(url)`、`ogcCollection(url)`、`ogcTiles(collection, "vector" | "map")`：OGC API のコレクションと、WebMercatorQuad のタイル（OGC API - Tiles）。
+- 地物の取得。結果は GeoJSON の FeatureCollection で、GeoJSON ソースの `setData` にそのまま渡せる。ページを続けて取り、`maxFeatures`（既定で上限の `MAX_FEATURES`、100 万件）か 1 万ページで止める。止めたときは `exceeded: true`。
+  - `ogcFeatures(collection または items の URL, { bbox, limit, datetime, properties, maxFeatures })`：OGC API - Features。各ページの `next` のリンクをたどる。
+  - `wfsFeatures(capabilities, { typeName, bbox, count, startIndex, outputFormat, crs, maxFeatures })`：WFS の GetFeature で、GeoJSON の出力形式を選ぶ。WFS 2.0 で `count` を渡すと、STARTINDEX でページを送る。`bbox` は経緯度で渡す（WFS 1.1 と 2.0 には EPSG:4326 の緯度・経度の順で送る）。
+  - `arcgisFeatures(レイヤーの URL, { where, bbox, outFields, offset, count, maxFeatures })`：FeatureServer と MapServer のレイヤーの `query`（`f=geojson`、ArcGIS Server 10.4 以降）。レイヤーがページ送りに対応していれば、`exceededTransferLimit` の間 `resultOffset` で続けて取る。
+  - URL だけを作る `ogcItemsUrl`、`wfsFeatureUrl`、`arcgisQueryUrl` もある。
+- `followView(map, sourceId, query, { minzoom, onError })`：表示している範囲の地物で GeoJSON ソースを埋める。`query(bounds, signal)` を動かすたびに呼び直し、前の要求は中止する。`minzoom` より引いているときはソースを空にする。戻り値の関数で止める。
+  ```js
+  const stop = followView(map, "cities", (bbox, signal) => arcgisFeatures(layerUrl, { bbox, signal }), { minzoom: 10 });
+  ```
 - 文書は 32MB まで（`MAX_DOCUMENT_BYTES`）。サービスの例外報告（ServiceExceptionReport、ExceptionReport、ArcGIS の `error`）は、その内容をメッセージにして失敗する。
 
 ## データの読み込み `mbmap/data`
