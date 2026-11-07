@@ -55,7 +55,8 @@ export function withQuery(base: string, params: Record<string, string | number |
   const added = Object.entries(params)
     .filter(([, v]) => v !== undefined)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v)).replace(/%7B([\w-]+)%7D/g, "{$1}")}`);
-  return `${q < 0 ? url : url.slice(0, q)}?${[...kept, ...added].join("&")}`;
+  const all = [...kept, ...added];
+  return `${q < 0 ? url : url.slice(0, q)}${all.length ? `?${all.join("&")}` : ""}`;
 }
 
 /**

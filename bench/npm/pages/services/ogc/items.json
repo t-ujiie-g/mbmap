@@ -1,0 +1,8 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "id": "tokyo", "properties": { "name": "東京駅" }, "geometry": { "type": "Point", "coordinates": [139.7671, 35.6812] } },
+    { "type": "Feature", "id": "yurakucho", "properties": { "name": "有楽町駅" }, "geometry": { "type": "Point", "coordinates": [139.7630, 35.6751] } }
+  ],
+  "links": [{ "rel": "next", "type": "application/geo+json", "href": "items-2.json" }]
+}
