@@ -1,0 +1,13 @@
+// Line and polygon simplification over `@geom.Table`s: a port of Turf 7.4.0's
+// `simplify` (simplify-js inlined) with its `cleanCoords`. Pure MoonBit,
+// tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+} for "test"

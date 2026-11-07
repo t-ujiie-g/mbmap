@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/simplify"
+
+import {
+  "t-ujiie-g/mbmap/geom",
+}
+
+// Values
+pub fn simplify(@geom.Table, Double, Bool) -> @geom.Table
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,15 @@
+// Concave and convex hulls over `@geom.Table` points: a port of concaveman
+// 2.0.0 with its rbush 4.0.1, tinyqueue 3.0.0 and point-in-polygon 1.1.0.
+// Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "t-ujiie-g/mbmap/robust",
+  "moonbitlang/core/double",
+  "moonbitlang/core/math",
+}
+
+import {
+  "t-ujiie-g/mbmap/geom",
+  "moonbitlang/core/double",
+} for "test"
