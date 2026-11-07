@@ -30,6 +30,7 @@ const TAB_BODIES = {
     <h2>断面図</h2><figure id="profile"></figure>`,
   data: `
     <h2>読み込み</h2><div id="data"></div>
+    <h2>Web サービス</h2><div id="services"></div>
     <h2>地点の一覧</h2><div id="table"></div>
     <div class="chips"><button id="marker">中心に印を置く</button></div>`,
 };

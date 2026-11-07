@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML）と 18.7b（example）に分けた。18.7a を報告中。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example）に分けた。18.7b を報告中で、これで Phase 18 の段階はすべて終わる。次は Phase 18 の後の点検（リファクタリングとセキュリティ、AGENTS §2）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -131,6 +131,11 @@
   - `wmsSource` と `arcgisSource` は GetMap・`export` の組み立てを 1 枚画像と共有するように分けた（タイルの URL は前と同じ）。
   - `services:golden` は 53 件すべて一致：1 枚画像の URL は OpenLayers の `getImageSrc`（WMS 3 つ）と arcgisRest の `getRequestUrl`（ArcGIS 3 つ）と同じ要求で、どれも画像が返った。GetFeatureInfo の URL は `getFeatureInfoUrl` と同じ要求で、サーバーは 200 を返した。SampleWorldCities の `identify` は東京で Tokyo を見つけた（ArcGIS の WMS は EPSG:3857 を挙げないので、GeoJSON の GetFeatureInfo を実際に読む確認は pack テストで行う）。
   - pack テストの `services` は、静的な GetMap の PNG を `followImage` で 600 × 400 の 1 枚画像として描き、静的な GetFeatureInfo（GeoJSON）と `identify` の答えを読む。
+- **18.7b**：example（3 つの書き方とも）に「Web サービス」を足した（「データ」のタブ）。
+  - URL から WMS・WMTS（`getCapabilities`）か ArcGIS（`arcgisService`）を読み、レイヤーを選んで重ねる。WMS・WMTS・ArcGIS のタイルや `export` はラスタのソース（3857 以外は `reprojected`）、FeatureServer・MapServer のレイヤーは `arcgisFeatures` の地物（データの重ねと同じ層）。VectorTileServer はスタイルごと読むものなので断る。
+  - 同梱のサンプル：地理院の淡色地図の WMTS の GetCapabilities（`examples/shared/services/gsi-wmts.xml`、z5〜18）。`?local=1` ではタイルをフィクスチャーの標準地図にする。
+  - 重ねたラスタは地点などのベクトルの重ねの下に入り（`firstVectorOverlay`）、背景地図や 2D・3D を切り替えても残る（`serviceLayers`）。
+  - pack テストの `showcase-*`（3 つとも）：サンプルを読み、淡色地図を重ね、ソースのタイルの URL と `minzoom`、地点の下にあること、背景地図の切り替えで残ること、消せることを確かめる。HTML と Element の例の import map に `mbmap/services` を足した。
 - **18.7a**：WFS の GML。18.7 は GML（18.7a）と example（18.7b）の 2 つの PR に分けた。
   - 大きさ：GML の読み手は `services-gml.js`（1,993 バイト、新しい行の予算 2.5KB）に分け、最初に GML を読むときだけ読み込む。入れたままでは `mbmap/services` が 12.2KB で予算 12KB を超えた。`mbmap/services` は 10.8KB → 11.0KB。
   - `wfsFeatures` は GeoJSON の出力形式がなければ、いちばん新しい GML（`gmlFormat`：2、3.1、3.2）を EPSG:4326 で頼み、`readGml`（`services/gml.ts`、ホストの `DOMParser`）で読む。

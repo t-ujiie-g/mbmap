@@ -130,6 +130,9 @@ details.legend summary { font-size: 12px; font-weight: 600; color: var(--muted);
 .datasets li:first-child { border-top: 0; }
 .datasets b { font-weight: 600; overflow-wrap: anywhere; }
 .datasets small { color: var(--muted); }
+.service-form { display: flex; gap: 6px; margin-bottom: 6px; }
+.service-form input { flex: 1; min-width: 0; padding: 3px 8px; font-size: 13px; border: 1px solid var(--line); border-radius: 7px; }
+.service-layers { margin-top: 4px; }
 .datasets .chips { margin-top: 4px; }
 .data-error { margin: 6px 0 0; font-size: 12px; color: var(--danger); }
 .attributes { width: 100%; margin: 4px 0; font-size: 12px; border-collapse: collapse; }

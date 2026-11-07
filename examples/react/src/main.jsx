@@ -16,6 +16,7 @@ import { zoomIntoClusters } from "../../shared/stations.js";
 import { createStyle, modeCamera, withMarker } from "../../shared/style.js";
 import { MapControls } from "./controls.jsx";
 import { DataPanel } from "./data.jsx";
+import { ServicesPanel } from "./services.jsx";
 import { Icon } from "./icon.jsx";
 import { useIdentify } from "./identify.jsx";
 import { Basemaps, LayerChecklist, Legend } from "./panel.jsx";
@@ -141,6 +142,8 @@ function App() {
             <Tab id="data" tab={tab}>
               <h2>読み込み</h2>
               {map && <DataPanel map={map} />}
+              <h2>Web サービス</h2>
+              {map && <ServicesPanel map={map} />}
               <h2>地点の一覧</h2>
               {map && <AttributeTable map={map} />}
               <div className="chips"><button id="marker" onClick={addMarker}>中心に印を置く</button></div>
