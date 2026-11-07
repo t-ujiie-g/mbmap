@@ -7,7 +7,7 @@ import { readWFSCapabilities, type WFSCapabilities } from "./services/wfs";
 import { readWMSCapabilities, type WMSCapabilities, type WMSFeatureInfoOptions, wmsFeatureInfoUrl } from "./services/wms";
 import { readWMTSCapabilities, type WMTSCapabilities } from "./services/wmts";
 import { type Bounds, clampBounds, type ImageRequest, lngLatToMercator, mercatorToLngLat, type TileSource, withQuery, zoomResolution } from "./services/common";
-import { arcgisFormat, arcgisQueryUrl, type ArcGISQueryOptions, type FeatureCollection, gather, geojsonFormat, MAX_FEATURES, ogcItemsUrl, type OGCItemsOptions, pageFeatures, wfsFeatureUrl, type WFSFeatureOptions } from "./services/features";
+import { arcgisFormat, arcgisQueryUrl, type ArcGISQueryOptions, type FeatureCollection, gather, geojsonFormat, gmlFormat, MAX_FEATURES, ogcItemsUrl, type OGCItemsOptions, pageFeatures, wfsFeatureUrl, type WFSFeatureOptions } from "./services/features";
 import { parseXml } from "./services/xml";
 import type { StyleSpecification } from "./style";
 import { httpUrl, type TransformedRequest, wasmUrl } from "./urls";
@@ -15,7 +15,7 @@ import { WorkerClient } from "./worker-client";
 
 export { arcgisBounds, arcgisIdentifyUrl, arcgisImage, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISIdentifyOptions, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
 export { isWebMercator, resolved, withQuery, type Bounds, type ImageRequest, type TileSource } from "./services/common";
-export { arcgisFormat, arcgisQueryUrl, MAX_FEATURES, MAX_PAGES, ogcItemsUrl, wfsFeatureUrl, type ArcGISQueryOptions, type FeatureCollection, type OGCItemsOptions, type WFSFeatureOptions } from "./services/features";
+export { arcgisFormat, arcgisQueryUrl, geojsonFormat, gmlFormat, MAX_FEATURES, MAX_PAGES, ogcItemsUrl, wfsFeatureUrl, type ArcGISQueryOptions, type FeatureCollection, type OGCItemsOptions, type WFSFeatureOptions } from "./services/features";
 export { isWebMercatorQuad, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections, type OGCCollection, type OGCLink } from "./services/ogcapi";
 export { readWFSCapabilities, type WFSCapabilities, type WFSFeatureType } from "./services/wfs";
 export { allLayers, readWMSCapabilities, wmsFeatureInfoUrl, wmsImage, wmsSource, type WMSCapabilities, type WMSFeatureInfoOptions, type WMSLayer, type WMSSourceOptions, type WMSStyle } from "./services/wms";
@@ -167,16 +167,27 @@ export async function wfsFeatures(capabilities: WFSCapabilities, options: WFSFea
   const type = capabilities.featureTypes.find((t) => t.name === options.typeName);
   if (!type) throw new Error(`mbmap: services: the WFS has no feature type ${options.typeName}`);
   if (!capabilities.getFeatureUrl) throw new Error("mbmap: services: the WFS capabilities have no GetFeature URL");
-  const outputFormat = options.outputFormat ?? geojsonFormat(type.outputFormats.length ? type.outputFormats : capabilities.outputFormats);
-  if (!outputFormat) throw new Error(`mbmap: services: the WFS offers ${options.typeName} in no GeoJSON format`);
+  const formats = type.outputFormats.length ? type.outputFormats : capabilities.outputFormats;
+  const outputFormat = options.outputFormat ?? geojsonFormat(formats) ?? gmlFormat(formats);
+  const gml = outputFormat === undefined || !/json/i.test(outputFormat);
+  // GML is read in EPSG:4326 only: asked for as such, latitude first but in WFS 1.0.
+  const v10 = capabilities.version.startsWith("1.0");
+  const crs = options.crs ?? (gml ? (v10 ? "EPSG:4326" : "urn:ogc:def:crs:EPSG::4326") : undefined);
   const paged = options.count !== undefined && capabilities.version.startsWith("2.");
   const url = (startIndex: number) => wfsFeatureUrl(capabilities.getFeatureUrl!, capabilities.version, {
     ...options,
     outputFormat,
+    crs,
     startIndex: (options.startIndex ?? 0) + startIndex,
     count: options.count ?? options.maxFeatures,
   });
-  return gather(url(0), (u) => loadJSON(u, options), (page, _, n) => (paged && n % options.count! === 0 ? url(n) : undefined), most(options), "WFS GetFeature");
+  // Under a bare `EPSG:4326` the server writes the axis order of what it was asked for. The GML reader is a file of its own.
+  const read = async (u: string) => {
+    if (!gml) return loadJSON(u, options);
+    const [text, m] = await Promise.all([load(u, options), import("./services/gml")]);
+    return m.readGml(text, m.srsNorthFirst(crs ?? "", false));
+  };
+  return gather(url(0), read, (page, _, n) => (paged && n % options.count! === 0 ? url(n) : undefined), most(options), "WFS GetFeature");
 }
 
 /**

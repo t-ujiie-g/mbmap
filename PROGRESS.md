@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）と 18.5（#121）が終わった。18.6（Web メルカトル以外のタイルとラスタ）を報告中。次は 18.7（WFS の GML と example）。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML）と 18.7b（example）に分けた。18.7a を報告中。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -19,7 +19,7 @@
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 8.3KB（全部入り） | 10KB（1 つ 2KB） |
   | `mbmap/search` | 2.8KB | 5KB |
-  | `mbmap/services` | 10.8KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
+  | `mbmap/services` | 11.0KB ＋ GML 2.0KB ＋ ワーカー 18.7KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
   | `mbmap/analysis` | 3.8KB ＋ ワーカー 28.6KB（geometry.wasm 41.8KB） | 5KB ＋ 30KB（50KB） |
@@ -131,6 +131,14 @@
   - `wmsSource` と `arcgisSource` は GetMap・`export` の組み立てを 1 枚画像と共有するように分けた（タイルの URL は前と同じ）。
   - `services:golden` は 53 件すべて一致：1 枚画像の URL は OpenLayers の `getImageSrc`（WMS 3 つ）と arcgisRest の `getRequestUrl`（ArcGIS 3 つ）と同じ要求で、どれも画像が返った。GetFeatureInfo の URL は `getFeatureInfoUrl` と同じ要求で、サーバーは 200 を返した。SampleWorldCities の `identify` は東京で Tokyo を見つけた（ArcGIS の WMS は EPSG:3857 を挙げないので、GeoJSON の GetFeatureInfo を実際に読む確認は pack テストで行う）。
   - pack テストの `services` は、静的な GetMap の PNG を `followImage` で 600 × 400 の 1 枚画像として描き、静的な GetFeatureInfo（GeoJSON）と `identify` の答えを読む。
+- **18.7a**：WFS の GML。18.7 は GML（18.7a）と example（18.7b）の 2 つの PR に分けた。
+  - 大きさ：GML の読み手は `services-gml.js`（1,993 バイト、新しい行の予算 2.5KB）に分け、最初に GML を読むときだけ読み込む。入れたままでは `mbmap/services` が 12.2KB で予算 12KB を超えた。`mbmap/services` は 10.8KB → 11.0KB。
+  - `wfsFeatures` は GeoJSON の出力形式がなければ、いちばん新しい GML（`gmlFormat`：2、3.1、3.2）を EPSG:4326 で頼み、`readGml`（`services/gml.ts`、ホストの `DOMParser`）で読む。
+  - 幾何：Point、LineString、LinearRing、Curve（segments）、Polygon、Surface（patches）、Multi* とその member・members、GeometryCollection。座標は `coordinates`（cs・ts・decimal）、`pos`、`posList`（srsDimension）、`coord`。
+  - 軸の順：URN と OGC の URL は座標系の順、GML 2 の `…epsg.xml#` は東が先、単なる `EPSG:4326` は頼んだ順（MapServer は WFS 1.1・2.0 で URN を頼まれると、`EPSG:4326` と書いて緯度を先に書く）。OpenLayers は単なる `EPSG:4326` をいつも緯度が先として読むので、GML 2 の経緯度を逆に読む。
+  - 属性は OpenLayers の GMLBase と同じ（葉は文字列、入れ子はオブジェクト、同じ名前は配列、`fid`・`gml:id` が id）。違うのは、`boundedBy` を属性にしないこと、属性つきの要素を `{_content_}` にせず値だけにすること、`xsi:nil` を null にすること。
+  - `services:golden` は 65 件すべて一致（+11）：手書きの GML 4 件（GML 2 の穴あき多角形と区切り文字、GML 3 の Surface・Curve・3 次元、CRS84、別の座標系を断る）。MapServer の WFS 2.0・1.1・1.0 の GML 6 形式（3.2 ×2、3.1.1 ×2、2.1.2、GML2）で 586 件の位置が同じ問い合わせの GeoJSON と 1e-5° で一致し、属性と id が OpenLayers 10.11.0 の WFS の読み手と一致。ArcGIS の WFS（GML 3.2）の 19 件が範囲の中。
+  - pack テストの `services` は、GML だけを挙げる静的な WFS 1.1 から地物を読み、要求の SRSNAME と OUTPUTFORMAT を確かめる。
 - **18.6**：Web メルカトル以外のタイルとラスタ。作りと範囲は 2026-11-07 のユーザー判断（独自のソース型で再投影、`proj.wasm` が知る座標系すべて）。
   - mbmap 独自のソース型 `reprojected`（エンジンでは `geotiff` と同じ `tiles` のない raster）。`wmtsSource` は Web メルカトルのセットがなければ EPSG の座標系のセットから、`wmsSource` は EPSG:3857 を持たないレイヤーなら `crs`（既定は EPSG:4326）の GetMap から作る。
   - タイルは `mbmap/data` のワーカーが作る（`reprojectTile`、`data-reproject.js` 1.8KB / 2KB）。3857 のタイルの画素ごとの中心を `proj.wasm` でその座標系にし、WMTS はタイルの画素より細かいうちでいちばん粗い行列の重なるタイル（64 枚まで）、WMS は範囲の画像（1 辺 2048 画素まで、2.5 画素の余白）を取り、最近傍で引く。画像は 128 枚までワーカーに残す。

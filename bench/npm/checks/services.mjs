@@ -1,5 +1,5 @@
 // mbmap/services on bench/npm/pages/services: WMTS, ArcGIS VectorTileServer and WMS layers (tiled, one image of the
-// view, or reprojected from EPSG:4326) draw what they name, features come from f=pbf, f=json, GetFeatureInfo and
+// view, or reprojected from EPSG:4326) draw what they name, features come from f=pbf, f=json, WFS GML, GetFeatureInfo and
 // identify, and exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -193,6 +193,16 @@ export async function servicesChecks(page, requests) {
   const geoOk = geo.type === "reprojected" && geo.crs === 4326 && /\/geo\/\{TileMatrix\}\/\{TileRow\}\/\{TileCol\}\.png$/.test(geo.template) &&
     JSON.stringify(geo.colors) === JSON.stringify([[0, 0, 255], [0, 255, 0]]);
 
+  // A WFS 1.1 offering GML only (wfs.xml, its GetFeature the static wfs-gml.xml, latitude first as asked).
+  const wfsGml = await page.evaluate(async () => {
+    const services = await import("mbmap/services");
+    const caps = await services.getCapabilities("./wfs.xml", "WFS");
+    const fc = await services.wfsFeatures(caps, { typeName: "st:stations" });
+    return fc.features.map((f) => [f.id, f.properties.name, f.geometry.coordinates]);
+  });
+  const gmlOk = JSON.stringify(wfsGml) === JSON.stringify([["stations.1", "東京", [139.7671, 35.6812]], ["stations.2", "神田", [139.7709, 35.6918]]]) &&
+    requests.some((u) => /wfs-gml\.xml\?.*SRSNAME=urn%3Aogc%3Adef%3Acrs%3AEPSG%3A%3A4326/.test(u) && /OUTPUTFORMAT=text%2Fxml%3B%20subtype%3Dgml%2F3\.1\.1/.test(u));
+
   const first = getMaps[0] ?? {};
   const bbox = (first.BBOX ?? "").split(",").map(Number);
   const loaded = requests.map((u) => u.split("/").pop().split("?")[0]).filter((n) => /services|\.xml$/.test(n));
@@ -215,6 +225,6 @@ export async function servicesChecks(page, requests) {
     JSON.stringify(follow.features) === JSON.stringify(["tokyo", "yurakucho", "kanda"]) && follow.bounds >= 1 && follow.first.length === 4 &&
     follow.kanda[0] > 200 && follow.kanda[1] < 80 && follow.moved && follow.stillStopped &&
     esriOk && loaded.includes("services-worker.js") && loaded.includes("services.wasm") && singleOk &&
-    geoOk && requests.some((u) => /data-reproject\.js$/.test(u));
-  return [ok, { ...r, same, drawn, vector, follow, geo: { ok: geoOk, ...geo }, single: { ok: singleOk, request: imageMap, coordinates: corners, bounds: single.bounds, info: single.info, identified: single.identified }, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
+    geoOk && requests.some((u) => /data-reproject\.js$/.test(u)) && gmlOk && loaded.includes("services-gml.js");
+  return [ok, { ...r, same, drawn, vector, follow, gml: { ok: gmlOk, features: wfsGml }, geo: { ok: geoOk, ...geo }, single: { ok: singleOk, request: imageMap, coordinates: corners, bounds: single.bounds, info: single.info, identified: single.identified }, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
 }

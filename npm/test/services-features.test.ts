@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { arcgisFormat, arcgisQueryUrl, gather, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl } from "../src/services/features.ts";
+import { srsNorthFirst } from "../src/services/gml.ts";
+import { arcgisFormat, arcgisQueryUrl, gather, gmlFormat, geojsonFormat, MAX_PAGES, ogcItemsUrl, pageFeatures, wfsFeatureUrl } from "../src/services/features.ts";
 
 const query = (url: string) => Object.fromEntries(new URL(url).searchParams);
 
@@ -71,4 +72,19 @@ test("arcgisFormat prefers PBF, then GeoJSON, then JSON among a layer's query fo
   assert.equal(arcgisFormat({ supportedQueryFormats: "JSON" }), "json");
   assert.equal(arcgisFormat({}), "json");
   assert.equal(arcgisFormat(null), "json");
+});
+
+test("gmlFormat picks the latest GML among the formats", () => {
+  assert.equal(gmlFormat(["application/json", "text/xml; subtype=gml/2.1.2", "text/xml; subtype=gml/3.1.1", "application/gml+xml; version=3.2"]), "application/gml+xml; version=3.2");
+  assert.equal(gmlFormat(["GML2", "GML3"]), "GML3");
+  assert.equal(gmlFormat(["application/json"]), undefined);
+});
+
+test("srsNorthFirst reads URNs and URLs by the CRS, GML 2 URLs east first, a bare code as asked", () => {
+  assert.deepEqual(
+    ["urn:ogc:def:crs:EPSG::4326", "http://www.opengis.net/def/crs/EPSG/0/4326", "urn:ogc:def:crs:OGC:1.3:CRS84", "http://www.opengis.net/gml/srs/epsg.xml#4326", "EPSG:4326"].map((s) => srsNorthFirst(s, false)),
+    [true, true, false, false, false],
+  );
+  assert.equal(srsNorthFirst("EPSG:4326", true), true);
+  assert.equal(srsNorthFirst("EPSG:32654", true), false);
 });

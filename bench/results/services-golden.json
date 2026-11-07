@@ -494,6 +494,75 @@
       "ok": true
     },
     {
+      "check": "gml case",
+      "name": "GML 2 coordinates, polygons with holes, nil and nested values",
+      "ok": true
+    },
+    {
+      "check": "gml case",
+      "name": "GML 3 posList in a URN of EPSG:4326 (latitude first), 3D, Surface patches and Curve segments",
+      "ok": true
+    },
+    {
+      "check": "gml case",
+      "name": "a bare EPSG:4326 as asked, CRS84, multi points and curves",
+      "ok": true
+    },
+    {
+      "check": "gml case",
+      "name": "another CRS is refused",
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "version": "2.0.0",
+      "format": "application/gml+xml; version=3.2",
+      "features": 586,
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "version": "2.0.0",
+      "format": "text/xml; subtype=gml/3.2.1",
+      "features": 586,
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "version": "2.0.0",
+      "format": "text/xml; subtype=gml/3.1.1",
+      "features": 586,
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "version": "2.0.0",
+      "format": "text/xml; subtype=gml/2.1.2",
+      "features": 586,
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "version": "1.1.0",
+      "format": "text/xml; subtype=gml/3.1.1",
+      "features": 586,
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "version": "1.0.0",
+      "format": "GML2",
+      "features": 586,
+      "ok": true
+    },
+    {
+      "check": "wfs gml",
+      "url": "https://sampleserver6.arcgisonline.com/arcgis/services/SampleWorldCities/MapServer/WFSServer?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0",
+      "format": "application/gml+xml; version=3.2",
+      "features": 19,
+      "ok": true
+    },
+    {
       "check": "wmts reprojected",
       "url": "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml",
       "layer": "BlueMarble_ShadedRelief",
