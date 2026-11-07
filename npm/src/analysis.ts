@@ -210,9 +210,9 @@ export class Dataset {
     }
   }
 
-  #shapes(op: string, args: number[] = []): Promise<Dataset> {
+  #shapes(shape: string, args: number[] = []): Promise<Dataset> {
     try {
-      return this.#geometry("shapes", { dataset: Dataset.#idOf(this, "shaped"), op, args });
+      return this.#geometry("shapes", { dataset: Dataset.#idOf(this, "shaped"), shape, args });
     } catch (err) {
       return Promise.reject(err);
     }

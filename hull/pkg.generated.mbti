@@ -2,15 +2,16 @@
 package "t-ujiie-g/mbmap/hull"
 
 import {
+  "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/geom",
 }
 
 // Values
 pub const MAX_HULL_POINTS : Int32 = 1_000_000
 
-pub fn concave(@geom.Table, Double, Double) -> @geom.Table
+pub fn concave(@geom.Table, Double, Double, trig? : @core.Trig) -> @geom.Table
 
-pub fn convex(@geom.Table) -> @geom.Table
+pub fn convex(@geom.Table, trig? : @core.Trig) -> @geom.Table
 
 // Errors
 

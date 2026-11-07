@@ -1,6 +1,5 @@
-// shapes.wasm vs Turf 7.4.0 (simplify, convex, nearestPointOnLine, lineSlice), concaveman 2.0.0 and
-// d3-delaunay 6.0.6 (triangles, Voronoi cells) on GSI features and random points; every coordinate and
-// number must be identical (Object.is).
+// shapes.wasm vs Turf 7.4.0, concaveman 2.0.0 and d3-delaunay 6.0.6 on GSI features and random points;
+// every coordinate and number must be identical (Object.is).
 // Usage: node shapes/golden.mjs [--tiles=N]; writes bench/results/shapes-golden.json.
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -133,7 +132,8 @@ for (const x of (await readdir(dir)).sort()) {
     for (const tolerance of [1e-5, 1e-4, 1e-3]) {
       for (const highQuality of [false, true]) {
         for (const [name, fs] of [["roads", roads.slice(0, 500)], ["buildings", buildings.slice(0, 500)], ["contours", contours], ["water", waters]]) {
-          const want = fs.map((g) => attempt(() => simplify(g, { tolerance, highQuality }).geometry.coordinates));
+          // Positions parsed from JSON, as the table holds them: Turf compares the closing point by identity.
+          const want = fs.map((g) => attempt(() => simplify(JSON.parse(JSON.stringify(g)), { tolerance, highQuality }).geometry.coordinates));
           const got = attempt(() => op(fs, "simplify", tolerance, highQuality ? 1 : 0).map((g) => g.geometry?.coordinates ?? null));
           check(`gsi simplify ${name}`, `${x}/${f} ${tolerance} ${highQuality}`, want, got);
         }

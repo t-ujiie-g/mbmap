@@ -1,0 +1,95 @@
+{
+  "tiles": 4,
+  "results": {
+    "random delaunay": {
+      "cases": 30,
+      "identical": 30
+    },
+    "random voronoi": {
+      "cases": 30,
+      "identical": 30
+    },
+    "grid delaunay": {
+      "cases": 30,
+      "identical": 30
+    },
+    "grid voronoi": {
+      "cases": 30,
+      "identical": 30
+    },
+    "collinear delaunay": {
+      "cases": 1,
+      "identical": 1
+    },
+    "collinear voronoi": {
+      "cases": 1,
+      "identical": 1
+    },
+    "random convex": {
+      "cases": 20,
+      "identical": 20
+    },
+    "random concave": {
+      "cases": 80,
+      "identical": 80
+    },
+    "grid convex": {
+      "cases": 20,
+      "identical": 20
+    },
+    "grid concave": {
+      "cases": 80,
+      "identical": 80
+    },
+    "gsi simplify roads": {
+      "cases": 24,
+      "identical": 24
+    },
+    "gsi simplify buildings": {
+      "cases": 24,
+      "identical": 24
+    },
+    "gsi simplify contours": {
+      "cases": 24,
+      "identical": 24
+    },
+    "gsi simplify water": {
+      "cases": 24,
+      "identical": 24
+    },
+    "gsi buildings convex": {
+      "cases": 4,
+      "identical": 4
+    },
+    "gsi buildings concave": {
+      "cases": 16,
+      "identical": 16
+    },
+    "gsi water convex": {
+      "cases": 4,
+      "identical": 4
+    },
+    "gsi water concave": {
+      "cases": 16,
+      "identical": 16
+    },
+    "gsi labels delaunay": {
+      "cases": 4,
+      "identical": 4
+    },
+    "gsi labels voronoi": {
+      "cases": 4,
+      "identical": 4
+    },
+    "gsi nearestPointOnLine": {
+      "cases": 40,
+      "identical": 40
+    },
+    "gsi lineSlice": {
+      "cases": 40,
+      "identical": 40
+    }
+  },
+  "failures": [],
+  "ok": true
+}

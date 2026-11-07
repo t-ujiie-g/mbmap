@@ -6,10 +6,8 @@
 pub const NEAREST_WORDS : Int32 = 6
 
 ///|
-/// What `nearestPointOnLine` gives: the point, `dist` and `location` in
-/// kilometers, `index` (the segment) and `multiFeatureIndex` (the line).
-/// Without a segment it is Turf's start value: infinite point and `dist`, -1
-/// elsewhere.
+/// What `nearestPointOnLine` gives (`dist`, `location` in km); without a segment
+/// Turf's start value: infinite point and `dist`, -1 elsewhere.
 priv struct Nearest {
   mut lng : Double
   mut lat : Double
@@ -95,12 +93,9 @@ fn nearest_in(
 }
 
 ///|
-/// For each row, Turf's `nearestPointOnLine(row, point([x, y]))` as
-/// `NEAREST_WORDS` doubles: longitude, latitude, `dist` (km), `location` (km
-/// along the row's lines), `index` and `multiFeatureIndex`. Rows Turf rejects
-/// (not a LineString or MultiLineString, NaN coordinates, a NaN `x` or `y`)
-/// are all NaN; a row without a segment gets Turf's infinite point and `dist`
-/// with -1 elsewhere.
+/// Per row, Turf's `nearestPointOnLine(row, point([x, y]))` as `NEAREST_WORDS`
+/// doubles (lng, lat, `dist`, `location`, `index`, `multiFeatureIndex`); all NaN
+/// where Turf rejects the row (not a line, NaN coordinates) or `x`, `y`.
 pub fn nearest_point_on_line(
   t : @geom.Table,
   x : Double,
@@ -136,12 +131,9 @@ fn copy_props(b : @geom.TableBuilder, t : @geom.Table, f : Int32) -> Unit {
 }
 
 ///|
-/// For each row, Turf's `lineSlice(point([start_x, start_y]),
-/// point([stop_x, stop_y]), row)`: the row's line between the points nearest
-/// to them, as a LineString with the row's id and properties. Rows Turf
-/// rejects (not a LineString, NaN coordinates or ends) keep their id and
-/// properties with no geometry; a one-point line gives Turf's two infinite
-/// points.
+/// Per row, Turf's `lineSlice(start, stop, row)` as a LineString with the row's
+/// id and properties; rows Turf rejects (not a LineString, NaN coordinates or
+/// ends) keep them with no geometry.
 pub fn line_slice(
   t : @geom.Table,
   start_x : Double,

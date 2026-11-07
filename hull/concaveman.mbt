@@ -1,7 +1,6 @@
-// Ported from concaveman 2.0.0, Copyright (c) 2016 Vladimir Agafonkin, from
-// tinyqueue 3.0.0, Copyright (c) 2017 Vladimir Agafonkin, both under the ISC
-// license, and from point-in-polygon 1.1.0, Copyright (c) 2016 James Halliday,
-// under the MIT license (NOTICE).
+// Ported from concaveman 2.0.0 (ISC, (c) 2025 Mapbox), tinyqueue 3.0.0 (ISC,
+// (c) 2017 Vladimir Agafonkin) and point-in-polygon 1.1.0 (MIT, (c) 2016 James
+// Halliday); see NOTICE.
 
 ///|
 /// What `findCandidate`'s queue holds: an rbush node or a point.
@@ -444,6 +443,7 @@ fn concaveman(
   ys : Array[Double],
   concavity : Double,
   length_threshold : Double,
+  trig : @core.Trig,
 ) -> Array[Int32] {
   let n = xs.length()
   let concavity = js_max(0.0, concavity)
@@ -461,7 +461,7 @@ fn concaveman(
     point_boxes[4 * i + 2] = xs[i]
     point_boxes[4 * i + 3] = ys[i]
   }
-  let tree = RBush::new(16, point_boxes)
+  let tree = RBush::new(16, point_boxes, trig)
   tree.load(Array::makei(n, i => i))
   let queue : Array[Int32] = []
   let mut last : Int32? = None
@@ -470,7 +470,7 @@ fn concaveman(
     last = Some(h.insert_node(p, last))
     queue.push(last.unwrap())
   }
-  let seg_tree = RBush::new(16, h.boxes)
+  let seg_tree = RBush::new(16, h.boxes, trig)
   for node in queue {
     seg_tree.insert(h.update_box(node))
   }

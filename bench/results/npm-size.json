@@ -121,7 +121,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 4270,
+      "bytes": 4675,
       "budget": 5000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 28841,
+      "bytes": 28995,
       "budget": 30000
     },
     {
@@ -142,6 +142,11 @@
     {
       "name": "spatial relations (DE-9IM; loaded by the analysis worker on first use)",
       "bytes": 26508,
+      "budget": 30000
+    },
+    {
+      "name": "shapes (simplify, hulls, Delaunay, Voronoi, line slices; loaded by the analysis worker on first use)",
+      "bytes": 27936,
       "budget": 30000
     },
     {

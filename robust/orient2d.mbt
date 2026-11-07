@@ -1,5 +1,4 @@
-// Ported from robust-predicates 3.0.3 (esm/orient2d.js, esm/util.js),
-// Copyright (c) 2020 Vladimir Agafonkin, released under the Unlicense;
+// Ported from robust-predicates 3.0.3 (orient2d.js, util.js; the Unlicense),
 // after Jonathan Richard Shewchuk's public-domain predicates.c.
 
 ///|
@@ -246,8 +245,7 @@ fn orient2dadapt(
 
 ///|
 /// Twice the signed area of the triangle a, b, c, exact in sign: positive when
-/// the points run clockwise in a y-up frame (robust-predicates' convention,
-/// the opposite of Shewchuk's), negative counter-clockwise, zero when collinear.
+/// clockwise in a y-up frame, negative counter-clockwise, 0 when collinear.
 /// Bit for bit robust-predicates 3.0.3's `orient2d`.
 pub fn orient2d(
   ax : Double,

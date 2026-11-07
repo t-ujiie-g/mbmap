@@ -1,7 +1,6 @@
-// Ported from Turf 7.4.0 (@turf/simplify with simplify-js inlined,
-// @turf/clean-coords, @turf/boolean-point-on-line), Copyright (c) 2019 Morgan
-// Herlocker, and simplify-js, Copyright (c) 2017 Vladimir Agafonkin, both
-// under the MIT license (NOTICE).
+// Ported from Turf 7.4.0's simplify, clean-coords and boolean-point-on-line
+// (MIT, (c) 2017 TurfJS) and the simplify-js it inlines (BSD-2-Clause, (c) 2017
+// Vladimir Agafonkin); see NOTICE.
 
 ///|
 /// JavaScript's `Number.EPSILON`, where Turf stops lowering a ring's tolerance.
@@ -15,29 +14,34 @@ priv struct Points {
 }
 
 ///|
-fn Points::x(self : Points, p : Int) -> Double {
+fn Points::x(self : Points, p : Int32) -> Double {
   self.coords[2 * p]
 }
 
 ///|
-fn Points::y(self : Points, p : Int) -> Double {
+fn Points::y(self : Points, p : Int32) -> Double {
   self.coords[2 * p + 1]
 }
 
 ///|
-fn Points::same(self : Points, a : Int, b : Int) -> Bool {
+fn Points::same(self : Points, a : Int32, b : Int32) -> Bool {
   self.x(a) == self.x(b) && self.y(a) == self.y(b)
 }
 
 ///|
-fn Points::sq_dist(self : Points, a : Int, b : Int) -> Double {
+fn Points::sq_dist(self : Points, a : Int32, b : Int32) -> Double {
   let dx = self.x(a) - self.x(b)
   let dy = self.y(a) - self.y(b)
   dx * dx + dy * dy
 }
 
 ///|
-fn Points::sq_seg_dist(self : Points, p : Int, p1 : Int, p2 : Int) -> Double {
+fn Points::sq_seg_dist(
+  self : Points,
+  p : Int32,
+  p1 : Int32,
+  p2 : Int32,
+) -> Double {
   let mut x = self.x(p1)
   let mut y = self.y(p1)
   let mut dx = self.x(p2) - x
@@ -60,7 +64,7 @@ fn Points::sq_seg_dist(self : Points, p : Int, p1 : Int, p2 : Int) -> Double {
 ///|
 /// boolean-point-on-line's `isPointOnLineSegment` without epsilon or excluded
 /// ends: whether `p` lies on the segment `s`, `e` exactly.
-fn Points::on_segment(self : Points, p : Int, s : Int, e : Int) -> Bool {
+fn Points::on_segment(self : Points, p : Int32, s : Int32, e : Int32) -> Bool {
   let x = self.x(p)
   let y = self.y(p)
   let x1 = self.x(s)
@@ -93,7 +97,11 @@ fn Points::on_segment(self : Points, p : Int, s : Int, e : Int) -> Bool {
 /// clean-coords' `cleanLine`; None where it throws (a ring that comes out
 /// with fewer than 4 points or open). A line of one point stays one point
 /// (Turf adds an `undefined` position).
-fn Points::clean_line(self : Points, points : Array[Int], ring : Bool) -> Array[Int]? {
+fn Points::clean_line(
+  self : Points,
+  points : Array[Int32],
+  ring : Bool,
+) -> Array[Int32]? {
   let n = points.length()
   if n < 2 {
     return if ring { None } else { Some(points) }
@@ -150,10 +158,10 @@ fn note(th : Double, d : Double) -> Double {
 /// of `note` for it.
 fn Points::simplify(
   self : Points,
-  points : Array[Int],
+  points : Array[Int32],
   sq : Double,
   high_quality : Bool,
-) -> (Array[Int], Double) {
+) -> (Array[Int32], Double) {
   let mut th = @double.neg_infinity
   if points.length() <= 2 {
     return (points, th)
@@ -218,7 +226,7 @@ fn Points::simplify(
 }
 
 ///|
-fn Points::valid_ring(self : Points, ring : Array[Int]) -> Bool {
+fn Points::valid_ring(self : Points, ring : Array[Int32]) -> Bool {
   if ring.length() < 3 {
     return false
   }
@@ -231,10 +239,10 @@ fn Points::valid_ring(self : Points, ring : Array[Int]) -> Bool {
 /// that cannot change the result are stepped over without simplifying again.
 fn Points::simplify_ring(
   self : Points,
-  ring : Array[Int],
+  ring : Array[Int32],
   tolerance : Double,
   high_quality : Bool,
-) -> Array[Int] {
+) -> Array[Int32] {
   let mut tol = tolerance
   let (first, th) = self.simplify(ring, tol * tol, high_quality)
   let mut simple = first
@@ -257,21 +265,16 @@ fn Points::simplify_ring(
 }
 
 ///|
-/// Each row of `t` simplified as Turf 7.4.0's `simplify` (with `tolerance` and
-/// `highQuality`) simplifies its geometry: lines and polygon rings cleaned of
-/// repeated and collinear points, then radial distance and Douglas-Peucker
-/// passes (`high_quality` skips the radial one); a ring's tolerance is lowered
-/// until it keeps at least 4 points, else it stays as cleaned. Points and
-/// multipoints are kept, as are rows, ids and properties. Where Turf throws, the
-/// row keeps its geometry: a polygon with a ring that cleans to fewer than 4
-/// points or is open, and every row for a negative tolerance.
+/// Each row as Turf 7.4.0's `simplify(tolerance, highQuality)` makes its geometry;
+/// rows, ids and properties kept. Where Turf throws (a negative tolerance, a
+/// ring that cleans to fewer than 4 points or is open) the row is kept as is.
 pub fn simplify(
   t : @geom.Table,
   tolerance : Double,
   high_quality : Bool,
 ) -> @geom.Table {
   let b = @geom.TableBuilder::new()
-  let pts : Points = { coords: t.coords }
+  let pts : Points = { coords: t.coords, }
   for f in 0..<t.length() {
     let kind = t.kinds[f]
     let lines = match kind {
@@ -324,11 +327,11 @@ pub fn simplify(
 fn simplify_parts(
   t : @geom.Table,
   pts : Points,
-  f : Int,
+  f : Int32,
   rings : Bool,
   tolerance : Double,
   high_quality : Bool,
-) -> Array[Array[Array[Int]]]? {
+) -> Array[Array[Array[Int32]]]? {
   let out = []
   let (p0, p1) = t.parts(f)
   for p in p0..<p1 {

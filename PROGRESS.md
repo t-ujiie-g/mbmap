@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-07）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM）を報告中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
+- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM、#126）。19.2（形の操作）を報告中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -22,7 +22,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 4.3KB ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB） | 5KB ＋ 30KB（50KB、30KB。relate.wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 4.3KB ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB） | 5KB ＋ 30KB（50KB、30KB、30KB。relate.wasm と shapes.wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19：解析 第2弾（2026-11-07〜）
@@ -51,6 +51,14 @@
   - `relate_worker`（relate.wasm 26.5KB、予算 30KB）：箱の重なる組を `@analysis.Index` で探し、述語か DE-9IM のパターンで残す。組は 1000 万まで。離れた組が当てはまるパターンは TS 側で断る（`npm/src/relate-pattern.ts`）。
   - API：`Dataset.relate(other, relation | { pattern })`、`relateMatrix(other, i, j)`。example の「近くの地点」は `pointsWithin` から `relate(zone, "coveredBy")` に替えた。
   - `npm run relate:golden`：手書き 41 組（逆向きも）と格子の上のランダムな 2 万組の行列、ランダムな集合 20 組と GSI の 4 タイル（建物・水域・道路の組）の 9 述語の組がすべて JSTS と同じ。移植のテストは、JSTS で求めた行列 83 件とランダムな 150 組（不正な形を含む）、壊れた入力が止まることを確かめる。
+
+- **19.2 の結果**：
+  - 新しい純粋なパッケージ 5 つ（全バックエンドでテスト）。`robust`（robust-predicates 3.0.3 の `orient2d`。厳密な段階まで JS と同じ値）、`simplify`（`@turf/simplify` 7.4.0。`cleanCoords` と、環が 4 点を保つまで許容値を下げる規則を含む）、`hull`（concaveman 2.0.0 と rbush 4.0.1・quickselect・tinyqueue・point-in-polygon。`@turf/convex` は入れ子の concaveman 1.2.1 を使うが、差は書き方だけで結果は同じ）、`delaunay`（delaunator 5.1.0 と d3-delaunay 6.0.6 の `Delaunay`・`Voronoi`。一直線の点の揺らしと V8 の `Math.hypot` を含む）、`lineops`（`@turf/nearest-point-on-line` と `line-slice` 7.4.0。7.x の球面のベクトル計算を `@core.Trig` で）。
+  - `shapes_worker`（shapes.wasm 27.9KB、予算 30KB）：ホストの `Math` で動かす。rbush の対数も `Trig` から取り、コアの `@math` を入れない（28.7 → 27.9KB）。
+  - API：`Dataset.simplify`、`convexHull`、`concaveHull`、`delaunay`、`voronoi(bbox)`、`nearestPointOnLine(x, y)`、`lineSlice(start, stop)`。線どうしの分割は既存の `split`（Clipper2）を使い、`@turf/line-split` は移植しない（sweepline-intersections などを持ち込む割に、できることが重なる）。
+  - JS と違うところ：NaN・無限の点は凸包・凹包・ドロネーから外す（JS は壊れた結果か無限ループ）、点が 3 つに満たないドロネーは三角形なし、Turf が例外を投げる入力（負の許容値、閉じていない環）は元の形のまま返す。上限は `MAX_HULL_POINTS`・`MAX_DELAUNAY_POINTS`（100 万）。
+  - `npm run shapes:golden`：ランダムな点・格子の点・一直線の点の三角形とボロノイの領域（61 組）、凸包・凹包（ランダム・格子・GSI の建物と水域、凹度と長さのしきい値を 4 通り）、GSI の道路・建物・等高線・水域の単純化（許容値 3 通り × highQuality）、GSI の線の最近点と切り出し（80）がすべて Turf・concaveman・d3-delaunay と同じ（`Object.is`）。
+  - 途中の不具合：解析ワーカーへのメッセージの引数に `op` という名前を使ったため、呼ぶ操作の名前を上書きして無視され、pack test が止まった。引数を `shape` に改めた。
 
 ## Phase 18 の後の点検（2026-11-07）
 

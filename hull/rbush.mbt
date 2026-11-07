@@ -1,5 +1,5 @@
-// Ported from rbush 4.0.1 and quickselect 3.0.0, Copyright (c) 2016 Vladimir
-// Agafonkin, released under the MIT license (NOTICE).
+// Ported from rbush 4.0.1 (MIT, (c) 2024 Volodymyr Agafonkin) and quickselect
+// 3.0.0 (ISC, (c) 2024 Vladimir Agafonkin); see NOTICE.
 
 ///|
 /// An rbush node: `nodes` when internal, `items` when a leaf.
@@ -64,10 +64,15 @@ priv struct RBush {
   max_entries : Int32
   min_entries : Int32
   boxes : Array[Double]
+  trig : @core.Trig
 }
 
 ///|
-fn RBush::new(max_entries : Int32, boxes : Array[Double]) -> RBush {
+fn RBush::new(
+  max_entries : Int32,
+  boxes : Array[Double],
+  trig : @core.Trig,
+) -> RBush {
   let max = if max_entries > 4 { max_entries } else { 4 }
   let min = (max.to_double() * 0.4).ceil().to_int()
   {
@@ -79,6 +84,7 @@ fn RBush::new(max_entries : Int32, boxes : Array[Double]) -> RBush {
       2
     },
     boxes,
+    trig,
   }
 }
 
@@ -250,7 +256,9 @@ fn RBush::build(
   }
   let mut height = height
   if height == 0 {
-    height = (@math.ln(n.to_double()) / @math.ln(m.to_double())).ceil().to_int()
+    height = ((self.trig.ln)(n.to_double()) / (self.trig.ln)(m.to_double()))
+      .ceil()
+      .to_int()
     let mut pow = 1.0
     for _ in 0..<(height - 1) {
       pow *= m.to_double()
@@ -343,8 +351,8 @@ fn RBush::quickselect(
     if right - left > 600 {
       let n = (right - left + 1).to_double()
       let m = (k - left + 1).to_double()
-      let z = @math.ln(n)
-      let s = 0.5 * @math.exp(2.0 * z / 3.0)
+      let z = (self.trig.ln)(n)
+      let s = 0.5 * (self.trig.exp)(2.0 * z / 3.0)
       let sd = 0.5 *
         (z * s * (n - s) / n).sqrt() *
         (if m - n / 2.0 < 0.0 { -1.0 } else { 1.0 })

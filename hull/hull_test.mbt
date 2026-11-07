@@ -413,3 +413,32 @@ test "concave is empty past MAX_HULL_POINTS" {
   b.end_feature(MultiPoint)
   assert_eq(@hull.concave(b.finish(), 2.0, 0.0).length(), 0)
 }
+
+///|
+test "concave and convex take rbush's logarithms from trig" {
+  let b = @geom.TableBuilder::new()
+  for i in 0..<40 {
+    b.point(i.to_double(), (i * i % 7).to_double())
+    b.end_ring()
+    b.end_part()
+    b.end_feature(Point)
+  }
+  let t = b.finish()
+  let calls = Ref(0)
+  let m = @core.Trig::moonbit()
+  let trig = {
+    ..m,
+    ln: x => {
+      calls.val += 1
+      (m.ln)(x)
+    },
+  }
+  assert_eq(@hull.convex(t, trig~).coords, @hull.convex(t).coords)
+  assert_true(calls.val > 0)
+  calls.val = 0
+  assert_eq(
+    @hull.concave(t, 2.0, 0.0, trig~).coords,
+    @hull.concave(t, 2.0, 0.0).coords,
+  )
+  assert_true(calls.val > 0)
+}

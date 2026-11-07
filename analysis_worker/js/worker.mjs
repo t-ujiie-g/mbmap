@@ -295,10 +295,10 @@ const OPS = {
     const n = checked(exports, exports.relate_pairs(bytes[0].length, predicate, pattern));
     return new Int32Array(outputOf(exports, n * 4).buffer);
   },
-  // A shape operation of shapes_worker on one dataset: `op` an export giving a table, with `args` numbers.
-  shapes({ dataset, op, args }) {
-    check(isId(dataset) && SHAPE_OPS.includes(op) && Array.isArray(args) && args.every((v) => typeof v === "number"));
-    return geometryOp([dataset], (s) => s[op](...args), "shapes");
+  // A shape operation of shapes_worker on one dataset: `shape` an export giving a table, with `args` numbers.
+  shapes({ dataset, shape, args }) {
+    check(isId(dataset) && SHAPE_OPS.includes(shape) && Array.isArray(args) && args.every((v) => typeof v === "number"));
+    return geometryOp([dataset], (s) => s[shape](...args), "shapes");
   },
   // Per feature of `dataset`, the point of its lines nearest to (x, y) as Turf's nearestPointOnLine: 6 f64s.
   async nearestOnLine({ dataset, x, y }) {

@@ -57,10 +57,9 @@ fn triangulate(
 }
 
 ///|
-/// The Delaunay triangles of the Point and MultiPoint rows' points, one Polygon
-/// row each as d3-delaunay's `trianglePolygons()` (collinear points jittered
-/// through `trig`), without properties. Non-finite points are left out, and
-/// fewer than three distinct points make no rows.
+/// d3-delaunay's `trianglePolygons()` of the Point and MultiPoint rows' finite
+/// points (collinear ones jittered through `trig`), a Polygon row each; fewer
+/// than three distinct points make no rows.
 pub fn triangles(
   t : @geom.Table,
   trig~ : @core.Trig = @core.Trig::moonbit(),
@@ -97,10 +96,9 @@ pub fn triangles_checked(
 }
 
 ///|
-/// d3-delaunay's `cellPolygon(i)` within the bounds for each point of the
-/// Point and MultiPoint rows, one row each with its source row's id and properties.
-/// A null cell, a non-finite point or cell, and bounds d3-delaunay refuses or
-/// that are not finite give no geometry.
+/// d3-delaunay's `cellPolygon(i)` within the bounds for each point of the Point
+/// and MultiPoint rows, with its row's id and properties; no geometry for a null
+/// or non-finite cell, a non-finite point or bounds d3-delaunay refuses.
 pub fn voronoi(
   t : @geom.Table,
   xmin : Double,
