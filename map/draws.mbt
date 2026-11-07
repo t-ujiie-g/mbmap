@@ -53,8 +53,8 @@ fn pattern_tile(
     x: size * id.x.to_double(),
     y: size * id.y.to_double(),
     units: size / @core.TILE_EXTENT.to_double(),
-    // MapLibre's -2^z / tileSize / 8 in its 8192-unit tiles, halved.
-    height_factor: -@math.pow(2.0, id.z.to_double()) / 8192.0,
+    // MapLibre's -2^z / tileSize / 8.
+    height_factor: -@math.pow(2.0, id.z.to_double()) / (8.0 * @core.TILE_SIZE),
   }
 }
 

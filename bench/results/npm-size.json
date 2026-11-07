@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 133156,
+      "bytes": 133155,
       "budget": 135000
     },
     {
@@ -36,7 +36,7 @@
     },
     {
       "name": "image, video and canvas sources (loaded by mbmap when a style has one)",
-      "bytes": 2602,
+      "bytes": 2599,
       "budget": 3000
     },
     {
@@ -81,12 +81,12 @@
     },
     {
       "name": "display worker",
-      "bytes": 80488,
+      "bytes": 80495,
       "budget": 100000
     },
     {
       "name": "labels (loaded by the display worker with the first tile that has them)",
-      "bytes": 9559,
+      "bytes": 9563,
       "budget": 10000
     },
     {
@@ -101,12 +101,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 29555,
+      "bytes": 29556,
       "budget": 30000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49300,
+      "bytes": 49298,
       "budget": 50000
     },
     {

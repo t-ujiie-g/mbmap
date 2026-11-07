@@ -2,18 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Media, type MediaEngine, mediaUrl, quadOf } from "../src/media.ts";
 
-// Expected tiles, corners (MapLibre's 8192 units halved) and warps from MapLibre 6.16's ImageSource.
+// Expected tiles, corners (MapLibre's 8192 units) and warps from MapLibre 6.16's ImageSource.
 const close = (a: number[], b: number[]) => assert.ok(a.every((v, i) => Math.abs(v - b[i]) < 1e-12), `${a} vs ${b}`);
 
 test("quadOf places a rectangle in its center tile, bilinear", () => {
   const q = quadOf([[139.76, 35.69], [139.78, 35.69], [139.78, 35.675], [139.76, 35.675]]);
-  assert.deepEqual(q.slice(0, 15), [14, 14553, 6451, -1503.5, 687.5, 2224.5, 687.5, 2224.5, 4130, -1503.5, 4130, 0, 0, 1, 0]);
+  assert.deepEqual(q.slice(0, 15), [14, 14553, 6451, -3007, 1375, 4449, 1375, 4449, 8260, -3007, 8260, 0, 0, 1, 0]);
   assert.equal(q.length, 19);
 });
 
 test("quadOf gives a mild trapezoid a projective warp, a strong one a blended warp over a grid", () => {
   const mild = quadOf([[139.755, 35.692], [139.785, 35.688], [139.79, 35.668], [139.75, 35.672]]);
-  assert.deepEqual(mild.slice(0, 11), [13, 7276, 3225, 830, 2162, 3626.5, 2621, 4092.5, 4916, 364, 4457]);
+  assert.deepEqual(mild.slice(0, 11), [13, 7276, 3225, 1660, 4324, 7253, 5242, 8185, 9832, 728, 8914]);
   close(mild.slice(11, 15), [0.05127499793689654, -0.2563749896844827, 0, 0]);
   const strong = quadOf([[139.768, 35.69], [139.772, 35.69], [139.79, 35.67], [139.75, 35.67]]);
   close(strong.slice(11, 15), [0, -0.9000938715301059, 0.6051028521528679, 1]);

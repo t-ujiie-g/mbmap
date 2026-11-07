@@ -5,7 +5,7 @@
 ///|
 /// Ints per extrusion vertex: x, y, normal x (times 2^14, plus 1 on the top
 /// edge), normal y and z (times 2^14), the distance along the ring's walls (in
-/// `MAPLIBRE_EXTENT` units; 0 on roofs) and the feature's centroid x, y.
+/// `@core.TILE_EXTENT` units; 0 on roofs) and the feature's centroid x, y.
 pub const EXTRUSION_VERTEX_STRIDE : Int32 = 8
 
 ///|
@@ -59,11 +59,13 @@ pub fn ExtrusionTessellator::new() -> ExtrusionTessellator {
 const NORMAL_FACTOR : Double = 8192.0
 
 ///|
-/// A wall distance in `MAPLIBRE_EXTENT` units, rounded as MapLibre's `addVertex`
-/// and kept within Int16.
+/// A wall distance in `@core.TILE_EXTENT` units, rounded as MapLibre's
+/// `addVertex` and kept within Int16.
 fn wall_distance(along : Double, extent : Int32) -> Int32 {
   @cmp.minimum(
-    (along * MAPLIBRE_EXTENT / extent.to_double()).round().to_int(),
+    (along * @core.TILE_EXTENT.to_double() / extent.to_double())
+    .round()
+    .to_int(),
     32767,
   )
 }
@@ -181,7 +183,7 @@ pub fn ExtrusionTessellator::add_polygons(
       continue
     }
     // Edges from each point back to the one before it, the closing one last;
-    // MapLibre starts the distance again past 32768 units of its `MAPLIBRE_EXTENT`.
+    // MapLibre starts the distance again past 32768 units of its `EXTENT`.
     let mut along = 0.0
     let restart = 4.0 * extent.to_double()
     for k in (start + 1)..<=end {

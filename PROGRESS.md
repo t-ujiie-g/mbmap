@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-06）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.3（#115〜#117）が終わり、18.4a（地物の取得）を進めている。並行して `TILE_EXTENT` 8192 を試している（別の PR）。
+- **次**：Phase 18（GIS の Web サービス、下の節）。18.1〜18.4a（#115〜#118）が終わった。`TILE_EXTENT` 8192（#119）を報告中。次は 18.4b（`services.wasm` で Esri JSON と PBF）。
 - **Mac で回すもの**（残り）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
@@ -97,7 +97,7 @@
   - pack テストの直し：
     - `npm` の `style` の確認は、`line-width` を変えて戻す手順で道路のタイルを読み直すことがある。その要求が `idle` の前か後かで数が変わり、ときどき落ちていた。手順のあとで `idle` を待ってから数えるようにした。
     - `element` の右ドラッグは、慣性の 160 ms が過ぎてから離す（#116 で直した）。
-  - 未解決：`npm run style:golden` の `heatmap`（mean 0.567 / p99 8、上限 0.5 / 5）と `extrusion-patterns`（0.215 / 1、上限 0.2 / 1）が、この環境では main でも上限を超える。この PR の変更の前後で同じ値なので、別に扱う。
+  - 未解決：`npm run style:golden` の `heatmap`（mean 0.567 / p99 8、上限 0.5 / 5）と `extrusion-patterns`（0.215 / 1、上限 0.2 / 1）が、この環境では main でも上限を超える。この PR の変更の前後で同じ値なので、別に扱う。`heatmap` は `TILE_EXTENT` 8192 で 0.001 / 0 になった（下の節）。`extrusion-patterns` は残る。
 - **18.4 の分け方と予算**（2026-11-07、ユーザー判断）：
   - 18.4a は JS だけでできる地物の取得。18.4b は Esri JSON と PBF の読み手を新しい `services.wasm` に置く（予算 20KB）。
   - `TILE_EXTENT` を 8192 にする件はすぐ試す（別の PR で並行して進める）。
@@ -113,6 +113,17 @@
     - WFS（MapServer の ms:cities）は、1 ページ 3000 件で 12686 件を取り、ページを送らずに取った結果と同じだった。GetFeature の URL は ogc-client の `generateGetFeatureUrl` と同じ要求になった。bbox で取った 76 件は、すべて範囲の中にある。
     - ArcGIS（SampleWorldCities の Cities）は、1 ページ 300 件で 2232 件を取った。bbox で取った 19 件と合わせて、サーバーの `returnIdsOnly` の id と同じだった。
   - pack テストの `services` では、ローカルの 2 ページの items を `followView` でソースに入れて描いた。動かすと取り直し、止めたあとは取り直さない。
+- **`TILE_EXTENT` を 8192 に**（2026-11-07 ユーザー判断、18.3 と並行の別 PR）：MapLibre の `EXTENT` と同じにした。位置は Int16 のまま。
+  - 4096 の MVT は 2 倍するだけなので、GSI のタイルの出力は同じ。fixtures 35 枚の packed tile は前後とも計 77,448,536 バイトで、1 枚も変わらない（`bench/maplibre/style.json`）。
+  - 座標は ±32767 で切る。8192 の単位で ±4 タイル分で、MapLibre の `loadGeometry`（15 ビット、±2 タイル分）より広い。
+  - 破線の距離は 8192 の単位で、MapLibre の `linesofar` と同じく偶数にそろえる（半分にして切り捨て、2 倍）。`MAX_LINE_DISTANCE` は 16384（MapLibre の `MAX_LINE_DISTANCE / 2`）。4096 のタイルでは前と同じ値。
+  - 2 倍や半分の換算をなくした：ラベルの y 順、`map_placed_labels`、線に沿うラベルの `TO_EXTENT`、押し出しの壁の距離と `u_height_factor`、画像ソースの角。`worker/js/mirror.test.mjs` が `symbols.mjs` と `media.ts` の `TILE_EXTENT` を確かめる。
+  - GeoJSON のタイルも MapLibre と同じ 8192 で切るようになった（バッファ、許容誤差、クラスタの半径）。`npm run geojson:golden` の `maplibre` と `lineMetrics` の組を 8192 にした（0 differ。この環境では Node の既定のヒープでは main でも足りず、`--max-old-space-size` が要る）。
+  - 結果（mean / p99、前 → 後）：
+    - `npm run services:style` の tokyo15：0.199 / 4 → 0.006 / 0。ほかの 3 場面は同じ。
+    - `npm run style:golden`：`heatmap` 0.567 / 8 → 0.001 / 0、`heatmap-state` 0.345 / 4 → 0.001 / 0、`clusters` 0.061 / 1 → 0 / 0、`cluster-properties` 0.047 / 1 → 0 / 0、`gradients` 0.053 / 1 → 0.003 / 0、`icons-lines` 0.017 / 0 → 0.001 / 0、`icons-lines-tilted` 0.033 / 1 → 0.005 / 0。ほかは同じで、`extrusion-patterns`（0.215 / 1）だけが上限を超えたまま。
+    - `query`、`labels`、`raster`、`track`、`pmtiles`、`tess`、`mvt`、`cluster` の黄金テストは前後で同じ。`export` は分けて描いた画像の差の画素が 1366 → 1365。
+  - 速さ（`worker:browser`、`render`）は M2 で測る必要がある。出力のバイト数は同じなので、変わらない見込み。
 
 ## Phase 17 の後の点検（2026-11-06〜）
 

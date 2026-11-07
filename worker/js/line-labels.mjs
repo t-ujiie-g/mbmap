@@ -2,7 +2,7 @@
 // get_anchors.ts, check_max_angle.ts and `anchorIsTooClose` of symbol_layout.ts), in its
 // 8192-unit tile. Import-free so tests run it as is.
 
-// MapLibre's tile extent (src/data/extent.ts), twice `@core.TILE_EXTENT`.
+// MapLibre's tile extent (src/data/extent.ts), `@core.TILE_EXTENT`.
 export const EXTENT = 8192;
 
 const dist = (a, b) => Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));

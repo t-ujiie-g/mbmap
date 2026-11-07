@@ -3,7 +3,7 @@
     "maplibre": "6.16.0",
     "browser": "chromium",
     "viewport": "800x600",
-    "date": "2026-11-06"
+    "date": "2026-11-07"
   },
   "styles": [
     {
@@ -46,8 +46,8 @@
     {
       "scene": "world-basemap-v2-tokyo15",
       "ok": true,
-      "mean": 0.199,
-      "p99": 4,
+      "mean": 0.006,
+      "p99": 0,
       "limits": {
         "mean": 0.25,
         "p99": 5

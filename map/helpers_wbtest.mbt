@@ -12,7 +12,7 @@ fn placement_stub() -> @render_webgl2.Placement {
     raster_matrix: @core.Mat4::identity(),
     units_per_pixel: 1.0,
     center_depth: 1.0,
-    clip: [0.0, 0.0, 4096.0, 4096.0],
+    clip: [0.0, 0.0, 8192.0, 8192.0],
     latitudes: (0.0, 0.0),
     pattern: { x: 0.0, y: 0.0, units: 1.0, height_factor: -1.0, },
   }
@@ -75,8 +75,8 @@ test "pattern_tile places a tile in CSS pixels of the world at the integer zoom"
   // 512 px tiles: a z2 tile is 1024 px wide at zoom 3.
   assert_eq(p.x, 1024.0)
   assert_eq(p.y, 3072.0)
-  assert_eq(p.units, 1024.0 / 4096.0)
-  assert_eq(p.height_factor, -4.0 / 8192.0)
+  assert_eq(p.units, 1024.0 / @core.TILE_EXTENT.to_double())
+  assert_eq(p.height_factor, -4.0 / 4096.0)
 }
 
 ///|

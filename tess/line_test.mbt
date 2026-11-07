@@ -205,15 +205,16 @@ fn positions(out : @tess.LineBuffers) -> Array[(Int32, Int32)] {
 }
 
 ///|
-test "a dashed line records each vertex's distance in MapLibre's half units" {
+test "a dashed line records each vertex's distance in tile units, even as MapLibre's" {
   assert_eq(extrude([0, 0, 100, 0, 100, 50]).distances.length(), 0)
   let out = dashed([0, 0, 100, 0, 100, 50])
   assert_valid(out)
   assert_eq(out.distances.length(), out.num_vertices())
   assert_eq(out.distances[0], 0)
-  assert_eq(out.distances[out.num_vertices() - 1], 150)
-  // An extent of 8192 units halves them.
-  assert_eq(dashed([0, 0, 100, 0], extent=8192).distances, [0, 0, 50, 50])
+  // A 4096-unit tile's distances are doubled.
+  assert_eq(out.distances[out.num_vertices() - 1], 300)
+  assert_eq(dashed([0, 0, 100, 0], extent=8192).distances, [0, 0, 100, 100])
+  assert_eq(dashed([0, 0, 101, 0], extent=8192).distances, [0, 0, 100, 100])
 }
 
 ///|
@@ -248,11 +249,11 @@ test "a dashed line starts again from 0 past MAX_LINE_DISTANCE" {
   let out = dashed([0, 0, 5000, 0, 10000, 0, 15000, 0])
   assert_valid(out)
   let d = out.distances
-  // The pair at 10000 units is repeated at 0.
+  // The pair at 10000 units (20000 tile units) is repeated at 0.
   assert_eq(d.length(), out.num_vertices())
   assert_true(d.iter().all(x => x <= 2 * @tess.MAX_LINE_DISTANCE))
   assert_eq(d.filter(x => x == 0).length(), 4)
-  assert_eq(d[d.length() - 1], 5000)
+  assert_eq(d[d.length() - 1], 10000)
 }
 
 ///|
@@ -260,7 +261,7 @@ test "a dashed ring closes into a pair at its full length" {
   let out = dashed([0, 0, 100, 0, 100, 100, 0, 100, 0, 0], join=Bevel)
   assert_valid(out)
   assert_eq(out.distances.length(), out.num_vertices())
-  assert_eq(out.distances.fold(init=0, @cmp.maximum), 400)
+  assert_eq(out.distances.fold(init=0, @cmp.maximum), 800)
   // The same area as the solid ring.
   let solid = extrude([0, 0, 100, 0, 100, 100, 0, 100, 0, 0], join=Bevel)
   assert_true(near(line_area(out, 4.0), line_area(solid, 4.0)))

@@ -1,5 +1,5 @@
 ///|
-/// A query (docs/FORMATS.md, "Query") at `points` of a tile drawn 4096 px wide,
+/// A query (docs/FORMATS.md, "Query") at `points` of a tile drawn 8192 px wide,
 /// one tile unit per pixel, looking straight down.
 fn query_request(
   points : Array[(Double, Double)],
@@ -8,12 +8,12 @@ fn query_request(
   filter~ : String = "",
 ) -> Bytes {
   let w = @core.ByteWriter::new()
-  for v in [14.0, 1.0, 1.0, 4096.0, 4096.0, 1.0, 1.0, 0.0] {
+  for v in [14.0, 1.0, 1.0, 8192.0, 8192.0, 1.0, 1.0, 0.0] {
     w.f64(v)
   }
   let m = FixedArray::make(16, 0.0)
-  m[0] = 1.0 / 2048.0
-  m[5] = -1.0 / 2048.0
+  m[0] = 1.0 / 4096.0
+  m[5] = -1.0 / 4096.0
   m[10] = 1.0
   m[12] = -1.0
   m[13] = 1.0
@@ -117,8 +117,13 @@ let query_style : String =
 
 ///|
 /// A square (0, 0)-(100, 100), a line along y = 200, and points at (50, 52)
-/// and (300, 300).
+/// and (300, 300), in layers of 8192 units.
 fn query_tile() -> Bytes {
+  let extent = (l : @pbf.Writer) => {
+    l.write_tag(5, @pbf.WIRE_VARINT)
+    l.write_varint32(@core.TILE_EXTENT)
+    l
+  }
   tile_of([
     tile_with("poly", 3, [
       cmd(1, 1),
@@ -132,9 +137,10 @@ fn query_tile() -> Bytes {
       -100,
       0,
       cmd(7, 1),
-    ]),
-    tile_with("line", 2, [cmd(1, 1), 0, 200, cmd(2, 1), 100, 0]),
-    tile_with("pts", 1, [cmd(1, 2), 50, 52, 250, 248]),
+    ])
+    |> extent,
+    tile_with("line", 2, [cmd(1, 1), 0, 200, cmd(2, 1), 100, 0]) |> extent,
+    tile_with("pts", 1, [cmd(1, 2), 50, 52, 250, 248]) |> extent,
   ])
 }
 

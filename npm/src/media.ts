@@ -39,7 +39,7 @@ interface Entry {
 
 /** MapLibre's `EXTENT`, which corners are rounded in, and the engine's tile units (`@core.TILE_EXTENT`). */
 const EXTENT = 8192;
-const TILE_EXTENT = 4096;
+const TILE_EXTENT = 8192;
 
 /**
  * Where an image goes, as MapLibre's `ImageSource.setCoordinates` and `calculateImageWarp` (its `auto`

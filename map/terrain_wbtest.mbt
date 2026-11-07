@@ -5,7 +5,7 @@ test "texture_placement maps a tile and its child into the terrain texture" {
     raster_matrix: @core.Mat4::identity(),
     units_per_pixel: 1.0,
     center_depth: 1.0,
-    clip: [0.0, 0.0, 4096.0, 4096.0],
+    clip: [0.0, 0.0, 8192.0, 8192.0],
     latitudes: (0.0, 0.0),
     pattern: { x: 0.0, y: 0.0, units: 1.0, height_factor: -1.0, },
   }
@@ -18,7 +18,7 @@ test "texture_placement maps a tile and its child into the terrain texture" {
   )
   assert_eq(own.matrix.apply(0.0, 0.0, 0.0, 1.0), (-1.0, 1.0, 0.0, 1.0))
   assert_eq(own.matrix.apply(e, e, 0.0, 1.0), (1.0, -1.0, 0.0, 1.0))
-  assert_eq(own.units_per_pixel, 4.0)
+  assert_eq(own.units_per_pixel, e / 1024.0)
   // The child's bottom-right quarter: x 1, y 1 at z 11.
   let kid = @core.TileId::new(11, 9, 13).unwrap()
   let k = texture_placement(
@@ -28,7 +28,7 @@ test "texture_placement maps a tile and its child into the terrain texture" {
   )
   assert_eq(k.matrix.apply(0.0, 0.0, 0.0, 1.0), (0.0, 0.0, 0.0, 1.0))
   assert_eq(k.matrix.apply(e, e, 0.0, 1.0), (1.0, -1.0, 0.0, 1.0))
-  assert_eq(k.units_per_pixel, 8.0)
+  assert_eq(k.units_per_pixel, e / 512.0)
   assert_true(overlap(kid, into) && overlap(into, kid))
   assert_true(!overlap(@core.TileId::new(11, 7, 13).unwrap(), into))
 }
@@ -40,7 +40,7 @@ test "Draw::reaches a terrain tile by its picture's bounds, else by its tile" {
     raster_matrix: @core.Mat4::identity(),
     units_per_pixel: 1.0,
     center_depth: 1.0,
-    clip: [0.0, 0.0, 4096.0, 4096.0],
+    clip: [0.0, 0.0, 8192.0, 8192.0],
     latitudes: (0.0, 0.0),
     pattern: { x: 0.0, y: 0.0, units: 1.0, height_factor: -1.0, },
   }

@@ -36,8 +36,9 @@ export const LINE_LEVELS = 3;
 const MAX_LINE_LABELS = 4096;
 // Floats per label in an entry's `lineLabels`; mirrored as LINE_FLOATS in map/line_labels.mbt.
 export const LINE_FLOATS = 6;
-// MapLibre's tile units per `@core.TILE_EXTENT` unit (4096).
-const TO_EXTENT = EXTENT / 4096;
+// MapLibre's tile units per `@core.TILE_EXTENT` unit.
+const TILE_EXTENT = 8192;
+const TO_EXTENT = EXTENT / TILE_EXTENT;
 // Longest label kept, in characters: tile text is untrusted (AGENTS.md §8.2).
 export const MAX_LABEL_CHARS = 256;
 // Most glyphs a worker keeps, and draws for one tile; past them characters are

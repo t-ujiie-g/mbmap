@@ -85,8 +85,8 @@ fn Emitter::advance(
     self.whole += d
     self.along += d
     self.distance = @cmp.minimum(
-      0xffff,
-      (self.along * self.scale).floor().to_int(),
+      0xfffe,
+      (self.along * self.scale * 0.5).floor().to_int() * 2,
     )
   }
 }

@@ -42,7 +42,7 @@ test "symbol layers pack their points' labels with the layer's layout" {
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
-    (0, 2048, 2048, 10.0, 0.0),
+    (0, 4096, 4096, 10.0, 0.0),
   )
   // The map's font, no transform, letter spacing or rotation.
   assert_eq((r.u8(), r.u8(), r.f64(), r.f64(), r.u32()), (0, 0, 0.0, 0.0, 2))
@@ -105,7 +105,7 @@ test "formatted text-fields pack their sections with scale and vertical align" {
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
-    (0, 2048, 2048, 16.0, 0.0),
+    (0, 4096, 4096, 16.0, 0.0),
   )
   r.u8() |> ignore
   r.u8() |> ignore
@@ -191,7 +191,7 @@ test "vertical writing and sort keys reach the labels" {
   assert_eq(r.u32(), 1)
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
-    (0, 2048, 2048, 16.0, 1.0),
+    (0, 4096, 4096, 16.0, 1.0),
   )
 }
 
@@ -223,7 +223,7 @@ test "icons pack their layout, then each label's image parts, size one zoom deep
   // No text, then the image's parts, its size at zoom 1 and its rotation.
   assert_eq(
     (r.u32(), r.i16(), r.i16(), r.f64(), r.f64()),
-    (0, 2048, 2048, 16.0, 0.0),
+    (0, 4096, 4096, 16.0, 0.0),
   )
   for _ in 0..<18 {
     r.u8() |> ignore
