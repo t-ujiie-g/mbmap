@@ -20,6 +20,7 @@ const modules = {
   shapes: { url: null, exports: null, imports: { Math } },
   surface: { url: null, exports: null, imports: { Math, host: hostText() } },
   viewshed: { url: null, exports: null, imports: { Math } },
+  route: { url: null, exports: null, imports: { Math } },
   proj: { url: null, exports: null, imports: { Math } },
 };
 // Calls run one after another, after init, in the order they came.
@@ -232,6 +233,24 @@ const OPS = {
       check, checked, writeInput, outputOf, module, crsId, transform: OPS.transform, worldWidth: WORLD_WIDTH,
     });
   },
+  // geojson-path-finder's graph of a dataset's lines, kept by handle in route_worker.
+  async network({ dataset, tolerance }) {
+    check(isId(dataset) && tolerance > 0 && Number.isFinite(tolerance));
+    const exports = await module("route");
+    writeInput(exports, [outputOf(wasm, counted(wasm.table_out(dataset)))]);
+    return checked(exports, exports.network_new(tolerance));
+  },
+  // The shortest path of `network` between two points on it: weight (km), then x, y pairs; empty for none.
+  async route({ network, from, to }) {
+    check(isId(network) && [...from, ...to].every(Number.isFinite) && from.length === 2 && to.length === 2);
+    const exports = await module("route");
+    return new Float64Array(outputOf(exports, checked(exports, exports.network_path(network, ...from, ...to)) * 8).buffer);
+  },
+  async disposeNetwork({ network }) {
+    check(isId(network));
+    (await module("route")).network_dispose(network);
+    return null;
+  },
   dispose({ dataset }) {
     check(isId(dataset));
     wasm.dispose(dataset);
@@ -386,6 +405,7 @@ onmessage = (e) => {
     modules.shapes.url = typeof msg.shapes === "string" ? msg.shapes : null;
     modules.surface.url = typeof msg.surface === "string" ? msg.surface : null;
     modules.viewshed.url = typeof msg.viewshed === "string" ? msg.viewshed : null;
+    modules.route.url = typeof msg.route === "string" ? msg.route : null;
     modules.proj.url = typeof msg.proj === "string" ? msg.proj : null;
     const host = { number: hostNumber(() => wasm.memory) };
     ready = WebAssembly.instantiateStreaming(fetch(msg.wasm), { Math, host })
