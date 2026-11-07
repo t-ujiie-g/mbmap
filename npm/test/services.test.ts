@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { arcgisBounds, arcgisIdentifyUrl, arcgisImage, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISService } from "../src/services/arcgis.ts";
-import { clampBounds, clickWindow, isWebMercator, lngLatToMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, resolved, validBounds, withQuery, zoomResolution, zoomTemplate } from "../src/services/common.ts";
+import { clampBounds, clickWindow, epsgCode, isWebMercator, lngLatToMercator, MERCATOR_HALF, mercatorToLngLat, mercatorZoom, northFirst, resolved, validBounds, withQuery, zoomForResolution, zoomResolution, zoomTemplate } from "../src/services/common.ts";
 import { isWebMercatorQuad, ogcLink, ogcLinks, ogcTileSource, ogcTilesetUrl, readOGCCollection, readOGCCollections } from "../src/services/ogcapi.ts";
 import { allLayers, type WMSCapabilities, wmsFeatureInfoUrl, wmsImage, type WMSLayer, wmsSource } from "../src/services/wms.ts";
 import { mercatorZooms, type WMTSCapabilities, type WMTSTileMatrixSet, wmtsSource } from "../src/services/wmts.ts";
@@ -87,7 +87,18 @@ test("wmsSource asks GetMap in EPSG:3857 with the layers' bounds and attribution
     attribution: "A | B",
   });
   assert.match(wmsSource(wms("1.1.1", [layer("a", { crs: ["EPSG:900913"] })]), { layers: "a", tileSize: 512 }).tiles[0], /&SRS=EPSG%3A900913&BBOX=/);
-  assert.throws(() => wmsSource(caps, { layers: "c" }), /not offered in EPSG:3857/);
+  assert.deepEqual(wmsSource(caps, { layers: "c" }), {
+    type: "reprojected",
+    crs: 4326,
+    image: {
+      template: "https://a.test/wms?map=m&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=c&STYLES=&FORMAT=image%2Fpng&TRANSPARENT=TRUE&WIDTH={width}&HEIGHT={height}&CRS=EPSG%3A4326&BBOX={bbox}",
+      northFirst: true,
+    },
+  });
+  const old = wmsSource(wms("1.1.1", [layer("a", { crs: ["EPSG:6677", "EPSG:4326"] })]), { layers: "a", crs: "EPSG:6677" });
+  assert.ok(old.type === "reprojected" && old.crs === 6677 && !old.image!.northFirst && /&SRS=EPSG%3A6677&/.test(old.image!.template));
+  assert.throws(() => wmsSource(wms("1.3.0", [layer("a", { crs: ["EPSG:6677"] }), layer("b", { crs: ["EPSG:4326"] })]), { layers: ["a", "b"] }), /share no EPSG CRS/);
+  assert.throws(() => wmsImage(caps, { layers: "c" }), /not offered in EPSG:3857/);
   assert.throws(() => wmsSource(caps, { layers: "x" }), /no layer named x/);
 });
 
@@ -132,7 +143,8 @@ test("wmtsSource fills a ResourceURL template, or asks GetTile by KVP", () => {
   assert.equal(kvp.tiles[0], "https://a.test/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=l&STYLE=plain&FORMAT=image%2Fpng&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX=EPSG%3A3857%3A{z}&TILEROW={y}&TILECOL={x}&Time=2021");
   assert.deepEqual([kvp.minzoom, kvp.maxzoom], [1, 2]);
   assert.throws(() => wmtsSource(wmts([]), { layer: "x" }), /no layer x/);
-  assert.throws(() => wmtsSource(wmts([]), { layer: "l", tileMatrixSet: "other" }), /no Web Mercator tile matrix set named other/);
+  assert.throws(() => wmtsSource(wmts([]), { layer: "l", tileMatrixSet: "nope" }), /no tile matrix set in Web Mercator or an EPSG CRS named nope/);
+  assert.equal(wmtsSource(wmts([]), { layer: "l", tileMatrixSet: "other" }).type, "reprojected");
   assert.throws(() => wmtsSource(wmts([], quad(0, 10, (z) => `L${String(z).padStart(2, "0")}`)), { layer: "l" }), /not named by zoom/);
   assert.throws(() => wmtsSource({ ...wmts([]), getTileUrl: undefined }, { layer: "l" }), /no URL for image\/png/);
 });
@@ -336,4 +348,34 @@ test("arcgisIdentifyUrl asks a MapServer's identify around the point in EPSG:432
   });
   assert.equal(query(arcgisIdentifyUrl("https://a.test/s/MapServer", [1, 2], 3)).layers, "all");
   assert.throws(() => arcgisIdentifyUrl("https://a.test/s/FeatureServer/0", [0, 0], 0), /not an ArcGIS MapServer/);
+});
+
+test("wmtsSource makes a reprojected source of a set in another EPSG CRS, its corners east first", () => {
+  const degree = (2 * MERCATOR_HALF) / 360;
+  const geographic: WMTSTileMatrixSet = {
+    id: "EPSG4326",
+    crs: "urn:ogc:def:crs:EPSG::4326",
+    matrices: [0, 1].map((z) => ({ id: `m${z}`, scale: (0.5625 / 2 ** z) * degree / 0.00028, topLeft: [90, -180] as [number, number], tileWidth: 512, tileHeight: 512, matrixWidth: 2 * 2 ** z, matrixHeight: 2 ** z })),
+  };
+  const caps = wmts([{ format: "image/png", resourceType: "tile", template: "https://a.test/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.png" }], geographic);
+  const s = wmtsSource({ ...caps, layers: [{ ...caps.layers[0], tileMatrixSets: ["EPSG4326"] }] }, { layer: "l" });
+  assert.equal(s.type, "reprojected");
+  if (s.type !== "reprojected") return;
+  assert.equal(s.crs, 4326);
+  assert.equal(s.grid!.template, "https://a.test/EPSG4326/{TileMatrix}/{TileRow}/{TileCol}.png");
+  const first = s.grid!.matrices[0];
+  assert.deepEqual([first.id, first.x, first.y, first.width, first.cols, first.rows], ["m0", -180, 90, 512, 2, 1]);
+  assert.ok(Math.abs(first.resolution - 0.5625) < 1e-12);
+  assert.equal(s.maxzoom, zoomForResolution(0.28125 * degree, 256));
+  const plane = { ...geographic, id: "JGD", crs: "EPSG:6677", matrices: [{ ...geographic.matrices[0], scale: 1000, topLeft: [100, -200] as [number, number] }] };
+  const p = wmtsSource({ ...caps, tileMatrixSets: [plane], layers: [{ ...caps.layers[0], tileMatrixSets: ["JGD"] }] }, { layer: "l" });
+  assert.ok(p.type === "reprojected" && p.crs === 6677 && p.grid!.matrices[0].x === -200 && p.grid!.matrices[0].y === 100 && Math.abs(p.grid!.matrices[0].resolution - 0.28) < 1e-12);
+});
+
+test("epsgCode, northFirst and zoomForResolution", () => {
+  assert.deepEqual(["EPSG:6677", "urn:ogc:def:crs:EPSG::4326", "http://www.opengis.net/def/crs/EPSG/0/3857", "CRS:84", "urn:ogc:def:crs:OGC:1.3:CRS84", "foo"].map(epsgCode), [6677, 4326, 3857, 4326, 4326, undefined]);
+  assert.deepEqual(["EPSG:4326", "CRS:84", "EPSG:6677", "EPSG:2451", "EPSG:32654", "EPSG:3857"].map(northFirst), [true, false, true, true, false, false]);
+  assert.equal(zoomForResolution((2 * MERCATOR_HALF) / 256, 256), 0);
+  assert.equal(zoomForResolution((2 * MERCATOR_HALF) / 256 / 2 ** 10 * 0.9, 256), 11);
+  assert.equal(zoomForResolution(1e-9, 256), 22);
 });

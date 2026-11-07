@@ -4,6 +4,7 @@
 import { tableInfo, tableToGeoJSON, withIds } from "../../wasmio/js/table.mjs";
 import { crsArg, type Crs } from "./crs";
 import { bboxArg, csvArgs, csvWriteArgs, formatOf, shapefileParts, type CsvOptions, type CsvWriteOptions, type DataFormat, type ShapefileParts, type WriteFormat } from "./data-format";
+import type { ReprojectedSource } from "./services/common";
 import { httpUrl, wasmUrl, type TransformedRequest } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -307,6 +308,23 @@ export async function rasterTile(input: Input, z: number, x: number, y: number, 
   const source = sourceOf(input, options, transfer);
   start(options);
   return client.call<ArrayBuffer | null>("rasterTile", { ...source, options: { z, x, y, tileSize, bands, range, colors, dem: dem === true, resampling } }, transfer);
+}
+
+/**
+ * XYZ tile `z`/`x`/`y` of a `reprojected` source (npm/README.md; mbmap/services' `wmsSource` and `wmtsSource` make them) as a PNG,
+ * or null where it shows nothing. `transformRequest` is asked once with the source's template: its headers and credentials go
+ * with each request.
+ */
+export async function reprojectTile(spec: ReprojectedSource, z: number, x: number, y: number, options: DataOptions & { tileSize?: 256 | 512; transformRequest?: ReadOptions["transformRequest"] } = {}): Promise<ArrayBuffer | null> {
+  if (![z, x, y].every(Number.isInteger) || z < 0 || z > 24 || x < 0 || y < 0 || x >= 2 ** z || y >= 2 ** z) fail("tile");
+  const part = spec.grid ?? spec.image;
+  if (!part || typeof part.template !== "string") return fail("reprojected source");
+  const template = new URL(part.template, document.baseURI).href.replace(/%7B(\w+)%7D/gi, "{$1}");
+  const r = options.transformRequest?.(template);
+  start(options);
+  const which = spec.grid ? { grid: { ...spec.grid, template } } : { image: { ...spec.image!, template } };
+  const init = r ? { headers: r.headers, credentials: r.credentials } : undefined;
+  return client.call<ArrayBuffer | null>("reprojectTile", { spec: { crs: spec.crs, ...which }, options: { z, x, y, tileSize: options.tileSize ?? 256 }, init });
 }
 
 /** Stops the data worker; pending calls reject. */

@@ -703,7 +703,7 @@ export class Map {
     return [];
   }
 
-  /** A GeoJSON tile for the engine, once the GeoJSON worker has started, or a GeoTIFF source's tile. */
+  /** A GeoJSON tile for the engine, once the GeoJSON worker has started, or a GeoTIFF or reprojected source's tile. */
   #providedTile(source: string, z: number, x: number, y: number): Promise<ArrayBuffer | null> {
     const spec = this.#style && (edit.sourceOf(this.#style, source) as Record<string, unknown> | undefined);
     if (spec?.type === "geotiff" && typeof spec.url === "string") {
@@ -712,6 +712,7 @@ export class Map {
       if (!info) return Promise.resolve(null);
       return import("./geotiff-source.js").then((m) => m.geotiffTile(url, spec, info, z, x, y, (u) => this.#transform?.(u, "Tile")));
     }
+    if (spec?.type === "reprojected") return import("./geotiff-source.js").then((m) => m.reprojectedTile(spec, z, x, y, (u) => this.#transform?.(u, "Tile")));
     if (this.#geojson) return this.#geojson.tile(source, z, x, y);
     return this.#geojsonLoading?.then((t) => t?.tile(source, z, x, y) ?? null) ?? Promise.resolve(null);
   }

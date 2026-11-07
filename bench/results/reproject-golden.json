@@ -1,0 +1,342 @@
+{
+  "env": {
+    "proj4": "2.22.0",
+    "node": "v22.23.4"
+  },
+  "results": [
+    {
+      "check": "wmts source",
+      "set": "GEO",
+      "ok": true,
+      "maxzoom": 13
+    },
+    {
+      "check": "wmts tile",
+      "set": "GEO",
+      "tile": "1/1/0",
+      "matrix": "m0",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "GEO",
+      "tile": "2/3/1",
+      "matrix": "m1",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "GEO",
+      "tile": "9/454/201",
+      "matrix": "m8",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "GEO",
+      "tile": "11/1819/806",
+      "matrix": "m10",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "GEO",
+      "tile": "13/7276/3225",
+      "matrix": "m12",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "GEO",
+      "tile": "15/29105/12903",
+      "matrix": "m12",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts source",
+      "set": "PLANE",
+      "ok": true,
+      "maxzoom": 12
+    },
+    {
+      "check": "wmts tile",
+      "set": "PLANE",
+      "tile": "9/454/201",
+      "matrix": "m2",
+      "bad": 0,
+      "lit": 49483,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "PLANE",
+      "tile": "11/1819/806",
+      "matrix": "m0",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "PLANE",
+      "tile": "13/7276/3225",
+      "matrix": "m0",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wmts tile",
+      "set": "PLANE",
+      "tile": "15/29105/12903",
+      "matrix": "m0",
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "version": "1.3.0",
+      "crs": 4326,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 4326,
+      "tile": "9/454/201",
+      "size": [
+        260,
+        212
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 4326,
+      "tile": "11/1819/806",
+      "size": [
+        261,
+        213
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 4326,
+      "tile": "13/7276/3225",
+      "size": [
+        260,
+        213
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 4326,
+      "tile": "15/29105/12903",
+      "size": [
+        261,
+        213
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "version": "1.3.0",
+      "crs": 6677,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 6677,
+      "tile": "9/454/201",
+      "size": [
+        261,
+        260
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 6677,
+      "tile": "11/1819/806",
+      "size": [
+        261,
+        259
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 6677,
+      "tile": "13/7276/3225",
+      "size": [
+        261,
+        260
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 6677,
+      "tile": "15/29105/12903",
+      "size": [
+        261,
+        260
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "version": "1.1.1",
+      "crs": 4326,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.1.1",
+      "crs": 4326,
+      "tile": "9/454/201",
+      "size": [
+        260,
+        212
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.1.1",
+      "crs": 4326,
+      "tile": "11/1819/806",
+      "size": [
+        261,
+        213
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.1.1",
+      "crs": 4326,
+      "tile": "13/7276/3225",
+      "size": [
+        260,
+        213
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.1.1",
+      "crs": 4326,
+      "tile": "15/29105/12903",
+      "size": [
+        261,
+        213
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms source",
+      "version": "1.3.0",
+      "crs": 32654,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 32654,
+      "tile": "9/454/201",
+      "size": [
+        264,
+        263
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 32654,
+      "tile": "11/1819/806",
+      "size": [
+        263,
+        262
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 32654,
+      "tile": "13/7276/3225",
+      "size": [
+        264,
+        263
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    },
+    {
+      "check": "wms tile",
+      "version": "1.3.0",
+      "crs": 32654,
+      "tile": "15/29105/12903",
+      "size": [
+        264,
+        263
+      ],
+      "bad": 0,
+      "lit": 65536,
+      "ok": true
+    }
+  ]
+}

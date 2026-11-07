@@ -1,4 +1,4 @@
-import { type Bounds, clampBounds, isWebMercator, MERCATOR_HALF, mercatorZoom, OGC_PIXEL_METERS, resolved, type TileSource, validBounds, withQuery, zoomTemplate } from "./common.ts";
+import { type Bounds, clampBounds, epsgCode, isWebMercator, MERCATOR_HALF, mercatorZoom, metersPerUnit, northFirst, OGC_PIXEL_METERS, type ReprojectedSource, resolved, type TileSource, validBounds, withQuery, zoomForResolution, zoomTemplate } from "./common.ts";
 import { at, children, first, href, numbers, optional, parseXml, text, texts } from "./xml.ts";
 
 /** A tile matrix: `topLeft` as written (in the CRS's axis order). */
@@ -138,48 +138,68 @@ export interface WMTSSourceOptions {
  * A raster source for a WMTS layer in a Web Mercator tile matrix set (RESTful when the layer has a
  * ResourceURL for the format, else KVP), with the layer's bounds and the set's zooms.
  */
-export function wmtsSource(capabilities: WMTSCapabilities, options: WMTSSourceOptions): TileSource {
+export function wmtsSource(capabilities: WMTSCapabilities, options: WMTSSourceOptions): TileSource | ReprojectedSource {
   const layer = capabilities.layers.find((l) => l.id === options.layer);
   if (!layer) throw new Error(`mbmap: services: the WMTS has no layer ${options.layer}`);
   const sets = capabilities.tileMatrixSets.filter((s) => layer.tileMatrixSets.includes(s.id) && (options.tileMatrixSet === undefined || s.id === options.tileMatrixSet));
+  const bounds = layer.bounds && { bounds: clampBounds(layer.bounds) };
   const set = sets.find((s) => mercatorZooms(s));
-  if (!set) throw new Error(`mbmap: services: the WMTS layer ${layer.id} has no Web Mercator tile matrix set${options.tileMatrixSet ? ` named ${options.tileMatrixSet}` : ""}`);
-  const [minzoom, maxzoom] = mercatorZooms(set)!;
-  const matrix = zoomTemplate(set.matrices.map((m) => m.id), minzoom);
-  if (matrix === null) throw new Error(`mbmap: services: the tile matrices of ${set.id} are not named by zoom`);
+  if (set) {
+    const [minzoom, maxzoom] = mercatorZooms(set)!;
+    const matrix = zoomTemplate(set.matrices.map((m) => m.id), minzoom);
+    if (matrix === null) throw new Error(`mbmap: services: the tile matrices of ${set.id} are not named by zoom`);
+    return { type: "raster", tiles: [tileTemplate(capabilities, layer, set, options, matrix, "{y}", "{x}")], tileSize: set.matrices[0].tileWidth, minzoom, maxzoom, ...bounds };
+  }
+  // Another CRS: drawn by mbmap/data's worker, which reprojects the set's tiles.
+  const other = sets.find((s) => epsgCode(s.crs) !== undefined && s.matrices.length > 0);
+  if (!other) throw new Error(`mbmap: services: the WMTS layer ${layer.id} has no tile matrix set in Web Mercator or an EPSG CRS${options.tileMatrixSet ? ` named ${options.tileMatrixSet}` : ""}`);
+  const unit = metersPerUnit(other.crs);
+  const matrices = other.matrices.map((m) => {
+    const [x, y] = northFirst(other.crs) ? [m.topLeft[1], m.topLeft[0]] : m.topLeft;
+    return { id: m.id, resolution: (m.scale * OGC_PIXEL_METERS) / unit, x, y, width: m.tileWidth, height: m.tileHeight, cols: m.matrixWidth, rows: m.matrixHeight };
+  });
+  const finest = Math.min(...matrices.map((m) => m.resolution)) * unit;
+  return {
+    type: "reprojected",
+    crs: epsgCode(other.crs)!,
+    grid: { template: tileTemplate(capabilities, layer, other, options, "{TileMatrix}", "{TileRow}", "{TileCol}"), matrices },
+    minzoom: 0,
+    maxzoom: zoomForResolution(finest, 256),
+    ...bounds,
+  };
+}
+
+/** The URL of `layer`'s tiles in `set` with `matrix`, `row` and `col` (templates with braces) for the matrix, row and column. */
+function tileTemplate(capabilities: WMTSCapabilities, layer: WMTSLayer, set: WMTSTileMatrixSet, options: WMTSSourceOptions, matrix: string, row: string, col: string): string {
   const style = options.style ?? (layer.styles.find((s) => s.isDefault) ?? layer.styles[0])?.id ?? "default";
   const format = options.format ?? layer.formats[0] ?? layer.resources.find((r) => r.resourceType === "tile")?.format ?? "image/png";
   const values: Record<string, string> = Object.create(null);
   for (const d of layer.dimensions) values[d.id] = options.dimensions?.[d.id] ?? d.default;
   const resource = layer.resources.find((r) => r.resourceType === "tile" && r.format === format);
-  let url: string;
   if (resource) {
-    url = resource.template.replace(/\{([^}]+)\}/g, (all, name: string) => {
+    return resource.template.replace(/\{([^}]+)\}/g, (all, name: string) => {
       const key = name.toLowerCase();
       if (key === "tilematrixset") return encodeURIComponent(set.id);
-      if (key === "tilematrix") return matrix.split("{z}").map(encodeURIComponent).join("{z}");
-      if (key === "tilerow") return "{y}";
-      if (key === "tilecol") return "{x}";
+      if (key === "tilematrix") return matrix.split(/(\{\w+\})/).map((p) => (/^\{\w+\}$/.test(p) ? p : encodeURIComponent(p))).join("");
+      if (key === "tilerow") return row;
+      if (key === "tilecol") return col;
       if (key === "style") return encodeURIComponent(style);
       const dimension = Object.keys(values).find((d) => d.toLowerCase() === key);
       return dimension === undefined ? all : encodeURIComponent(values[dimension]);
     });
-  } else if (capabilities.getTileUrl) {
-    url = withQuery(capabilities.getTileUrl, {
-      SERVICE: "WMTS",
-      REQUEST: "GetTile",
-      VERSION: capabilities.version || "1.0.0",
-      LAYER: layer.id,
-      STYLE: style,
-      FORMAT: format,
-      TILEMATRIXSET: set.id,
-      TILEMATRIX: matrix,
-      TILEROW: "{y}",
-      TILECOL: "{x}",
-      ...values,
-    });
-  } else {
-    throw new Error(`mbmap: services: the WMTS layer ${layer.id} has no URL for ${format}`);
   }
-  return { type: "raster", tiles: [url], tileSize: set.matrices[0].tileWidth, minzoom, maxzoom, ...(layer.bounds && { bounds: clampBounds(layer.bounds) }) };
+  if (!capabilities.getTileUrl) throw new Error(`mbmap: services: the WMTS layer ${layer.id} has no URL for ${format}`);
+  return withQuery(capabilities.getTileUrl, {
+    SERVICE: "WMTS",
+    REQUEST: "GetTile",
+    VERSION: capabilities.version || "1.0.0",
+    LAYER: layer.id,
+    STYLE: style,
+    FORMAT: format,
+    TILEMATRIXSET: set.id,
+    TILEMATRIX: matrix,
+    TILEROW: row,
+    TILECOL: col,
+    ...values,
+  });
 }

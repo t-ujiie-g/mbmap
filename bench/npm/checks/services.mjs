@@ -1,6 +1,6 @@
-// mbmap/services on bench/npm/pages/services: WMTS, ArcGIS VectorTileServer and WMS layers (tiled or one image
-// of the view) draw the GSI tiles they name, features come from f=pbf, f=json, GetFeatureInfo and identify, and
-// exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
+// mbmap/services on bench/npm/pages/services: WMTS, ArcGIS VectorTileServer and WMS layers (tiled, one image of the
+// view, or reprojected from EPSG:4326) draw what they name, features come from f=pbf, f=json, GetFeatureInfo and
+// identify, and exceptions, malformed documents, unknown layers and non-http URLs are refused with the reason.
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { decodePng } from "../../lib/png.mjs";
@@ -178,6 +178,21 @@ export async function servicesChecks(page, requests) {
     single.identified.features?.[0]?.id === "1" && single.identified.features[0].layer?.name === "Stations" &&
     JSON.stringify(single.identified.features[0].geometry) === JSON.stringify({ type: "Point", coordinates: [139.7671, 35.6812] });
 
+  // A WMTS in EPSG:4326 (wmts-4326.xml: the west half blue, the east green) becomes a reprojected source.
+  const geo = await page.evaluate(async () => {
+    const map = window.__map;
+    const services = await import("mbmap/services");
+    const source = services.wmtsSource(await services.getCapabilities("./wmts-4326.xml", "WMTS"), { layer: "halves" });
+    map.jumpTo({ center: [0, 0], zoom: 1 });
+    map.setStyle({ version: 8, sources: { geo: source }, layers: [{ id: "bg", type: "background", paint: { "background-color": "#ffffff" } }, { id: "geo", type: "raster", source: "geo" }] });
+    await map.once("idle");
+    return { type: source.type, crs: source.crs, template: source.grid?.template, west: map.project([-60, 0]), east: map.project([60, 0]) };
+  });
+  const pixel = async ({ x, y }) => [...decodePng(await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } })).rgba.slice(0, 3)];
+  geo.colors = [await pixel(geo.west), await pixel(geo.east)];
+  const geoOk = geo.type === "reprojected" && geo.crs === 4326 && /\/geo\/\{TileMatrix\}\/\{TileRow\}\/\{TileCol\}\.png$/.test(geo.template) &&
+    JSON.stringify(geo.colors) === JSON.stringify([[0, 0, 255], [0, 255, 0]]);
+
   const first = getMaps[0] ?? {};
   const bbox = (first.BBOX ?? "").split(",").map(Number);
   const loaded = requests.map((u) => u.split("/").pop().split("?")[0]).filter((n) => /services|\.xml$/.test(n));
@@ -199,6 +214,7 @@ export async function servicesChecks(page, requests) {
     vector.source.minzoom === 14 && vector.source.maxzoom === 14 && vector.source.attribution === "国土地理院ベクトルタイル提供実験" &&
     JSON.stringify(follow.features) === JSON.stringify(["tokyo", "yurakucho", "kanda"]) && follow.bounds >= 1 && follow.first.length === 4 &&
     follow.kanda[0] > 200 && follow.kanda[1] < 80 && follow.moved && follow.stillStopped &&
-    esriOk && loaded.includes("services-worker.js") && loaded.includes("services.wasm") && singleOk;
-  return [ok, { ...r, same, drawn, vector, follow, single: { ok: singleOk, request: imageMap, coordinates: corners, bounds: single.bounds, info: single.info, identified: single.identified }, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
+    esriOk && loaded.includes("services-worker.js") && loaded.includes("services.wasm") && singleOk &&
+    geoOk && requests.some((u) => /data-reproject\.js$/.test(u));
+  return [ok, { ...r, same, drawn, vector, follow, geo: { ok: geoOk, ...geo }, single: { ok: singleOk, request: imageMap, coordinates: corners, bounds: single.bounds, info: single.info, identified: single.identified }, features: { ok: esriOk, refused: features.refused, pbf: features.pbf.features.length }, getMaps: getMaps.length, first, loaded: [...new Set(loaded)] }];
 }

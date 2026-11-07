@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 133155,
+      "bytes": 133260,
       "budget": 135000
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "name": "GeoTIFF sources (loaded by mbmap with the first one; tiles by mbmap/data)",
-      "bytes": 245,
+      "bytes": 301,
       "budget": 1000
     },
     {
@@ -71,7 +71,7 @@
     },
     {
       "name": "mbmap/services",
-      "bytes": 10125,
+      "bytes": 10786,
       "budget": 12000
     },
     {
@@ -151,12 +151,12 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 4528,
+      "bytes": 4706,
       "budget": 6000
     },
     {
       "name": "data worker",
-      "bytes": 39264,
+      "bytes": 39752,
       "budget": 40000
     },
     {
@@ -168,6 +168,11 @@
       "name": "FlatGeobuf headers, index and range requests (loaded by the data worker with the first one)",
       "bytes": 2125,
       "budget": 2500
+    },
+    {
+      "name": "reprojected sources' tiles (loaded by the data worker with the first one)",
+      "bytes": 1797,
+      "budget": 2000
     },
     {
       "name": "coordinates from another CRS (loaded by the data worker with proj.wasm)",

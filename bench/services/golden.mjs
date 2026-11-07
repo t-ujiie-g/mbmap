@@ -435,6 +435,21 @@ try {
   report({ check: "arcgis features", ok: false, error: String(e) });
 }
 
+// A WMTS of EPSG:4326 only (GIBS): a reprojected source, its first matrix at the world's top-left corner, its tiles images.
+try {
+  const url = "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/1.0.0/WMTSCapabilities.xml";
+  const caps = services.readWMTSCapabilities(await get(url), url);
+  const layer = caps.layers.find((l) => l.id === "BlueMarble_ShadedRelief") ?? caps.layers[0];
+  const source = services.wmtsSource(caps, { layer: layer.id });
+  const m = source.grid?.matrices[0];
+  const tileUrl = source.grid?.template.replace("{TileMatrix}", encodeURIComponent(m.id)).replace("{TileRow}", 0).replace("{TileCol}", 0);
+  const fetched = tileUrl && (await fetchesImage(tileUrl));
+  const corner = m && Math.abs(m.x + 180) < 1e-9 && Math.abs(m.y - 90) < 1e-9;
+  report({ check: "wmts reprojected", url, layer: layer.id, crs: source.crs, matrices: source.grid?.matrices.length, maxzoom: source.maxzoom, ok: source.type === "reprojected" && source.crs === 4326 && corner && fetched === true, fetched });
+} catch (e) {
+  report({ check: "wmts reprojected", ok: false, error: String(e) });
+}
+
 // A click on Tokyo in SampleWorldCities: identify finds the city.
 try {
   const identify = JSON.parse(await get(services.arcgisIdentifyUrl(SAMPLE_CITIES, TOKYO, 10, { layers: "all:0" })));

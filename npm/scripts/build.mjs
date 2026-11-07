@@ -45,7 +45,7 @@ const MAP_PARTS = same(["geojson", "pmtiles", "legacy", "sprite", "media", "cust
 // Imported by the display worker on first use.
 const WORKER_PARTS = { "./symbols.mjs": "./worker-labels.js", "./pmtiles.mjs": "./worker-pmtiles.js", "./query.mjs": "./worker-query.js" };
 // Imported by the data worker on first use.
-const DATA_PARTS = { "../../npm/src/zip.ts": "./data-zip.js", "./crs.mjs": "./data-crs.js", "./fgb.mjs": "./data-fgb.js", "./geotiff.mjs": "./data-geotiff.js" };
+const DATA_PARTS = { "../../npm/src/zip.ts": "./data-zip.js", "./crs.mjs": "./data-crs.js", "./fgb.mjs": "./data-fgb.js", "./geotiff.mjs": "./data-geotiff.js", "./reproject.mjs": "./data-reproject.js" };
 // Loaded on the first PROJ string.
 const PROJSTRING = separate(same(["projstring"]));
 

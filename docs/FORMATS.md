@@ -586,7 +586,11 @@ value)` fills a block of no bytes; `bands()` writes each band's little-endian va
 ArrayBuffer (Terrarium elevations with `dem`), or null off the file; files in a CRS other than
 EPSG:3857 or 4326 get every pixel center through proj.wasm's `transform_coords`. A map's `geotiff` sources get
 their tiles this way through the engine's tile provider (map/dom.mbt `Provider`), which hands them
-to a display worker as raster or DEM tile bytes.
+to a display worker as raster or DEM tile bytes. `op: "reprojectTile"` takes `spec` (`{crs, grid}` or
+`{crs, image}`, npm/src/services/common.ts `ReprojectedSource`, checked by data_worker/js/reproject.mjs
+`isReprojected`), `options` `{z, x, y, tileSize}` and `init` (headers and credentials for every image it
+fetches), and answers a PNG ArrayBuffer or null where nothing shows; `reprojected` sources get their tiles
+this way too.
 
 Out, for a read: `{type: "result", id, value: {table, ids, layer, layers}}` with `table` an
 ArrayBuffer of "Table" bytes and `ids` of the ids' property values or null (both transferred),
