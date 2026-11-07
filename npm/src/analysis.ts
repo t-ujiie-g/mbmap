@@ -7,6 +7,7 @@
 import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
 import { packPattern } from "./relate-pattern";
+import { CURVATURE_COEFF, groundDistance, sight } from "./sight";
 
 export { classBreaks, classStep, MAX_CLASS_VALUES, MAX_CLASSES, statistics, type ClassMethod, type Statistics } from "./classify";
 import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
@@ -18,8 +19,8 @@ export type BBox = [number, number, number, number];
 /**
  * Where the analysis worker and its wasm (`workerUrl`, `wasmUrl`), the geometry module
  * (`geometryWasmUrl`), the spatial relation module (`relateWasmUrl`), the shape module
- * (`shapesWasmUrl`), the surface module (`surfaceWasmUrl`) and the coordinate system module
- * (`projWasmUrl`) are served; by default next to this module.
+ * (`shapesWasmUrl`), the surface module (`surfaceWasmUrl`), the viewshed module (`viewshedWasmUrl`) and
+ * the coordinate system module (`projWasmUrl`) are served; by default next to this module.
  */
 export interface AnalysisOptions {
   workerUrl?: string | URL;
@@ -28,6 +29,7 @@ export interface AnalysisOptions {
   relateWasmUrl?: string | URL;
   shapesWasmUrl?: string | URL;
   surfaceWasmUrl?: string | URL;
+  viewshedWasmUrl?: string | URL;
   projWasmUrl?: string | URL;
 }
 
@@ -70,6 +72,37 @@ export interface BufferOptions {
 export interface LoadOptions extends AnalysisOptions {
   crs?: Crs;
 }
+
+/** `DemGrid.viewshed`'s options, as gdal_viewshed's `-oz`, `-tz`, `-md`, `-cc`, `-om`, `-vv`, `-iv`, `-ov`. */
+export interface ViewshedOptions {
+  observerHeight?: number;
+  targetHeight?: number;
+  maxDistance?: number;
+  curvatureCoeff?: number;
+  mode?: keyof typeof VIEWSHED_MODES;
+  visibleValue?: number;
+  invisibleValue?: number;
+  outOfRangeValue?: number;
+}
+
+/** A viewshed: its cells row by row from the north over `bounds`. */
+export interface ViewshedResult {
+  width: number;
+  height: number;
+  bounds: BBox;
+  values: Float64Array;
+}
+
+/** `DemGrid.lineOfSight`'s options. */
+export interface LineOfSightOptions {
+  observerHeight?: number;
+  targetHeight?: number;
+  curvatureCoeff?: number;
+  samples?: number;
+}
+
+const VIEWSHED_MODES = { normal: 0, dem: 1, ground: 2 } as const;
+const MAX_SIGHT_SAMPLES = 100_000;
 
 /** `Dataset.interpolate`'s options. */
 export interface InterpolateOptions {
@@ -137,6 +170,7 @@ function start(options: AnalysisOptions): void {
     relate: wasmUrl(options.relateWasmUrl ?? new URL("./relate.wasm", import.meta.url), page),
     shapes: wasmUrl(options.shapesWasmUrl ?? new URL("./shapes.wasm", import.meta.url), page),
     surface: wasmUrl(options.surfaceWasmUrl ?? new URL("./surface.wasm", import.meta.url), page),
+    viewshed: wasmUrl(options.viewshedWasmUrl ?? new URL("./viewshed.wasm", import.meta.url), page),
     proj: wasmUrl(options.projWasmUrl ?? new URL("./proj.wasm", import.meta.url), page),
   }));
 }
@@ -513,6 +547,37 @@ export class DemGrid {
   #call<T>(op: string, args: object = {}): Promise<T> {
     if (this.#disposed) return Promise.reject(new Error("mbmap: analysis: the grid was disposed"));
     return call<T>(op, { grid: this.#id, ...args });
+  }
+
+  /**
+   * The cells seen from `observer` (`[lng, lat]`) as gdal_viewshed computes them (`observerHeight`,
+   * `targetHeight` above the ground, `maxDistance` meters, 0 for no limit, `curvatureCoeff`): `normal`
+   * gives `visibleValue` / `invisibleValue` / `outOfRangeValue` per cell, `dem` and `ground` the height a
+   * target there must reach to be seen (above sea level or above the ground). The grid is cut to
+   * `maxDistance`; a DEM grid is measured in ground meters at its middle latitude.
+   */
+  async viewshed(observer: [number, number], options: ViewshedOptions = {}): Promise<ViewshedResult> {
+    const { observerHeight = 2, targetHeight = 0, maxDistance = 0, curvatureCoeff = CURVATURE_COEFF, mode = "normal", visibleValue = 255, invisibleValue = 0, outOfRangeValue = 0 } = options;
+    if (!(mode in VIEWSHED_MODES)) throw new Error(`mbmap: analysis: unknown viewshed mode ${mode}`);
+    return this.#call("viewshed", {
+      observer,
+      options: { observerHeight, targetHeight, maxDistance, curvatureCoeff, mode: VIEWSHED_MODES[mode], visible: visibleValue, invisible: invisibleValue, outOfRange: outOfRangeValue },
+    });
+  }
+
+  /**
+   * Whether `to` can be seen from `from` (both `[lng, lat]`) over the grid's elevations sampled bilinearly
+   * along the line (`samples`, by default one per cell), with gdal_viewshed's curvature correction and
+   * distances on Turf's sphere; `blockedAt` is the first sample that hides it.
+   */
+  async lineOfSight(from: [number, number], to: [number, number], { observerHeight = 2, targetHeight = 0, curvatureCoeff = CURVATURE_COEFF, samples }: LineOfSightOptions = {}): Promise<{ visible: boolean; blockedAt: [number, number] | null }> {
+    const cell = groundDistance([this.bounds[0], this.bounds[1]], [this.bounds[2], this.bounds[1]]) / this.width;
+    const n = samples ?? Math.min(MAX_SIGHT_SAMPLES, Math.max(2, Math.ceil(groundDistance(from, to) / cell) + 1));
+    if (!Number.isInteger(n) || n < 2 || n > MAX_SIGHT_SAMPLES) throw new Error("mbmap: analysis: invalid number of samples");
+    const points = Array.from({ length: n }, (_, i): [number, number] => [from[0] + ((to[0] - from[0]) * i) / (n - 1), from[1] + ((to[1] - from[1]) * i) / (n - 1)]);
+    const heights = await this.sample(points);
+    const s = sight(heights, points.map((p) => groundDistance(from, p)), observerHeight, targetHeight, curvatureCoeff);
+    return { visible: s.visible, blockedAt: s.blockedAt === null ? null : points[s.blockedAt] };
   }
 
   /** Elevations in meters; NaN where the DEM has no data. */

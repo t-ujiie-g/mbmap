@@ -721,11 +721,15 @@ Test / benchmark data:
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 - analysis/terrain.mbt: follows gdaldem 3.13.3 (apps/gdaldem_lib.cpp: Horn's slope,
-  aspect and hillshade)
+  aspect and hillshade); viewshed/ follows GDAL 3.13.3's viewshed
+  (alg/viewshed/viewshed.cpp, viewshed_executor.cpp, util.cpp, apps/gdal_viewshed.cpp,
+  apps/gdalalg_raster_viewshed.cpp)
   https://github.com/OSGeo/gdal — MIT License:
 
     Copyright (c) 2006, 2009 Matthew Perry
     Copyright (c) 2009-2013, Even Rouault <even dot rouault at spatialys.com>
+    (c) 2024 info@hobu.co
+    Copyright (c) 2025, Even Rouault <even dot rouault at spatialys.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a copy of
     this software and associated documentation files (the "Software"), to deal in

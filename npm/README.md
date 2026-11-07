@@ -55,6 +55,7 @@ Worker と wasm：
 | `dist/analysis-worker.js`, `dist/analysis.wasm` | 解析の Worker と wasm。`mbmap/analysis` を初めて呼んだときに起こす |
 | `dist/geometry.wasm` | ジオメトリ演算（buffer、dissolve、clip、erase、intersect、split、merge）。解析の Worker が、初めて演算を呼んだときだけ読む |
 | `dist/relate.wasm` | 空間関係（DE-9IM）。解析の Worker が、初めて `relate` を呼んだときだけ読む |
+| `dist/viewshed.wasm`, `dist/analysis-viewshed.js` | 可視域（GDAL の gdal_viewshed）。解析の Worker が、初めて `viewshed` を呼んだときだけ読む |
 | `dist/surface.wasm` | グリッド、IDW、DBSCAN・k-means、等値線・等値帯、カーネル密度。解析の Worker が、初めて呼んだときだけ読む |
 | `dist/shapes.wasm` | 単純化、凸包・凹包、ドロネー・ボロノイ、線上の最近点と切り出し。解析の Worker が、初めて呼んだときだけ読む |
 | `dist/proj.wasm` | 座標系の変換。解析の Worker とデータの Worker が、初めて座標系を使ったときだけ読む |
@@ -70,7 +71,7 @@ Worker と wasm：
 - `new Map` の `workerUrl` は `worker.js` の場所。`worker-labels.js`、`worker-pmtiles.js`、`worker-query.js` は、その隣に置く。`wasmUrl` は `mbmap.wasm` の場所。
 - `geojsonWorkerUrl`、`geojsonWasmUrl`、`geojsonPropertiesWasmUrl`（`new Map` のオプション）は、`geojson-worker.js`、`geojson.wasm`、`geojson-properties.wasm` の場所。
 - `index.js` の動的 import（上の表）、`analysis.js` と `data.js` の `projstring.js`、`data.js` の `prjwkt.js`、`data-worker.js` の `data-zip.js` と `data-crs.js` は、場所を変えられない。それぞれの隣に置く。
-- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`surfaceWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
+- `mbmap/analysis` の関数は、最後の引数のオプションで `workerUrl`（`analysis-worker.js`）、`wasmUrl`（`analysis.wasm`）、`geometryWasmUrl`、`relateWasmUrl`、`shapesWasmUrl`、`surfaceWasmUrl`、`viewshedWasmUrl`、`projWasmUrl` を、`mbmap/geodesic` の関数は `workerUrl`（`geodesic-worker.js`）と `wasmUrl`（`geodesic.wasm`）を、`mbmap/data` の関数は `workerUrl`（`data-worker.js`）、`wasmUrl`（`data.wasm`）、`projWasmUrl`、`xmlUrl`（`xml.wasm`）を受け付ける。Worker は最初の呼び出しのオプションで起こす。
 
 Worker はページと同じオリジンの http(s)、wasm は http(s) の URL に限る（`data:` や `blob:` は受け付けない）。モジュール Worker はページと同じオリジンでなければならない。
 
@@ -255,6 +256,8 @@ blocks.dispose();
   - 測地系の変換は `+towgs84`（3 または 7 パラメータ）と `+datum`（`WGS84`、`NAD83`、`potsdam`、`OSGB36`、`ch1903` など proj4js と同じ名前）で、WGS84 を経由して行う。日本測地系は EPSG の 3 パラメータ（-146.414, 507.337, 680.507）。グリッドによる変換（`+nadgrids`、TKY2JGD など）は使えない。JGD2000・JGD2011 と WGS84 は同じものとして扱う。
   - 値は proj4js 2.22.0 と 1mm 未満で一致する（240 の座標系で黄金テストをしている）。proj4js が明らかに誤っているところ（`+R_A` の半径、正弦図法などの偽原点）は PROJ に合わせた。
 - `loadDem(tiles, { zoom, bounds, encoding })`：標高タイル（`{z}/{x}/{y}` の http(s) URL）のうち `bounds` を覆うものを並べて、1つの標高の格子（`DemGrid`）にする。`DemGrid` は `width`、`height`、`bounds`（タイルの境界に合わせた範囲）、`elevations()`、`slope()`（度）、`aspect()`（北から時計回りの度。平らなところは NaN）、`hillshade({ azimuth, altitude, zFactor })`（1〜255）、`dispose()`。勾配・斜面方位・陰影起伏は GDAL の gdaldem（Horn の方法）と同じ式で、黄金テストで比べている。
+- `DemGrid.viewshed(observer, { observerHeight, targetHeight, maxDistance, curvatureCoeff, mode, visibleValue, invisibleValue, outOfRangeValue })`：`observer`（`[lng, lat]`）から見える範囲（GDAL 3.13.3 の `gdal_viewshed` の移植。`viewshed.wasm` を読む）。既定は gdal_viewshed と同じ（観測点の高さ 2 m、目標 0 m、距離の上限なし、屈折の係数 0.85714）。`mode` は `"normal"`（見える 255・見えない 0・範囲外 0）、`"dem"`・`"ground"`（そこにある目標が見えるのに要る高さ。海面から／地面から）。結果は `{ width, height, bounds, values }`（`maxDistance` の範囲に切られる）。標高タイルの格子は、傾斜と同じく中央の緯度での地上のメートルで測る。GeoTIFF の格子は投影座標系に限る。
+- `DemGrid.lineOfSight(from, to, { observerHeight, targetHeight, curvatureCoeff, samples })`：`to` が `from` から見えるか。線に沿って標高を双一次で取り（既定でセルごとに 1 点）、gdal_viewshed と同じく地球の曲がりの分だけ下げて比べる。`{ visible, blockedAt }`（隠している最初の点）。
 - `DemGrid.sample(positions)`：`[lng, lat]` ごとの標高（m）。セルの中心の間を双一次で補間する（GDAL の `-r bilinear` と同じ。黄金テストで 1e-8 m の桁まで一致）。格子の外と、データのないセルの隣は NaN。
 - `loadGrid(raster, { band, scale })`：`mbmap/data` の `readRaster` で読んだ GeoTIFF の帯（既定は 0）を `DemGrid` にする。`noData` のセルは値なし。セルの大きさは解像度を `scale`（gdaldem の `-s`。経緯度の度とメートルなら 111120）で割ったもの。GeoKeys が PixelIsPoint なら、GDAL と同じく画素の中心がタイポイントに来る。`sample` は経緯度を受け取り、GeoTIFF の座標系へは `proj.wasm` で変える。一辺 4096 セルまで。
 - `sampleDem(tiles, positions, { encoding, maxZoom, tileSize })`：`positions` を覆う標高タイルを、1 つの格子に収まるいちばん深いズーム（既定で 14 まで、24 が上限）で読み、標高を返す。`tileSize` は 256〜4096。サーバーにないタイル（404）は、`loadDem` と同じく 0 m として扱う。1 つの格子に入りきらないほどのタイル（一辺 16 枚を超えるもの）は、取得する前に断る。
