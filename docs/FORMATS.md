@@ -363,6 +363,9 @@ A rendered-features query of one tile, little-endian:
   viewport width and height (CSS px), the center's clip w, world pixels per meter,
   the camera's bearing in radians;
 - 16 f64: the tile's matrix (`TILE_EXTENT` units to clip space, column-major);
+- u8 1 on the globe (else 0), then 16 f64, the globe's matrix (unit sphere to clip
+  space), and 4 f64, the tile's mercator corner and size per unit (x, y, sx, sy):
+  circles are measured on screen through the sphere;
 - u32 n, n f64 pairs: the query (one point, or a closed ring) in `TILE_EXTENT`
   units; u32 m, m pairs: the same grown to the point under the camera
   (MapLibre's camera query geometry, used for extrusions);

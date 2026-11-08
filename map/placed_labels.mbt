@@ -48,11 +48,12 @@ pub fn Map::placed_labels(self : Map) -> String {
             out.write_string(",")
             for k in 0..<n {
               let g = (q0 + k) * 3
-              let (cx, cy, _, cw) = d.at.matrix.apply(
+              let (cx, cy, cw, _) = self.label_clip(
+                d.at,
+                d.id,
                 l.glyphs[g],
                 l.glyphs[g + 1],
                 0.0,
-                1.0,
               )
               let sx = screen_x(cx, cw, self.transform.width)
               let sy = screen_y(cy, cw, self.transform.height)

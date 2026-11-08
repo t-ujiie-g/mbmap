@@ -6,6 +6,106 @@
   },
   "results": [
     {
+      "scene": "globe-vectors",
+      "ok": true,
+      "mean": 0.009,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-pitched",
+      "ok": true,
+      "mean": 0.003,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-pole",
+      "ok": true,
+      "mean": 0.004,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-heatmap",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-line-styles",
+      "ok": true,
+      "mean": 0.01,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-labels",
+      "ok": true,
+      "mean": 0.032,
+      "p99": 0,
+      "limits": {
+        "mean": 0.2,
+        "p99": 7
+      }
+    },
+    {
+      "scene": "globe-labels-pitched",
+      "ok": true,
+      "mean": 0.032,
+      "p99": 0,
+      "limits": {
+        "mean": 0.2,
+        "p99": 7
+      }
+    },
+    {
+      "scene": "globe-labels-transition",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.2,
+        "p99": 7
+      }
+    },
+    {
+      "scene": "globe-icons-lines",
+      "ok": true,
+      "mean": 0.03,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-map-circles",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
       "scene": "fills",
       "ok": true,
       "mean": 0,

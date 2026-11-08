@@ -46,11 +46,12 @@ pub fn ExtrusionBuffers::num_vertices(self : ExtrusionBuffers) -> Int32 {
 pub struct ExtrusionTessellator {
   priv fill : FillTessellator
   priv roof : FillBuffers
+  priv ring : Array[Int32]
 }
 
 ///|
 pub fn ExtrusionTessellator::new() -> ExtrusionTessellator {
-  { fill: FillTessellator::new(), roof: FillBuffers::new(), }
+  { fill: FillTessellator::new(), roof: FillBuffers::new(), ring: [], }
 }
 
 ///|
@@ -144,6 +145,7 @@ pub fn ExtrusionTessellator::add_polygons(
   heights : FixedArray[Double],
   out : ExtrusionBuffers,
   extent~ : Int32 = @core.TILE_EXTENT,
+  subdivide? : (Subdivider, Int32, @core.TileId),
 ) -> Unit {
   let points = if ring_ends.length() == 0 {
     0
@@ -182,50 +184,35 @@ pub fn ExtrusionTessellator::add_polygons(
     if end - start < 2 || entirely_outside(coords, start, end, extent) {
       continue
     }
-    // Edges from each point back to the one before it, the closing one last;
-    // MapLibre starts the distance again past 32768 units of its `EXTENT`.
-    let mut along = 0.0
-    let restart = 4.0 * extent.to_double()
-    for k in (start + 1)..<=end {
-      let i = if k == end { start } else { k }
-      let j = k - 1
-      let x1 = coords[i * 2]
-      let y1 = coords[i * 2 + 1]
-      let x2 = coords[j * 2]
-      let y2 = coords[j * 2 + 1]
-      if boundary_edge(x1, y1, x2, y2, extent) {
-        continue
+    match subdivide {
+      // On the globe the ring is cut at grid lines first, its closing edge
+      // included (MapLibre's `subdivideVertexLine` as a ring).
+      Some((_, granularity, _)) => {
+        let ring = self.ring
+        ring.clear()
+        subdivide_vertex_line(
+          coords[start * 2:end * 2],
+          granularity,
+          ring,
+          is_ring=true,
+        )
+        walls(
+          ring[:],
+          0,
+          ring.length() / 2,
+          false,
+          centroid,
+          heights,
+          out,
+          extent,
+        )
       }
-      let dx = x1.to_double() - x2.to_double()
-      let dy = y1.to_double() - y2.to_double()
-      let len = (dx * dx + dy * dy).sqrt()
-      if len == 0.0 {
-        continue
-      }
-      let normal = (-dy / len, dx / len, 0.0)
-      if along + len > restart {
-        along = 0.0
-      }
-      let b = out.num_vertices()
-      let e1 = wall_distance(along, extent)
-      out.vertex(x1, y1, normal, 0, centroid, heights, edge=e1)
-      out.vertex(x1, y1, normal, 1, centroid, heights, edge=e1)
-      along += len
-      let e2 = wall_distance(along, extent)
-      out.vertex(x2, y2, normal, 0, centroid, heights, edge=e2)
-      out.vertex(x2, y2, normal, 1, centroid, heights, edge=e2)
-      let i = out.indices
-      i.push(b)
-      i.push(b + 2)
-      i.push(b + 1)
-      i.push(b + 1)
-      i.push(b + 2)
-      i.push(b + 3)
+      None => walls(coords, start, end, true, centroid, heights, out, extent)
     }
   }
   let roof = self.roof
   roof.clear()
-  self.fill.add_polygons(coords, ring_ends, roof)
+  self.fill.add_polygons(coords, ring_ends, roof, subdivide?)
   let b = out.num_vertices()
   for i in 0..<roof.num_vertices() {
     out.vertex(
@@ -239,5 +226,60 @@ pub fn ExtrusionTessellator::add_polygons(
   }
   for t in roof.indices {
     out.indices.push(b + t)
+  }
+}
+
+///|
+/// The walls of points `[start, end)`: from each point back to the one before
+/// it, then from the first back to the last when `close`; MapLibre starts the
+/// distance again past 32768 units of its `EXTENT`.
+fn walls(
+  coords : ArrayView[Int32],
+  start : Int32,
+  end : Int32,
+  close : Bool,
+  centroid : (Int32, Int32),
+  heights : FixedArray[Double],
+  out : ExtrusionBuffers,
+  extent : Int32,
+) -> Unit {
+  let last = if close { end } else { end - 1 }
+  let mut along = 0.0
+  let restart = 4.0 * extent.to_double()
+  for k in (start + 1)..<=last {
+    let i = if k == end { start } else { k }
+    let j = k - 1
+    let x1 = coords[i * 2]
+    let y1 = coords[i * 2 + 1]
+    let x2 = coords[j * 2]
+    let y2 = coords[j * 2 + 1]
+    if boundary_edge(x1, y1, x2, y2, extent) {
+      continue
+    }
+    let dx = x1.to_double() - x2.to_double()
+    let dy = y1.to_double() - y2.to_double()
+    let len = (dx * dx + dy * dy).sqrt()
+    if len == 0.0 {
+      continue
+    }
+    let normal = (-dy / len, dx / len, 0.0)
+    if along + len > restart {
+      along = 0.0
+    }
+    let b = out.num_vertices()
+    let e1 = wall_distance(along, extent)
+    out.vertex(x1, y1, normal, 0, centroid, heights, edge=e1)
+    out.vertex(x1, y1, normal, 1, centroid, heights, edge=e1)
+    along += len
+    let e2 = wall_distance(along, extent)
+    out.vertex(x2, y2, normal, 0, centroid, heights, edge=e2)
+    out.vertex(x2, y2, normal, 1, centroid, heights, edge=e2)
+    let i = out.indices
+    i.push(b)
+    i.push(b + 2)
+    i.push(b + 1)
+    i.push(b + 1)
+    i.push(b + 2)
+    i.push(b + 3)
   }
 }

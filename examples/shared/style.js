@@ -129,7 +129,7 @@ export function withMarker(places, center, name) {
 export const DEM_TILES = local ? `${fixtures}gsi-dem/{z}/{x}/{y}.png` : `${GSI}/dem_png/{z}/{x}/{y}.png`;
 
 /**
- * "2d" or "3d" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
+ * "2d", "3d" or "globe" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
  * named in `hidden`; the places are overlays, kept when the basemap changes.
  */
 export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, basemap = "map") {
@@ -228,10 +228,23 @@ export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, bas
     style.terrain = { source: "dem", exaggeration: 1.5 };
     style.sky = { "sky-color": "#88C6FC", "horizon-color": "#ffffff", "fog-color": "#ffffff" };
   }
+  if (mode === "globe") {
+    // A globe up to zoom 11, the atmosphere around it (a style's `sky` brings it).
+    style.projection = { type: "globe" };
+    style.sky = { "atmosphere-blend": 0.8 };
+  }
   return style;
 }
+
+/** The view's modes as [mode, label]. */
+export const MODES = [["2d", "2D"], ["3d", "3D"], ["globe", "地球儀"]];
 
 /** Where the camera goes for each mode: 3D tilts and turns. */
 export function modeCamera(mode) {
   return mode === "3d" ? { pitch: 60, bearing: -20 } : { pitch: 0, bearing: 0 };
+}
+
+/** The camera move into `mode` from `zoom`: the globe zooms out until the whole of it shows. */
+export function modeEase(mode, zoom) {
+  return { ...modeCamera(mode), ...(mode === "globe" ? { zoom: Math.min(zoom, 2) } : {}), duration: 1000 };
 }

@@ -60,14 +60,19 @@ fn Map::globe_gesture(
 }
 
 ///|
-/// Where tile `id` goes on the globe this frame, or None when drawn flat.
+/// Where tile `id` goes on the globe this frame (through the export window if
+/// any), or None when drawn flat.
 fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
   guard self.globe is Some(g) && g.is_globe() else { return None }
   let n = (1 << id.z).to_double()
   let unit = 1.0 / n / @core.TILE_EXTENT.to_double()
   let (a, b, c, d) = g.clipping_plane_of()
+  let matrix = match self.window {
+    None => g.globe_matrix()
+    Some(w) => w.matrix.mul(g.globe_matrix())
+  }
   Some({
-    matrix: g.globe_matrix().m,
+    matrix: matrix.m,
     tile: [id.x.to_double() / n, id.y.to_double() / n, unit, unit],
     plane: [a, b, c, d],
     transition: g.transition(),
@@ -80,6 +85,8 @@ fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
     // MapLibre's `getPixelScale`, between mercator's and the globe's.
     pixel_scale: 1.0 +
     (1.0 / @globe.planet_scale(g.camera().center.lat) - 1.0) * g.transition(),
+    translate: (0.0, 0.0),
+    radius_correction: g.radius_correction(),
     granularity: @globe.tile_granularity(id.z),
     north: id.y == 0,
     south: id.y == (1 << id.z) - 1,
@@ -124,6 +131,11 @@ fn Map::draw_globe_atmosphere(self : Map) -> Unit {
     0.8,
   )
   let (inverse, center, radius, altitude) = g.atmosphere()
+  // The rays of an export part's clip space are those of its place in the whole frame.
+  let inverse = match self.window.bind(w => w.matrix.invert()) {
+    None => inverse
+    Some(w) => inverse.mul(w)
+  }
   let blend = blend * g.transition() * altitude
   if blend == 0.0 {
     return
@@ -138,4 +150,27 @@ fn Map::draw_globe_atmosphere(self : Map) -> Unit {
     radius,
     blend,
   )
+}
+
+///|
+/// The globe's surface into the depth buffer, once a frame before extrusions.
+fn Map::draw_globe_depth(self : Map) -> Unit {
+  guard self.globe is Some(g) && g.is_globe() else { return }
+  for id in self.globe_cover(g, 512, 0, @core.MAX_TILE_ZOOM, false) {
+    self.renderer.draw_globe_depth(self.placement(id, None, 1.0))
+  }
+}
+
+///|
+/// The place under screen point (x, y) in mercator units, on the globe when
+/// it is drawn as one.
+fn Map::screen_mercator(
+  self : Map,
+  x : Double,
+  y : Double,
+) -> @core.MercatorCoord {
+  match self.globe {
+    Some(g) if g.is_globe() => g.unproject(x, y).to_mercator()
+    _ => self.transform.screen_to_mercator(x, y)
+  }
 }

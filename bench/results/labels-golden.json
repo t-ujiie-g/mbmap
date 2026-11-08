@@ -612,6 +612,131 @@
       "glyphs": 33,
       "glyphDiff": 0,
       "angleDiff": 0
+    },
+    {
+      "scene": "globe-points",
+      "same": true,
+      "maplibre": 41,
+      "mbmap": 41,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0
+    },
+    {
+      "scene": "globe-points-icons",
+      "same": true,
+      "maplibre": 37,
+      "mbmap": 37,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 37,
+      "boxDiff": 0
+    },
+    {
+      "scene": "globe-points-pitched",
+      "same": true,
+      "maplibre": 24,
+      "mbmap": 24,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 24,
+      "boxDiff": 0
+    },
+    {
+      "scene": "globe-variable",
+      "same": true,
+      "maplibre": 31,
+      "mbmap": 31,
+      "anchored": 1,
+      "justified": 0,
+      "icons": 31,
+      "boxDiff": 0
+    },
+    {
+      "scene": "globe-map-aligned",
+      "same": true,
+      "maplibre": 20,
+      "mbmap": 20,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 20,
+      "boxDiff": 0
+    },
+    {
+      "scene": "globe-line",
+      "same": true,
+      "maplibre": 5,
+      "mbmap": 5,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 0,
+      "boxDiff": 0,
+      "glyphs": 101,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "globe-line-pitched",
+      "same": true,
+      "maplibre": 7,
+      "mbmap": 7,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 7,
+      "boxDiff": 0,
+      "glyphs": 139,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "globe-zoom-4",
+      "same": true,
+      "maplibre": 13,
+      "mbmap": 13,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 5,
+      "boxDiff": 0,
+      "glyphs": 164,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "globe-horizon",
+      "same": true,
+      "maplibre": 27,
+      "mbmap": 27,
+      "anchored": 2,
+      "justified": 0,
+      "icons": 27,
+      "boxDiff": 0,
+      "glyphs": 50,
+      "glyphDiff": 0,
+      "angleDiff": 0
+    },
+    {
+      "scene": "globe-transition",
+      "same": true,
+      "maplibre": 64,
+      "mbmap": 64,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 64,
+      "boxDiff": 0
+    },
+    {
+      "scene": "globe-transition-line",
+      "same": true,
+      "maplibre": 35,
+      "mbmap": 35,
+      "anchored": 0,
+      "justified": 0,
+      "icons": 28,
+      "boxDiff": 0,
+      "glyphs": 91,
+      "glyphDiff": 0,
+      "angleDiff": 0
     }
   ]
 }

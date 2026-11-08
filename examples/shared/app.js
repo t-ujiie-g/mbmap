@@ -17,7 +17,7 @@ import { cameraRows, nearLines, showRows } from "./readout.js";
 import { keepRadiusRing } from "./ring.js";
 import { mountSearch } from "./search.js";
 import { zoomIntoClusters } from "./stations.js";
-import { createStyle, modeCamera, withMarker } from "./style.js";
+import { createStyle, modeCamera, modeEase, withMarker } from "./style.js";
 import { mountTable } from "./table.js";
 
 /** Wires the panel to `map`; returns `showCamera` and `update` for the example's own move events. */
@@ -74,7 +74,7 @@ export function mountApp(map, status, applyStyle) {
     if (!next || next === mode) return;
     mode = next;
     applyStyle(createStyle(mode, panel.hidden(), places, panel.basemaps.state.active ?? "map"));
-    map.easeTo({ ...modeCamera(mode), duration: 1000 });
+    map.easeTo(modeEase(mode, map.getZoom()));
     showButtons();
   });
   document.getElementById("destinations").replaceChildren(

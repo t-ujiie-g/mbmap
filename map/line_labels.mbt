@@ -126,31 +126,36 @@ fn LineSet::along(
 }
 
 ///|
-/// The normalized device x of point (x, y) at height `z` of a tile at `at`.
-fn ndc_x(
+/// The normalized device x of point (x, y) at height `z` of tile `id` at `at`.
+fn Map::ndc_x(
+  self : Map,
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   x : Double,
   y : Double,
   z : Double,
 ) -> Double {
-  let (ex, _, _, ew) = at.matrix.apply(x, y, z, 1.0)
+  let (ex, _, ew, _) = self.label_clip(at, id, x, y, z)
   ex / ew
 }
 
 ///|
-/// Whether the line of label `i` runs right to left on screen at its anchor
-/// (x, y) at height `z`: the anchor lies right of the line's next point.
-fn LineSet::backwards(
-  self : LineSet,
+/// Whether the line of label `i` of `l` runs right to left on screen at its
+/// anchor (x, y) at height `z`: the anchor lies right of the line's next point.
+fn Map::backwards(
+  self : Map,
+  l : LineSet,
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   i : Int32,
   x : Double,
   y : Double,
   z : Double,
 ) -> Bool {
   let m = i * LINE_FLOATS
-  let v = self.meta[m + 2].to_int() + self.meta[m + 1].to_int() + 1
-  ndc_x(at, x, y, z) > ndc_x(at, self.lines[v * 2], self.lines[v * 2 + 1], z)
+  let v = l.meta[m + 2].to_int() + l.meta[m + 1].to_int() + 1
+  self.ndc_x(at, id, x, y, z) >
+  self.ndc_x(at, id, l.lines[v * 2], l.lines[v * 2 + 1], z)
 }
 
 ///|
@@ -162,26 +167,64 @@ fn hide_glyphs(glyphs : FixedArray[Double], q0 : Int32, n : Int32) -> Unit {
 }
 
 ///|
-/// Appends the screen point (CSS px) of tile point `k` of `points` at height `z`
-/// to `path`; true if it lies behind the camera.
-fn push_screen(
+/// Appends the screen point (CSS px) of point `k` of `points` (tile `id`'s units)
+/// at height `z` to `path`, its clip w to `depths` and whether the globe hides it
+/// to `hidden`.
+fn Map::push_screen(
+  self : Map,
   path : Array[Double],
+  depths : Array[Double],
+  hidden : Array[Bool],
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   points : Array[Double],
   k : Int32,
   z : Double,
-  w : Double,
-  h : Double,
-) -> Bool {
-  let (cx, cy, _, pw) = at.matrix.apply(
+) -> Unit {
+  let t = self.transform
+  let (cx, cy, pw, behind) = self.label_clip(
+    at,
+    id,
     points[k * 2],
     points[k * 2 + 1],
     z,
-    1.0,
   )
-  path.push(screen_x(cx, pw, w))
-  path.push(screen_y(cy, pw, h))
-  pw <= 0.0
+  path.push(screen_x(cx, pw, t.width))
+  path.push(screen_y(cy, pw, t.height))
+  depths.push(pw)
+  hidden.push(behind)
+}
+
+///|
+/// The longest run of `path`'s points (x, y pairs) the globe does not hide, as
+/// MapLibre's `pathSlicedToLongestUnoccluded`; false if one of them lies behind
+/// the camera (by its clip w in `depths`).
+fn longest_unhidden(
+  path : Array[Double],
+  depths : Array[Double],
+  hidden : Array[Bool],
+) -> (Array[Double], Bool) {
+  let mut start = 0
+  let mut length = 0
+  let mut run_start = 0
+  let mut run = 0
+  for k, h in hidden {
+    if h {
+      run_start = k + 1
+      run = 0
+    } else {
+      run += 1
+      if run > length {
+        length = run
+        start = run_start
+      }
+    }
+  }
+  let mut ahead = true
+  for k in start..<(start + length) {
+    ahead = ahead && depths[k] > 0.0
+  }
+  (path[start * 2:(start + length) * 2].to_owned(), ahead)
 }
 
 ///|
@@ -300,6 +343,7 @@ fn Map::place_line_label(
   self : Map,
   grid : @label.Grid,
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   s : LabelSet,
   l : LineSet,
   i : Int32,
@@ -312,12 +356,16 @@ fn Map::place_line_label(
   let row = i * LABEL_FLOATS
   let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
   let z = s.heights[i] * height_scale
-  let (_, _, _, cw) = at.matrix.apply(x, y, z, 1.0)
+  let (_, _, cw, _) = self.label_clip(at, id, x, y, z)
   let ratio = perspective_ratio(at, cw)
   let m = i * LINE_FLOATS
   let first = l.meta[m + 4].to_int()
   let glyphs = quad_at(s.labels, row + LABEL_COUNT)
-  let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / ONE_EM * tile_px
+  let scale = f32_at(s.labels, row + LABEL_SIZE) *
+    self.text_correction(id, y) /
+    ratio /
+    ONE_EM *
+    tile_px
   let (head, tail) = ([], [])
   let mut collided = false
   let mut in_grid = false
@@ -325,18 +373,18 @@ fn Map::place_line_label(
     l.along(i, x, y, l.offsets[first] * scale, false, Some(head)) &&
     l.along(i, x, y, l.offsets[first + glyphs - 1] * scale, false, Some(tail)) {
     // From the first glyph back past the anchor's vertices to the last.
-    let path = []
-    let mut behind = false
+    let (path, depths, hidden) = ([], [], [])
     for k = head.length() / 2 - 1; k >= 1; k = k - 1 {
-      behind = push_screen(path, at, head, k, z, w, h) || behind
+      self.push_screen(path, depths, hidden, at, id, head, k, z)
     }
     for k in 1..<(tail.length() / 2) {
-      behind = push_screen(path, at, tail, k, z, w, h) || behind
+      self.push_screen(path, depths, hidden, at, id, tail, k, z)
     }
+    let (path, ahead) = longest_unhidden(path, depths, hidden)
     let radius = l.meta[m + 5] * 0.5 * ratio + s.padding
     let (lo_x, lo_y) = (-VIEWPORT_PADDING, -VIEWPORT_PADDING)
     let (hi_x, hi_y) = (w + VIEWPORT_PADDING, h + VIEWPORT_PADDING)
-    let parts = if behind || path.is_empty() {
+    let parts = if !ahead || path.is_empty() {
       []
     } else {
       let mut x0 = path[0]
@@ -391,6 +439,7 @@ fn Map::place_line_symbol(
   grid : @label.Grid,
   at : @render_webgl2.Placement,
   icon_at : @render_webgl2.Placement,
+  id : @core.TileId,
   s : LabelSet,
   l : LineSet,
   i : Int32,
@@ -401,21 +450,29 @@ fn Map::place_line_symbol(
   let row = i * LABEL_FLOATS
   let has_text = f32_at(s.labels, row + LABEL_COUNT) > 0.0
   let z = s.heights[i] * height_scale
-  let (_, _, _, cw) = at.matrix.apply(
+  let (_, _, cw, _) = self.label_clip(
+    at,
+    id,
     f32_at(s.labels, row),
     f32_at(s.labels, row + LABEL_Y),
     z,
-    1.0,
   )
-  let visible = cw > 0.0 && perspective_ratio(at, cw) >= MIN_PERSPECTIVE_RATIO
+  let mut visible = cw > 0.0 &&
+    perspective_ratio(at, cw) >= MIN_PERSPECTIVE_RATIO
   let circles = []
   let mut place_text = has_text &&
-    self.place_line_label(grid, at, s, l, i, height_scale, tile_px, circles)
+    self.place_line_label(grid, at, id, s, l, i, height_scale, tile_px, circles)
   let icon = icon_of(s, i)
   let mut place_icon = false
   if icon is Some(ic) {
-    place_icon = visible &&
-      self.fits_on_map(grid, icon_at, s, i, z, tile_px, unit, ic)
+    // An icon whose box the globe hides entirely is not shown, even if it may overlap.
+    let (fits, hidden) = if visible {
+      self.fits_on_map(grid, icon_at, id, s, i, z, tile_px, unit, ic)
+    } else {
+      (false, false)
+    }
+    place_icon = fits
+    visible = visible && !hidden
     let (text, icon) = joint(ic, has_text, place_text, place_icon)
     place_text = text
     place_icon = icon
@@ -451,27 +508,29 @@ fn Map::place_line_symbol(
 }
 
 ///|
-/// Whether label `i`'s icon box fits the grid laid on the map at its anchor (z
-/// its height) as MapLibre's `_projectCollisionBox` lays boxes of text pitched
-/// and turned with the map; recorded in `s.boxes` if so.
+/// Whether label `i`'s icon box fits the grid laid on the map at its anchor (z its height) as
+/// MapLibre's `_projectCollisionBox` lays boxes of text pitched and turned with the map, recorded in
+/// `s.boxes` if so; and whether the globe hides all of it.
 fn Map::fits_on_map(
   self : Map,
   grid : @label.Grid,
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   s : LabelSet,
   i : Int32,
   z : Double,
   tile_px : Double,
   unit : Double,
   ic : IconSet,
-) -> Bool {
+) -> (Bool, Bool) {
   let t = self.transform
   let row = i * LABEL_FLOATS
   let (x, y) = (f32_at(s.labels, row), f32_at(s.labels, row + LABEL_Y))
-  let (_, _, _, cw) = at.matrix.apply(x, y, z, 1.0)
+  let (_, _, cw, _) = self.label_clip(at, id, x, y, z)
   // Tile units per CSS px of the box, which grows with distance as the text does.
   let k = @cmp.minimum(@cmp.maximum(0.5 + 0.5 * cw / at.center_depth, 0.0), 4.0) *
-    tile_px
+    tile_px *
+    self.text_correction(id, y)
   let box = row + ICON_COLUMN
   let left = snap(f32_at(s.labels, box), unit) * k
   let top = snap(f32_at(s.labels, box + 1), unit) * k
@@ -481,15 +540,18 @@ fn Map::fits_on_map(
   let mut y0 = @double.infinity
   let mut x1 = @double.neg_infinity
   let mut y1 = @double.neg_infinity
+  let mut seen = false
   for a in 0..<3 {
     for c in 0..<3 {
       guard a != 1 || c != 1 else { continue }
-      let (px, py, _, pw) = at.matrix.apply(
+      let (px, py, pw, hidden) = self.label_clip(
+        at,
+        id,
         x + third(a, left, right),
         y + third(c, top, bottom),
         z,
-        1.0,
       )
+      seen = seen || !hidden
       let sx = screen_x(px, pw, t.width) + VIEWPORT_PADDING
       let sy = screen_y(py, pw, t.height) + VIEWPORT_PADDING
       x0 = @cmp.minimum(x0, sx)
@@ -498,16 +560,17 @@ fn Map::fits_on_map(
       y1 = @cmp.maximum(y1, sy)
     }
   }
-  guard grid.inside(x0, y0, x1, y1) &&
+  guard seen &&
+    grid.inside(x0, y0, x1, y1) &&
     (ic.allow_overlap || !grid.hits(x0, y0, x1, y1, cooperative=ic.cooperative)) else {
-    return false
+    return (false, !seen)
   }
   let b = i * BOX_FLOATS + 4
   s.boxes[b] = x0 - VIEWPORT_PADDING
   s.boxes[b + 1] = y0 - VIEWPORT_PADDING
   s.boxes[b + 2] = x1 - VIEWPORT_PADDING
   s.boxes[b + 3] = y1 - VIEWPORT_PADDING
-  true
+  (true, false)
 }
 
 ///|
@@ -528,6 +591,7 @@ fn Map::lay_line_glyphs(
   self : Map,
   mesh : @render_webgl2.Mesh,
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   s : LabelSet,
   l : LineSet,
   tile_px : Double,
@@ -549,13 +613,17 @@ fn Map::lay_line_glyphs(
     let x = f32_at(s.labels, row)
     let y = f32_at(s.labels, row + LABEL_Y)
     let z = s.heights[i] * height_scale
-    let (cx, cy, _, cw) = at.matrix.apply(x, y, z, 1.0)
+    let (cx, cy, cw, _) = self.label_clip(at, id, x, y, z)
     if cw <= 0.0 || (cx / cw).abs() > clip_x || (cy / cw).abs() > clip_y {
       hide_glyphs(l.glyphs, q0, n)
       continue
     }
     let ratio = perspective_ratio(at, cw)
-    let scale = f32_at(s.labels, row + LABEL_SIZE) / ratio / ONE_EM * tile_px
+    let scale = f32_at(s.labels, row + LABEL_SIZE) *
+      self.text_correction(id, y) /
+      ratio /
+      ONE_EM *
+      tile_px
     let g0 = l.meta[i * LINE_FLOATS + 4].to_int()
     // Text reading right to left on screen is laid out backwards instead.
     let mut flip = false
@@ -569,9 +637,10 @@ fn Map::lay_line_glyphs(
         hide_glyphs(l.glyphs, q0, n)
         continue
       }
-      flip = ndc_x(at, ax, ay, z) > ndc_x(at, l.at_x, l.at_y, z)
+      flip = self.ndc_x(at, id, ax, ay, z) >
+        self.ndc_x(at, id, l.at_x, l.at_y, z)
     } else if l.keep_upright {
-      flip = l.backwards(at, i, x, y, z)
+      flip = self.backwards(l, at, id, i, x, y, z)
     }
     for k in 0..<n {
       guard l.along(i, x, y, l.offsets[g0 + k] * scale, flip, None) else {
@@ -594,7 +663,7 @@ fn Map::lay_line_glyphs(
     let x = f32_at(s.labels, row)
     let y = f32_at(s.labels, row + LABEL_Y)
     let z = s.heights[i] * height_scale
-    let flip = ic.keep_upright && l.backwards(at, i, x, y, z)
+    let flip = ic.keep_upright && self.backwards(l, at, id, i, x, y, z)
     ic.glyphs[g] = HIDDEN_GLYPH
     if l.along(i, x, y, 0.0, flip, None) {
       ic.glyphs[g] = l.at_x

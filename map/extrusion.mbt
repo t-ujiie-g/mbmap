@@ -31,12 +31,25 @@ fn Map::extrusion_light(self : Map) -> @render_webgl2.ExtrusionLight {
   let light = self.style.light
   let zoom = self.transform.camera.zoom
   let c = color_of(light.color, zoom, JsProps::none())
+  let direction = light_direction(
+    light.position,
+    light.viewport,
+    self.transform.camera.bearing,
+  )
+  let globe_direction = match self.globe {
+    Some(g) if g.is_globe() => {
+      let d = g.light_direction({
+        x: direction.0,
+        y: direction.1,
+        z: direction.2,
+      })
+      (d.x, d.y, d.z)
+    }
+    _ => direction
+  }
   {
-    direction: light_direction(
-      light.position,
-      light.viewport,
-      self.transform.camera.bearing,
-    ),
+    direction,
+    globe_direction,
     intensity: number_or(light.intensity.eval(zoom, JsProps::none()), 0.5),
     color: (c.r, c.g, c.b),
   }

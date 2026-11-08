@@ -689,3 +689,14 @@ pub fn Globe::sun(self : Globe, v : Vec3, map~ : Bool) -> Vec3 {
   let (x, y, z, w) = m.apply(v.x, v.y, v.z, 1.0)
   { x: x / w, y: y / w, z: z / w, }
 }
+
+///|
+/// A direction in the axes of the map's plane at the center (x east, y south,
+/// z up) in the globe's (MapLibre's `transformLightDirection`).
+pub fn Globe::light_direction(self : Globe, v : Vec3) -> Vec3 {
+  let s = surface_vector(self.center)
+  let right : Vec3 = { x: s.z, y: 0.0, z: -s.x, }
+  let down = right.cross(s).normalize()
+  let right = right.normalize()
+  right.scale(v.x).add(down.scale(v.y)).add(s.scale(v.z)).normalize()
+}

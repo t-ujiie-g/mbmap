@@ -140,6 +140,7 @@ extern "js" fn gl_draw_symbols(
   #|  gl.uniform1f(p.u_dpr, dpr);
   #|  gl.uniform1f(p.u_center, center);
   #|  gl.uniform1f(p.u_scale, scale);
+  #|  gl.uniform1f(p.u_pitched_scale, c.globe ? c.globe.radiusCorrection : 1);
   #|  gl.uniform1f(p.u_opacity, 1);
   #|  gl.uniform1f(p.u_fill_opacity, u[3]);
   #|  gl.uniform1f(p.u_gamma_scale, m.glyph ? u[4] : 1);
@@ -187,6 +188,7 @@ extern "js" fn gl_draw_icons(
   #|  ["u_dpr", "u_center", "u_scale", "u_size", "u_persp", "u_pitch", "u_rotate", "u_angle", "u_units", "u_opacity", "u_sdf"]
   #|    .forEach((name, i) => (i === 4 || i === 5 || i === 6 || i === 10 ? gl.uniform1i(p[name], u[i]) : gl.uniform1f(p[name], u[i])));
   #|  gl.uniform1f(p.u_gamma_scale, u[13]);
+  #|  gl.uniform1f(p.u_pitched_scale, c.globe ? c.globe.radiusCorrection : 1);
   #|  gl.uniform1f(p.u_along, m.glyph && u[15] ? 1 : 0);
   #|  const occlude = !!c.depth?.ready;
   #|  gl.uniform1i(p.u_occlude, occlude ? 1 : 0);

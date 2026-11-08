@@ -71,7 +71,66 @@ const SCENES = {
   ...iconScenes(),
   ...expressionScenes(),
   ...textScenes(),
+  ...globeScenes(),
 };
+
+// Labels on the globe (`projection: globe`) from GeoJSON over the world: named points with icons
+// (some past the horizon), a long line labeled along it, and a grid of points around Tokyo for the
+// zoom where the globe turns into mercator.
+function globeScenes() {
+  const points = [];
+  for (let lat = -60; lat <= 60; lat += 20) {
+    for (let lng = -170; lng < 180; lng += 20) points.push({ name: `P${lng},${lat}`, at: [lng, lat] });
+  }
+  for (let k = 0; k < 64; k++) points.push({ name: `T${k}`, at: [139.68 + (k % 8) * 0.02, 35.62 + Math.floor(k / 8) * 0.016] });
+  const along = (from, to, n) => Array.from({ length: n + 1 }, (_, i) => [from[0] + ((to[0] - from[0]) * i) / n, from[1] + ((to[1] - from[1]) * i) / n]);
+  const world = {
+    type: "geojson",
+    data: {
+      type: "FeatureCollection",
+      features: [
+        ...points.map((p, i) => ({ type: "Feature", properties: { name: p.name, i }, geometry: { type: "Point", coordinates: p.at } })),
+        { type: "Feature", properties: { name: "Along the thirtieth parallel" }, geometry: { type: "LineString", coordinates: along([60, 30], [200, 30], 70) } },
+        { type: "Feature", properties: { name: "Down a meridian" }, geometry: { type: "LineString", coordinates: along([140, 70], [140, -70], 70) } },
+      ],
+    },
+  };
+  const globe = (...layers) => ({ version: 8, projection: { type: "globe" }, sources: { world },
+    layers: [{ id: "bg", type: "background", paint: { "background-color": "#ffffff" } }, ...layers] });
+  const points_ = (id, layout) => ({
+    id, type: "symbol", source: "world", filter: ["==", ["geometry-type"], "Point"],
+    layout: { "text-field": ["get", "name"], "text-font": ["sans-serif"], "text-size": 12, ...layout },
+  });
+  const lines = (id, layout) => ({
+    id, type: "symbol", source: "world", filter: ["==", ["geometry-type"], "LineString"],
+    layout: { "symbol-placement": "line", "text-field": ["get", "name"], "text-font": ["sans-serif"], "text-size": 13, "symbol-spacing": 200, ...layout },
+  });
+  const POI = { "icon-image": "dot", "text-anchor": "top", "text-offset": [0, 0.8] };
+  const asia = { center: [139.7, 35.7], zoom: 1.6 };
+  return {
+    "globe-points": { style: globe(points_("p", {})), camera: asia },
+    "globe-points-icons": { style: globe(points_("p", POI)), camera: { center: [100, 20], zoom: 2.2 } },
+    "globe-points-pitched": { style: globe(points_("p", POI)), camera: { center: [120, 30], zoom: 2.5, bearing: 30, pitch: 45 } },
+    "globe-variable": { style: globe(points_("p", { ...VARIABLE, "icon-image": "box" })), camera: { center: [-20, 10], zoom: 3, bearing: -15 } },
+    "globe-map-aligned": {
+      style: globe(points_("p", { "icon-image": "pin", "icon-rotation-alignment": "map", "icon-pitch-alignment": "map", "text-anchor": "top", "text-offset": [0, 1] }),
+        { ...points_("q", { "icon-image": "box", "icon-rotation-alignment": "map", "icon-pitch-alignment": "viewport", "text-field": "" }), filter: ["all", ["==", ["geometry-type"], "Point"], [">=", ["get", "i"], 72], ["<", ["get", "i"], 108]] }),
+      camera: { center: [30, 40], zoom: 2.8, bearing: 20, pitch: 40 },
+    },
+    "globe-line": { style: globe(lines("l", {})), camera: { center: [140, 30], zoom: 2.4 }, along: true },
+    "globe-line-pitched": { style: globe(lines("l", { "icon-image": "dot" })), camera: { center: [150, 25], zoom: 3.2, bearing: -30, pitch: 50 }, along: true },
+    "globe-zoom-4": { style: globe(points_("p", POI), lines("l", {})), camera: { center: [140, 30], zoom: 4 }, along: true },
+    "globe-horizon": {
+      style: globe(points_("p", { ...VARIABLE, "icon-image": "dot" }), lines("l", { "icon-image": "box" })),
+      camera: { center: [110, 25], zoom: 2.2, bearing: 70, pitch: 70 }, along: true,
+    },
+    "globe-transition": { style: globe(points_("p", POI)), camera: { center: [139.75, 35.68], zoom: 11.5, pitch: 30 } },
+    "globe-transition-line": {
+      style: globe(points_("p", POI), lines("l", { "symbol-spacing": 120 })),
+      camera: { center: [139.97, 35.66], zoom: 11.3, bearing: -25, pitch: 40 }, along: true,
+    },
+  };
+}
 
 // Text properties: fonts (weights and styles sniffed from the names, by feature, and per format
 // section), case, letter spacing, rotation, translation and the overlap modes.
@@ -302,8 +361,17 @@ try {
     let glyphCount = 0;
     for (const l of both.filter((l) => l.glyphs)) {
       const theirGlyphs = theirs.get(l.key).glyphs ?? [];
-      l.glyphs.forEach((g, k) => {
-        const t = theirGlyphs[k];
+      // MapLibre gives spaces a quad and mbmap none: as many of its glyphs as it has more are
+      // passed over, in order, where they do not lie at ours.
+      const far = (g, t) => !hidden(g) && !hidden(t) && Math.hypot(g[0] - t[0], g[1] - t[1]) > GLYPH_TOLERANCE;
+      let spaces = theirGlyphs.length - l.glyphs.length;
+      let j = 0;
+      l.glyphs.forEach((g) => {
+        while (spaces > 0 && theirGlyphs[j] && far(g, theirGlyphs[j])) {
+          j++;
+          spaces--;
+        }
+        const t = theirGlyphs[j++];
         if (!t || hidden(g) !== hidden(t)) glyphDiff = Infinity;
         else if (!hidden(g)) {
           glyphCount++;

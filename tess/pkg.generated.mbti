@@ -46,7 +46,7 @@ pub fn ExtrusionBuffers::num_vertices(Self) -> Int32
 pub struct ExtrusionTessellator {
   // private fields
 }
-pub fn ExtrusionTessellator::add_polygons(Self, ArrayView[Int32], ArrayView[Int32], FixedArray[Double], ExtrusionBuffers, extent? : Int32) -> Unit
+pub fn ExtrusionTessellator::add_polygons(Self, ArrayView[Int32], ArrayView[Int32], FixedArray[Double], ExtrusionBuffers, extent? : Int32, subdivide? : (Subdivider, Int32, @core.TileId)) -> Unit
 pub fn ExtrusionTessellator::new() -> Self
 
 pub struct FillBuffers {

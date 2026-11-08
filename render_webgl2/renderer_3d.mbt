@@ -64,9 +64,9 @@ pub fn Renderer::clear_depth(self : Renderer) -> Unit {
 }
 
 ///|
-/// Draws a terrain tile: `mesh`'s elevations (`dem`: offset x, y and scale in
-/// the DEM tile) lift its grid by `scale` world pixels per meter, with skirts
-/// `skirt` deep, `target` on it and `fog` in the distance.
+/// Draws a terrain tile: `mesh`'s elevations (`dem`: offset x, y and scale in the DEM tile) lift its
+/// grid by `scale` world pixels per meter (meters on the globe, by `per_meter`), with skirts `skirt`
+/// deep, `target` on it and `fog` in the distance.
 pub fn Renderer::draw_terrain(
   self : Renderer,
   mesh : Mesh,
@@ -74,9 +74,11 @@ pub fn Renderer::draw_terrain(
   at : Placement,
   scale : Double,
   skirt : Double,
+  per_meter : Double,
   dem : FixedArray[Double],
   fog : Fog,
 ) -> Unit {
+  self.use_globe(at.globe)
   gl_draw_terrain(
     self.gl,
     mesh,
@@ -84,6 +86,7 @@ pub fn Renderer::draw_terrain(
     at.matrix.m,
     scale,
     skirt,
+    per_meter,
     dem,
     [fog.near, fog.far, fog.ground_blend, fog.opacity, fog.horizon_blend],
     fog.color,
@@ -151,11 +154,13 @@ pub fn Renderer::set_ground(
 
 ///|
 /// How extrusions are lit: `direction` toward the light (x, y, z, in tile
-/// axes), `intensity`, and `color` (straight RGB).
+/// axes), `intensity`, `color` (straight RGB) and, on the globe, the direction
+/// in its axes (`globe_direction`).
 pub(all) struct ExtrusionLight {
   direction : (Double, Double, Double)
   intensity : Double
   color : (Double, Double, Double)
+  globe_direction : (Double, Double, Double)
 }
 
 ///|
@@ -176,6 +181,7 @@ pub fn Renderer::draw_extrusion(
   pattern~ : PatternPosition? = None,
   pass~ : Int32 = 0,
 ) -> Unit {
+  self.use_globe(at.globe)
   let (lx, ly, lz) = light.direction
   let (lr, lg, lb) = light.color
   let program = match pattern {
@@ -192,7 +198,18 @@ pub fn Renderer::draw_extrusion(
     at.clip,
     [color.0, color.1, color.2],
     opacity,
-    [lx, ly, lz, light.intensity, lr, lg, lb],
+    [
+      lx,
+      ly,
+      lz,
+      light.intensity,
+      lr,
+      lg,
+      lb,
+      light.globe_direction.0,
+      light.globe_direction.1,
+      light.globe_direction.2,
+    ],
     gradient,
     [t, scale, ground, at.pattern.height_factor],
     program,

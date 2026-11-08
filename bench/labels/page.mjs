@@ -9,9 +9,20 @@ const styleJson = JSON.parse(styleText);
 const camera = JSON.parse(params.get("camera"));
 const { center: [lng, lat], zoom, bearing = 0, pitch = 0 } = camera;
 
+// GeoJSON sources are tiled by the npm build's GeoJSON worker, as the facade does.
+const geojson = Object.entries(styleJson.sources).filter(([, s]) => s.type === "geojson").map(([id, spec]) => ({ id, spec }));
+let provider = null;
+let engineStyle = styleText;
+if (geojson.length) {
+  const { createGeoJSONTiles } = await import("/npm/dist/geojson.js");
+  const tiles = createGeoJSONTiles(geojson, new URL(location.href), (e) => console.error(e));
+  provider = (source, z, x, y) => tiles.tile(source, z, x, y);
+  const sources = Object.fromEntries(Object.entries(styleJson.sources).map(([id, s]) => [id, s.type === "geojson" ? { ...s, data: null } : s]));
+  engineStyle = JSON.stringify({ ...styleJson, sources });
+}
 const canvas = document.getElementById("mbmap");
-const mb = mbmap.create_map(canvas, styleText, lng, lat, zoom, bearing, pitch, "/worker/js/worker.mjs",
-  "/_build/wasm-gc/release/build/worker/worker.wasm", 0, null, "sans-serif", [0, 22, 0, 85, NaN, 0, 0, 0]);
+const mb = mbmap.create_map(canvas, engineStyle, lng, lat, zoom, bearing, pitch, "/worker/js/worker.mjs",
+  "/_build/wasm-gc/release/build/worker/worker.wasm", 0, provider, "sans-serif", [0, 22, 0, 85, NaN, 0, 0, 0], false);
 const ml = new maplibregl.Map({ container: "maplibre", style: JSON.parse(styleText), ...camera, maxPitch: 85, attributionControl: false, pixelRatio: 1, fadeDuration: 0, zoomLevelsToOverscale: undefined });
 // The same images in both, drawn from functions of the pixel: a dot, a framed box, a pin at
 // 2x, an SDF ring (alpha 192 on its edge); scenes also ask for "nope", which neither has.

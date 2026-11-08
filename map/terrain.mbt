@@ -179,11 +179,20 @@ fn Map::render_terrain(
     tile_size=src.source.tile_size,
   )
   let z = @cmp.maximum(t.tile_zoom(0, 24), dem_z)
-  let fog = self.fog()
-  let skirt = SKIRT_METERS * t.pixels_per_meter()
+  let per_meter = t.pixels_per_meter()
+  let skirt = SKIRT_METERS * per_meter
   let drawn = []
   self.renderer.clear_depth()
-  for id in t.covering_tiles(src.source.min_zoom, z) {
+  // MapLibre has no fog on the globe.
+  let (tiles, fog) = match self.globe {
+    Some(g) if g.is_globe() =>
+      (
+        self.globe_cover(g, 512, src.source.min_zoom, z, false),
+        { ..self.fog(), opacity: 0.0, },
+      )
+    _ => (t.covering_tiles(src.source.min_zoom, z), self.fog())
+  }
+  for id in tiles {
     guard dem_under(src, id) is Some((mesh, part)) else { continue }
     let size = if id.z >= z { full } else { TERRAIN_TEXTURE }
     let (target, current) = self.target_for(
@@ -195,7 +204,9 @@ fn Map::render_terrain(
       self.draw_texture(id, target, size, draws_of)
     }
     let at = self.placement(id, None, dpr)
-    self.renderer.draw_terrain(mesh, target, at, scale, skirt, part, fog)
+    self.renderer.draw_terrain(
+      mesh, target, at, scale, skirt, per_meter, part, fog,
+    )
     drawn.push((mesh, target, at, part))
   }
   // The same grids again into the depth target labels are hidden by.
@@ -203,7 +214,9 @@ fn Map::render_terrain(
     self.renderer.begin_depth()
     for d in drawn {
       let (mesh, target, at, part) = d
-      self.renderer.draw_terrain(mesh, target, at, scale, skirt, part, fog)
+      self.renderer.draw_terrain(
+        mesh, target, at, scale, skirt, per_meter, part, fog,
+      )
     }
     self.renderer.end_depth()
   } else {

@@ -86,18 +86,20 @@ extern "js" fn gl_draw_terrain(
   matrix : FixedArray[Double],
   scale : Double,
   skirt : Double,
+  per_meter : Double,
   dem : FixedArray[Double],
   fog : FixedArray[Double],
   fog_color : FixedArray[Double],
   horizon : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, t, matrix, scale, skirt, dem, fog, fogColor, horizon) => {
+  #|(c, m, t, matrix, scale, skirt, perMeter, dem, fog, fogColor, horizon) => {
   #|  if (!m.elev) return;
   #|  const gl = c.gl, p = c.terrain;
   #|  gl.useProgram(p.program);
   #|  c.place(p, matrix);
   #|  gl.uniform1f(p.u_scale, scale);
   #|  gl.uniform1f(p.u_skirt, skirt);
+  #|  gl.uniform1f(p.u_per_meter, perMeter);
   #|  gl.uniform3f(p.u_dem, dem[0], dem[1], dem[2]);
   #|  gl.uniform2f(p.u_fog, fog[0], fog[1]);
   #|  gl.uniform3f(p.u_fog_blend, fog[2], fog[3], fog[4]);
@@ -268,6 +270,7 @@ extern "js" fn gl_draw_extrusion(
   #|  gl.uniform3f(p.u_lightpos, light[0], light[1], light[2]);
   #|  gl.uniform1f(p.u_lightintensity, light[3]);
   #|  gl.uniform3f(p.u_lightcolor, light[4], light[5], light[6]);
+  #|  gl.uniform3f(p.u_lightpos_globe, light[7], light[8], light[9]);
   #|  gl.uniform1f(p.u_vertical_gradient, gradient ? 1 : 0);
   #|  gl.uniform1f(p.u_t, heights[0]);
   #|  gl.uniform1f(p.u_scale, heights[1]);

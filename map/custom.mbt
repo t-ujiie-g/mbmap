@@ -40,20 +40,33 @@ pub fn Map::trigger_repaint(self : Map) -> Unit {
 ///|
 /// What a custom layer is drawn with: MapLibre's `modelViewProjectionMatrix` and `projectionMatrix`
 /// (16 numbers each, through the export window if any), the field of view in radians, the near and
-/// far planes, the world size in pixels and the pixels per meter.
+/// far planes, the world size in pixels and the pixels per meter; on the globe then the transition,
+/// the globe's matrix and projection, its near and far planes and its clipping plane.
 fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
   let t = self.transform
-  let (p, near, far) = t.projection()
-  let (mvp, p) = match self.window {
-    None => (t.world_matrix(), p)
-    Some(w) => (w.matrix.mul(t.world_matrix()), w.matrix.mul(p))
+  let windowed = (m : @core.Mat4) => {
+    match self.window {
+      None => m
+      Some(w) => w.matrix.mul(m)
+    }
   }
-  let out = [..mvp.m, ..p.m]
+  let (p, near, far) = t.projection()
+  let out = [..windowed(t.world_matrix()).m, ..windowed(p).m]
   out.push(@core.FIELD_OF_VIEW)
   out.push(near)
   out.push(far)
   out.push(t.world_size())
   out.push(t.pixels_per_meter())
+  if self.globe is Some(g) && g.is_globe() {
+    let (p, near, far) = g.projection_matrix()
+    let (a, b, c, d) = g.clipping_plane_of()
+    out.push(g.transition())
+    out.push_iter(windowed(g.globe_matrix()).m.iter())
+    out.push_iter(windowed(p).m.iter())
+    out.push(near)
+    out.push(far)
+    out.push_iter([a, b, c, d].iter())
+  }
   FixedArray::from_array(out)
 }
 

@@ -38,6 +38,14 @@ for (const l of moved.layers) {
 }
 await writeFile(path.join(ROOT, "bench/dist/query-moved.json"), JSON.stringify(moved));
 
+// The world on a globe: GeoJSON areas, lines and points, and extruded blocks near Tokyo.
+const { SCENES } = await import("../style/scenes.mjs");
+const globe = structuredClone(SCENES["globe-vectors"].style);
+const blocks = structuredClone(SCENES["globe-extrusions"].style);
+globe.sources.blocks = blocks.sources.blocks;
+globe.layers.push({ ...blocks.layers[1], minzoom: 4 });
+await writeFile(path.join(ROOT, "bench/dist/query-globe.json"), JSON.stringify(globe));
+
 const tokyo = [139.7671, 35.6812];
 const views = [
   { name: "flat", style: "query-flat", camera: { center: tokyo, zoom: 15, bearing: 0, pitch: 0 } },
@@ -50,6 +58,9 @@ const views = [
   { name: "moved", style: "query-moved", camera: { center: tokyo, zoom: 15.4, bearing: 35, pitch: 0 } },
   { name: "moved-tilted", style: "query-moved", camera: { center: tokyo, zoom: 15.4, bearing: -30, pitch: 50 }, tilted: true },
   { name: "extrusion", style: "query-extrusion", camera: { center: tokyo, zoom: 15.5, bearing: -20, pitch: 55 }, tilted: true },
+  { name: "globe", style: "query-globe", camera: { center: [139.7, 35.7], zoom: 1.2, bearing: 0, pitch: 0 }, globe: true },
+  { name: "globe-tilted", style: "query-globe", camera: { center: [120, 40], zoom: 2.5, bearing: 30, pitch: 45 }, globe: true, tilted: true },
+  { name: "globe-extrusion", style: "query-globe", camera: { center: [139.7, 35.6], zoom: 6.5, bearing: -30, pitch: 60 }, globe: true, tilted: true },
 ];
 const points = [];
 for (let y = 60; y < 600; y += 80) for (let x = 50; x < 800; x += 100) points.push([x, y]);
@@ -118,6 +129,8 @@ try {
     }
     for (const [kind, geometry, options] of asks) {
       if (v.tilted && (kind === "source" || geometry === null)) continue;
+      // The GSI asks name layers and properties of the GSI style.
+      if (v.globe && (options || kind === "source")) continue;
       const r = await page.evaluate(([k, g, o]) => window.__query(k, g, o), [kind, geometry, options]);
       // A source query lists each tile's features in an order of tiles MapLibre
       // does not define, so it is compared as a multiset.
@@ -126,9 +139,13 @@ try {
       const b = key(r.maplibre);
       const first = a.findIndex((s, i) => s !== b[i]);
       const same = a.length === b.length && first < 0;
-      if (!same) failed++;
+      // Known difference on the globe (PROGRESS.md 20.2c): MapLibre queries a tile past the antimeridian
+      // in another world copy (wrap ±1, longitudes beyond ±180°), mbmap in this one.
+      const beyond = (f) => JSON.stringify(f.geometry.coordinates).match(/-?\d+(\.\d+)?/g).some((n, i) => i % 2 === 0 && Math.abs(Number(n)) > 180);
+      const known = !same && v.globe && a.length === b.length && r.maplibre.some(beyond);
+      if (!same && !known) failed++;
       results.push({
-        view: v.name, kind, geometry, options, same, mbmap: a.length, maplibre: b.length,
+        view: v.name, kind, geometry, options, same, ...(known ? { known: "antimeridian world copy" } : {}), mbmap: a.length, maplibre: b.length,
         ...(same ? {} : { firstDifference: first < 0 ? a.length : first, mbmapAt: a[first]?.slice(0, 300), maplibreAt: b[first]?.slice(0, 300) }),
       });
     }

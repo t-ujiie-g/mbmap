@@ -3,9 +3,9 @@
 // Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
-/// A query of one tile, fields in docs/FORMATS.md "Query"'s order: `matrix` also takes
-/// heights in world pixels (`meters` per meter); `layers` None asks for all; `symbols`
-/// are (layer, feature) pairs of the labels the main thread found under the query.
+/// A query of one tile, fields as docs/FORMATS.md "Query" lists them: `matrix` takes heights in
+/// world pixels (`meters` per meter), `globe` the globe's matrix and the tile's mercator corner and
+/// unit size; `layers` None asks for all; `symbols` are (layer, feature) of labels found there.
 priv struct Query {
   zoom : Double
   pixels : Double
@@ -16,6 +16,7 @@ priv struct Query {
   meters : Double
   bearing : Double
   matrix : FixedArray[Double]
+  globe : (FixedArray[Double], FixedArray[Double])?
   polygon : @core.Line
   camera : @core.Line
   layers : Array[Int32]?
@@ -39,6 +40,13 @@ fn read_query(r : @core.ByteReader) -> Query? {
   let meters = r.f64()
   let bearing = r.f64()
   let matrix = FixedArray::makei(16, _ => r.f64())
+  let globe = if r.u8() == 1 {
+    Some(
+      (FixedArray::makei(16, _ => r.f64()), FixedArray::makei(4, _ => r.f64())),
+    )
+  } else {
+    None
+  }
   let n = r.u32()
   guard r.ok() && n >= 1 && n <= MAX_QUERY_ITEMS else { return None }
   let polygon = Array::makei(n, _ => (r.f64(), r.f64()))
@@ -64,6 +72,7 @@ fn read_query(r : @core.ByteReader) -> Query? {
     meters,
     bearing,
     matrix,
+    globe,
     polygon,
     camera,
     layers: if all {
@@ -103,12 +112,25 @@ fn Query::translated(
 }
 
 ///|
-/// Screen point (CSS pixels) of `TILE_EXTENT` point `p`, and its clip w.
+/// Screen point (CSS pixels) of `TILE_EXTENT` point `p`, and its clip w; on the
+/// globe through the sphere (MapLibre's `projectTileCoordinates`).
 fn Query::screen(
   self : Query,
   p : (Double, Double),
+  trig : @core.Trig,
 ) -> (Double, Double, Double) {
-  let (x, y, _, w) = project(self.matrix, p.0, p.1, 0.0)
+  let (x, y, _, w) = match self.globe {
+    None => project(self.matrix, p.0, p.1, 0.0)
+    Some((m, tile)) => {
+      let pi = 3.141592653589793
+      let mx = tile[0] + tile[2] * p.0
+      let my = tile[1] + tile[3] * p.1
+      let lng = mx * pi * 2.0 + pi
+      let lat = 2.0 * trig.atan(trig.exp(pi - my * pi * 2.0)) - pi * 0.5
+      let c = trig.cos(lat)
+      project(m, trig.sin(lng) * c, trig.sin(lat), trig.cos(lng) * c)
+    }
+  }
   ((x * 0.5 + 0.5) * self.width, (-y * 0.5 + 0.5) * self.height, w)
 }
 
@@ -136,6 +158,10 @@ fn TileProcessor::hit(
   let query = query.translated(sl, feature)
   let q = query.polygon
   guard near_query(rings, query, pad, sl.kind is FillExtrusion) else {
+    return None
+  }
+  // MapLibre finds no extrusions on the globe (no fast-path projection there).
+  if sl.kind is FillExtrusion && query.globe is Some(_) {
     return None
   }
   match sl.kind {
@@ -171,12 +197,12 @@ fn TileProcessor::hit(
       let size = number_at(sl.radius, zoom, feature) +
         number_at(sl.stroke_width, zoom, feature)
       let screen = q.map(p => {
-        let (x, y, _) = query.screen(p)
+        let (x, y, _) = query.screen(p, self.trig)
         (x, y)
       })
       for ring in rings {
         for p in ring {
-          let (x, y, w) = query.screen(p)
+          let (x, y, w) = query.screen(p, self.trig)
           let hit = match (sl.pitch_with_map, sl.scale_with_map) {
             (true, true) => @core.polygon_hits_point(q, p, size * query.pixels)
             (true, false) =>

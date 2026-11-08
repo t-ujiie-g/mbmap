@@ -9,6 +9,10 @@
       "mean": 0.01,
       "p99": 0
     },
+    "globeSplit": {
+      "mean": 0.05,
+      "p99": 1
+    },
     "maplibre": {
       "mean": 0.05,
       "p99": 1
@@ -49,6 +53,48 @@
         "mean": 0,
         "p99": 0,
         "max": 40
+      },
+      "screen": {
+        "differ": 0,
+        "mean": 0,
+        "p99": 0,
+        "max": 0
+      }
+    },
+    {
+      "view": "globe",
+      "ok": true,
+      "size": [
+        1600,
+        1200
+      ],
+      "maxSize": 300,
+      "split": {
+        "differ": 220,
+        "mean": 0,
+        "p99": 0,
+        "max": 249
+      },
+      "screen": {
+        "differ": 0,
+        "mean": 0,
+        "p99": 0,
+        "max": 0
+      }
+    },
+    {
+      "view": "globe-terrain",
+      "ok": true,
+      "size": [
+        1600,
+        1200
+      ],
+      "maxSize": 256,
+      "split": {
+        "differ": 81722,
+        "mean": 0.031,
+        "p99": 1,
+        "max": 242
       },
       "screen": {
         "differ": 0,
