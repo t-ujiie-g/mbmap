@@ -1,0 +1,312 @@
+{
+  "source": "see bench/maplibre/fetch-tiles.mjs",
+  "attribution": "Esri's sample scene services on ArcGIS Online (SanFrancisco_Bldgs, Frankfurt2017_vi3s_18); Esri's terms of use",
+  "fetched": "2026-11-08",
+  "totalBytes": 3287039,
+  "tiles": {
+    "layer.json": {
+      "bytes": 4948,
+      "sha256": "c611ed51ebc6f629d348282760cf707f9dec5c37f20d5c73ff550efd7d3ff7e3"
+    },
+    "nodepages/0": {
+      "bytes": 34140,
+      "sha256": "54fa08bcfbcecb998407e9155687a6434bba7b44af346bf1b5774a718ec3b9c8"
+    },
+    "nodepages/400": {
+      "bytes": 34763,
+      "sha256": "0b7926387784e6b25f735782322cc211dc282bdf9f2d3b928808448428e3c280"
+    },
+    "nodepages/775": {
+      "bytes": 36133,
+      "sha256": "19f2f51677f3d0c87049256ab6aeeebe9f0e8fb9a6f0aaa1c36f582b905efcb3"
+    },
+    "nodes/0/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "34fb5c825de7ca4aea6e712f19d439c1da0c92c37b423936c5f618545ca4fa1f"
+    },
+    "nodes/0/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "9b44ddc07ccf02cbdb82c1ec2697e21b5d71805b4978011db2e272d3bfaeb0d9"
+    },
+    "nodes/0/geometries/0": {
+      "bytes": 4776,
+      "sha256": "83e19cfc35a6a4893ecbc11d3b3d3badbe5bf62f70ab94c6c37334f9522900f5"
+    },
+    "nodes/0/geometries/1": {
+      "bytes": 877,
+      "sha256": "b82e88b61df4e7852b802b8790cdd8b0350e4e518f866e4a59ff736e61864146"
+    },
+    "nodes/1/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "77ee7ce65c84d38465b8162c58afd76001b97d06f7e68e7abc06ad7eee78756c"
+    },
+    "nodes/1/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "f03dc6596c2a342d41f2bc4decdf955c6e40a970ddea9b2b2d830abc9b1a3b8a"
+    },
+    "nodes/1/geometries/0": {
+      "bytes": 27216,
+      "sha256": "6934018e31fb39b663ca415aaec1950a1ec80665e622e4a7cd62c2499c81533a"
+    },
+    "nodes/1/geometries/1": {
+      "bytes": 2980,
+      "sha256": "0ccc1ab5a2ad366858650414a82c189566a21d42105b3accdd0cd3a5da187462"
+    },
+    "nodes/2/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "226868b59be3e5e479cc22d7bda11055bad06bb205b77454ea36c65885f5c284"
+    },
+    "nodes/2/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "16b6e5ea23e179086c22a46c3dce0b73434b55210708310b2153480e941001b9"
+    },
+    "nodes/2/geometries/0": {
+      "bytes": 1740,
+      "sha256": "fe05b301ed0b4b1c78db7d0d84472d7ce6d14e3b0811a45ddfc00de0bcae08ec"
+    },
+    "nodes/2/geometries/1": {
+      "bytes": 550,
+      "sha256": "d2c8150cbeb150d4d3ecf60ac54a88f211fc14806036cd49b309344986c51e78"
+    },
+    "nodes/25599/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "517c8f2a66be53dc51036985069cee32bea47c297baeb8eebf5b8fc114363e5e"
+    },
+    "nodes/25599/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "34c54e6d610712cbeaa4ae5bc4c155e6d43f9fc345b75a274683d6eca00a774a"
+    },
+    "nodes/25599/geometries/0": {
+      "bytes": 41388,
+      "sha256": "d5bc3abb23918ab39de590f42ebade597420f199f556add2565bdd609c83542e"
+    },
+    "nodes/25599/geometries/1": {
+      "bytes": 3880,
+      "sha256": "2dff4b7bda1c387197df5a004b2d4f40a6c31fcd19732c9b5370f8a80a984519"
+    },
+    "nodes/25600/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "d2171cf139b9c98cc0c5dc4860e8dc1c3e4eedad317dec1223f744f50df4dc57"
+    },
+    "nodes/25600/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "0b20ac695d812d8810ed8c37c2eff44ada69a07eb3dd3bec541542e4ef9fe50c"
+    },
+    "nodes/25600/geometries/0": {
+      "bytes": 40332,
+      "sha256": "d0c610ab7e5fc17bbae557fd321a10eab1faffd4d86f85d936e0829bf1f145fe"
+    },
+    "nodes/25600/geometries/1": {
+      "bytes": 4095,
+      "sha256": "013c9d25e01d18f19683f999e16de189a96946862cdcb932739c286f599c205a"
+    },
+    "nodes/25601/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "4836aa60d51731d93adde546e6bdf3a28e697566a6dcf3540175a2f8a9f91f5c"
+    },
+    "nodes/25601/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "9dadbf5ae62ade5e6938867a085643b3e6d1a2252dd7aa9ffa7d781547de95df"
+    },
+    "nodes/25601/geometries/0": {
+      "bytes": 138012,
+      "sha256": "bcbec57af2b68acb2cb41e7266873a929fb512e99fda2d5968cc0a0bb35d0b63"
+    },
+    "nodes/25601/geometries/1": {
+      "bytes": 12781,
+      "sha256": "6e032895e67e308144077a32df298afd30852cd2eec1a8e4cf33fbf34c2baa28"
+    },
+    "nodes/25602/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "3816d404cbabd566dfcacee73fff367b8062a8067f064238a0ce4f663693e906"
+    },
+    "nodes/25602/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "e82f5311df152924d8b2601459728b13e7f18ebbfb474f4604703f1f6d0a9171"
+    },
+    "nodes/25602/geometries/0": {
+      "bytes": 332316,
+      "sha256": "25b931fa26494eb68c43186441b14947e6c1d56903796eae49e354b37235b517"
+    },
+    "nodes/25602/geometries/1": {
+      "bytes": 28339,
+      "sha256": "f73146b60fa91af8fac692b755a1cf9410722c9d92726804c4755973a0aadefc"
+    },
+    "nodes/25603/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "55f7e87ffcc77b36c8440b86bd6fe9f3c8b326bb7486a042e2172dd9afb7d4b1"
+    },
+    "nodes/25603/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "14fa7befb07c60e98bcc9232f52fa15c256d694109d4a6c9de32bfbbf292e3f6"
+    },
+    "nodes/25603/geometries/0": {
+      "bytes": 137748,
+      "sha256": "05b9cfa676a8c7cc60c90c85e1ca8e9a79acfc4c5ee4fb3744729c50b6da62a0"
+    },
+    "nodes/25603/geometries/1": {
+      "bytes": 13698,
+      "sha256": "bd2e14d9f33d84b315fe13e94176cfb4e459bf70560a33be0887425c5c9500a6"
+    },
+    "nodes/25604/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "6b9efcbb5db97fb1de8c8c0f3237682956742df3539936d399a532b06b9712f3"
+    },
+    "nodes/25604/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "2f0adc1516d1c3576f9c5d1134f605f76a647fad4948f1a75606adf274d290f0"
+    },
+    "nodes/25604/geometries/0": {
+      "bytes": 16704,
+      "sha256": "589ca689f9a0fb116633eedb0f90025fbc81e5ee30e121ed9249d0ef0d7c7dce"
+    },
+    "nodes/25604/geometries/1": {
+      "bytes": 1881,
+      "sha256": "445f078f87e2d1699c6360cd78d47d851f7d8a08b6dea096471a1a5c1075f84c"
+    },
+    "nodes/25605/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "eb2232fbc737d87afb20c394e0a66a96c3c728bfc1cf27faef3acf700263ca02"
+    },
+    "nodes/25605/attributes/f_1/0": {
+      "bytes": 100,
+      "sha256": "6bb3547a5277c1bfd4eb604b885b9221404fa7beba48f9cff41b86feaba25b3b"
+    },
+    "nodes/25605/geometries/0": {
+      "bytes": 138276,
+      "sha256": "262b376eca75925d67185ec03b74bc254531919c0725f50a5ab8ccd740ca295d"
+    },
+    "nodes/25605/geometries/1": {
+      "bytes": 12249,
+      "sha256": "d01644cbc6d6675d09c802afe15ae0070a6e005af7177bffa0d0dc8d1e37f2b3"
+    },
+    "nodes/25606/attributes/f_0/0": {
+      "bytes": 20,
+      "sha256": "5a5c174d89e682ef399256a2d7997ebeb1575c2b663a4334a8b47e89b80deba6"
+    },
+    "nodes/25606/attributes/f_1/0": {
+      "bytes": 96,
+      "sha256": "dffc1c1f2ae7ae947fc0f7f6da840532d9a5fe412332f7656d963bbe8160e1d5"
+    },
+    "nodes/25606/geometries/0": {
+      "bytes": 110820,
+      "sha256": "38549356f40e96d19a786f9eb9675fe61ab7fa605dccd00dcfae4c025aa6ffc7"
+    },
+    "nodes/25606/geometries/1": {
+      "bytes": 10109,
+      "sha256": "65852343dc4a44ed88140ef3b15a9f164a7acfd49868c0f5f27fcf95664def0a"
+    },
+    "nodes/3/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "356e910160429885087b4f58490534af277e2c84aa50653e3691108451629a22"
+    },
+    "nodes/3/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "9c15632369777519d9306775e37f514c517c9ec847da61902cf5d2ba9fd8b8ae"
+    },
+    "nodes/3/geometries/0": {
+      "bytes": 20220,
+      "sha256": "bc8e6d2bc97b0821d5e01d437d7e4ea95705a916af730fdfbf7ca5e01a8e6143"
+    },
+    "nodes/3/geometries/1": {
+      "bytes": 2163,
+      "sha256": "ab752b723b150044a8dc17e73df3ea0e76fc78ea8647bb35a0cbb2820742a652"
+    },
+    "nodes/4/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "52a5563ada707b165856b578d5a33d1b0310730384df047411502f60aa04072a"
+    },
+    "nodes/4/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "f17086f271aadf03347a1bcaa4a9cdd267635335cf4c985e34386747859ce6d9"
+    },
+    "nodes/4/geometries/0": {
+      "bytes": 85296,
+      "sha256": "d0effc7430e0ffb3d2f780ef305be416b5c6c9214439f29392bfffd501459dc0"
+    },
+    "nodes/4/geometries/1": {
+      "bytes": 8169,
+      "sha256": "2d4ed9fb90183c9285b49de47c0b5e50516c2271dbd846847609a794a76cd220"
+    },
+    "nodes/49609/attributes/f_0/0": {
+      "bytes": 344,
+      "sha256": "777d40964a038c6d310a62e651169cfd6300f468065f08e60db9c9e766c26802"
+    },
+    "nodes/49609/attributes/f_1/0": {
+      "bytes": 1878,
+      "sha256": "a12b17a77dbe2231644bae3f13352a34db10f2ae73fc184f8215280420c9689b"
+    },
+    "nodes/49609/geometries/0": {
+      "bytes": 1161648,
+      "sha256": "91273a6267d443b600e9a79467202f0d975a7987d1bca11ea156beeadb7dc9c4"
+    },
+    "nodes/49609/geometries/1": {
+      "bytes": 86164,
+      "sha256": "2b2be3739e8fd54e1a9ef2b87b4b26c8294e0a455f3dfb77fd79f45624a3d762"
+    },
+    "nodes/49616/attributes/f_0/0": {
+      "bytes": 256,
+      "sha256": "ed4e60eae80a5810cd574c9a00a20093204056723205b48026a8874d516531ff"
+    },
+    "nodes/49616/attributes/f_1/0": {
+      "bytes": 1709,
+      "sha256": "3178625f53171f4eabf8daedbcf29457912ab3b9933e871748e6b7a3ade2eaf0"
+    },
+    "nodes/49616/geometries/0": {
+      "bytes": 576932,
+      "sha256": "8bbeade93666f8e8e9ce318f5ed62f8cb7f9ddfe05a6964fbef85f8afc7b1170"
+    },
+    "nodes/49616/geometries/1": {
+      "bytes": 44032,
+      "sha256": "baf1e0cdc1c893c584dd49c2c2bcff34d9664c1b8a6b6024dd0cb11904aacfd7"
+    },
+    "nodes/5/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "ae46d841a9077bd312ec73a392b33f1cd528793afc734ae7e7ee65178f612a9c"
+    },
+    "nodes/5/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "b2b027e403d409ae157a70cdb569da93a6c0280004221ca8b0a7b12d79ef5a0a"
+    },
+    "nodes/5/geometries/0": {
+      "bytes": 53880,
+      "sha256": "b47c6f29029a14c684e02ec9e12885c97fb30e899c3f00689bb2a29add44d47e"
+    },
+    "nodes/5/geometries/1": {
+      "bytes": 4944,
+      "sha256": "17ff79963a1e0d543faf352f9bf0e3b3dc60fdaaee43844dc80298e36e89d201"
+    },
+    "nodes/6/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "2ce306812d29c2126c33afe99c62a42bb652521aadc66ec1eee1fbd440e3f861"
+    },
+    "nodes/6/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "280a22799555bf941f650afcb0fb4dba58b5577db7301e83287931ab4208af21"
+    },
+    "nodes/6/geometries/0": {
+      "bytes": 34344,
+      "sha256": "cdf77dd1d6d422b9995d2e106057b867b6c9989f6e86546ebb2a7c7aa5cb3ce9"
+    },
+    "nodes/6/geometries/1": {
+      "bytes": 3342,
+      "sha256": "faf1ceff4da4b39d291a400509b1d3efd6eea3a3701ad940679d201f3234d3e3"
+    },
+    "nodes/7/attributes/f_0/0": {
+      "bytes": 8,
+      "sha256": "d6b59bed8b3ba3ad24cb89b9851098d6a1329b7a420387b32eee2252477906b7"
+    },
+    "nodes/7/attributes/f_1/0": {
+      "bytes": 31,
+      "sha256": "bc27dc07b63a6935eb2575c249c267920df6d66c34401c21f5fadaf957ffef59"
+    },
+    "nodes/7/geometries/0": {
+      "bytes": 8472,
+      "sha256": "3df4a34bf94d427f8add8ffa9cc62abf54a4ead007a6c155a85892acd22d6bfc"
+    },
+    "nodes/7/geometries/1": {
+      "bytes": 1251,
+      "sha256": "313ad5a6e1ca235d40fdd3c287f7d7b4d35e67da08773eed767083e3a69c8a8e"
+    }
+  }
+}

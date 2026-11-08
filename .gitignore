@@ -25,4 +25,6 @@ bench/fixtures/plateau-chiyoda/
 bench/fixtures/draco/
 bench/fixtures/pdal-las/
 bench/fixtures/i3s-sf-pages/
+bench/fixtures/i3s-sf/
+bench/fixtures/i3s-frankfurt/
 .claude/worktrees/

@@ -1,0 +1,109 @@
+{
+  "date": "2026-11-08T21:34:09.598Z",
+  "node": "v22.23.4",
+  "layers": {
+    "i3s-sf": {
+      "buffers": 36,
+      "vertices": 96781,
+      "features": 376,
+      "attributes": 36,
+      "values": 376,
+      "differ": 0,
+      "problems": []
+    },
+    "i3s-frankfurt": {
+      "buffers": 12,
+      "vertices": 28796,
+      "features": 12,
+      "attributes": 0,
+      "values": 0,
+      "differ": 0,
+      "problems": []
+    },
+    "synthetic": {
+      "buffers": 10,
+      "vertices": 960,
+      "features": 32,
+      "attributes": 15,
+      "values": 48,
+      "differ": 0,
+      "problems": []
+    }
+  },
+  "hostile": [
+    {
+      "what": "empty",
+      "refused": true
+    },
+    {
+      "what": "header only",
+      "refused": true
+    },
+    {
+      "what": "cut in the feature table",
+      "refused": true
+    },
+    {
+      "what": "vertex count past the buffer",
+      "refused": true
+    },
+    {
+      "what": "huge vertex count",
+      "refused": true
+    },
+    {
+      "what": "vertex count not of triangles",
+      "refused": true
+    },
+    {
+      "what": "huge feature count",
+      "refused": true
+    },
+    {
+      "what": "face range past the vertices",
+      "refused": true
+    },
+    {
+      "what": "face range backwards",
+      "refused": true
+    },
+    {
+      "what": "Draco cut",
+      "refused": true
+    },
+    {
+      "what": "Draco garbage",
+      "refused": true
+    },
+    {
+      "what": "not Draco",
+      "refused": true
+    },
+    {
+      "what": "Web Mercator layer",
+      "refused": true
+    },
+    {
+      "what": "undefined buffer",
+      "refused": true
+    },
+    {
+      "what": "string count past the buffer",
+      "refused": true
+    },
+    {
+      "what": "string bytes past the buffer",
+      "refused": true
+    },
+    {
+      "what": "values past the buffer",
+      "refused": true
+    },
+    {
+      "what": "unknown value type",
+      "refused": true
+    }
+  ],
+  "maxPositionMeters": 0.00012846944574688713,
+  "differ": 0
+}
