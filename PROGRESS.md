@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 19 の後の点検（リファクタリング・セキュリティチェック・速さの比較）を、Mac で回すものと合わせて Mac でまとめて行う（2026-11-08 ユーザー判断。下の節「Phase 19 の後の点検（Mac で行う）」が手順と候補）。その後は VISION §8 の Phase 20。
+- **次**：Phase 19 の速さの比較（下の節「Phase 19 の後の点検」の残り、Mac で）。その後は VISION §8 の Phase 20。Phase 19 の後のリファクタリング・セキュリティチェックは済んだ（#135 と下の節）。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
 - **Mac で回すもの**（残り。Phase 19 の分は下の節）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
@@ -16,43 +16,38 @@
   | 入口 | 大きさ | 予算 |
   |---|---|---|
   | 表示（メイン） | 133.7KB（式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
-  | 表示ワーカー | 80.8KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示ワーカー | 80.5KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 7.7KB（分類と統計 1.8KB を含む） ＋ ワーカー 29.9KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.2KB、route.wasm 12.9KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 7.8KB（分類と統計 1.8KB を含む） ＋ ワーカー 29.7KB（geometry.wasm 41.8KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 28.7KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 13.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
-## Phase 19 の後の点検（Mac で行う）
+## Phase 19 の後の点検（2026-11-08、Mac）
 
-Phase 19 で足したもの（下の節）を、AGENTS §7（リファクタリング）・§8（セキュリティ）で見直す。Web の環境では回せないもの（GDAL、性能のベンチ）も含め、Mac でまとめて行う（2026-11-08 ユーザー判断）。見つけたものは、AGENTS §7 のとおり直す前に一覧にする。
+Phase 19 で足したものを中心に、プロジェクト全体との重なりも見ながら AGENTS §7・§8 で見直した。ユーザーの判断（2026-11-08）で、見つけたものは速さの比較を除いてすべて 1 PR で直した（可視域と GDAL の突き合わせは #135）。ワーカーが持つデータセット・格子・網の数には上限を設けない（同日ユーザー判断。代わりに古い番号を断る）。
 
-- **対象**：
-  - MoonBit のパッケージ：`relate`・`relate_worker`、`robust`・`simplify`・`hull`・`delaunay`・`lineops`・`shapes_worker`、`grids`・`clusters`・`isolines`・`density`・`surface_worker`、`viewshed`・`viewshed_worker`、`route`・`route_worker`、`map/expression.mbt`。
-  - TS：`npm/src/classify.ts`、`relate-pattern.ts`、`sight.ts`、`analysis.ts` の Phase 19 の API、`ui/field-editor.ts`・`ui/table-fields.ts`・`ui/attribute-table.ts`（`setColumns`・`passing`）、`index.ts` の `evaluateExpression`。
-  - JS：`analysis_worker/js/worker.mjs`（モジュールの読み込みと各操作）、`analysis_worker/js/viewshed.mjs`。
-  - example：`examples/shared/analyze.js`・`table.js`、`react/src/analysis.jsx`・`table.jsx`、`bench/npm/checks/analyze.mjs`・`table.mjs`。
-- **Mac で回すもの**：
-  1. ~~`viewshed:golden`~~：済み（2026-11-08、下の 19.5 の結果）。36 件すべて GDAL と同じ。
-  2. 速さの比較（VISION §8 の Phase 19 は「黄金テストと速度比較」だが、ベンチはまだない）：`relate` 対 JSTS、`simplify`・hull・ドロネー・ボロノイ対 Turf・concaveman・d3-delaunay、格子・IDW・等値線・密度・DBSCAN・k-means 対 Turf・d3-contour、`route` 対 geojson-path-finder、`classBreaks` 対 simple-statistics。各ゴールデンの入力を流用して `*:node` のベンチを作る（例：`bench/relate/node.mjs`、結果は `bench/results/*.json`）。可視域は `gdal_viewshed` と時間を比べる。
-  3. 上の「Mac で回すもの」（`style:public` などの以前からの残り）。
-- **確かめる候補**（Phase 19 の作業中に気づいたもの）：
-  - セキュリティ：
-    - `route_worker` の網の表（`networks`）に数の上限がなく、`dispose` しない呼び手がメモリを使い切れる。ほかのワーカーのデータセットや格子の表と扱いを揃える。
-    - 各ワーカーの export が、線形メモリから読む長さ（テーブル、文字列、f64）を `MAX_INPUT_BYTES` と各パッケージの上限（`MAX_RELATE_POINTS`、`MAX_HULL_POINTS`、`MAX_DELAUNAY_POINTS`、`MAX_GRID_CELLS`、`MAX_CLUSTER_POINTS`、`MAX_GRID_POINTS`、`MAX_CONTOUR_CELLS`、`MAX_VIEWSHED_CELLS`、`MAX_ROUTE_VERTICES` など）の前に確かめているか。
-    - `evaluateExpression` に渡る式の大きさ（`MAX_EXPR_NODES` で止まる）。フィールド演算の列名（`__proto__` は断っている）。
-    - ゴールデンのために `bench/` に足した依存（jsts、concaveman、delaunator、d3-delaunay、simple-statistics、geostats、d3-contour、geojson-path-finder など）の `npm audit` とライセンス、NOTICE。
-  - 大きさ（余裕がない）：解析ワーカー 29.9 / 30KB（次に足すものは、可視域と同じく、つなぎを遅れて読み込むファイルに出す）、表示（メイン）133.7 / 135KB、属性テーブル単独 2.0 / 2.2KB、`mbmap/analysis` 7.7 / 9KB、shapes.wasm 27.9 / 30KB、surface.wasm 28.1 / 30KB。
-  - 振る舞い：
-    - `evaluateExpression` は、オブジェクトや配列の属性を null として読む（表示の `JsProps` と同じ。MapLibre の GeoJSON は値を読む）。
-    - フィールド演算は、編集のたびにデータ全体を `getData` / `setData` する（大きなデータでは重い。取り消しはない）。
-    - タイルから作る道路網は、タイルの境で切れた線を頂点の丸め（許容値 1e-5°）でつなぐだけ。example の経路は描いているタイルの道路だけを使う。
-    - example の自然分類は、最大の級が 1 つの値だけになることがある（区切りが 24.91 / 24.91）。
-  - 整理：`node bench/lib/long-comments.mjs` の 32 件、Phase 19 のパッケージの定数と重複（`bbox`・`centroid` などの小さな幾何の補助が `grids`・`clusters`・`hull` に分かれていないか）、`analysis_worker/js/worker.mjs` の操作ごとの分岐。
-- **終わりの確認**：AGENTS §2 の検証（`moon check --target all --deny-warn`、`moon test --target all`、`moon fmt`、`moon info`、`npm` の build・test・size、`npm --prefix bench test`、`npm:pack`）と、Phase 19 のゴールデン（`relate`・`shapes`・`classify`・`surface`・`viewshed`・`route`・`fields`、すべて all identical）。
+- **セキュリティ（中）**：
+  - 自然分類（jenks）は O(k·n²) の表を主スレッドで作るので、100 万値 × 256 級でタブが止まった。`MAX_JENKS_WORK`（値² × 級、1e9）と `MAX_CKMEANS_CELLS`（値 × 級、1e7）を超えると断る。
+  - k-means は反復 1 万回 × n × k に上限がなかった。実際に計算した距離の数で `MAX_KMEANS_DISTANCES`（1e10）まで。最初に n·k·反復で断ると、既定の k で 1 万 3 千点ほどしか通らないので、数えながら止める。
+  - DBSCAN は距離が大きいと O(n²)。近傍を調べた数で `MAX_DBSCAN_CANDIDATES`（1e9）まで。
+  - 密度の等値線は線分の数に上限がなかった（`bandwidth` 0 で数 GB）。`MAX_CONTOUR_SEGMENTS`（400 万）と、穴の入れ子の判定の `MAX_CONTOUR_NESTING_TESTS`（1e8）。
+  - `relate_worker` は書き出す組だけを数えていた。調べる組を `MAX_RELATE_CANDIDATES`（1000 万）、その点の合計を `MAX_RELATE_TESTED_POINTS`（1e9）まで。
+- **セキュリティ（低）**：`simplify` に点の上限（`MAX_SIMPLIFY_POINTS`、100 万）。`surface_worker` の長さの和の Int32 のあふれ（`@wasmio.lengths_fit`）。DBSCAN・k-means・`nearest_on_line` の出力と可視域の入力の写しを、確保の前に大きさで確かめる（`@wasmio.output_fits`、`@viewshed.grid_fits`）。`terminate()` のあとの古い `Dataset`・`DemGrid`・`Network` は、新しいワーカーの同じ番号のものを読まずに断る（`WorkerClient` の `generation`）。`Network.dispose` の拒否を握りつぶす、wasm の読み込みの失敗をキャッシュしない、知らない操作に答えを返す（約束が残らない）、見通しの始点と終点が同じとき、`lineOfSight` の点と各引数の有限性、`evaluateExpression` の `$id`・`$type` を常に置く（属性の同名のものが代わりに入らない）、example の表の見出しの `constructor`。
+- **正しさ**：`classStep` は同じ区切りが続くと後の級を取り、順でない区切りは断る（MapLibre の `step` が断る式を作らない）。`dissolve` などは捨てたデータセットで同期的に例外を投げず、ほかと同じく拒否する。
+- **整理**：
+  - `core` に Turf の地球半径（`TURF_EARTH_RADIUS`）と `PI`、`turf_radians`・`haversine`・`turf_ring_area`・`js_round`（`Math.round` の −0 も。`style` の `round` も同じになった）・`js_min`/`js_max`・`stable_sort`、`geom` に `Table::feature_points`。それぞれ 2〜5 か所にあった写しを消した。
+  - 上限を通らない公開の入口（`delaunay.triangles`、`clusters.dbscan`・`kmeans`）を消し、上限つきのものを元の名前に。`hull` の `concave`・`convex` は `Table?` を返し、`shapes_worker` の二重の確かめを消した。使われない `pub using Trig` 4 つを消した。
+  - `analysis_worker/js/worker.mjs` の繰り返し（モジュールの URL、テーブルの受け渡し、f64 の結果、データセットの答え）を補助関数に、DEM の格子の `res` を持たせて `viewshed.mjs` のメルカトルの計算を消した。`analysis.ts` の haversine を `sight.ts` の 1 つに、点と範囲の確かめを `isPoint`・`isBox` に。`addColumn` の `getData` を 1 回に。example の解析のタブで、失敗しても `dispose` する。
+  - MoonBit の 3 行を超えるコメントはなくなった（`long-comments.mjs` の残り 12 件は TS・JS の API の説明とゴールデンの冒頭）。上限の None のテストを足した（`MAX_GRID_POINTS`、`MAX_CELL_BREAKS` ほか）。
+- **見送ったもの**：4 つの優先度つきキュー（flatqueue、tinyqueue 3 と 2.0.3、MapLibre の比較）は同点の扱いが違うのでまとめない。点と環の判定（analysis の `orient_origin` と isolines の `orient2d`）は、まとめると解析ワーカーに `robust` が入る。DBSCAN の距離は Turf と同じ `pow(sin, 2)` のまま。proj・clipper・geodesic・overlay の定数の写しはそのまま。大きな移植のファイル（rbush、delaunator、`viewshed/executor.mbt` など）は行数だけでは分けない。
+- **依存**：`npm audit` は `npm/`・`bench/`・`examples/react/` とも 0 件、Dependabot の警告 0 件。ゴールデンのための依存は MIT・ISC・BSD・Unlicense・EDL/EPL で、NOTICE にある。Mac の `bench/node_modules` が古かった（jsts 2.7.1）ので `npm ci` し直した。
+- **大きさ**：解析ワーカー 29.9 → 29.7KB、relate.wasm 26.5 → 26.8KB、surface.wasm 28.1 → 28.7KB（線分の予算）、`mbmap/analysis` 7.7 → 7.8KB、表示ワーカー 80.5KB、表示（メイン）133.7KB。
+- **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 341、`npm --prefix bench test`、ゴールデン（viewshed・relate・shapes・surface・route・analysis・classify・fields・expression・geojson・cluster・style・labels・query・color）すべて同じ、`npm:pack` 通過。
+- **残り（Mac で）**：速さの比較（VISION §8 の Phase 19 は「黄金テストと速度比較」だが、ベンチはまだない）。`relate` 対 JSTS、`simplify`・hull・ドロネー・ボロノイ対 Turf・concaveman・d3-delaunay、格子・IDW・等値線・密度・DBSCAN・k-means 対 Turf・d3-contour、`route` 対 geojson-path-finder、`classBreaks` 対 simple-statistics を、各ゴールデンの入力で `*:node` のベンチにする（例：`bench/relate/node.mjs`、結果は `bench/results/*.json`）。可視域は `gdal_viewshed` と時間を比べる。振る舞いの候補（フィールド演算が編集のたびにデータ全体を `getData`/`setData` する、タイルの境の道路のつなぎ、自然分類の最大の級が 1 つの値だけになる）は Phase 20 の前に扱いを決める。
 
 ## Phase 19：解析 第2弾（2026-11-07〜11-08）
 

@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 133710,
+      "bytes": 133716,
       "budget": 135000
     },
     {
@@ -71,7 +71,7 @@
     },
     {
       "name": "mbmap/services",
-      "bytes": 11232,
+      "bytes": 11254,
       "budget": 12000
     },
     {
@@ -81,7 +81,7 @@
     },
     {
       "name": "services worker (ArcGIS f=json and f=pbf; loaded by mbmap/services on the first such read)",
-      "bytes": 19969,
+      "bytes": 19957,
       "budget": 20000
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 80495,
+      "bytes": 80549,
       "budget": 100000
     },
     {
@@ -116,12 +116,12 @@
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 49291,
+      "bytes": 49345,
       "budget": 50000
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 7708,
+      "bytes": 7850,
       "budget": 9000
     },
     {
@@ -131,37 +131,37 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 29919,
+      "bytes": 29673,
       "budget": 30000
     },
     {
       "name": "geometry (loaded by the analysis worker on first use)",
-      "bytes": 41740,
+      "bytes": 41759,
       "budget": 50000
     },
     {
       "name": "spatial relations (DE-9IM; loaded by the analysis worker on first use)",
-      "bytes": 26508,
+      "bytes": 26806,
       "budget": 30000
     },
     {
       "name": "shapes (simplify, hulls, Delaunay, Voronoi, line slices; loaded by the analysis worker on first use)",
-      "bytes": 27936,
+      "bytes": 27909,
       "budget": 30000
     },
     {
       "name": "surfaces (grids, IDW, clusters, contours, density; loaded by the analysis worker on first use)",
-      "bytes": 28117,
+      "bytes": 28714,
       "budget": 30000
     },
     {
       "name": "viewshed (GDAL's; loaded by the analysis worker on first use)",
-      "bytes": 10188,
+      "bytes": 10097,
       "budget": 12000
     },
     {
       "name": "routing (geojson-path-finder; loaded by the analysis worker on first use)",
-      "bytes": 12949,
+      "bytes": 12964,
       "budget": 15000
     },
     {
@@ -171,7 +171,7 @@
     },
     {
       "name": "mbmap/geodesic",
-      "bytes": 1225,
+      "bytes": 1244,
       "budget": 2000
     },
     {
@@ -181,7 +181,7 @@
     },
     {
       "name": "mbmap/data",
-      "bytes": 4706,
+      "bytes": 4727,
       "budget": 6000
     },
     {
@@ -221,7 +221,7 @@
     },
     {
       "name": "GeoTIFF (loaded by the data worker on the first raster read)",
-      "bytes": 19798,
+      "bytes": 19790,
       "budget": 20000
     },
     {
