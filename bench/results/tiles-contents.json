@@ -1,0 +1,249 @@
+{
+  "env": {
+    "loaders": "@loaders.gl/3d-tiles 4.5.4"
+  },
+  "results": [
+    {
+      "case": "float positions",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "quantized positions, offset and scale in JSON, SCALE",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true
+    },
+    {
+      "case": "quantized positions, offset and scale in the binary",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true
+    },
+    {
+      "case": "EAST_NORTH_UP, SCALE_NON_UNIFORM",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "EAST_NORTH_UP, SCALE and SCALE_NON_UNIFORM",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "BATCH_ID by default UNSIGNED_SHORT",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "BATCH_ID UNSIGNED_BYTE",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "BATCH_ID UNSIGNED_SHORT",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "BATCH_ID UNSIGNED_INT",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "RTC_CENTER in JSON",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "RTC_CENTER in the binary",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true
+    },
+    {
+      "case": "glTF by URI",
+      "against": "loaders.gl",
+      "instances": 24,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "no instances",
+      "against": "loaders.gl",
+      "instances": 0,
+      "same": true,
+      "referenceMatchesLoaders": true
+    },
+    {
+      "case": "EAST_NORTH_UP with RTC_CENTER",
+      "against": "loaders.gl on positions with RTC_CENTER added",
+      "instances": 24,
+      "same": true
+    },
+    {
+      "case": "NORMAL_UP and NORMAL_RIGHT",
+      "against": "reference (loaders.gl's loop with Cesium's orientation)",
+      "instances": 24,
+      "same": true
+    },
+    {
+      "case": "NORMAL_UP_OCT32P and NORMAL_RIGHT_OCT32P, SCALE, RTC_CENTER",
+      "against": "reference (loaders.gl's loop with Cesium's orientation)",
+      "instances": 24,
+      "same": true
+    },
+    {
+      "case": "cmpt: b3dm and i3dm",
+      "against": "loaders.gl",
+      "parts": "b3dm,i3dm",
+      "skipped": 0,
+      "same": true
+    },
+    {
+      "case": "cmpt: nested cmpts",
+      "against": "loaders.gl",
+      "parts": "b3dm,i3dm,i3dm,i3dm,b3dm",
+      "skipped": 0,
+      "same": true
+    },
+    {
+      "case": "cmpt: with pnts",
+      "against": "loaders.gl",
+      "parts": "i3dm",
+      "skipped": 2,
+      "same": true
+    },
+    {
+      "case": "hostile: i3dm cut short",
+      "same": true,
+      "refused": "the i3dm is cut short"
+    },
+    {
+      "case": "hostile: i3dm header cut short",
+      "same": true,
+      "refused": "the i3dm header is cut short"
+    },
+    {
+      "case": "hostile: i3dm byteLength past the file",
+      "same": true,
+      "refused": "the i3dm is cut short"
+    },
+    {
+      "case": "hostile: i3dm feature table past the file",
+      "same": true,
+      "refused": "the i3dm's tables run past the file"
+    },
+    {
+      "case": "hostile: i3dm version 2",
+      "same": true,
+      "refused": "only i3dm version 1 is read"
+    },
+    {
+      "case": "hostile: i3dm gltfFormat 2",
+      "same": true,
+      "refused": "the i3dm's gltfFormat is neither 0 nor 1"
+    },
+    {
+      "case": "hostile: INSTANCES_LENGTH absurd",
+      "same": true,
+      "refused": "the i3dm has more than 1000000 instances"
+    },
+    {
+      "case": "hostile: INSTANCES_LENGTH past POSITION",
+      "same": true,
+      "refused": "POSITION runs past the feature table"
+    },
+    {
+      "case": "hostile: INSTANCES_LENGTH missing",
+      "same": true,
+      "refused": "the i3dm has no INSTANCES_LENGTH"
+    },
+    {
+      "case": "hostile: POSITION byteOffset past the binary",
+      "same": true,
+      "refused": "POSITION runs past the feature table"
+    },
+    {
+      "case": "hostile: POSITION_QUANTIZED without its volume",
+      "same": true,
+      "refused": "POSITION_QUANTIZED needs QUANTIZED_VOLUME_OFFSET and QUANTIZED_VOLUME_SCALE"
+    },
+    {
+      "case": "hostile: no position",
+      "same": true,
+      "refused": "the i3dm has neither POSITION nor POSITION_QUANTIZED"
+    },
+    {
+      "case": "hostile: NORMAL_UP without NORMAL_RIGHT",
+      "same": true,
+      "refused": "NORMAL_UP and NORMAL_RIGHT go together"
+    },
+    {
+      "case": "hostile: BATCH_ID of an unknown componentType",
+      "same": true,
+      "refused": "BATCH_ID has an unknown componentType"
+    },
+    {
+      "case": "hostile: feature table JSON null",
+      "same": true,
+      "refused": "the i3dm feature table is not a JSON object"
+    },
+    {
+      "case": "hostile: i3dm without its glTF",
+      "same": true,
+      "refused": "the i3dm is cut short"
+    },
+    {
+      "case": "hostile: cmpt nested 12 deep",
+      "same": true,
+      "refused": "cmpt tiles nest deeper than 8"
+    },
+    {
+      "case": "hostile: cmpt inner byteLength 0",
+      "same": true,
+      "refused": "a cmpt tile runs past the file"
+    },
+    {
+      "case": "hostile: cmpt inner byteLength past the file",
+      "same": true,
+      "refused": "a cmpt tile runs past the file"
+    },
+    {
+      "case": "hostile: cmpt tilesLength past its tiles",
+      "same": true,
+      "refused": "the cmpt's tiles run past the file"
+    },
+    {
+      "case": "hostile: cmpt tilesLength absurd",
+      "same": true,
+      "refused": "the cmpt has more than 65536 tiles"
+    },
+    {
+      "case": "hostile: cmpt cut short",
+      "same": true,
+      "refused": "the cmpt is cut short"
+    },
+    {
+      "case": "hostile: cmpt of an unknown tile",
+      "same": true,
+      "refused": "a cmpt tile is neither b3dm, i3dm, cmpt, pnts nor glTF"
+    }
+  ]
+}
