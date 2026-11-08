@@ -40,6 +40,29 @@ function nameOf(bytes: Uint8Array, flags: number): string {
   }
 }
 
+/** `raw` inflated as `format` (`deflate-raw` or `gzip`), refused once it passes `max` bytes; `name` goes in errors. */
+export async function inflate(raw: Uint8Array, format: "deflate-raw" | "gzip", max: number, name: string): Promise<Uint8Array> {
+  const parts: Uint8Array[] = [];
+  let got = 0;
+  const reader = new Blob([raw as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream(format)).getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      got += value.length;
+      if (got > max) fail(`${name}: inflates past ${max} bytes`);
+      parts.push(value);
+    }
+  } catch (err) {
+    await reader.cancel().catch(() => {});
+    throw err instanceof Error && err.message.startsWith("zip:") ? err : new Error(`zip: ${name}: invalid ${format === "gzip" ? "gzip" : "deflate"} data`);
+  }
+  if (parts.length === 1) return parts[0];
+  const out = new Uint8Array(got);
+  parts.reduce((at, p) => (out.set(p, at), at + p.length), 0);
+  return out;
+}
+
 /** The entries of the archive `bytes` and a reader for them, which inflates each at most `limits.bytes` in all. */
 export function readZip(bytes: Uint8Array, limits: ZipLimits = {}): { entries: ZipEntry[]; read(entry: ZipEntry): Promise<Uint8Array> } {
   const { entries: maxEntries = MAX_ZIP_ENTRIES, bytes: maxBytes = MAX_ZIP_BYTES } = limits;
@@ -94,22 +117,8 @@ export function readZip(bytes: Uint8Array, limits: ZipLimits = {}): { entries: Z
       if (entry.compressed !== entry.size) fail(`${entry.name}: a stored entry of the wrong size`);
       return raw.slice();
     }
-    const out = new Uint8Array(entry.size);
-    let got = 0;
-    const reader = new Blob([raw as Uint8Array<ArrayBuffer>]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (got + value.length > out.length) fail(`${entry.name}: inflates past the size it gives`);
-        out.set(value, got);
-        got += value.length;
-      }
-    } catch (err) {
-      await reader.cancel().catch(() => {});
-      throw err instanceof Error && err.message.startsWith("zip:") ? err : new Error(`zip: ${entry.name}: invalid deflate data`);
-    }
-    if (got !== out.length) fail(`${entry.name}: inflates short of the size it gives`);
+    const out = await inflate(raw, "deflate-raw", entry.size, entry.name);
+    if (out.length !== entry.size) fail(`${entry.name}: inflates short of the size it gives`);
     return out;
   }
   return { entries, read };

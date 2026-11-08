@@ -599,14 +599,16 @@ over 255) or null for point formats without colors, `intensity` a Uint16Array, `
 Uint8Array (the 5-bit class of formats 0 to 5, the byte of 6 to 10), `count` the points in the file;
 the typed arrays transferred. A file without a CRS and no `crs` is an error.
 
-`{type: "call", id, op: "i3s", url, buffer, texture?, layer, node}` reads an I3S 1.7 or 1.8 node
+`{type: "call", id, op: "i3s", url | geometry, buffer, texture? | textureBytes?, layer, node}` reads an I3S 1.7 or 1.8 node
 (`npm/src/i3s/content.ts` `readI3sGeometry`): `url` its geometry resource (`nodes/<resource>/geometries/<buffer>`),
 `buffer` the index into its geometry definition's `geometryBuffers` (`geometryBufferOf` prefers the Draco one,
 `nodeResources` gives the paths), `texture` the URL of its texture when the material's texture set has a JPEG or
 PNG format (`textureOf`; other bytes are dropped and the node drawn with its colors), `layer` the layer JSON (at
 least `spatialReference`, which must be 4326, `store.normalReferenceFrame`, `geometryDefinitions`,
 `materialDefinitions`) and `node` its node page entry (`obb.center` or `mbs`, `mesh`). Both are fetched without
-credentials (at most `MAX_I3S_BYTES` and `MAX_I3S_TEXTURE_BYTES`, gunzipped when stored raw as gzip). The
+credentials (at most `MAX_I3S_BYTES` and `MAX_I3S_TEXTURE_BYTES`, gunzipped when stored raw as gzip). In place
+of the URLs, `geometry` and `textureBytes` (Uint8Arrays, transferred) give the resources' bytes, as an SLPK's
+entries read on the main thread (`npm/src/i3s/slpk.ts`); the same caps and gunzipping apply. The
 uncompressed layout is the definition's header (vertex and feature counts as u32 when `offset` is 8 or more, else
 the node page's) and position, normal, uv0, color, uvRegion, featureId (u64) and faceRange (u32 x 2, inclusive
 triangles) one after another; a Draco buffer (3d.wasm's `draco_decode`) names its attributes by Draco type and
@@ -642,6 +644,24 @@ A Draco mesh (KHR_draco_mesh_compression) or point cloud (face count 0, no indic
 data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes and point clouds past
 `@draco.MAX_FACES`, `MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`, `MAX_KD_DIMENSIONS`), -2
 without memory.
+
+## LEPCC output (`lepcc/output.mbt`, written by `model_worker`'s `lepcc_decode`)
+
+An I3S point cloud's LEPCC blob (`lepcc-xyz` geometry, `lepcc-rgb` or `lepcc-intensity` attribute)
+decoded by `@lepcc.decode` as Esri's LEPCC C API does; all little-endian:
+
+| Bytes | Content |
+| --- | --- |
+| 8 | u32 count `n`, u32 0 |
+| 24 × `n` (xyz) | f64 x, y, z per point, in the blob's order (absolute coordinates in the layer's spatial reference) |
+| 3 × `n` (rgb) | u8 r, g, b per point |
+| 2 × `n` (intensity) | u16 per point |
+
+`lepcc_decode(kind)` (0 xyz, 1 rgb, 2 intensity) reads the input (the resource's bytes; a blob
+followed by other bytes too) and returns the output length, -1 for blobs Esri's decoder refuses
+(and blobs of no points or more than `@lepcc.MAX_POINTS`, or whose arrays the C++ would read past),
+-2 without memory. `model_worker/js/decode.mjs` `lepcc(exports)` wraps it as `xyz`, `rgb` and
+`intensity`, each taking the bytes and returning a Float64Array, Uint8Array or Uint16Array.
 
 ## Services worker messages (`services_worker/js/worker.mjs`)
 

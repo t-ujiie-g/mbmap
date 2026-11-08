@@ -32,6 +32,9 @@ export function resolveRequestPath(pathname) {
 // [start, end] inclusive, null for none, or "bad" for one it cannot serve.
 export function byteRange(header, size) {
   if (!header) return null;
+  // A suffix range (`bytes=-n`): the last n bytes, all of them when the file is shorter (RFC 9110 §14.1.2).
+  const suffix = /^bytes=-(\d+)$/.exec(header);
+  if (suffix) return Number(suffix[1]) > 0 && size > 0 ? [Math.max(0, size - Number(suffix[1])), size - 1] : "bad";
   const m = /^bytes=(\d+)-(\d*)$/.exec(header);
   if (!m) return "bad";
   const start = Number(m[1]);

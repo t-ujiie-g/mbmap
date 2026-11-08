@@ -3,11 +3,11 @@
 // `tiles`, `i3s`); messages are in docs/FORMATS.md ("Model worker messages").
 
 import { transformPairs } from "../../data_worker/js/crs.mjs";
-import { draco, meshopt } from "./decode.mjs";
+import { draco, lepcc, meshopt } from "./decode.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
 import { readGltf } from "../../npm/src/model/gltf.ts";
 import { horizontalWkt, MAX_LAS_BYTES, MAX_LAS_POINTS, readLas } from "../../npm/src/model/las.ts";
-import { MAX_I3S_BYTES, MAX_I3S_TEXTURE_BYTES, materialOf, readI3sGeometry } from "../../npm/src/i3s/content.ts";
+import { cartesian, MAX_I3S_BYTES, MAX_I3S_TEXTURE_BYTES, materialOf, readI3sGeometry } from "../../npm/src/i3s/content.ts";
 import { readTileContent } from "../../npm/src/tiles/content.ts";
 import { eastNorthUp, toCartesian } from "../../npm/src/tiles/geo.ts";
 
@@ -62,20 +62,60 @@ async function gunzip(bytes, max) {
 /** The media type of JPEG or PNG bytes, else undefined (DDS and KTX2 textures are not drawn). */
 const imageType = (b) => (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "image/jpeg" : b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 ? "image/png" : undefined);
 
+/** `bytes` given (an SLPK's entry, gunzipped by the caller), else those at `url`, capped at `max`. */
+const resource = (bytes, url, max) => (bytes instanceof Uint8Array ? (bytes.length > max ? Promise.reject(new Error(`more than ${max} bytes`)) : Promise.resolve(bytes)) : fetchBytes(new URL(url), max));
+
 /** An I3S node's geometry buffer (`buffer` of its definition) and JPEG or PNG texture, in east, north, up meters around its center. */
-async function i3s({ url, buffer, texture, layer, node }) {
+async function i3s({ url, geometry, buffer, texture, textureBytes, layer, node }) {
   const obj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-  if (!Number.isInteger(buffer) || buffer < 0 || !obj(layer) || !obj(node) || !(texture === undefined || typeof texture === "string")) throw new Error("invalid arguments");
+  const given = (bytes, at) => (bytes === undefined ? typeof at === "string" : bytes instanceof Uint8Array && at === undefined);
+  const untextured = texture === undefined && textureBytes === undefined;
+  if (!Number.isInteger(buffer) || buffer < 0 || !obj(layer) || !obj(node) || !given(geometry, url) || !(untextured || given(textureBytes, texture))) throw new Error("invalid arguments");
   const def = layer.geometryDefinitions?.[node.mesh?.geometry?.definition]?.geometryBuffers?.[buffer];
   const decoder = def?.compressedAttributes ? draco(await instance()) : undefined;
   const [bytes, image] = await Promise.all([
-    fetchBytes(new URL(url), MAX_I3S_BYTES).then((b) => gunzip(b, MAX_I3S_BYTES)),
-    texture === undefined ? undefined : fetchBytes(new URL(texture), MAX_I3S_TEXTURE_BYTES).then((b) => gunzip(b, MAX_I3S_TEXTURE_BYTES)),
+    resource(geometry, url, MAX_I3S_BYTES).then((b) => gunzip(b, MAX_I3S_BYTES)),
+    untextured ? undefined : resource(textureBytes, texture, MAX_I3S_TEXTURE_BYTES).then((b) => gunzip(b, MAX_I3S_TEXTURE_BYTES)),
   ]);
   const { center, primitive, featureIds, count } = readI3sGeometry(bytes, layer, node, buffer, decoder);
   const mimeType = image && imageType(image);
   const images = mimeType ? [await bitmap({ bytes: image, mimeType })] : [];
   return { center, primitives: [primitive], materials: [materialOf(layer, node.mesh?.material?.definition, images.length > 0)], images, featureIds, count };
+}
+
+/** The typed array of each uncompressed PCSL attribute value type. */
+const PCSL_TYPES = { UInt8: Uint8Array, UInt16: Uint16Array, UInt32: Uint32Array, Int8: Int8Array, Int16: Int16Array, Int32: Int32Array, Float32: Float32Array, Float64: Float64Array };
+
+/**
+ * An I3S point cloud node (each resource a URL or its bytes): its LEPCC xyz (longitude, latitude, height) in f32 east, north, up meters
+ * around `center`, and the attributes asked for (`rgb` and `intensity` LEPCC-coded, `classification`
+ * a plain array of `classType` values).
+ */
+async function pcsl({ url, center, rgb, intensity, classification, classType }) {
+  const str = (v) => v === undefined || typeof v === "string" || v instanceof Uint8Array;
+  if (!str(url) || url === undefined || !Array.isArray(center) || center.length !== 3 || !center.every(Number.isFinite) || ![rgb, intensity, classification].every(str)) throw new Error("invalid arguments");
+  const codec = lepcc(await instance());
+  // URLs, or the bytes an SLPK gave the main thread.
+  const get = (u) => (u === undefined ? undefined : (u instanceof Uint8Array ? Promise.resolve(u) : fetchBytes(new URL(u), MAX_I3S_BYTES)).then((b) => gunzip(b, MAX_I3S_BYTES)));
+  const [xyzBytes, rgbBytes, intensityBytes, classBytes] = await Promise.all([get(url), get(rgb), get(intensity), get(classification)]);
+  const xyz = codec.xyz(xyzBytes);
+  const count = xyz.length / 3;
+  const origin = cartesian(center[0], center[1], center[2]);
+  const m = eastNorthUp(origin);
+  const positions = new Float32Array(3 * count);
+  for (let i = 0; i < count; i++) {
+    const p = cartesian(xyz[3 * i], xyz[3 * i + 1], xyz[3 * i + 2]);
+    const d = [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]];
+    for (let k = 0; k < 3; k++) positions[3 * i + k] = m[4 * k] * d[0] + m[4 * k + 1] * d[1] + m[4 * k + 2] * d[2];
+  }
+  const colors = rgbBytes ? codec.rgb(rgbBytes) : null;
+  const intensities = intensityBytes ? codec.intensity(intensityBytes) : null;
+  const Typed = PCSL_TYPES[classType] ?? Uint8Array;
+  const classes = classBytes ? Uint8Array.from(new Typed(classBytes.buffer, classBytes.byteOffset, Math.floor(classBytes.byteLength / Typed.BYTES_PER_ELEMENT))) : null;
+  for (const [name, a, size] of [["rgb", colors, 3], ["intensity", intensities, 1], ["classification", classes, 1]]) {
+    if (a && a.length !== count * size) throw new Error(`I3S: the node's ${name} has ${a.length / size} values for ${count} points`);
+  }
+  return { center, positions, colors, intensity: intensities, classification: classes, count };
 }
 
 /** A tile's content as parts to draw: a cmpt's inner tiles, else the content itself. */
@@ -170,7 +210,7 @@ async function las({ url, maxPoints, crs }) {
   return { center, positions, colors, intensity, classification, count, kept, bounds };
 }
 
-const OPS = { load, tile, las, i3s };
+const OPS = { load, tile, las, i3s, pcsl };
 
 /** Every ArrayBuffer and ImageBitmap of a model, a tile's parts, an I3S node or a point cloud, once each. */
 function transferables(value) {
@@ -194,7 +234,7 @@ onmessage = async (e) => {
     wasmUrl = msg.wasm;
     urls.proj = msg.proj;
     urls.prj = msg.prj;
-  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && typeof msg.url === "string") {
+  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && (typeof msg.url === "string" || msg.op === "i3s" || msg.op === "pcsl")) {
     try {
       const value = await OPS[msg.op](msg);
       postMessage({ type: "result", id: msg.id, value }, transferables(value));

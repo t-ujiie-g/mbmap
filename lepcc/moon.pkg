@@ -1,0 +1,2 @@
+// LEPCC blobs (I3S point cloud layers' lepcc-xyz, lepcc-rgb and lepcc-intensity buffers), decoded
+// as Esri's LEPCC C API does. Pure MoonBit, tested on every backend.

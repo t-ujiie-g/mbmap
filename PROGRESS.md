@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.7b（I3S の点群 PCSL と LEPCC、SLPK）。20.7a（I3S の建物とメッシュ）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.8（太陽の位置と光と影）。20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -149,6 +149,13 @@
   - 依存：@loaders.gl/i3s 4.5.4（bench の devDependency、MIT、install スクリプトなし、`npm audit` 0 件）。公開サンプルのデータは比べるためだけに取り、コミットしない（Esri の利用条件。ライセンスの欄は www.arcgis.com がこの環境から読めず未確認）。
   - 大きさ：`3d-tiles.js` 9.9 → 10.1KB（2026-11-08 のユーザー判断で予算を 12KB に）、`3d-i3s.js` 6.6KB（10KB）、`3d.js` 6.2KB（10KB）、3D ワーカー 38.0 → 41.0KB（45KB）。
   - まだないもの：DDS・KTX2 のテクスチャ、I3S 1.6 以前（node pages なし）、WGS 84 以外、`vertex-reference-frame` の法線、点群（20.7b）、SLPK（20.7b）。
+- **20.7b：I3S の点群と SLPK**（2026-11-08 のユーザー判断：LEPCC は 3d.wasm に入れて 3D ワーカーの予算を 45 → 50KB、SLPK は範囲リクエストで部分読み、点群の比較は Esri の LEPCC の C++ 実装）：
+  - 点群（本線、`i3s/scene.ts`・`3d-i3s.ts`、3D ワーカーの `pcsl`）：PointCloud レイヤーの node pages（`store.index`、`resourceId`・`firstChild`・`childCount`）、詳細度は仕様の `density-threshold`（点の面積密度 `vertexCount / lodThreshold` を画面に投影した 1 平方ピクセルあたりの点が `POINT_DENSITY` 0.5 を下回る間は子へ）。xyz は絶対座標（経緯度と高さ）で、ノードの中心の東・北・上の f32 メートルに。色は RGB・分類・強度・高さ（`pointCloudLayer` と共有の `model/cloud.ts`、高さは根の箱の範囲で）。
+  - LEPCC（並行のエージェント、`lepcc/`）：Esri の lepcc（commit 63a30e2、Apache-2.0）の xyz・rgb・intensity の復号を移植（Fletcher-32、BitStuffer2、カラーマップ、拡大）。RGB の Huffman と FlagBytes は Esri の既定のビルドにもないので移植しない。`npm run lepcc:golden`（新設）：Esri の C++ を g++ でビルドし、その符号化器で作った 2237 件を js と wasm-gc でビット一致（0 differ）。壊したものでは C++ が範囲外を読み書きする（AddressSanitizer で 263 件）・点を書き残す（27 件）ところも、移植は断る。
+  - SLPK（並行のエージェント、`i3s/slpk.ts`、`3d-slpk.js`）：末尾 128KB の範囲リクエストで中央ディレクトリ（zip64 も）を読み、入らなければ Esri のハッシュ表、なければディレクトリ全体。範囲を断られたら（200、416）全体を一度だけ読む。各エントリは範囲で取り、gzip を解く。`npm run i3s:slpk`（新設）：合成とサンフランシスコのサンプル（node pages 780 枚を含む 11.8MB）を 4 通りに詰め、元のファイルと loaders.gl の `parseSLPKArchive` に 0 differ、壊したもの 12 件を断る。開いて最初のノードページまでの読み込みはファイルの約 5%。開発用サーバー（`bench/lib/serve.mjs`）は接尾の範囲（`bytes=-n`）に答えるようにした。
+  - pack test の `i3s`：合成の点群レイヤー（LEPCC、根 5000 点と子 4 つ各 1 万点）が近くで子 4 つ、遠くで根になり、合成の建物を SLPK に詰めたものが同じノードと属性を返す。
+  - 大きさ：3D ワーカー 41.0 → 43.8KB（50KB）、`3d-i3s.js` 7.9KB（10KB）、`3d-slpk.js` 4.5KB（新しい行、6KB）、`3d.js` 6.4KB。
+  - まだないもの：PCSL のクリック（点の属性）、統計（`statistics`）、WGS 84 以外の点群、RGB の Huffman、DDS・KTX2、SLPK の CRC の検査。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

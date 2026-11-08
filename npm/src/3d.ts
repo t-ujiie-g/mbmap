@@ -8,6 +8,7 @@ import type { Tile } from "./tiles/tileset";
 import type { TilesEngine } from "./3d-tiles";
 import type { I3sParts } from "./3d-i3s";
 import { crsArg, type Crs } from "./crs";
+import { cloudColors, type CloudColor } from "./model/cloud";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -200,39 +201,6 @@ interface LoadedCloud {
   bounds: [number, number, number, number, number, number];
 }
 
-/** ASPRS classes 0 to 18 (LAS 1.4 R15 table 17) as RGB: unclassified gray, ground brown, vegetation greens, buildings orange, water blue. */
-const CLASS_COLORS = [
-  [150, 150, 150], [170, 170, 170], [150, 110, 70], [140, 200, 110], [70, 160, 70], [30, 110, 40], [230, 130, 60], [230, 60, 200], [160, 160, 160],
-  [70, 130, 220], [200, 180, 60], [90, 90, 90], [200, 200, 200], [240, 220, 40], [240, 220, 40], [180, 60, 60], [240, 220, 40], [120, 100, 160], [230, 60, 200],
-];
-/** Low to high, as viridis' ends and middle. */
-const RAMP = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
-
-/** The RGB of each point for `mode`. */
-function cloudColors(c: LoadedCloud, mode: PointCloudLayerOptions["color"]): Uint8Array {
-  if ((mode ?? "rgb") === "rgb" && c.colors) return c.colors;
-  const n = c.kept;
-  const out = new Uint8Array(3 * n);
-  if (mode === "classification") {
-    for (let i = 0; i < n; i++) out.set(CLASS_COLORS[c.classification[i]] ?? CLASS_COLORS[1], 3 * i);
-    return out;
-  }
-  const value = mode === "intensity" ? (i: number) => c.intensity[i] : (i: number) => c.positions[3 * i + 2];
-  let lo = Infinity;
-  let hi = -Infinity;
-  for (let i = 0; i < n; i++) {
-    lo = Math.min(lo, value(i));
-    hi = Math.max(hi, value(i));
-  }
-  for (let i = 0; i < n; i++) {
-    const t = hi > lo ? ((value(i) - lo) / (hi - lo)) * (RAMP.length - 1) : 0;
-    const k = Math.min(Math.floor(t), RAMP.length - 2);
-    const f = t - k;
-    for (let j = 0; j < 3; j++) out[3 * i + j] = Math.round(RAMP[k][j] + (RAMP[k + 1][j] - RAMP[k][j]) * f);
-  }
-  return out;
-}
-
 const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
 /** A custom layer drawing a LAS point cloud (`pointCloudLayer`). */
@@ -299,7 +267,7 @@ export class PointCloudLayer implements CustomLayerInterface {
   #upload(gl: WebGL2RenderingContext): void {
     const c = this.#cloud!;
     if (this.#gpu) releaseModel(gl, this.#gpu);
-    const color = { data: cloudColors(c, this.#options.color), size: 3, type: gl.UNSIGNED_BYTE, normalized: true };
+    const color = { data: cloudColors({ ...c, count: c.kept }, this.#options.color), size: 3, type: gl.UNSIGNED_BYTE, normalized: true };
     const position = { data: c.positions, size: 3, type: gl.FLOAT, normalized: false };
     const material = { color: [1, 1, 1, 1] as [number, number, number, number], alphaMode: "OPAQUE" as const, alphaCutoff: 0.5, doubleSided: true, unlit: true };
     const primitive = { attributes: { POSITION: position, COLOR_0: color }, mode: gl.POINTS, material: 0, matrix: IDENTITY };
@@ -374,6 +342,7 @@ export class TilesLayer implements CustomLayerInterface {
     const parts: I3sParts = {
       loadTile: (tileUrl) => call("tile", { url: tileUrl }),
       loadNode: (args) => call("i3s", args),
+      loadPoints: (args) => call("pcsl", args),
       upload: uploadModel,
       release: releaseModel,
       repaint: () => this.#map?.triggerRepaint?.(),
@@ -431,13 +400,14 @@ export function tilesLayer(options: TilesLayerOptions): TilesLayer {
 }
 
 /**
- * An I3S layer: the 3DObject or IntegratedMesh scene layer (I3S 1.7 and later, node pages, WGS 84) at
- * `url` — a SceneServer layer (`…/SceneServer/layers/0`) or a layer document `….json` with its resources
- * beside it — its nodes chosen by their `lodThreshold` as loaders.gl does, with the options of
- * `tilesLayer` (`height`, `maximumLoadedTiles`; JPEG and PNG textures only). `queryFeature` gives a
- * feature's attributes.
+ * An I3S layer: the 3DObject, IntegratedMesh or PointCloud scene layer (I3S 1.7 and later, node pages,
+ * WGS 84) at `url` — a SceneServer layer (`…/SceneServer/layers/0`) or a layer document `….json` with
+ * its resources beside it — its nodes chosen by their `lodThreshold` as loaders.gl does (a point cloud's
+ * by its points' density on screen), with the options of `tilesLayer` (`height`, `maximumLoadedTiles`,
+ * `pointSize`; JPEG and PNG textures only) and a point cloud's `color` (as `pointCloudLayer`'s; heights
+ * ramp over the root node's box). `queryFeature` gives a feature's attributes.
  */
-export type I3sLayerOptions = Omit<TilesLayerOptions, "maximumScreenSpaceError" | "pointSize">;
+export type I3sLayerOptions = Omit<TilesLayerOptions, "maximumScreenSpaceError"> & { color?: CloudColor };
 
 /** A custom layer for `map.addLayer` streaming the I3S scene layer at `options.url`. */
 export function i3sLayer(options: I3sLayerOptions): TilesLayer {
