@@ -1,0 +1,56 @@
+{
+  "env": {
+    "runtime": "node v22.23.4",
+    "v8": "12.4.254.21-node.57",
+    "cpu": "Apple M2",
+    "platform": "darwin arm64"
+  },
+  "params": {
+    "gdal": "GDAL 3.13.3 \"Iowa City\", released 2026/08/13",
+    "runs": 5,
+    "statistic": "median of runs after one warm-up run each",
+    "columns": "js: GDAL net, the GTiff run's wall clock minus the 2 x 2 run's (baseline); gdalWall / gdalCpu: the GTiff run's wall clock and user + sys; gdalMemWall: wall clock writing to the MEM driver; mbmap: the grid's values out of analysis.wasm, into viewshed.wasm, the call and its output read (one thread); exportOnly: the values copied into viewshed.wasm and the call, its output not read",
+    "baseline": {
+      "wall": 132.2370840000001,
+      "cpu": 120
+    }
+  },
+  "rows": {
+    "viewshed 1024 x 1024, no range (450429 visible cells)": {
+      "js": 21.2,
+      "mbmap": 69.4,
+      "exportOnly": 66.1,
+      "gdalWall": 153.5,
+      "gdalCpu": 150,
+      "gdalMemWall": 151,
+      "ratio": 3.27
+    },
+    "viewshed 1024 x 1024, 5000 m range (8031 visible cells)": {
+      "js": 4.28,
+      "mbmap": 7.87,
+      "exportOnly": 6.71,
+      "gdalWall": 136.5,
+      "gdalCpu": 130,
+      "gdalMemWall": 136.5,
+      "ratio": 1.84
+    },
+    "viewshed 4096 x 4096, no range (3854904 visible cells)": {
+      "js": 337.6,
+      "mbmap": 1091.5,
+      "exportOnly": 1057.9,
+      "gdalWall": 469.8,
+      "gdalCpu": 500,
+      "gdalMemWall": 466.6,
+      "ratio": 3.23
+    },
+    "viewshed 4096 x 4096, 5000 m range (8031 visible cells)": {
+      "js": 4.53,
+      "mbmap": 50.2,
+      "exportOnly": 69.5,
+      "gdalWall": 136.8,
+      "gdalCpu": 130,
+      "gdalMemWall": 135.8,
+      "ratio": 11.1
+    }
+  }
+}

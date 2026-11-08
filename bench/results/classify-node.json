@@ -1,0 +1,116 @@
+{
+  "env": {
+    "runtime": "node v22.23.4",
+    "v8": "12.4.254.21-node.57",
+    "cpu": "Apple M2",
+    "platform": "darwin arm64"
+  },
+  "params": {
+    "simpleStatistics": "8.0.0",
+    "geostats": "2.1.0",
+    "statistic": "median ms of one call: warm-up 300 ms, then 7 samples of at least 50 ms each",
+    "columns": "both JavaScript: mbmap's classify.ts drops non-finite values and sorts a copy on every call"
+  },
+  "rows": {
+    "statistics (random 1000)": {
+      "js": 0.00993,
+      "mbmap": 0.143,
+      "ratio": 14.4
+    },
+    "quantile 7 classes (random 1000)": {
+      "js": 0.00849,
+      "mbmap": 0.14,
+      "ratio": 16.5
+    },
+    "equalInterval 7 classes (random 1000)": {
+      "js": 0.00133,
+      "mbmap": 0.14,
+      "ratio": 105.5
+    },
+    "standardDeviation 7 classes (random 1000; JS: geostats)": {
+      "js": 0.527,
+      "mbmap": 0.29,
+      "ratio": 0.55
+    },
+    "ckmeans 7 classes (random 1000)": {
+      "js": 0.368,
+      "mbmap": 0.39,
+      "ratio": 1.06
+    },
+    "jenks 7 classes (random 1000)": {
+      "js": 10.3,
+      "mbmap": 11,
+      "ratio": 1.07
+    },
+    "statistics (random 100000)": {
+      "js": 1.43,
+      "mbmap": 29.7,
+      "ratio": 20.7
+    },
+    "quantile 7 classes (random 100000)": {
+      "js": 1.99,
+      "mbmap": 29.5,
+      "ratio": 14.8
+    },
+    "equalInterval 7 classes (random 100000)": {
+      "js": 0.119,
+      "mbmap": 29.8,
+      "ratio": 249.6
+    },
+    "standardDeviation 7 classes (random 100000; JS: geostats)": {
+      "js": 66.7,
+      "mbmap": 61.8,
+      "ratio": 0.927
+    },
+    "ckmeans 7 classes (random 100000)": {
+      "js": 64.3,
+      "mbmap": 69.2,
+      "ratio": 1.08
+    },
+    "statistics (random 1000000)": {
+      "js": 14.5,
+      "mbmap": 349.2,
+      "ratio": 24
+    },
+    "quantile 7 classes (random 1000000)": {
+      "js": 15.9,
+      "mbmap": 350.6,
+      "ratio": 22.1
+    },
+    "equalInterval 7 classes (random 1000000)": {
+      "js": 1.18,
+      "mbmap": 344.1,
+      "ratio": 290.4
+    },
+    "standardDeviation 7 classes (random 1000000; JS: geostats)": {
+      "js": 646.8,
+      "mbmap": 686.5,
+      "ratio": 1.06
+    },
+    "statistics (gsi attributes 239092)": {
+      "js": 2.89,
+      "mbmap": 25.3,
+      "ratio": 8.76
+    },
+    "quantile 7 classes (gsi attributes 239092)": {
+      "js": 2.65,
+      "mbmap": 24.8,
+      "ratio": 9.38
+    },
+    "equalInterval 7 classes (gsi attributes 239092)": {
+      "js": 0.283,
+      "mbmap": 21.5,
+      "ratio": 76
+    },
+    "standardDeviation 7 classes (gsi attributes 239092; JS: geostats)": {
+      "js": 42.2,
+      "mbmap": 48.4,
+      "ratio": 1.15
+    },
+    "jenks 7 classes (random 5000)": {
+      "js": 249.9,
+      "mbmap": 266.8,
+      "ratio": 1.07
+    }
+  }
+}
