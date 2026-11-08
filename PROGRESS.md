@@ -50,6 +50,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 - **残り**（振る舞いの候補の扱い、2026-11-08 ユーザー判断）：
   - フィールド演算が編集のたびにデータ全体を `getData`/`setData` する：GeoJSON ソースに MapLibre の `updateData(diff)` を足す。@maplibre/geojson-vt 6.3.0 の更新できる索引（`difference.ts`、`invalidateTiles`、`updateIndex`）まで移植し、更新のあとの全タイルをゴールデンで比べる。段階は、主スレッドの差分と変わったタイルだけの読み直し、ワーカーの増分、フィールド演算の切り替えの 3 つ。予算は GeoJSON のワーカー 30 → 34KB、`clusterProperties` のモジュール 50 → 54KB。
   - タイルの境の道路のつなぎ：`querySourceFeatures` の地物に MapLibre と同じ `tile: {z, x, y}` を付け、example は線を各タイルの範囲で切ってから網にする（ズームが混ざれば最も深いもの）。`network({ snap })`（メートル、既定は使わない）で、線の端から snap 以内の別の線の途中を分けてつなぐ。route.wasm の予算は 15 → 17KB。
+    - 1 段目（済み）：`querySourceFeatures` の地物に MapLibre と同じく元のタイル `tile: {z, x, y}` を付けた（`query:golden` も比べて 447 すべて同じ）。example の経路は各道路を自分のタイルの範囲で切り（`examples/shared/tile-lines.js`、緩衝帯の重なりを除く）、ズームが混ざるときはいちばん深いタイルだけを使う。pack test で切り方と経路（572 m）を確かめる。表示（メイン）133.7KB（+21 バイト）。2 段目は `network({ snap })`。
   - 自然分類の最大の級が 1 つの値だけになる：いまのまま（外れ値を級にするのは jenks の答え）。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
