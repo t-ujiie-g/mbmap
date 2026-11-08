@@ -8,15 +8,16 @@ import { commonestShare } from "./pixels.mjs";
 /** The shares of the screen's pixels near the points' red, blue and green. */
 async function pointPixels(page) {
   const { rgba } = decodePng(await page.screenshot());
-  const count = { red: 0, blue: 0, green: 0 };
+  const count = { red: 0, blue: 0, green: 0, yellow: 0 };
   const near = (i, c) => Math.abs(rgba[i] - c[0]) < 40 && Math.abs(rgba[i + 1] - c[1]) < 40 && Math.abs(rgba[i + 2] - c[2]) < 40;
   for (let i = 0; i < rgba.length; i += 4) {
     if (near(i, [220, 40, 40])) count.red++;
     else if (near(i, [40, 70, 220])) count.blue++;
     else if (near(i, [30, 170, 60])) count.green++;
+    else if (near(i, [240, 200, 20])) count.yellow++;
   }
   const n = rgba.length / 4;
-  return { red: count.red / n, blue: count.blue / n, green: count.green / n };
+  return { red: count.red / n, blue: count.blue / n, green: count.green / n, yellow: count.yellow / n };
 }
 
 export async function tilesChecks(page) {
@@ -62,7 +63,8 @@ export async function tilesChecks(page) {
     return { tiles: layer.selected.length, ready: layer.selected.every((t) => t.state === "ready"), city: hit?.properties.city_code, gml: typeof hit?.properties.gml_id };
   });
   const plateauBlank = await commonestShare(page);
-  // Points: a red and blue checkerboard (pnts, `kind` per point) inside a green ring of glTF points.
+  // Points: a red and blue checkerboard (pnts, `kind` per point) inside a green ring of glTF points, and a
+// yellow Draco-compressed square beside them.
   const points = await page.evaluate(async () => {
     const map = window.__map;
     for (const id of ["blocks", "plateau"]) if (map.getLayer(id)) map.removeLayer(id);
@@ -75,7 +77,10 @@ export async function tilesChecks(page) {
     await window.__settled();
     const hit = await layer.queryFeature({ x: 400, y: 300 });
     const ring = await layer.queryFeature({ x: 400 + 185, y: 300 });
-    return { tiles: layer.selected.map((t) => t.path).sort(), kind: hit?.properties.kind, id: hit?.id, ring: ring?.tile };
+    // The Draco-compressed square, 80 m east: its batch property `height` came through Draco too.
+    const p = map.project([139.7655 + 80 / (111319.49 * Math.cos((35.6795 * Math.PI) / 180)), 35.6795]);
+    const square = await layer.queryFeature(p);
+    return { tiles: layer.selected.map((t) => t.path).sort(), kind: hit?.properties.kind, id: hit?.id, ring: ring?.tile, square: square && { tile: square.tile, height: square.properties.height } };
   });
   const pixels = await pointPixels(page);
   const ok =
@@ -85,7 +90,8 @@ export async function tilesChecks(page) {
     JSON.stringify(far) === JSON.stringify(["r"]) &&
     globe.length > 0 && globeBlank < 0.99 &&
     (plateau.skipped !== undefined || (plateau.tiles >= 10 && plateau.ready && plateauBlank < 0.6 && plateau.city === "13101" && plateau.gml === "string")) &&
-    JSON.stringify(points.tiles) === JSON.stringify(["r", "r/0"]) && ["red", "blue"].includes(points.kind) && points.ring === "r/0" &&
-    pixels.red > 0.02 && pixels.blue > 0.02 && pixels.green > 0.001;
+    JSON.stringify(points.tiles) === JSON.stringify(["r", "r/0", "r/1"]) && ["red", "blue"].includes(points.kind) && points.ring === "r/0" &&
+    points.square?.tile === "r/1" && [1, 2, 3, 4].includes(points.square.height) &&
+    pixels.red > 0.02 && pixels.blue > 0.02 && pixels.green > 0.001 && pixels.yellow > 0.005;
   return [ok, { close, picked, tree, closeBlank, far, globe, globeBlank, plateau, plateauBlank, points, pixels }];
 }
