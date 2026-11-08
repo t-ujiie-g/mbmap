@@ -304,10 +304,7 @@ test "tile meshes: granularity by zoom, grid, borders and poles" {
   assert_eq((v[2], v[3], v[16], v[17]), (4096, 0, 8192, 8192))
   assert_eq((i[0], i[1], i[2], i[3], i[4], i[5]), (0, 3, 1, 1, 3, 4))
   let (p, _) = @globe.tile_mesh(1, north=true, south=true)
-  assert_eq(
-    (p[1], p[p.length() - 1]),
-    (@globe.NORTH_POLE_Y, @globe.SOUTH_POLE_Y),
-  )
+  assert_eq((p[1], p[p.length() - 1]), (@core.NORTH_POLE_Y, @core.SOUTH_POLE_Y))
   let (b, bi) = @globe.tile_mesh(1, borders=true)
   assert_eq((b[0], b[1], bi.length()), (-64, -64, 9 * 6))
 }

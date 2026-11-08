@@ -44,6 +44,7 @@ npm run mvt:browser       # same, inside a module Worker in Chromium/Firefox/Web
 npm run tess:golden       # fills vs MapLibre's classifyRings + earcut on all fixtures (must stay 35/35)
 npm run tess:node         # decode + tessellation vs MapLibre WorkerTile.parse in Node
 npm run tess:browser      # same, inside a module Worker in Chromium/Firefox/WebKit
+npm run subdivision:golden # tess's globe subdivision vs MapLibre 6.16's subdividePolygon / subdivideVertexLine on GSI polygons and lines and seeded random ones, poles and zoom 0 included (must stay 0 differ)
 npm run worker:browser    # worker process_tile per fixture, cold and warm, in three browsers
 npm run raster:golden     # raster sources and paint vs MapLibre 6.16, pixel by pixel, also on the globe (needs the gsi-std and gsi-std-world fixtures); the tile URLs both request
 npm run pmtiles:golden    # PMTiles archives read by worker/js/pmtiles.mjs vs pmtiles 4.5.0, and drawn vs MapLibre from the files

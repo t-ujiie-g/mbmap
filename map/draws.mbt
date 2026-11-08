@@ -22,13 +22,13 @@ fn Map::placement(
       [
         0.0,
         if north {
-          @globe.NORTH_POLE_Y.to_double()
+          @core.NORTH_POLE_Y.to_double()
         } else {
           0.0
         },
         extent.to_double(),
         if south {
-          @globe.SOUTH_POLE_Y.to_double() + 1.0
+          @core.SOUTH_POLE_Y.to_double() + 1.0
         } else {
           extent.to_double()
         },
