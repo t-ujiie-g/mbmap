@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 133803,
+      "bytes": 133825,
       "budget": 135000
     },
     {
@@ -121,7 +121,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 7850,
+      "bytes": 8320,
       "budget": 9000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 29673,
+      "bytes": 29768,
       "budget": 30000
     },
     {
@@ -141,17 +141,17 @@
     },
     {
       "name": "spatial relations (DE-9IM; loaded by the analysis worker on first use)",
-      "bytes": 26806,
+      "bytes": 26956,
       "budget": 30000
     },
     {
       "name": "shapes (simplify, hulls, Delaunay, Voronoi, line slices; loaded by the analysis worker on first use)",
-      "bytes": 27909,
+      "bytes": 27937,
       "budget": 30000
     },
     {
       "name": "surfaces (grids, IDW, clusters, contours, density; loaded by the analysis worker on first use)",
-      "bytes": 28714,
+      "bytes": 28884,
       "budget": 30000
     },
     {

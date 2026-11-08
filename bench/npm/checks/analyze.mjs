@@ -4,6 +4,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { ROOT } from "../../lib/root.mjs";
+import { clipLine, tileBounds, tileLines } from "../../../examples/shared/tile-lines.js";
 import { openTab } from "./step.mjs";
 
 export async function analyzeChecks(page) {
@@ -36,6 +37,7 @@ export async function analyzeChecks(page) {
   await click(139.7705, 35.6830);
   await page.waitForFunction(() => { const r = window.__analysis.state.route; return r && r !== "loading"; }, null, { timeout: 30_000 });
   const route = (await a()).route;
+  const roads = await page.evaluate(async () => (await window.__map.querySourceFeatures("gsi", { sourceLayer: "road" })).map((f) => ({ tile: f.tile, geometry: f.geometry })));
   const routeLine = await page.evaluate(async () => (await window.__map.getSource("analysis-route").getData()).features.map((f) => f.geometry.type));
   await page.click("#analysis-sight button >> nth=0");
   await page.waitForFunction(() => { const s = window.__analysis.state.sight; return (s && s !== "loading") || window.__analysis.state.error; }, null, { timeout: 30_000 });
@@ -55,13 +57,36 @@ export async function analyzeChecks(page) {
   // CI has no fixtures: no roads to route along, and the DEM tiles 404 as flat ground (everything seen).
   const fixtures = existsSync(path.join(ROOT, "bench/fixtures/gsi-bvmap/14"));
   const routed = fixtures ? route?.length > 100 && route.length < 2000 && routeLine.includes("LineString") : route?.error === "道路が見つかりません";
+  const clipped = clipChecks(roads);
   const sorted = [...(cells.breaks ?? [])].every((b, i, xs) => i === 0 || b >= xs[i - 1]);
   const ok =
     !cells.error && cells.count >= 10 && cells.breaks?.length === 6 && sorted && cells.labels?.length === 5 &&
     cells.areas.every(([, m2, km2]) => m2 > 0 && km2 === Math.round(m2 / 10000) / 100) &&
-    routed &&
+    routed && clipped.ok &&
     sight?.visible > 0 && sight.visible <= 1 && viewshed.layer === "raster" && viewshed.source === "canvas" &&
     typeof target?.visible === "boolean" && rows.every((r) => r.length > 0) &&
     JSON.stringify(cleared.layers) === JSON.stringify([false, false]) && cleared.state.cells === null && cleared.state.route === null && cleared.state.sight === null;
-  return { ok, fixtures, cells, route, routeLine, sight, viewshed, target, rows, picked, cleared: cleared.layers };
+  return { ok, fixtures, cells, route, routeLine, clipped, sight, viewshed, target, rows, picked, cleared: cleared.layers };
+}
+
+// The route's roads: each feature's tile, its lines cut to that tile (inside it, of the deepest
+// zoom only), and a line crossing two tiles cut at one shared point.
+function clipChecks(roads) {
+  const within = (c, [w, s, e, n]) => c[0] >= w && c[0] <= e && c[1] >= s && c[1] <= n;
+  const tiled = roads.every((f) => Number.isInteger(f.tile?.z) && Number.isInteger(f.tile.x) && Number.isInteger(f.tile.y));
+  const z = Math.max(...roads.map((f) => f.tile?.z ?? -1));
+  const deepest = roads.filter((f) => f.tile?.z === z);
+  const inside = deepest.every((f) => tileLines([f]).every((l) => l.every((c) => within(c, tileBounds(f.tile)))));
+  const [w, s, e, n] = tileBounds({ z: 14, x: 14552, y: 6451 });
+  const across = [[(w + e) / 2, (s + n) / 2], [e + (e - w) / 20, (s + n) / 2 + (n - s) / 10]];
+  const halves = tileLines([
+    { tile: { z: 14, x: 14552, y: 6451 }, geometry: { type: "LineString", coordinates: across } },
+    { tile: { z: 14, x: 14553, y: 6451 }, geometry: { type: "LineString", coordinates: [...across].reverse() } },
+    { tile: { z: 13, x: 7276, y: 3225 }, geometry: { type: "LineString", coordinates: across } },
+  ]);
+  const joined = halves.length === 2 && halves[0][1][0] === e && JSON.stringify(halves[0][1]) === JSON.stringify(halves[1][1]);
+  const pieces = clipLine([[-1, 0.5], [0.5, 0.5], [0.5, 2], [0.8, 2], [0.8, 0.2], [3, 0.2]], [0, 0, 1, 1]);
+  const cut = JSON.stringify(pieces) === JSON.stringify([[[0, 0.5], [0.5, 0.5], [0.5, 1]], [[0.8, 1], [0.8, 0.2], [1, 0.2]]]);
+  const fixtures = roads.length > 0;
+  return { ok: (fixtures ? tiled && inside : true) && joined && cut, features: roads.length, zoom: z, deepest: deepest.length, tiled, inside, joined, cut };
 }

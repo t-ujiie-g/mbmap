@@ -1061,7 +1061,9 @@ export class Map {
     if (!map) return Promise.resolve([]);
     if (!legacy && edit.isLegacyFilter(options.filter)) return loadLegacy().then(() => this.querySourceFeatures(sourceId, options));
     return new Promise((resolve, reject) => {
-      const refused = engine.map_query_source(map, sourceId, options.sourceLayer ?? "", filterText(options.filter), (tiles) => resolve(tiles.flatMap((t) => t.hits.map((h) => h.feature))));
+      const refused = engine.map_query_source(map, sourceId, options.sourceLayer ?? "", filterText(options.filter), (tiles) =>
+        resolve(tiles.flatMap(({ z, x, y, hits }) => hits.map(({ feature }) => ((feature.tile = { z, x, y }), feature)))),
+      );
       if (refused) reject(new Error(refused));
     });
   }

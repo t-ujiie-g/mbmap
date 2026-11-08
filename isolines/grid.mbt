@@ -103,21 +103,8 @@ fn grid_of(t : @geom.Table, z_property : String) -> Grid? {
       max_y = y
     }
   }
-  let order = Array::makei(n, i => i)
-  order.sort_by((a, b) => {
-    if ys[a] < ys[b] {
-      -1
-    } else if ys[a] > ys[b] {
-      1
-    } else if xs[a] < xs[b] {
-      -1
-    } else if xs[a] > xs[b] {
-      1
-    } else {
-      a - b
-    }
-  })
   guard n > 0 else { return None }
+  let order = lat_lng_order(xs, ys)
   let mut cols = 0
   while cols < n && ys[order[cols]] == ys[order[0]] {
     cols += 1
@@ -137,6 +124,53 @@ fn grid_of(t : @geom.Table, z_property : String) -> Grid? {
     }
   }
   Some({ rows, cols, z, min_x, min_y, max_x, max_y, })
+}
+
+///|
+/// Point indices by latitude, then longitude, then index (finite coordinates).
+/// Grids in row or column order (Turf's `pointGrid`) are checked in one pass
+/// instead of sorted; the order is total, so a sorted candidate is the sort.
+fn lat_lng_order(
+  xs : FixedArray[Double],
+  ys : FixedArray[Double],
+) -> FixedArray[Int32] {
+  fn before(a : Int32, b : Int32) -> Bool {
+    ys[a] < ys[b] ||
+    (ys[a] == ys[b] && (xs[a] < xs[b] || (xs[a] == xs[b] && a < b)))
+  }
+
+  fn sorted(order : FixedArray[Int32]) -> Bool {
+    for k in 1..<order.length() {
+      if !before(order[k - 1], order[k]) {
+        return false
+      }
+    }
+    true
+  }
+
+  let n = xs.length()
+  let order = FixedArray::makei(n, i => i)
+  if sorted(order) {
+    return order
+  }
+  let mut rows = 1
+  while rows < n && xs[rows] == xs[0] {
+    rows += 1
+  }
+  if n % rows == 0 {
+    let cols = n / rows
+    for r in 0..<rows {
+      for c in 0..<cols {
+        order[r * cols + c] = c * rows + r
+      }
+    }
+    if sorted(order) {
+      return order
+    }
+  }
+  let all = Array::makei(n, i => i)
+  all.sort_by((a, b) => if a == b { 0 } else if before(a, b) { -1 } else { 1 })
+  FixedArray::makei(n, k => all[k])
 }
 
 ///|

@@ -96,6 +96,30 @@
       "cases": 12,
       "identical": 12
     },
+    "signed zeros statistics": {
+      "cases": 20,
+      "identical": 20
+    },
+    "signed zeros jenks": {
+      "cases": 120,
+      "identical": 120
+    },
+    "signed zeros ckmeans": {
+      "cases": 120,
+      "identical": 120
+    },
+    "signed zeros quantile": {
+      "cases": 120,
+      "identical": 120
+    },
+    "signed zeros equalInterval": {
+      "cases": 120,
+      "identical": 120
+    },
+    "signed zeros standardDeviation": {
+      "cases": 240,
+      "identical": 240
+    },
     "gsi statistics": {
       "cases": 152,
       "identical": 152
