@@ -949,6 +949,11 @@ Test / benchmark data (continued):
   (Protomaps basemap schema, daily build 20261103) of the GSI fixtures' area.
   Data © OpenStreetMap contributors (ODbL 1.0, https://www.openstreetmap.org/copyright).
   Served by https://build.protomaps.com.
+- bench/fixtures/plateau-chiyoda/ (downloaded, not committed): PLATEAU 3D Tiles
+  (3D都市モデル 建築物モデル 千代田区 2025年度, LOD2 without texture) around Tokyo Station.
+  出典：国土交通省 Project PLATEAU (MLIT Japan), used under PLATEAU's site policy
+  (compatible with CC BY 4.0). Catalog: https://api.plateauview.mlit.go.jp/datacatalog/plateau-datasets
+  (id 13101_bldg_lod2_no_texture).
 - @protomaps/basemaps 5.7.2 (bench devDependency, not shipped): builds the Protomaps
   styles compared by bench/style/public.mjs and compat.mjs. BSD-3-Clause,
   © The Protomaps Authors.
