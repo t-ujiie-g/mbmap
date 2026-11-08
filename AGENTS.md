@@ -104,6 +104,7 @@ npm run viewshed:golden   # viewshed.wasm vs GDAL 3.13's gdal_viewshed on the Mt
 npm run route:golden      # route.wasm vs geojson-path-finder 2.1.0: shortest paths (every coordinate, weight) on jittered grids and GSI roads (must stay all identical)
 npm run fields:golden     # Map.evaluateExpression (the field editor's expressions) vs style-spec 26.5.0's createExpression(...).evaluate on GSI features as GeoJSON: value-typed expression cases and field formulas (must stay all identical)
 npm run classify:golden   # mbmap/analysis's classBreaks / statistics (npm/src/classify.ts) vs simple-statistics 8.0.0 and geostats 2.1.0 on random numbers and GSI attributes (must stay all identical)
+npm run sun:golden        # sun.ts's sunPosition vs suncalc 2.1.1's getPosition, 1900-2100 and every kind of place (must stay all identical), and sunDirection vs CesiumJS 1.146.0's Simon1994PlanetaryPositions in east, north, up (1975-2050, its XYS data; within 0.05°)
 npm run relate:golden     # relate.wasm vs JSTS 2.12.1: DE-9IM matrices and predicates on hand-written, random grid and GSI features (must stay all identical)
 npm run geometry:node     # dissolve / buffer / clip on GSI buildings vs Turf.js
 npm run relate:node       # relate.wasm vs JSTS 2.12.1: predicates on GSI tile pairs and random sets, DE-9IM matrices (tables copied in per call, as the worker does)
