@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.4（3D Tiles）。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.4b（i3dm、cmpt、メタデータ、クエリ）。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a（3D Tiles の選択と描画、Draco）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -25,7 +25,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.2KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 21KB（2026-11-08 に 20KB から、2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/3d` | 4.3KB ＋ ワーカー 7.4KB（glTF の読み込みと 3d.wasm の meshopt） | 10KB ＋ 45KB（2026-11-08 ユーザー判断） |
+  | `mbmap/3d` | 4.6KB ＋ 3D Tiles 6.9KB（`3d-tiles.js`、最初の `tilesLayer` で読み込む） ＋ ワーカー 26.7KB（glTF と b3dm の読み込み、3d.wasm の meshopt と Draco） | 10KB ＋ 10KB ＋ 45KB（2026-11-08 ユーザー判断） |
   | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 16.1KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、17KB（2026-11-08 に 15KB から）。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 40.6KB（`reprojected` のタイル 1.8KB、`xml.wasm` 26.7KB、GeoTIFF 19.8KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 41KB（ワーカーは 2026-11-08 に 40KB から。2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
@@ -37,7 +37,7 @@
   - 20.1：地球表示のカメラ（MapLibre 6.16 の `GlobeTransform` の移植）。
   - 20.2：地球表示の描画。2026-11-08 のユーザー判断で 3 つに分けた：20.2a カメラの配線（スタイルの `projection`、操作・アニメーション、地球上のタイルの覆い方、大気）とラスタ・背景の描画（`raster:golden` に地球の場面）、20.2b ワーカーでのベクトルの細分化（MapLibre の `subdivision.ts`、面・線・円・heatmap、`style:golden` に地球の場面）、20.2c ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に。
   - 20.3：`mbmap/3d` の入口、3D のワーカーと wasm、glTF / glb（`KHR_mesh_quantization`、`KHR_texture_transform`、WebP）、meshopt の移植、glTF モデルの配置。
-  - 20.4：3D Tiles 1.0 / 1.1（tileset.json、境界、画面上の誤差による詳細度、REPLACE / ADD、外部タイルセット、暗黙のタイリング、b3dm / i3dm / pnts / cmpt / glb、バッチテーブルと `EXT_structural_metadata`、クエリ）。
+  - 20.4：3D Tiles 1.0 / 1.1。2026-11-08 のユーザー判断で 2 つに分けた：20.4a（tileset.json、境界、画面上の誤差による詳細度、REPLACE / ADD、外部タイルセット、暗黙のタイリング、glb と b3dm、メルカトルと地球。Draco の移植もここに）、20.4b（i3dm、cmpt、バッチテーブルと `EXT_structural_metadata` / `EXT_mesh_features`、クエリ、地形との重なり）。pnts の描画は 20.6 で。
   - 20.5：PLATEAU の建物を表示する example（3 通り）と CesiumJS との描画・速度の比較。
   - 20.6：点群（3D Tiles の pnts と glTF の点、圧縮なしの LAS）。
   - 20.7：I3S（3DObject と IntegratedMesh、点群）。
@@ -45,7 +45,7 @@
   - 20.9：3D の計測・見通し・断面（クリッピング）。
 - **決めたこと**：
   - 地球表示は表示（メイン）の入口に入れる（2026-11-08 ユーザー判断：遅延ロードの `globe.js` にすると地図のカメラの処理を差し替え口越しにする大きな改造と core の写しが要るので、メインに入れて予算を 147KB に。20.2a で 149.3KB になったので、20.2b・c の分も含めて 155KB に）。
-  - Draco と LAZ（COPC）には対応しない。どちらも上流の wasm が大きい（draco3d 1.5.9 の `draco_decoder.wasm` は gzip 81.4KB ＋ glue 13.1KB、laz-perf 0.0.7 は 72.6KB）。PLATEAU の公式の 3D Tiles は Draco も meshopt も使っていない。meshopt は MoonBit に移植する（参照の JS 実装は 472 行、gzip 4.2KB）。
+  - LAZ（COPC）には対応しない（laz-perf 0.0.7 の wasm は gzip 72.6KB）。Draco は当初「対応しない」としたが、PLATEAU の配信 3D Tiles が 2020〜2025 年度のどれも Draco（`KHR_draco_mesh_compression`）だと 20.4 で分かり（当初の調べの誤り）、2026-11-08 のユーザー判断で復号を MoonBit に移植した（draco3d の wasm は gzip 81.4KB ＋ glue 13.1KB）。meshopt も MoonBit に移植した（参照の JS 実装は 472 行、gzip 4.2KB）。
   - 光と影は、Mapbox GL JS v3 とそのスタイル仕様が Mapbox の利用規約のもとにあり（オープンソースでない）、移植もゴールデンもできないので、mbmap の拡張として作る：Mapbox の公開文書のプロパティ名（`lights`、`cast-shadows` など）だけを使い、太陽の位置は suncalc の移植（ゴールデン）、影は解析的な場面（高さ h の箱の影の長さ h / tan(高度)）と CesiumJS との見た目の比較で確かめる。
   - `mbmap/3d` の予算は、入口 10KB ＋ ワーカー 45KB を目安に 20.3 で測ってから決める。
 - **比べる相手**（2026-11-08 の調べ）：
@@ -98,6 +98,16 @@
   - 大きさ：`mbmap/3d` 4.3KB、3D ワーカー 7.4KB（3d.wasm を含む）。予算は 10KB ＋ 45KB（2026-11-08 ユーザー判断：20.4〜20.7 の 3D Tiles・点群・I3S も同じ入口とワーカーに入るので目安のまま。各段階で測り、超えそうなら相談）。表示（メイン）は変わらない。
   - 依存（bench の devDependencies、すべて MIT、install スクリプトなし、2 週間以上前の版）：meshoptimizer 1.3.0、@loaders.gl/gltf と @loaders.gl/core 4.5.4、@gltf-transform/core・extensions・functions 4.5.1。
   - まだないもの：アニメーション、スキン、モーフ、カメラ、`EXT_mesh_gpu_instancing`、PBR の金属・粗さ・法線・発光・遮蔽のテクスチャ、地形の上への配置、クエリ（20.4 以降で 3D Tiles と一緒に）。
+- **20.4a の結果**（3D Tiles の選択と描画、Draco）。比べる相手（loaders.gl の Tileset3D）、データ（PLATEAU と合成）、分け方は 2026-11-08 のユーザー判断：
+  - `npm/src/tiles/`（import なし）：loaders.gl 4.5.4 が math.gl 4.1 で行う計算（WGS 84 の楕円体、東北上の座標系、`region` から作る向き付きの箱、球、視錐台の平面マスク）、タイル木（外部タイルセットはそれを指すタイルの下に）、`TilesetTraverser` と `Tileset3DTraverser` の選択（画面上の誤差、REPLACE は子がすべて読めるまで親を描く、ADD、視点の要求領域）、暗黙のタイリング（サブツリーのファイル、四分木と八分木。loaders.gl と同じく先に全部広げる。箱は仕様どおり分ける：loaders.gl は分けない）、b3dm（フィーチャーテーブル、RTC_CENTER、バッチテーブル）と glTF の中身（CESIUM_RTC）。
+  - `npm run tiles:golden`（新設）：loaders.gl 自身の `Tileset3D` と同じフレーム状態（比較用の 60° のカメラ）で、読み込みがなくなるまで選択を繰り返し、PLATEAU（東京駅まわり）と合成のタイルセット 4 つ（変換つきの箱、ADD の球、空のタイル、視点の要求領域、外部タイルセット、暗黙の四分木と八分木）の 5 視点、計 25 の場面で選ばれるタイルがすべて同じ。b3dm の表は 68 ＋ 5 ファイルすべて同じ。
+  - `draco`（並行のエージェント）：Draco 1.5.7 の復号器の移植（ビットストリーム 2.0〜2.2、edgebreaker（standard、predictive、valence）と sequential、属性の復号、予測（difference、parallelogram 系、tex-coords portable、geometric normal）と変換、rANS）。`npm run draco:golden`（新設）で draco3d 1.5.7 と 11668 件（既定）／48280 件（多め）すべて同じ（js と wasm-gc。符号化器が断った 72 件を除く）。PLATEAU の 68 タイルすべてと Draco 自身のテストファイル 8 つも同じ。壊した入力は draco3d が断るものをすべて断る。2.0 より古いビットストリームと点群は対象外。
+  - `tilesLayer`：地図のカメラ（カスタムレイヤーの行列。地球では遷移が半分を超えたら単位球のもの）から ECEF の視錐台を作り、選んだタイルの中身を 3D ワーカー（`tile`、同時に 6 つ、近い順）で読み、タイルの境界の中心の東北上のメートルでモデルの描画（`npm/src/model/draw.ts`、20.3 と共通）に渡す。`height` で楕円体高を地図の地面に合わせる（PLATEAU は東京駅で -36.7 m）。読み込んだ中身は既定 256 まで。
+  - PLATEAU のフィクスチャ（並行のエージェント、`plateau-chiyoda`）：2025 年度 千代田区 LOD2 テクスチャなしの tileset.json はそのまま、東京駅まわりの箱にかかるタイルと祖先、その兄弟だけ（b3dm 68、28MB）。兄弟を入れないと REPLACE の根が置き換わらない。出典は PLATEAU のサイトポリシー（PDL1.0、CC BY 4.0 互換）の書き方に合わせ、抜き出したことも書いた。
+  - pack test に `tiles` ページ（合成の b3dm：近くで 4 タイル、遠くで根、地球。PLATEAU：東京駅で 24 タイル）。
+  - 大きさ：`mbmap/3d` は 10.6KB になり予算の 10KB を超えたので、ユーザー判断（2026-11-08）で 3D Tiles を `3d-tiles.js` に分けて最初の `tilesLayer` で読む（入口 4.6KB、`3d-tiles.js` 6.9KB / 10KB）。3D ワーカーは Draco で 7.4 → 26.7KB（45KB）。
+  - 依存（bench の devDependencies）：@loaders.gl/tiles と @loaders.gl/3d-tiles 4.5.4（MIT）、draco3d 1.5.7（Apache-2.0、install スクリプトなし）。@loaders.gl/compression が引く fflate 0.7.4 に中程度の脆弱性（壊れた ZIP64 で無限ループ、GHSA-px8p-9vwx-vf98）があるので、`overrides` で 0.8.3 に固定（`npm audit` 0 件）。
+  - まだないもの（20.4b 以降）：i3dm、cmpt、pnts（20.6）、バッチテーブルとメタデータの利用、クエリ、地形の上への配置、半透明の並べ替え、画面上の誤差の動的な調整。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 
