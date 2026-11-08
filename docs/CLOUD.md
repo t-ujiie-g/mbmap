@@ -25,11 +25,14 @@ services.arcgis.com
 demo.mapserver.org
 demo.pygeoapi.io
 gibs.earthdata.nasa.gov
+assets.cms.plateau.reearth.io
+api.plateauview.mlit.go.jp
 ```
 
 - `cli.moonbitlang.com`：MoonBit のツールチェーン（`scripts/toolchain.env` で版と sha256 を固定）
 - `cyberjapandata.gsi.go.jp`：ベンチと黄金テストのフィクスチャ（国土地理院のタイル。manifest の sha256 と照合する）
 - `tiles.openfreemap.org`、`raw.githubusercontent.com`、`build.protomaps.com`：公開スタイルの比較（`npm run style:public`）に使うタイルとスプライト（manifest の sha256 と照合する）。Node の `fetch` はプロキシを読まないので `NODE_USE_ENV_PROXY=1` を付ける（`scripts/setup.sh` は付けている）
+- `assets.cms.plateau.reearth.io`：PLATEAU の 3D Tiles のフィクスチャ（`plateau-chiyoda`、東京駅まわりの建物。manifest の sha256 と照合する）。`api.plateauview.mlit.go.jp`：PLATEAU のデータカタログ（フィクスチャを選び直すとき）
 - Playwright の 2 つ：黄金テストと npm パッケージのテストで使う Chromium
 - `services.arcgisonline.com` から `gibs.earthdata.nasa.gov` までの 7 つ：`mbmap/services` を公開されている GIS の Web サービスで確かめる黄金テスト（`npm run services:golden`）。応答は記録せず、毎回取りに行く
 

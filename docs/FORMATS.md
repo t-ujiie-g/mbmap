@@ -572,8 +572,12 @@ relative to it; http, https, blob and data URLs, without credentials), read by
 TRIANGLES, INDICES as 0 to 2, filters NONE, OCTAHEDRAL, QUATERNION, EXPONENTIAL, COLOR as 0 to 4;
 returns the output length, -1 for malformed data, -2 without memory).
 
+`{type: "call", id, op: "tile", url}` reads a 3D tile's content the same way (`npm/src/tiles/content.ts`:
+a b3dm's feature table, batch table and glb, or a glTF).
+
 Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
-image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
+image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred; a tile's also with
+`rtc`, its RTC_CENTER or CESIUM_RTC center or null, and `batchLength`), or
 `{type: "result", id, error}`.
 
 ## Services worker messages (`services_worker/js/worker.mjs`)
