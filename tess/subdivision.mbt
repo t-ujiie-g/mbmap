@@ -1,7 +1,5 @@
-// A port of MapLibre GL JS 6.16.0's src/render/subdivision.ts, with the granularity of
-// src/render/subdivision_granularity_settings.ts and the globe's settings of
-// src/geo/projection/vertical_perspective_projection.ts. BSD-3-Clause, Copyright (c) 2020
-// MapLibre contributors; see NOTICE.
+// MapLibre GL JS 6.16.0's src/render/subdivision.ts and the globe's granularity settings,
+// BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
 /// Cells per tile edge at zoom `z` of a setting that cuts zoom 0 into `base`,
@@ -118,10 +116,9 @@ fn VertexMap::get_or_insert(
 }
 
 ///|
-/// Subdivides polygons for the globe (MapLibre's `subdividePolygon`). After
-/// `subdivide_polygon`, `vertices` holds x, y pairs, `triangles` vertex index
-/// triples (counter-clockwise), and `lines` each ring's outline as index pairs,
-/// ring `r` ending at `line_ends[r]`. Reuse one instance across polygons.
+/// Subdivides polygons for the globe (`subdividePolygon`), reused across them:
+/// x, y `vertices`, counter-clockwise `triangles`, and each ring's outline as
+/// index pairs in `lines`, ring `r` ending at `line_ends[r]`.
 pub struct Subdivider {
   vertices : Array[Int32]
   triangles : Array[Int32]
@@ -203,14 +200,9 @@ fn Subdivider::vertex_to_index(
 }
 
 ///|
-/// Subdivides one polygon: `coords` holds its rings' x, y pairs (outer ring
-/// first, then holes), ring `r` ending at vertex `ring_ends[r]`; `granularity`
-/// below 2 does not subdivide. `canonical` adds the pole caps of a tile in the
-/// first or last row and, at zoom 0, drops geometry beyond the tile's x range.
-///
-/// Returns false where MapLibre throws: a vertex out of Int16. If only the
-/// triangles' subdivision fails (MapLibre logs it and leaves them undefined),
-/// `triangles` stays empty, unless poles or zoom 0 need them, which fails.
+/// One polygon's rings (outer first, ring `r` ending at vertex `ring_ends[r]`)
+/// cut into `granularity` cells (none below 2), with `canonical`'s pole caps and
+/// zoom-0 x range; false where MapLibre throws (a vertex out of Int16).
 pub fn Subdivider::subdivide_polygon(
   self : Subdivider,
   coords : ArrayView[Int32],

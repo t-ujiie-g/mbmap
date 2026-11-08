@@ -1,9 +1,7 @@
 ///|
-/// Where a tile goes on the globe: `matrix` (unit sphere to clip space), its
-/// mercator corner and size per unit `tile`, the horizon `plane`, `transition`
-/// (0 to 1), the `angle` a tile unit spans (radians, circles turn by it), how
-/// much wider the map's pixels are (`pixel_scale`, lines are narrowed by it) and
-/// its mesh's `granularity`, reaching the `north` or `south` pole.
+/// A tile on the globe: `matrix`, its mercator corner and unit size `tile`, the
+/// horizon `plane`, `transition`, the radians a unit spans (`angle`), MapLibre's
+/// `pixel_scale` and its mesh's `granularity`, reaching the `north`/`south` pole.
 pub(all) struct GlobeTile {
   matrix : FixedArray[Double]
   tile : FixedArray[Double]
