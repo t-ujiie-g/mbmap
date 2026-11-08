@@ -9,7 +9,7 @@ import { demZoom } from "./dem-zoom";
 import { packPattern } from "./relate-pattern";
 import { CURVATURE_COEFF, groundDistance, sight } from "./sight";
 
-export { classBreaks, classStep, MAX_CLASS_VALUES, MAX_CLASSES, statistics, type ClassMethod, type Statistics } from "./classify";
+export { classBreaks, classStep, MAX_CKMEANS_CELLS, MAX_CLASS_VALUES, MAX_CLASSES, MAX_JENKS_WORK, statistics, type ClassMethod, type Statistics } from "./classify";
 import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
