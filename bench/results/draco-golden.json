@@ -4,12 +4,13 @@
     "node": "v22.23.4"
   },
   "cases": 60,
-  "total": 11678,
-  "identical": 11606,
-  "capped": 0,
+  "total": 12515,
+  "identical": 12388,
+  "capped": 29,
+  "overread": 15,
   "differ": 0,
   "plateauFiles": 68,
-  "testdataFiles": 8,
+  "testdataFiles": 11,
   "rows": [
     {
       "group": "grid edgebreaker ",
@@ -18,15 +19,17 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
       "group": "encoder refused",
-      "cases": 72,
+      "cases": 83,
       "identical": 0,
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -36,6 +39,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -45,6 +49,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -54,6 +59,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -63,6 +69,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -72,6 +79,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -81,6 +89,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -90,6 +99,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -99,6 +109,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -108,6 +119,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -117,6 +129,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -126,6 +139,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -135,6 +149,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -144,6 +159,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -153,6 +169,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -162,6 +179,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -171,6 +189,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -180,6 +199,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -189,6 +209,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -198,6 +219,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -207,6 +229,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -216,15 +239,137 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
-      "group": "draco testdata 2.2",
+      "group": "points kd-tree ",
+      "cases": 78,
+      "identical": 78,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "points sequential",
+      "cases": 31,
+      "identical": 31,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "every kd level kd-tree ",
+      "cases": 44,
+      "identical": 44,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "100k points kd-tree ",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "100k points sequential",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "legacy kd-tree 2.2 integer",
+      "cases": 33,
+      "identical": 33,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "legacy kd-tree 2.2 float",
+      "cases": 22,
+      "identical": 22,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "legacy kd-tree 2.0 integer",
+      "cases": 6,
+      "identical": 6,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "legacy kd-tree 2.0 float",
       "cases": 4,
       "identical": 4,
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "legacy kd-tree 2.1 integer",
+      "cases": 6,
+      "identical": 6,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "legacy kd-tree 2.1 float",
+      "cases": 4,
+      "identical": 4,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "draco testdata 2.2",
+      "cases": 5,
+      "identical": 5,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "draco testdata 2.3",
+      "cases": 2,
+      "identical": 2,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -234,6 +379,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -243,6 +389,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -252,6 +399,7 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
@@ -261,24 +409,27 @@
       "refused": 2400,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
       "group": "corrupted",
       "cases": 2400,
-      "identical": 2400,
-      "refused": 432,
-      "capped": 0,
-      "aborted": 0,
+      "identical": 2392,
+      "refused": 507,
+      "capped": 3,
+      "aborted": 4,
+      "overread": 1,
       "differ": 0
     },
     {
       "group": "corrupted header bit",
       "cases": 2400,
-      "identical": 2400,
-      "refused": 1559,
-      "capped": 0,
-      "aborted": 0,
+      "identical": 2374,
+      "refused": 1644,
+      "capped": 7,
+      "aborted": 5,
+      "overread": 14,
       "differ": 0
     },
     {
@@ -288,33 +439,47 @@
       "refused": 0,
       "capped": 0,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     },
     {
       "group": "as version 2.0",
-      "cases": 240,
-      "identical": 240,
-      "refused": 240,
+      "cases": 453,
+      "identical": 450,
+      "refused": 400,
       "capped": 0,
-      "aborted": 0,
+      "aborted": 3,
+      "overread": 0,
       "differ": 0
     },
     {
       "group": "as version 2.1",
-      "cases": 240,
-      "identical": 240,
-      "refused": 240,
+      "cases": 453,
+      "identical": 450,
+      "refused": 400,
       "capped": 0,
-      "aborted": 0,
+      "aborted": 3,
+      "overread": 0,
+      "differ": 0
+    },
+    {
+      "group": "as version 2.2",
+      "cases": 167,
+      "identical": 164,
+      "refused": 115,
+      "capped": 0,
+      "aborted": 3,
+      "overread": 0,
       "differ": 0
     },
     {
       "group": "random after header",
       "cases": 1200,
-      "identical": 1200,
+      "identical": 1199,
       "refused": 1199,
-      "capped": 0,
+      "capped": 1,
       "aborted": 0,
+      "overread": 0,
       "differ": 0
     }
   ]
