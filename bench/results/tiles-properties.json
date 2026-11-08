@@ -1,0 +1,225 @@
+{
+  "env": {
+    "loaders": "@loaders.gl/3d-tiles 4.5.4, @loaders.gl/gltf 4.5.4"
+  },
+  "results": [
+    {
+      "part": "batch tables",
+      "contents": 71,
+      "features": 760,
+      "values": 47784,
+      "same": true,
+      "differ": [],
+      "againstJson": [
+        "__proto__, constructor"
+      ]
+    },
+    {
+      "part": "hostile batch tables",
+      "cases": 7,
+      "same": true,
+      "notRefused": []
+    },
+    {
+      "part": "property tables",
+      "cases": 130,
+      "values": 5070,
+      "same": true,
+      "differ": [],
+      "againstWritten": [
+        {
+          "case": "INT16_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "UINT16_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "INT32_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "UINT32_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "INT64_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "UINT64_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "FLOAT32_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "FLOAT64_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "vec3_fixed",
+          "deviation": "fixed arrays of vectors sliced by components",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "mat2_variable",
+          "deviation": "variable arrays of matrices sliced by components",
+          "loadersSame": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "variable_uint64_offsets",
+          "deviation": "UINT64 offsets dropped",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "string_uint64_offsets",
+          "deviation": "UINT64 offsets dropped",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "string_late_start",
+          "deviation": "string offsets taken from 0",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "string_fixed",
+          "deviation": "string arrays not read (throws)",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "string_variable",
+          "deviation": "string arrays not read (throws)",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "boolean",
+          "deviation": "booleans not read (throws)",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "boolean_fixed",
+          "deviation": "booleans not read (throws)",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "boolean_variable",
+          "deviation": "booleans not read (throws)",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "enum_uint64",
+          "deviation": "64-bit enum values give empty names",
+          "loadersSame": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "case": "enum_variable",
+          "deviation": "array offsets read as byte offsets, not element indices",
+          "loadersSame": [
+            true,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "part": "feature IDs and one table of every property",
+      "properties": 110,
+      "same": true,
+      "differ": []
+    },
+    {
+      "part": "hostile property tables",
+      "cases": 16,
+      "same": true,
+      "notRefused": []
+    }
+  ]
+}
