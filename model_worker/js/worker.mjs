@@ -105,6 +105,7 @@ async function tile({ url }) {
         batchTable: c.batchTable,
         batchBinary: c.batchBinary.slice(),
         instances: c.instances,
+        metadata: c.model.metadata,
       })),
     ),
   };

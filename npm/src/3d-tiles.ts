@@ -3,6 +3,8 @@
 import type { CustomRenderMethodInput } from "./custom";
 import type { LoadedModel, TilesLayerOptions } from "./3d";
 import type { GpuModel, ModelProgram } from "./model/draw";
+import type { StructuralMetadata } from "./model/gltf";
+import { batchTableProperties, propertyTableProperties } from "./tiles/properties";
 import { Y_UP, mercatorFrame, mul, sphereFrame } from "./model/place";
 import { eastNorthUp, multiply, toCartographic } from "./tiles/geo";
 import { frameState } from "./tiles/frame";
@@ -30,6 +32,7 @@ export interface ContentPart extends LoadedModel {
   batchTable: Record<string, unknown> | null;
   batchBinary: Uint8Array;
   instances: { matrices: Float64Array; batchIds: Uint32Array } | null;
+  metadata?: StructuralMetadata;
 }
 
 /** A part on the GPU: its model, where each instance goes (meters, east, north, up) and its batch. */
@@ -37,8 +40,8 @@ export interface GpuPart {
   gpu: GpuModel;
   places: Float64Array[];
   batchIds: Uint32Array | null;
-  batchTable: Record<string, unknown> | null;
-  batchBinary: Uint8Array;
+  /** The properties of feature `id` (batch table, or the EXT_structural_metadata property table its ids name). */
+  properties(id: number): Record<string, unknown>;
 }
 
 /** A tile's part drawn in the pick pass, and the feature hit in it. */
@@ -70,6 +73,18 @@ function rigidInverse(m: ArrayLike<number>): Float64Array {
   const r = [m[0], m[4], m[8], 0, m[1], m[5], m[9], 0, m[2], m[6], m[10], 0];
   const t = [m[12], m[13], m[14]];
   return new Float64Array([...r, -(r[0] * t[0] + r[4] * t[1] + r[8] * t[2]), -(r[1] * t[0] + r[5] * t[1] + r[9] * t[2]), -(r[2] * t[0] + r[6] * t[1] + r[10] * t[2]), 1]);
+}
+
+/** How `part`'s feature ids become properties: its EXT_structural_metadata table, else its batch table. */
+function propertiesOf(part: ContentPart): (id: number) => Record<string, unknown> {
+  const table = part.primitives.flatMap((p) => p.featureIds ?? []).find((f) => f.propertyTable !== undefined)?.propertyTable;
+  let props: { count: number; get(id: number): Record<string, unknown> } | null = null;
+  try {
+    props = part.metadata && table !== undefined ? propertyTableProperties(part.metadata, table) : batchTableProperties(part.batchTable, part.batchBinary, part.batchLength);
+  } catch {
+    props = null;
+  }
+  return (id) => (props && id >= 0 && id < props.count ? props.get(id) : Object.create(null));
 }
 
 /** Reads the tileset at `url` (implicit tiling expanded) and returns its engine. */
@@ -268,8 +283,7 @@ export class TilesEngine {
             const rtc = part.rtc ?? [0, 0, 0];
             places = [multiply(multiply(base, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...rtc, 1]), Y_UP)];
           }
-          const { batchTable, batchBinary } = part;
-          return { gpu: this.#parts.upload(gl, part, IDENTITY), places, batchIds: part.instances?.batchIds ?? null, batchTable, batchBinary };
+          return { gpu: this.#parts.upload(gl, part, IDENTITY), places, batchIds: part.instances?.batchIds ?? null, properties: propertiesOf(part) };
         });
         tile.content = { parts, lng: carto[0], lat: carto[1], height: carto[2] } satisfies TileModel;
         tile.state = "ready";

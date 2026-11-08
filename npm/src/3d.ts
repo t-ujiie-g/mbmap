@@ -239,9 +239,7 @@ export class TilesLayer implements CustomLayerInterface {
   async queryFeature(point: { x: number; y: number }): Promise<TileFeature | null> {
     const hit = (await this.#engine?.pick(point.x, point.y)) ?? null;
     if (!hit) return null;
-    const table = hit.part.batchTable;
-    const properties: Record<string, unknown> = Object.create(null);
-    if (table) for (const [key, values] of Object.entries(table)) if (Array.isArray(values)) properties[key] = values[hit.feature];
+    const properties = hit.part.properties(hit.feature);
     return { tile: hit.tile.path, id: hit.feature, properties };
   }
 
