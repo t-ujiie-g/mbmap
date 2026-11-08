@@ -95,10 +95,10 @@ export interface Model {
   metadata?: StructuralMetadata;
 }
 
-/** A Draco mesh decoded: its corner indices and its attributes by Draco unique id. */
+/** A Draco mesh decoded: its corner indices and its attributes by Draco unique id, each with its Draco attribute type (0 POSITION to 4 GENERIC). */
 export interface DracoMesh {
   indices: Uint32Array;
-  attributes: Map<number, Attribute>;
+  attributes: Map<number, Attribute & { dracoType?: number }>;
 }
 
 /** Decodes a KHR_draco_mesh_compression buffer view (throws on malformed data). */

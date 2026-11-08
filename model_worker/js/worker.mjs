@@ -1,18 +1,15 @@
-// Glue around the wasm-gc build of `model_worker` (meshopt and Draco decoding): reads glTF models for mbmap/3d
-// (`npm/src/model/gltf.ts`) and decodes their images, and LAS point clouds (`npm/src/model/las.ts`) taken
-// to WGS 84 through proj.wasm; messages are in docs/FORMATS.md ("Model worker messages").
+// Glue around the wasm-gc build of `model_worker` (meshopt, Draco): glTF models and their images, 3D tiles,
+// I3S nodes, and LAS point clouds taken to WGS 84 through proj.wasm, for mbmap/3d (`npm/src/model`,
+// `tiles`, `i3s`); messages are in docs/FORMATS.md ("Model worker messages").
 
 import { transformPairs } from "../../data_worker/js/crs.mjs";
-import { writeInput } from "../../wasmio/js/host.mjs";
+import { draco, meshopt } from "./decode.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
 import { readGltf } from "../../npm/src/model/gltf.ts";
 import { horizontalWkt, MAX_LAS_BYTES, MAX_LAS_POINTS, readLas } from "../../npm/src/model/las.ts";
+import { MAX_I3S_BYTES, MAX_I3S_TEXTURE_BYTES, materialOf, readI3sGeometry } from "../../npm/src/i3s/content.ts";
 import { readTileContent } from "../../npm/src/tiles/content.ts";
 import { eastNorthUp, toCartesian } from "../../npm/src/tiles/geo.ts";
-
-/** meshopt's modes and filters as the wasm numbers them. */
-const MODES = { ATTRIBUTES: 0, TRIANGLES: 1, INDICES: 2 };
-const FILTERS = { NONE: 0, OCTAHEDRAL: 1, QUATERNION: 2, EXPONENTIAL: 3, COLOR: 4 };
 
 let wasmUrl = null;
 let wasm = null;
@@ -32,51 +29,6 @@ async function instance() {
     wasm = instance.exports;
   }
   return wasm;
-}
-
-function meshopt(exports) {
-  return (target, count, size, source, mode, filter) => {
-    const m = MODES[mode];
-    const f = FILTERS[filter];
-    if (m === undefined || f === undefined) throw new Error(`unknown meshopt mode or filter ${mode} ${filter}`);
-    writeInput(exports, [source], "meshopt data");
-    const n = exports.meshopt_decode(count, size, m, f);
-    if (n !== target.length) throw new Error("meshopt data could not be decoded");
-    target.set(new Uint8Array(exports.memory.buffer, exports.output_addr(), n));
-  };
-}
-
-/** The typed array of each Draco data type that glTF can hold (docs/FORMATS.md "Draco output"). */
-const DRACO_TYPES = { 1: [Int8Array, 5120], 2: [Uint8Array, 5121], 3: [Int16Array, 5122], 4: [Uint16Array, 5123], 6: [Uint32Array, 5125], 9: [Float32Array, 5126] };
-
-/** Decodes a KHR_draco_mesh_compression buffer view through the wasm's `draco_decode`. */
-function draco(exports) {
-  return (bytes) => {
-    writeInput(exports, [bytes], "Draco data");
-    const n = exports.draco_decode();
-    if (n === -2) throw new Error("out of memory");
-    if (n < 0) throw new Error("Draco data could not be decoded");
-    const out = new Uint8Array(exports.memory.buffer.slice(exports.output_addr(), exports.output_addr() + n));
-    const v = new DataView(out.buffer);
-    const [faces, , count] = [v.getUint32(0, true), v.getUint32(4, true), v.getUint32(8, true)];
-    const heads = [];
-    for (let i = 0; i < count; i++) {
-      const at = 12 + i * 12;
-      heads.push({ id: v.getUint32(at, true), type: v.getUint8(at + 5), size: v.getUint8(at + 6), normalized: v.getUint8(at + 7) === 1, length: v.getUint32(at + 8, true) });
-    }
-    let at = 12 + count * 12;
-    const indices = new Uint32Array(out.buffer.slice(at, at + faces * 12));
-    at += faces * 12;
-    const attributes = new Map();
-    for (const h of heads) {
-      const kind = DRACO_TYPES[h.type];
-      if (!kind) throw new Error(`Draco data type ${h.type} has no glTF counterpart`);
-      const [Typed, type] = kind;
-      attributes.set(h.id, { data: new Typed(out.buffer.slice(at, at + h.length)), size: h.size, type, normalized: h.normalized });
-      at += (h.length + 3) & ~3;
-    }
-    return { indices, attributes };
-  };
 }
 
 const isHttp = (url) => url.protocol === "http:" || url.protocol === "https:" || url.protocol === "blob:" || url.protocol === "data:";
@@ -99,6 +51,31 @@ async function load({ url }) {
   const model = await readGltf(bytes, (uri) => fetchBytes(new URL(uri, base)), meshopt(exports), draco(exports));
   const images = await Promise.all(model.images.map(bitmap));
   return { primitives: model.primitives, materials: model.materials, images };
+}
+
+/** `bytes`, gunzipped (capped at `max`) when they are gzip data, as I3S resources stored raw may be. */
+async function gunzip(bytes, max) {
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
+  return readCapped(new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))), max);
+}
+
+/** The media type of JPEG or PNG bytes, else undefined (DDS and KTX2 textures are not drawn). */
+const imageType = (b) => (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "image/jpeg" : b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 ? "image/png" : undefined);
+
+/** An I3S node's geometry buffer (`buffer` of its definition) and JPEG or PNG texture, in east, north, up meters around its center. */
+async function i3s({ url, buffer, texture, layer, node }) {
+  const obj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+  if (!Number.isInteger(buffer) || buffer < 0 || !obj(layer) || !obj(node) || !(texture === undefined || typeof texture === "string")) throw new Error("invalid arguments");
+  const def = layer.geometryDefinitions?.[node.mesh?.geometry?.definition]?.geometryBuffers?.[buffer];
+  const decoder = def?.compressedAttributes ? draco(await instance()) : undefined;
+  const [bytes, image] = await Promise.all([
+    fetchBytes(new URL(url), MAX_I3S_BYTES).then((b) => gunzip(b, MAX_I3S_BYTES)),
+    texture === undefined ? undefined : fetchBytes(new URL(texture), MAX_I3S_TEXTURE_BYTES).then((b) => gunzip(b, MAX_I3S_TEXTURE_BYTES)),
+  ]);
+  const { center, primitive, featureIds, count } = readI3sGeometry(bytes, layer, node, buffer, decoder);
+  const mimeType = image && imageType(image);
+  const images = mimeType ? [await bitmap({ bytes: image, mimeType })] : [];
+  return { center, primitives: [primitive], materials: [materialOf(layer, node.mesh?.material?.definition, images.length > 0)], images, featureIds, count };
 }
 
 /** A tile's content as parts to draw: a cmpt's inner tiles, else the content itself. */
@@ -193,9 +170,9 @@ async function las({ url, maxPoints, crs }) {
   return { center, positions, colors, intensity, classification, count, kept, bounds };
 }
 
-const OPS = { load, tile, las };
+const OPS = { load, tile, las, i3s };
 
-/** Every ArrayBuffer and ImageBitmap of a model, a tile's parts or a point cloud, once each. */
+/** Every ArrayBuffer and ImageBitmap of a model, a tile's parts, an I3S node or a point cloud, once each. */
 function transferables(value) {
   if (value.positions) return [value.positions, value.colors, value.intensity, value.classification].filter(Boolean).map((a) => a.buffer);
   const out = new Set();
@@ -206,6 +183,7 @@ function transferables(value) {
       if (p.indices) out.add(p.indices.buffer);
     }
     if (part.instances) for (const a of [part.instances.matrices, part.instances.batchIds]) out.add(a.buffer);
+    if (part.featureIds instanceof Float64Array) out.add(part.featureIds.buffer);
   }
   return [...out];
 }
