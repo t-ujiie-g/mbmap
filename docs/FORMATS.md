@@ -477,8 +477,12 @@ In:
     empty for no path; `disposeNetwork` (`network`);
   - `viewshed` (`grid`, `observer` [lng, lat], `options` observerHeight, targetHeight,
     maxDistance, curvatureCoeff, mode 0 normal, 1 DEM, 2 ground, visible, invisible, outOfRange):
-    `{width, height, bounds, values}` from the viewshed module, which takes the elevations as f64s
-    and answers the output's width, height and geotransform, then its cells;
+    `{width, height, bounds, values}` from the viewshed module: `viewshed_window` (the same
+    arguments) answers the cells it reads as i32 x, y, width, height; `viewshed` takes those
+    cells' elevations as f64s (its arguments: width, height, geotransform, observer x, y, the
+    options, semi-major axis (NaN for none), mode 0 normal, 1 DEM, 2 ground, the three values,
+    then the cells' x, y, width, height, width 0 for the whole grid) and answers the output's
+    width, height and geotransform, then its cells;
   - `surface` (`dataset`, -1 for the grids, `fn` an export of surface_worker, `args` its numbers,
     `text` a property name, `numbers` f64s such as breaks): the module's input is the table, the
     text as UTF-8 and the f64s one after another; a new dataset, or for `dbscan` two f64s per

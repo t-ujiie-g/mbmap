@@ -19,9 +19,9 @@ pub fn output_addr() -> Int32 {
 ///|
 /// The input's table.
 fn input() -> @geom.Table? {
-  let bytes = @wasmio.input_bytes()
+  let t = @wasmio.input_table(0, @wasmio.input_length())
   @wasmio.clear_input()
-  @geom.Table::from_bytes(bytes[:])
+  t
 }
 
 ///|
@@ -30,7 +30,7 @@ fn input() -> @geom.Table? {
 fn run(f : (@geom.Table) -> @geom.Table?) -> Int32 {
   guard input() is Some(t) else { return @wasmio.fail_with("malformed table") }
   match f(t) {
-    Some(out) => @wasmio.write_bytes(out.to_bytes()[:])
+    Some(out) => @wasmio.write_table(out)
     None => @wasmio.fail_with("too many points")
   }
 }

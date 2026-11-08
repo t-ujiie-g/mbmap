@@ -14,9 +14,86 @@ pub fn output_addr() -> Int32 {
 }
 
 ///|
-/// `@viewshed.viewshed` of the input's `width` x `height` f64 elevations: the
-/// arguments and output as docs/FORMATS.md "Analysis worker messages" `viewshed`
-/// lists them (`mode` 0 normal, 1 DEM, 2 ground; `semi_major` NaN for none).
+/// `@viewshed.ViewshedOptions` from the exports' arguments.
+fn options_of(
+  ox : Double,
+  oy : Double,
+  observer_height : Double,
+  target_height : Double,
+  max_distance : Double,
+  curvature_coeff : Double,
+  semi_major : Double,
+  mode : Int32,
+  visible : Double,
+  invisible : Double,
+  out_of_range : Double,
+) -> @viewshed.ViewshedOptions {
+  @viewshed.ViewshedOptions::new(
+    ox,
+    oy,
+    observer_height~,
+    target_height~,
+    max_distance~,
+    curvature_coeff~,
+    semi_major?=if semi_major.is_nan() { None } else { Some(semi_major) },
+    visible_value=visible,
+    invisible_value=invisible,
+    out_of_range_value=out_of_range,
+    mode=match mode {
+      1 => Dem
+      2 => Ground
+      _ => Normal
+    },
+  )
+}
+
+///|
+/// Writes `@viewshed.viewshed_window` (x, y, width, height as i32s) for
+/// `viewshed`'s arguments and returns 4, or minus an error's length.
+#export_name("viewshed_window")
+pub fn viewshed_window(
+  width : Int32,
+  height : Int32,
+  g0 : Double,
+  g1 : Double,
+  g2 : Double,
+  g3 : Double,
+  g4 : Double,
+  g5 : Double,
+  ox : Double,
+  oy : Double,
+  observer_height : Double,
+  target_height : Double,
+  max_distance : Double,
+  curvature_coeff : Double,
+  semi_major : Double,
+  mode : Int32,
+  visible : Double,
+  invisible : Double,
+  out_of_range : Double,
+) -> Int32 {
+  @wasmio.clear_input()
+  let options = options_of(
+    ox, oy, observer_height, target_height, max_distance, curvature_coeff, semi_major,
+    mode, visible, invisible, out_of_range,
+  )
+  guard @viewshed.viewshed_window(
+      width,
+      height,
+      [g0, g1, g2, g3, g4, g5],
+      options,
+      trig=@wasmio.host_trig(),
+    )
+    is Some((x, y, w, h)) else {
+    return @wasmio.fail_with(no_viewshed)
+  }
+  @wasmio.write_i32s([x, y, w, h][:])
+}
+
+///|
+/// `@viewshed.viewshed` of the input's f64 elevations, the `cw` x `ch` cells from
+/// (`cx`, `cy`) (`cw` 0 for the whole grid): arguments and output as
+/// docs/FORMATS.md "Analysis worker messages" `viewshed` lists them.
 #export_name("viewshed")
 pub fn viewshed(
   width : Int32,
@@ -38,30 +115,23 @@ pub fn viewshed(
   visible : Double,
   invisible : Double,
   out_of_range : Double,
+  cx : Int32,
+  cy : Int32,
+  cw : Int32,
+  ch : Int32,
 ) -> Int32 {
+  let cells = if cw == 0 { (0, 0, width, height) } else { (cx, cy, cw, ch) }
   guard @viewshed.grid_fits(width, height) &&
-    @wasmio.input_length() == width * height * 8 else {
+    @viewshed.grid_fits(cells.2, cells.3) &&
+    @wasmio.input_length() == cells.2 * cells.3 * 8 else {
     @wasmio.clear_input()
     return @wasmio.fail_with(no_viewshed)
   }
   let values = @wasmio.input_f64s()
   @wasmio.clear_input()
-  let options = @viewshed.ViewshedOptions::new(
-    ox,
-    oy,
-    observer_height~,
-    target_height~,
-    max_distance~,
-    curvature_coeff~,
-    semi_major?=if semi_major.is_nan() { None } else { Some(semi_major) },
-    visible_value=visible,
-    invisible_value=invisible,
-    out_of_range_value=out_of_range,
-    mode=match mode {
-      1 => Dem
-      2 => Ground
-      _ => Normal
-    },
+  let options = options_of(
+    ox, oy, observer_height, target_height, max_distance, curvature_coeff, semi_major,
+    mode, visible, invisible, out_of_range,
   )
   guard @viewshed.viewshed(
       values,
@@ -71,20 +141,18 @@ pub fn viewshed(
       None,
       options,
       trig=@wasmio.host_trig(),
+      cells~,
     )
     is Some(r) else {
     return @wasmio.fail_with(no_viewshed)
   }
-  let out = FixedArray::make(8 + r.values.length(), 0.0)
-  out[0] = r.width.to_double()
-  out[1] = r.height.to_double()
+  let head = FixedArray::make(8, 0.0)
+  head[0] = r.width.to_double()
+  head[1] = r.height.to_double()
   for k in 0..<6 {
-    out[2 + k] = r.geotransform[k]
+    head[2 + k] = r.geotransform[k]
   }
-  for k in 0..<r.values.length() {
-    out[8 + k] = r.values[k]
-  }
-  @wasmio.write_f64s(out)
+  @wasmio.write_f64s_after(head, r.values)
 }
 
 ///|

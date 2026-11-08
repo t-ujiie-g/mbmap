@@ -12,89 +12,89 @@
   },
   "rows": {
     "point_grid 0.1 km over 0.1° (10192 cells)": {
-      "js": 0.202,
-      "mbmap": 2.44,
-      "exportOnly": 1.58,
-      "ratio": 12.1
+      "js": 0.2,
+      "mbmap": 0.389,
+      "exportOnly": 0.191,
+      "ratio": 1.94
     },
     "square_grid 0.1 km over 0.1° (12321 cells)": {
-      "js": 0.949,
-      "mbmap": 8.13,
-      "exportOnly": 4.59,
-      "ratio": 8.57
+      "js": 0.982,
+      "mbmap": 1,
+      "exportOnly": 0.523,
+      "ratio": 1.02
     },
     "hex_grid 0.1 km over 0.1° (3747 cells)": {
-      "js": 0.886,
-      "mbmap": 2.96,
-      "exportOnly": 1.94,
-      "ratio": 3.34
-    },
-    "triangle_grid 0.1 km over 0.1° (20384 cells)": {
-      "js": 2.61,
-      "mbmap": 10.5,
-      "exportOnly": 6.38,
-      "ratio": 4.02
-    },
-    "interpolate (IDW) 200 points, 0.25 km point grid": {
-      "js": 34.1,
-      "mbmap": 19,
-      "tablesIn": 0.0189,
-      "ratio": 0.556
-    },
-    "interpolate (IDW) 200 points, 0.25 km square grid": {
-      "js": 70.5,
-      "mbmap": 23.2,
-      "tablesIn": 0.0164,
-      "ratio": 0.329
-    },
-    "interpolate (IDW) 200 points, 0.25 km hex grid": {
-      "js": 21.9,
-      "mbmap": 6.77,
-      "tablesIn": 0.0161,
-      "ratio": 0.309
-    },
-    "isolines (6497-point grid, 7 breaks)": {
-      "js": 0.91,
-      "mbmap": 1.7,
-      "tablesIn": 0.554,
-      "exportOnly": 1.64,
-      "ratio": 1.87
-    },
-    "isobands (6497-point grid, 7 breaks)": {
-      "js": 1.75,
-      "mbmap": 2.38,
-      "tablesIn": 0.555,
-      "ratio": 1.36
-    },
-    "density (6000 GSI points, 960 x 500, 20 thresholds)": {
-      "js": 14.7,
-      "mbmap": 11.5,
-      "tablesIn": 0.364,
-      "ratio": 0.783
-    },
-    "dbscan (6000 GSI points, 0.3 km, 3)": {
-      "js": 325.1,
-      "mbmap": 143.5,
-      "tablesIn": 0.364,
+      "js": 0.895,
+      "mbmap": 0.395,
+      "exportOnly": 0.203,
       "ratio": 0.441
     },
+    "triangle_grid 0.1 km over 0.1° (20384 cells)": {
+      "js": 1.58,
+      "mbmap": 1.56,
+      "exportOnly": 0.853,
+      "ratio": 0.989
+    },
+    "interpolate (IDW) 200 points, 0.25 km point grid": {
+      "js": 33.8,
+      "mbmap": 18.6,
+      "tablesIn": 0.00235,
+      "ratio": 0.551
+    },
+    "interpolate (IDW) 200 points, 0.25 km square grid": {
+      "js": 60.9,
+      "mbmap": 21.8,
+      "tablesIn": 0.00234,
+      "ratio": 0.358
+    },
+    "interpolate (IDW) 200 points, 0.25 km hex grid": {
+      "js": 19.2,
+      "mbmap": 6.35,
+      "tablesIn": 0.00233,
+      "ratio": 0.332
+    },
+    "isolines (6497-point grid, 7 breaks)": {
+      "js": 0.863,
+      "mbmap": 0.699,
+      "tablesIn": 0.0635,
+      "exportOnly": 0.689,
+      "ratio": 0.81
+    },
+    "isobands (6497-point grid, 7 breaks)": {
+      "js": 1.66,
+      "mbmap": 1.31,
+      "tablesIn": 0.0633,
+      "ratio": 0.786
+    },
+    "density (6000 GSI points, 960 x 500, 20 thresholds)": {
+      "js": 14.6,
+      "mbmap": 9.1,
+      "tablesIn": 0.0371,
+      "ratio": 0.624
+    },
+    "dbscan (6000 GSI points, 0.3 km, 3)": {
+      "js": 317.8,
+      "mbmap": 145.2,
+      "tablesIn": 0.035,
+      "ratio": 0.457
+    },
     "dbscan (6000 GSI points, 2 km, 3)": {
-      "js": 2019,
-      "mbmap": 905.4,
-      "tablesIn": 0.363,
-      "ratio": 0.448
+      "js": 1960.4,
+      "mbmap": 893.4,
+      "tablesIn": 0.0348,
+      "ratio": 0.456
     },
     "kmeans (6000 GSI points, k default)": {
-      "js": 121.9,
-      "mbmap": 48.4,
-      "tablesIn": 0.417,
-      "ratio": 0.397
+      "js": 120.6,
+      "mbmap": 47.3,
+      "tablesIn": 0.0349,
+      "ratio": 0.392
     },
     "kmeans (6000 GSI points, k 20)": {
-      "js": 53.5,
-      "mbmap": 22.9,
-      "tablesIn": 0.363,
-      "ratio": 0.427
+      "js": 52.7,
+      "mbmap": 22,
+      "tablesIn": 0.0348,
+      "ratio": 0.417
     }
   }
 }

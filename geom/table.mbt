@@ -150,6 +150,24 @@ pub fn TableBuilder::cells(self : TableBuilder) -> Int64 {
 }
 
 ///|
+/// Makes room for `features` more features of one ring each and `points` more
+/// points, for a caller that knows them ahead.
+pub fn TableBuilder::reserve(
+  self : TableBuilder,
+  features : Int32,
+  points : Int32,
+) -> Unit {
+  let t = self.table
+  let f = t.length() + features
+  t.kinds.reserve_capacity(f)
+  t.ids.reserve_capacity(f)
+  t.part_ends.reserve_capacity(f)
+  t.ring_ends.reserve_capacity(t.ring_ends.length() + features)
+  t.point_ends.reserve_capacity(t.point_ends.length() + features)
+  t.coords.reserve_capacity(t.coords.length() + points * 2)
+}
+
+///|
 pub fn TableBuilder::point(self : TableBuilder, x : Double, y : Double) -> Unit {
   self.table.coords.push(x)
   self.table.coords.push(y)

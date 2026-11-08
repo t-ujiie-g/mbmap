@@ -203,7 +203,7 @@ pub fn grid(
 #export_name("table_out")
 pub fn table_out(id : Int32) -> Int32 {
   guard datasets.get(id) is Some(d) else { return -1 }
-  @wasmio.write_bytes(d.table.to_bytes()[:])
+  @wasmio.write_table(d.table)
 }
 
 ///|
@@ -211,7 +211,7 @@ pub fn table_out(id : Int32) -> Int32 {
 /// dataset. Returns its handle, or minus the length of an error message.
 #export_name("load_table")
 pub fn load_table() -> Int32 {
-  guard @geom.Table::from_bytes(@wasmio.input_bytes()[:]) is Some(table) else {
+  guard @wasmio.input_table(0, @wasmio.input_length()) is Some(table) else {
     return @wasmio.fail_with("malformed table")
   }
   let id = next_id.val

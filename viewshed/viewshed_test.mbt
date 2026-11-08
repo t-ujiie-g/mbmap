@@ -674,3 +674,42 @@ test "grids past MAX_VIEWSHED_CELLS give None, products that overflow included" 
   let gt = north_up(5, 1.0)
   assert_true(@viewshed.viewshed([], 65536, 65536, gt, None, options) is None)
 }
+
+///|
+test "viewshed of viewshed_window's cells alone is the whole grid's" {
+  let values = FixedArray::makei(81, i => (i * 37 % 11).to_double())
+  let gt = north_up(9, 1.0)
+  let options = @viewshed.ViewshedOptions::new(
+    3.5,
+    5.5,
+    max_distance=2.0,
+    out_of_range_value=7.0,
+  )
+  let (x, y, w, h) = @viewshed.viewshed_window(9, 9, gt, options).unwrap()
+  assert_eq((x, y, w, h), (1, 1, 5, 5))
+  let cut = FixedArray::makei(w * h, i => values[(y + i / w) * 9 + x + i % w])
+  let whole = run(values, 9, 9, gt, options)
+  let part = @viewshed.viewshed(
+    cut,
+    9,
+    9,
+    gt,
+    None,
+    options,
+    cells=(x, y, w, h),
+  ).unwrap()
+  assert_eq(
+    (part.values, part.geotransform),
+    (whole.values, whole.geotransform),
+  )
+  // Cells that miss a row or column of the window, or do not match `values`.
+  for cells in [(2, 1, 4, 5), (1, 1, 5, 4), (1, 2, 5, 5), (-1, 1, 5, 5)] {
+    assert_true(
+      @viewshed.viewshed(cut, 9, 9, gt, None, options, cells~) is None,
+    )
+  }
+  assert_true(
+    @viewshed.viewshed(cut, 9, 9, gt, None, options, cells=(0, 0, 6, 6)) is None,
+  )
+  assert_true(@viewshed.viewshed_window(9, 9, [], options) is None)
+}

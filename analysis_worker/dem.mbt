@@ -63,6 +63,21 @@ pub fn grid_values(id : Int32, kind : Int32) -> Int32 {
 }
 
 ///|
+/// Writes the elevations of a grid's `w` x `h` cells from (`x`, `y`) as f64s.
+/// Returns the count, or -1 for an unknown grid or cells outside it.
+#export_name("grid_window")
+pub fn grid_window(
+  id : Int32,
+  x : Int32,
+  y : Int32,
+  w : Int32,
+  h : Int32,
+) -> Int32 {
+  guard grids.get(id) is Some(g) else { return -1 }
+  @wasmio.write_f64_rows(g.elev, g.width, x, y, w, h)
+}
+
+///|
 /// Writes a grid's hillshade, a byte per cell (`@analysis.Grid::hillshade`).
 /// Returns the count, or -1 for an unknown grid.
 #export_name("grid_hillshade")

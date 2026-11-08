@@ -44,7 +44,7 @@ pub fn read_esri(pbf : Int32) -> Int32 {
     last_ids.append(table.ids)
   }
   @wasmio.clear_input()
-  @wasmio.write_bytes(table.to_bytes()[:])
+  @wasmio.write_table(table)
 }
 
 ///|

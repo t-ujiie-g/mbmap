@@ -79,12 +79,19 @@ function gdalTimes(tif, o, format) {
   const runs = Array.from({ length: RUNS }, () => gdal(tif, o, format));
   return { wall: median(runs.map((r) => r.wall)), cpu: median(runs.map((r) => r.cpu)) };
 }
-// What the analysis worker does for `viewshed`: the grid's values out of analysis.wasm, into viewshed.wasm, the
-// call, its f64s read.
+// What the analysis worker does for `viewshed`: the window of cells it reads, those cells out of analysis.wasm,
+// into viewshed.wasm, the call, its f64s read.
+const argsOf = (w, h, o) => [w, h, 0, res, 0, 0, 0, -res, o.x, o.y, 2, 0, o.md, 0.85714, 6378137, 0, 255, 0, 0];
+function windowOf(w, h, o) {
+  m.viewshed_window(...argsOf(w, h, o));
+  const at = m.output_addr();
+  return Array.from(new Int32Array(m.memory.buffer.slice(at, at + 16)));
+}
 function ours(grid, w, h, o) {
-  const values = f64sOf(a, a.grid_values(grid, 0));
+  const window = windowOf(w, h, o);
+  const values = f64sOf(a, a.grid_window(grid, ...window));
   writeInput(m, [new Uint8Array(values.buffer)]);
-  return f64sOf(m, m.viewshed(w, h, 0, res, 0, 0, 0, -res, o.x, o.y, 2, 0, o.md, 0.85714, 6378137, 0, 255, 0, 0));
+  return f64sOf(m, m.viewshed(...argsOf(w, h, o), ...window));
 }
 
 const tiny = await geotiff("tiny", 2, 2, new Float64Array([1, 2, 3, 4]));
@@ -104,10 +111,11 @@ for (const k of [1, 4]) {
     const mem = gdalTimes(tif, o, "MEM");
     const once = { warmMs: 0, samples: RUNS, sampleMs: 0 };
     const fast = time(() => ours(grid, w, h, o), once);
-    const bytes = new Uint8Array(values.buffer);
+    const window = windowOf(w, h, o);
+    const bytes = new Uint8Array(f64sOf(a, a.grid_window(grid, ...window)).buffer);
     const exportOnly = time(() => {
       writeInput(m, [bytes]);
-      m.viewshed(w, h, 0, res, 0, 0, 0, -res, o.x, o.y, 2, 0, o.md, 0.85714, 6378137, 0, 255, 0, 0);
+      m.viewshed(...argsOf(w, h, o), ...window);
     }, once);
     const label = `viewshed ${w} x ${h}, ${md ? `${md} m` : "no"} range (${visible} visible cells)`;
     row(label, g.wall - baseline.wall, fast, { exportOnly, gdalWall: g.wall, gdalCpu: g.cpu, gdalMemWall: mem.wall });
@@ -118,6 +126,6 @@ for (const k of [1, 4]) {
 await writeResults("viewshed-node", {
   gdal: version, runs: RUNS,
   statistic: "median of runs after one warm-up run each",
-  columns: "js: GDAL net, the GTiff run's wall clock minus the 2 x 2 run's (baseline); gdalWall / gdalCpu: the GTiff run's wall clock and user + sys; gdalMemWall: wall clock writing to the MEM driver; mbmap: the grid's values out of analysis.wasm, into viewshed.wasm, the call and its output read (one thread); exportOnly: the values copied into viewshed.wasm and the call, its output not read",
+  columns: "js: GDAL net, the GTiff run's wall clock minus the 2 x 2 run's (baseline); gdalWall / gdalCpu: the GTiff run's wall clock and user + sys; gdalMemWall: wall clock writing to the MEM driver; mbmap: the window of cells the viewshed reads, those cells out of analysis.wasm, into viewshed.wasm, the call and its output read (one thread); exportOnly: the cells copied into viewshed.wasm and the call, its output not read",
   baseline,
 }, all);
