@@ -4,6 +4,7 @@
 
 import { writeInput } from "../../wasmio/js/host.mjs";
 import { readGltf } from "../../npm/src/model/gltf.ts";
+import { readTileContent } from "../../npm/src/tiles/content.ts";
 
 /** meshopt's modes and filters as the wasm numbers them. */
 const MODES = { ATTRIBUTES: 0, TRIANGLES: 1, INDICES: 2 };
@@ -53,6 +54,15 @@ async function load({ url }) {
   return { primitives: model.primitives, materials: model.materials, images };
 }
 
+async function tile({ url }) {
+  const base = new URL(url);
+  const content = await readTileContent(await fetchBytes(base), (uri) => fetchBytes(new URL(uri, base)), meshopt(await instance()));
+  const images = await Promise.all(content.model.images.map(bitmap));
+  return { primitives: content.model.primitives, materials: content.model.materials, images, rtc: content.rtc, batchLength: content.batchLength };
+}
+
+const OPS = { load, tile };
+
 /** Every ArrayBuffer and ImageBitmap of `value`, once each. */
 function transferables(value) {
   const out = new Set(value.images);
@@ -67,9 +77,9 @@ onmessage = async (e) => {
   const msg = e.data;
   if (msg?.type === "init" && wasmUrl === null && typeof msg.wasm === "string") {
     wasmUrl = msg.wasm;
-  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && msg.op === "load" && typeof msg.url === "string") {
+  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && typeof msg.url === "string") {
     try {
-      const value = await load(msg);
+      const value = await OPS[msg.op](msg);
       postMessage({ type: "result", id: msg.id, value }, transferables(value));
     } catch (err) {
       postMessage({ type: "result", id: msg.id, error: String(err?.message ?? err) });

@@ -64,10 +64,12 @@ export interface ImageData {
   mimeType: string;
 }
 
+/** `rtc` is the CESIUM_RTC extension's center, which 3D Tiles 1.0 contents may use. */
 export interface Model {
   primitives: Primitive[];
   materials: Material[];
   images: ImageData[];
+  rtc?: [number, number, number];
 }
 
 /** MeshoptDecoder.decodeGltfBuffer's arguments: writes `count` elements of `size` bytes into `target`. */
@@ -81,6 +83,7 @@ export const EXTENSIONS = new Set([
   "EXT_meshopt_compression",
   "KHR_meshopt_compression",
   "EXT_texture_webp",
+  "CESIUM_RTC",
 ]);
 
 /** Splits a .glb into its JSON and binary chunk; a .gltf (JSON text) has no binary chunk. */
@@ -302,7 +305,9 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
   };
   const identity = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
   for (const root of roots) visit(root, identity, 0, new Set());
-  return { primitives, materials, images };
+  const center = list(obj(obj(gltf.extensions).CESIUM_RTC).center);
+  const rtc = center.length === 3 && center.every((v) => typeof v === "number" && Number.isFinite(v)) ? (center as [number, number, number]) : undefined;
+  return { primitives, materials, images, rtc };
 }
 
 function slice(buffer: Uint8Array | undefined, offset: number, length: number): Uint8Array {
