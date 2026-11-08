@@ -681,7 +681,50 @@ const COLOR_RELIEF_SCENES = {
   },
 };
 
+// Vector layers on the globe: GeoJSON over the world (a ring with a hole across Asia, a band past the
+// antimeridian, the Arctic up to the pole), long lines across meridians and a grid of points.
+const WORLD = {
+  type: "geojson",
+  data: {
+    type: "FeatureCollection",
+    features: [
+      { type: "Feature", properties: { k: "asia" }, geometry: { type: "Polygon", coordinates: [
+        [[60, 5], [150, 5], [150, 60], [60, 60], [60, 5]], [[100, 25], [125, 25], [125, 45], [100, 45], [100, 25]]] } },
+      { type: "Feature", properties: { k: "pacific" }, geometry: { type: "Polygon", coordinates: [[[160, -30], [200, -30], [200, -5], [160, -5], [160, -30]]] } },
+      { type: "Feature", properties: { k: "arctic" }, geometry: { type: "Polygon", coordinates: [[[-180, 70], [180, 70], [180, 85], [-180, 85], [-180, 70]]] } },
+      { type: "Feature", properties: { k: "route" }, geometry: { type: "LineString", coordinates: [[139.7, 35.7], [-122.4, 37.8], [-74, 40.7], [2.35, 48.85], [139.7, 35.7]] } },
+      { type: "Feature", properties: { k: "parallel" }, geometry: { type: "LineString", coordinates: [[0, 20], [90, 20], [180, 20]] } },
+      ...Array.from({ length: 60 }, (_, i) => ({ type: "Feature", properties: { k: "point", i },
+        geometry: { type: "Point", coordinates: [-170 + (i % 12) * 30, -50 + Math.floor(i / 12) * 25] } })),
+    ],
+  },
+};
+const globe = (layers) => ({ version: 8, projection: { type: "globe" }, sources: { world: WORLD },
+  layers: [{ id: "bg", type: "background", paint: { "background-color": "#dfe9f2" } }, ...layers] });
+const GLOBE_LAYERS = [
+  { id: "area", type: "fill", source: "world", filter: ["==", ["geometry-type"], "Polygon"],
+    paint: { "fill-color": ["match", ["get", "k"], "asia", "#d9b38c", "arctic", "#ffffff", "#8fbf8f"], "fill-outline-color": "#333333" } },
+  { id: "route", type: "line", source: "world", filter: ["==", ["geometry-type"], "LineString"],
+    layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#c0392b", "line-width": 3 } },
+  { id: "dots", type: "circle", source: "world", filter: ["==", ["geometry-type"], "Point"],
+    paint: { "circle-radius": 4, "circle-color": "#1f6fb2", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1 } },
+];
+const GLOBE_SCENES = {
+  "globe-vectors": { style: globe(GLOBE_LAYERS), camera: { center: [139.7, 35.7], zoom: 1.2, bearing: 0, pitch: 0 }, limits: { mean: 0.05, p99: 1 } },
+  "globe-pitched": { style: globe(GLOBE_LAYERS), camera: { center: [120, 40], zoom: 2.5, bearing: 30, pitch: 45 }, limits: { mean: 0.05, p99: 1 } },
+  "globe-pole": { style: globe(GLOBE_LAYERS), camera: { center: [-30, 75], zoom: 1.5, bearing: 0, pitch: 0 }, limits: { mean: 0.05, p99: 1 } },
+  "globe-heatmap": {
+    style: globe([{ id: "heat", type: "heatmap", source: "world", filter: ["==", ["geometry-type"], "Point"], paint: { "heatmap-radius": 30 } }]),
+    camera: { center: [0, 10], zoom: 1.3, bearing: 0, pitch: 0 }, limits: { mean: 0.05, p99: 1 },
+  },
+  "globe-map-circles": {
+    style: globe([{ ...GLOBE_LAYERS[2], paint: { ...GLOBE_LAYERS[2].paint, "circle-radius": 10, "circle-pitch-alignment": "map" } }]),
+    camera: { center: [0, 10], zoom: 2, bearing: 0, pitch: 30 }, limits: { mean: 0.05, p99: 1 },
+  },
+};
+
 export const SCENES = {
+  ...GLOBE_SCENES,
   ...FILLS_SCENES,
   ...EXPRESSIONS_STRINGS_SCENES,
   ...WITHIN_DISTANCE_SCENES,

@@ -148,6 +148,7 @@ pub fn Renderer::draw_fill(
   at : Placement,
   slots : PaintSlots,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("fill", mesh, slots, 2)
   gl_draw_fill(self.gl, "fill", mesh, at.matrix.m, at.clip)
 }
@@ -172,6 +173,7 @@ pub fn Renderer::draw_fill_outline(
   at : Placement,
   slots : PaintSlots,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("fillOutline", mesh, slots, 4)
   gl_draw_outline(self.gl, "fillOutline", mesh, at.matrix.m, at.clip)
 }
@@ -190,6 +192,7 @@ pub fn Renderer::draw_circle(
   pitch_with_map~ : Bool = false,
   blur~ : Double = 0.0,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("circle", mesh, slots, 6)
   let flag = (b : Bool) => if b { 1.0 } else { 0.0 }
   gl_draw_circle(

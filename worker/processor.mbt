@@ -17,6 +17,7 @@ pub struct TileProcessor {
   priv label_pool : Array[Labels]
   priv geometry : @mvt.Geometry
   priv place : @style.TileGeometry
+  priv mut globe : Bool
   priv scratch : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
   priv vertex_paint : Array[Array[@style.VertexPaint]]
@@ -57,6 +58,7 @@ fn TileProcessor::new(
     label_pool: [],
     geometry: @mvt.Geometry::new(),
     place: @style.TileGeometry::new(),
+    globe: false,
     scratch: @mvt.Geometry::new(),
     inputs: style.layers.map(l => {
       if per_vertex(l) {
@@ -247,8 +249,10 @@ pub fn TileProcessor::process(
   z : Int32,
   x~ : Int32 = 0,
   y~ : Int32 = 0,
+  globe~ : Bool = false,
 ) -> Bool {
   self.locate(z, x, y)
+  self.globe = globe
   guard self.read_tile(source, bytes) is Some(features_of) else { return false }
   let style_layers = self.style.layers
   let zoom = z.to_double()

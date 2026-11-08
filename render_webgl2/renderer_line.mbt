@@ -9,6 +9,7 @@ pub fn Renderer::draw_line(
   dpr : Double,
   blur~ : Double = 0.0,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("line", mesh, slots, 6)
   gl_draw_line(
     self.gl,
@@ -83,6 +84,7 @@ pub fn Renderer::draw_line_gradient(
   blur~ : Double = 0.0,
   g : Gradient,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("lineGradient", mesh, slots, 6)
   gl_draw_line_gradient(
     self.gl,
@@ -143,6 +145,7 @@ pub fn Renderer::draw_line_dash_by_feature(
   floor_width~ : Double,
   floor_t~ : Double,
 ) -> Unit {
+  self.use_globe(at.globe)
   if self.atlas.take_dirty() {
     gl_dash_atlas(self.gl, self.atlas.data, LINE_ATLAS_WIDTH, LINE_ATLAS_HEIGHT)
   }
@@ -188,6 +191,7 @@ pub fn Renderer::draw_line_dash(
   floor_width~ : Double,
   floor_t~ : Double,
 ) -> Unit {
+  self.use_globe(at.globe)
   if entry.width <= 0.0 || gamma_width <= 0.0 {
     return
   }

@@ -122,6 +122,14 @@ pub fn Map::set_style(
   self.prune_media(next.sources)
   self.style = next
   self.follow_projection()
+  // Globe tiles are cut finer (`@tess.Subdivider`): load the vector tiles again.
+  if (globe_projection(old) is None) != (globe_projection(next) is None) {
+    for src in self.sources {
+      if src.source.kind is (Vector | GeoJSON) {
+        self.reload_source(src.source.id)
+      }
+    }
+  }
   if next.terrain.map(t => t.source) != old.terrain.map(t => t.source) {
     self.raise_dem_tiles()
   }

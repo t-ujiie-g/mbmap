@@ -75,6 +75,7 @@ pub fn Renderer::draw_fill_pattern(
   pos : PatternPosition,
   tile : PatternTile,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("fillPattern", mesh, slots, 2)
   self.use_pattern("fillPattern", pos, tile)
   gl_draw_fill(self.gl, "fillPattern", mesh, at.matrix.m, at.clip)
@@ -90,6 +91,7 @@ pub fn Renderer::draw_fill_outline_pattern(
   pos : PatternPosition,
   tile : PatternTile,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("fillOutlinePattern", mesh, slots, 2)
   self.use_pattern("fillOutlinePattern", pos, tile)
   gl_draw_outline(self.gl, "fillOutlinePattern", mesh, at.matrix.m, at.clip)
@@ -147,6 +149,7 @@ pub fn Renderer::draw_line_pattern(
   floor_width~ : Double,
   floor_t~ : Double,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.upload_patterns()
   self.bind("linePattern", mesh, slots, 6)
   let (w, h) = pos.display_size()
