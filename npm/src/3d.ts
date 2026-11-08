@@ -6,6 +6,7 @@ import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/
 import { Y_UP, triple, mercatorFrame, mul, placement, points, sphereFrame, value, type Value } from "./model/place";
 import type { Tile } from "./tiles/tileset";
 import type { TilesEngine, TilesParts } from "./3d-tiles";
+import { crsArg, type Crs } from "./crs";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -50,6 +51,8 @@ const client = new WorkerClient("3d");
 function start(options: ModelOptions): void {
   client.start(options.workerUrl ?? new URL("./3d-worker.js", import.meta.url), (page) => ({
     wasm: wasmUrl(options.wasmUrl ?? new URL("./3d.wasm", import.meta.url), page),
+    proj: wasmUrl(new URL("./proj.wasm", import.meta.url), page),
+    prj: new URL("./prjwkt.js", import.meta.url).href,
   }));
 }
 
@@ -171,14 +174,14 @@ export function modelLayer(options: ModelLayerOptions): ModelLayer {
 
 /**
  * A point cloud layer: the uncompressed LAS (1.0 to 1.4) at `url`, its coordinates in the file's CRS
- * or `crs` (an EPSG code or PROJ string, which wins), thinned to at most `maxPoints` (default 2 000 000),
+ * (GeoTIFF keys or WKT) or `crs` (an EPSG code or PROJ string, which wins), heights as they are, thinned to at most `maxPoints` (default 2 000 000),
  * drawn `pointSize` CSS pixels across (default 2) colored by `color`: `"rgb"` (the file's colors, the
  * default when it has them), `"height"`, `"intensity"` or `"classification"` (ASPRS classes).
  */
 export interface PointCloudLayerOptions extends ModelOptions {
   id: string;
   url: string | URL;
-  crs?: number | string;
+  crs?: Crs;
   maxPoints?: number;
   pointSize?: number;
   color?: "rgb" | "height" | "intensity" | "classification";
@@ -250,7 +253,8 @@ export class PointCloudLayer implements CustomLayerInterface {
     this.#options = options;
     start(options);
     const url = new URL(options.url, document.baseURI).href;
-    this.ready = client.call<LoadedCloud>("las", { url, maxPoints: options.maxPoints ?? 2_000_000, crs: options.crs }).then((c) => {
+    const crs = options.crs === undefined ? Promise.resolve(undefined) : crsArg(options.crs, "3d");
+    this.ready = crs.then((c) => client.call<LoadedCloud>("las", { url, maxPoints: options.maxPoints ?? 2_000_000, crs: c })).then((c) => {
       this.#cloud = c;
       if (this.#gl) this.#upload(this.#gl);
       this.#map?.triggerRepaint?.();
