@@ -12,115 +12,115 @@
   },
   "rows": {
     "simplify roads (13004 features, 1e-4, highQuality false)": {
-      "js": 1.98,
-      "mbmap": 9.52,
-      "tablesIn": 2.39,
-      "ratio": 4.8
+      "js": 1.97,
+      "mbmap": 9.59,
+      "tablesIn": 2.54,
+      "ratio": 4.87
     },
     "simplify roads (13004 features, 1e-4, highQuality true)": {
-      "js": 1.93,
-      "mbmap": 8.9,
+      "js": 1.92,
+      "mbmap": 9,
       "tablesIn": 2.33,
-      "ratio": 4.61
+      "ratio": 4.69
     },
     "simplify buildings (30758 features, 1e-4, highQuality false)": {
-      "js": 58.6,
-      "mbmap": 53.1,
-      "tablesIn": 12.9,
-      "ratio": 0.906
+      "js": 62.2,
+      "mbmap": 58.6,
+      "tablesIn": 13.2,
+      "ratio": 0.942
     },
     "simplify buildings (30758 features, 1e-4, highQuality true)": {
-      "js": 64.7,
-      "mbmap": 53.8,
-      "tablesIn": 12.9,
-      "ratio": 0.831
+      "js": 62.5,
+      "mbmap": 53.9,
+      "tablesIn": 13.3,
+      "ratio": 0.862
     },
     "simplify contours (322 features, 1e-4, highQuality false)": {
-      "js": 0.653,
-      "mbmap": 1.19,
-      "tablesIn": 0.312,
-      "ratio": 1.83
+      "js": 0.621,
+      "mbmap": 1.24,
+      "tablesIn": 0.314,
+      "ratio": 2
     },
     "simplify contours (322 features, 1e-4, highQuality true)": {
-      "js": 0.691,
-      "mbmap": 1.26,
+      "js": 0.655,
+      "mbmap": 1.24,
       "tablesIn": 0.313,
-      "ratio": 1.82
+      "ratio": 1.89
     },
     "convex hull (8000 buildings)": {
-      "js": 24.8,
-      "mbmap": 22.3,
-      "tablesIn": 3.58,
-      "ratio": 0.898
+      "js": 27.1,
+      "mbmap": 22.5,
+      "tablesIn": 3.54,
+      "ratio": 0.83
     },
     "concave hull (58177 vertices, concavity 2)": {
-      "js": 64.7,
-      "mbmap": 48.7,
-      "tablesIn": 3.58,
-      "ratio": 0.753
+      "js": 65.2,
+      "mbmap": 50.1,
+      "tablesIn": 3.61,
+      "ratio": 0.77
     },
     "delaunay 1000 points (JS: d3-delaunay and its triangle polygons)": {
-      "js": 0.374,
-      "mbmap": 1.33,
-      "tablesIn": 0.0908,
-      "exportOnly": 1.02,
-      "ratio": 3.55
+      "js": 0.37,
+      "mbmap": 1.32,
+      "tablesIn": 0.0905,
+      "exportOnly": 1.18,
+      "ratio": 3.56
     },
     "delaunay 1000 points (JS: delaunator, indices only)": {
-      "js": 0.295,
-      "mbmap": 1.34,
-      "ratio": 4.54
+      "js": 0.311,
+      "mbmap": 1.33,
+      "ratio": 4.26
     },
     "voronoi 1000 points (JS: d3-delaunay's cell polygons)": {
-      "js": 0.471,
-      "mbmap": 1.45,
-      "ratio": 3.07
+      "js": 0.474,
+      "mbmap": 1.32,
+      "ratio": 2.78
     },
     "delaunay 10000 points (JS: d3-delaunay and its triangle polygons)": {
-      "js": 5.54,
-      "mbmap": 15.3,
+      "js": 5.44,
+      "mbmap": 16.3,
       "tablesIn": 1.02,
-      "exportOnly": 12.5,
-      "ratio": 2.76
+      "exportOnly": 12,
+      "ratio": 3.01
     },
     "delaunay 10000 points (JS: delaunator, indices only)": {
-      "js": 3.91,
+      "js": 3.96,
       "mbmap": 15.2,
-      "ratio": 3.89
+      "ratio": 3.85
     },
     "voronoi 10000 points (JS: d3-delaunay's cell polygons)": {
-      "js": 5.78,
-      "mbmap": 16.7,
-      "ratio": 2.89
+      "js": 5.86,
+      "mbmap": 15.6,
+      "ratio": 2.67
     },
     "delaunay 100000 points (JS: d3-delaunay and its triangle polygons)": {
-      "js": 86.6,
-      "mbmap": 158.9,
-      "tablesIn": 10.1,
-      "exportOnly": 125.7,
-      "ratio": 1.83
+      "js": 95.7,
+      "mbmap": 171.6,
+      "tablesIn": 11,
+      "exportOnly": 127.1,
+      "ratio": 1.79
     },
     "delaunay 100000 points (JS: delaunator, indices only)": {
-      "js": 47.1,
-      "mbmap": 172,
-      "ratio": 3.65
+      "js": 48.1,
+      "mbmap": 177.9,
+      "ratio": 3.7
     },
     "voronoi 100000 points (JS: d3-delaunay's cell polygons)": {
-      "js": 96.5,
-      "mbmap": 178.7,
-      "ratio": 1.85
+      "js": 93.2,
+      "mbmap": 169.7,
+      "ratio": 1.82
     },
     "nearestPointOnLine (1522 lines x 10 points)": {
-      "js": 100.6,
-      "mbmap": 29.3,
-      "tablesIn": 5.11,
-      "ratio": 0.291
+      "js": 100.9,
+      "mbmap": 29.8,
+      "tablesIn": 5.14,
+      "ratio": 0.295
     },
     "lineSlice (1502 lines x 10 cuts)": {
-      "js": 192.8,
-      "mbmap": 52.4,
-      "tablesIn": 4.29,
-      "ratio": 0.272
+      "js": 193.5,
+      "mbmap": 53.1,
+      "tablesIn": 4.57,
+      "ratio": 0.274
     }
   }
 }

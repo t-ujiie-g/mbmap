@@ -30,20 +30,97 @@ export interface Statistics {
 }
 
 // The finite numbers of `values`, refused past MAX_CLASS_VALUES.
-function finite(values: ArrayLike<unknown>): number[] {
+function finite(values: ArrayLike<unknown>): Float64Array {
   if (values.length > MAX_CLASS_VALUES) throw new Error(`mbmap: classify: more than ${MAX_CLASS_VALUES} values`);
-  const out: number[] = [];
+  const out = new Float64Array(values.length);
+  let n = 0;
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    if (typeof v === "number" && Number.isFinite(v)) out.push(v);
+    if (typeof v === "number" && Number.isFinite(v)) out[n++] = v;
   }
-  return out;
+  return out.subarray(0, n);
 }
 
-const sorted = (x: number[]): number[] => x.slice().sort((a, b) => a - b);
+// `x` sorted as by `(a, b) => a - b`: a typed-array sort, which puts -0 before 0, its zeros put back in their order in `x`.
+function sorted(x: Float64Array): Float64Array {
+  const s = x.slice().sort();
+  let lo = 0;
+  while (lo < s.length && s[lo] < 0) lo++;
+  let hi = lo;
+  while (hi < s.length && s[hi] === 0) hi++;
+  if (Object.is(s[lo], -0) && !Object.is(s[hi - 1], -0)) {
+    for (let i = 0, k = lo; k < hi; i++) if (x[i] === 0) s[k++] = x[i];
+  }
+  return s;
+}
+
+// simple-statistics' `min` and `max`: the first of equal values, so -0 and 0 keep their order.
+function minMax(x: Float64Array): [number, number] {
+  let min = x[0];
+  let max = x[0];
+  for (let i = 1; i < x.length; i++) {
+    if (x[i] < min) min = x[i];
+    if (x[i] > max) max = x[i];
+  }
+  return [min, max];
+}
+
+// simple-statistics' `quickselect` (Floyd-Rivest), whose order of equal zeros its median and quantiles keep.
+function quickselect(arr: Float64Array, k: number, left: number, right: number) {
+  const swap = (i: number, j: number) => {
+    const t = arr[i];
+    arr[i] = arr[j];
+    arr[j] = t;
+  };
+  while (right > left) {
+    if (right - left > 600) {
+      const n = right - left + 1;
+      const m = k - left + 1;
+      const z = Math.log(n);
+      const s = 0.5 * Math.exp((2 * z) / 3);
+      let sd = 0.5 * Math.sqrt((z * s * (n - s)) / n);
+      if (m - n / 2 < 0) sd *= -1;
+      quickselect(arr, k, Math.max(left, Math.floor(k - (m * s) / n + sd)), Math.min(right, Math.floor(k + ((n - m) * s) / n + sd)));
+    }
+    const t = arr[k];
+    let i = left;
+    let j = right;
+    swap(left, k);
+    if (arr[right] > t) swap(left, right);
+    while (i < j) {
+      swap(i, j);
+      i++;
+      j--;
+      while (arr[i] < t) i++;
+      while (arr[j] > t) j--;
+    }
+    if (arr[left] === t) swap(left, j);
+    else swap(++j, right);
+    if (j <= k) left = j + 1;
+    if (k <= j) right = j - 1;
+  }
+}
+
+// simple-statistics' `quantile` over a copy of `x` (`multiQuantileSelect`, which makes the same
+// `quickselect` calls as its `quantileSelect` for one quantile).
+function quantiles(x: Float64Array, ps: number[]): number[] {
+  const copy = x.slice();
+  const last = copy.length - 1;
+  const index = (p: number) => (p === 1 ? last : p === 0 ? 0 : last * p);
+  const at = [...new Set(ps.flatMap((p) => [Math.floor(index(p)), Math.ceil(index(p))]))].sort((a, b) => a - b);
+  const select = (lo: number, hi: number, left: number, right: number) => {
+    if (lo > hi) return;
+    const mid = (lo + hi) >> 1;
+    quickselect(copy, at[mid], left, right);
+    select(lo, mid - 1, left, at[mid] - 1);
+    select(mid + 1, hi, at[mid] + 1, right);
+  };
+  select(0, at.length - 1, 0, last);
+  return ps.map((p) => quantileSorted(copy, p));
+}
 
 // simple-statistics' `sum`: Neumaier's compensated sum.
-function sum(x: number[]): number {
+function sum(x: Float64Array): number {
   if (x.length === 0) return 0;
   let s = x[0];
   let correction = 0;
@@ -56,7 +133,7 @@ function sum(x: number[]): number {
 }
 
 // simple-statistics' `quantileSorted`.
-function quantileSorted(x: number[], p: number): number {
+function quantileSorted(x: Float64Array, p: number): number {
   const idx = (x.length - 1) * p;
   if (p === 1) return x[x.length - 1];
   if (p === 0) return x[0];
@@ -67,34 +144,29 @@ function quantileSorted(x: number[], p: number): number {
   return x[idx];
 }
 
-function variance(x: number[], mean: number): number {
+function variance(x: Float64Array, mean: number): number {
   let s = 0;
-  for (const v of x) s += (v - mean) * (v - mean);
+  for (let i = 0; i < x.length; i++) s += (x[i] - mean) * (x[i] - mean);
   return s / x.length;
+}
+
+// The statistics of `x` (not empty) but its median.
+function moments(x: Float64Array): Statistics {
+  const [min, max] = minMax(x);
+  const total = sum(x);
+  const mean = total / x.length;
+  const v = variance(x, mean);
+  return { count: x.length, min, max, sum: total, mean, median: Number.NaN, variance: v, standardDeviation: x.length === 1 ? 0 : Math.sqrt(v) };
 }
 
 /** Statistics of the finite numbers in `values`; null when there are none. */
 export function statistics(values: ArrayLike<unknown>): Statistics | null {
   const x = finite(values);
-  if (x.length === 0) return null;
-  const s = sorted(x);
-  const total = sum(x);
-  const mean = total / x.length;
-  const v = variance(x, mean);
-  return {
-    count: x.length,
-    min: s[0],
-    max: s[s.length - 1],
-    sum: total,
-    mean,
-    median: quantileSorted(s, 0.5),
-    variance: v,
-    standardDeviation: x.length === 1 ? 0 : Math.sqrt(v),
-  };
+  return x.length === 0 ? null : { ...moments(x), median: quantiles(x, [0.5])[0] };
 }
 
 // simple-statistics' `jenks` (Fisher-Jenks by its two tables) over sorted values; null for more classes than values.
-function jenks(data: number[], n: number): number[] | null {
+function jenks(data: Float64Array, n: number): number[] | null {
   if (n > data.length) return null;
   const rows = data.length + 1;
   const lower = Array.from({ length: rows }, () => new Array<number>(n + 1).fill(0));
@@ -189,7 +261,7 @@ function fillColumn(iMin0: number, iMax0: number, cluster: number, matrix: numbe
 }
 
 // simple-statistics' `ckmeansBreaks` over sorted values (Wang and Song's optimal 1-D k-means).
-function ckmeans(data: number[], n: number): number[] {
+function ckmeans(data: Float64Array, n: number): number[] {
   let unique = 0;
   for (let i = 0; i < data.length; i++) if (i === 0 || data[i] !== data[i - 1]) unique++;
   if (unique === 1) return [data[0], data[data.length - 1]];
@@ -235,31 +307,30 @@ export function classBreaks(
   if (!Number.isInteger(classes) || classes < 1 || classes > MAX_CLASSES) throw new Error(`mbmap: classify: classes must be an integer from 1 to ${MAX_CLASSES}`);
   const x = finite(values);
   if (x.length === 0) return null;
-  const s = sorted(x);
   const tooMany = (work: number, cap: number) => {
-    if (work > cap) throw new Error(`mbmap: classify: ${s.length} values in ${classes} classes are too many for ${method}`);
+    if (work > cap) throw new Error(`mbmap: classify: ${x.length} values in ${classes} classes are too many for ${method}`);
   };
   switch (method) {
     case "jenks": {
-      tooMany(s.length * s.length * classes, MAX_JENKS_WORK);
+      tooMany(x.length * x.length * classes, MAX_JENKS_WORK);
       // simple-statistics leaves bounds undefined when there are fewer distinct values than classes.
-      const b = jenks(s, classes);
+      const b = jenks(sorted(x), classes);
       return b && b.every((v) => v !== undefined) ? b : null;
     }
     case "ckmeans":
-      if (classes > s.length) return null;
-      tooMany(s.length * classes, MAX_CKMEANS_CELLS);
-      return ckmeans(s, classes);
+      if (classes > x.length) return null;
+      tooMany(x.length * classes, MAX_CKMEANS_CELLS);
+      return ckmeans(sorted(x), classes);
     case "quantile":
-      return Array.from({ length: classes + 1 }, (_, i) => quantileSorted(s, i / classes));
+      return quantiles(x, Array.from({ length: classes + 1 }, (_, i) => i / classes));
     case "equalInterval": {
-      if (s.length < 2) return s;
-      const [min, max] = [s[0], s[s.length - 1]];
+      if (x.length < 2) return Array.from(x);
+      const [min, max] = minMax(x);
       const size = (max - min) / classes;
       return [min, ...Array.from({ length: classes - 1 }, (_, i) => min + size * (i + 1)), max];
     }
     case "standardDeviation": {
-      const st = statistics(x)!;
+      const st = moments(x);
       const [mean, sd] = [st.mean, st.standardDeviation];
       const a: number[] = [];
       if (classes % 2 === 1) {

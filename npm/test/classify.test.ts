@@ -11,6 +11,15 @@ test("statistics summarise the finite numbers only", () => {
   assert.equal(statistics([4])!.standardDeviation, 0);
 });
 
+test("statistics and classBreaks keep simple-statistics' signed zeros", () => {
+  const st = statistics([-0, 0])!;
+  assert.deepEqual([st.min, st.max, st.median], [-0, -0, 0]);
+  assert.deepEqual(statistics([0, -0, 1])!.median, -0);
+  assert.deepEqual(classBreaks([-0, 0, 1], 2, "ckmeans"), [-0, 1, 1]);
+  assert.deepEqual(classBreaks([1, 0, -0, 2, -0], 2, "ckmeans"), [0, 1, 2]);
+  assert.deepEqual(classBreaks([0, -0], 1, "equalInterval"), [0, 0]);
+});
+
 test("classBreaks divides by each method, lowest bound first", () => {
   assert.deepEqual(classBreaks(values, 3, "jenks"), [1, 7, 20, 22]);
   assert.deepEqual(classBreaks(values, 3, "ckmeans"), [1, 7, 20, 22]);
