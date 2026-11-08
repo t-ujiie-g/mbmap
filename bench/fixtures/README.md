@@ -49,3 +49,11 @@ PLATEAU の 3D都市モデル 建築物モデル（千代田区、2025年度、L
 - 出典：「3D都市モデル（Project PLATEAU）千代田区（2025年度）」（国土交通省）（https://www.mlit.go.jp/plateau/）を加工して作成（東京駅周辺のタイルを抜き出したもの）。データカタログ <https://api.plateauview.mlit.go.jp/datacatalog/plateau-datasets> の `13101_bldg_lod2_no_texture`
 - 利用規約：PLATEAU のサイトポリシー（公共データ利用規約 PDL1.0、CC BY 4.0 互換。3D都市モデルの著作権は各地方公共団体に帰属）。加工したときはその旨を書く
 - 取得と照合は gsi-bvmap と同じ（マニフェストは `plateau-chiyoda.manifest.json`、箱も記録する）。これだけを取るときは `node bench/maplibre/fetch-tiles.mjs --only=plateau-chiyoda`。ホスト `assets.cms.plateau.reearth.io` に届く必要がある。
+
+## i3s-sf/、i3s-frankfurt/（I3S）
+
+Esri が ArcGIS Online で公開している I3S のサンプルシーンサービスのうち、`SanFrancisco_Bldgs`（3DObject、I3S 1.7、EPSG:4326、テクスチャとアトラスの uv region、属性 OBJECTID と NAME）と `Frankfurt2017_vi3s_18`（IntegratedMesh、I3S 1.8、法線は east-north-up）の、レイヤー JSON、ノードページ（SF は 0・400・775、Frankfurt は 0）と、いくつかのノード（SF 18 個、Frankfurt 6 個）の非圧縮・Draco 両方のジオメトリと属性。REST のパス（`layer.json`、`nodepages/<p>`、`nodes/<r>/geometries/<b>`、`nodes/<r>/attributes/<key>/0`）のまま置く（合計約 4.2MB）。`npm --prefix bench run i3s:contents` が @loaders.gl/i3s 4.5.4 と比べるのに使う。
+
+- 出典：Esri のサンプルシーンサービス <https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/arcgis/rest/services/>（loaders.gl や ArcGIS Maps SDK のサンプルが使うもの）。© Esri とそのデータ提供者
+- 利用規約：Esri の利用規約。アイテムのライセンス欄（www.arcgis.com）はクラウドのセッションから確かめられていない。テストに使うだけで、リポジトリには置かず再配布もしない
+- 取得と照合は gsi-bvmap と同じ（マニフェストは `i3s-sf.manifest.json`、`i3s-frankfurt.manifest.json`）。これだけを取るときは `node bench/maplibre/fetch-tiles.mjs --only=i3s-sf,i3s-frankfurt`。ホスト `tiles.arcgis.com` に届く必要がある（gzip で返るので Node の `fetch` が展開したバイトを照合する）。

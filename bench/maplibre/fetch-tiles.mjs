@@ -1,5 +1,5 @@
 // Downloads the bench tile sets (GSI, and OpenFreeMap's and Protomaps' for the public styles), the
-// public styles' sprites and PLATEAU's 3D Tiles around Tokyo Station, and verifies each against its bench/fixtures/<set>.manifest.json (see
+// public styles' sprites, PLATEAU's 3D Tiles around Tokyo Station and nodes of two Esri I3S sample layers, and verifies each against its bench/fixtures/<set>.manifest.json (see
 // bench/fixtures/README.md); --update rewrites the manifests, --only=a,b takes those sets alone.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -12,6 +12,7 @@ export const TILES = { z: 14, x: [14549, 14555], y: [6449, 6453] };
 // [west, south, east, north] in degrees: the 3D Tiles kept are those meeting it and their ancestors.
 const TOKYO_STATION = [139.76, 35.677, 139.772, 35.686];
 const PLATEAU = "出典：「3D都市モデル（Project PLATEAU）千代田区（2025年度）」（国土交通省）（https://www.mlit.go.jp/plateau/）を加工して作成（東京駅周辺のタイルを抜き出したもの）";
+const ESRI = "Esri's sample scene services on ArcGIS Online (SanFrancisco_Bldgs, Frankfurt2017_vi3s_18); Esri's terms of use";
 // The vector tiles, standard map images and DEM of TILES, a DEM of Mt Fuji for relief that shows and
 // the standard map of the whole world at zooms 0 to 3 for the globe.
 const SETS = [
@@ -56,7 +57,28 @@ const SETS = [
     name: "plateau-chiyoda", box: TOKYO_STATION, attribution: PLATEAU,
     tileset: `https://assets.cms.plateau.reearth.io/assets/72/e900e5-938c-4376-a9de-a124b270880c/13101_chiyoda-ku_pref_2025_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod2_no_texture/tileset.json`,
   },
+  {
+    name: "i3s-sf", attribution: ESRI,
+    files: i3sFiles("https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/arcgis/rest/services/SanFrancisco_Bldgs/SceneServer/layers/0",
+      [0, 400, 775], [0, 1, 2, 3, 4, 5, 6, 7, 25599, 25600, 25601, 25602, 25603, 25604, 25605, 25606, 49609, 49616], ["f_0", "f_1"]),
+  },
+  {
+    name: "i3s-frankfurt", attribution: ESRI,
+    files: i3sFiles("https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/arcgis/rest/services/Frankfurt2017_vi3s_18/SceneServer/layers/0",
+      [0], [1, 5, 160, 725, 1322, 2844], []),
+  },
 ];
+
+// An I3S layer's JSON, node pages, and both geometry buffers and the attribute buffers of some nodes, at their REST paths.
+function i3sFiles(base, pages, resources, attributes) {
+  const files = { "layer.json": base };
+  for (const p of pages) files[`nodepages/${p}`] = `${base}/nodepages/${p}`;
+  for (const r of resources) {
+    for (const b of [0, 1]) files[`nodes/${r}/geometries/${b}`] = `${base}/nodes/${r}/geometries/${b}`;
+    for (const k of attributes) files[`nodes/${r}/attributes/${k}/0`] = `${base}/nodes/${r}/attributes/${k}/0`;
+  }
+  return files;
+}
 
 // The public styles' sprites (style/public-styles.mjs), each at 1x and 2x.
 function sprites() {
