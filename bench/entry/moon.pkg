@@ -5,6 +5,7 @@ import {
   "t-ujiie-g/mbmap/cluster_props",
   "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/draco",
+  "t-ujiie-g/mbmap/lepcc",
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/globe",

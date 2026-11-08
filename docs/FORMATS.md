@@ -643,6 +643,24 @@ data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes and point cloud
 `@draco.MAX_FACES`, `MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`, `MAX_KD_DIMENSIONS`), -2
 without memory.
 
+## LEPCC output (`lepcc/output.mbt`, written by `model_worker`'s `lepcc_decode`)
+
+An I3S point cloud's LEPCC blob (`lepcc-xyz` geometry, `lepcc-rgb` or `lepcc-intensity` attribute)
+decoded by `@lepcc.decode` as Esri's LEPCC C API does; all little-endian:
+
+| Bytes | Content |
+| --- | --- |
+| 8 | u32 count `n`, u32 0 |
+| 24 × `n` (xyz) | f64 x, y, z per point, in the blob's order (absolute coordinates in the layer's spatial reference) |
+| 3 × `n` (rgb) | u8 r, g, b per point |
+| 2 × `n` (intensity) | u16 per point |
+
+`lepcc_decode(kind)` (0 xyz, 1 rgb, 2 intensity) reads the input (the resource's bytes; a blob
+followed by other bytes too) and returns the output length, -1 for blobs Esri's decoder refuses
+(and blobs of no points or more than `@lepcc.MAX_POINTS`, or whose arrays the C++ would read past),
+-2 without memory. `model_worker/js/decode.mjs` `lepcc(exports)` wraps it as `xyz`, `rgb` and
+`intensity`, each taking the bytes and returning a Float64Array, Uint8Array or Uint16Array.
+
 ## Services worker messages (`services_worker/js/worker.mjs`)
 
 In: `{type: "init", wasm}` (instantiated with `host.number`, `wasmio/js/host.mjs`), then

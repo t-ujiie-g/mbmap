@@ -52,7 +52,7 @@ const ENTRIES = [
   { name: "mbmap/3d", files: ["3d.js"], budget: 10_000, references: ["./3d-worker.js", "./3d.wasm", "./3d-tiles.js", "./3d-i3s.js", "./projstring.js", "./proj.wasm", "./prjwkt.js"] },
   { name: "3D Tiles (loaded by mbmap/3d with the first tilesLayer)", files: ["3d-tiles.js"], budget: 12_000, references: [] },
   { name: "I3S (loaded by mbmap/3d with the first i3sLayer)", files: ["3d-i3s.js"], budget: 10_000, references: ["./3d-tiles.js"] },
-  { name: "3d worker", files: ["3d-worker.js", "3d.wasm"], budget: 45_000, references: [] },
+  { name: "3d worker", files: ["3d-worker.js", "3d.wasm"], budget: 50_000, references: [] },
   { name: "mbmap/data", files: ["data.js"], budget: 6_000, references: ["./projstring.js", "./data-worker.js", "./data.wasm", "./proj.wasm", "./prjwkt.js", "./xml.wasm", "./geotiff.wasm"] },
   { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 41_000, references: ["./data-zip.js", "./data-crs.js", "./data-fgb.js", "./data-geotiff.js", "./data-reproject.js"] },
   { name: "zip archives (loaded by the data worker with the first one)", files: ["data-zip.js"], budget: 2_000, references: [] },
