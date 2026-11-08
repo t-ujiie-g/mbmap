@@ -20,6 +20,8 @@ const modules = {
   route: { url: null, exports: null, imports: { Math } },
   proj: { url: null, exports: null, imports: { Math } },
 };
+// The datasets [a, b] whose tables relate.wasm keeps from the last call.
+let relateKept = null;
 // Calls run one after another, after init, in the order they came.
 let queue = Promise.resolve();
 
@@ -248,6 +250,10 @@ const OPS = {
   dispose({ dataset }) {
     check(isId(dataset));
     wasm.dispose(dataset);
+    if (relateKept?.includes(dataset)) {
+      relateKept = null;
+      modules.relate.exports.forget_tables();
+    }
     demTiles.delete(dataset);
     gridSizes.delete(dataset);
     rasterGrids.delete(dataset);
@@ -321,9 +327,18 @@ const OPS = {
   async relate({ a, b, predicate, pattern, pair }) {
     check(isId(a) && isId(b) && Number.isInteger(predicate) && Number.isInteger(pattern));
     check(pair === undefined || (Array.isArray(pair) && pair.length === 2 && pair.every(isId)));
-    const { exports, tables } = await withTables("relate", [a, b]);
-    if (pair) return decoder.decode(outputOf(exports, checked(exports, exports.relate_matrix(tables[0].length, ...pair))));
-    return i32sOf(exports, exports.relate_pairs(tables[0].length, predicate, pattern));
+    // relate.wasm keeps the last pair's tables (len_a -1 reuses them): datasets never change and ids are not reused.
+    let exports, lenA;
+    if (relateKept?.[0] === a && relateKept[1] === b) [exports, lenA] = [await module("relate"), -1];
+    else {
+      const w = await withTables("relate", [a, b]);
+      [exports, lenA] = [w.exports, w.tables[0].length];
+    }
+    relateKept = null;
+    const n = pair ? exports.relate_matrix(lenA, ...pair) : exports.relate_pairs(lenA, predicate, pattern);
+    if (n >= 0) relateKept = [a, b];
+    if (pair) return decoder.decode(outputOf(exports, checked(exports, n)));
+    return i32sOf(exports, n);
   },
   // A shape operation of shapes_worker on one dataset: `shape` an export giving a table, with `args` numbers.
   shapes({ dataset, shape, args }) {

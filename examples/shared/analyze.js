@@ -5,6 +5,7 @@ import { classBreaks, classStep, load, loadDem } from "mbmap/analysis";
 import { createFieldEditor } from "mbmap/ui";
 import { PLACES } from "./places.js";
 import { DEM_TILES } from "./style.js";
+import { tileLines } from "./tile-lines.js";
 
 /** Where the cells are made: central Tokyo. */
 export const CELLS_BBOX = [139.68, 35.62, 139.83, 35.74];
@@ -159,9 +160,7 @@ export function createAnalysis(map, beforePick = () => {}) {
     let network = null;
     try {
       const features = await map.querySourceFeatures("gsi", { sourceLayer: "road" });
-      const lines = features.flatMap((f) =>
-        f.geometry.type === "LineString" ? [line(f.geometry.coordinates)] : f.geometry.type === "MultiLineString" ? f.geometry.coordinates.map((c) => line(c)) : [],
-      );
+      const lines = tileLines(features).map((c) => line(c));
       const [start, end] = [nearestVertex(lines, from), nearestVertex(lines, to)];
       if (!start || !end) return a.set({ route: { error: "道路が見つかりません" } });
       roads = await load({ type: "FeatureCollection", features: lines });

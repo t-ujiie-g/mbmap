@@ -26,6 +26,7 @@ const plain = (f) => ({
   id: f.id,
   state: f.state,
   geometry: f.geometry,
+  tile: f.tile,
   properties: Object.fromEntries(Object.entries(f.properties).sort(([a], [b]) => (a < b ? -1 : 1))),
 });
 

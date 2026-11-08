@@ -95,16 +95,17 @@ for (const [name, pairs] of Object.entries(sets)) {
   for (const [a, b] of ids) env.dispose(a), env.dispose(b);
 }
 
-// Matrices of pairs (left[k], right[k]) of 100-row datasets, one call a pair: the worker copies both tables each time.
+// Matrices of pairs (left[k], right[k]) of 100-row datasets, one call a pair: as the worker does, the first call
+// copies both tables and relate.wasm keeps them for the next ones (len_a -1).
 const [left, right] = [random(100), random(100)];
 const [jl, jr] = [left.map((f) => reader.read(f.geometry)), right.map((f) => reader.read(f.geometry))];
 const [la, rb] = [env.load(fc(left)), env.load(fc(right))];
 const decoder = new TextDecoder();
-const matrix = (k) => decoder.decode(outputOf(m, m.relate_matrix(env.put([la, rb]), k, k)));
+const matrix = (k) => decoder.decode(outputOf(m, m.relate_matrix(k === 0 ? env.put([la, rb]) : -1, k, k)));
 for (let k = 0; k < 100; k++) if (matrix(k) !== RelateOp.relate(jl[k], jr[k]).toString()) throw new Error(`matrix ${k} differs`);
-row("100 DE-9IM matrices (random pairs, tables copied per call)",
+row("100 DE-9IM matrices (random pairs, one call a pair, tables copied by the first)",
   time(() => { for (let k = 0; k < 100; k++) RelateOp.relate(jl[k], jr[k]).toString(); }),
   time(() => { for (let k = 0; k < 100; k++) matrix(k); }),
-  { tablesIn: time(() => { for (let k = 0; k < 100; k++) env.put([la, rb]); }) });
+  { tablesIn: time(() => env.put([la, rb])) });
 
 await writeResults("relate-node", { jsts: "2.12.1", tiles: TILES, statistic: TIMING, columns: "mbmap: both datasets' tables out of analysis.wasm and into relate.wasm, the export, the result read; tablesIn: those copies alone" }, all);
