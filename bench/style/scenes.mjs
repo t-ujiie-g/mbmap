@@ -709,6 +709,17 @@ const GLOBE_LAYERS = [
   { id: "dots", type: "circle", source: "world", filter: ["==", ["geometry-type"], "Point"],
     paint: { "circle-radius": 4, "circle-color": "#1f6fb2", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1 } },
 ];
+// Labels on the globe: the points named, with pins under them, text along the long lines and icons
+// lying on the globe.
+const GLOBE_POINT_LABELS = { id: "names", type: "symbol", source: "world", filter: ["==", ["geometry-type"], "Point"],
+  layout: { "text-field": ["concat", "P", ["to-string", ["get", "i"]]], "text-font": ["Noto Sans Bold"], "text-size": 13,
+    "icon-image": "pin", "icon-anchor": "bottom", "text-anchor": "top" },
+  paint: { "text-color": "#1d3557", "text-halo-color": "#ffffff", "text-halo-width": 1.5, "text-halo-blur": 1 } };
+const GLOBE_LINE_LABELS = { id: "along", type: "symbol", source: "world", filter: ["==", ["geometry-type"], "LineString"],
+  layout: { "symbol-placement": "line", "text-field": ["get", "k"], "text-font": ["Noto Sans Italic"], "text-size": 14, "symbol-spacing": 150 },
+  paint: { "text-color": "#8a6d3b", "text-halo-color": "#fffbe6", "text-halo-width": 2, "text-halo-blur": 1.5 } };
+const GLOBE_RINGS = { id: "boxes", type: "symbol", source: "world", filter: ["==", ["geometry-type"], "Point"],
+  layout: { "icon-image": "odd", "icon-size": 3, "icon-rotate": 30, "icon-rotation-alignment": "map", "icon-pitch-alignment": "map", "icon-allow-overlap": true, "icon-ignore-placement": true } };
 const GLOBE_SCENES = {
   "globe-vectors": { style: globe(GLOBE_LAYERS), camera: { center: [139.7, 35.7], zoom: 1.2, bearing: 0, pitch: 0 }, limits: { mean: 0.05, p99: 1 } },
   "globe-pitched": { style: globe(GLOBE_LAYERS), camera: { center: [120, 40], zoom: 2.5, bearing: 30, pitch: 45 }, limits: { mean: 0.05, p99: 1 } },
@@ -726,6 +737,25 @@ const GLOBE_SCENES = {
       { id: "fill-outline", type: "fill", source: "world", filter: ["==", ["get", "k"], "asia"], paint: { "fill-color": "rgba(0, 0, 0, 0)", "fill-outline-color": "#333333" } },
     ]), sources: { world: WORLD, metric: { ...WORLD, lineMetrics: true, data: { type: "FeatureCollection", features: WORLD.data.features.filter((f) => f.properties.k === "route") } } } },
     camera: { center: [60, 30], zoom: 1.4, bearing: -20, pitch: 20 }, limits: { mean: 0.05, p99: 1 },
+  },
+  "globe-labels": {
+    style: { ...globe([...GLOBE_LAYERS, GLOBE_POINT_LABELS]), sprite: SPRITE },
+    camera: { center: [139.7, 35.7], zoom: 1.6, bearing: 0, pitch: 0 }, limits: { mean: 0.2, p99: 7 },
+  },
+  "globe-labels-pitched": {
+    style: { ...globe([...GLOBE_LAYERS, GLOBE_POINT_LABELS, GLOBE_LINE_LABELS]), sprite: SPRITE },
+    camera: { center: [120, 30], zoom: 2.5, bearing: 30, pitch: 45 }, limits: { mean: 0.2, p99: 7 },
+  },
+  "globe-labels-transition": {
+    style: { ...globe([...GLOBE_LAYERS, GLOBE_RINGS, GLOBE_POINT_LABELS]), sprite: SPRITE },
+    camera: { center: [10.004, 0.003], zoom: 11.5, bearing: 20, pitch: 30 }, limits: { mean: 0.2, p99: 7 },
+  },
+  "globe-icons-lines": {
+    style: { ...globe([GLOBE_LAYERS[1],
+      { id: "pins", type: "symbol", source: "world", filter: ["==", ["geometry-type"], "LineString"],
+        layout: { "symbol-placement": "line", "symbol-spacing": 120, "icon-image": "pin", "icon-size": 1.2 } },
+      GLOBE_RINGS]), sprite: SPRITE },
+    camera: { center: [60, 30], zoom: 1.8, bearing: -20, pitch: 30 }, limits: { mean: 0.05, p99: 1 },
   },
   "globe-map-circles": {
     style: globe([{ ...GLOBE_LAYERS[2], paint: { ...GLOBE_LAYERS[2].paint, "circle-radius": 10, "circle-pitch-alignment": "map" } }]),

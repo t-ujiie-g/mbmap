@@ -170,7 +170,7 @@ fn Map::draw_icons(
       let at = self.icon_translated(d.at, layer, d.id)
       if s.line is Some(l) {
         let tile_px = at.units_per_pixel * dpr
-        self.lay_line_glyphs(m.mesh, at, s, l, tile_px, height_scale)
+        self.lay_line_glyphs(m.mesh, at, d.id, s, l, tile_px, height_scale)
       }
       let ctx = m.props.unwrap_or(JsProps::none())
       let c = (e : @style.Expr) => rgba_of(color_of(e, zoom, ctx))

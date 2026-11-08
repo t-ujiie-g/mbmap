@@ -354,7 +354,7 @@ fn Map::draw_layer(
         s.drawn = self.frame_count
         if s.line is Some(l) {
           let tile_px = at.units_per_pixel * dpr
-          self.lay_line_glyphs(m.mesh, at, s, l, tile_px, height_scale)
+          self.lay_line_glyphs(m.mesh, at, id, s, l, tile_px, height_scale)
         }
         self.renderer.draw_symbols(
           m.mesh,
@@ -522,7 +522,7 @@ fn Map::draw_frame(
       if zoom < layer.min_zoom || zoom >= layer.max_zoom {
         continue
       }
-      // Labels and extrusions are not on the globe yet.
+      // Extrusions are not on the globe yet.
       match layer.kind {
         Background if layer.pattern is Some(_) => {
           self.draw_background_pattern(layer)
@@ -532,7 +532,7 @@ fn Map::draw_frame(
           self.draw_globe_background(layer)
           continue
         }
-        Symbol | FillExtrusion => continue
+        FillExtrusion => continue
         _ => ()
       }
     }

@@ -22,11 +22,20 @@ fn Map::placement_due(self : Map) -> Bool {
 
 ///|
 /// The tiles of `draws` in the order MapLibre places their labels (its
-/// `Style._updatePlacement`): deeper tiles first, then by x and y.
-fn placement_order(draws : Array[Draw]) -> Array[Draw] {
+/// `Style._updatePlacement`): deeper tiles first, then by world copy (`wrap`)
+/// and by x and y.
+fn placement_order(
+  draws : Array[Draw],
+  wrap~ : (@core.TileId) -> Int32 = _ => 0,
+) -> Array[Draw] {
   let before = (a : Draw, b : Draw) => {
     let (p, q) = (a.id, b.id)
-    p.z > q.z || (p.z == q.z && (p.x < q.x || (p.x == q.x && p.y < q.y)))
+    let (u, v) = (wrap(p), wrap(q))
+    p.z > q.z ||
+    (
+      p.z == q.z &&
+      (u < v || (u == v && (p.x < q.x || (p.x == q.x && p.y < q.y))))
+    )
   }
   // An insertion sort: a few dozen tiles, and no sort instantiated for `Draw`.
   let out : Array[Draw] = []
@@ -72,6 +81,11 @@ fn Map::place_labels(
   self.placement_round += 1
   let round = self.placement_round
   let zoom = t.camera.zoom
+  // The globe puts tiles on the world copy nearest the center.
+  let wrap = match self.globe {
+    Some(g) if g.is_globe() => (id : @core.TileId) => g.tile_wrap(id)
+    _ => _ => 0
+  }
   for k in 0..<self.style.layers.length() {
     let index = self.style.layers.length() - 1 - k
     let layer = self.style.layers[index]
@@ -81,9 +95,14 @@ fn Map::place_labels(
       continue
     }
     let pending = []
+    let max_zoom = match
+      self.sources.search_by(s => s.source.id == layer.source) {
+      Some(at) => self.sources[at].source.max_zoom
+      None => @core.MAX_TILE_ZOOM
+    }
     let by_y = layer.text is Some({ z_order: ViewportY, .. })
     let draws = draws_of.get(layer.source).unwrap_or([])
-    for d in placement_order(draws) {
+    for d in placement_order(draws, wrap~) {
       for m in d.meshes {
         guard m.layer == index && m.labels is Some(s) && s.round != round else {
           continue
@@ -138,9 +157,13 @@ fn Map::place_labels(
         p.order[p.set.count - 1 - p.next]
       }
       p.next += 1
-      // MapLibre lays labels out in tiles of the display zoom, 512 px and
-      // `TILE_EXTENT` units wide, deeper than the source's (`overscaling`).
-      let deeper = @cmp.maximum(0, zoom.to_int() - p.draw.id.z)
+      // MapLibre lays labels out in tiles of the display zoom, 512 px and `TILE_EXTENT`
+      // units wide, past the source's maxzoom (`overscaling`); shallower tiles as they are.
+      let deeper = if p.draw.id.z >= max_zoom {
+        @cmp.maximum(0, zoom.to_int() - p.draw.id.z)
+      } else {
+        0
+      }
       let unit = (1 << deeper).to_double() / 16.0
       if p.set.line is Some(l) {
         let level = @cmp.minimum(deeper, LINE_LEVELS - 1)
@@ -150,6 +173,7 @@ fn Map::place_labels(
             grid,
             p.at,
             p.icon_at,
+            p.draw.id,
             p.set,
             l,
             i,
@@ -162,7 +186,16 @@ fn Map::place_labels(
         }
         continue
       }
-      self.place_label(grid, p.at, p.icon_at, p.set, i, height_scale, unit)
+      self.place_label(
+        grid,
+        p.at,
+        p.icon_at,
+        p.draw.id,
+        p.set,
+        i,
+        height_scale,
+        unit,
+      )
     }
     let sorts = sorts_by_y(layer)
     for p in pending {
@@ -290,7 +323,7 @@ fn label_key(p : Pending) -> Double {
 }
 
 ///|
-/// Places label `i` of `s` as MapLibre's `placeLayerBucketPart` does: its text box by `at` (variable
+/// Places label `i` of `s` (tile `id`) as MapLibre's `placeLayerBucketPart` does: its text box by `at` (variable
 /// anchors as `attemptAnchorPlacement`, its last one first), then its icon's by `icon_at`, combined
 /// by `text-optional` and `icon-optional` before either goes in the grid.
 fn Map::place_label(
@@ -298,15 +331,16 @@ fn Map::place_label(
   grid : @label.Grid,
   at : @render_webgl2.Placement,
   icon_at : @render_webgl2.Placement,
+  id : @core.TileId,
   s : LabelSet,
   i : Int32,
   height_scale : Double,
   unit : Double,
 ) -> Unit {
   let row = i * LABEL_FLOATS
-  let (sx, sy, ratio, visible) = self.grid_point(at, s, i, height_scale)
+  let (sx, sy, ratio, visible) = self.grid_point(at, id, s, i, height_scale)
   let (ix, iy, icon_ratio, icon_visible) = self.grid_point(
-    icon_at, s, i, height_scale,
+    icon_at, id, s, i, height_scale,
   )
   let has_text = f32_at(s.labels, row + LABEL_COUNT) > 0.0
   let icon = icon_of(s, i)

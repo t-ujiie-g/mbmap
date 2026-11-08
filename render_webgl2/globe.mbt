@@ -1,7 +1,7 @@
 ///|
-/// A tile on the globe: `matrix`, its mercator corner and unit size `tile`, the
-/// horizon `plane`, `transition`, the radians a unit spans (`angle`), MapLibre's
-/// `pixel_scale` and its mesh's `granularity`, reaching the `north`/`south` pole.
+/// A tile on the globe: `matrix`, its mercator corner and unit size `tile`, the horizon `plane`,
+/// `transition`, the radians a unit spans (`angle`), MapLibre's `pixel_scale` and `radius_correction`
+/// (`getCircleRadiusCorrection`), its mesh's `granularity`, reaching the `north`/`south` pole.
 pub(all) struct GlobeTile {
   matrix : FixedArray[Double]
   tile : FixedArray[Double]
@@ -9,6 +9,7 @@ pub(all) struct GlobeTile {
   transition : Double
   angle : Double
   pixel_scale : Double
+  radius_correction : Double
   granularity : Int32
   north : Bool
   south : Bool
@@ -26,9 +27,10 @@ extern "js" fn js_globe(
   transition : Double,
   angle : Double,
   pixel_scale : Double,
+  radius_correction : Double,
   key : String,
 ) -> JsGlobe =
-  #|(matrix, tile, plane, transition, angle, pixelScale, key) => ({ matrix, tile, plane, transition, angle, pixelScale, key })
+  #|(matrix, tile, plane, transition, angle, pixelScale, radiusCorrection, key) => ({ matrix, tile, plane, transition, angle, pixelScale, radiusCorrection, key })
 
 ///|
 extern "js" fn gl_set_globe(gl : Gl, g : JsGlobe) -> Unit =
@@ -75,6 +77,7 @@ fn Renderer::use_globe(self : Renderer, g : GlobeTile?) -> Unit {
           g.transition,
           g.angle,
           g.pixel_scale,
+          g.radius_correction,
           key,
         ),
       )

@@ -60,6 +60,7 @@ pub fn Renderer::draw_icons(
     )
   }
   let b = (v : Bool) => if v { 1.0 } else { 0.0 }
+  self.use_globe(at.globe)
   gl_draw_icons(
     self.gl,
     mesh,

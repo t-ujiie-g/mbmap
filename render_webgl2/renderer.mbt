@@ -427,6 +427,7 @@ pub fn Renderer::draw_symbols(
   gamma_scale~ : Double = 1.0,
   height_scale~ : Double = 0.0,
 ) -> Unit {
+  self.use_globe(at.globe)
   gl_draw_symbols(
     self.gl,
     mesh,
