@@ -1,0 +1,321 @@
+{
+  "env": {
+    "draco3d": "draco3d 1.5.7",
+    "node": "v22.23.4"
+  },
+  "cases": 60,
+  "total": 11678,
+  "identical": 11606,
+  "capped": 0,
+  "differ": 0,
+  "plateauFiles": 68,
+  "testdataFiles": 8,
+  "rows": [
+    {
+      "group": "grid edgebreaker ",
+      "cases": 11,
+      "identical": 11,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "encoder refused",
+      "cases": 72,
+      "identical": 0,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere seamed sequential",
+      "cases": 16,
+      "identical": 16,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "soup edgebreaker standard",
+      "cases": 23,
+      "identical": 23,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "boxes edgebreaker standard",
+      "cases": 31,
+      "identical": 31,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "grid edgebreaker standard",
+      "cases": 23,
+      "identical": 23,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere edgebreaker valence",
+      "cases": 3,
+      "identical": 3,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere seamed edgebreaker standard",
+      "cases": 21,
+      "identical": 21,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "boxes edgebreaker ",
+      "cases": 4,
+      "identical": 4,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere seamed edgebreaker ",
+      "cases": 8,
+      "identical": 8,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "soup sequential",
+      "cases": 13,
+      "identical": 13,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere edgebreaker standard",
+      "cases": 24,
+      "identical": 24,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere sequential",
+      "cases": 12,
+      "identical": 12,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "soup edgebreaker ",
+      "cases": 5,
+      "identical": 5,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "boxes sequential",
+      "cases": 12,
+      "identical": 12,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere edgebreaker ",
+      "cases": 6,
+      "identical": 6,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "grid sequential",
+      "cases": 8,
+      "identical": 8,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "grid edgebreaker valence",
+      "cases": 5,
+      "identical": 5,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "soup edgebreaker valence",
+      "cases": 3,
+      "identical": 3,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "sphere seamed edgebreaker valence",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "every speed edgebreaker standard",
+      "cases": 6,
+      "identical": 6,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "every speed sequential",
+      "cases": 11,
+      "identical": 11,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "every speed edgebreaker ",
+      "cases": 4,
+      "identical": 4,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "draco testdata 2.2",
+      "cases": 4,
+      "identical": 4,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "draco testdata 2.0",
+      "cases": 2,
+      "identical": 2,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "draco testdata 2.1",
+      "cases": 2,
+      "identical": 2,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "plateau",
+      "cases": 68,
+      "identical": 68,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "truncated",
+      "cases": 2400,
+      "identical": 2400,
+      "refused": 2400,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "corrupted",
+      "cases": 2400,
+      "identical": 2400,
+      "refused": 432,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "corrupted header bit",
+      "cases": 2400,
+      "identical": 2400,
+      "refused": 1559,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "padded",
+      "cases": 2400,
+      "identical": 2400,
+      "refused": 0,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "as version 2.0",
+      "cases": 240,
+      "identical": 240,
+      "refused": 240,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "as version 2.1",
+      "cases": 240,
+      "identical": 240,
+      "refused": 240,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    },
+    {
+      "group": "random after header",
+      "cases": 1200,
+      "identical": 1200,
+      "refused": 1199,
+      "capped": 0,
+      "aborted": 0,
+      "differ": 0
+    }
+  ]
+}

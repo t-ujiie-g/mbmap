@@ -18,6 +18,7 @@
     "tess:node": "npm run build:moon && node lib/run-bundled.mjs bench/tess/node.mjs",
     "tess:browser": "npm run build:moon && node tess/browser.mjs",
     "subdivision:golden": "cd .. && moon build bench/entry --release --target js && cd bench && node lib/run-bundled.mjs bench/tess/subdivision-golden.mjs",
+    "draco:golden": "cd .. && moon build bench/entry --release --target js && moon build model_worker --release --target wasm-gc && cd bench && node draco/golden.mjs",
     "meshopt:golden": "cd .. && moon build bench/entry --release --target js && moon build bench/entry --release --target wasm-gc && cd bench && node meshopt/golden.mjs",
     "render": "npm run build:moon && node render/run.mjs && node render/run.mjs --uncapped",
     "example": "npm run build:moon && node lib/serve.mjs 8080",
@@ -83,15 +84,19 @@
     "draw:golden": "npm --prefix ../npm run build && node draw/golden.mjs",
     "draw:many": "npm --prefix ../npm run build && node draw/many-run.mjs --shapes=2000",
     "geometry:node": "npm run build:moon && node clipper/node.mjs",
-    "model:golden": "node model/golden.mjs"
+    "model:golden": "node model/golden.mjs",
+    "tiles:golden": "node tiles/golden.mjs",
+    "tiles:synthetic": "node tiles/synthetic.mjs"
   },
   "devDependencies": {
     "@camptocamp/ogc-client": "2.0.2",
     "@gltf-transform/core": "4.5.1",
     "@gltf-transform/extensions": "4.5.1",
     "@gltf-transform/functions": "4.5.1",
+    "@loaders.gl/3d-tiles": "4.5.4",
     "@loaders.gl/core": "4.5.4",
     "@loaders.gl/gltf": "4.5.4",
+    "@loaders.gl/tiles": "4.5.4",
     "@mapbox/vector-tile": "3.0.0",
     "@maplibre/geojson-vt": "6.3.0",
     "@placemarkio/tokml": "0.4.0",
@@ -127,6 +132,7 @@
     "d3-contour": "4.0.3",
     "d3-delaunay": "6.0.6",
     "delaunator": "5.1.0",
+    "draco3d": "1.5.7",
     "earcut": "3.2.4",
     "esbuild": "0.28.2",
     "flatbuffers": "25.9.23",
@@ -160,5 +166,10 @@
     "clipper2-wasm": "0.4.0",
     "geographiclib-geodesic": "2.2.0",
     "proj4": "2.22.0"
+  },
+  "overrides": {
+    "@loaders.gl/compression": {
+      "fflate": "0.8.3"
+    }
   }
 }

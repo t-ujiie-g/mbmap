@@ -53,7 +53,7 @@ test("readGltf reads strided attributes, indices, sparse accessors, materials an
 test("readGltf refuses what it cannot read safely", async () => {
   const refuse = async (json: object, message: RegExp) => assert.rejects(readGltf(gltf(json), noLoad), message);
   await refuse({ asset: { version: "1.0" } }, /only glTF 2\.0/);
-  await refuse({ extensionsRequired: ["KHR_draco_mesh_compression"] }, /unsupported glTF extensions: KHR_draco_mesh_compression/);
+  await refuse({ extensionsRequired: ["EXT_mesh_gpu_instancing"] }, /unsupported glTF extensions: EXT_mesh_gpu_instancing/);
   await refuse({ scenes: [{ nodes: [0] }], nodes: [{ children: [0] }] }, /node tree is malformed/);
   await refuse({ ...triangle, accessors: [{ ...triangle.accessors[0], count: 4 }, triangle.accessors[1], triangle.accessors[2]] }, /runs past its buffer view/);
   await refuse({ ...triangle, bufferViews: [{ buffer: 0, byteOffset: 60, byteLength: 48 }] }, /runs past its buffer/);

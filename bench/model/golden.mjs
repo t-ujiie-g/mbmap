@@ -163,7 +163,7 @@ try {
     "bad-chunk.glb": (() => { const b = plain.slice(); new DataView(b.buffer).setUint32(12, 0x7fffffff, true); return b; })(),
     "not-json.gltf": new TextEncoder().encode("{ nope"),
     "glTF-1.gltf": new TextEncoder().encode(JSON.stringify({ asset: { version: "1.0" } })),
-    "unknown-required.gltf": new TextEncoder().encode(JSON.stringify({ asset: { version: "2.0" }, extensionsRequired: ["KHR_draco_mesh_compression"] })),
+    "unknown-required.gltf": new TextEncoder().encode(JSON.stringify({ asset: { version: "2.0" }, extensionsRequired: ["EXT_mesh_gpu_instancing"] })),
     "cycle.gltf": new TextEncoder().encode(JSON.stringify({ asset: { version: "2.0" }, scenes: [{ nodes: [0] }], nodes: [{ children: [1] }, { children: [0] }] })),
     "past-view.gltf": new TextEncoder().encode(JSON.stringify({
       asset: { version: "2.0" }, buffers: [{ byteLength: 12, uri: "data:application/octet-stream;base64,AAAAAAAAAAAAAAAA" }],

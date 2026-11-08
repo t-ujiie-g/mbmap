@@ -138,7 +138,7 @@
       "model": "unknown-required.gltf",
       "hostile": true,
       "ok": true,
-      "error": "mbmap: 3d: unsupported glTF extensions: KHR_draco_mesh_compression"
+      "error": "mbmap: 3d: unsupported glTF extensions: EXT_mesh_gpu_instancing"
     },
     {
       "model": "cycle.gltf",

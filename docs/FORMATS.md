@@ -572,9 +572,28 @@ relative to it; http, https, blob and data URLs, without credentials), read by
 TRIANGLES, INDICES as 0 to 2, filters NONE, OCTAHEDRAL, QUATERNION, EXPONENTIAL, COLOR as 0 to 4;
 returns the output length, -1 for malformed data, -2 without memory).
 
+`{type: "call", id, op: "tile", url}` reads a 3D tile's content the same way (`npm/src/tiles/content.ts`:
+a b3dm's feature table, batch table and glb, or a glTF).
+
 Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
-image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
+image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred; a tile's also with
+`rtc`, its RTC_CENTER or CESIUM_RTC center or null, and `batchLength`), or
 `{type: "result", id, error}`.
+
+## Draco output (`draco/output.mbt`, written by `model_worker`'s `draco_decode`)
+
+A mesh of KHR_draco_mesh_compression decoded by `@draco.decode_mesh`; all little-endian:
+
+| Bytes | Content |
+| --- | --- |
+| 12 | u32 face count `f`, point count `p`, attribute count `a` |
+| 12 × `a` | per attribute: u32 unique id (the extension's `attributes` values), u8 Draco attribute type (0 POSITION, 1 NORMAL, 2 COLOR, 3 TEX_COORD, 4 GENERIC), u8 Draco data type (1 INT8, 2 UINT8, 3 INT16, 4 UINT16, 5 INT32, 6 UINT32, 7 INT64, 8 UINT64, 9 FLOAT32, 10 FLOAT64, 11 BOOL), u8 component count `c`, u8 normalized (0 or 1), u32 data length in bytes |
+| 12 × `f` | u32 point indices, three per face (draco3d's `GetTrianglesUInt32Array`) |
+| per attribute | its data, `p` × `c` values of its data type (quantized and octahedral attributes as FLOAT32, dequantized; draco3d's `GetAttributeDataArrayForAllPoints` in the attribute's own type), padded with zeros to a multiple of 4 bytes |
+
+`draco_decode()` reads the input (the buffer view's bytes) and returns the output length, -1 for
+data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes past `@draco.MAX_FACES`,
+`MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`), -2 without memory.
 
 ## Services worker messages (`services_worker/js/worker.mjs`)
 

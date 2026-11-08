@@ -13,6 +13,7 @@ import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo
 import { mediaChecks } from "./checks/media.mjs";
 import { customChecks } from "./checks/custom.mjs";
 import { modelChecks } from "./checks/model.mjs";
+import { tilesChecks } from "./checks/tiles.mjs";
 import { globeChecks } from "./checks/globe.mjs";
 import { cameraChecks } from "./checks/camera.mjs";
 import { controlChecks } from "./checks/controls.mjs";
@@ -50,6 +51,7 @@ const PAGES = {
   services: "bench/npm/pages/services/",
   custom: "bench/npm/pages/custom/",
   model: "bench/npm/pages/model/",
+  tiles: "bench/npm/pages/tiles/",
   globe: "bench/npm/pages/globe/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
@@ -463,6 +465,10 @@ const checks = {
 
   async model(page) {
     return modelChecks(page);
+  },
+
+  async tiles(page) {
+    return tilesChecks(page);
   },
 
   async globe(page) {
