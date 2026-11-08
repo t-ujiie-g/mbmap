@@ -24,7 +24,7 @@
       ],
       "maxSize": 300,
       "split": {
-        "differ": 1365,
+        "differ": 1366,
         "mean": 0.001,
         "p99": 0,
         "max": 25
@@ -49,6 +49,27 @@
         "mean": 0,
         "p99": 0,
         "max": 40
+      },
+      "screen": {
+        "differ": 0,
+        "mean": 0,
+        "p99": 0,
+        "max": 0
+      }
+    },
+    {
+      "view": "globe",
+      "ok": true,
+      "size": [
+        1600,
+        1200
+      ],
+      "maxSize": 300,
+      "split": {
+        "differ": 220,
+        "mean": 0,
+        "p99": 0,
+        "max": 249
       },
       "screen": {
         "differ": 0,

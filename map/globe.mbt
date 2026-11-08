@@ -60,14 +60,19 @@ fn Map::globe_gesture(
 }
 
 ///|
-/// Where tile `id` goes on the globe this frame, or None when drawn flat.
+/// Where tile `id` goes on the globe this frame (through the export window if
+/// any), or None when drawn flat.
 fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
   guard self.globe is Some(g) && g.is_globe() else { return None }
   let n = (1 << id.z).to_double()
   let unit = 1.0 / n / @core.TILE_EXTENT.to_double()
   let (a, b, c, d) = g.clipping_plane_of()
+  let matrix = match self.window {
+    None => g.globe_matrix()
+    Some(w) => w.matrix.mul(g.globe_matrix())
+  }
   Some({
-    matrix: g.globe_matrix().m,
+    matrix: matrix.m,
     tile: [id.x.to_double() / n, id.y.to_double() / n, unit, unit],
     plane: [a, b, c, d],
     transition: g.transition(),
@@ -125,6 +130,11 @@ fn Map::draw_globe_atmosphere(self : Map) -> Unit {
     0.8,
   )
   let (inverse, center, radius, altitude) = g.atmosphere()
+  // The rays of an export part's clip space are those of its place in the whole frame.
+  let inverse = match self.window.bind(w => w.matrix.invert()) {
+    None => inverse
+    Some(w) => inverse.mul(w)
+  }
   let blend = blend * g.transition() * altitude
   if blend == 0.0 {
     return

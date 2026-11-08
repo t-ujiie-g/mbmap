@@ -31,15 +31,18 @@ extern "js" fn gl_offscreen_begin(
   #|}
 
 ///|
-/// The offscreen frame's pixels, top row first, opaque RGBA, and back to the
-/// canvas.
+/// The offscreen frame's pixels, top row first, straight RGBA (clear where the
+/// canvas is, around the globe), and back to the canvas.
 extern "js" fn gl_offscreen_end(gl : Gl) -> JsBuffer =
   #|(c) => {
   #|  const gl = c.gl, o = c.offscreen, row = o.w * 4;
   #|  const raw = new Uint8Array(row * o.h), out = new Uint8ClampedArray(row * o.h);
   #|  gl.readPixels(0, 0, o.w, o.h, gl.RGBA, gl.UNSIGNED_BYTE, raw);
   #|  for (let y = 0; y < o.h; y++) out.set(raw.subarray((o.h - 1 - y) * row, (o.h - y) * row), y * row);
-  #|  for (let i = 3; i < out.length; i += 4) out[i] = 255;
+  #|  for (let i = 0; i < out.length; i += 4) {
+  #|    const a = out[i + 3];
+  #|    if (a < 255) for (let k = i; k < i + 3; k++) out[k] = a ? out[k] * 255 / a : 0;
+  #|  }
   #|  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   #|  gl.deleteFramebuffer(o.fb);
   #|  gl.deleteRenderbuffer(o.color);
