@@ -90,6 +90,12 @@ npm run fields:golden     # Map.evaluateExpression (the field editor's expressio
 npm run classify:golden   # mbmap/analysis's classBreaks / statistics (npm/src/classify.ts) vs simple-statistics 8.0.0 and geostats 2.1.0 on random numbers and GSI attributes (must stay all identical)
 npm run relate:golden     # relate.wasm vs JSTS 2.12.1: DE-9IM matrices and predicates on hand-written, random grid and GSI features (must stay all identical)
 npm run geometry:node     # dissolve / buffer / clip on GSI buildings vs Turf.js
+npm run relate:node       # relate.wasm vs JSTS 2.12.1: predicates on GSI tile pairs and random sets, DE-9IM matrices (tables copied in per call, as the worker does)
+npm run shapes:node       # shapes.wasm vs Turf (simplify, convex, nearestPointOnLine, lineSlice), concaveman, d3-delaunay and delaunator on GSI features and random points
+npm run surface:node      # surface.wasm vs Turf (grids, IDW, isolines, isobands, DBSCAN, k-means) and d3-contour (density)
+npm run route:node        # route.wasm vs geojson-path-finder: network build and paths on GSI roads and a jittered grid
+npm run classify:node     # classify.ts vs simple-statistics and geostats on random numbers and GSI attributes
+npm run viewshed:node     # viewshed.wasm vs gdal_viewshed processes (net of a 2 x 2 run) on the Mt Fuji DEM and a 4096 x 4096 mirror of it; needs GDAL (M2)
 npm run split             # the module-split measurement behind "one wasm per entry" (bench/split; rerun when revisiting that granularity)
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style); node render/run.mjs --labels adds the label layers, --line-labels contour labels along lines
 npm run example           # serve the repo on 127.0.0.1:8080 (the dev pages bench/pages/{basic,terrain} need only this)
