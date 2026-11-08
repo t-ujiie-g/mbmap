@@ -2,7 +2,7 @@
 // the map at GeoJSON points by a custom layer, on Web Mercator and on the globe.
 import type { CustomLayerInterface, CustomRenderMethodInput } from "./custom";
 import type { Material, Primitive } from "./model/gltf";
-import { LIGHT, Y_UP, finite3, mercatorFrame, mul, normalMatrix, placement, points, sphereFrame, value, type Value } from "./model/place";
+import { LIGHT, Y_UP, triple, mercatorFrame, mul, normalMatrix, placement, points, sphereFrame, value, type Value } from "./model/place";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -21,20 +21,24 @@ export interface LoadedModel {
 
 export type { Value } from "./model/place";
 
+/** Three numbers, the whole or each one a constant or `["get", key]`. */
+export type Triple = Value<[Value<number>, Value<number>, Value<number>]>;
+
 /**
  * A model layer: `model` (a URL of a .glb or .gltf, or a model `loadModel` gave) at each point of
  * `data` (a GeoJSON Point, Feature or FeatureCollection; a third coordinate is the height in meters).
  * `scale` [x, y, z], `rotation` [x, y, z] in degrees about the east, north and up axes (z turns the
  * model clockwise seen from above) and `translation` [east, north, up] in meters, as Mapbox's
- * `model-scale`, `model-rotation` and `model-translation`; `opacity` 0 to 1.
+ * `model-scale`, `model-rotation` and `model-translation`; `opacity` 0 to 1. Each may read the feature's
+ * properties with `["get", key]`, as a whole or per number.
  */
 export interface ModelLayerOptions extends ModelOptions {
   id: string;
   model: string | LoadedModel;
   data: unknown;
-  scale?: Value<[number, number, number]>;
-  rotation?: Value<[number, number, number]>;
-  translation?: Value<[number, number, number]>;
+  scale?: Triple;
+  rotation?: Triple;
+  translation?: Triple;
   opacity?: Value<number>;
 }
 
@@ -170,9 +174,9 @@ export class ModelLayer implements CustomLayerInterface {
   setData(data: unknown): void {
     const o = this.#options;
     this.#instances = points(data).map(({ coords, props }) => {
-      const scale = finite3(value(o.scale, props, [1, 1, 1]), [1, 1, 1]);
-      const rotation = finite3(value(o.rotation, props, [0, 0, 0]), [0, 0, 0]);
-      const translation = finite3(value(o.translation, props, [0, 0, 0]), [0, 0, 0]);
+      const scale = triple(o.scale, props, [1, 1, 1]);
+      const rotation = triple(o.rotation, props, [0, 0, 0]);
+      const translation = triple(o.translation, props, [0, 0, 0]);
       const opacity = Number(value(o.opacity, props, 1));
       return {
         lng: coords[0],

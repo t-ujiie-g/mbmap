@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readGltf, splitGlb, textureTransform } from "../src/model/gltf.ts";
-import { mercatorFrame, placement, points, sphereFrame, value } from "../src/model/place.ts";
+import { mercatorFrame, placement, points, sphereFrame, triple, value } from "../src/model/place.ts";
 
 const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
 const uri = (...arrays: ArrayBufferView[]) =>
@@ -141,4 +141,13 @@ test("points reads Points, MultiPoints, Features and collections; value reads ['
   assert.equal(value(["get", "h"], p[1].props, 1), 1);
   assert.equal(value(5, {}, 1), 5);
   assert.deepEqual(points({ type: "Point", coordinates: [9, 9] }).map((x) => x.coords), [[9, 9]]);
+});
+
+test("triple reads three numbers, as a whole or each by ['get', key], else its fallback", () => {
+  const props = { turn: 45, size: [2, 3, 4], bad: "x" };
+  assert.deepEqual(triple([0, 0, ["get", "turn"]], props, [9, 9, 9]), [0, 0, 45]);
+  assert.deepEqual(triple(["get", "size"], props, [1, 1, 1]), [2, 3, 4]);
+  assert.deepEqual(triple([0, ["get", "bad"], 0], props, [1, 1, 1]), [1, 1, 1]);
+  assert.deepEqual(triple([1, 2], props, [1, 1, 1]), [1, 1, 1]);
+  assert.deepEqual(triple(undefined, props, [1, 1, 1]), [1, 1, 1]);
 });

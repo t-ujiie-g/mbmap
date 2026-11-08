@@ -20,7 +20,11 @@ let modes : FixedArray[@meshopt.Mode] = [Attributes, Triangles, Indices]
 
 ///|
 let filters : FixedArray[@meshopt.Filter] = [
-  NoFilter, Octahedral, Quaternion, Exponential, Color,
+  NoFilter,
+  Octahedral,
+  Quaternion,
+  Exponential,
+  Color,
 ]
 
 ///|
@@ -47,15 +51,15 @@ pub fn meshopt_decode(
   let target = FixedArray::make(count * size, b'\x00')
   let source = @wasmio.input_byte_array()
   guard @meshopt.decode_gltf_buffer(
-      target,
-      count,
-      size,
-      source,
-      0,
-      source.length(),
-      modes[mode],
-      filters[filter],
-    ) else {
+    target,
+    count,
+    size,
+    source,
+    0,
+    source.length(),
+    modes[mode],
+    filters[filter],
+  ) else {
     return -1
   }
   @wasmio.write_bytes(target.unsafe_reinterpret_as_bytes()[:])

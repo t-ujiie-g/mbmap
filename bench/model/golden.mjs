@@ -171,9 +171,16 @@ try {
       meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }], nodes: [{ mesh: 0 }], scenes: [{ nodes: [0] }],
     })),
     "bad-meshopt.glb": (() => {
+      // Each compressed stream's header byte made one no decoder accepts.
       const b = models["meshopt-filter.glb"].slice();
-      const json = new DataView(b.buffer).getUint32(12, true);
-      for (let i = 20 + json + 8 + 64; i < Math.min(b.length, 20 + json + 8 + 400); i++) b[i] ^= 0x5a;
+      const v = new DataView(b.buffer);
+      const jsonLength = v.getUint32(12, true);
+      const json = JSON.parse(new TextDecoder().decode(b.subarray(20, 20 + jsonLength)));
+      const bin = 20 + jsonLength + 8;
+      for (const view of json.bufferViews) {
+        const ext = view.extensions?.EXT_meshopt_compression;
+        if (ext) b[bin + (ext.byteOffset ?? 0)] = 0xff;
+      }
       return b;
     })(),
   };
@@ -191,11 +198,14 @@ try {
 
 /** loaders.gl's attributes, indices and materials and gltf-transform's world matrices, in mbmap's order. */
 async function reference(name, bytes) {
+  bytes = webpOptional(bytes);
   const loaded = name.endsWith(".gltf")
     ? await parse(bytes, GLTFLoader, { baseUri: `file://${OUT}/`, gltf: { loadImages: false }, fetch: async (url) => new Response(await (await import("node:fs/promises")).readFile(new URL(url))) })
     : await parse(bytes, GLTFLoader, { gltf: { loadImages: false } });
   const g = postProcessGLTF(loaded);
-  const doc = name.endsWith(".gltf") ? await io.read(path.join(OUT, name)) : await io.readBinary(bytes);
+  // gltf-transform 4.5.1 knows meshopt only by its EXT_ name.
+  const ext = Uint8Array.from(Buffer.from(Buffer.from(bytes).toString("latin1").replaceAll("KHR_meshopt_compression", "EXT_meshopt_compression"), "latin1"));
+  const doc = name.endsWith(".gltf") ? await io.read(path.join(OUT, name)) : await io.readBinary(ext);
   const docNodes = doc.getRoot().listNodes();
   const primitives = [];
   const visit = (node) => {
@@ -212,9 +222,35 @@ async function reference(name, bytes) {
   for (const n of (g.scene ?? g.scenes[0]).nodes) visit(n);
   const materials = (g.materials ?? []).map((m) => {
     const pbr = m.pbrMetallicRoughness ?? {};
-    return { color: pbr.baseColorFactor ?? [1, 1, 1, 1], alphaMode: m.alphaMode ?? "OPAQUE", alphaCutoff: m.alphaCutoff ?? 0.5, doubleSided: m.doubleSided === true, unlit: Boolean(m.extensions?.KHR_materials_unlit) };
+    return { texCoord: pbr.baseColorTexture?.texCoord ?? 0, color: pbr.baseColorFactor ?? [1, 1, 1, 1], alphaMode: m.alphaMode ?? "OPAQUE", alphaCutoff: m.alphaCutoff ?? 0.5, doubleSided: m.doubleSided === true, unlit: m.unlit === true || Boolean(m.extensions?.KHR_materials_unlit) };
   });
   return { primitives, materials };
+}
+
+/**
+ * `bytes` with EXT_texture_webp no longer required: loaders.gl refuses it outside a browser, though
+ * it reads no images here.
+ */
+function webpOptional(bytes) {
+  const glb = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0, true) === 0x46546c67;
+  const jsonLength = glb ? new DataView(bytes.buffer, bytes.byteOffset).getUint32(12, true) : bytes.length;
+  const json = JSON.parse(new TextDecoder().decode(glb ? bytes.subarray(20, 20 + jsonLength) : bytes));
+  if (!json.extensionsRequired?.includes("EXT_texture_webp")) return bytes;
+  json.extensionsRequired = json.extensionsRequired.filter((e) => e !== "EXT_texture_webp");
+  let text = new TextEncoder().encode(JSON.stringify(json));
+  if (!glb) return text;
+  const padded = new Uint8Array((text.length + 3) & ~3).fill(0x20);
+  padded.set(text);
+  const rest = bytes.subarray(20 + jsonLength);
+  const out = new Uint8Array(20 + padded.length + rest.length);
+  out.set(bytes.subarray(0, 12));
+  const v = new DataView(out.buffer);
+  v.setUint32(8, out.length, true);
+  v.setUint32(12, padded.length, true);
+  v.setUint32(16, 0x4e4f534a, true);
+  out.set(padded, 20);
+  out.set(rest, 20 + padded.length);
+  return out;
 }
 
 /** Where `ours` and `theirs` differ: values exactly, matrices within 1e-9 relative; UVs through ours's texture transform. */
@@ -227,21 +263,20 @@ function compare(ours, theirs) {
     for (const [name, a] of Object.entries(p.attributes)) {
       const b = q.attributes[name];
       if (!b) { out.push(`${i} ${name} missing in loaders.gl`); continue; }
-      let values = a.values;
-      // loaders.gl writes the transformed coordinates over TEXCOORD_n (Float32), from the stored values.
-      if (name === `TEXCOORD_${material?.texture?.texCoord ?? -1}` && material.texture.matrix) {
-        const m = material.texture.matrix;
-        values = values.map((_, k) => {
-          const [u, v] = [values[k & ~1], values[k | 1]];
-          return Math.fround(k & 1 ? m[1] * u + m[4] * v + m[7] : m[0] * u + m[3] * v + m[6]);
-        });
-        if (values.some((v, k) => Math.abs(v - b.values[k]) > 1e-6)) out.push(`${i} ${name} transformed`);
-        continue;
-      }
+      const values = a.values;
       if (a.size !== b.size || a.type !== b.type || a.normalized !== b.normalized) out.push(`${i} ${name} layout ${[a.size, a.type, a.normalized]} vs ${[b.size, b.type, b.normalized]}`);
       if (values.length !== b.values.length || values.some((v, k) => !Object.is(v, b.values[k]))) out.push(`${i} ${name} values`);
     }
-    if (Object.keys(q.attributes).some((k) => !p.attributes[k] && !k.startsWith("TEXCOORD"))) out.push(`${i} attributes ${Object.keys(q.attributes)}`);
+    // loaders.gl writes the transformed coordinates (from the stored values) as a new TEXCOORD set.
+    const tex = material?.texture;
+    const transformed = tex?.matrix && q.attributes[`TEXCOORD_${theirs.materials[p.material].texCoord}`];
+    if (tex?.matrix) {
+      const raw = p.attributes[`TEXCOORD_${tex.texCoord}`].values;
+      const m = tex.matrix;
+      const mine = raw.map((_, k) => (k & 1 ? m[1] * raw[k - 1] + m[4] * raw[k] + m[7] : m[0] * raw[k] + m[3] * raw[k + 1] + m[6]));
+      if (!transformed || mine.length !== transformed.values.length || mine.some((v, k) => Math.abs(v - transformed.values[k]) > 1e-5 * Math.max(1, Math.abs(v)))) out.push(`${i} texture transform`);
+    }
+    if (Object.keys(q.attributes).some((k) => !p.attributes[k] && q.attributes[k] !== transformed)) out.push(`${i} attributes ${Object.keys(q.attributes)}`);
     if (JSON.stringify(p.indices) !== JSON.stringify(q.indices)) out.push(`${i} indices`);
     if (p.mode !== q.mode) out.push(`${i} mode`);
     if (p.matrix.some((v, k) => Math.abs(v - q.matrix[k]) > 1e-9 * Math.max(1, Math.abs(v)))) out.push(`${i} matrix ${p.matrix} vs ${q.matrix}`);
@@ -249,7 +284,7 @@ function compare(ours, theirs) {
   theirs.materials.forEach((m, i) => {
     const a = ours.materials[i];
     const same = a && a.alphaMode === m.alphaMode && a.alphaCutoff === m.alphaCutoff && a.doubleSided === m.doubleSided && a.unlit === m.unlit && a.color.every((v, k) => v === m.color[k]);
-    if (!same) out.push(`material ${i}`);
+    if (!same) out.push(`material ${i} ${JSON.stringify(a)} vs ${JSON.stringify(m)}`);
   });
   return out;
 }

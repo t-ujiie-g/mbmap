@@ -69,7 +69,13 @@ export function value<T>(v: Value<T> | undefined, props: Record<string, unknown>
   return (v as T | undefined) ?? fallback;
 }
 
-export const finite3 = (v: unknown, fallback: number[]): number[] => (Array.isArray(v) && v.length === 3 && v.every(Number.isFinite) ? v : fallback);
+/** `v` as three finite numbers, each a constant or `["get", key]` of `props`, else `fallback`. */
+export function triple(v: unknown, props: Record<string, unknown>, fallback: number[]): number[] {
+  const out = value(v as Value<unknown[]>, props, fallback);
+  if (!Array.isArray(out) || out.length !== 3) return fallback;
+  const numbers = out.map((e) => Number(value(e as Value<unknown>, props, NaN)));
+  return numbers.every(Number.isFinite) ? numbers : fallback;
+}
 
 /** The points of `data` with their properties. */
 export function points(data: unknown): { coords: number[]; props: Record<string, unknown> }[] {
