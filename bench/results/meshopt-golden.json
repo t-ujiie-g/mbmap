@@ -1,0 +1,370 @@
+{
+  "env": {
+    "meshoptimizer": "meshoptimizer 1.3.0",
+    "node": "v22.23.4"
+  },
+  "cases": 40,
+  "total": 12040,
+  "identical": 12040,
+  "differ": 0,
+  "nanWords": 20,
+  "rows": [
+    {
+      "group": "vertex v0 level 0",
+      "cases": 200,
+      "identical": 200,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "vertex v1 level 0",
+      "cases": 200,
+      "identical": 200,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "vertex v1 level 1",
+      "cases": 200,
+      "identical": 200,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "vertex v1 level 2",
+      "cases": 200,
+      "identical": 200,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "vertex v1 level 3",
+      "cases": 200,
+      "identical": 200,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "vertex empty",
+      "cases": 32,
+      "identical": 32,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "triangles 16-bit",
+      "cases": 51,
+      "identical": 51,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "triangles v0 header",
+      "cases": 80,
+      "identical": 80,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "triangles reordered 16-bit",
+      "cases": 51,
+      "identical": 51,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "sequence 16-bit",
+      "cases": 102,
+      "identical": 102,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "triangles 32-bit",
+      "cases": 29,
+      "identical": 29,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "triangles reordered 32-bit",
+      "cases": 29,
+      "identical": 29,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "sequence 32-bit",
+      "cases": 58,
+      "identical": 58,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "triangles empty",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "sequence empty",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "octahedral 4",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "color 4",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "octahedral 4 raw",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "color 4 raw",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "octahedral 8",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "color 8",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "octahedral 8 raw",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "color 8 raw",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "quaternion",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "quaternion raw",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "exponential Separate",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "exponential SharedVector",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "exponential SharedComponent",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "exponential Clamped",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "exponential raw",
+      "cases": 40,
+      "identical": 40,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "octahedral 4 every x, y",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "octahedral 8 every z",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "quaternion every scale",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "exponential every exponent",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "color 4 every alpha",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "color 8 every alpha",
+      "cases": 1,
+      "identical": 1,
+      "refused": 0,
+      "differ": 0
+    },
+    {
+      "group": "truncated attributes",
+      "cases": 1727,
+      "identical": 1727,
+      "refused": 1727,
+      "differ": 0
+    },
+    {
+      "group": "corrupted attributes",
+      "cases": 1727,
+      "identical": 1727,
+      "refused": 637,
+      "differ": 0
+    },
+    {
+      "group": "padded attributes",
+      "cases": 1727,
+      "identical": 1727,
+      "refused": 1727,
+      "differ": 0
+    },
+    {
+      "group": "count off attributes",
+      "cases": 1727,
+      "identical": 1727,
+      "refused": 1229,
+      "differ": 0
+    },
+    {
+      "group": "truncated triangles",
+      "cases": 181,
+      "identical": 181,
+      "refused": 181,
+      "differ": 0
+    },
+    {
+      "group": "corrupted triangles",
+      "cases": 181,
+      "identical": 181,
+      "refused": 65,
+      "differ": 0
+    },
+    {
+      "group": "padded triangles",
+      "cases": 181,
+      "identical": 181,
+      "refused": 181,
+      "differ": 0
+    },
+    {
+      "group": "count off triangles",
+      "cases": 181,
+      "identical": 181,
+      "refused": 154,
+      "differ": 0
+    },
+    {
+      "group": "truncated indices",
+      "cases": 92,
+      "identical": 92,
+      "refused": 92,
+      "differ": 0
+    },
+    {
+      "group": "corrupted indices",
+      "cases": 92,
+      "identical": 92,
+      "refused": 67,
+      "differ": 0
+    },
+    {
+      "group": "padded indices",
+      "cases": 92,
+      "identical": 92,
+      "refused": 92,
+      "differ": 0
+    },
+    {
+      "group": "count off indices",
+      "cases": 92,
+      "identical": 92,
+      "refused": 92,
+      "differ": 0
+    },
+    {
+      "group": "random attributes",
+      "cases": 688,
+      "identical": 688,
+      "refused": 688,
+      "differ": 0
+    },
+    {
+      "group": "random indices",
+      "cases": 658,
+      "identical": 658,
+      "refused": 658,
+      "differ": 0
+    },
+    {
+      "group": "random triangles",
+      "cases": 654,
+      "identical": 654,
+      "refused": 654,
+      "differ": 0
+    }
+  ]
+}
