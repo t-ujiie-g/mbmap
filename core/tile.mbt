@@ -106,3 +106,12 @@ pub fn tile_containing(coord : MercatorCoord, z : Int32) -> TileId? {
 /// The key under which a packed tile's group properties carry the geometry
 /// type, for paint that reads `["geometry-type"]`.
 pub const GEOMETRY_TYPE_KEY : String = "$type"
+
+///|
+/// The y of a vertex at the north pole (MapLibre's `NORTH_POLE_Y`): globe shaders
+/// put it on the pole.
+pub const NORTH_POLE_Y : Int32 = -32768
+
+///|
+/// The y of a vertex at the south pole (`SOUTH_POLE_Y`).
+pub const SOUTH_POLE_Y : Int32 = 32767
