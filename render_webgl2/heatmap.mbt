@@ -99,6 +99,7 @@ pub fn Renderer::draw_heatmap(
   intensity : Double,
   px : Double,
 ) -> Unit {
+  self.use_globe(at.globe)
   self.bind("heatmap", mesh, slots, 3)
   gl_draw_heatmap(
     self.gl,

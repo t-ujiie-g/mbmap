@@ -51,6 +51,7 @@ fn Map::request_tile(
       id.y,
       src.source.kind is RasterDem,
       src.source.kind is Raster,
+      self.on_globe(),
       self.transform_request,
     )
     return
@@ -77,6 +78,7 @@ fn Map::request_tile(
         id.y,
         src.source.kind is RasterDem,
         src.source.kind is Raster,
+        self.on_globe(),
       )
     }
   })

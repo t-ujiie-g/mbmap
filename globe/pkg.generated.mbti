@@ -7,10 +7,6 @@ import {
 }
 
 // Values
-pub const NORTH_POLE_Y : Int32 = -32768
-
-pub const SOUTH_POLE_Y : Int32 = 32767
-
 pub fn atmosphere_blend(Double, Double) -> Double
 
 pub fn globe_radius(Double, Double) -> Double

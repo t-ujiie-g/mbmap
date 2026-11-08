@@ -203,7 +203,7 @@ async function demPixels(bytes) {
   return { size, rgba: new Uint8Array(ctx.getImageData(0, 0, size, size).data.buffer) };
 }
 
-async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, raster }) {
+async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, raster, globe }) {
   const controller = new AbortController();
   pending.set(id, controller);
   try {
@@ -263,7 +263,7 @@ async function loadTile({ id, url, init, bytes: given, source, z, x, y, dem, ras
     }
     await imagesReady;
     if (controller.signal.aborted) return;
-    let packed = withInput(bytes, () => wasm.process_tile(source, z, x, y));
+    let packed = withInput(bytes, () => wasm.process_tile(source, z, x, y, globe ? 1 : 0));
     const featureRanges = () => readFeatureRanges(withInput(new Uint8Array(0), () => wasm.feature_ranges()));
     let ranges = null;
     if (!symbols && canDrawGlyphs && hasSymbols(packed)) {

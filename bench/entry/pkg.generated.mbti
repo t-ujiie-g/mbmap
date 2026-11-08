@@ -104,6 +104,12 @@ pub fn proj_mem(Int32, Int32, Int32, Int32, Int32) -> Int32
 
 pub fn route_snap(FixedArray[Int32], FixedArray[Double], Double) -> FixedArray[Double]
 
+pub fn subdivide_polygon(FixedArray[Double], FixedArray[Double], Int32, Int32, Int32, Int32, Bool) -> String
+
+pub fn subdivide_vertex_line(FixedArray[Double], Int32, Bool) -> String
+
+pub fn subdivision_granularity(Int32, Int32, Int32) -> String
+
 pub fn tess_mem(Int32, Int32, Int32) -> Int32
 
 // Errors

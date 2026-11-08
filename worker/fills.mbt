@@ -32,6 +32,7 @@ fn TileProcessor::fill_layer(
       if !self.decode(layer, i) {
         return false
       }
+      self.on_globe(layer)
       let g = self.geometry
       let group = groups.of(feature)
       let out = self.fill_buffers(group)
@@ -41,7 +42,12 @@ fn TileProcessor::fill_layer(
       if !self.may_fit(g.num_points(), FILL_VERTEX_BYTES) {
         return false
       }
-      self.fill.add_polygons(g.coords[:], g.ring_ends[:], out)
+      self.fill.add_polygons(
+        g.coords[:],
+        g.ring_ends[:],
+        out,
+        subdivide?=self.subdivision(@tess.fill_granularity(self.place.z)),
+      )
       if !self.spend(
           out.num_vertices() - v0,
           FILL_VERTEX_BYTES,
@@ -64,7 +70,7 @@ fn TileProcessor::fill_layer(
     let b = self.fill_buffers(g)
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
-      if !self.out.add_fill(index, b, extent=layer.extent()) ||
+      if !self.out.add_fill(index, b, extent=self.extent_of(layer)) ||
         !self.write_paint(index, layer, self.runs, zoom) {
         return false
       }

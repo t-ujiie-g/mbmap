@@ -39,6 +39,8 @@ pub const MAX_TILE_ZOOM : Int32 = 28
 
 pub const MAX_VALID_LATITUDE : Double = 85.051129
 
+pub const NORTH_POLE_Y : Int32 = -32768
+
 pub const PI : Double = 3.141592653589793
 
 pub const PROP_ABSENT : Int32 = 5
@@ -52,6 +54,8 @@ pub const PROP_NUMBER : Int32 = 3
 pub const PROP_STRING : Int32 = 4
 
 pub const PROP_TRUE : Int32 = 2
+
+pub const SOUTH_POLE_Y : Int32 = 32767
 
 pub const TILE_EXTENT : Int32 = 8192
 

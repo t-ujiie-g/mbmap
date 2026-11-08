@@ -69,6 +69,7 @@ pub fn FillTessellator::add_polygons(
   coords : ArrayView[Int32],
   ring_ends : ArrayView[Int32],
   out : FillBuffers,
+  subdivide? : (Subdivider, Int32, @core.TileId),
 ) -> Unit {
   self.classify(coords, ring_ends)
   for p in 0..<(self.polygon_starts.length() - 1) {
@@ -78,6 +79,7 @@ pub fn FillTessellator::add_polygons(
       self.polygon_starts[p],
       self.polygon_starts[p + 1],
       out,
+      subdivide?,
     )
   }
 }
@@ -168,6 +170,7 @@ fn FillTessellator::add_polygon(
   first : Int32,
   last : Int32,
   out : FillBuffers,
+  subdivide? : (Subdivider, Int32, @core.TileId),
 ) -> Unit {
   let flat = self.flat
   let holes = self.hole_starts
@@ -183,6 +186,10 @@ fn FillTessellator::add_polygon(
     for i in (start * 2)..<(ring_ends[r] * 2) {
       flat.push(coords[i])
     }
+  }
+  if subdivide is Some((s, granularity, tile)) {
+    self.add_subdivided(s, granularity, tile, out)
+    return
   }
   let tris = self.triangles
   tris.clear()
@@ -213,5 +220,37 @@ fn FillTessellator::add_polygon(
       out.outline.push(start)
     }
     start = end
+  }
+}
+
+///|
+/// The polygon in `flat` cut along a grid of `granularity` cells per tile edge
+/// with its outline, as MapLibre's fill bucket takes it on the globe
+/// (`subdividePolygon`); a polygon MapLibre cannot subdivide is left out.
+fn FillTessellator::add_subdivided(
+  self : FillTessellator,
+  s : Subdivider,
+  granularity : Int32,
+  tile : @core.TileId,
+  out : FillBuffers,
+) -> Unit {
+  let ends = self.triangles
+  ends.clear()
+  for h in self.hole_starts {
+    ends.push(h)
+  }
+  ends.push(self.flat.length() / 2)
+  if !s.subdivide_polygon(self.flat[:], ends[:], granularity, canonical=tile) {
+    return
+  }
+  let base = out.num_vertices()
+  for v in s.vertices {
+    out.vertices.push(v)
+  }
+  for t in s.triangles {
+    out.indices.push(base + t)
+  }
+  for i in s.lines {
+    out.outline.push(base + i)
   }
 }

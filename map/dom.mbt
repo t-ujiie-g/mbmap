@@ -127,16 +127,17 @@ extern "js" fn post_tile(
   y : Int32,
   dem : Bool,
   raster : Bool,
+  globe : Bool,
   transform : RequestTransform,
 ) -> Unit =
-  #|(w, id, url, source, z, x, y, dem, raster, transform) => {
+  #|(w, id, url, source, z, x, y, dem, raster, globe, transform) => {
   #|  let init;
   #|  const r = typeof transform === "function" && !url.startsWith("pmtiles://") ? transform(url, "Tile") : null;
   #|  if (r && typeof r.url === "string") {
   #|    url = r.url;
   #|    init = { headers: r.headers, credentials: r.credentials };
   #|  }
-  #|  w.postMessage({ type: "tile", id, url, init, source, z, x, y, dem, raster });
+  #|  w.postMessage({ type: "tile", id, url, init, source, z, x, y, dem, raster, globe });
   #|}
 
 ///|
@@ -357,8 +358,9 @@ extern "js" fn post_tile_bytes(
   y : Int32,
   dem : Bool,
   raster : Bool,
+  globe : Bool,
 ) -> Unit =
-  #|(w, id, bytes, source, z, x, y, dem, raster) => w.postMessage({ type: "tile", id, bytes, source, z, x, y, dem, raster }, [bytes])
+  #|(w, id, bytes, source, z, x, y, dem, raster, globe) => w.postMessage({ type: "tile", id, bytes, source, z, x, y, dem, raster, globe }, [bytes])
 
 ///|
 /// Asks the provider for a GeoJSON or GeoTIFF tile and calls `done` with its

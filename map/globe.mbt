@@ -71,6 +71,15 @@ fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
     tile: [id.x.to_double() / n, id.y.to_double() / n, unit, unit],
     plane: [a, b, c, d],
     transition: g.transition(),
+    // MapLibre's globe extrude scale: a tile unit's share of the circumference,
+    // corrected by the center's latitude (`getCircleRadiusCorrection`).
+    angle: 2.0 *
+    @math.PI /
+    (n * @core.TILE_EXTENT.to_double()) *
+    @globe.planet_scale(g.camera().center.lat),
+    // MapLibre's `getPixelScale`, between mercator's and the globe's.
+    pixel_scale: 1.0 +
+    (1.0 / @globe.planet_scale(g.camera().center.lat) - 1.0) * g.transition(),
     granularity: @globe.tile_granularity(id.z),
     north: id.y == 0,
     south: id.y == (1 << id.z) - 1,

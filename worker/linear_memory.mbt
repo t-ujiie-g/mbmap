@@ -241,7 +241,13 @@ pub fn process_dem(source : Int32, z : Int32, size : Int32) -> Int32 {
 /// `source` at zoom `z`, column `x`, row `y`. Returns the packed tile's length at `output_addr`, or
 /// minus the length of a UTF-8 error message there.
 #export_name("process_tile")
-pub fn process_tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
+pub fn process_tile(
+  source : Int32,
+  z : Int32,
+  x : Int32,
+  y : Int32,
+  globe : Int32,
+) -> Int32 {
   guard processor.val is Some(p) else {
     return fail_with(@utf8.encode("style not initialized"))
   }
@@ -249,7 +255,14 @@ pub fn process_tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
     return fail_with(@utf8.encode("no source \{source}"))
   }
   p.out.place_at(output_start())
-  if p.process(p.style.sources[source].id, input_bytes()[:], z, x~, y~) {
+  if p.process(
+      p.style.sources[source].id,
+      input_bytes()[:],
+      z,
+      x~,
+      y~,
+      globe=globe != 0,
+    ) {
     p.out.length()
   } else {
     fail_with(p.error_utf8())

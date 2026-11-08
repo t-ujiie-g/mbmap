@@ -522,7 +522,7 @@ fn Map::draw_frame(
       if zoom < layer.min_zoom || zoom >= layer.max_zoom {
         continue
       }
-      // Vector layers come onto the globe once their geometry is subdivided.
+      // Labels and extrusions are not on the globe yet.
       match layer.kind {
         Background if layer.pattern is Some(_) => {
           self.draw_background_pattern(layer)
@@ -532,7 +532,7 @@ fn Map::draw_frame(
           self.draw_globe_background(layer)
           continue
         }
-        Fill | Line | Circle | Symbol | Heatmap | FillExtrusion => continue
+        Symbol | FillExtrusion => continue
         _ => ()
       }
     }

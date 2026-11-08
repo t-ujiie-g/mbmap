@@ -101,6 +101,9 @@ license and source.
     globe/covering.mbt: src/geo/projection/covering_tiles.ts, globe_covering_tiles_details_provider.ts,
     the cameraMercatorCoordinate of mercator_utils.ts and src/util/primitives/frustum.ts and
     convex_volume.ts
+  - tess/subdivision.mbt: src/render/subdivision.ts (`subdividePolygon`,
+    `subdivideVertexLine`) and the granularity of subdivision_granularity_settings.ts
+    and vertical_perspective_projection.ts
   - tess/line.mbt, tess/line_emit.mbt, worker/lines.mbt and tess/circle.mbt: the
     line bucket of src/data/bucket/line_bucket.ts (joins, offset normals, sharp
     corners and `linesofar`, `dashDependencies`, `lineClipsArray`) and the points

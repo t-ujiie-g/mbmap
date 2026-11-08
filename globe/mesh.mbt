@@ -2,15 +2,6 @@
 // BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
-/// The y of a vertex at the north pole (MapLibre's `NORTH_POLE_Y`): globe shaders
-/// put it on the pole.
-pub const NORTH_POLE_Y : Int32 = -32768
-
-///|
-/// The y of a vertex at the south pole (`SOUTH_POLE_Y`).
-pub const SOUTH_POLE_Y : Int32 = 32767
-
-///|
 /// Quads per tile edge of a raster or background tile at zoom `z` on the globe:
 /// 128 at zoom 0, halving to at least 32 (the globe's `tile` granularity).
 pub fn tile_granularity(z : Int32) -> Int32 {
@@ -53,13 +44,13 @@ pub fn tile_mesh(
       }
       let vy = if y == -1 {
         if north {
-          NORTH_POLE_Y
+          @core.NORTH_POLE_Y
         } else {
           -border
         }
       } else if y == g + 1 {
         if south {
-          SOUTH_POLE_Y
+          @core.SOUTH_POLE_Y
         } else {
           extent + border
         }
