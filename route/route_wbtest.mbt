@@ -27,3 +27,13 @@ test "key_bits merges 0 with -0 and every NaN" {
   assert_eq(key_bits(139.700004, 1.0e-5), key_bits(139.7, 1.0e-5))
   assert_true(key_bits(139.700006, 1.0e-5) != key_bits(139.7, 1.0e-5))
 }
+
+///|
+test "snap_within gives None past its cells or tests" {
+  let coords = [0.0, 0.0, 0.01, 0.0, 0.005, 0.00001, 0.005, 0.01]
+  let lines = [(0, 2), (2, 4)]
+  let trig = @core.Trig::moonbit()
+  assert_true(snap_within(coords, lines, 2.0, trig, 1000, 1000L) is Some(_))
+  assert_true(snap_within(coords, lines, 2.0, trig, 1, 1000L) is None)
+  assert_true(snap_within(coords, lines, 2.0, trig, 1000, 1L) is None)
+}

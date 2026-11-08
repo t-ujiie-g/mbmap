@@ -14,26 +14,36 @@
   },
   "rows": {
     "gsi roads (4 tiles): build the network (13008 lines)": {
-      "js": 89.1,
-      "mbmap": 17.8,
-      "tablesIn": 3.82,
-      "ratio": 0.199
+      "js": 98,
+      "mbmap": 6.45,
+      "tablesIn": 0.116,
+      "ratio": 0.0658
+    },
+    "gsi roads (4 tiles): build the network with snap 2 m": {
+      "js": 94.9,
+      "mbmap": 13.7,
+      "ratio": 0.144
     },
     "gsi roads (4 tiles): 800 paths between vertices (783 found)": {
-      "js": 376.6,
-      "mbmap": 79.7,
-      "ratio": 0.212
+      "js": 476.7,
+      "mbmap": 78.5,
+      "ratio": 0.165
     },
     "jittered grid 100 x 100: build the network (200 lines)": {
-      "js": 67.6,
-      "mbmap": 5.48,
-      "tablesIn": 1.1,
-      "ratio": 0.081
+      "js": 71.6,
+      "mbmap": 3.8,
+      "tablesIn": 0.0427,
+      "ratio": 0.0531
+    },
+    "jittered grid 100 x 100: build the network with snap 2 m": {
+      "js": 72.8,
+      "mbmap": 6.57,
+      "ratio": 0.0902
     },
     "jittered grid 100 x 100: 200 paths between vertices (200 found)": {
-      "js": 718.8,
-      "mbmap": 129.4,
-      "ratio": 0.18
+      "js": 560.8,
+      "mbmap": 131.9,
+      "ratio": 0.235
     }
   }
 }

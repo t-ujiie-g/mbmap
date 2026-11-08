@@ -36,7 +36,7 @@ function network(fc, tolerance) {
   const id = a.load();
   put(r, out(a, a.table_out(id)));
   a.dispose(id);
-  const handle = r.network_new(tolerance);
+  const handle = r.network_new(tolerance, 0);
   if (handle < 0) throw new Error(decoder.decode(out(r, -handle)));
   return handle;
 }

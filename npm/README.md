@@ -246,7 +246,7 @@ blocks.dispose();
   - `density({ bbox, width, height, cellSize, bandwidth, thresholds, weight })`：点のカーネル密度の等値線（d3-contour の `contourDensity`。`bbox`（既定は点の範囲）の上に `width` × `height` 画素の格子を置いて計算し、MultiPolygon と密度の `value` を返す）。
   - `dbscan(maxDistance, { minPoints })`：地物ごとのクラスタ番号（なければ -1）と `"core"`・`"edge"`・`"noise"`。`kmeans(k)`：地物ごとのクラスタ番号と重心（k の既定は Turf と同じく round(√(n/2))）。点の地物だけを数える。
 - 経路探索（geojson-path-finder 2.1.0 の移植で、経路の座標と重みが同じになることを黄金テストで確かめている。初めて呼んだときに `route.wasm` を読む）：
-  - `network({ tolerance })`：線の地物（LineString。MultiLineString は線ごと）から道路網を作り、Worker の中に置く（`tolerance` 度より近い頂点は同じ点。既定 1e-5）。
+  - `network({ tolerance, snap })`：線の地物（LineString。MultiLineString は線ごと）から道路網を作り、Worker の中に置く（`tolerance` 度より近い頂点は同じ点。既定 1e-5）。`snap`（メートル、既定 0 で使わない）を与えると、線の端から `snap` 以内の別の線の途中をそこで分けてつなぎ、`snap` 以内の端どうしは 1 つにする（pgRouting の `pgr_nodeNetwork` と同じ考え。T 字路やタイルの境で少しずれた端がつながる）。
   - `Network.route(from, to)`：網の頂点どうし（`tolerance` の範囲で）の最短経路を `{ path, weight }`（座標と km）で返す。つながっていない、または頂点でないときは null。同じ網に何度でも問い合わせられる。`dispose()` で放す。
 - 分類と統計（メインスレッドで計算し、Worker は起こさない。simple-statistics 8.0.0 と geostats 2.1.0 の移植で、値が同じになることを黄金テストで確かめている）：
   - `classBreaks(values, classes, method, { matchBounds })`：数値の配列（数でないもの、NaN、無限大は除く）を `classes` 個の級に分ける区切り（`classes + 1` 個、小さい順）。`method` は `"jenks"`（既定、自然分類）・`"ckmeans"`（最適な 1 次元 k-means）・`"quantile"`（等量）・`"equalInterval"`（等間隔）・`"standardDeviation"`（平均のまわりに標準偏差ごと。geostats の並べ方で、`matchBounds` で両端を最小値と最大値に合わせる）。値がない、級が値より多い（jenks では値の種類より多い）ときは null。値は 100 万個まで、級は 256 まで。

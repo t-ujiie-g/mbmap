@@ -9,6 +9,12 @@ import {
 // Values
 pub const MAX_ROUTE_VERTICES : Int32 = 2_000_000
 
+pub const MAX_SNAP_CELLS : Int32 = 8_000_000
+
+pub const MAX_SNAP_TESTS : Int64 = 200_000_000
+
+pub fn snap_lines(Array[Double], Array[(Int32, Int32)], Double, trig? : @core.Trig) -> (Array[Double], Array[(Int32, Int32)])?
+
 // Errors
 
 // Types and methods
@@ -17,7 +23,7 @@ pub struct Network {
 }
 pub fn Network::compacted_vertices(Self) -> Int32
 pub fn Network::find_path(Self, Double, Double, Double, Double) -> (Array[(Double, Double)], Double)?
-pub fn Network::new(@geom.Table, tolerance? : Double, trig? : @core.Trig) -> Self?
+pub fn Network::new(@geom.Table, tolerance? : Double, snap? : Double, trig? : @core.Trig) -> Self?
 pub fn Network::vertices(Self) -> Int32
 
 // Type aliases

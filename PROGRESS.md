@@ -23,7 +23,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.2KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 21KB（2026-11-08 に 20KB から、2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 12.8KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 16.1KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、17KB（2026-11-08 に 15KB から）。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 40.6KB（`reprojected` のタイル 1.8KB、`xml.wasm` 26.7KB、GeoTIFF 19.8KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 41KB（ワーカーは 2026-11-08 に 40KB から。2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
@@ -52,6 +52,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
     - 1 段目（済み、主スレッド）：MapLibre 6.16 の `GeoJSONSourceDiff`（`removeAll`・`remove`・`add`・`update`）を `geojson.js` 側の `npm/src/geojson-diff.ts`（`toUpdateable`・`applySourceDiff`・`mergeSourceDiffs`・`getGeoJSONBounds`・`shouldReloadTile` の移植）に。id のない・重なる地物は MapLibre と同じ文言の `error` で断る（約束は解決する）。ソースごとに読み込みは 1 つずつで、その間の差分は 1 つにまとめる。`setData` は待っている差分を捨てる。URL のソースは読み込みを待ち、ワーカーが取ってきたバイト列を返すので、その上に差分を当てる。スタイル文書（`getData`・`getStyle`）は変わった地物だけを写して書き換え、`sourcedata` を出す。タイルは差分が触れた形の範囲にバッファ（`buffer` / 512 タイル）を足して交わるものと読み込み中のものだけを読み直す（`Map::reload_tiles`、判定は `geojson.js` から渡す。クラスタと `removeAll` は全部）。ワーカーにはまだ編集後のデータ全体を送る（2 段目で geojson-vt 6.3.0 の差分の索引に）。`npm run geojson:update`（MapLibre の関数そのものと、GSI 地物と日付変更線をまたぐ地物の乱数の差分 180 回、合併 60 回、タイル 18 万）はすべて同じ。pack test の `geojson` で、描画とクエリが変わること、`setData` の 6 タイルに対し 2 タイルだけ読み直すこと、URL ソースと拒否を確かめる。大きさは表示（メイン）133.7 → 133.8KB、GeoJSON ソース 1.8 → 3.9KB、GeoJSON ワーカー 29.5 → 29.6KB（式を持つもの 49.4KB）。判定を MoonBit（core）に置くとメインが 0.24KB 増えたので JS に置いた。
   - タイルの境の道路のつなぎ：`querySourceFeatures` の地物に MapLibre と同じ `tile: {z, x, y}` を付け、example は線を各タイルの範囲で切ってから網にする（ズームが混ざれば最も深いもの）。`network({ snap })`（メートル、既定は使わない）で、線の端から snap 以内の別の線の途中を分けてつなぐ。route.wasm の予算は 15 → 17KB。
     - 1 段目（済み）：`querySourceFeatures` の地物に MapLibre と同じく元のタイル `tile: {z, x, y}` を付けた（`query:golden` も比べて 447 すべて同じ）。example の経路は各道路を自分のタイルの範囲で切り（`examples/shared/tile-lines.js`、緩衝帯の重なりを除く）、ズームが混ざるときはいちばん深いタイルだけを使う。pack test で切り方と経路（572 m）を確かめる。表示（メイン）133.7KB（+21 バイト）。2 段目は `network({ snap })`。
+    - 2 段目（済み）：`Dataset.network({ tolerance, snap })`（メートル、既定 0 でいままでと同じ網。`route:golden` 1400 すべて同じ）。網を作る前に線を節で分ける（`@route.snap_lines`、pgRouting の `pgr_nodeNetwork`・GRASS の `v.clean tool=snap,break` と同じ考え）：線の端は `snap` 以内の最初の端の組に入り、組はそこから `snap` 以内のいちばん近い線分上の点へ動いて、その線分にその点を頂点として足す（別の組の端に寄るときはその組と同じ所へ）。距離は端の緯度の正距円筒（Turf の地球半径）。自分の線は端から線に沿って 2 × `snap` 以内を除く。線分は `snap` と線分の平均の大きさの大きい方の格子に入れ、`MAX_SNAP_CELLS`（800 万）と `MAX_SNAP_TESTS`（2 億）を超えると断る。`npm run route:snap`（新設）：総当たりの検算で、`snap` 以内に相手のある端 17,633 がすべて頂点を共有し、動きは 2 × `snap` 以内、足した頂点は元の線分の上。GSI z14 の 2 × 2 タイルで、タイルで切った道路（`tileLines`）に `snap: 2` の経路は、切らない道路（2 × 2 の範囲で）がつなぐ 285 組のどれも失わず、97 が同じ、161 が短く（最大 3.0 km：GSI の道路は端が別の道路の線分の途中に載るだけで頂点を共有しないことが多く、geojson-path-finder ではつながらない）、27 が端の移動のぶん長い（最大 3.8 m）。T 字路とタイルの境でずれた端は `snap` でだけつながる。端からいちばん近い別の線分までの距離は、0 m（線分の途中に載る）のほかは 0.5 m 以下 9、1 m 以下 5、2 m 以下 8、2〜5 m 42 なので、example は `snap: 2`。route.wasm 13.0 → 16.2KB。網を作る時間（`route:node`）は測っていない。 網づくりの費用は `route:node` で GSI の道路 13008 線が 6.45 → 13.7 ms（`snap` 2 m）。
   - 自然分類の最大の級が 1 つの値だけになる：いまのまま（外れ値を級にするのは jenks の答え）。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
@@ -78,8 +79,8 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 | 等値線／等値帯（6497 点の格子、7 区切り） | 0.863／1.66 | 0.699／1.31（最初 2.19／2.88） | 0.81／0.79 |
 | 密度（6000 点、d3-contour） | 14.6 | 9.1（最初 11.4） | 0.62 |
 | DBSCAN 6000 点 2 km／k-means 既定の k | 1974.3／132.5 | 896.7／56.6 | 0.45／0.43 |
-| 経路：網を作る（GSI 道路 13008 線）／800 経路 | 89.1／376.6 | 17.8／79.7 | 0.20／0.21 |
-| 経路：100 × 100 の格子の網／200 経路 | 67.6／718.8 | 5.48／129.4 | 0.08／0.18 |
+| 経路：網を作る（GSI 道路 13008 線）／800 経路 | 98.0／476.7 | 6.45／78.5（最初 17.8／79.7。`snap` 2 m で網づくり 13.7） | 0.07／0.16 |
+| 経路：100 × 100 の格子の網／200 経路 | 71.6／560.8 | 3.8／131.9（最初 5.48／129.4） | 0.05／0.24 |
 | 分類：統計／等量 7 級（100 万値） | 14.0／16.0 | 12.4／17.2 | 0.89／1.08 |
 | 分類：等間隔 7 級（100 万値） | 1.32 | 2.97 | 2.2 |
 | 分類：標準偏差 7 級（100 万、geostats）／ckmeans 7 級（10 万）／jenks 7 級（5000） | 663.4／62.1／255.0 | 5.72／41.5／269.6 | 0.009／0.67／1.06 |
@@ -168,7 +169,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 
 - **19.6 の結果**：
   - `route`（純粋な MoonBit、全バックエンド）：geojson-path-finder 2.1.0 の移植（前処理、頂点の丸め、縮約、ファントム頂点、tinyqueue 2.0.3 の Dijkstra、@turf/distance の重み）。JS の頂点キー（丸めた座標の文字列）は、-0 と NaN をそろえた double のビットで置き換えても同じにまとまる。近傍の並びは JS のオブジェクトの挿入順（消して入れ直すと最後）まで写したので、同じ長さの経路の選び方も同じ。長い鎖の座標はロープでつなぎ（JS は配列のコピーで二乗）、問い合わせのたびに状態を戻す。MultiLineString は線ごとに分ける（JS は LineString だけ）。
-  - `route_worker`（route.wasm 12.9KB、予算 15KB）：網を番号で持ち、同じ網に何度でも問い合わせられる。
+  - `route_worker`（route.wasm 12.9KB、予算 15KB。`snap` を足して 16.2KB、予算 17KB）：網を番号で持ち、同じ網に何度でも問い合わせられる。
   - API：`Dataset.network({ tolerance })` → `Network.route(from, to)` → `{ path, weight }` または null、`dispose()`。
   - `npm run route:golden`：揺らした格子の網 3 つ（600 件）と GSI の 4 タイルの道路（800 件）の経路が、座標も重み（`Object.is`）もすべて geojson-path-finder と同じ。
   - 大きさ：解析ワーカーはつなぎを足して 29.9 / 30KB。19.7 で足りなくなれば、可視域と同じくつなぎを別ファイルに出す。

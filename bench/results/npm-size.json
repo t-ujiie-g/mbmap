@@ -121,7 +121,7 @@
     },
     {
       "name": "mbmap/analysis",
-      "bytes": 8320,
+      "bytes": 8338,
       "budget": 9000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 30253,
+      "bytes": 30251,
       "budget": 31000
     },
     {
@@ -161,8 +161,8 @@
     },
     {
       "name": "routing (geojson-path-finder; loaded by the analysis worker on first use)",
-      "bytes": 12776,
-      "budget": 15000
+      "bytes": 16054,
+      "budget": 17000
     },
     {
       "name": "coordinate systems (loaded by the analysis and data workers on first use)",

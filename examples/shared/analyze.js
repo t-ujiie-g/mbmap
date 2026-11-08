@@ -164,7 +164,7 @@ export function createAnalysis(map, beforePick = () => {}) {
       const [start, end] = [nearestVertex(lines, from), nearestVertex(lines, to)];
       if (!start || !end) return a.set({ route: { error: "道路が見つかりません" } });
       roads = await load({ type: "FeatureCollection", features: lines });
-      network = await roads.network({ tolerance: 1e-5 });
+      network = await roads.network({ tolerance: 1e-5, snap: 2 });
       const found = await network.route(start, end);
       setData("analysis-route", { type: "FeatureCollection", features: [...(found ? [line(found.path)] : []), point(start), point(end)] });
       a.set({ route: found ? { length: found.weight * 1000, steps: found.path.length - 1 } : { error: "つながる道がありません" } });
