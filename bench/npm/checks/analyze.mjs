@@ -1,6 +1,9 @@
 // The showcase's analysis tab at Tokyo Station: the places' Voronoi cells classed by area (the
 // legend lists the five classes), a route between two clicks along the drawn roads, the viewshed
 // from the center and a line of sight to a click.
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { ROOT } from "../../lib/root.mjs";
 import { openTab } from "./step.mjs";
 
 export async function analyzeChecks(page) {
@@ -49,13 +52,16 @@ export async function analyzeChecks(page) {
   const cleared = await page.evaluate(() => ({ layers: ["analysis-cells", "analysis-viewshed"].map((id) => Boolean(window.__map.getLayer(id))), state: window.__analysis.state }));
   await page.evaluate((c) => window.__map.jumpTo(c), camera);
   await page.evaluate(() => window.__map.once("idle"));
+  // CI has no fixtures: no roads to route along, and the DEM tiles 404 as flat ground (everything seen).
+  const fixtures = existsSync(path.join(ROOT, "bench/fixtures/gsi-bvmap/14"));
+  const routed = fixtures ? route?.length > 100 && route.length < 2000 && routeLine.includes("LineString") : route?.error === "道路が見つかりません";
   const sorted = [...(cells.breaks ?? [])].every((b, i, xs) => i === 0 || b >= xs[i - 1]);
   const ok =
     !cells.error && cells.count >= 10 && cells.breaks?.length === 6 && sorted && cells.labels?.length === 5 &&
     cells.areas.every(([, m2, km2]) => m2 > 0 && km2 === Math.round(m2 / 10000) / 100) &&
-    route?.length > 100 && route.length < 2000 && routeLine.includes("LineString") &&
+    routed &&
     sight?.visible > 0 && sight.visible <= 1 && viewshed.layer === "raster" && viewshed.source === "canvas" &&
     typeof target?.visible === "boolean" && rows.every((r) => r.length > 0) &&
     JSON.stringify(cleared.layers) === JSON.stringify([false, false]) && cleared.state.cells === null && cleared.state.route === null && cleared.state.sight === null;
-  return { ok, cells, route, routeLine, sight, viewshed, target, rows, picked, cleared: cleared.layers };
+  return { ok, fixtures, cells, route, routeLine, sight, viewshed, target, rows, picked, cleared: cleared.layers };
 }
