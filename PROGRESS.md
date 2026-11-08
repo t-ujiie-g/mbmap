@@ -23,7 +23,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 7.7KB（分類と統計 1.8KB を含む） ＋ ワーカー 29.9KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.0KB、route.wasm 12.9KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 7.7KB（分類と統計 1.8KB を含む） ＋ ワーカー 29.9KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.2KB、route.wasm 12.9KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19 の後の点検（Mac で行う）
@@ -36,7 +36,7 @@ Phase 19 で足したもの（下の節）を、AGENTS §7（リファクタリ�
   - JS：`analysis_worker/js/worker.mjs`（モジュールの読み込みと各操作）、`analysis_worker/js/viewshed.mjs`。
   - example：`examples/shared/analyze.js`・`table.js`、`react/src/analysis.jsx`・`table.jsx`、`bench/npm/checks/analyze.mjs`・`table.mjs`。
 - **Mac で回すもの**：
-  1. `npm --prefix bench run viewshed:golden`（GDAL 3.13.3 が要る）。clang（arm64）が `a*b + c` を FMA にすると、DEM・GROUND の値が 1 ulp ずれる可能性がある。ずれたら、移植は x86-64 の GDAL と同じ値を返しているので、ずれたセルの数と大きさを記録して扱いを決める。
+  1. ~~`viewshed:golden`~~：済み（2026-11-08、下の 19.5 の結果）。36 件すべて GDAL と同じ。
   2. 速さの比較（VISION §8 の Phase 19 は「黄金テストと速度比較」だが、ベンチはまだない）：`relate` 対 JSTS、`simplify`・hull・ドロネー・ボロノイ対 Turf・concaveman・d3-delaunay、格子・IDW・等値線・密度・DBSCAN・k-means 対 Turf・d3-contour、`route` 対 geojson-path-finder、`classBreaks` 対 simple-statistics。各ゴールデンの入力を流用して `*:node` のベンチを作る（例：`bench/relate/node.mjs`、結果は `bench/results/*.json`）。可視域は `gdal_viewshed` と時間を比べる。
   3. 上の「Mac で回すもの」（`style:public` などの以前からの残り）。
 - **確かめる候補**（Phase 19 の作業中に気づいたもの）：
@@ -109,7 +109,9 @@ Phase 19 で足したもの（下の節）を、AGENTS §7（リファクタリ�
   - `viewshed_worker`（viewshed.wasm 9.0KB とつなぎの `analysis-viewshed.js` で 10.0KB、予算 12KB）：解析ワーカーが格子の標高を渡す。つなぎを解析ワーカーに入れると 30.2 / 30KB を超えたので、最初の可視域で読み込む別ファイルにした。標高タイルの格子は傾斜と同じく中央の緯度での地上のメートル、GeoTIFF の格子はその投影座標系で測る。
   - API：`DemGrid.viewshed(observer, options)`、`DemGrid.lineOfSight(from, to)`（標高を双一次で取り、`npm/src/sight.ts` で gdal_viewshed と同じ曲がりの補正をして決める）。
   - 確かめたこと：移植のテスト 19 件（平面、壁、柱、峰、範囲、曲がり、モード、無効な入力）、`sight.ts` の単体テスト、pack test（富士山の DEM で山頂から 3 km）。
-  - **GDAL との突き合わせ（`npm run viewshed:golden`）はまだ回していない**。Web の環境には GDAL がなく、入れることもできなかった（conda を入れる操作は権限で止められた）。M2 の GDAL 3.13.3 で回す：富士山の DEM（EPSG:3857 の GeoTIFF、北西の角を原点に地上のメートルのセル）で、山頂・斜面・谷・端の 4 か所 × 3 モード × 3 通り（観測点・目標の高さ、距離、曲がり）の出力の大きさ・ジオトランスフォーム・全セルを比べる。clang（arm64）が `a*b + c` を FMA にすると DEM・GROUND の値が 1 ulp ずれる可能性がある（移植は x86-64 の GDAL と同じ）。
+  - **GDAL との突き合わせ（`npm run viewshed:golden`、2026-11-08、M2 の GDAL 3.13.3）**：富士山の DEM（EPSG:3857 の GeoTIFF、北西の角を原点に地上のメートルのセル）で、山頂・斜面・谷・端の 4 か所 × 3 モード × 3 通り（観測点・目標の高さ、距離、曲がり）の 36 件が、出力の大きさ・ジオトランスフォーム・全セルまですべて同じ。初めて回したときに直したもの：
+    - スクリプト：メモリが伸びたあとの古い `memory.buffer` を読んでいた。GDAL の AAIGrid の読み手は小数の格子を Float32 で読むので、`-oo DATATYPE=Float64` で開く（これが DEM・GROUND の 0.02 m までのずれと NORMAL の数セルのずれの元だった）。
+    - 移植：Homebrew の clang（arm64）は `a*b + c`（と `a*b + c*d` の前の積）を FMA にまとめる。FMA なしでは DEM・GROUND のセルの 3〜5 割が数 ulp ずれた。clang がまとめる式（高さの補間、`adjustHeight`、ジオトランスフォームとその逆、範囲、`verticalIntersect`）だけをソフトウェアの `fma`（`viewshed/fma.mbt`、丸めて奇数にする Boldo・Melquiond の方式）で計算する（2026-11-08 ユーザー判断）。FMA を使わない x86-64 の GDAL とは、この分だけ数 ulp ずれる。viewshed.wasm は 9.0 → 9.2KB。
 
 - **19.6 の結果**：
   - `route`（純粋な MoonBit、全バックエンド）：geojson-path-finder 2.1.0 の移植（前処理、頂点の丸め、縮約、ファントム頂点、tinyqueue 2.0.3 の Dijkstra、@turf/distance の重み）。JS の頂点キー（丸めた座標の文字列）は、-0 と NaN をそろえた double のビットで置き換えても同じにまとまる。近傍の並びは JS のオブジェクトの挿入順（消して入れ直すと最後）まで写したので、同じ長さの経路の選び方も同じ。長い鎖の座標はロープでつなぎ（JS は配列のコピーで二乗）、問い合わせのたびに状態を戻す。MultiLineString は線ごとに分ける（JS は LineString だけ）。
