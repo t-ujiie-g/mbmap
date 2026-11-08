@@ -1,0 +1,39 @@
+{
+  "env": {
+    "runtime": "node v22.23.4",
+    "v8": "12.4.254.21-node.57",
+    "cpu": "Apple M2",
+    "platform": "darwin arm64"
+  },
+  "params": {
+    "pathFinder": "2.1.0",
+    "tiles": 4,
+    "queries": 200,
+    "statistic": "median ms of one call: warm-up 300 ms, then 7 samples of at least 50 ms each",
+    "columns": "mbmap build: the dataset's table into route.wasm and network_new; paths: network_path and its f64s read; tablesIn: the copies in alone"
+  },
+  "rows": {
+    "gsi roads (4 tiles): build the network (13008 lines)": {
+      "js": 89.1,
+      "mbmap": 17.8,
+      "tablesIn": 3.82,
+      "ratio": 0.199
+    },
+    "gsi roads (4 tiles): 800 paths between vertices (783 found)": {
+      "js": 376.6,
+      "mbmap": 79.7,
+      "ratio": 0.212
+    },
+    "jittered grid 100 x 100: build the network (200 lines)": {
+      "js": 67.6,
+      "mbmap": 5.48,
+      "tablesIn": 1.1,
+      "ratio": 0.081
+    },
+    "jittered grid 100 x 100: 200 paths between vertices (200 found)": {
+      "js": 718.8,
+      "mbmap": 129.4,
+      "ratio": 0.18
+    }
+  }
+}
