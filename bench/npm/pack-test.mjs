@@ -377,7 +377,13 @@ const checks = {
         tokyoDatum: Array.from(tokyoDatum, (v) => Math.round(v * 1000) / 1000),
         badProj,
       };
-      return { ...window.__analysis, disposed, refused, malformed, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
+      // A restarted worker counts its ids from 0 again: a handle from before rejects rather than reach a new dataset.
+      const { terminate } = await import("mbmap/analysis");
+      terminate();
+      const restarted = await load({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [1, 1] } });
+      const stale = await pt.areas().then(() => "", (e) => e.message);
+      restarted.dispose();
+      return { ...window.__analysis, disposed, refused, malformed, stale, grid, geometry, tokyoLondon: Math.round(distance([139.7671, 35.6812], [-0.1276, 51.5072])) };
     });
     const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /analysis|geometry|relate|shapes|surface|viewshed|route|proj/.test(n));
     const ok =
@@ -387,6 +393,7 @@ const checks = {
       r.count.reduce((a, b) => a + b, 0) === r.inside &&
       r.inside > 300 &&
       /disposed/.test(r.disposed) &&
+      /terminated worker/.test(r.stale) &&
       /http\(s\) URL/.test(r.refused) &&
       /malformed GeoJSON/.test(r.malformed) &&
       r.tokyoLondon === 9562323 &&

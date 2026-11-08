@@ -14,6 +14,9 @@ export const CLASS_COLORS = ["#fef0d9", "#fdcc8a", "#fc8d59", "#e34a33", "#b3000
 export const SIGHT_METERS = 2000;
 const VISIBLE = 255;
 const HIDDEN = 128;
+// About a degree of latitude in meters, and how far past the viewshed's radius its DEM grid reaches.
+const METERS_PER_DEGREE = 111320;
+const DEM_MARGIN = 1.1;
 
 const empty = () => ({ type: "FeatureCollection", features: [] });
 const line = (coordinates, properties = {}) => ({ type: "Feature", properties, geometry: { type: "LineString", coordinates } });
@@ -85,14 +88,14 @@ export function createAnalysis(map, beforePick = () => {}) {
   /** The places' Voronoi cells in CELLS_BBOX, an area column by function and one in km² by expression, classed by jenks. */
   a.classify = async () => {
     a.set({ cells: "loading", error: null });
+    let points = null;
+    let cells = null;
     try {
       const [w, s, e, n] = CELLS_BBOX;
       const inside = PLACES.features.filter(({ geometry: { coordinates: [x, y] } }) => x >= w && x <= e && y >= s && y <= n);
-      const points = await load({ type: "FeatureCollection", features: inside });
-      const cells = await points.voronoi(CELLS_BBOX);
+      points = await load({ type: "FeatureCollection", features: inside });
+      cells = await points.voronoi(CELLS_BBOX);
       const [areas, fc] = await Promise.all([cells.areas(), cells.toGeoJSON()]);
-      points.dispose();
-      cells.dispose();
       setData("analysis-cells", fc);
       const fields = createFieldEditor(map, { source: "analysis-cells" });
       const byName = new Map(fc.features.map((f, i) => [f.properties.name, areas[i]]));
@@ -107,6 +110,9 @@ export function createAnalysis(map, beforePick = () => {}) {
       a.set({ cells: { breaks, count: values.length } });
     } catch (err) {
       failed(err, { cells: null });
+    } finally {
+      points?.dispose();
+      cells?.dispose();
     }
   };
   a.clearCells = () => {
@@ -149,6 +155,8 @@ export function createAnalysis(map, beforePick = () => {}) {
   /** The shortest way from `from` to `to` along the roads of the drawn tiles. */
   const route = async (from, to) => {
     a.set({ route: "loading", picking: null, error: null });
+    let roads = null;
+    let network = null;
     try {
       const features = await map.querySourceFeatures("gsi", { sourceLayer: "road" });
       const lines = features.flatMap((f) =>
@@ -156,15 +164,16 @@ export function createAnalysis(map, beforePick = () => {}) {
       );
       const [start, end] = [nearestVertex(lines, from), nearestVertex(lines, to)];
       if (!start || !end) return a.set({ route: { error: "道路が見つかりません" } });
-      const roads = await load({ type: "FeatureCollection", features: lines });
-      const network = await roads.network({ tolerance: 1e-5 });
-      roads.dispose();
+      roads = await load({ type: "FeatureCollection", features: lines });
+      network = await roads.network({ tolerance: 1e-5 });
       const found = await network.route(start, end);
-      network.dispose();
       setData("analysis-route", { type: "FeatureCollection", features: [...(found ? [line(found.path)] : []), point(start), point(end)] });
       a.set({ route: found ? { length: found.weight * 1000, steps: found.path.length - 1 } : { error: "つながる道がありません" } });
     } catch (err) {
       failed(err, { route: null });
+    } finally {
+      roads?.dispose();
+      network?.dispose();
     }
   };
   a.clearRoute = () => {
@@ -176,9 +185,10 @@ export function createAnalysis(map, beforePick = () => {}) {
   a.viewshed = async (center) => {
     a.set({ sight: "loading", target: null, error: null });
     try {
-      const dy = (SIGHT_METERS * 1.1) / 111320;
+      const dy = (SIGHT_METERS * DEM_MARGIN) / METERS_PER_DEGREE;
       const dx = dy / Math.cos((center.lat * Math.PI) / 180);
       grid?.dispose();
+      grid = null;
       observer = [center.lng, center.lat];
       grid = await loadDem(DEM_TILES, { zoom: 14, bounds: [center.lng - dx, center.lat - dy, center.lng + dx, center.lat + dy], encoding: "gsi" });
       const r = await grid.viewshed(observer, { maxDistance: SIGHT_METERS, visibleValue: VISIBLE, invisibleValue: HIDDEN, outOfRangeValue: 0 });

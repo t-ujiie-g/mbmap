@@ -1,4 +1,4 @@
-// The attribute table's field operations without the map: columns of GeoJSON features set, removed
+// The field editor's operations without the map: columns of GeoJSON features set, removed
 // and renamed in place. Import-free, for `npm test`.
 
 interface Feature {
@@ -7,7 +7,7 @@ interface Feature {
 
 /** Throws unless `name` can be a property key: a non-empty string other than `__proto__`. */
 export function checkColumn(name: unknown): string {
-  if (typeof name !== "string" || name === "" || name === "__proto__") throw new Error(`mbmap: attribute table: invalid column ${JSON.stringify(name)}`);
+  if (typeof name !== "string" || name === "" || name === "__proto__") throw new Error(`mbmap: field editor: invalid column ${JSON.stringify(name)}`);
   return name;
 }
 
@@ -34,7 +34,7 @@ export function removeColumn(features: Feature[], column: string): void {
 export function renameColumn(features: Feature[], from: string, to: string): void {
   checkColumn(to);
   if (from === to) return;
-  if (features.some((f) => f.properties && Object.hasOwn(f.properties, to))) throw new Error(`mbmap: attribute table: column ${JSON.stringify(to)} exists`);
+  if (features.some((f) => f.properties && Object.hasOwn(f.properties, to))) throw new Error(`mbmap: field editor: column ${JSON.stringify(to)} exists`);
   for (const f of features) {
     const p = f.properties;
     if (!p || !Object.hasOwn(p, from)) continue;
