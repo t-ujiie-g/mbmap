@@ -94,6 +94,10 @@ license and source.
   - render_webgl2/heatmap.mbt and map/heatmap.mbt: the two passes of
     src/webgl/draw/draw_heatmap.ts (density texture, per-tile framebuffers on terrain)
   - map/extrusion.mbt: `sphericalToCartesian` of src/util/util.ts (the light)
+  - globe/*.mbt: the globe projection's camera, src/geo/projection/globe_transform.ts,
+    vertical_perspective_transform.ts, globe_utils.ts, globe_camera_helper.ts,
+    vertical_perspective_camera_helper.ts, mercator_camera_helper.ts and the parts of
+    src/geo/transform_helper.ts, src/ui/camera.ts and src/ui/handler_manager.ts that drive them
   - tess/line.mbt, tess/line_emit.mbt, worker/lines.mbt and tess/circle.mbt: the
     line bucket of src/data/bucket/line_bucket.ts (joins, offset normals, sharp
     corners and `linesofar`, `dashDependencies`, `lineClipsArray`) and the points

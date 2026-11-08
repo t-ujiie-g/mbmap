@@ -66,6 +66,28 @@ pub fn geojson_tiler_table_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32,
 
 pub fn geojson_update_mem(Int32, Int32) -> Int32
 
+pub fn globe_at_point(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_bounds(FixedArray[Double]) -> String
+
+pub fn globe_controls(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_ease(FixedArray[Double], FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_fit(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_fly(FixedArray[Double], FixedArray[Double], FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_inertia(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_matrices(FixedArray[Double]) -> String
+
+pub fn globe_project(FixedArray[Double], FixedArray[Double]) -> String
+
+pub fn globe_state(FixedArray[Double]) -> String
+
+pub fn globe_unproject(FixedArray[Double], FixedArray[Double]) -> String
+
 pub fn grow_memory(Int32) -> Int32
 
 pub fn last_coord_sum_value() -> Double

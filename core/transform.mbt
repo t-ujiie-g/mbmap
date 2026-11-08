@@ -92,6 +92,18 @@ pub fn Transform::new(
 }
 
 ///|
+/// The transform of `camera` as it is, not kept to `limits` (for a camera a
+/// caller has already constrained, as MapLibre's shared camera state).
+pub fn Transform::exact(
+  camera : Camera,
+  width : Double,
+  height : Double,
+  limits~ : Limits = Limits::default(),
+) -> Transform {
+  make(camera, width, height, limits, 0.0)
+}
+
+///|
 fn make(
   camera : Camera,
   width : Double,

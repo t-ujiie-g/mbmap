@@ -434,3 +434,94 @@ test "resize keeps the camera unless the view no longer fits the world" {
   // 2^3 x 512 px of world is shorter than 5000 px of screen: the zoom rises.
   assert_true(t.resize(800.0, 5000.0).camera.zoom > 3.0)
 }
+
+///|
+test "Transform::exact keeps a camera the limits would move" {
+  let c : @core.Camera = {
+    center: { lng: 0.0, lat: 0.0, },
+    zoom: 0.0,
+    bearing: 0.0,
+    pitch: 0.0,
+  }
+  assert_eq(@core.Transform::exact(c, 800.0, 600.0).camera.zoom, 0.0)
+  assert_true(@core.Transform::new(c, 800.0, 600.0).camera.zoom > 0.0)
+}
+
+///|
+test "mercator_constrain clamps the zoom and keeps the view in the world" {
+  let limits = @core.Limits::default()
+  let (_, z) = @core.mercator_constrain(
+    { lng: 0.0, lat: 0.0, },
+    30.0,
+    limits,
+    800.0,
+    600.0,
+  )
+  assert_eq(z, 22.0)
+  let (c, z) = @core.mercator_constrain(
+    { lng: 0.0, lat: 85.0, },
+    2.0,
+    limits,
+    800.0,
+    600.0,
+  )
+  assert_eq(z, 2.0)
+  assert_true(c.lat < 85.0)
+}
+
+///|
+test "fit_box centers the box and refuses padding wider than the view" {
+  let b : @core.LngLatBounds = {
+    west: 139.5,
+    south: 35.5,
+    east: 140.0,
+    north: 35.8,
+  }
+  let pad = @core.Padding::uniform(0.0)
+  guard @core.fit_box(
+      b,
+      10.0,
+      800.0,
+      600.0,
+      bearing=0.0,
+      padding=pad,
+      offset=(0.0, 0.0),
+      max_zoom=22.0,
+    )
+    is Some((c, z)) else {
+    fail("no fit")
+  }
+  assert_true((c.lng - 139.75).abs() < 0.0000001 && z > 9.0 && z < 11.0)
+  assert_true(
+    @core.fit_box(
+      b,
+      10.0,
+      800.0,
+      600.0,
+      bearing=0.0,
+      padding=@core.Padding::uniform(500.0),
+      offset=(0.0, 0.0),
+      max_zoom=22.0,
+    )
+    is None,
+  )
+}
+
+///|
+test "ray_ground at the screen center is the center" {
+  let t = @core.Transform::new(
+    {
+      center: { lng: 139.0, lat: 35.0, },
+      zoom: 10.0,
+      bearing: 20.0,
+      pitch: 40.0,
+    },
+    800.0,
+    600.0,
+  )
+  let m = t.ray_ground(400.0, 300.0)
+  let c = t.camera.center.to_mercator()
+  assert_true(
+    (m.x - c.x).abs() < 0.000000001 && (m.y - c.y).abs() < 0.000000001,
+  )
+}

@@ -66,9 +66,23 @@ fn constrain_once(
 }
 
 ///|
+/// MapLibre's mercator `defaultConstrain`: the zoom clamped, then raised or the
+/// center moved so a `width` x `height` view stays in the limits' bounds.
+pub fn mercator_constrain(
+  center : LngLat,
+  zoom : Double,
+  limits : Limits,
+  width : Double,
+  height : Double,
+) -> (LngLat, Double) {
+  let zoom = @cmp.maximum(limits.min_zoom, @cmp.minimum(limits.max_zoom, zoom))
+  constrain_center(center, zoom, limits, width, height)
+}
+
+///|
 /// The latitude limit MapLibre keeps the view to (`MAX_VALID_LATITUDE`,
 /// `MAX_LATITUDE` rounded).
-const MAX_VALID_LATITUDE : Double = 85.051129
+pub const MAX_VALID_LATITUDE : Double = 85.051129
 
 ///|
 fn constrain_center(

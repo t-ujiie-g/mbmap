@@ -1,0 +1,10 @@
+// The globe camera: a port of MapLibre GL JS 6.16.0's globe projection
+// (vertical perspective blended with mercator). Pure MoonBit, tested on every backend.
+
+import {
+  "t-ujiie-g/mbmap/core",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/double",
+  "moonbitlang/core/math",
+}
