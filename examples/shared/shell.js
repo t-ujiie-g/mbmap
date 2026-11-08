@@ -2,6 +2,7 @@
 // JSX): a panel with the search and six tabs, the view's buttons, and a status bar. The markup is
 // constant; everything that comes from data goes in later through `textContent`.
 import { icon } from "./icons.js";
+import { MODES } from "./style.js";
 
 /** The panel's tabs as [id, label]. */
 export const TABS = [["explore", "探す"], ["layers", "レイヤー"], ["draw", "作図"], ["measure", "計測"], ["analysis", "解析"], ["data", "データ"]];
@@ -93,8 +94,8 @@ export function mountShell(current) {
   const actions = document.createElement("div");
   actions.className = "map-actions";
   const modes = Object.assign(document.createElement("div"), { id: "modes", className: "segmented" });
-  for (const m of ["2d", "3d"]) {
-    const b = Object.assign(document.createElement("button"), { textContent: m.toUpperCase() });
+  for (const [m, label] of MODES) {
+    const b = Object.assign(document.createElement("button"), { textContent: label });
     b.dataset.mode = m;
     modes.append(b);
   }

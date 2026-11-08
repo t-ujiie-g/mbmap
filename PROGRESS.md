@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.2c（ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に）。20.1（地球表示のカメラ）、20.2a（地球表示の配線、ラスタと背景と大気）、20.2b（面・線・円・heatmap を地球に）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.3（`mbmap/3d` と glTF）。20.1（地球表示のカメラ）、20.2a（地球表示の配線、ラスタと背景と大気）、20.2b（面・線・円・heatmap を地球に）、20.2c（ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -17,7 +17,7 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 149.8KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
+  | 表示（メイン） | 149.8KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
   | 表示ワーカー | 84.8KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
@@ -76,6 +76,15 @@
   - `npm run style:golden` に地球の場面 6 つ（面・穴・日付変更線・北極までの面・線・点、傾き 45°、heatmap、地図に沿った円、破線・グラデーション・輪郭）。すべて MapLibre と画素で同じ（平均 0〜0.01、99% 点 0）。
   - 地球の間もまだ描かないもの：記号（ラベル・アイコン）と押し出し。`*-translate` は地球では効かない。20.2c で。
   - 大きさ：表示（メイン）149.3 → 149.8KB、表示ワーカー 80.5 → 84.8KB（細分化の移植）。
+- **20.2c の結果**（ラベル・押し出し・平行移動・クエリ・地形・カスタムレイヤー・書き出しを地球に、1 つの PR：2026-11-08 ユーザー判断）：
+  - 押し出し：壁は細分化した輪郭から、屋根は面として切る（`ExtrusionTessellator` に `subdivide`）。高さは球の法線に沿って上げ（`project3d`）、光は MapLibre の地球の光の向き（`transformLightDirection`）。押し出しの前に地球の面を深度だけに書く（MapLibre の `_renderTilesDepthBuffer`）。`style:golden` に `globe-extrusions`（東京近くの 25 棟、z6.5、傾き 60°）。packed の高さは 6553.5 m までなので場面の高さは 1500〜6000 m。
+  - `*-translate`：球の上の点を動かす（`GlobeTile.translate`）。`style:golden` に `globe-translate` と `globe-map-circles`。地球の場面 8 つがすべて MapLibre と同じ（平均 0.01 以下）。
+  - クエリ：依頼にタイルの地球の行列を載せ、ワーカーで球を通して画面に投影する。押し出しは地球では当たらない（MapLibre と同じ）。`query:golden` に地球の視点 3 つ（628 の比較で違うのは 1 つ：日付変更線の向こうの世界の写し。MapLibre の `getWrap` を真似ると 9 つに増えたので戻し、既知の差として数えない）。
+  - 地形：地形の格子を `project3d` で球に載せ（高さはメートルで）、霧はなし（MapLibre と同じ）。タイルは地球の覆い方で選ぶ。地球では中心を地形の高さに立てない（MapLibre は立てる。未対応）。
+  - カスタムレイヤー：地球のあいだは MapLibre と同じ options（`shaderData` は地球の prelude、`modelViewProjectionMatrix` と `projectionMatrix` は地球の、`defaultProjectionData` と `getProjectionData` は地球の行列とメルカトルの fallback・地平の面・遷移）。pack test の `globe` ページで地球の prelude を通した四角形が描けることを確かめる。`custom.js` は 1.8 → 2.9KB（予算 3KB）。
+  - 書き出し：地球の行列と大気の光線も分割の窓を通す。画像は不透明に固定せずストレートアルファに（地球の周りの宇宙は透明、キャンバスと同じ）。`export:golden` に `globe`（ラスタの世界、大気）と `globe-terrain`（富士山、z11）。地球では f32 の球面の座標が窓の行列で 1/100 px ほど動くので、分割の比較の許容を平均 0.05・99% 点 1 に。
+  - example：3 通りのショーケースに「地球儀」の切り替え（ズーム 3 まで引く）。pack test で投影と中心を確かめる。
+  - ラベル：（並行のエージェントの結果をここに）
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

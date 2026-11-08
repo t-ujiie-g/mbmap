@@ -13,7 +13,7 @@ import { cameraRows, nearLines } from "../../shared/readout.js";
 import { keepRadiusRing } from "../../shared/ring.js";
 import { TABS, VARIANTS } from "../../shared/shell.js";
 import { zoomIntoClusters } from "../../shared/stations.js";
-import { createStyle, modeCamera, withMarker } from "../../shared/style.js";
+import { createStyle, MODES, modeCamera, modeEase, withMarker } from "../../shared/style.js";
 import { MapControls } from "./controls.jsx";
 import { DataPanel } from "./data.jsx";
 import { ServicesPanel } from "./services.jsx";
@@ -61,7 +61,8 @@ function App() {
     if (m === mode) return;
     modeRef.current = m;
     setMode(m);
-    ref.current.map?.easeTo({ ...modeCamera(m), duration: 1000 });
+    const map = ref.current.map;
+    map?.easeTo(modeEase(m, map.getZoom()));
   };
   // From the source's data, which the table's field editor may have changed.
   const addMarker = async () => {
@@ -160,7 +161,7 @@ function App() {
       </aside>
       <div className="map-actions">
         <div id="modes" className="segmented">
-          {["2d", "3d"].map((m) => <button key={m} data-mode={m} aria-pressed={mode === m} onClick={() => switchMode(m)}>{m.toUpperCase()}</button>)}
+          {MODES.map(([m, label]) => <button key={m} data-mode={m} aria-pressed={mode === m} onClick={() => switchMode(m)}>{label}</button>)}
         </div>
         <button id="save" title="画像を保存" aria-label="画像を保存" onClick={() => ref.current.map && saveImage(ref.current.map)}><Icon name="camera" /></button>
       </div>

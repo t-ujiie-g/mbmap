@@ -590,6 +590,20 @@ async function showcase(page) {
   const read = await showcaseDataChecks(page);
   crumb("showcaseServicesChecks");
   const services = await showcaseServicesChecks(page);
+  crumb("showcase: globe");
+  // The globe zooms out to 3 and keeps the places; the custom layer goes on it too.
+  await page.click("#modes button >> text=地球儀");
+  await page.waitForFunction(() => window.__map.getZoom() === 3 && !window.__map.isMoving(), null, { timeout: 30000 });
+  const globe = await page.evaluate(() => {
+    const map = window.__map;
+    const p = map.project(map.getCenter());
+    const canvas = map.getCanvas();
+    const order = map.getLayersOrder();
+    return {
+      projection: map.getProjection()?.type, pitch: map.getPitch(), centre: [p.x - canvas.clientWidth / 2, p.y - canvas.clientHeight / 2],
+      ring: order.indexOf("radius-ring") === order.indexOf("places") - 1,
+    };
+  });
   const ok =
     ["places", "places-label"].includes(picked.rows[0][1]) && picked.text.includes("東京駅") &&
     identified.count >= 1 && identified.index === 0 && identified.selected === true &&
@@ -606,8 +620,9 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
+    globe.projection === "globe" && globe.pitch === 0 && Math.abs(globe.centre[0]) < 1e-6 && Math.abs(globe.centre[1]) < 1e-6 && globe.ring &&
     saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && analyzed.ok && read.ok && services.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, analyzed, read, services, measured, drew, edited, cut, clustered }];
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, globe, tokyoPin, osakaPin, saved, controls, searched, tabled, analyzed, read, services, measured, drew, edited, cut, clustered }];
 }
 
 async function engineStarted(page) {
