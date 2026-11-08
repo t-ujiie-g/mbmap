@@ -1016,6 +1016,9 @@ test "relate_checked and within_limit refuse rows over MAX_RELATE_POINTS togethe
   assert_true(@relate.relate_checked(t, 1, t, 1) is Some(_))
   assert_false(@relate.within_limit(t, 0, t, 0))
   assert_true(@relate.within_limit(t, 0, t, 1))
+  let half = @relate.MAX_RELATE_POINTS / 2 + 1
+  assert_eq(@relate.pair_points(t, 0, t, 1), half + 1)
+  assert_eq(@relate.pair_points(t, 1, t, 9), 1)
 }
 
 ///|

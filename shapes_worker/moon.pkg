@@ -3,6 +3,7 @@
 // d3-delaunay over a dataset's table, computing with the host's Math.
 
 import {
+  "t-ujiie-g/mbmap/core",
   "t-ujiie-g/mbmap/delaunay",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/hull",

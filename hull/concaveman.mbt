@@ -117,10 +117,10 @@ fn Hull::insert_node(self : Hull, p : Int32, prev : Int32?) -> Int32 {
 fn Hull::update_box(self : Hull, node : Int32) -> Int32 {
   let p1 = self.node_p[node]
   let p2 = self.node_p[self.next[node]]
-  self.boxes[4 * node] = js_min(self.xs[p1], self.xs[p2])
-  self.boxes[4 * node + 1] = js_min(self.ys[p1], self.ys[p2])
-  self.boxes[4 * node + 2] = js_max(self.xs[p1], self.xs[p2])
-  self.boxes[4 * node + 3] = js_max(self.ys[p1], self.ys[p2])
+  self.boxes[4 * node] = @core.js_min(self.xs[p1], self.xs[p2])
+  self.boxes[4 * node + 1] = @core.js_min(self.ys[p1], self.ys[p2])
+  self.boxes[4 * node + 2] = @core.js_max(self.xs[p1], self.xs[p2])
+  self.boxes[4 * node + 3] = @core.js_max(self.ys[p1], self.ys[p2])
   node
 }
 
@@ -264,7 +264,7 @@ fn Hull::sq_seg_box_dist(self : Hull, a : Int32, b : Int32, n : Node) -> Double 
   if d4 == 0.0 {
     return 0.0
   }
-  js_min(js_min(js_min(d1, d2), d3), d4)
+  @core.js_min(@core.js_min(@core.js_min(d1, d2), d3), d4)
 }
 
 ///|
@@ -291,10 +291,10 @@ fn Hull::no_intersections(
   seg_tree : RBush,
 ) -> Bool {
   let bbox = {
-    min_x: js_min(self.xs[a], self.xs[b]),
-    min_y: js_min(self.ys[a], self.ys[b]),
-    max_x: js_max(self.xs[a], self.xs[b]),
-    max_y: js_max(self.ys[a], self.ys[b]),
+    min_x: @core.js_min(self.xs[a], self.xs[b]),
+    min_y: @core.js_min(self.ys[a], self.ys[b]),
+    max_x: @core.js_max(self.xs[a], self.xs[b]),
+    max_y: @core.js_max(self.ys[a], self.ys[b]),
   }
   !seg_tree.search_any(bbox, e => {
     self.edges_cross(self.node_p[e], self.node_p[self.next[e]], a, b)
@@ -403,11 +403,11 @@ fn Hull::fast_convex_hull(self : Hull, n : Int32) -> Array[Int32] {
 
 ///|
 fn Hull::convex_hull(self : Hull, points : Array[Int32]) -> Array[Int32] {
-  stable_sort(points, (a, b) => {
+  @core.stable_sort(points, (a, b) => {
     if self.xs[a] == self.xs[b] {
-      self.ys[a] - self.ys[b]
+      self.ys[a] - self.ys[b] < 0.0
     } else {
-      self.xs[a] - self.xs[b]
+      self.xs[a] - self.xs[b] < 0.0
     }
   })
   let lower : Array[Int32] = []
@@ -446,7 +446,7 @@ fn concaveman(
   trig : @core.Trig,
 ) -> Array[Int32] {
   let n = xs.length()
-  let concavity = js_max(0.0, concavity)
+  let concavity = @core.js_max(0.0, concavity)
   let length_threshold = if length_threshold.is_nan() {
     0.0
   } else {
@@ -500,7 +500,7 @@ fn concaveman(
       seg_tree,
     )
     if candidate is Some(p) &&
-      js_min(h.sq_dist(p, a), h.sq_dist(p, b)) <= max_sq_len {
+      @core.js_min(h.sq_dist(p, a), h.sq_dist(p, b)) <= max_sq_len {
       queue.push(node)
       queue.push(h.insert_node(p, Some(node)))
       tree.remove(p) |> ignore

@@ -3,6 +3,10 @@
 // Vladimir Agafonkin); see NOTICE.
 
 ///|
+/// Most vertices `simplify` takes (AGENTS.md §8.2).
+pub const MAX_SIMPLIFY_POINTS : Int32 = 1_000_000
+
+///|
 /// JavaScript's `Number.EPSILON`, where Turf stops lowering a ring's tolerance.
 const NUMBER_EPSILON : Double = 2.220446049250313e-16
 
@@ -265,14 +269,15 @@ fn Points::simplify_ring(
 }
 
 ///|
-/// Each row as Turf 7.4.0's `simplify(tolerance, highQuality)` makes its geometry;
-/// rows, ids and properties kept. Where Turf throws (a negative tolerance, a
-/// ring that cleans to fewer than 4 points or is open) the row is kept as is.
+/// Each row as Turf 7.4.0's `simplify(tolerance, highQuality)` makes it, ids and
+/// properties kept; a row Turf throws on is kept as is. None past
+/// `MAX_SIMPLIFY_POINTS` vertices.
 pub fn simplify(
   t : @geom.Table,
   tolerance : Double,
   high_quality : Bool,
-) -> @geom.Table {
+) -> @geom.Table? {
+  guard t.coords.length() / 2 <= MAX_SIMPLIFY_POINTS else { return None }
   let b = @geom.TableBuilder::new()
   let pts : Points = { coords: t.coords, }
   for f in 0..<t.length() {
@@ -319,7 +324,7 @@ pub fn simplify(
     }
     b.end_feature(kind, id=t.ids[f])
   }
-  b.finish()
+  Some(b.finish())
 }
 
 ///|

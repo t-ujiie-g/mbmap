@@ -438,7 +438,7 @@ test "simplify matches Turf's simplify point for point" {
   let t = turf_rows()
   for c in cases {
     let (tolerance, high_quality, want) = c
-    let out = @simplify.simplify(t, tolerance, high_quality)
+    let out = @simplify.simplify(t, tolerance, high_quality).unwrap()
     assert_eq(out.length(), t.length())
     for f in 0..<t.length() {
       assert_eq(out.kinds[f], t.kinds[f])
@@ -499,15 +499,17 @@ test "simplify cleans lines as Turf's cleanCoords does" {
   let collinear = one_row(LineString, [
     [(0.0, 0.0), (1.0, 1.0), (2.0, 2.0), (2.0, 2.0), (3.0, 3.0)],
   ])
-  assert_eq(rings_of(@simplify.simplify(collinear, 0.1, false)), [
+  assert_eq(rings_of(@simplify.simplify(collinear, 0.1, false).unwrap()), [
     [(0.0, 0.0), (3.0, 3.0)],
   ])
   let two = one_row(LineString, [[(1.0, 1.0), (1.0, 1.0)]])
-  assert_eq(rings_of(@simplify.simplify(two, 0.1, false)), [
+  assert_eq(rings_of(@simplify.simplify(two, 0.1, false).unwrap()), [
     [(1.0, 1.0), (1.0, 1.0)],
   ])
   let one = one_row(LineString, [[(1.0, 1.0)]])
-  assert_eq(rings_of(@simplify.simplify(one, 0.1, false)), [[(1.0, 1.0)]])
+  assert_eq(rings_of(@simplify.simplify(one, 0.1, false).unwrap()), [
+    [(1.0, 1.0)],
+  ])
 }
 
 ///|
@@ -516,19 +518,19 @@ test "simplify drops NaN points and reads a NaN tolerance as Turf does" {
   let line = one_row(LineString, [
     [(0.0, 0.0), (1.0, nan), (2.0, 0.5), (3.0, 0.0), (4.0, 4.0)],
   ])
-  assert_eq(rings_of(@simplify.simplify(line, 0.1, false)), [
+  assert_eq(rings_of(@simplify.simplify(line, 0.1, false).unwrap()), [
     [(0.0, 0.0), (2.0, 0.5), (3.0, 0.0), (4.0, 4.0)],
   ])
   let plain = one_row(LineString, [
     [(0.0, 0.0), (1.0, 1.0), (2.0, 0.5), (3.0, 0.0), (4.0, 4.0)],
   ])
-  assert_eq(rings_of(@simplify.simplify(plain, nan, false)), [
+  assert_eq(rings_of(@simplify.simplify(plain, nan, false).unwrap()), [
     [(0.0, 0.0), (4.0, 4.0)],
   ])
   let ring = one_row(Polygon, [
     [(0.0, 0.0), (1.0, 0.0), (nan, 1.0), (0.0, 1.0), (0.0, 0.0)],
   ])
-  assert_eq(rings_of(@simplify.simplify(ring, 0.1, false)), [
+  assert_eq(rings_of(@simplify.simplify(ring, 0.1, false).unwrap()), [
     [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (0.0, 0.0)],
   ])
 }
@@ -539,13 +541,13 @@ test "simplify restarts a ring whose first point lies on an edge" {
     [(0.5, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0), (0.5, 0.0)],
   ])
   let want = [[(1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0), (1.0, 0.0)]]
-  assert_eq(rings_of(@simplify.simplify(ring, 0.01, false)), want)
-  assert_eq(rings_of(@simplify.simplify(ring, 5.0, false)), want)
+  assert_eq(rings_of(@simplify.simplify(ring, 0.01, false).unwrap()), want)
+  assert_eq(rings_of(@simplify.simplify(ring, 5.0, false).unwrap()), want)
   let square = one_row(Polygon, [
     [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)],
   ])
   assert_eq(
-    rings_of(@simplify.simplify(square, @double.infinity, false)),
+    rings_of(@simplify.simplify(square, @double.infinity, false).unwrap()),
     rings_of(square),
   )
 }
@@ -560,12 +562,15 @@ test "simplify keeps rows Turf throws on" {
       [(0.0, 0.0)],
     ] {
     let t = one_row(Polygon, [ring])
-    let out = @simplify.simplify(t, 0.1, false)
+    let out = @simplify.simplify(t, 0.1, false).unwrap()
     assert_eq(out.kinds[0], Polygon)
     assert_eq(rings_of(out), [ring])
   }
   let line = one_row(LineString, [[(0.0, 0.0), (1.0, 1.0), (2.0, 0.5)]])
-  assert_eq(rings_of(@simplify.simplify(line, -1.0, false)), rings_of(line))
+  assert_eq(
+    rings_of(@simplify.simplify(line, -1.0, false).unwrap()),
+    rings_of(line),
+  )
 }
 
 ///|
@@ -584,11 +589,23 @@ test "simplify keeps points, multipoints and rows without geometry" {
   b.end_feature(MultiPoint)
   b.end_feature(NoGeometry)
   let t = b.finish()
-  let out = @simplify.simplify(t, 1.0, false)
+  let out = @simplify.simplify(t, 1.0, false).unwrap()
   assert_eq(out.kinds, t.kinds)
   assert_eq(out.ids, t.ids)
   assert_eq(out.coords, t.coords)
   assert_eq(out.point_ends, t.point_ends)
   assert_eq(out.part_ends, t.part_ends)
   assert_eq(out.column("name").unwrap().values, [None, Some(Str("m")), None])
+}
+
+///|
+test "simplify gives None past MAX_SIMPLIFY_POINTS" {
+  let b = @geom.TableBuilder::new()
+  for i in 0..<=@simplify.MAX_SIMPLIFY_POINTS {
+    b.point(i.to_double(), (i % 7).to_double())
+  }
+  b.end_ring()
+  b.end_part()
+  b.end_feature(LineString)
+  assert_true(@simplify.simplify(b.finish(), 1.0, false) is None)
 }

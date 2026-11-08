@@ -5,11 +5,17 @@
 /** How `classBreaks` divides values: simple-statistics' `jenks`, `ckmeansBreaks`, `quantile`, `equalIntervalBreaks`, or geostats' standard deviations. */
 export type ClassMethod = "jenks" | "ckmeans" | "quantile" | "equalInterval" | "standardDeviation";
 
-/** The most values `classBreaks` and `statistics` take (jenks keeps two (values + 1) x (classes + 1) tables). */
+/** The most values `classBreaks` and `statistics` take. */
 export const MAX_CLASS_VALUES = 1_000_000;
 
 /** The most classes `classBreaks` makes. */
 export const MAX_CLASSES = 256;
+
+/** The most values² × classes `jenks` takes, which bounds its time on the main thread. */
+export const MAX_JENKS_WORK = 1e9;
+
+/** The most values × classes `ckmeans` takes: the cells of its two matrices. */
+export const MAX_CKMEANS_CELLS = 1e7;
 
 /** Summary of finite values: count, min, max, sum (compensated, as simple-statistics' `sum`), mean, median, population variance and standard deviation. */
 export interface Statistics {
@@ -230,14 +236,19 @@ export function classBreaks(
   const x = finite(values);
   if (x.length === 0) return null;
   const s = sorted(x);
+  const tooMany = (work: number, cap: number) => {
+    if (work > cap) throw new Error(`mbmap: classify: ${s.length} values in ${classes} classes are too many for ${method}`);
+  };
   switch (method) {
     case "jenks": {
+      tooMany(s.length * s.length * classes, MAX_JENKS_WORK);
       // simple-statistics leaves bounds undefined when there are fewer distinct values than classes.
       const b = jenks(s, classes);
       return b && b.every((v) => v !== undefined) ? b : null;
     }
     case "ckmeans":
       if (classes > s.length) return null;
+      tooMany(s.length * classes, MAX_CKMEANS_CELLS);
       return ckmeans(s, classes);
     case "quantile":
       return Array.from({ length: classes + 1 }, (_, i) => quantileSorted(s, i / classes));
@@ -274,11 +285,16 @@ export function classBreaks(
 
 /**
  * A style `step` expression giving `outputs[i]` (colors, widths, …) to values of class `i`:
- * `["step", input, outputs[0], breaks[1], outputs[1], …]`, which `mbmap/ui`'s legend lists as entries.
+ * `["step", input, outputs[0], breaks[1], outputs[1], …]`, which `mbmap/ui`'s legend lists as entries. Breaks
+ * must ascend; of two equal ones (an empty class, which jenks and quantile may give) the later output stands.
  */
 export function classStep(input: unknown, breaks: number[], outputs: unknown[]): unknown[] {
   if (breaks.length < 2 || outputs.length !== breaks.length - 1) throw new Error("mbmap: classify: give one output per class");
   const expr: unknown[] = ["step", input, outputs[0]];
-  for (let i = 1; i < outputs.length; i++) expr.push(breaks[i], outputs[i]);
+  for (let i = 1; i < outputs.length; i++) {
+    if (!(breaks[i] >= breaks[i - 1])) throw new Error("mbmap: classify: breaks must ascend");
+    if (i > 1 && breaks[i] === breaks[i - 1]) expr[expr.length - 1] = outputs[i];
+    else expr.push(breaks[i], outputs[i]);
+  }
   return expr;
 }

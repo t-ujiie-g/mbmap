@@ -15,7 +15,7 @@ pub fn Index::of_table(t : @geom.Table) -> Index {
 /// Calls `f` with each point of Point and MultiPoint feature `i`.
 fn each_point(t : @geom.Table, i : Int32, f : (Double, Double) -> Bool) -> Unit {
   guard t.kinds[i] is (Point | MultiPoint) else { return }
-  let (a, b) = point_range(t, i)
+  let (a, b) = t.feature_points(i)
   for p in a..<b {
     if !f(t.coords[p * 2], t.coords[p * 2 + 1]) {
       return
@@ -90,7 +90,7 @@ pub fn collect(
     let mut sum = 0.0
     for i in hits {
       guard points.kinds[i] is Point else { continue }
-      let (a, _) = point_range(points, i)
+      let (a, _) = points.feature_points(i)
       if !contains_point(
           polygons,
           f,

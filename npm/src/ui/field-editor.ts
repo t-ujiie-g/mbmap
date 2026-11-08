@@ -41,23 +41,27 @@ class Editor implements FieldEditor {
     this.#options = options;
   }
 
-  calculate(column: string, value: unknown, { only }: CalculateOptions = {}): Promise<void> {
+  calculate(column: string, value: unknown, options?: CalculateOptions): Promise<void> {
+    return this.#calculate(column, value, options, false);
+  }
+
+  addColumn(column: string, value: unknown = null, options?: CalculateOptions): Promise<void> {
+    return this.#calculate(column, value, options, true);
+  }
+
+  // `calculate`, refused when `fresh` and a feature has `column`.
+  async #calculate(column: string, value: unknown, { only }: CalculateOptions = {}, fresh: boolean): Promise<void> {
     checkColumn(column);
     const table = this.#options.table;
     if (only && !table) throw new Error("mbmap: field editor: `only` needs a table");
     return this.#edit((features, rows) => {
+      if (fresh && features.some((f) => f.properties && Object.hasOwn(f.properties, column))) throw new Error(`mbmap: field editor: column ${JSON.stringify(column)} exists`);
       const passing = new Set(only === "filtered" ? table!.passing(rows) : []);
       const selected = new Set(table?.state.selected);
       const indices = rows.flatMap((r, i) => (!only || (only === "filtered" ? passing.has(r) : r.id !== null && selected.has(String(r.id))) ? [i] : []));
       const picked = indices.map((i) => rows[i]);
       setColumn(features, column, indices, typeof value === "function" ? picked.map((r) => value(r)) : this.#map.evaluateExpression(value, picked));
     }, (columns) => (columns.includes(column) ? columns : [...columns, column]));
-  }
-
-  addColumn(column: string, value: unknown = null, options?: CalculateOptions): Promise<void> {
-    return this.#edit((features) => {
-      if (features.some((f) => f.properties && Object.hasOwn(f.properties, column))) throw new Error(`mbmap: field editor: column ${JSON.stringify(column)} exists`);
-    }).then(() => this.calculate(column, value, options));
   }
 
   removeColumn(column: string): Promise<void> {

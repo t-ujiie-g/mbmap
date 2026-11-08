@@ -6,7 +6,9 @@ import {
 }
 
 // Values
-pub fn simplify(@geom.Table, Double, Bool) -> @geom.Table
+pub const MAX_SIMPLIFY_POINTS : Int32 = 1_000_000
+
+pub fn simplify(@geom.Table, Double, Bool) -> @geom.Table?
 
 // Errors
 

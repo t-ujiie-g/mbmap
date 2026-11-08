@@ -1,10 +1,7 @@
 ///|
-/// The values of expression `text` (JSON) for each of `features` at `zoom`:
-/// a JS array of null, booleans, numbers, strings and arrays (colors as
-/// `to-string` writes them, `format` as its text, evaluation errors null);
-/// the error's message, a string, when it does not compile. Each feature is
-/// an object of its properties with its id at `@style.FEATURE_ID_KEY` and
-/// its geometry type at `@core.GEOMETRY_TYPE_KEY`.
+/// The values of expression `text` (JSON) for each of `features` (properties,
+/// id at `@style.FEATURE_ID_KEY`, type at `@core.GEOMETRY_TYPE_KEY`) at `zoom`
+/// as a JS array (colors by `to-string`, errors null), or the compile error.
 pub fn evaluate_expression(
   text : String,
   features : FixedArray[Properties],

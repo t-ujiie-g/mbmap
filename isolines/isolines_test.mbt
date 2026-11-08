@@ -214,3 +214,30 @@ test "isobands label numbers by number_text" {
   ).unwrap()
   assert_eq(got.column("elevation").unwrap().values[0], Some(Str("5-15")))
 }
+
+///|
+test "isolines and isobands refuse past MAX_GRID_POINTS and MAX_CELL_BREAKS" {
+  let b = @geom.TableBuilder::new()
+  for _ in 0..<=@isolines.MAX_GRID_POINTS {
+    b.end_feature(NoGeometry)
+  }
+  let big = b.finish()
+  assert_true(@isolines.isolines(big, [1.0], "elevation") is None)
+  assert_true(@isolines.isobands(big, [0.0, 1.0], "elevation") is None)
+  let cols = 16386
+  let wide = square(cols, 2, Array::make(cols * 2, 0.0))
+  let breaks = Array::makei(@isolines.MAX_BREAKS, i => i.to_double())
+  assert_true(
+    (cols - 1).to_int64() * breaks.length().to_int64() >
+    @isolines.MAX_CELL_BREAKS,
+  )
+  assert_true(@isolines.isolines(wide, breaks, "elevation") is None)
+  assert_true(@isolines.isobands(wide, breaks, "elevation") is None)
+  assert_true(@isolines.isolines(wide, [0.5], "elevation") is Some(_))
+}
+
+///|
+test "the segment and nesting caps isolines and isobands stop at" {
+  assert_eq(@isolines.MAX_SEGMENTS, 4_000_000)
+  assert_eq(@isolines.MAX_NESTING_TESTS, 100_000_000L)
+}

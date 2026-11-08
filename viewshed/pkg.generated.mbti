@@ -10,6 +10,8 @@ pub const DEFAULT_CURVATURE_COEFF : Double = 0.85714
 
 pub const MAX_VIEWSHED_CELLS : Int32 = 16_777_216
 
+pub fn grid_fits(Int32, Int32) -> Bool
+
 pub fn viewshed(FixedArray[Double], Int32, Int32, FixedArray[Double], Double?, ViewshedOptions, trig? : @core.Trig) -> ViewshedResult?
 
 // Errors

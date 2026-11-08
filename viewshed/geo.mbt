@@ -2,23 +2,20 @@
 // (MIT License, (c) 2024 info@hobu.co) and gcore's GDALInvGeoTransform. See NOTICE.
 
 ///|
-const PI : Double = 3.141592653589793
+const PI : Double = @core.PI
 
 ///|
 /// GDAL's `INVALID_ISECT`: no intersection.
 const INVALID_ISECT : Int32 = 2147483647
 
 ///|
-const INT_MIN : Int32 = -2147483648
-
-///|
 /// C++'s `static_cast<int>` of a double as x86-64 does it (`cvttsd2si`): NaN
-/// and values out of range give `INT_MIN`.
+/// and values out of range give `@int.MIN_VALUE`.
 fn cint(x : Double) -> Int32 {
   if x > -2147483649.0 && x < 2147483648.0 {
     x.to_int()
   } else {
-    INT_MIN
+    @int.MIN_VALUE
   }
 }
 

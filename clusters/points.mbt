@@ -1,5 +1,5 @@
 ///|
-/// Most points `dbscan_checked` and `kmeans_checked` take (AGENTS.md §8.2).
+/// Most points `dbscan` and `kmeans` take (AGENTS.md §8.2).
 pub const MAX_CLUSTER_POINTS : Int32 = 1_000_000
 
 ///|
@@ -50,9 +50,4 @@ fn points_of(t : @geom.Table) -> Points? {
     }
   }
   Some({ rows, xs, ys, })
-}
-
-///|
-fn is_nan(x : Double) -> Bool {
-  x != x
 }

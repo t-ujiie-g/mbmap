@@ -29,3 +29,24 @@ test "input_f64s reads whole f64s and leaves out a trailing part" {
   clear_input()
   assert_eq(input_f64s().length(), 0)
 }
+
+///|
+test "input_length is the prepared length and output_fits caps at MAX_OUTPUT_BYTES" {
+  assert_eq(prepare_input(20, MAX_INPUT_BYTES), PAGE)
+  assert_eq(input_length(), 20)
+  clear_input()
+  assert_eq(input_length(), 0)
+  assert_true(output_fits(MAX_OUTPUT_BYTES.to_int64() / 8L, 8))
+  assert_false(output_fits(MAX_OUTPUT_BYTES.to_int64() / 8L + 1L, 8))
+  assert_false(output_fits(-1L, 8))
+}
+
+///|
+test "lengths_fit refuses negative lengths and sums past the total, overflowing ones included" {
+  assert_true(lengths_fit(2, 8, 10))
+  assert_false(lengths_fit(2, 9, 10))
+  assert_false(lengths_fit(-1, 0, 10))
+  assert_false(lengths_fit(0, -1, 10))
+  assert_false(lengths_fit(2147483647, 2, 10))
+  assert_false(lengths_fit(2, 2147483647, 10))
+}

@@ -232,7 +232,7 @@ test "concave matches concaveman 2.0.0 on random points" {
   for c in cases {
     let (n, seed, scale, round, concavity, threshold, want) = c
     let t = random_points(n, seed, scale, round)
-    let out = @hull.concave(t, concavity, threshold)
+    let out = @hull.concave(t, concavity, threshold).unwrap()
     assert_eq(out.length(), 1)
     assert_eq(out.kinds[0], Polygon)
     let got = []
@@ -295,7 +295,7 @@ test "convex visits every row's vertices as Turf's convex does" {
   b.end_ring()
   b.end_part()
   b.end_feature(MultiPoint)
-  let out = @hull.convex(b.finish())
+  let out = @hull.convex(b.finish()).unwrap()
   assert_eq(out.length(), 1)
   assert_eq(out.kinds[0], Polygon)
   assert_eq(out.columns.length(), 0)
@@ -313,19 +313,22 @@ test "convex visits every row's vertices as Turf's convex does" {
 
 ///|
 test "convex is empty where Turf's convex gives null" {
-  assert_eq(@hull.convex(@geom.Table::new()).length(), 0)
-  assert_eq(@hull.convex(multi_point([(1.0, 2.0)])).length(), 0)
-  assert_eq(@hull.convex(multi_point([(1.0, 2.0), (3.0, 4.0)])).length(), 0)
+  assert_eq(@hull.convex(@geom.Table::new()).unwrap().length(), 0)
+  assert_eq(@hull.convex(multi_point([(1.0, 2.0)])).unwrap().length(), 0)
+  assert_eq(
+    @hull.convex(multi_point([(1.0, 2.0), (3.0, 4.0)])).unwrap().length(),
+    0,
+  )
   let collinear = multi_point([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0), (3.0, 3.0)])
-  assert_eq(@hull.convex(collinear).length(), 0)
+  assert_eq(@hull.convex(collinear).unwrap().length(), 0)
   let same = multi_point([(5.0, 5.0), (5.0, 5.0), (5.0, 5.0)])
-  assert_eq(@hull.convex(same).length(), 0)
+  assert_eq(@hull.convex(same).unwrap().length(), 0)
 }
 
 ///|
 test "convex keeps concaveman's start and order on small sets" {
   let triangle = multi_point([(0.0, 0.0), (4.0, 0.0), (2.0, 3.0)])
-  assert_eq(ring_of(@hull.convex(triangle)), [
+  assert_eq(ring_of(@hull.convex(triangle).unwrap()), [
     (4.0, 0.0),
     (0.0, 0.0),
     (2.0, 3.0),
@@ -340,7 +343,7 @@ test "convex keeps concaveman's start and order on small sets" {
     (1.0, 1.0),
     (0.5, 0.5),
   ])
-  assert_eq(ring_of(@hull.convex(square)), [
+  assert_eq(ring_of(@hull.convex(square).unwrap()), [
     (1.0, 0.0),
     (0.0, 0.0),
     (0.0, 1.0),
@@ -361,7 +364,7 @@ test "concave reads concavity and length threshold as concaveman does" {
     (0.1, 0.5),
   ])
   let nan = @double.not_a_number
-  assert_eq(ring_of(@hull.concave(pts, nan, nan)), [
+  assert_eq(ring_of(@hull.concave(pts, nan, nan).unwrap()), [
     (1.0, 0.0),
     (0.0, 0.0),
     (0.0, 1.0),
@@ -377,8 +380,8 @@ test "concave reads concavity and length threshold as concaveman does" {
     (1.0, 1.0),
     (1.0, 0.0),
   ]
-  assert_eq(ring_of(@hull.concave(pts, -1.0, -1.0)), deep)
-  assert_eq(ring_of(@hull.concave(pts, 0.0, 0.0)), deep)
+  assert_eq(ring_of(@hull.concave(pts, -1.0, -1.0).unwrap()), deep)
+  assert_eq(ring_of(@hull.concave(pts, 0.0, 0.0).unwrap()), deep)
 }
 
 ///|
@@ -391,7 +394,7 @@ test "concave leaves out vertices with a non-finite coordinate" {
     (@double.infinity, 3.0),
     (0.0, 1.0),
   ])
-  assert_eq(ring_of(@hull.convex(pts)), [
+  assert_eq(ring_of(@hull.convex(pts).unwrap()), [
     (1.0, 0.0),
     (0.0, 0.0),
     (0.0, 1.0),
@@ -399,11 +402,11 @@ test "concave leaves out vertices with a non-finite coordinate" {
     (1.0, 0.0),
   ])
   let none = multi_point([(@double.not_a_number, 0.0)])
-  assert_eq(@hull.convex(none).length(), 0)
+  assert_eq(@hull.convex(none).unwrap().length(), 0)
 }
 
 ///|
-test "concave is empty past MAX_HULL_POINTS" {
+test "concave and convex give None past MAX_HULL_POINTS" {
   let b = @geom.TableBuilder::new()
   for i in 0..<=@hull.MAX_HULL_POINTS {
     b.point(i.to_double(), (i % 7).to_double())
@@ -411,7 +414,9 @@ test "concave is empty past MAX_HULL_POINTS" {
   b.end_ring()
   b.end_part()
   b.end_feature(MultiPoint)
-  assert_eq(@hull.concave(b.finish(), 2.0, 0.0).length(), 0)
+  let t = b.finish()
+  assert_true(@hull.concave(t, 2.0, 0.0) is None)
+  assert_true(@hull.convex(t) is None)
 }
 
 ///|
@@ -433,12 +438,15 @@ test "concave and convex take rbush's logarithms from trig" {
       (m.ln)(x)
     },
   }
-  assert_eq(@hull.convex(t, trig~).coords, @hull.convex(t).coords)
+  assert_eq(
+    @hull.convex(t, trig~).unwrap().coords,
+    @hull.convex(t).unwrap().coords,
+  )
   assert_true(calls.val > 0)
   calls.val = 0
   assert_eq(
-    @hull.concave(t, 2.0, 0.0, trig~).coords,
-    @hull.concave(t, 2.0, 0.0).coords,
+    @hull.concave(t, 2.0, 0.0, trig~).unwrap().coords,
+    @hull.concave(t, 2.0, 0.0).unwrap().coords,
   )
   assert_true(calls.val > 0)
 }

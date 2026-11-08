@@ -631,7 +631,8 @@ Test / benchmark data:
   square-grid, rectangle-grid, hex-grid, triangle-grid, interpolate, bbox and
   centroid 7.4.0 (without `mask`), and isolines/ @turf/isolines and
   @turf/isobands 7.4.0 (with @turf/area, bbox, boolean-point-in-polygon and explode;
-  point in polygon as point-in-polygon-hao 1.2.4, below)
+  point in polygon as point-in-polygon-hao 1.2.4, below); core/jsmath.mbt holds the
+  parts of @turf/helpers, @turf/distance and @turf/area they share
   https://github.com/Turfjs/turf — MIT License:
 
     The MIT License (MIT)

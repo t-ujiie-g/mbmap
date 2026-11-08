@@ -18,40 +18,13 @@ pub const DBSCAN_NOISE : Int32 = 2
 pub const DBSCAN_SKIPPED : Int32 = 3
 
 ///|
-const PI : Double = 3.141592653589793
+/// Most neighbor candidates `dbscan` looks at over all its region queries
+/// (AGENTS.md §8.2); past them it gives None.
+pub const MAX_DBSCAN_CANDIDATES : Int64 = 1_000_000_000
 
 ///|
 /// Turf's factor for kilometers (`earthRadius / 1e3`).
-let km_factor : Double = 6371008.8 / 1000.0
-
-///|
-/// Turf's `degreesToRadians`, which first takes the degrees modulo 360.
-fn radians(degrees : Double) -> Double {
-  degrees % 360.0 * PI / 180.0
-}
-
-///|
-/// JavaScript's `Math.max` and `Math.min`: NaN if either is.
-fn js_max(a : Double, b : Double) -> Double {
-  if is_nan(a) || is_nan(b) {
-    @double.not_a_number
-  } else if a > b {
-    a
-  } else {
-    b
-  }
-}
-
-///|
-fn js_min(a : Double, b : Double) -> Double {
-  if is_nan(a) || is_nan(b) {
-    @double.not_a_number
-  } else if a < b {
-    a
-  } else {
-    b
-  }
-}
+let km_factor : Double = @core.EARTH_RADIUS / 1000.0
 
 ///|
 /// The points with their x order, for Turf's `regionQuery`. Turf's rbush is
@@ -67,6 +40,8 @@ priv struct Region {
   cos_lat : FixedArray[Double]
   any_nan : Bool
   found : Array[Int32]
+  mut candidates : Int64
+  max_candidates : Int64
 }
 
 ///|
@@ -74,11 +49,12 @@ fn Region::new(
   pts : Points,
   max_distance : Double,
   trig : @core.Trig,
+  max_candidates : Int64,
 ) -> Region {
   let n = pts.xs.length()
   let mut any_nan = false
   for i in 0..<n {
-    if is_nan(pts.xs[i]) || is_nan(pts.ys[i]) {
+    if pts.xs[i].is_nan() || pts.ys[i].is_nan() {
       any_nan = true
     }
   }
@@ -91,12 +67,14 @@ fn Region::new(
     pts,
     trig,
     max_distance,
-    lat_degrees: max_distance / km_factor % (2.0 * PI) * 180.0 / PI,
+    lat_degrees: max_distance / km_factor % (2.0 * @core.PI) * 180.0 / @core.PI,
     order,
     sorted_x: FixedArray::makei(n, i => pts.xs[order[i]]),
-    cos_lat: FixedArray::makei(n, i => trig.cos(radians(pts.ys[i]))),
+    cos_lat: FixedArray::makei(n, i => trig.cos(@core.turf_radians(pts.ys[i]))),
     any_nan,
     found: [],
+    candidates: 0L,
+    max_candidates,
   }
 }
 
@@ -104,34 +82,35 @@ fn Region::new(
 /// `@turf/distance` from point `i` to point `j`, in kilometers.
 fn Region::distance(self : Region, i : Int32, j : Int32) -> Double {
   let trig = self.trig
-  let d_lat = radians(self.pts.ys[j] - self.pts.ys[i])
-  let d_lon = radians(self.pts.xs[j] - self.pts.xs[i])
+  let d_lat = @core.turf_radians(self.pts.ys[j] - self.pts.ys[i])
+  let d_lon = @core.turf_radians(self.pts.xs[j] - self.pts.xs[i])
   let a = trig.pow(trig.sin(d_lat / 2.0), 2.0) +
     trig.pow(trig.sin(d_lon / 2.0), 2.0) * self.cos_lat[i] * self.cos_lat[j]
   2.0 * trig.atan2(a.sqrt(), (1.0 - a).sqrt()) * km_factor
 }
 
 ///|
-/// Turf's `regionQuery` into `self.found`. A NaN coordinate anywhere makes
-/// rbush's root box NaN, which no search box meets.
-fn Region::query(self : Region, i : Int32) -> Unit {
+/// Turf's `regionQuery` into `self.found`; false once the candidates looked at
+/// pass `max_candidates`. A NaN coordinate anywhere makes rbush's root
+/// box NaN, which no search box meets.
+fn Region::query(self : Region, i : Int32) -> Bool {
   self.found.clear()
-  guard !self.any_nan else { return }
+  guard !self.any_nan else { return true }
   let x = self.pts.xs[i]
   let y = self.pts.ys[i]
   let lat = self.lat_degrees
-  let min_y = js_max(y - lat, -90.0)
-  let max_y = js_min(y + lat, 90.0)
+  let min_y = @core.js_max(y - lat, -90.0)
+  let max_y = @core.js_min(y + lat, 90.0)
   let lon = if min_y < 0.0 && max_y > 0.0 {
     lat
   } else if min_y.abs() < max_y.abs() {
-    lat / self.trig.cos(radians(max_y))
+    lat / self.trig.cos(@core.turf_radians(max_y))
   } else {
-    lat / self.trig.cos(radians(min_y))
+    lat / self.trig.cos(@core.turf_radians(min_y))
   }
-  let min_x = js_max(x - lon, -360.0)
-  let max_x = js_min(x + lon, 360.0)
-  guard min_x <= max_x && min_y <= max_y else { return }
+  let min_x = @core.js_max(x - lon, -360.0)
+  let max_x = @core.js_min(x + lon, 360.0)
+  guard min_x <= max_x && min_y <= max_y else { return true }
   let sorted = self.sorted_x
   let mut lo = 0
   let mut hi = sorted.length()
@@ -143,30 +122,45 @@ fn Region::query(self : Region, i : Int32) -> Unit {
       hi = mid
     }
   }
-  for k = lo; k < sorted.length() && sorted[k] <= max_x; k = k + 1 {
+  let mut k = lo
+  while k < sorted.length() && sorted[k] <= max_x {
     let j = self.order[k]
     let yj = self.pts.ys[j]
     if yj >= min_y && yj <= max_y && self.distance(i, j) <= self.max_distance {
       self.found.push(j)
     }
+    k += 1
   }
+  self.candidates += (k - lo).to_int64()
+  self.candidates <= self.max_candidates
 }
 
 ///|
 /// `@turf/clusters-dbscan` over `t`'s Point rows (km; `min_points` 0 is 3): per
 /// row its `cluster` (-1 for none) and `DBSCAN_*` kind (`DBSCAN_SKIPPED` for
-/// other rows). None past `MAX_CLUSTER_POINTS`.
-pub fn dbscan_checked(
+/// other rows). None past `MAX_CLUSTER_POINTS` or `MAX_DBSCAN_CANDIDATES`.
+pub fn dbscan(
   t : @geom.Table,
   max_distance : Double,
   min_points : Int32,
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> FixedArray[Int32]? {
+  dbscan_within(t, max_distance, min_points, trig, MAX_DBSCAN_CANDIDATES)
+}
+
+///|
+fn dbscan_within(
+  t : @geom.Table,
+  max_distance : Double,
+  min_points : Int32,
+  trig : @core.Trig,
+  max_candidates : Int64,
+) -> FixedArray[Int32]? {
   guard points_of(t) is Some(pts) else { return None }
   let out = skipped(t)
   let n = pts.rows.length()
   let min_points = if min_points == 0 { 3 } else { min_points }
-  let region = Region::new(pts, max_distance, trig)
+  let region = Region::new(pts, max_distance, trig, max_candidates)
   let visited = FixedArray::make(n, false)
   let noise = FixedArray::make(n, false)
   let queued = FixedArray::make(n, false)
@@ -187,7 +181,7 @@ pub fn dbscan_checked(
     if visited[i] {
       continue
     }
-    region.query(i)
+    guard region.query(i) else { return None }
     if region.found.length() < min_points {
       noise[i] = true
       continue
@@ -201,7 +195,7 @@ pub fn dbscan_checked(
       let j = queue[h]
       if !visited[j] {
         visited[j] = true
-        region.query(j)
+        guard region.query(j) else { return None }
         if region.found.length() >= min_points {
           enqueue()
         }
@@ -221,20 +215,6 @@ pub fn dbscan_checked(
     }
   }
   Some(out)
-}
-
-///|
-/// `dbscan_checked`, with every row `DBSCAN_SKIPPED` past `MAX_CLUSTER_POINTS`.
-pub fn dbscan(
-  t : @geom.Table,
-  max_distance : Double,
-  min_points : Int32,
-  trig~ : @core.Trig = @core.Trig::moonbit(),
-) -> FixedArray[Int32] {
-  match dbscan_checked(t, max_distance, min_points, trig~) {
-    Some(out) => out
-    None => skipped(t)
-  }
 }
 
 ///|

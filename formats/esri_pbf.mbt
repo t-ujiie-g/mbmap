@@ -3,10 +3,8 @@
 
 ///|
 /// Reads an ArcGIS REST query result in protocol buffers (`f=pbf`,
-/// FeatureCollection.proto's `FeatureResult`) as `read_esri_json` reads its JSON:
-/// quantized coordinates restored by the result's transform (y down from an upper-left
-/// origin), Z and M dropped, rings as terraformer gives them; ids from the
-/// `objectIdFieldName` field. Gives the table and whether `exceededTransferLimit` is set.
+/// FeatureCollection.proto's `FeatureResult`) as `read_esri_json` reads its JSON;
+/// quantized coordinates go through the transform with y down from the upper left.
 pub fn read_esri_pbf(bytes : BytesView) -> (@geom.Table, Bool) raise ReadError {
   esri_pbf_table(bytes, @geom.MAX_TABLE_POINTS, @geom.MAX_TABLE_CELLS)
 }
@@ -329,10 +327,9 @@ fn esri_pbf_geometry(
 }
 
 ///|
-/// Adds the geometry of `lengths` and `values` (`stride` values a position, each part's
-/// first absolute and the rest deltas, as arcgis-pbf-parser reads them) to `shapes`;
-/// why not when the lengths ask for more values than there are, or telling rings apart
-/// passes the read's `steps`. Geometry types beyond polygons add nothing.
+/// Adds the geometry of `lengths` and `values` (`stride` values a position, deltas
+/// after each part's first, as arcgis-pbf-parser reads them) to `shapes`, or says
+/// why not: lengths past the values, or rings past the read's `steps`.
 fn esri_shape(
   res : EsriResult,
   stride : Int32,

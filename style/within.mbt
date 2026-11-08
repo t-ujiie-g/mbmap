@@ -75,7 +75,7 @@ fn tile_coordinates(
     360.0
   let tiles = tiles_at(z)
   let extent = GEOMETRY_EXTENT.to_double()
-  (js_round(x * tiles * extent), js_round(y * tiles * extent))
+  (@core.js_round(x * tiles * extent), @core.js_round(y * tiles * extent))
 }
 
 ///|

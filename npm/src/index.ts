@@ -159,8 +159,8 @@ export interface ExpressionFeature {
 export function evaluateExpression(expression: unknown, features: readonly ExpressionFeature[], { zoom = 0 }: { zoom?: number } = {}): unknown[] {
   const objects = features.map((f) => {
     const o: Record<string, unknown> = Object.assign(Object.create(null), f.properties);
-    if (f.id !== undefined && f.id !== null) o.$id = f.id;
-    if (f.geometry?.type) o.$type = f.geometry.type;
+    o.$id = f.id ?? null;
+    o.$type = f.geometry?.type ?? null;
     return o;
   });
   const out = engine.evaluate_expression(JSON.stringify(expression), objects, zoom);

@@ -1,17 +1,15 @@
-// `mbmap/analysis`: spatial analysis in a worker of its own, started on the
-// first `load`. Measures and predicates match Turf.js; the index is flatbush;
-// geometry operations are Clipper2's, spatial relations JTS's (DE-9IM),
-// simplification, hulls, Delaunay, Voronoi and line operations Turf's, concaveman's
-// and d3-delaunay's, and grids, IDW, clusters, contours and density Turf's and
-// d3-contour's, each in a module loaded on their first use.
+// `mbmap/analysis`: spatial analysis in a worker of its own, started on the first `load`, matching
+// Turf.js, flatbush, Clipper2, JTS, concaveman, d3 and GDAL, each module loaded on its first use.
 import { crsArg as crsArgOf, type Crs } from "./crs";
 import { demZoom } from "./dem-zoom";
 import { packPattern } from "./relate-pattern";
-import { CURVATURE_COEFF, groundDistance, sight } from "./sight";
+import { CURVATURE_COEFF, distance, sight } from "./sight";
 
-export { classBreaks, classStep, MAX_CLASS_VALUES, MAX_CLASSES, statistics, type ClassMethod, type Statistics } from "./classify";
+export { classBreaks, classStep, MAX_CKMEANS_CELLS, MAX_CLASS_VALUES, MAX_CLASSES, MAX_JENKS_WORK, statistics, type ClassMethod, type Statistics } from "./classify";
 import { httpUrl, resolveTemplate, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
+
+export { distance };
 
 /** `[minX, minY, maxX, maxY]` in degrees. */
 export type BBox = [number, number, number, number];
@@ -109,6 +107,7 @@ const MAX_SIGHT_SAMPLES = 100_000;
 /** A routable graph of lines (`Dataset.network`). */
 export class Network {
   #id: number;
+  #generation = client.generation;
   #disposed = false;
 
   /** @internal */
@@ -121,9 +120,9 @@ export class Network {
    * geojson-path-finder finds it: its coordinates and length in kilometers; null where none joins them.
    */
   async route(from: [number, number], to: [number, number]): Promise<{ path: [number, number][]; weight: number } | null> {
-    if (this.#disposed) throw new Error("mbmap: analysis: the network was disposed");
-    if (![...from, ...to].every(Number.isFinite) || from.length !== 2 || to.length !== 2) throw new Error("mbmap: analysis: invalid points");
-    const v = await call<Float64Array>("route", { network: this.#id, from, to });
+    const network = live(this.#id, this.#generation, this.#disposed, "network");
+    if (!isPoint(from) || !isPoint(to)) throw new Error("mbmap: analysis: invalid points");
+    const v = await call<Float64Array>("route", { network, from, to });
     if (v.length === 0) return null;
     return { weight: v[0], path: Array.from({ length: (v.length - 1) / 2 }, (_, i): [number, number] => [v[1 + i * 2], v[2 + i * 2]]) };
   }
@@ -132,7 +131,7 @@ export class Network {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    void call("disposeNetwork", { network: this.#id });
+    free("disposeNetwork", { network: this.#id }, this.#generation);
   }
 }
 
@@ -156,6 +155,7 @@ export interface DensityOptions {
 
 /** What a DBSCAN point is. */
 export type DbscanKind = "core" | "edge" | "noise";
+// By the codes DBSCAN_* of surface_worker's clusters (clusters/dbscan.mbt).
 const DBSCAN_KINDS: DbscanKind[] = ["core", "edge", "noise"];
 
 // surface_worker's grid codes.
@@ -165,15 +165,11 @@ const GRIDS = { point: 0, square: 1, hex: 2, triangle: 3 } as const;
  * A grid over `bbox` as Turf makes it (`cellSide` in kilometers): `point` (pointGrid), `square`
  * (squareGrid), `hex` (hexGrid; `triangles` splits each hexagon in six) or `triangle` (triangleGrid).
  */
-export function grid(bbox: BBox, cellSide: number, type: keyof typeof GRIDS = "square", options: AnalysisOptions & { triangles?: boolean } = {}): Promise<Dataset> {
-  if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every(Number.isFinite) || !(cellSide > 0) || !(type in GRIDS)) {
-    return Promise.reject(new Error("mbmap: analysis: invalid grid"));
-  }
+export async function grid(bbox: BBox, cellSide: number, type: keyof typeof GRIDS = "square", options: AnalysisOptions & { triangles?: boolean } = {}): Promise<Dataset> {
+  if (!isBox(bbox) || !(cellSide > 0 && cellSide < Infinity) || !(type in GRIDS)) throw new Error("mbmap: analysis: invalid grid");
   start(options);
   const fn = ["point_grid", "square_grid", "hex_grid", "triangle_grid"][GRIDS[type]];
-  return call<{ dataset: number; features: number }>("surface", { dataset: -1, fn, args: [...bbox, cellSide, options.triangles ? 1 : 0] }).then(
-    ({ dataset, features }) => new Dataset(dataset, features),
-  );
+  return datasetOf(call("surface", { dataset: -1, fn, args: [...bbox, cellSide, options.triangles ? 1 : 0] }));
 }
 
 /** Where a feature's lines come nearest to a point (`Dataset.nearestPointOnLine`). */
@@ -213,6 +209,26 @@ function call<T>(op: string, args: object, transfer: Transferable[] = []): Promi
   return client.call<T>(op, args, transfer);
 }
 
+const isPoint = (p: unknown): p is [number, number] => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+const isBox = (b: unknown): b is BBox => Array.isArray(b) && b.length === 4 && b.every(Number.isFinite);
+
+// A handle's worker id, refused once disposed or when the worker that gave it was stopped (ids start again).
+function live(id: number, generation: number, disposed: boolean, what: string): number {
+  if (disposed) throw new Error(`mbmap: analysis: the ${what} was disposed`);
+  if (generation !== client.generation) throw new Error(`mbmap: analysis: the ${what} went with the terminated worker`);
+  return id;
+}
+
+// Frees a handle in the worker, unless it went with an earlier one.
+function free(op: string, args: object, generation: number): void {
+  if (generation === client.generation) call(op, args).catch(() => {});
+}
+
+async function datasetOf(r: Promise<{ dataset: number; features: number }>): Promise<Dataset> {
+  const { dataset, features } = await r;
+  return new Dataset(dataset, features);
+}
+
 // Codes of geometry_worker/geometry.mbt.
 const JOIN = { round: 0, miter: 1, square: 2, bevel: 3 } as const;
 const CAP = { round: 0, butt: 1, square: 2 } as const;
@@ -230,6 +246,7 @@ const MEASURE = { area: 0, length: 1, centroid: 2, bbox: 3 } as const;
 /** GeoJSON read into the analysis worker, with its spatial index built on first use. */
 export class Dataset {
   #id: number;
+  #generation = client.generation;
   #disposed = false;
   /** The number of features (a GeometryCollection counts once per member). */
   readonly length: number;
@@ -240,14 +257,12 @@ export class Dataset {
     this.length = length;
   }
 
-  #call<T>(op: string, args: object = {}): Promise<T> {
-    if (this.#disposed) return Promise.reject(new Error("mbmap: analysis: the dataset was disposed"));
-    return call<T>(op, { dataset: this.#id, ...args });
+  async #call<T>(op: string, args: object = {}): Promise<T> {
+    return call<T>(op, { dataset: Dataset.#idOf(this), ...args });
   }
 
-  static #idOf(d: Dataset, role: string): number {
-    if (d.#disposed) throw new Error(`mbmap: analysis: the ${role} dataset was disposed`);
-    return d.#id;
+  static #idOf(d: Dataset, role = ""): number {
+    return live(d.#id, d.#generation, d.#disposed, `${role}dataset`);
   }
 
   /** Each feature's area in square meters (0 for points and lines). */
@@ -281,13 +296,13 @@ export class Dataset {
   }
 
   /** This dataset's point features with a point inside some polygon of `polygons` (boundaries count). */
-  pointsWithin(polygons: Dataset): Promise<Int32Array> {
-    return call("within", { points: Dataset.#idOf(this, "points"), polygons: Dataset.#idOf(polygons, "polygons") });
+  async pointsWithin(polygons: Dataset): Promise<Int32Array> {
+    return call("within", { points: Dataset.#idOf(this, "points "), polygons: Dataset.#idOf(polygons, "polygons ") });
   }
 
   /** Per polygon of this dataset, the points of `points` inside it and their `property` values. */
   async collect(points: Dataset, property: string): Promise<Collected> {
-    const v = await call<Float64Array>("collect", { polygons: Dataset.#idOf(this, "polygons"), points: Dataset.#idOf(points, "points"), property });
+    const v = await call<Float64Array>("collect", { polygons: Dataset.#idOf(this, "polygons "), points: Dataset.#idOf(points, "points "), property });
     const n = v.length / 3;
     const out = { count: new Float64Array(n), numbers: new Float64Array(n), sum: new Float64Array(n), mean: new Float64Array(n) };
     for (let i = 0; i < n; i++) {
@@ -309,33 +324,23 @@ export class Dataset {
    * longitude and latitude as a plane) or matching a DE-9IM `pattern`, as `[i0, j0, i1, j1, …]`
    * by `i` then `j`. Only features whose boxes meet are tested, so `disjoint` is not offered.
    */
-  relate(other: Dataset, relation: Relation | { pattern: string }): Promise<Int32Array> {
-    let predicate: number;
-    let pattern = 0;
-    try {
-      predicate = typeof relation === "string" ? RELATIONS.indexOf(relation) : -1;
-      if (typeof relation === "string" && predicate < 0) throw new Error(`mbmap: analysis: unknown relation ${relation}`);
-      if (typeof relation !== "string") pattern = packPattern(relation.pattern);
-      return call("relate", { a: Dataset.#idOf(this, "related"), b: Dataset.#idOf(other, "relating"), predicate, pattern });
-    } catch (err) {
-      return Promise.reject(err);
-    }
+  async relate(other: Dataset, relation: Relation | { pattern: string }): Promise<Int32Array> {
+    const predicate = typeof relation === "string" ? RELATIONS.indexOf(relation) : -1;
+    if (typeof relation === "string" && predicate < 0) throw new Error(`mbmap: analysis: unknown relation ${relation}`);
+    const pattern = typeof relation === "string" ? 0 : packPattern(relation.pattern);
+    return call("relate", { a: Dataset.#idOf(this, "related "), b: Dataset.#idOf(other, "relating "), predicate, pattern });
   }
 
-  #shapes(shape: string, args: number[] = []): Promise<Dataset> {
-    try {
-      return this.#geometry("shapes", { dataset: Dataset.#idOf(this, "shaped"), shape, args });
-    } catch (err) {
-      return Promise.reject(err);
-    }
+  async #shapes(shape: string, args: number[] = []): Promise<Dataset> {
+    return datasetOf(call("shapes", { dataset: Dataset.#idOf(this, "shaped "), shape, args }));
   }
 
   /**
    * Every feature simplified as Turf's `simplify` does (radial distance, then Douglas-Peucker;
    * `highQuality` skips the first), `tolerance` in degrees; properties kept.
    */
-  simplify({ tolerance = 1, highQuality = false }: { tolerance?: number; highQuality?: boolean } = {}): Promise<Dataset> {
-    if (!(tolerance >= 0)) return Promise.reject(new Error("mbmap: analysis: invalid tolerance"));
+  async simplify({ tolerance = 1, highQuality = false }: { tolerance?: number; highQuality?: boolean } = {}): Promise<Dataset> {
+    if (!(tolerance >= 0 && tolerance < Infinity)) throw new Error("mbmap: analysis: invalid tolerance");
     return this.#shapes("simplify", [tolerance, highQuality ? 1 : 0]);
   }
 
@@ -348,8 +353,8 @@ export class Dataset {
    * A concave hull of every vertex here as one polygon (concaveman's: `concavity` from 1, tight, up;
    * edges shorter than `lengthThreshold` degrees stay), or no feature for fewer than three.
    */
-  concaveHull({ concavity = 2, lengthThreshold = 0 }: { concavity?: number; lengthThreshold?: number } = {}): Promise<Dataset> {
-    if (!(concavity > 0) || !(lengthThreshold >= 0)) return Promise.reject(new Error("mbmap: analysis: invalid concave hull options"));
+  async concaveHull({ concavity = 2, lengthThreshold = 0 }: { concavity?: number; lengthThreshold?: number } = {}): Promise<Dataset> {
+    if (!(concavity > 0) || !(lengthThreshold >= 0)) throw new Error("mbmap: analysis: invalid concave hull options");
     return this.#shapes("concave", [concavity, lengthThreshold]);
   }
 
@@ -362,18 +367,14 @@ export class Dataset {
    * The Voronoi cell of each point here, cut to `bbox`, with that point's properties (d3-delaunay's
    * `cellPolygon`); a point without a cell (a duplicate) keeps its row without geometry.
    */
-  voronoi(bbox: BBox): Promise<Dataset> {
-    if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every(Number.isFinite) || bbox[0] > bbox[2] || bbox[1] > bbox[3]) {
-      return Promise.reject(new Error("mbmap: analysis: invalid bbox"));
-    }
+  async voronoi(bbox: BBox): Promise<Dataset> {
+    if (!isBox(bbox) || bbox[0] > bbox[2] || bbox[1] > bbox[3]) throw new Error("mbmap: analysis: invalid bbox");
     return this.#shapes("voronoi", bbox);
   }
 
   /** Each line cut between the points on it nearest to `start` and `stop`, as Turf's `lineSlice`; properties kept. */
-  lineSlice(start: [number, number], stop: [number, number]): Promise<Dataset> {
-    if (![...start, ...stop].every(Number.isFinite) || start.length !== 2 || stop.length !== 2) {
-      return Promise.reject(new Error("mbmap: analysis: invalid points"));
-    }
+  async lineSlice(start: [number, number], stop: [number, number]): Promise<Dataset> {
+    if (!isPoint(start) || !isPoint(stop)) throw new Error("mbmap: analysis: invalid points");
     return this.#shapes("line_slice", [...start, ...stop]);
   }
 
@@ -391,12 +392,8 @@ export class Dataset {
     });
   }
 
-  #surface(fn: string, args: number[], text = "", numbers: number[] = []): Promise<Dataset> {
-    try {
-      return this.#geometry("surface", { dataset: Dataset.#idOf(this, "used"), fn, args, text, numbers });
-    } catch (err) {
-      return Promise.reject(err);
-    }
+  async #surface(fn: string, args: number[], text = "", numbers: number[] = []): Promise<Dataset> {
+    return datasetOf(call("surface", { dataset: Dataset.#idOf(this, "used "), fn, args, text, numbers }));
   }
 
   /**
@@ -404,32 +401,32 @@ export class Dataset {
    * the points' by inverse distance weighting (Turf's `interpolate`): `gridType` `square` (default),
    * `point`, `hex` or `triangle`, `cellSize` in kilometers, `weight` the power of the distance.
    */
-  interpolate(cellSize: number, { gridType = "square", property = "elevation", weight = 1 }: InterpolateOptions = {}): Promise<Dataset> {
-    if (!(cellSize > 0) || !(gridType in GRIDS) || !Number.isFinite(weight)) return Promise.reject(new Error("mbmap: analysis: invalid interpolation options"));
+  async interpolate(cellSize: number, { gridType = "square", property = "elevation", weight = 1 }: InterpolateOptions = {}): Promise<Dataset> {
+    if (!(cellSize > 0 && cellSize < Infinity) || !(gridType in GRIDS) || !Number.isFinite(weight)) throw new Error("mbmap: analysis: invalid interpolation options");
     return this.#surface("interpolate", [cellSize, GRIDS[gridType], weight], property);
   }
 
   /** Lines where the grid of points here (a `pointGrid`) crosses each of `breaks` in `zProperty` (Turf's `isolines`). */
-  isolines(breaks: number[], { zProperty = "elevation" }: { zProperty?: string } = {}): Promise<Dataset> {
-    if (!Array.isArray(breaks) || !breaks.every(Number.isFinite)) return Promise.reject(new Error("mbmap: analysis: invalid breaks"));
+  async isolines(breaks: number[], { zProperty = "elevation" }: { zProperty?: string } = {}): Promise<Dataset> {
+    if (!Array.isArray(breaks) || !breaks.every(Number.isFinite)) throw new Error("mbmap: analysis: invalid breaks");
     return this.#surface("isolines", [], zProperty, breaks);
   }
 
   /** Polygons of the grid of points here between each two of `breaks` in `zProperty` (Turf's `isobands`). */
-  isobands(breaks: number[], { zProperty = "elevation" }: { zProperty?: string } = {}): Promise<Dataset> {
-    if (!Array.isArray(breaks) || !breaks.every(Number.isFinite)) return Promise.reject(new Error("mbmap: analysis: invalid breaks"));
+  async isobands(breaks: number[], { zProperty = "elevation" }: { zProperty?: string } = {}): Promise<Dataset> {
+    if (!Array.isArray(breaks) || !breaks.every(Number.isFinite)) throw new Error("mbmap: analysis: invalid breaks");
     return this.#surface("isobands", [], zProperty, breaks);
   }
 
   /**
-   * Contours of the points' kernel density as d3-contour's `contourDensity` draws them, on a `width`
-   * x `height` pixel grid over `bbox` (by default the points' box; `cellSize`, `bandwidth` in pixels,
+   * Contours of the points' kernel density as d3-contour's `contourDensity` draws them (its defaults too), on a
+   * `width` x `height` pixel grid over `bbox` (by default the points' box; `cellSize`, `bandwidth` √420 in pixels,
    * `thresholds` how many), each a MultiPolygon with its density `value`; `weight` names a property.
    */
-  density({ bbox, width = 960, height = 500, cellSize = 4, bandwidth = 20.4939015319192, thresholds = 20, weight }: DensityOptions = {}): Promise<Dataset> {
+  async density({ bbox, width = 960, height = 500, cellSize = 4, bandwidth = 20.4939015319192, thresholds = 20, weight }: DensityOptions = {}): Promise<Dataset> {
     const box = bbox ?? [NaN, NaN, NaN, NaN];
-    if (!(width > 0 && height > 0 && cellSize >= 1 && bandwidth >= 0 && Number.isInteger(thresholds) && thresholds >= 0) || box.length !== 4) {
-      return Promise.reject(new Error("mbmap: analysis: invalid density options"));
+    if (![width, height, cellSize, bandwidth].every(Number.isFinite) || !(width > 0 && height > 0 && cellSize >= 1 && bandwidth >= 0 && Number.isInteger(thresholds) && thresholds >= 0) || box.length !== 4) {
+      throw new Error("mbmap: analysis: invalid density options");
     }
     return this.#surface("density", [...box, width, height, cellSize, bandwidth, thresholds, weight === undefined ? 0 : 1], weight ?? "");
   }
@@ -471,18 +468,9 @@ export class Dataset {
   }
 
   /** The DE-9IM matrix of feature `i` here and feature `j` of `other`, as JTS writes it (`"FF2F11212"`). */
-  relateMatrix(other: Dataset, i: number, j: number): Promise<string> {
-    if (!Number.isInteger(i) || !Number.isInteger(j) || i < 0 || j < 0) return Promise.reject(new Error("mbmap: analysis: invalid feature indices"));
-    try {
-      return call("relate", { a: Dataset.#idOf(this, "related"), b: Dataset.#idOf(other, "relating"), predicate: 0, pattern: 0, pair: [i, j] });
-    } catch (err) {
-      return Promise.reject(err);
-    }
-  }
-
-  async #geometry(op: string, args: object): Promise<Dataset> {
-    const { dataset, features } = await call<{ dataset: number; features: number }>(op, args);
-    return new Dataset(dataset, features);
+  async relateMatrix(other: Dataset, i: number, j: number): Promise<string> {
+    if (!Number.isInteger(i) || !Number.isInteger(j) || i < 0 || j < 0) throw new Error("mbmap: analysis: invalid feature indices");
+    return call("relate", { a: Dataset.#idOf(this, "related "), b: Dataset.#idOf(other, "relating "), predicate: 0, pattern: 0, pair: [i, j] });
   }
 
   /**
@@ -490,28 +478,33 @@ export class Dataset {
    * grow) as polygons with its properties; vanished features keep their row
    * without geometry.
    */
-  buffer(meters: number, { mode = "geodesic", join = "round", cap = "round", arcTolerance = 0, crs = 3857 }: BufferOptions = {}): Promise<Dataset> {
+  async buffer(meters: number, { mode = "geodesic", join = "round", cap = "round", arcTolerance = 0, crs = 3857 }: BufferOptions = {}): Promise<Dataset> {
     if (!(mode in { geodesic: 0, planar: 1 }) || !(join in JOIN) || !(cap in CAP) || !Number.isFinite(meters) || !(arcTolerance >= 0)) {
-      return Promise.reject(new Error("mbmap: analysis: invalid buffer options"));
+      throw new Error("mbmap: analysis: invalid buffer options");
     }
-    return crsArg(crs).then((code) => this.#geometry("buffer", {
-      dataset: Dataset.#idOf(this, "buffered"), meters, mode: mode === "planar" ? 1 : 0, join: JOIN[join], cap: CAP[cap], arcTolerance, crs: code,
+    const code = await crsArg(crs);
+    return datasetOf(call("buffer", {
+      dataset: Dataset.#idOf(this, "buffered "), meters, mode: mode === "planar" ? 1 : 0, join: JOIN[join], cap: CAP[cap], arcTolerance, crs: code,
     }));
   }
 
   /** All polygons merged into one feature without properties (lines and points are left out). */
-  dissolve(): Promise<Dataset> {
-    return this.#geometry("dissolve", { dataset: Dataset.#idOf(this, "dissolved") });
+  async dissolve(): Promise<Dataset> {
+    return datasetOf(call("dissolve", { dataset: Dataset.#idOf(this, "dissolved ") }));
+  }
+
+  async #overlay(other: Dataset, kind: keyof typeof OVERLAY, roles: [string, string]): Promise<Dataset> {
+    return datasetOf(call("overlay", { a: Dataset.#idOf(this, roles[0]), b: Dataset.#idOf(other, roles[1]), kind: OVERLAY[kind] }));
   }
 
   /** This dataset's features cut to the area of `other`'s polygons, with their properties. */
   clip(other: Dataset): Promise<Dataset> {
-    return this.#geometry("overlay", { a: Dataset.#idOf(this, "clipped"), b: Dataset.#idOf(other, "clipping"), kind: OVERLAY.clip });
+    return this.#overlay(other, "clip", ["clipped ", "clipping "]);
   }
 
   /** This dataset's features without the area of `other`'s polygons, with their properties. */
   erase(other: Dataset): Promise<Dataset> {
-    return this.#geometry("overlay", { a: Dataset.#idOf(this, "erased"), b: Dataset.#idOf(other, "erasing"), kind: OVERLAY.erase });
+    return this.#overlay(other, "erase", ["erased ", "erasing "]);
   }
 
   /**
@@ -519,7 +512,7 @@ export class Dataset {
    * the properties of both (`other`'s keys also found here get the suffix `_2`).
    */
   intersect(other: Dataset): Promise<Dataset> {
-    return this.#geometry("overlay", { a: Dataset.#idOf(this, "intersected"), b: Dataset.#idOf(other, "intersecting"), kind: OVERLAY.intersect });
+    return this.#overlay(other, "intersect", ["intersected ", "intersecting "]);
   }
 
   /**
@@ -527,15 +520,15 @@ export class Dataset {
    * the stretches that cross it from edge to edge, a line where they cross it; the rest stays whole.
    */
   split(lines: Dataset): Promise<Dataset> {
-    return this.#geometry("overlay", { a: Dataset.#idOf(this, "split"), b: Dataset.#idOf(lines, "splitting"), kind: OVERLAY.split });
+    return this.#overlay(lines, "split", ["split ", "splitting "]);
   }
 
   /**
    * The features as one with the first one's properties: polygons united, lines joined end to end,
    * points gathered; rejects when their kinds differ.
    */
-  merge(): Promise<Dataset> {
-    return this.#geometry("merge", { dataset: Dataset.#idOf(this, "merged") });
+  async merge(): Promise<Dataset> {
+    return datasetOf(call("merge", { dataset: Dataset.#idOf(this, "merged ") }));
   }
 
   /** The dataset as a GeoJSON FeatureCollection (feature ids are not kept), in `crs` if given. */
@@ -547,7 +540,7 @@ export class Dataset {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    call("dispose", { dataset: this.#id }).catch(() => {});
+    free("dispose", { dataset: this.#id }, this.#generation);
   }
 }
 
@@ -572,6 +565,7 @@ function encodingArgs(e: DemEncoding = "mapbox"): number[] {
 /** An elevation grid in the analysis worker, row by row from the north. */
 export class DemGrid {
   #id: number;
+  #generation = client.generation;
   #disposed = false;
   readonly width: number;
   readonly height: number;
@@ -586,9 +580,8 @@ export class DemGrid {
     this.bounds = bounds;
   }
 
-  #call<T>(op: string, args: object = {}): Promise<T> {
-    if (this.#disposed) return Promise.reject(new Error("mbmap: analysis: the grid was disposed"));
-    return call<T>(op, { grid: this.#id, ...args });
+  async #call<T>(op: string, args: object = {}): Promise<T> {
+    return call<T>(op, { grid: live(this.#id, this.#generation, this.#disposed, "grid"), ...args });
   }
 
   /**
@@ -613,12 +606,13 @@ export class DemGrid {
    * distances on Turf's sphere; `blockedAt` is the first sample that hides it.
    */
   async lineOfSight(from: [number, number], to: [number, number], { observerHeight = 2, targetHeight = 0, curvatureCoeff = CURVATURE_COEFF, samples }: LineOfSightOptions = {}): Promise<{ visible: boolean; blockedAt: [number, number] | null }> {
-    const cell = groundDistance([this.bounds[0], this.bounds[1]], [this.bounds[2], this.bounds[1]]) / this.width;
-    const n = samples ?? Math.min(MAX_SIGHT_SAMPLES, Math.max(2, Math.ceil(groundDistance(from, to) / cell) + 1));
+    if (!isPoint(from) || !isPoint(to)) throw new Error("mbmap: analysis: invalid points");
+    const cell = distance([this.bounds[0], this.bounds[1]], [this.bounds[2], this.bounds[1]]) / this.width;
+    const n = samples ?? Math.min(MAX_SIGHT_SAMPLES, Math.max(2, Math.ceil(distance(from, to) / cell) + 1));
     if (!Number.isInteger(n) || n < 2 || n > MAX_SIGHT_SAMPLES) throw new Error("mbmap: analysis: invalid number of samples");
     const points = Array.from({ length: n }, (_, i): [number, number] => [from[0] + ((to[0] - from[0]) * i) / (n - 1), from[1] + ((to[1] - from[1]) * i) / (n - 1)]);
     const heights = await this.sample(points);
-    const s = sight(heights, points.map((p) => groundDistance(from, p)), observerHeight, targetHeight, curvatureCoeff);
+    const s = sight(heights, points.map((p) => distance(from, p)), observerHeight, targetHeight, curvatureCoeff);
     return { visible: s.visible, blockedAt: s.blockedAt === null ? null : points[s.blockedAt] };
   }
 
@@ -655,7 +649,7 @@ export class DemGrid {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    call("dispose", { dataset: this.#id }).catch(() => {});
+    free("dispose", { dataset: this.#id }, this.#generation);
   }
 }
 
@@ -793,8 +787,7 @@ export async function load(data: unknown, options: LoadOptions = {}): Promise<Da
     args = { bytes };
     transfer = [bytes];
   }
-  const { dataset, features } = await call<{ dataset: number; features: number }>("load", { ...args, crs }, transfer);
-  return new Dataset(dataset, features);
+  return datasetOf(call("load", { ...args, crs }, transfer));
 }
 
 /**
@@ -809,14 +802,6 @@ export async function transform(coords: ArrayLike<number>, from: Crs, to: Crs, o
   return call<Float64Array>("transform", { coords: buffer, ...codes }, [buffer]);
 }
 
-/** Great-circle distance in meters between two `[lng, lat]` points; mirrors `@analysis.distance`. */
-export function distance(from: [number, number], to: [number, number]): number {
-  const rad = (d: number) => ((d % 360) * Math.PI) / 180;
-  const sLat = Math.sin(rad(to[1] - from[1]) / 2);
-  const sLng = Math.sin(rad(to[0] - from[0]) / 2);
-  const a = sLat * sLat + sLng * sLng * Math.cos(rad(from[1])) * Math.cos(rad(to[1]));
-  return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 6371008.8;
-}
 
 /** Stops the analysis worker; datasets are lost and pending calls reject. */
 export function terminate(): void {

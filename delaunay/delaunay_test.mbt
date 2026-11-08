@@ -36,15 +36,15 @@ fn rows(t : @geom.Table) -> Array[Array[Double]?] {
 ///|
 test "empty" {
   let t = points([])
-  assert_eq(rows(@delaunay.triangles(t)), [])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [])
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [])
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [])
 }
 
 ///|
 test "one point" {
   let t = points([1.0, 2.0])
-  assert_eq(rows(@delaunay.triangles(t)), [])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [])
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([6.0, -1.0, 6.0, 6.0, -1.0, 6.0, -1.0, -1.0, 6.0, -1.0]),
   ])
 }
@@ -52,8 +52,8 @@ test "one point" {
 ///|
 test "two points" {
   let t = points([0.0, 0.0, 3.0, 1.0])
-  assert_eq(rows(@delaunay.triangles(t)), [])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [])
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([
       -1.0, 6.0, -1.0, -1.0, 2.0, -1.0, 1.5, 0.5, -0.33333333333333326, 6.0, -1.0,
       6.0,
@@ -67,8 +67,8 @@ test "two points" {
 ///|
 test "two equal points" {
   let t = points([1.0, 1.0, 1.0, 1.0])
-  assert_eq(rows(@delaunay.triangles(t)), [])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [])
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([6.0, -1.0, 6.0, 6.0, -1.0, 6.0, -1.0, -1.0, 6.0, -1.0]),
     None,
   ])
@@ -77,10 +77,10 @@ test "two equal points" {
 ///|
 test "three points" {
   let t = points([0.0, 0.0, 4.0, 0.0, 1.0, 3.0])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([1.0, 3.0, 4.0, 0.0, 0.0, 0.0, 1.0, 3.0]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([-1.0, -1.0, 2.0, -1.0, 2.0, 1.0, -1.0, 2.0, -1.0, -1.0]),
     Some([6.0, -1.0, 6.0, 5.0, 2.0, 1.0, 2.0, -1.0, 6.0, -1.0]),
     Some([6.0, 6.0, -1.0, 6.0, -1.0, 2.0, 2.0, 1.0, 6.0, 5.0, 6.0, 6.0]),
@@ -90,7 +90,7 @@ test "three points" {
 ///|
 test "collinear points" {
   let t = points([0.0, 0.0, 1.0, 1.0, 3.0, 3.0, 2.0, 2.0, 5.0, 5.0])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([
       2.9999999802423405, 3.000000070710678, 1.0000000642970377, 1.0000000707106782,
       1.9999999464859823, 2.000000070710678, 2.9999999802423405, 3.000000070710678,
@@ -108,7 +108,7 @@ test "collinear points" {
       2.9999999802423405, 3.000000070710678, 1.9999999464859823, 2.000000070710678,
     ]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([
       -1.0, -1.0, 2.0000000074505806, -1.0, -1.0, 2.000000200633505, -1.0, -1.0,
     ]),
@@ -131,13 +131,13 @@ test "collinear points" {
 ///|
 test "vertical points" {
   let t = points([2.0, 0.0, 2.0, 3.0, 2.0, 1.0])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([
       2.0000000042336, 1.0000000162090692, 1.9999999712322718, 3.000000016209069,
       2.0000000272789227, -1.2484405096414274e-8, 2.0000000042336, 1.0000000162090692,
     ]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([
       6.0, 0.5000000940436191, -1.0, 0.4999999327263662, -1.0, -1.0, 6.0, -1.0, 6.0,
       0.5000000940436191,
@@ -158,13 +158,13 @@ test "duplicate points" {
   let t = points([
     0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.5, 0.5,
   ])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.5, 0.5]),
     Some([0.0, 0.0, 0.0, 1.0, 0.5, 0.5, 0.0, 0.0]),
     Some([0.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.0, 1.0]),
     Some([0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.5, 0.5]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([-1.0, -1.0, 0.5, -1.0, 0.5, 0.0, 0.0, 0.5, -1.0, 0.5, -1.0, -1.0]),
     Some([6.0, -1.0, 6.0, 0.5, 1.0, 0.5, 0.5, 0.0, 0.5, -1.0, 6.0, -1.0]),
     Some([-1.0, 6.0, -1.0, 0.5, 0.0, 0.5, 0.5, 1.0, 0.5, 6.0, -1.0, 6.0]),
@@ -181,7 +181,7 @@ test "grid points" {
     0.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 1.0, 0.0, 2.0, 1.0, 2.0,
     2.0, 2.0,
   ])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0]),
     Some([0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0]),
     Some([1.0, 1.0, 2.0, 0.0, 1.0, 0.0, 1.0, 1.0]),
@@ -191,7 +191,7 @@ test "grid points" {
     Some([0.0, 2.0, 1.0, 2.0, 1.0, 1.0, 0.0, 2.0]),
     Some([1.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0, 2.0]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([-1.0, -1.0, 0.5, -1.0, 0.5, 0.5, -1.0, 0.5, -1.0, -1.0]),
     Some([1.5, -1.0, 1.5, 0.5, 0.5, 0.5, 0.5, -1.0, 1.5, -1.0]),
     Some([6.0, -1.0, 6.0, 0.5, 1.5, 0.5, 1.5, -1.0, 6.0, -1.0]),
@@ -209,7 +209,7 @@ test "random points" {
   let t = points([
     0.3, 0.7, 0.9, 0.1, 0.5, 0.5, 0.1, 0.2, 0.8, 0.9, 0.25, 0.4, 0.6, 0.15,
   ])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([0.5, 0.5, 0.25, 0.4, 0.3, 0.7, 0.5, 0.5]),
     Some([0.6, 0.15, 0.1, 0.2, 0.25, 0.4, 0.6, 0.15]),
     Some([0.25, 0.4, 0.1, 0.2, 0.3, 0.7, 0.25, 0.4]),
@@ -219,7 +219,7 @@ test "random points" {
     Some([0.8, 0.9, 0.9, 0.1, 0.5, 0.5, 0.8, 0.9]),
     Some([0.6, 0.15, 0.9, 0.1, 0.1, 0.2, 0.6, 0.15]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([
       -1.0, 0.93, -0.28214285714285714, 0.6428571428571429, 0.3392857142857143, 0.5392857142857143,
       0.5642857142857143, 0.7642857142857143, -1.0, 4.674999999999999, -1.0, 0.93,
@@ -259,7 +259,7 @@ test "random points in a tight box" {
   let t = points([
     0.3, 0.7, 0.9, 0.1, 0.5, 0.5, 0.1, 0.2, 0.8, 0.9, 0.25, 0.4, 0.6, 0.15,
   ])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([0.5, 0.5, 0.25, 0.4, 0.3, 0.7, 0.5, 0.5]),
     Some([0.6, 0.15, 0.1, 0.2, 0.25, 0.4, 0.6, 0.15]),
     Some([0.25, 0.4, 0.1, 0.2, 0.3, 0.7, 0.25, 0.4]),
@@ -269,7 +269,7 @@ test "random points in a tight box" {
     Some([0.8, 0.9, 0.9, 0.1, 0.5, 0.5, 0.8, 0.9]),
     Some([0.6, 0.15, 0.9, 0.1, 0.1, 0.2, 0.6, 0.15]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, 0.2, 0.3, 0.55, 0.6)), [
+  assert_eq(rows(@delaunay.voronoi(t, 0.2, 0.3, 0.55, 0.6).unwrap()), [
     Some([
       0.2, 0.5625, 0.3392857142857143, 0.5392857142857143, 0.4, 0.6, 0.2, 0.6, 0.2,
       0.5625,
@@ -297,8 +297,8 @@ test "thirty equal points" {
     3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0,
     3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0, 3.0, 4.0,
   ])
-  assert_eq(rows(@delaunay.triangles(t)), [])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [])
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([6.0, -1.0, 6.0, 6.0, -1.0, 6.0, -1.0, -1.0, 6.0, -1.0]),
     None,
     None,
@@ -337,10 +337,10 @@ test "points with a non-finite coordinate are left out" {
   let t = points([
     0.0, 0.0, @double.not_a_number, 1.0, 4.0, 0.0, @double.infinity, 2.0, 1.0, 3.0,
   ])
-  assert_eq(rows(@delaunay.triangles(t)), [
+  assert_eq(rows(@delaunay.triangles(t).unwrap()), [
     Some([1.0, 3.0, 4.0, 0.0, 0.0, 0.0, 1.0, 3.0]),
   ])
-  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)), [
+  assert_eq(rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()), [
     Some([-1.0, -1.0, 2.0, -1.0, 2.0, 1.0, -1.0, 2.0, -1.0, -1.0]),
     None,
     Some([6.0, -1.0, 6.0, 5.0, 2.0, 1.0, 2.0, -1.0, 6.0, -1.0]),
@@ -369,7 +369,7 @@ test "voronoi keeps each point's row id and properties" {
   b.prop("n", Num(2.0))
   b.end_feature(Point, id=Some(Num(7.0)))
   let t = b.finish()
-  let v = @delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)
+  let v = @delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0).unwrap()
   assert_eq(v.length(), 3)
   assert_eq(v.ids, [Some(Str("m")), Some(Str("m")), Some(Num(7.0))])
   assert_eq(v.column("name").unwrap().values, [
@@ -383,7 +383,7 @@ test "voronoi keeps each point's row id and properties" {
     Some([6.0, -1.0, 6.0, 5.0, 2.0, 1.0, 2.0, -1.0, 6.0, -1.0]),
     Some([6.0, 6.0, -1.0, 6.0, -1.0, 2.0, 2.0, 1.0, 6.0, 5.0, 6.0, 6.0]),
   ])
-  let tri = @delaunay.triangles(t)
+  let tri = @delaunay.triangles(t).unwrap()
   assert_eq(rows(tri), [Some([1.0, 3.0, 4.0, 0.0, 0.0, 0.0, 1.0, 3.0])])
   assert_eq(tri.columns.length(), 0)
   assert_eq(tri.ids, [None])
@@ -393,17 +393,20 @@ test "voronoi keeps each point's row id and properties" {
 test "invalid bounds give rows without geometry" {
   let t = points([0.0, 0.0, 4.0, 0.0, 1.0, 3.0])
   let none : Array[Array[Double]?] = [None, None, None]
-  assert_eq(rows(@delaunay.voronoi(t, 1.0, 0.0, 0.0, 1.0)), none)
-  assert_eq(rows(@delaunay.voronoi(t, 0.0, 1.0, 1.0, 0.0)), none)
+  assert_eq(rows(@delaunay.voronoi(t, 1.0, 0.0, 0.0, 1.0).unwrap()), none)
+  assert_eq(rows(@delaunay.voronoi(t, 0.0, 1.0, 1.0, 0.0).unwrap()), none)
   assert_eq(
-    rows(@delaunay.voronoi(t, @double.not_a_number, 0.0, 1.0, 1.0)),
+    rows(@delaunay.voronoi(t, @double.not_a_number, 0.0, 1.0, 1.0).unwrap()),
     none,
   )
-  assert_eq(rows(@delaunay.voronoi(t, 0.0, 0.0, @double.infinity, 1.0)), none)
+  assert_eq(
+    rows(@delaunay.voronoi(t, 0.0, 0.0, @double.infinity, 1.0).unwrap()),
+    none,
+  )
 }
 
 ///|
-test "checked variants refuse more than MAX_DELAUNAY_POINTS points" {
+test "triangles and voronoi refuse more than MAX_DELAUNAY_POINTS points" {
   let b = @geom.TableBuilder::new()
   for i in 0..<=@delaunay.MAX_DELAUNAY_POINTS {
     b.point(i.to_double(), 0.0)
@@ -412,16 +415,8 @@ test "checked variants refuse more than MAX_DELAUNAY_POINTS points" {
   b.end_part()
   b.end_feature(MultiPoint)
   let big = b.finish()
-  assert_true(@delaunay.triangles_checked(big) is None)
-  assert_true(@delaunay.voronoi_checked(big, 0.0, 0.0, 1.0, 1.0) is None)
-  let t = points([0.0, 0.0, 4.0, 0.0, 1.0, 3.0])
-  assert_eq(rows(@delaunay.triangles_checked(t).unwrap()), [
-    Some([1.0, 3.0, 4.0, 0.0, 0.0, 0.0, 1.0, 3.0]),
-  ])
-  assert_eq(
-    rows(@delaunay.voronoi_checked(t, -1.0, -1.0, 6.0, 6.0).unwrap()),
-    rows(@delaunay.voronoi(t, -1.0, -1.0, 6.0, 6.0)),
-  )
+  assert_true(@delaunay.triangles(big) is None)
+  assert_true(@delaunay.voronoi(big, 0.0, 0.0, 1.0, 1.0) is None)
 }
 
 ///|
@@ -432,6 +427,6 @@ test "triangles jitter collinear points through trig" {
     cos: _ => 0.0,
   }
   let t = points([0.0, 0.0, 1.0, 1.0, 3.0, 3.0])
-  assert_eq(rows(@delaunay.triangles(t, trig=flat)), [])
-  assert_eq(rows(@delaunay.triangles(t)).length(), 1)
+  assert_eq(rows(@delaunay.triangles(t, trig=flat).unwrap()), [])
+  assert_eq(rows(@delaunay.triangles(t).unwrap()).length(), 1)
 }

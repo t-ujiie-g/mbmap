@@ -2,10 +2,7 @@
 // 2010-2023 Mike Bostock). See NOTICE.
 
 ///|
-/// The trigonometry `contour_density` uses (`@core.Trig`): a wasm build passes
-/// the host's `Math` to match d3 bit for bit; `@math` can differ in the last
-/// bit.
-pub using @core {type Trig}
+using @core {type Trig}
 
 ///|
 /// Most ticks `contour_density` turns a threshold count into; d3 makes
@@ -52,19 +49,6 @@ fn log10(x : Double, trig : Trig) -> Double {
 }
 
 ///|
-/// JavaScript's `Math.round`: the nearest integer, halves toward +∞, -0 kept
-/// for negative inputs that round to zero.
-fn js_round(x : Double) -> Double {
-  let f = x.floor()
-  let r = if x - f >= 0.5 { f + 1.0 } else { f }
-  if r == 0.0 && (x < 0.0 || 1.0 / x < 0.0) {
-    -0.0
-  } else {
-    r
-  }
-}
-
-///|
 /// d3-array's `tickSpec`: (i1, i2, inc).
 fn tick_spec(
   start : Double,
@@ -89,8 +73,8 @@ fn tick_spec(
   let mut inc = 0.0
   if power < 0.0 {
     inc = trig.pow(10.0, -power) / factor
-    i1 = js_round(start * inc)
-    i2 = js_round(stop * inc)
+    i1 = @core.js_round(start * inc)
+    i2 = @core.js_round(stop * inc)
     if i1 / inc < start {
       i1 += 1.0
     }
@@ -100,8 +84,8 @@ fn tick_spec(
     inc = -inc
   } else {
     inc = trig.pow(10.0, power) * factor
-    i1 = js_round(start / inc)
-    i2 = js_round(stop / inc)
+    i1 = @core.js_round(start / inc)
+    i2 = @core.js_round(stop / inc)
     if i1 * inc < start {
       i1 += 1.0
     }

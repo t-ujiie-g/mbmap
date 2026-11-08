@@ -274,49 +274,9 @@ fn Sweep::add_edge(self : Sweep, e : Edge, label : Int32) -> Unit {
 }
 
 ///|
-/// A stable merge sort, as JavaScript's `Array.prototype.sort` is stable.
-fn[T] stable_sort(a : Array[T], cmp : (T, T) -> Int32) -> Unit {
-  let n = a.length()
-  if n < 2 {
-    return
-  }
-  let mut src = a.copy()
-  let mut dst = a.copy()
-  let mut width = 1
-  while width < n {
-    let mut lo = 0
-    while lo < n {
-      let mid = if lo + width < n { lo + width } else { n }
-      let hi = if lo + 2 * width < n { lo + 2 * width } else { n }
-      let mut i = lo
-      let mut j = mid
-      let mut k = lo
-      while k < hi {
-        if i < mid && (j >= hi || cmp(src[j], src[i]) >= 0) {
-          dst[k] = src[i]
-          i += 1
-        } else {
-          dst[k] = src[j]
-          j += 1
-        }
-        k += 1
-      }
-      lo = hi
-    }
-    let t = src
-    src = dst
-    dst = t
-    width *= 2
-  }
-  for i in 0..<n {
-    a[i] = src[i]
-  }
-}
-
-///|
 fn Sweep::run(self : Sweep, si : SegmentIntersector) -> Unit {
   let events = self.events
-  stable_sort(events, event_compare)
+  @core.stable_sort(events, (a, b) => event_compare(a, b) < 0)
   for i, ev in events {
     if !ev.insert && ev.partner is Some(ins) {
       ins.delete_index = i

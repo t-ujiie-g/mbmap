@@ -7,6 +7,7 @@ export class WorkerClient {
   #worker: Worker | null = null;
   #pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
   #next = 0;
+  #generation = 0;
 
   /** `name` prefixes the errors: `mbmap: <name>: ...`. */
   constructor(name: string) {
@@ -15,6 +16,11 @@ export class WorkerClient {
 
   get started(): boolean {
     return this.#worker !== null;
+  }
+
+  /** Counts the workers stopped, so handles a worker gave can tell when it is gone (worker ids start again). */
+  get generation(): number {
+    return this.#generation;
   }
 
   /** Starts the worker at `script` (same-origin) unless it runs, and sends it `init`. */
@@ -55,6 +61,7 @@ export class WorkerClient {
   #fail(why: string): void {
     this.#worker?.terminate();
     this.#worker = null;
+    this.#generation++;
     for (const p of this.#pending.values()) p.reject(new Error(`mbmap: ${this.#name}: ${why}`));
     this.#pending.clear();
   }

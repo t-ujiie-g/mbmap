@@ -1,8 +1,7 @@
 ///|
-/// A DE-9IM intersection matrix, JTS's `IntersectionMatrix`: entry (row,
-/// column) for the interior (0), boundary (1) and exterior (2) of the first
-/// geometry against those of the second, as the dimension of their
-/// intersection (-1 for none, 0, 1 or 2).
+/// A DE-9IM matrix, JTS's `IntersectionMatrix`: entry (row, column) for the
+/// interior (0), boundary (1) and exterior (2) of each geometry, the dimension of
+/// their intersection (-1 for none).
 pub struct Matrix {
   priv m : FixedArray[Int32]
 }

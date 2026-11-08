@@ -10,6 +10,8 @@ pub const MAX_RELATE_POINTS : Int32 = 1_000_000
 
 pub fn dimension(@geom.Table, Int32) -> Int32
 
+pub fn pair_points(@geom.Table, Int32, @geom.Table, Int32) -> Int32
+
 pub fn predicate(@geom.Table, Int32, @geom.Table, Int32, String) -> Bool
 
 pub fn relate(@geom.Table, Int32, @geom.Table, Int32) -> Matrix

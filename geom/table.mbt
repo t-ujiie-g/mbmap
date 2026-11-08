@@ -108,6 +108,21 @@ pub fn Table::points(self : Table, r : Int32) -> (Int32, Int32) {
 }
 
 ///|
+/// Points of feature `f` as a range of point indices, (0, 0) without any.
+pub fn Table::feature_points(self : Table, f : Int32) -> (Int32, Int32) {
+  let (p0, p1) = self.parts(f)
+  if p1 <= p0 {
+    return (0, 0)
+  }
+  let r0 = self.rings(p0).0
+  let r1 = self.rings(p1 - 1).1
+  if r1 <= r0 {
+    return (0, 0)
+  }
+  (self.points(r0).0, self.points(r1 - 1).1)
+}
+
+///|
 /// Appends features to a `Table`; empty rings and parts are dropped. Until
 /// `finish`, columns may be shorter than the table.
 pub struct TableBuilder {
@@ -268,10 +283,7 @@ pub fn Table::map_coords(
   let mapped = []
   for i in 0..<self.length() {
     let (p0, p1) = self.parts(i)
-    let (r0, _) = if p0 < p1 { self.rings(p0) } else { (0, 0) }
-    let (_, r1) = if p0 < p1 { self.rings(p1 - 1) } else { (0, 0) }
-    let (c0, _) = if r0 < r1 { self.points(r0) } else { (0, 0) }
-    let (_, c1) = if r0 < r1 { self.points(r1 - 1) } else { (0, 0) }
+    let (c0, c1) = self.feature_points(i)
     mapped.clear()
     let mut ok = true
     for c in c0..<c1 {

@@ -6,9 +6,8 @@
 pub const MAX_KML_KEYS : Int32 = 4096
 
 ///|
-/// A feature's properties as togeojson assigns them: a key set again keeps its
-/// place and takes the new value; `__proto__` is dropped, as assigning a string
-/// to it does nothing in JavaScript. `index` finds keys once there are many;
+/// A feature's properties as togeojson assigns them (a key set again keeps its
+/// place; `__proto__` dropped, as assigning it a string does nothing in JS);
 /// `over` is set by a key past `MAX_KML_KEYS`, which is left out.
 priv struct Props {
   items : Array[(String, @geom.Prop)]

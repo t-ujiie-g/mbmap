@@ -214,9 +214,9 @@ pub fn hex_grid(
   let cosines = FixedArray::make(6, 0.0)
   let sines = FixedArray::make(6, 0.0)
   for i in 0..<6 {
-    let angle = 2.0 * PI / 6.0 * i.to_double()
-    cosines[i] = (trig.cos)(angle)
-    sines[i] = (trig.sin)(angle)
+    let angle = 2.0 * @core.PI / 6.0 * i.to_double()
+    cosines[i] = trig.cos(angle)
+    sines[i] = trig.sin(angle)
   }
   let rx = cell_width / 2.0
   let ry = cell_height / 2.0

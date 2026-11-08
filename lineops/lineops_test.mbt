@@ -319,7 +319,7 @@ test "nearest_point_on_line matches Turf on every row" {
 ///|
 test "nearest_point_on_line takes the trig it is given" {
   let t = table()
-  let trig = @lineops.Trig::moonbit()
+  let trig = @core.Trig::moonbit()
   let a = @lineops.nearest_point_on_line(t, 1.5, 0.5, trig~)
   let b = @lineops.nearest_point_on_line(t, 1.5, 0.5)
   for i in 0..<a.length() {

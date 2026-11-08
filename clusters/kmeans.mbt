@@ -6,9 +6,14 @@
 const MAX_ITERATIONS : Int32 = 10000
 
 ///|
+/// Most point-to-centroid distances `kmeans` computes over all its iterations
+/// (AGENTS.md §8.2); past them it gives None.
+pub const MAX_KMEANS_DISTANCES : Int64 = 10_000_000_000
+
+///|
 /// skmeans' `v || 0`: NaN and zero are 0.
 fn or_zero(v : Double) -> Double {
-  if is_nan(v) || v == 0.0 {
+  if v.is_nan() || v == 0.0 {
     0.0
   } else {
     v
@@ -16,35 +21,35 @@ fn or_zero(v : Double) -> Double {
 }
 
 ///|
-/// JavaScript's `Math.round` of a non-negative number.
-fn js_round(x : Double) -> Double {
-  let f = x.floor()
-  if x - f >= 0.5 {
-    f + 1.0
-  } else {
-    f
-  }
+/// `@turf/clusters-kmeans` over `t`'s Point rows (`k` <= 0 is Turf's default):
+/// per row its cluster (-1 for other rows) and each centroid as x, y. None past
+/// `MAX_CLUSTER_POINTS` or `MAX_KMEANS_DISTANCES`.
+pub fn kmeans(
+  t : @geom.Table,
+  k : Int32,
+) -> (FixedArray[Int32], FixedArray[Double])? {
+  kmeans_within(t, k, MAX_KMEANS_DISTANCES)
 }
 
 ///|
-/// `@turf/clusters-kmeans` over `t`'s Point rows (`k` <= 0 is Turf's default):
-/// per row its cluster (-1 for other rows) and each centroid as x, y. None past
-/// `MAX_CLUSTER_POINTS`.
-pub fn kmeans_checked(
+fn kmeans_within(
   t : @geom.Table,
   k : Int32,
+  max_distances : Int64,
 ) -> (FixedArray[Int32], FixedArray[Double])? {
   guard points_of(t) is Some(pts) else { return None }
   let out = FixedArray::make(t.length(), -1)
   let n = pts.rows.length()
   guard n > 0 else { return Some((out, [])) }
   let k = if k <= 0 {
-    js_round((n.to_double() / 2.0).sqrt()).to_int()
+    @core.js_round((n.to_double() / 2.0).sqrt()).to_int()
   } else {
     k
   }
   let k = if k > n { n } else { k }
-  let (idxs, centroids) = skmeans(pts.xs, pts.ys, k)
+  guard skmeans(pts.xs, pts.ys, k, max_distances) is Some((idxs, centroids)) else {
+    return None
+  }
   for i in 0..<n {
     out[pts.rows[i]] = idxs[i]
   }
@@ -52,26 +57,15 @@ pub fn kmeans_checked(
 }
 
 ///|
-/// `kmeans_checked`, with every row -1 and no centroids past
-/// `MAX_CLUSTER_POINTS`.
-pub fn kmeans(
-  t : @geom.Table,
-  k : Int32,
-) -> (FixedArray[Int32], FixedArray[Double]) {
-  match kmeans_checked(t, k) {
-    Some(r) => r
-    None => (FixedArray::make(t.length(), -1), [])
-  }
-}
-
-///|
 /// skmeans with the first `k` points as initial centroids, on two
-/// dimensions: each point's centroid index, and the centroids.
+/// dimensions: each point's centroid index, and the centroids. None once its
+/// distances would pass `max_distances`.
 fn skmeans(
   xs : FixedArray[Double],
   ys : FixedArray[Double],
   k : Int32,
-) -> (FixedArray[Int32], FixedArray[Double]) {
+  max_distances : Int64,
+) -> (FixedArray[Int32], FixedArray[Double])? {
   let n = xs.length()
   let cx = FixedArray::makei(k, j => xs[j])
   let cy = FixedArray::makei(k, j => ys[j])
@@ -82,7 +76,11 @@ fn skmeans(
   let count = FixedArray::make(k, 0)
   let idxs = FixedArray::make(n, 0)
   let mut it = MAX_ITERATIONS
+  let per_iteration = n.to_int64() * k.to_int64()
+  let mut distances = 0L
   while true {
+    distances += per_iteration
+    guard distances <= max_distances else { return None }
     count.fill(0)
     for i in 0..<n {
       let x = or_zero(xs[i])
@@ -128,5 +126,5 @@ fn skmeans(
     centroids[2 * j] = cx[j]
     centroids[2 * j + 1] = cy[j]
   }
-  (idxs, centroids)
+  Some((idxs, centroids))
 }

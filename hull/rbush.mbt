@@ -116,10 +116,10 @@ fn extend_by(
   max_x : Double,
   max_y : Double,
 ) -> Unit {
-  n.min_x = js_min(n.min_x, min_x)
-  n.min_y = js_min(n.min_y, min_y)
-  n.max_x = js_max(n.max_x, max_x)
-  n.max_y = js_max(n.max_y, max_y)
+  n.min_x = @core.js_min(n.min_x, min_x)
+  n.min_y = @core.js_min(n.min_y, min_y)
+  n.max_x = @core.js_max(n.max_x, max_x)
+  n.max_y = @core.js_max(n.max_y, max_y)
 }
 
 ///|
@@ -130,10 +130,10 @@ fn extend_node(
   max_x : Double,
   max_y : Double,
 ) -> Unit {
-  n.min_x = js_min(n.min_x, min_x)
-  n.min_y = js_min(n.min_y, min_y)
-  n.max_x = js_max(n.max_x, max_x)
-  n.max_y = js_max(n.max_y, max_y)
+  n.min_x = @core.js_min(n.min_x, min_x)
+  n.min_y = @core.js_min(n.min_y, min_y)
+  n.max_x = @core.js_max(n.max_x, max_x)
+  n.max_y = @core.js_max(n.max_y, max_y)
 }
 
 ///|
@@ -184,17 +184,17 @@ fn node_box(n : Node) -> Box {
 
 ///|
 fn enlarged_area(a : Box, b : Box) -> Double {
-  (js_max(b.max_x, a.max_x) - js_min(b.min_x, a.min_x)) *
-  (js_max(b.max_y, a.max_y) - js_min(b.min_y, a.min_y))
+  (@core.js_max(b.max_x, a.max_x) - @core.js_min(b.min_x, a.min_x)) *
+  (@core.js_max(b.max_y, a.max_y) - @core.js_min(b.min_y, a.min_y))
 }
 
 ///|
 fn intersection_area(a : Box, b : Box) -> Double {
-  let min_x = js_max(a.min_x, b.min_x)
-  let min_y = js_max(a.min_y, b.min_y)
-  let max_x = js_min(a.max_x, b.max_x)
-  let max_y = js_min(a.max_y, b.max_y)
-  js_max(0.0, max_x - min_x) * js_max(0.0, max_y - min_y)
+  let min_x = @core.js_max(a.min_x, b.min_x)
+  let min_y = @core.js_max(a.min_y, b.min_y)
+  let max_x = @core.js_min(a.max_x, b.max_x)
+  let max_y = @core.js_min(a.max_y, b.max_y)
+  @core.js_max(0.0, max_x - min_x) * @core.js_max(0.0, max_y - min_y)
 }
 
 ///|
@@ -527,11 +527,11 @@ fn RBush::choose_split_index(
 ///|
 fn RBush::sort_children(self : RBush, node : Node, by_x : Bool) -> Unit {
   if node.leaf {
-    stable_sort(node.items, (a, b) => self.compare_items(by_x, a, b))
+    @core.stable_sort(node.items, (a, b) => self.compare_items(by_x, a, b) < 0.0)
   } else if by_x {
-    stable_sort(node.nodes, (a, b) => a.min_x - b.min_x)
+    @core.stable_sort(node.nodes, (a, b) => a.min_x - b.min_x < 0.0)
   } else {
-    stable_sort(node.nodes, (a, b) => a.min_y - b.min_y)
+    @core.stable_sort(node.nodes, (a, b) => a.min_y - b.min_y < 0.0)
   }
 }
 
