@@ -150,8 +150,8 @@ pub fn viewshed(
   }
   let gt = FixedArray::from_iter(geotransform.iter())
   guard invert_geotransform(gt) is Some(inv) else { return None }
-  let dfx = inv[0] + o.observer_x * inv[1] + o.observer_y * inv[2]
-  let dfy = inv[3] + o.observer_x * inv[4] + o.observer_y * inv[5]
+  let dfx = fma(o.observer_y, inv[2], fma(o.observer_x, inv[1], inv[0]))
+  let dfy = fma(o.observer_y, inv[5], fma(o.observer_x, inv[4], inv[3]))
   if !(dfx >= -2147483648.0 && dfx <= 2147483647.0) ||
     !(dfy >= -2147483648.0 && dfy <= 2147483647.0) {
     return None
@@ -247,10 +247,18 @@ pub fn viewshed(
   }
   ex.run()
   let out_gt : FixedArray[Double] = [
-    gt[0] + gt[1] * out.x_start.to_double() + gt[2] * out.y_start.to_double(),
+    fma(
+      gt[2],
+      out.y_start.to_double(),
+      fma(gt[1], out.x_start.to_double(), gt[0]),
+    ),
     gt[1],
     gt[2],
-    gt[3] + gt[4] * out.x_start.to_double() + gt[5] * out.y_start.to_double(),
+    fma(
+      gt[5],
+      out.y_start.to_double(),
+      fma(gt[4], out.x_start.to_double(), gt[3]),
+    ),
     gt[4],
     gt[5],
   ]
@@ -297,12 +305,12 @@ fn calc_extents(
   if md > 0.0 {
     let fx = nx.to_double()
     let fy = ny.to_double()
-    let x_start = cint((fx - inv[1] * md + eps).floor())
-    let x_stop = cint((fx + inv[1] * md - eps).ceil() + 1.0)
-    let y_start = cint((fy - inv[5].abs() * md + eps).floor()) -
+    let x_start = cint((fma(-inv[1], md, fx) + eps).floor())
+    let x_stop = cint((fma(inv[1], md, fx) - eps).ceil() + 1.0)
+    let y_start = cint((fma(-inv[5].abs(), md, fy) + eps).floor()) -
       (if inv[5] > 0.0 { 1 } else { 0 })
     let y_stop = cint(
-      (fy + inv[5].abs() * md - eps).ceil() +
+      (fma(inv[5].abs(), md, fy) - eps).ceil() +
       (if inv[5] < 0.0 { 1.0 } else { 0.0 }),
     )
     if x_start >= win.x_stop ||

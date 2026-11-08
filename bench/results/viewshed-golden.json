@@ -1,0 +1,79 @@
+{
+  "gdal": "GDAL 3.13.3 \"Iowa City\", released 2026/08/13",
+  "results": {
+    "summit NORMAL": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 2155905,
+      "differ": 0
+    },
+    "summit DEM": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 2155905,
+      "differ": 0
+    },
+    "summit GROUND": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 2155905,
+      "differ": 0
+    },
+    "slope NORMAL": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 2201481,
+      "differ": 0
+    },
+    "slope DEM": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 2201481,
+      "differ": 0
+    },
+    "slope GROUND": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 2201481,
+      "differ": 0
+    },
+    "valley NORMAL": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 1870314,
+      "differ": 0
+    },
+    "valley DEM": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 1870314,
+      "differ": 0
+    },
+    "valley GROUND": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 1870314,
+      "differ": 0
+    },
+    "edge NORMAL": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 1759334,
+      "differ": 0
+    },
+    "edge DEM": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 1759334,
+      "differ": 0
+    },
+    "edge GROUND": {
+      "cases": 3,
+      "identical": 3,
+      "cells": 1759334,
+      "differ": 0
+    }
+  },
+  "failures": [],
+  "ok": true
+}

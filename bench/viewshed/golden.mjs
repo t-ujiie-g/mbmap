@@ -39,7 +39,8 @@ const a = (await loadAnalysis(nodeFetchBytes)).exports;
 const at = a.prepare_input(rgba.length);
 new Uint8Array(a.memory.buffer, at, rgba.length).set(rgba);
 const id = a.load_dem(width, height, 2, 0, 0, 0, 0, res, res);
-const elev = new Float64Array(a.memory.buffer, a.output_addr(), a.grid_values(id, 0)).slice().map((v) => (Number.isNaN(v) ? 0 : v));
+const cells = a.grid_values(id, 0);
+const elev = new Float64Array(a.memory.buffer, a.output_addr(), cells).slice().map((v) => (Number.isNaN(v) ? 0 : v));
 
 // The same grid as a GeoTIFF in EPSG:3857 (semi-major 6378137) whose north-west corner is (0, 0).
 const dir = path.join(ROOT, "bench/dist/viewshed");
@@ -48,7 +49,8 @@ const lines = [`ncols ${width}`, `nrows ${height}`, "xllcorner 0", `yllcorner ${
 for (let y = 0; y < height; y++) lines.push(Array.from(elev.subarray(y * width, (y + 1) * width), (v) => String(v)).join(" "));
 await writeFile(path.join(dir, "dem.asc"), lines.join("\n") + "\n");
 const tif = path.join(dir, "dem.tif");
-execFileSync("gdal_translate", ["-q", "-ot", "Float64", "-a_srs", "EPSG:3857", path.join(dir, "dem.asc"), tif]);
+// AAIGrid reads decimals as Float32 unless told otherwise.
+execFileSync("gdal_translate", ["-q", "-oo", "DATATYPE=Float64", "-ot", "Float64", "-a_srs", "EPSG:3857", path.join(dir, "dem.asc"), tif]);
 
 const { instance } = await WebAssembly.instantiate(await readFile(path.join(ROOT, "_build/wasm-gc/release/build/viewshed_worker/viewshed_worker.wasm")), { Math });
 const v = instance.exports;
@@ -95,11 +97,18 @@ for (const [where, xy] of Object.entries(observers)) {
       r.cases++;
       let differ = got.error ? want.values.length : 0;
       const sameShape = !got.error && want.width === got.width && want.height === got.height && want.geotransform.every((g, k) => Math.abs(g - got.geotransform[k]) <= 1e-6 * Math.max(1, Math.abs(g)));
-      if (sameShape) for (let k = 0; k < want.values.length; k++) if (!Object.is(want.values[k], got.values[k])) differ++;
+      const sample = [];
+      if (sameShape) {
+        for (let k = 0; k < want.values.length; k++) {
+          if (Object.is(want.values[k], got.values[k])) continue;
+          differ++;
+          if (sample.length < 3) sample.push([k, want.values[k], got.values[k]]);
+        }
+      }
       r.cells += want.values.length;
       r.differ += sameShape ? differ : want.values.length;
       if (sameShape && differ === 0) r.identical++;
-      else if (failures.length < 20) failures.push({ where, o, size: [want.width, want.height, got.width, got.height], geotransform: [want.geotransform, got.geotransform], differ, error: got.error });
+      else if (failures.length < 20) failures.push({ where, o, size: [want.width, want.height, got.width, got.height], geotransform: [want.geotransform, got.geotransform], differ, sample, error: got.error });
     }
   }
 }
