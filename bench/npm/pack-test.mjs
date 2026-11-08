@@ -591,9 +591,9 @@ async function showcase(page) {
   crumb("showcaseServicesChecks");
   const services = await showcaseServicesChecks(page);
   crumb("showcase: globe");
-  // The globe zooms out to 3 and keeps the places; the custom layer goes on it too.
+  // The globe zooms out to 2 and keeps the places; the custom layer goes on it too.
   await page.click("#modes button >> text=地球儀");
-  await page.waitForFunction(() => window.__map.getZoom() === 3 && !window.__map.isMoving(), null, { timeout: 30000 });
+  await page.waitForFunction(() => Math.abs(window.__map.getZoom() - 2) < 1e-9 && !window.__map.isMoving(), null, { timeout: 30000 });
   const globe = await page.evaluate(() => {
     const map = window.__map;
     const p = map.project(map.getCenter());

@@ -83,7 +83,7 @@
   - 地形：地形の格子を `project3d` で球に載せ（高さはメートルで）、霧はなし（MapLibre と同じ）。タイルは地球の覆い方で選ぶ。地球では中心を地形の高さに立てない（MapLibre は立てる。未対応）。
   - カスタムレイヤー：地球のあいだは MapLibre と同じ options（`shaderData` は地球の prelude、`modelViewProjectionMatrix` と `projectionMatrix` は地球の、`defaultProjectionData` と `getProjectionData` は地球の行列とメルカトルの fallback・地平の面・遷移）。pack test の `globe` ページで地球の prelude を通した四角形が描けることを確かめる。`custom.js` は 1.8 → 2.9KB（予算 3KB）。
   - 書き出し：地球の行列と大気の光線も分割の窓を通す。画像は不透明に固定せずストレートアルファに（地球の周りの宇宙は透明、キャンバスと同じ）。`export:golden` に `globe`（ラスタの世界、大気）と `globe-terrain`（富士山、z11）。地球では f32 の球面の座標が窓の行列で 1/100 px ほど動くので、分割の比較の許容を平均 0.05・99% 点 1 に。
-  - example：3 通りのショーケースに「地球儀」の切り替え（ズーム 3 まで引く）。pack test で投影と中心を確かめる。
+  - example：3 通りのショーケースに「地球儀」の切り替え（ズーム 2 まで引く）。pack test で投影と中心を確かめる。
   - ラベル：（並行のエージェントの結果をここに）
 
 ## Phase 19 の後の点検（2026-11-08、Mac）

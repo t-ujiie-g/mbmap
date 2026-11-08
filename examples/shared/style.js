@@ -246,5 +246,5 @@ export function modeCamera(mode) {
 
 /** The camera move into `mode` from `zoom`: the globe zooms out until the whole of it shows. */
 export function modeEase(mode, zoom) {
-  return { ...modeCamera(mode), ...(mode === "globe" ? { zoom: Math.min(zoom, 3) } : {}), duration: 1000 };
+  return { ...modeCamera(mode), ...(mode === "globe" ? { zoom: Math.min(zoom, 2) } : {}), duration: 1000 };
 }
