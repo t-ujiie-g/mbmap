@@ -586,7 +586,8 @@ image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred
 
 ## Draco output (`draco/output.mbt`, written by `model_worker`'s `draco_decode`)
 
-A mesh of KHR_draco_mesh_compression decoded by `@draco.decode_mesh`; all little-endian:
+A Draco mesh (KHR_draco_mesh_compression) or point cloud (face count 0, no indices) decoded by
+`@draco.decode`; all little-endian:
 
 | Bytes | Content |
 | --- | --- |
@@ -596,8 +597,9 @@ A mesh of KHR_draco_mesh_compression decoded by `@draco.decode_mesh`; all little
 | per attribute | its data, `p` × `c` values of its data type (quantized and octahedral attributes as FLOAT32, dequantized; draco3d's `GetAttributeDataArrayForAllPoints` in the attribute's own type), padded with zeros to a multiple of 4 bytes |
 
 `draco_decode()` reads the input (the buffer view's bytes) and returns the output length, -1 for
-data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes past `@draco.MAX_FACES`,
-`MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`), -2 without memory.
+data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes and point clouds past
+`@draco.MAX_FACES`, `MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`, `MAX_KD_DIMENSIONS`), -2
+without memory.
 
 ## Services worker messages (`services_worker/js/worker.mjs`)
 
