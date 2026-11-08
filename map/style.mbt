@@ -169,6 +169,18 @@ fn Map::cancel_load(self : Map, e : TileEntry) -> Bool {
 /// Loads every tile of source `id` again (its data changed), drawing the old
 /// ones until then.
 pub fn Map::reload_source(self : Map, id : String) -> Unit {
+  self.reload_tiles(id, (_, _, _) => true)
+}
+
+///|
+/// Loads again the tiles of source `id` that are loading or for which
+/// `changed(z, x, y)` holds, drawing the old ones until then; MapLibre's
+/// `GeoJSONSource.shouldReloadTile` after `updateData`.
+pub fn Map::reload_tiles(
+  self : Map,
+  id : String,
+  changed : (Int32, Int32, Int32) -> Bool,
+) -> Unit {
   guard self.sources.search_by(s => s.source.id == id) is Some(at) else {
     return
   }
@@ -176,10 +188,10 @@ pub fn Map::reload_source(self : Map, id : String) -> Unit {
   let gone = []
   for key, e in tiles {
     match e.state {
-      Ready(m) => e.state = Stale(m)
+      Ready(m) => if changed(e.id.z, e.id.x, e.id.y) { e.state = Stale(m) }
       Loading(_) => if !self.cancel_load(e) { gone.push(key) }
       Stale(_) => ()
-      Failed => gone.push(key)
+      Failed => if changed(e.id.z, e.id.x, e.id.y) { gone.push(key) }
     }
   }
   for key in gone {

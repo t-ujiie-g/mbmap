@@ -24,6 +24,7 @@ import { stateChecks } from "./checks/state.mjs";
 import { styleChecks } from "./checks/style.mjs";
 import { tileSourceChecks } from "./checks/tile-sources.mjs";
 import { trackExportChecks } from "./checks/track-export.mjs";
+import { updateDataChecks } from "./checks/update-data.mjs";
 import { showcaseDataChecks } from "./checks/showcase-data.mjs";
 import { showcaseServicesChecks } from "./checks/showcase-services.mjs";
 import { crumb, mapState, openTab, trail } from "./checks/step.mjs";
@@ -241,7 +242,8 @@ const checks = {
     // The worker fetches the wasm and the URL source; the page the module.
     const loaded = requests.map((u) => u.split("/").pop()).filter((n) => /geojson/.test(n));
     const ok = ["geojson.js", "geojson-worker.js", "geojson.wasm", "places.geojson"].every((n) => loaded.includes(n)) && r.pitch === 50;
-    return [ok, { loaded, pitch: r.pitch }];
+    const update = await updateDataChecks(page);
+    return [ok && update.ok, { loaded, pitch: r.pitch, update }];
   },
 
   data: dataChecks,
@@ -615,7 +617,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message));
     // 404s are expected (missing style, missing fixtures); so are the
     // rejections the element and style checks provoke.
-    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression properties|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|Invalid layer|no layer named nope|missing required method/;
+    const expected = /404|mb-map: invalid|no layer "nope"|"gsi" is used by layer|expression properties|'nope' does not exist|sourceLayer parameter must be provided|image named "swatch" already exists|width \* height \* 4 bytes|media must be http|Invalid layer|no layer named nope|missing required method|not compatible with updateData/;
     page.on("console", (m) => m.type() === "error" && !expected.test(m.text()) && errors.push(m.text()));
     await page.addInitScript(fakeGeolocation);
     await page.goto(`${origin}/${PAGES[example]}`);
