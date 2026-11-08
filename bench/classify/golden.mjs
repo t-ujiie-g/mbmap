@@ -77,6 +77,7 @@ for (let k = 0; k < 40; k++) compare("random", Array.from({ length: 10 + Math.fl
 for (let k = 0; k < 40; k++) compare("ties", Array.from({ length: 10 + Math.floor(rand() * 500) }, () => Math.floor(rand() * 12)));
 compare("one value", [5, 5, 5, 5]);
 compare("two values", [1, 9]);
+for (let k = 0; k < 20; k++) compare("signed zeros", Array.from({ length: 10 + Math.floor(rand() * 1500) }, () => [0, -0, 1, -1, 2.5][Math.floor(rand() * 5)]));
 
 // Numeric properties of GSI features, per tile and key.
 const dir = path.join(ROOT, "bench/fixtures/gsi-bvmap/14");
