@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.5（PLATEAU の example と CesiumJS との比較）。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.6（点群：pnts、glTF の点、圧縮なしの LAS）。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -38,7 +38,7 @@
   - 20.2：地球表示の描画。2026-11-08 のユーザー判断で 3 つに分けた：20.2a カメラの配線（スタイルの `projection`、操作・アニメーション、地球上のタイルの覆い方、大気）とラスタ・背景の描画（`raster:golden` に地球の場面）、20.2b ワーカーでのベクトルの細分化（MapLibre の `subdivision.ts`、面・線・円・heatmap、`style:golden` に地球の場面）、20.2c ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に。
   - 20.3：`mbmap/3d` の入口、3D のワーカーと wasm、glTF / glb（`KHR_mesh_quantization`、`KHR_texture_transform`、WebP）、meshopt の移植、glTF モデルの配置。
   - 20.4：3D Tiles 1.0 / 1.1。2026-11-08 のユーザー判断で 2 つに分けた：20.4a（tileset.json、境界、画面上の誤差による詳細度、REPLACE / ADD、外部タイルセット、暗黙のタイリング、glb と b3dm、メルカトルと地球。Draco の移植もここに）、20.4b（i3dm、cmpt、バッチテーブルと `EXT_structural_metadata` / `EXT_mesh_features`、クエリ、地形との重なり）。pnts の描画は 20.6 で。
-  - 20.5：PLATEAU の建物を表示する example（3 通り）と CesiumJS との描画・速度の比較。
+  - 20.5：PLATEAU の建物を表示する example（専用のページ 1 つ。2026-11-08 のユーザー判断）と CesiumJS との描画・速度の比較。
   - 20.6：点群（3D Tiles の pnts と glTF の点、圧縮なしの LAS）。
   - 20.7：I3S（3DObject と IntegratedMesh、点群）。
   - 20.8：太陽の位置と光と影（mbmap の拡張として）。
@@ -116,6 +116,21 @@
   - 地形：地形を入れても深度を共有して建物が地面に立つ（誇張 1 のとき。誇張が 1 でないと高さがずれる）。
   - 大きさ：`3d-tiles.js` 6.9 → 9.9KB（予算 10KB。次に足すときは相談する）、3D ワーカー 26.7 → 29.9KB（45KB）。
   - まだないもの：pnts（20.6）、`3DTILES_batch_table_hierarchy`、地物 ID のテクスチャとプロパティテクスチャ、`EXT_instance_features`、暗黙の地物 ID でのクリック、地形の誇張への追従。
+- **20.5：PLATEAU の example**（2026-11-08 のユーザー判断：3 通りの見本ではなく専用のページを 1 つ、PLATEAU を出すあいだは地図の押し出しの建物を隠す）：`examples/plateau/` は千代田区の LOD2（2025 年度、テクスチャなし）を PLATEAU の配信元（`assets.cms.plateau.reearth.io`、CORS は `*`）から直接読み、`tilesLayer({ height: -36.7 })` で国土地理院のベクトルタイルに重ねる。クリックで `queryFeature` の属性（名称、用途、計測高さ、階数、耐火構造、用途地域、LOD、建物 ID、浸水ランク、すべての属性）を出す。チェックで地図の押し出しの建物（`building-3d`）と入れ替え、東京駅・丸の内・大手町・皇居外苑へ `flyTo`。出典は PLATEAU のサイトポリシーの書き方。`?local=1` はフィクスチャ。pack test の `plateau`（フィクスチャで 33 タイル、東京駅のクリックで「13101-bldg-」の建物 ID と用途、切り替えと戻し。CI ではフィクスチャがないので読めないと出ることだけ）。配信元から読んでも東京駅まわりで 72 タイルを描けた。
+- **20.5：CesiumJS との比較**（並行のエージェント。比べる項目は 2026-11-08 のユーザー判断：選ぶタイル、読むバイト、落ち着くまでの時間、画面の見比べ、配る大きさ、フレームの CPU）：
+  - `npm run cesium`（新設、`bench/cesium/`）：PLATEAU の東京駅まわり（`plateau-chiyoda`）を mbmap/3d の `tilesLayer`（`height: -36.7`、白い背景だけのスタイル）と CesiumJS 1.146.0（`CesiumWidget`、Ion・画像・地形・空・霧なし、白い楕円体、`maximumScreenSpaceError: 8`、動的・foveated な誤差なし、`skipLevelOfDetail: false`、`cullRequestsWhileMoving: false`、タイルセットを中心の法線に沿って 36.7 m 下げる `modelMatrix`、光は mbmap と同じ向きの `DirectionalLight`）で、800 × 600、dpr 1 の Chromium に描く。カメラは MapLibre のもの（縦の画角 36.87°、中心まで 1.5 画面高を中心の緯度のメートルに）を Cesium の `lookAt`（heading = bearing、pitch = pitch − 90°、中心の 0 m のまわり）にし、`frustum.fov` は横の画角に直す。画面の見比べで同じ建物が同じ所に来る。127.0.0.1 の外への要求があれば失敗にする（どちらもなし）。
+  - 結果（`bench/results/cesium.json`、**SwiftShader** の Chromium 156、3 回の中央値。フレームの数字は M2 の GPU（`-- --gpu`）で取り直すのが本当）：
+
+    | 視点 | 選んだタイル mbmap / Cesium（共通） | b3dm の要求 | 読んだ MB | 落ち着くまで ms | 回転 120 フレームの CPU p50 / p95 ms |
+    | --- | --- | --- | --- | --- | --- |
+    | z17、傾き 50°、方位 -20° | 24 / 23（22） | 53 / 50 | 21.7 / 21.0 | 917 / 4043 | 2.27 / 3.85 ・ 2.76 / 5.50 |
+    | z16、真上 | 27 / 27（27） | 49 / 49 | 20.5 / 20.5 | 892 / 4119 | 2.34 / 4.34 ・ 2.02 / 2.94 |
+    | z18、傾き 60°、方位 30° | 14 / 17（12） | 47 / 46 | 19.1 / 19.1 | 800 / 3713 | 2.35 / 4.28 ・ 2.65 / 5.20 |
+
+  - 配る大きさ（この場面で読んだ .js / .wasm の gzip）：mbmap 284.5KB（`index.js` 151.7、`mbmap.wasm` 80.3、`3d.wasm` 21.5、`3d-tiles.js` 9.9、`3d-worker.js` 8.4、`worker.js` 4.9、`3d.js` 4.9、`custom.js` 2.9）、CesiumJS 1870.7KB（ワーカーを抱えた `Cesium.js` 1782.2、`draco_decoder.wasm` 88.5）＋ 資産 136.3KB（`approximateTerrainHeights.json` など）。
+  - 違い：Cesium は PBR と環境光で青みがかった陰影、mbmap は Lambert の灰色。z18 では Cesium が深く選び、フィクスチャにないタイルを 8 つ求める（フィクスチャは loaders.gl の 60° のカメラで選んだもの）。mbmap と loaders.gl は画面上の誤差の分母を 1.15（60° の画角）に固定し、Cesium は 2 tan(縦の画角 / 2)（36.87° で 0.667）を使うため。
+  - 依存（bench の devDependency）：cesium 1.146.0（Apache-2.0、2026-10-01。1.147.0 は 2 週間たっていない）。その依存の `@cesium/engine` 26.5.0・`@cesium/widgets` 16.3.1・`@cesium/core` 0.1.1・pako 3.0.3 が新しすぎるので `overrides` で 26.4.0・16.3.0・0.1.0・3.0.2 に固定。install スクリプトなし（cesium 自身の `prepare` は npm のレジストリからの導入では走らない）、`npm audit` 0 件。比べるのは配布済みの `Build/Cesium` だけ。
+  - Mac で回すもの：`npm run cesium -- --gpu`（フレームの CPU と落ち着くまでの時間）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

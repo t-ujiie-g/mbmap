@@ -24,6 +24,7 @@ export async function prepareExamples() {
   for (const page of ["npm", "element", "geojson", "analysis", "data", "media", "custom", "model", "tiles", "globe", "services"]) await install(`bench/npm/pages/${page}`);
   await install("examples/html");
   await install("examples/element");
+  await install("examples/plateau");
   // npm ci empties node_modules, so the tarball goes in afterwards.
   run("npm", ["ci", "--no-audit", "--no-fund"], path.join(ROOT, "examples/react"));
   await install("examples/react");

@@ -41,6 +41,8 @@
 - 画像の保存（`toBlob`。画面の 2 倍の解像度の PNG）。
 - 画面の中心から 5 km 以内の地点：中心の点を測地線で 5 km 広げ（`buffer`）、その中にある地点を数える（`pointsWithin`）。移動が終わるたびに計算する。
 
+3D の例は 1 つ別にある：[plateau/](plateau/) は、千代田区の PLATEAU の建物（LOD2、Draco で圧縮した b3dm の 3D Tiles）を配信元から直接読み、`mbmap/3d` の `tilesLayer` で国土地理院の地図に重ねる（高さは楕円体高なので、東京駅のジオイド高 36.7 m を引く）。建物をクリックすると `queryFeature` で属性（名称、用途、計測高さ、階数、浸水ランクなど）を出す。チェックを外すと、地図の押し出しの建物に切り替わる。`?local=1` ではフィクスチャ（`bench/fixtures/plateau-chiyoda`、東京駅まわりのタイル）を読む。
+
 共通のスタイル・データ・解析・コントロールと見た目（`app.css`）は [shared/](shared/) にあり、3 つの例が同じものを使う。HTML と Web Component の例は `shell.js`（画面の枠）と `app.js`（動き）を使い、地図の作り方とイベントの受け方だけが違う。React の例は同じコントローラと同じ構造を JSX で描く。新しい機能は 3 つの例すべてに足す。
 
 ## 動かし方
@@ -51,7 +53,7 @@ npm --prefix npm ci                       # 初回だけ（パッケージのビ
 npm --prefix bench run examples           # パッケージをビルド・npm pack して各例に入れ、:8080 で配信
 ```
 
-`examples` は `bench/npm/prepare.mjs` を走らせる。npm パッケージをビルドして `npm pack` し、できた tarball を `html/` と `element/` の `node_modules/mbmap` に展開する。React の例では `examples/react` で `npm ci`（React と esbuild）をしてから tarball を入れ、`npm run build`（`build.mjs`）で `react/dist/` にバンドルし、Worker と wasm をその隣にコピーする。
+`examples` は `bench/npm/prepare.mjs` を走らせる。npm パッケージをビルドして `npm pack` し、できた tarball を `html/`、`element/`、`plateau/` の `node_modules/mbmap` に展開する。React の例では `examples/react` で `npm ci`（React と esbuild）をしてから tarball を入れ、`npm run build`（`build.mjs`）で `react/dist/` にバンドルし、Worker と wasm をその隣にコピーする。
 
 http://127.0.0.1:8080/examples/ を開く。地図は国土地理院の配信タイル（ベクトルタイル z4〜16、標高タイル z1〜14、シームレス空中写真）を直接読む。
 ネットワークなしで試すときや自動テストでは、`?local=1` でベンチ用のタイル（東京駅周辺の z14、`npm --prefix bench run fixtures` で取得）を読む。

@@ -970,6 +970,9 @@ Test / benchmark data (continued):
 - @protomaps/basemaps 5.7.2 (bench devDependency, not shipped): builds the Protomaps
   styles compared by bench/style/public.mjs and compat.mjs. BSD-3-Clause,
   © The Protomaps Authors.
+- CesiumJS 1.146.0 (bench devDependency `cesium`, not shipped): draws PLATEAU's
+  buildings beside mbmap/3d in bench/cesium/run.mjs. Apache-2.0,
+  © 2011-2026 CesiumJS Contributors (https://github.com/CesiumGS/cesium).
 
 - delaunay/delaunator.mbt: ported from delaunator 5.1.0
   https://github.com/mapbox/delaunator — ISC License, Copyright (c) 2021, Mapbox.

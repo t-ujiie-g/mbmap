@@ -88,7 +88,8 @@
     "tiles:golden": "node tiles/golden.mjs",
     "tiles:properties": "node tiles/properties-golden.mjs",
     "tiles:synthetic": "node tiles/synthetic.mjs",
-    "tiles:contents": "node tiles/contents-golden.mjs"
+    "tiles:contents": "node tiles/contents-golden.mjs",
+    "cesium": "npm --prefix ../npm run build && node cesium/run.mjs"
   },
   "devDependencies": {
     "@camptocamp/ogc-client": "2.0.2",
@@ -130,6 +131,7 @@
     "arcgis-pbf-parser": "0.0.4",
     "betterknown": "1.2.0",
     "binaryen": "132.0.0",
+    "cesium": "1.146.0",
     "concaveman": "2.0.0",
     "d3-contour": "4.0.3",
     "d3-delaunay": "6.0.6",
@@ -172,6 +174,12 @@
   "overrides": {
     "@loaders.gl/compression": {
       "fflate": "0.8.3"
+    },
+    "cesium": {
+      "@cesium/core": "0.1.0",
+      "@cesium/engine": "26.4.0",
+      "@cesium/widgets": "16.3.0",
+      "pako": "3.0.2"
     }
   }
 }

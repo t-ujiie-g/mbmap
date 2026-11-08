@@ -14,6 +14,7 @@ import { mediaChecks } from "./checks/media.mjs";
 import { customChecks } from "./checks/custom.mjs";
 import { modelChecks } from "./checks/model.mjs";
 import { tilesChecks } from "./checks/tiles.mjs";
+import { plateauChecks } from "./checks/plateau.mjs";
 import { globeChecks } from "./checks/globe.mjs";
 import { cameraChecks } from "./checks/camera.mjs";
 import { controlChecks } from "./checks/controls.mjs";
@@ -58,6 +59,7 @@ const PAGES = {
   "showcase-html": "examples/html/?local=1",
   "showcase-element": "examples/element/?local=1",
   "showcase-react": "examples/react/?local=1",
+  plateau: "examples/plateau/?local=1",
 };
 
 // Each check runs in a fresh page and returns [name, ok, details].
@@ -469,6 +471,10 @@ const checks = {
 
   async tiles(page) {
     return tilesChecks(page);
+  },
+
+  async plateau(page) {
+    return plateauChecks(page);
   },
 
   async globe(page) {
