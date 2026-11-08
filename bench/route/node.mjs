@@ -31,14 +31,18 @@ const grid = [["grid 100 x 100", fc([...at.map((r) => line(r)), ...at[0].map((_,
 for (const [name, sets] of [[`gsi roads (${TILES} tiles)`, networks], ["jittered grid 100 x 100", grid]]) {
   const ids = sets.map(([, data]) => env.load(data));
   const lines = sets.reduce((s, [, data]) => s + data.features.length, 0);
-  const build = (k) => {
+  const build = (k, snap = 0) => {
     env.put([ids[k]]);
-    return m.network_new(sets[k][2], 0);
+    return m.network_new(sets[k][2], snap);
   };
   row(`${name}: build the network (${lines} lines)`,
     time(() => sets.forEach(([, data, tolerance]) => new PathFinder(data, { tolerance }))),
     time(() => sets.forEach((_, k) => m.network_dispose(build(k)))),
     { tablesIn: time(() => ids.forEach((id) => env.put([id]))) });
+  // With snap there is no JS counterpart: mbmap with snap 2 m against geojson-path-finder without.
+  row(`${name}: build the network with snap 2 m`,
+    time(() => sets.forEach(([, data, tolerance]) => new PathFinder(data, { tolerance }))),
+    time(() => sets.forEach((_, k) => m.network_dispose(build(k, 2)))));
   const finders = sets.map(([, data, tolerance]) => new PathFinder(data, { tolerance }));
   const handles = sets.map((_, k) => build(k));
   const queries = sets.map(([, data]) => {
