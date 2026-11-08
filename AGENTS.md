@@ -138,7 +138,7 @@ How the user works with agents (standing instructions; they hold in every sessio
   - Research runs as a read-only subagent that reports back. The findings go into VISION/PROGRESS when that phase starts, never into a separate planning doc.
   - Code runs in its own git worktree and branch (`Agent` with `isolation: "worktree"`, or `git worktree add ../mbmap-<name> -b <branch>`). Each worktree needs `npm ci` in `bench/`, `npm/` and `examples/react/`, and a copy of `bench/fixtures/` (gitignored). `_build/` is per worktree, and `bench/lib/serve.mjs` picks a free port, so pack tests can run side by side.
   - Keep apart: work that must wait for a confirmation (a phase's scope, the review after a phase), and work touching the same files as the main line. Files that often conflict: the top of `PROGRESS.md`, `AGENTS.md`, `npm/scripts/size.mjs`, `bench/npm/pack-test.mjs`, `examples/shared/*`, `npm/src/ui.ts`. Merge `main` into the branch before reporting the PR.
-  - Never run performance benchmarks in parallel: they compete for the GPU and CPU.
+  - Never run performance benchmarks in parallel: they compete for the GPU and CPU. Agents that measure take a lock around each run (`until mkdir "$TMPDIR/mbmap-bench.lock" 2>/dev/null; do sleep 5; done; …; rmdir "$TMPDIR/mbmap-bench.lock"`), and the main line reruns the final numbers alone.
   - Each line of work is still one PR per step, reported and merged one at a time.
 
 ## 3. Toolchain notes
