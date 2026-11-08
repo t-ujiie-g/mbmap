@@ -17,6 +17,7 @@ layout(location = 2) in vec2 a_uv0;
 layout(location = 3) in vec2 a_uv1;
 layout(location = 4) in vec4 a_color;
 layout(location = 5) in float a_feature;
+layout(location = 6) in vec4 a_region;
 uniform mat4 u_model;
 uniform mat4 u_flat;
 uniform mat4 u_globe;
@@ -29,8 +30,10 @@ out vec3 v_enu;
 out vec3 v_normal;
 out vec2 v_uv;
 out vec4 v_color;
+out vec4 v_region;
 flat out float v_feature;
 void main() {
+  v_region = a_region;
   vec4 p = u_model * vec4(a_pos, 1.0);
   v_feature = a_feature;
   v_enu = p.xyz;
@@ -48,8 +51,10 @@ in vec3 v_enu;
 in vec3 v_normal;
 in vec2 v_uv;
 in vec4 v_color;
+in vec4 v_region;
 flat in float v_feature;
 uniform vec4 u_color;
+uniform bool u_atlas;
 uniform sampler2D u_image;
 uniform bool u_textured;
 uniform int u_shading;
@@ -68,7 +73,8 @@ void main() {
     return;
   }
   vec4 c = u_color * v_color;
-  if (u_textured) c *= texture(u_image, v_uv);
+  // An I3S atlas: the texture's part for this vertex is its uvRegion, which the uvs repeat in.
+  if (u_textured) c *= texture(u_image, u_atlas ? v_region.xy + fract(v_uv) * (v_region.zw - v_region.xy) : v_uv);
   if (u_cutoff >= 0.0) { if (c.a < u_cutoff) discard; c.a = 1.0; }
   float lit = 1.0;
   if (u_shading == 1) lit = 0.55 + 0.45 * max(dot(normalize(v_normal), u_light), 0.0);
@@ -77,7 +83,7 @@ void main() {
   o = vec4(c.rgb * lit * a, a);
 }`;
 
-const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point"] as const;
+const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas"] as const;
 type Uniforms = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
 /** A primitive on the GPU: its vertex array, how to draw it, and what it is drawn with. */
@@ -90,11 +96,12 @@ export interface Mesh {
   matrix: Float64Array;
   material?: Material;
   shading: number;
+  atlas: boolean;
 }
 
-/** Where each attribute goes; a feature's id (`_BATCHID` in b3dm, EXT_mesh_features' `_FEATURE_ID_0`) at 5, for picking. */
-const ATTRIBUTE_LOCATIONS: Record<string, number> = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, TEXCOORD_1: 3, COLOR_0: 4, _BATCHID: 5, _FEATURE_ID_0: 5 };
-const DEFAULTS: Record<number, number[]> = { 1: [0, 0, 1, 0], 2: [0, 0, 0, 0], 3: [0, 0, 0, 0], 4: [1, 1, 1, 1], 5: [0, 0, 0, 0] };
+/** Where each attribute goes; a feature's id (`_BATCHID` in b3dm, EXT_mesh_features' `_FEATURE_ID_0`) at 5, for picking; an I3S atlas region at 6. */
+const ATTRIBUTE_LOCATIONS: Record<string, number> = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, TEXCOORD_1: 3, COLOR_0: 4, _BATCHID: 5, _FEATURE_ID_0: 5, _UV_REGION: 6 };
+const DEFAULTS: Record<number, number[]> = { 1: [0, 0, 1, 0], 2: [0, 0, 0, 0], 3: [0, 0, 0, 0], 4: [1, 1, 1, 1], 5: [0, 0, 0, 0], 6: [0, 0, 1, 1] };
 const POINTS = 0;
 const IDENTITY3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
@@ -150,7 +157,7 @@ export function uploadModel(gl: WebGL2RenderingContext, model: DrawableModel, ax
     const matrix = mul(axis, p.matrix);
     // Points without normals have no surface to light.
     const shading = material?.unlit ? 0 : p.attributes.NORMAL ? 1 : p.mode === POINTS ? 0 : 2;
-    meshes.push({ vao, buffers, mode: p.mode, count, indexType, matrix, material, shading });
+    meshes.push({ vao, buffers, mode: p.mode, count, indexType, matrix, material, shading, atlas: Boolean(p.attributes._UV_REGION) });
   }
   return { meshes, textures };
 }
@@ -239,6 +246,7 @@ export class ModelProgram {
     gl.uniform4fv(u.u_color, mat?.color ?? [1, 1, 1, 1]);
     gl.uniform1i(u.u_shading, m.shading);
     gl.uniform1f(u.u_point, m.mode === POINTS ? this.#pointSize : 0);
+    gl.uniform1i(u.u_atlas, m.atlas ? 1 : 0);
     gl.uniform1f(u.u_cutoff, mat?.alphaMode === "MASK" ? mat.alphaCutoff : -1);
     const tex = mat?.texture;
     const texture = tex ? model.textures[tex.image] : undefined;

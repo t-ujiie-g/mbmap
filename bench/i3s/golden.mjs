@@ -1,8 +1,6 @@
-// mbmap/3d's I3S node selection (npm/src/i3s/scene.ts on the shared traversal) vs @loaders.gl/tiles
-// 4.5.4's Tileset3D with @loaders.gl/i3s 4.5.4: for each view both traverse the same frame state and
-// load every node page and content they ask for (contents marked loaded, not read) until nothing is
-// left; the nodes selected must be the same. The layer is Esri's San Francisco buildings sample, its
-// layer document and node pages served from bench/fixtures/i3s-sf-pages. Usage: node i3s/golden.mjs
+// I3S node selection (npm/src/i3s/scene.ts) vs @loaders.gl/tiles 4.5.4's Tileset3D with @loaders.gl/i3s 4.5.4
+// on Esri's San Francisco sample (bench/fixtures/i3s-sf-pages): same frame states, node pages loaded and
+// contents marked loaded until nothing is asked for; the nodes selected must match. Usage: node i3s/golden.mjs
 import http from "node:http";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";

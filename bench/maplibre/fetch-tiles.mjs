@@ -60,7 +60,7 @@ const SETS = [
   // Esri's San Francisco buildings sample (I3S 3DObject): the layer document and every node page, for
   // the I3S selection golden (bench/i3s/golden.mjs).
   {
-    name: "i3s-sf-pages", attribution: "Esri sample scene layer SanFrancisco_Bldgs (tiles.arcgis.com), fetched for comparison only",
+    name: "i3s-sf-pages", attribution: ESRI,
     i3s: "https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/arcgis/rest/services/SanFrancisco_Bldgs/SceneServer/layers/0",
   },
   {

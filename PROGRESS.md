@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.7（I3S）。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.7b（I3S の点群 PCSL と LEPCC、SLPK）。20.7a（I3S の建物とメッシュ）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -40,7 +40,7 @@
   - 20.4：3D Tiles 1.0 / 1.1。2026-11-08 のユーザー判断で 2 つに分けた：20.4a（tileset.json、境界、画面上の誤差による詳細度、REPLACE / ADD、外部タイルセット、暗黙のタイリング、glb と b3dm、メルカトルと地球。Draco の移植もここに）、20.4b（i3dm、cmpt、バッチテーブルと `EXT_structural_metadata` / `EXT_mesh_features`、クエリ、地形との重なり）。pnts の描画は 20.6 で。
   - 20.5：PLATEAU の建物を表示する example（専用のページ 1 つ。2026-11-08 のユーザー判断）と CesiumJS との描画・速度の比較。
   - 20.6：点群（3D Tiles の pnts と glTF の点、圧縮なしの LAS）。
-  - 20.7：I3S（3DObject と IntegratedMesh、点群）。
+  - 20.7：I3S。2026-11-08 のユーザー判断で 2 つに分けた：20.7a（3DObject と IntegratedMesh：node pages、Draco と非圧縮のジオメトリ、JPEG・PNG のテクスチャ、属性とクリック）、20.7b（点群 PCSL：LEPCC の移植、SLPK）。圧縮テクスチャ（KTX2 / Basis、DDS）は読まない。比べるデータは合成と ArcGIS の公開サンプル（`tiles.arcgis.com` を環境に足した）。I3S のコードは遅延読み込みの `3d-i3s.js`（10KB）。
   - 20.8：太陽の位置と光と影（mbmap の拡張として）。
   - 20.9：3D の計測・見通し・断面（クリッピング）。
 - **決めたこと**：
@@ -140,6 +140,15 @@
   - pack test：`tiles` に pnts の市松模様（点ごとの `kind`）、glTF の点の輪、Draco の pnts の四角（バッチの `height` も Draco）を足し、色とクリックを確かめる。`pointcloud`（新設）は合成の LAS（EPSG:6677、47010 点）を読み、東京駅のまわりに来ること、分類での色替え、`crs` の手書きと間引き、無いファイルで `ready` が失敗することを確かめる。
   - 大きさ：`3d.js` 4.9 → 6.1KB（10KB）、`3d-tiles.js` 9.9KB のまま（10KB）、3D ワーカー 29.9 → 38.0KB（45KB。Draco の点群 +3.8、LAS と座標変換 +3.3）。proj.wasm と prjwkt.js は点群で初めて読む。
   - まだないもの：LAZ・COPC、点の大きさを距離で変える（attenuation）・EDL、点群のクリック（LAS）、多数の点の詳細度（LAS は間引きだけ）、高さの単位と鉛直の座標系。
+- **20.7a：I3S の建物とメッシュ**：
+  - 選択（本線、`npm/src/i3s/scene.ts`）：レイヤー（SceneServer の `…/layers/0`、またはファイルに書き出した `….json` とその横の資源）、node pages は走査が子を求めたときに読む（`Traversal.expand`）。ノードはタイル（OBB は loaders.gl の `createBox` と同じく四元数で各軸を回す、`mbs` の半径は OBB の外接球、`maxScreenThresholdSQ` は直径に直す）。詳細度は loaders.gl の `getLodStatus` / `getProjectedRadius` の移植で、フレームの `view`（元の行列）から deck.gl の `viewport.project` と同じく画面に投影する。3D Tiles の描画エンジンを `TileSource`（根、走査、中身の読み込み、子の読み足し）で共有し、`3d-i3s.js` は `3d-tiles.js` を読み込んで使う。
+  - `npm run i3s:golden`（新設）：Esri のサンフランシスコの建物のサンプル（`i3s-sf-pages`、レイヤーと node pages 780 枚、27MB、sha256 で固定）で、loaders.gl の `Tileset3D`（@loaders.gl/i3s 4.5.4）と同じフレームで node pages を読み、中身は読み込み済みにして、選ぶノードが 5 視点すべて同じ。
+  - 中身（並行のエージェント、`npm/src/i3s/content.ts`、3D ワーカーの `i3s`）：Draco のバッファを優先（loaders.gl と同じ）、なければ非圧縮。位置はノードの中心からの度とメートルを math.gl と同じ演算で ECEF にし、中心の東・北・上の f32 メートルに。法線（earth-centered は ENU に回す）、uv、色、地物の番号（`_BATCHID`）、テクスチャのアトラスの `_UV_REGION`（シェーダーで領域の中に繰り返す）。属性は主スレッドで読み（`readI3sAttribute`）、地物の行は OBJECTID で探す（loaders.gl と同じ）。WGS 84 だけ（loaders.gl も同じ）。`npm run i3s:contents`（新設）：Esri の公開サンプル（SanFrancisco_Bldgs 3DObject 36 バッファ、Frankfurt2017_vi3s_18 IntegratedMesh 12 バッファ）と合成で 0 differ、壊したもの 18 件を断る。位置は loaders.gl の ECEF を同じ枠に取って f32 にしたものとビットまで同じ。`geo.ts` の `toCartesian` は math.gl と最後の 1 ビット違うことがあるので、中身は math.gl と同じ `cartesian()` を使う。
+  - `i3sLayer`（本線）：クリックで属性（OBJECTID、名前など）。公開サンプルのサンフランシスコをそのまま描け、アトラスのテクスチャも出る。
+  - pack test の `i3s`（新設）：合成のレイヤー（東京駅のまわりの 12 棟、根と子 4 つ、Draco と非圧縮、PNG のアトラス）が近くで子 4 つ、遠くで根になり、色の建物とテクスチャの建物のクリックで属性が返る。
+  - 依存：@loaders.gl/i3s 4.5.4（bench の devDependency、MIT、install スクリプトなし、`npm audit` 0 件）。公開サンプルのデータは比べるためだけに取り、コミットしない（Esri の利用条件。ライセンスの欄は www.arcgis.com がこの環境から読めず未確認）。
+  - 大きさ：`3d-tiles.js` 9.9 → 10.1KB（2026-11-08 のユーザー判断で予算を 12KB に）、`3d-i3s.js` 6.6KB（10KB）、`3d.js` 6.2KB（10KB）、3D ワーカー 38.0 → 41.0KB（45KB）。
+  - まだないもの：DDS・KTX2 のテクスチャ、I3S 1.6 以前（node pages なし）、WGS 84 以外、`vertex-reference-frame` の法線、点群（20.7b）、SLPK（20.7b）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

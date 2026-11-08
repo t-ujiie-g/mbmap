@@ -3,6 +3,7 @@
 // nodes with (`getLodStatus`, `getProjectedRadius`). Import-free.
 import { add, cross, eastNorthUp, length, normalize, scale, sub, toCartesian, toCartographic, type Vec3 } from "../tiles/geo.ts";
 import { invert } from "../tiles/frame.ts";
+import { checkSpatialReference, nodeResources, type I3sLayer } from "./content.ts";
 import { Tile, type FrameState } from "../tiles/tileset.ts";
 
 /** MapLibre's globe radius in meters (as frame.ts). */
@@ -24,8 +25,8 @@ export interface I3sNode {
 }
 
 /** A layer as read: its JSON, where its resources are, and its node pages read so far. */
-export interface I3sLayer {
-  json: Record<string, any>;
+export interface I3sScene {
+  json: I3sLayer & Record<string, any>;
   base: string;
   query: string;
   nodesPerPage: number;
@@ -48,20 +49,21 @@ export function layerBase(url: string): { base: string; query: string } {
 }
 
 /** The URL of resource `path` (`nodepages/0`, `nodes/3/geometries/1`, …) of `layer`. */
-export const resourceUrl = (layer: Pick<I3sLayer, "base" | "query">, path: string): string => `${layer.base}/${path}${layer.query}`;
+export const resourceUrl = (layer: Pick<I3sScene, "base" | "query">, path: string): string => `${layer.base}/${path}${layer.query}`;
 
 /** Reads a layer document: 3DObject or IntegratedMesh with node pages. */
-export function readLayer(json: Record<string, any>, url: string): I3sLayer {
+export function readLayer(json: Record<string, any>, url: string): I3sScene {
   const type = json?.layerType;
   if (type !== "3DObject" && type !== "IntegratedMesh") throw new Error(`the I3S layer is ${type ?? "of no type"}, not 3DObject or IntegratedMesh`);
   if (!json.nodePages) throw new Error("only I3S layers with node pages (1.7 and later) are read");
+  checkSpatialReference(json);
   const nodesPerPage = json.nodePages.nodesPerPage ?? 64;
   if (!Number.isInteger(nodesPerPage) || nodesPerPage < 1 || nodesPerPage > MAX_NODES) throw new Error("the I3S layer's nodesPerPage is not a positive integer");
   return { json, ...layerBase(url), nodesPerPage, squared: json.nodePages.lodSelectionMetricType === "maxScreenThresholdSQ", pages: new Map() };
 }
 
 /** Node `id` of `layer`, its node page fetched with `fetchJson` the first time. */
-export async function nodeById(layer: I3sLayer, id: number, fetchJson: (url: string) => Promise<any>): Promise<I3sNode> {
+export async function nodeById(layer: I3sScene, id: number, fetchJson: (url: string) => Promise<any>): Promise<I3sNode> {
   if (!Number.isInteger(id) || id < 0 || id >= MAX_NODES) throw new Error(`no I3S node ${id}`);
   const page = Math.floor(id / layer.nodesPerPage);
   let nodes = layer.pages.get(page);
@@ -72,13 +74,6 @@ export async function nodeById(layer: I3sLayer, id: number, fetchJson: (url: str
   const node = (await nodes)[id % layer.nodesPerPage];
   if (!node || node.index !== id || !node.obb) throw new Error(`no I3S node ${id}`);
   return node;
-}
-
-/** The index of the geometry buffer loaders.gl reads: Draco when offered, else the uncompressed one. */
-export function geometryBuffer(layer: I3sLayer, definition: number): number {
-  const buffers: any[] = layer.json.geometryDefinitions?.[definition]?.geometryBuffers ?? [];
-  const draco = buffers.findIndex((b) => b?.compressedAttributes?.encoding === "draco");
-  return draco >= 0 ? draco : buffers.findIndex((b) => !b?.compressedAttributes);
 }
 
 /** gl-matrix's `mat3.fromQuat`, column-major. */
@@ -104,19 +99,18 @@ function transformQuat(v: ArrayLike<number>, q: ArrayLike<number>): Vec3 {
  * its geometry resource as content, its level-of-detail value (`maxScreenThresholdSQ` as a diameter in
  * pixels) and the radius of the OBB's bounding sphere, which the level of detail projects.
  */
-export function nodeTile(layer: I3sLayer, node: I3sNode, parent: Tile | null): Tile {
+export function nodeTile(layer: I3sScene, node: I3sNode, parent: Tile | null): Tile {
   const { center, halfSize: h, quaternion: q } = node.obb;
   const c = toCartesian(center[0], center[1], center[2]);
   const axes = [transformQuat([1, 0, 0], q), transformQuat([0, 1, 0], q), transformQuat([0, 0, 1], q)].map((a, i) => scale(a, h[i]));
   const d = fromQuat(q);
   const corner = [0, 1, 2].map((k) => d[k] * h[0] + d[3 + k] * h[1] + d[6 + k] * h[2]);
-  const geometry = node.mesh?.geometry;
-  const b = geometry ? geometryBuffer(layer, geometry.definition) : -1;
+  const geometry = nodeResources(layer.json, node)?.geometry;
   const lod = typeof node.lodThreshold === "number" ? node.lodThreshold : NaN;
   const header = {
     boundingVolume: { box: [...c, ...axes.flat()] },
     refine: "REPLACE",
-    content: geometry && b >= 0 ? { uri: resourceUrl(layer, `nodes/${geometry.resource}/geometries/${b}`) } : undefined,
+    content: geometry ? { uri: resourceUrl(layer, geometry) } : undefined,
     children: node.children ?? [],
     node,
     mbs: [center[0], center[1], center[2], length(corner)],
