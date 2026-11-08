@@ -49,3 +49,26 @@ export function draco(exports) {
     return { indices, attributes };
   };
 }
+
+/** LEPCC blob kinds as the wasm's `lepcc_decode` numbers them, and each value's size in bytes. */
+const LEPCC_KINDS = { xyz: [0, 24], rgb: [1, 3], intensity: [2, 2] };
+
+/** Decodes I3S point clouds' LEPCC blobs through the wasm's `lepcc_decode` (docs/FORMATS.md "LEPCC output"). */
+export function lepcc(exports) {
+  const run = (kind, bytes) => {
+    const [k, each] = LEPCC_KINDS[kind];
+    writeInput(exports, [bytes], `LEPCC ${kind} data`);
+    const n = exports.lepcc_decode(k);
+    if (n === -2) throw new Error("out of memory");
+    if (n < 8) throw new Error(`LEPCC ${kind} data could not be decoded`);
+    const at = exports.output_addr();
+    const count = new DataView(exports.memory.buffer, at, 8).getUint32(0, true);
+    if (8 + count * each !== n) throw new Error(`LEPCC ${kind} output is malformed`);
+    return exports.memory.buffer.slice(at + 8, at + n);
+  };
+  return {
+    xyz: (bytes) => new Float64Array(run("xyz", bytes)),
+    rgb: (bytes) => new Uint8Array(run("rgb", bytes)),
+    intensity: (bytes) => new Uint16Array(run("intensity", bytes)),
+  };
+}

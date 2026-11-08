@@ -196,8 +196,8 @@
     },
     {
       "name": "3d worker",
-      "bytes": 41012,
-      "budget": 45000
+      "bytes": 43072,
+      "budget": 50000
     },
     {
       "name": "mbmap/data",

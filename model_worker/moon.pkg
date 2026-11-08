@@ -1,5 +1,6 @@
 import {
   "t-ujiie-g/mbmap/draco",
+  "t-ujiie-g/mbmap/lepcc",
   "t-ujiie-g/mbmap/meshopt",
   "t-ujiie-g/mbmap/wasmio",
 }
