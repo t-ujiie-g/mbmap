@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：VISION §8 の Phase 20（範囲と段階を確かめてから）。Phase 19 の後のリファクタリング・セキュリティチェック（#135）と速さの比較（下の節「Phase 19 の速さの比較」）は済んだ。振る舞いの候補 3 つは Phase 20 の前に扱いを決める（「Phase 19 の後の点検」の残り）。
+- **次**：Phase 20 の前に、Phase 19 の速さの改善（下の節「Phase 19 の速さの比較」）と、GeoJSON ソースの `updateData`・道路網の `snap`（下の「Phase 19 の後の点検」の残り）を行う（2026-11-08 ユーザー判断）。その後は VISION §8 の Phase 20（範囲と段階を確かめてから）。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
 - **Mac で回すもの**（残り。Phase 19 の分は下の節）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
@@ -23,7 +23,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 7.8KB（分類と統計 1.8KB を含む） ＋ ワーカー 29.8KB（geometry.wasm 41.8KB、relate.wasm 27.0KB、shapes.wasm 27.9KB、surface.wasm 28.9KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 13.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 29.8KB（geometry.wasm 41.8KB、relate.wasm 27.0KB、shapes.wasm 27.9KB、surface.wasm 28.9KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 13.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
@@ -47,7 +47,10 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 - **依存**：`npm audit` は `npm/`・`bench/`・`examples/react/` とも 0 件、Dependabot の警告 0 件。ゴールデンのための依存は MIT・ISC・BSD・Unlicense・EDL/EPL で、NOTICE にある。Mac の `bench/node_modules` が古かった（jsts 2.7.1）ので `npm ci` し直した。
 - **大きさ**：解析ワーカー 29.9 → 29.7KB、relate.wasm 26.5 → 26.8KB、surface.wasm 28.1 → 28.7KB（線分の予算）、`mbmap/analysis` 7.7 → 7.8KB、表示ワーカー 80.5KB、表示（メイン）133.7KB。
 - **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 341、`npm --prefix bench test`、ゴールデン（viewshed・relate・shapes・surface・route・analysis・classify・fields・expression・geojson・cluster・style・labels・query・color）すべて同じ、`npm:pack` 通過。
-- **残り**：振る舞いの候補（フィールド演算が編集のたびにデータ全体を `getData`/`setData` する、タイルの境の道路のつなぎ、自然分類の最大の級が 1 つの値だけになる）は Phase 20 の前に扱いを決める。
+- **残り**（振る舞いの候補の扱い、2026-11-08 ユーザー判断）：
+  - フィールド演算が編集のたびにデータ全体を `getData`/`setData` する：GeoJSON ソースに MapLibre の `updateData(diff)` を足す。@maplibre/geojson-vt 6.3.0 の更新できる索引（`difference.ts`、`invalidateTiles`、`updateIndex`）まで移植し、更新のあとの全タイルをゴールデンで比べる。段階は、主スレッドの差分と変わったタイルだけの読み直し、ワーカーの増分、フィールド演算の切り替えの 3 つ。予算は GeoJSON のワーカー 30 → 34KB、`clusterProperties` のモジュール 50 → 54KB。
+  - タイルの境の道路のつなぎ：`querySourceFeatures` の地物に MapLibre と同じ `tile: {z, x, y}` を付け、example は線を各タイルの範囲で切ってから網にする（ズームが混ざれば最も深いもの）。`network({ snap })`（メートル、既定は使わない）で、線の端から snap 以内の別の線の途中を分けてつなぐ。route.wasm の予算は 15 → 17KB。
+  - 自然分類の最大の級が 1 つの値だけになる：いまのまま（外れ値を級にするのは jenks の答え）。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
 
@@ -75,22 +78,22 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 | DBSCAN 6000 点 2 km／k-means 既定の k | 1974.3／132.5 | 896.7／56.6 | 0.45／0.43 |
 | 経路：網を作る（GSI 道路 13008 線）／800 経路 | 89.1／376.6 | 17.8／79.7 | 0.20／0.21 |
 | 経路：100 × 100 の格子の網／200 経路 | 67.6／718.8 | 5.48／129.4 | 0.08／0.18 |
-| 分類：統計／等量 7 級（100 万値） | 14.5／15.9 | 349.2／350.6 | 24／22 |
-| 分類：等間隔 7 級（100 万値） | 1.18 | 344.1 | 290 |
-| 分類：標準偏差 7 級（100 万、geostats）／ckmeans 7 級（10 万）／jenks 7 級（5000） | 646.8／64.3／249.9 | 686.5／69.2／266.8 | 1.06／1.08／1.07 |
+| 分類：統計／等量 7 級（100 万値） | 14.0／16.0 | 12.4／17.2 | 0.89／1.08 |
+| 分類：等間隔 7 級（100 万値） | 1.32 | 2.97 | 2.2 |
+| 分類：標準偏差 7 級（100 万、geostats）／ckmeans 7 級（10 万）／jenks 7 級（5000） | 663.4／62.1／255.0 | 5.72／41.5／269.6 | 0.009／0.67／1.06 |
 | 可視域 1024²、範囲なし（GDAL の正味、プロセスは 153.5） | 21.2 | 69.4 | 3.3 |
 | 可視域 4096²、範囲なし（同 469.8） | 337.6 | 1091.5 | 3.2 |
 | 可視域 4096²、5 km（同 136.8） | 4.5 | 50.2 | 11 |
 
 - **可視域の測り方**：`gdal_viewshed` は 1 回ごとのプロセスなので、2 × 2 の DEM での実行（起動、ドライバ、小さな入出力。132 ms）を引いた正味と比べる。1024² では正味が起動より小さく揺れるので、起動が目立たない 4096²（富士山の DEM を 4 × 4 に鏡映）も測った。GDAL の CPU 時間は壁時計とほぼ同じ（ほぼ 1 スレッド）で、MEM ドライバに書いても GTiff と変わらない。mbmap は 1 スレッドで、格子の値を analysis.wasm から出して入れ、出力を読むまで。
 - **速いもの**：述語（0.36〜0.7）、経路（0.08〜0.21）、IDW・DBSCAN・k-means（0.3〜0.56）、線の操作（0.27〜0.29）、凸包・凹包・密度・建物の simplify（0.75〜0.91）。
+- **分類は直した**：毎回 `x.slice().sort((a, b) => a - b)` で並べていた（100 万値で約 330 ms、統計 349.2 ms、等間隔 344.1 ms）。有限の値を `Float64Array` に集め、統計と等間隔は最小・最大を走査、中央値と等量は simple-statistics の quickselect と multiselect をそのまま移し（ゼロの符号まで同じになる）、jenks と ckmeans は `Float64Array` の `sort()` で並べて -0 と 0 だけ元の順に戻す。標準偏差は中央値を求めない。`classify:golden` に符号つきゼロの 20 組を足し、すべて同じ。`[-0, 0]` の最大は前は 0 で、simple-statistics と同じ -0 になった。入口は 7.8KB → 8.3KB（分類は 1.9KB → 2.4KB）。等間隔に値を写さず走査だけする版は速くならず（2.75 → 3.0 ms、有限の判定が費用）、戻した。
 - **直したもの**（2026-11-08、表の「直す前」と同じ測り方）：
   - DE-9IM 行列 8.95 → 0.46 ms（JSTS の 0.46 倍）：時間のほとんどは 1 組ごとのテーブルの写しと `Table::from_bytes` で、relate の計算は 1 組 4.5 µs ほど。relate.wasm が最後の組のテーブル（と 2 つめの索引）を持ち、ワーカーは同じデータセットの組なら `len_a` -1 で写さずに呼ぶ（データセットは変わらず番号も使い回さない。`dispose` で `forget_tables`）。
   - 等値線 2.19 → 1.7、等値帯 2.88 → 2.38 ms：格子の点の並べ替え（`sort_by`、計算の 2 割弱）を、行か列の順に並んだ格子（Turf の `pointGrid` は列の順）なら 1 回の走査で確かめて済ませる（`lat_lng_order`。順序は全順序なので確かめた候補が並べ替えの答えと同じ）。
   - ボロノイ 10 万点 178.7 → 169.7 ms：セルごとの配列の伸長と写しを減らす（容量を見込み、重なる点を除くのはその場で）。
   - 試して戻したもの：ドロネーの点の取り出しを `FixedArray` に直接、delaunator の結果を `blit_to` で写す（10 万点で差が雑音の内）。
 - **遅いものと原因の候補**（いまは直さない）：
-  - 分類：毎回 `x.slice().sort((a, b) => a - b)` で並べる（100 万値で約 330 ms）。simple-statistics は最小・最大を走査し、中央値と分位は quickselect。等間隔と統計は並べずに走査し、並べるときは `Float64Array` の `sort()`（比較関数なし）にする。
   - 格子と道路の simplify：テーブルを作って analysis.wasm に読み戻す固定費。点の格子は export だけで Turf の 8 倍、読み戻しが 0.7 ms。道路の simplify はテーブルの写し（2.4 ms）だけで JS の全体を超える。`TableBuilder` の地物ごとの費用と `load_table` を見る。
   - ドロネー・ボロノイ：プロファイル（`--no-strip` の名前つき）では、10 万点のドロネーの export の約 4 割が出力のテーブルのバイト化（`ByteWriter::f64` の 1 バイトずつの `push` と `Array[Byte]` の伸長、`write_bytes` の 1 バイトずつの書き込み）。delaunator の移植そのもの（`legalize`・`update`・`quicksort`）は約 40 ms で delaunator（47 ms）と同じくらい。残りは共有のテーブルの入出力の側。
   - 等値線・等値帯：直したあとは、時間の 6 割強がテーブルの写し（analysis.wasm の `table_out` と `Table::from_bytes`）。等値線の計算そのものは約 2 割。

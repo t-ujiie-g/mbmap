@@ -28,4 +28,4 @@ for (const [name, x] of sets) {
 const jenksSet = randoms(5000);
 row("jenks 7 classes (random 5000)", time(() => ss.jenks(jenksSet, 7)), time(() => classBreaks(jenksSet, 7, "jenks")));
 
-await writeResults("classify-node", { simpleStatistics: "8.0.0", geostats: "2.1.0", statistic: TIMING, columns: "both JavaScript: mbmap's classify.ts drops non-finite values and sorts a copy on every call" }, all);
+await writeResults("classify-node", { simpleStatistics: "8.0.0", geostats: "2.1.0", statistic: TIMING, columns: "both JavaScript: mbmap's classify.ts copies the finite values into a Float64Array on every call" }, all);
