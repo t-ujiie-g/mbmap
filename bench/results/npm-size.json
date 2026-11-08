@@ -61,7 +61,7 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 9033,
+      "bytes": 9254,
       "budget": 10000
     },
     {
@@ -226,12 +226,12 @@
     },
     {
       "name": "mbmap/ui createAttribution alone",
-      "bytes": 483,
+      "bytes": 482,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createFullscreen alone",
-      "bytes": 516,
+      "bytes": 515,
       "budget": 2000
     },
     {
@@ -241,27 +241,27 @@
     },
     {
       "name": "mbmap/ui createNavigation alone",
-      "bytes": 538,
+      "bytes": 539,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createScale alone",
-      "bytes": 889,
+      "bytes": 888,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createBasemaps alone",
-      "bytes": 713,
+      "bytes": 711,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createLayerList alone",
-      "bytes": 849,
+      "bytes": 848,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createLegend alone",
-      "bytes": 1564,
+      "bytes": 1563,
       "budget": 2000
     },
     {
@@ -271,17 +271,17 @@
     },
     {
       "name": "mbmap/ui createIdentify alone",
-      "bytes": 813,
+      "bytes": 812,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createMeasurement alone",
-      "bytes": 1481,
+      "bytes": 1476,
       "budget": 2000
     },
     {
       "name": "mbmap/ui createProfile alone",
-      "bytes": 926,
+      "bytes": 925,
       "budget": 2000
     },
     {
@@ -291,7 +291,7 @@
     },
     {
       "name": "mbmap/ui createFieldEditor alone",
-      "bytes": 1136,
+      "bytes": 1358,
       "budget": 2000
     }
   ]
