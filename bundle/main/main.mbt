@@ -568,6 +568,18 @@ pub fn map_paint_at(
 }
 
 ///|
+/// Values of expression `text` for each of `features` at `zoom`, or the
+/// error's message (`@map.evaluate_expression`).
+#export_name("evaluate_expression")
+pub fn evaluate_expression(
+  text : String,
+  features : FixedArray[@map.Properties],
+  zoom : Double,
+) -> @map.ExpressionValues {
+  @map.evaluate_expression(text, features, zoom)
+}
+
+///|
 /// The labels shown at the last placement (`@map.Map::placed_labels`), for
 /// tests; the facade does not use it.
 #export_name("map_placed_labels")

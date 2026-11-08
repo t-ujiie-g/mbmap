@@ -44,6 +44,7 @@
     "buffer:check": "npm run build:moon && node clipper/buffer-check.mjs",
     "geodesic:golden": "npm run build:moon && node geodesic/golden.mjs",
     "relate:golden": "npm run build:moon && node relate/golden.mjs",
+    "fields:golden": "npm --prefix ../npm run build && node fields/golden.mjs",
     "classify:golden": "node --experimental-strip-types classify/golden.mjs",
     "shapes:golden": "npm run build:moon && node shapes/golden.mjs",
     "surface:golden": "npm run build:moon && node surface/golden.mjs",

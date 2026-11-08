@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 133260,
+      "bytes": 133710,
       "budget": 135000
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 8284,
+      "bytes": 9033,
       "budget": 10000
     },
     {
@@ -236,7 +236,7 @@
     },
     {
       "name": "mbmap/ui createGeolocation alone",
-      "bytes": 1414,
+      "bytes": 1415,
       "budget": 2000
     },
     {
@@ -261,7 +261,7 @@
     },
     {
       "name": "mbmap/ui createLegend alone",
-      "bytes": 1563,
+      "bytes": 1564,
       "budget": 2000
     },
     {
@@ -286,7 +286,12 @@
     },
     {
       "name": "mbmap/ui createAttributeTable alone",
-      "bytes": 1996,
+      "bytes": 2037,
+      "budget": 2200
+    },
+    {
+      "name": "mbmap/ui createFieldEditor alone",
+      "bytes": 1136,
       "budget": 2000
     }
   ]

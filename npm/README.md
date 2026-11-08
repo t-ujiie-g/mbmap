@@ -118,7 +118,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
 - グローバルな状態（global state、MapLibre と同じ）：`setGlobalStateProperty(name, value)`、`getGlobalState()`、`new Map` の `globalState`（スタイルの `state` の既定値より優先）。`["global-state", name]` を読むレイヤーは描き直され、フィルタやレイアウトで読むレイヤーはタイルを読み直す。`null` を渡すとスタイルの既定値に戻る。
 - マウスイベント：`mousedown`、`mouseup`、`mouseover`、`mouseout`、`mousemove`、`click`（押してから 3px 未満の移動のとき）、`dblclick`、`contextmenu`。`point` と `lngLat` が入る。
   - `map.on("click", "レイヤー id", f)` のようにレイヤーを指定すると、その下の地物（`e.features`）があるときだけ呼ぶ。`mouseenter`・`mouseleave` はレイヤー指定でだけ使える。問い合わせを待ってから呼ぶので、DOM のイベントより少し遅れる。
-- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`evaluatePaint(layerId, properties)`（その属性の地物を、いまのズームでどう描くか。凡例が使う）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。
+- `loaded()`、`getContainer()`、`getCanvas()`、`getAttributions()`（いま表示する出典の一覧）、`evaluatePaint(layerId, properties)`（その属性の地物を、いまのズームでどう描くか。凡例が使う）、`evaluateExpression(expression, features, { zoom })`（スタイルの式の地物ごとの値。既定はいまのズーム。style-spec の `evaluate` と同じ値で、色は `to-string` の文字列、`format` はその文字列、評価のエラーと NaN は null。オブジェクトや配列の属性は null として読む。コンパイルできない式は例外。地図なしで使う同じ関数 `evaluateExpression` も `mbmap` から出す。既定のズームは 0）、`remove()`。`getMinZoom(true)` は、緯度の制約と `maxBounds` で実際に下げられる最小ズームを返す（MapLibre と同じ）。
 
 ## UI のコントローラ `mbmap/ui`
 
@@ -173,10 +173,13 @@ MapLibre のコントロールと同じ計算をし、`npm run ui:golden` で Ma
   - 行は、GeoJSON ソースならデータ全部（`getSource(id).getData()`）、ベクタタイルのソースなら描いているタイルの地物（`querySourceFeatures`。`sourceLayer` が要る。id（`promoteId`）が同じものは 1 行にまとめ、ジオメトリはタイルごとの部分の GeometryCollection になる）。ソースの `sourcedata` で読み直し（ベクタタイルのソースは `idle` でも）、同じタスクの中の変更は 1 回にまとめる。
   - 列は `columns`（既定は属性のキーを最初に現れた順に）。
   - 状態は `columns`、`rows`（いまのページの行。各要素は `id`、`properties`、`geometry`）、`total`（全部の行の数）、`filtered`（絞り込んだあとの数）、`page`（0 から）、`pages`、`pageSize`（既定 50）、`sort`（`{ column, direction }` か null）、`query`、`selected`（選んでいる id。文字列）、`loading`、`error`。
-  - 操作は `setSort(column, direction?)`（向きを省くと昇順、同じ列ならその逆。null で元の順）、`setQuery(text)`、`setFilter(row => boolean)`、`setPageSize(n)`、`goTo(page)`・`next()`・`previous()`（範囲に収める）、`select(id, { add })`（`add` で選択に足す。選んでいれば外す）、`clear()`、`zoomTo(id, options)`（地物の範囲に `fitBounds`。既定は padding 40、maxZoom 17）、`refresh()`。
+  - 操作は `setSort(column, direction?)`（向きを省くと昇順、同じ列ならその逆。null で元の順）、`setQuery(text)`、`setFilter(row => boolean)`、`setPageSize(n)`、`goTo(page)`・`next()`・`previous()`（範囲に収める）、`select(id, { add })`（`add` で選択に足す。選んでいれば外す）、`clear()`、`zoomTo(id, options)`（地物の範囲に `fitBounds`。既定は padding 40、maxZoom 17）、`refresh()`、`setColumns(columns)`（表示する列。null で属性のキー全部）、`passing(rows)`（そのうち絞り込みを通る行）。
   - 並べ替えは `Intl.Collator`（`locale`、数字は数として）で、数、文字列、値のないもの（null、undefined。向きによらず最後）の順。同じ値は元の順のまま。
   - 絞り込みは `searchColumns`（既定は列）の値に `query` を含む行（`mbmap/search` と同じく全角半角、大文字小文字、カタカナとひらがなを区別しない）で、`filter` も満たすもの。
   - 選んだ地物には feature-state（既定のキーは `selected`）を立てる。`cellText(value)` はセルの文字列（null は空、オブジェクトは JSON）。
+- `createFieldEditor(map, { source, table })`：GeoJSON ソースの属性の編集（フィールド演算）。データを `getData()` で読み、変えて `setData` で戻す。`table`（その属性テーブル）を渡すと、列の表示が編集に従い、`only` で行を選べる。
+  - `calculate(column, value, { only })`：列（なければ足す）を、スタイルの式（`map.evaluateExpression`。`["id"]` は行の id で、`promoteId` も含む）か、行を取る関数の値にする。面積や長さなど形から求める値は `mbmap/analysis` で計算して関数で渡す。`only` は `"filtered"`（表の絞り込みを通る行）か `"selected"`（選んでいる行）。
+  - `addColumn(column, value = null, { only })`（どの地物にもない列だけ）、`removeColumn(column)`、`renameColumn(from, to)`（キーの位置はそのまま。`to` を持つ地物があれば例外）。どれも Promise。列名は空でない文字列で `__proto__` 以外。
 - `createAttribution(map, { customAttribution })`：`{ items, text }`。地図自身の表示を消す（`attributionControl: false`、`<mb-map attribution-control="false">`）と、出典を自分で表示できる。
 
 ## 検索 `mbmap/search`
