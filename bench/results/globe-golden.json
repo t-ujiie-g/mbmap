@@ -5,7 +5,8 @@
     "deg": 3.865329745167401e-8,
     "zoom": 1.3301786339070532e-9,
     "ms": 4.5141678128857166e-7,
-    "rel": 5.954528038938417e-8
+    "rel": 5.954528038938417e-8,
+    "tiles": 0
   },
   "rows": [
     {
@@ -29,6 +30,31 @@
       "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
       "px": 0,
       "rel": 5.8884375820280844e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (33)",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (11)",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (33)",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (11)",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -177,6 +203,31 @@
       "rel": 4.0693291705185974e-8
     },
     {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (28)",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (25)",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (25)",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (11)",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
       "deg": 0
@@ -323,6 +374,31 @@
       "rel": 5.90269743066334e-8
     },
     {
+      "op": "coveringTiles 512 0- (10)",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (41)",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (17)",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (17)",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (8)",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
       "deg": 0
@@ -467,6 +543,31 @@
       "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
       "px": 0,
       "rel": 4.924055272382016e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (5)",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (25)",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (8)",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (9)",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (1)",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -755,6 +856,31 @@
       "rel": 5.7032274043169006e-8
     },
     {
+      "op": "coveringTiles 512 0- (1)",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (11)",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (4)",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (0)",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (0)",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
       "deg": 0
@@ -899,6 +1025,31 @@
       "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
       "px": 0,
       "rel": 5.411835536678018e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (4)",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (10)",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (4)",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (10)",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (0)",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -1047,6 +1198,31 @@
       "rel": 6.55112437909458e-9
     },
     {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (36)",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (11)",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (36)",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (11)",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
       "deg": 0
@@ -1191,6 +1367,31 @@
       "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
       "px": 0,
       "rel": 4.433163852653267e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (10)",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (32)",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (21)",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (21)",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (10)",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -1339,6 +1540,31 @@
       "rel": 5.0972105387525844e-8
     },
     {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (32)",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (16)",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (21)",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (11)",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
       "deg": 0
@@ -1483,6 +1709,31 @@
       "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
       "px": 0,
       "rel": 4.79131314347443e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (6)",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (28)",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (10)",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (13)",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (1)",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -1771,6 +2022,31 @@
       "rel": 1.8156613660619052e-8
     },
     {
+      "op": "coveringTiles 512 0- (1)",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (11)",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (4)",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (0)",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (0)",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
       "deg": 0
@@ -1915,6 +2191,31 @@
       "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
       "px": 0,
       "rel": 4.240949713050211e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (4)",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (11)",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (4)",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (11)",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (0)",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -2063,6 +2364,31 @@
       "rel": 5.190993930106716e-8
     },
     {
+      "op": "coveringTiles 512 0- (16)",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (44)",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (16)",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (44)",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (16)",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 800x600 179.5,70 z3 p30 b-45",
       "deg": 0
@@ -2207,6 +2533,31 @@
       "view": "globe 800x600 10,-84 z2 p0 b0",
       "px": 0,
       "rel": 5.688099582535365e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (8)",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (9)",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (8)",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (9)",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (8)",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -2355,6 +2706,31 @@
       "rel": 5.954528038938417e-8
     },
     {
+      "op": "coveringTiles 512 0- (4)",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (10)",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (4)",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (8)",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (4)",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 800x600 -30,88 z4 p20 b60",
       "deg": 0
@@ -2499,6 +2875,31 @@
       "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
       "px": 0,
       "rel": 4.757956757377628e-10
+    },
+    {
+      "op": "coveringTiles 512 0- (2)",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (20)",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (6)",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (6)",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (1)",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "tiles": 0
     },
     {
       "op": "getBounds",
@@ -2647,6 +3048,31 @@
       "rel": 5.037277515219243e-8
     },
     {
+      "op": "coveringTiles 512 0- (9)",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (17)",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (9)",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (17)",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (9)",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "tiles": 0
+    },
+    {
       "op": "getBounds",
       "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
       "deg": 0
@@ -2772,6 +3198,1203 @@
     },
     {
       "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "px": 0,
+      "rel": 1.314209280822157e-9
+    },
+    {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (31)",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (12)",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (12)",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (11)",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 3.7211123071756447e-11,
+      "zoom": 6.723510637129948e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 2.6645352591003757e-15,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "ms": 0,
+      "deg": 1.0658141036401503e-14,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 3.4781066915456904e-11,
+      "zoom": 6.10178574333986e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z5 p70 b20",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "px": 0,
+      "rel": 1.5628175700733895e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (10)",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (25)",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (11)",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (17)",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (7)",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 4.618527782440651e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "ms": 0,
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 7.389644451905042e-12,
+      "zoom": 5.1514348342607263e-14
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z6.5 p80 b-60",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "px": 0,
+      "rel": 5.880220274258131e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (12)",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (35)",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (18)",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (21)",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (5)",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "ms": 0,
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 5.775291356258094e-11,
+      "zoom": 2.469136006766348e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z8 p60 b135",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "px": 0,
+      "rel": 7.292689651207654e-9
+    },
+    {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (21)",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (13)",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (16)",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (5)",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 2.842170943040401e-14,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 2.842170943040401e-14,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 2.842170943040401e-14,
+      "zoom": 6.217248937900877e-15
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "ms": 0,
+      "deg": 7.105427357601002e-15,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 1.0942358130705543e-11,
+      "zoom": 1.8918200339612667e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z7.2 p85 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "px": 0,
+      "rel": 5.8728462859195186e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (9)",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (32)",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (15)",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (16)",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (9)",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 2.842170943040401e-14,
+      "zoom": 2.3092638912203256e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 2.842170943040401e-14,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 2.842170943040401e-14,
+      "zoom": 7.105427357601002e-15
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 3.2670754990249407e-11,
+      "zoom": 5.906386491005833e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 8.881784197001252e-16,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "ms": 0,
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 2.318500946785207e-11,
+      "zoom": 3.526068326209497e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z4.6 p50 b-10",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "px": 0,
+      "rel": 4.223824721073933e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (11)",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (25)",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (11)",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (17)",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (11)",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 2.842170943040401e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 1.971756091734278e-13
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 2.580691216280684e-11,
+      "zoom": 2.184918912462308e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "ms": 0,
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 2.6489033189136535e-11,
+      "zoom": 2.3003821070233244e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 1200x500 -100,40 z5.5 p75 b100",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "px": 0,
+      "rel": 5.407115439160173e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (13)",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (34)",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (13)",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (33)",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (9)",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "tiles": 0
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 7.275957614183426e-12,
+      "zoom": 4.973799150320701e-14
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "ms": 0,
+      "deg": 7.105427357601002e-15,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 4.6145487431203946e-10,
+      "zoom": 1.3216094885137863e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 179.9,-20 z6 p65 b-90",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
       "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
       "deg": 0,
       "zoom": 0
@@ -2791,6 +4414,31 @@
       "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
       "px": 0,
       "rel": 5.359155689993587e-8
+    },
+    {
+      "op": "coveringTiles 512 0- (7)",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 0- round (22)",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 0-14 round (14)",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 256 2- (14)",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "tiles": 0
+    },
+    {
+      "op": "coveringTiles 512 2-6 (1)",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "tiles": 0
     },
     {
       "op": "getBounds",

@@ -1,7 +1,7 @@
 // globe's camera (bench/entry/globe.mbt) vs MapLibre GL JS 6.16.0's globe projection in Node with
 // frozen time: the transform createProjectionFromName gives, driven by its Camera and camera helpers,
 // the transition taken from the zoom after every frame as the map does. Fails beyond 1e-6 px,
-// 1e-7°, 1e-8 zoom, 1e-5 ms or a 1e-6 relative difference.
+// 1e-7°, 1e-8 zoom, 1e-5 ms or a 1e-6 relative difference; coveringTiles must give the same tiles in order.
 // Usage: node lib/run-bundled.mjs bench/camera/globe-golden.mjs; writes bench/results/globe-golden.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -9,6 +9,7 @@ import Point from "@mapbox/point-geometry";
 import { Camera } from "maplibre-src/ui/camera.ts";
 import { LngLatBounds } from "maplibre-src/geo/lng_lat_bounds.ts";
 import { createProjectionFromName } from "maplibre-src/geo/projection/projection_factory.ts";
+import { coveringTiles } from "maplibre-src/geo/projection/covering_tiles.ts";
 import { EvaluationParameters } from "maplibre-src/style/evaluation_parameters.ts";
 import { restoreNow, setNow } from "maplibre-src/util/time_control.ts";
 import { nodeImportJs } from "../lib/node-io.mjs";
@@ -32,6 +33,11 @@ views.push({ w: 800, h: 600, center: [10, -84], zoom: 2, pitch: 0, bearing: 0, p
 views.push({ w: 800, h: 600, center: [-30, 88], zoom: 4, pitch: 20, bearing: 60, projection: "globe" });
 views.push({ w: 800, h: 600, center: TOKYO, zoom: 9, pitch: 0, bearing: 0, minZoom: 10, maxZoom: 12, minPitch: 10, maxPitch: 40, projection: "globe" });
 views.push({ w: 800, h: 600, center: TOKYO, zoom: 4, pitch: 0, bearing: 0, bounds: [139, 35, 140, 36], projection: "globe" });
+for (const [zoom, pitch, bearing] of [[5, 70, 20], [6.5, 80, -60], [8, 60, 135], [7.2, 85, 0], [4.6, 50, -10]]) {
+  views.push({ w: 800, h: 600, center: TOKYO, zoom, pitch, bearing, projection: "globe" });
+}
+views.push({ w: 1200, h: 500, center: [-100, 40], zoom: 5.5, pitch: 75, bearing: 100, projection: "globe" });
+views.push({ w: 800, h: 600, center: [179.9, -20], zoom: 6, pitch: 65, bearing: -90, projection: "globe" });
 views.push({ w: 800, h: 600, center: TOKYO, zoom: 13, pitch: 50, bearing: 20, projection: "vertical-perspective" });
 views.push({ w: 800, h: 600, center: TOKYO, zoom: 3, pitch: 10, bearing: 0, projection: "mercator" });
 
@@ -70,7 +76,9 @@ const ours = (v) => [v.w, v.h, v.center[0], v.center[1], v.zoom, v.bearing, v.pi
 const state = (tr) => [tr.center.lng, tr.center.lat, tr.zoom, tr.bearing, tr.pitch, transitionOf(tr)];
 
 const rows = [];
-const worst = { px: 0, deg: 0, zoom: 0, ms: 0, rel: 0 };
+const worst = { px: 0, deg: 0, zoom: 0, ms: 0, rel: 0, tiles: 0 };
+// coveringTiles options: tile size, min zoom, max zoom, roundZoom.
+const COVERING = [[512, undefined, undefined, false], [256, undefined, undefined, true], [512, undefined, 14, true], [256, 2, undefined, false], [512, 2, 6, false]];
 // Largest difference of camera tuples (lng, lat, zoom, bearing, pitch, transition).
 function cameraDiff(a, b, n = 6) {
   let deg = 0;
@@ -150,6 +158,16 @@ function runView(v) {
     const clip = maxAbs([...tr.getClippingPlane()], m.slice(37, 41));
     const altitude = Math.abs(tr.getCameraAltitude() - m[41]) / tr.getCameraAltitude();
     record("globe matrices", v, { px, rel: Math.max(proj, planes, camPos, clip, altitude) });
+
+    for (const [tileSize, minzoom, maxzoom, roundZoom] of COVERING) {
+      const want = coveringTiles(tr, { tileSize, minzoom, maxzoom, roundZoom }).flatMap((t) => [t.canonical.z, t.canonical.x, t.canonical.y]);
+      const got = nums(mbt.globe_covering(ours(v), [tileSize, minzoom ?? 0, maxzoom ?? NaN, roundZoom ? 1 : 0]));
+      let tiles = Math.abs(want.length - got.length) / 3;
+      for (let i = 0; i < Math.min(want.length, got.length); i += 3) {
+        if (want[i] !== got[i] || want[i + 1] !== got[i + 1] || want[i + 2] !== got[i + 2]) tiles++;
+      }
+      record(`coveringTiles ${tileSize} ${minzoom ?? 0}-${maxzoom ?? ""}${roundZoom ? " round" : ""} (${want.length / 3})`, v, { tiles });
+    }
   }
 
   const b = tr.getBounds();
@@ -262,8 +280,8 @@ function runView(v) {
 }
 restoreNow();
 
-console.log(`globe golden: ${views.length} views, ${rows.length} comparisons; largest difference ${worst.px.toExponential(2)} px, ${worst.deg.toExponential(2)}°, ${worst.zoom.toExponential(2)} zoom, ${worst.ms.toExponential(2)} ms, ${worst.rel.toExponential(2)} relative`);
+console.log(`globe golden: ${views.length} views, ${rows.length} comparisons; largest difference ${worst.px.toExponential(2)} px, ${worst.deg.toExponential(2)}°, ${worst.zoom.toExponential(2)} zoom, ${worst.ms.toExponential(2)} ms, ${worst.rel.toExponential(2)} relative, ${worst.tiles} covering tiles differ`);
 await writeFile(path.join(ROOT, "bench/results/globe-golden.json"), JSON.stringify({ reference: "maplibre-gl 6.16.0", worst, rows }, null, 2) + "\n");
-const bad = rows.filter((r) => !((r.px ?? 0) <= 1e-6 && (r.deg ?? 0) <= 1e-7 && (r.zoom ?? 0) <= 1e-8 && (r.ms ?? 0) <= 1e-5 && (r.rel ?? 0) <= 1e-6));
+const bad = rows.filter((r) => !((r.px ?? 0) <= 1e-6 && (r.deg ?? 0) <= 1e-7 && (r.zoom ?? 0) <= 1e-8 && (r.ms ?? 0) <= 1e-5 && (r.rel ?? 0) <= 1e-6 && (r.tiles ?? 0) === 0));
 for (const r of bad.slice(0, 40)) console.log("beyond tolerance:", JSON.stringify(r));
 if (bad.length) process.exitCode = 1;
