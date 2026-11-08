@@ -28,6 +28,8 @@ pub fn decode_mem(Int32, Int32) -> Int32
 
 pub fn decode_mem_parts(Int32, Int32, Int32) -> Int32
 
+pub fn draco_decode(FixedArray[Byte]) -> FixedArray[Byte]
+
 pub fn fill_hash_mem(Int32, Int32) -> Int32
 
 pub fn geojson_cluster(Int32, Int32, Int32, Int32) -> Bytes

@@ -1,0 +1,37 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/draco"
+
+// Values
+pub const MAX_ATTRIBUTES : Int32 = 256
+
+pub const MAX_ATTRIBUTE_BYTES : Int32 = 0x10000000
+
+pub const MAX_FACES : Int32 = 0x400000
+
+pub const MAX_POINTS : Int32 = 0x400000
+
+pub fn decode_mesh(FixedArray[Byte], Int32, Int32) -> DracoMesh?
+
+// Errors
+
+// Types and methods
+pub struct DracoAttribute {
+  unique_id : Int32
+  attribute_type : Int32
+  data_type : Int32
+  num_components : Int32
+  normalized : Bool
+  data : FixedArray[Byte]
+}
+
+pub struct DracoMesh {
+  indices : FixedArray[Int32]
+  num_points : Int32
+  attributes : Array[DracoAttribute]
+}
+pub fn DracoMesh::attribute(Self, Int32) -> DracoAttribute?
+pub fn DracoMesh::to_bytes(Self) -> FixedArray[Byte]
+
+// Type aliases
+
+// Traits
