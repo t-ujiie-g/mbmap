@@ -18,6 +18,9 @@ import { Ellipsoid } from "@math.gl/geospatial";
 import { Document, NodeIO } from "@gltf-transform/core";
 import { buildTree, Traversal } from "../../npm/src/tiles/tileset.ts";
 import { expandTileset } from "../../npm/src/tiles/implicit.ts";
+import { readTileContent, splitB3dm } from "../../npm/src/tiles/content.ts";
+import { readdir } from "node:fs/promises";
+import { parse } from "@loaders.gl/core";
 import { ROOT } from "../lib/root.mjs";
 import { serve } from "../lib/serve.mjs";
 
@@ -300,6 +303,30 @@ try {
       results.push({ tileset: name, view: view.name, same, selected: theirs.length, onlyOurs: onlyOurs.slice(0, 5), onlyTheirs: onlyTheirs.slice(0, 5) });
     }
   }
+  // Contents: the b3dm tables (and RTC_CENTER) as loaders.gl reads them; the synthetic ones' glTF too.
+  const b3dms = [];
+  for (const dir of ["bench/npm/pages/tiles/set", "bench/fixtures/plateau-chiyoda/data"]) {
+    if (!existsSync(path.join(ROOT, dir))) continue;
+    for (const f of (await readdir(path.join(ROOT, dir))).filter((f) => f.endsWith(".b3dm"))) b3dms.push(path.join(dir, f));
+  }
+  let contentsDiffer = 0;
+  for (const file of b3dms) {
+    const bytes = new Uint8Array(await readFile(path.join(ROOT, file)));
+    const theirs = await parse(bytes, Tiles3DLoader, { "3d-tiles": { loadGLTF: false } });
+    const ours = splitB3dm(bytes);
+    const same =
+      ours.batchLength === (theirs.featureTableJson.BATCH_LENGTH ?? 0) &&
+      JSON.stringify(ours.batchTable ?? {}) === JSON.stringify(theirs.batchTableJson ?? {}) &&
+      JSON.stringify(ours.rtc) === JSON.stringify(theirs.rtcCenter ? [...theirs.rtcCenter] : null);
+    let model = true;
+    if (file.includes("/set/")) {
+      const full = await readTileContent(bytes, async () => new Uint8Array());
+      model = full.model.primitives.length > 0 && full.batchLength === ours.batchLength;
+    }
+    if (!same || !model) contentsDiffer++;
+  }
+  results.push({ contents: b3dms.length, differ: contentsDiffer });
+  if (contentsDiffer) failed++;
 } finally {
   server.close();
 }

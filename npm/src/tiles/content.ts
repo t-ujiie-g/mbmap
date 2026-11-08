@@ -15,13 +15,10 @@ export interface TileContent {
 
 const json = (bytes: Uint8Array): Record<string, any> => (bytes.length ? JSON.parse(new TextDecoder().decode(bytes)) : {});
 
-/** Reads the b3dm, glb or glTF in `bytes`. */
-export async function readTileContent(bytes: Uint8Array, load: (uri: string) => Promise<Uint8Array>, meshopt?: MeshoptDecode): Promise<TileContent> {
+/** A b3dm's tables and its glb, or null when `bytes` is not a b3dm. */
+export function splitB3dm(bytes: Uint8Array): { rtc: TileContent["rtc"]; batchLength: number; batchTable: Record<string, unknown> | null; glb: Uint8Array } | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (bytes.length < 4 || view.getUint32(0, true) !== B3DM) {
-    const model = await readGltf(bytes, load, meshopt);
-    return { model, rtc: model.rtc ?? null, batchLength: 0, batchTable: null };
-  }
+  if (bytes.length < 4 || view.getUint32(0, true) !== B3DM) return null;
   if (bytes.length < HEADER_BYTES) throw new Error("the b3dm header is cut short");
   if (view.getUint32(4, true) !== 1) throw new Error("only b3dm version 1 is read");
   const length = Math.min(view.getUint32(8, true), bytes.length);
@@ -39,6 +36,13 @@ export async function readTileContent(bytes: Uint8Array, load: (uri: string) => 
     const v = new DataView(featureBinary.buffer, featureBinary.byteOffset + center.byteOffset, 12);
     rtc = [v.getFloat32(0, true), v.getFloat32(4, true), v.getFloat32(8, true)];
   }
-  const model = await readGltf(bytes.subarray(glbAt, length), load, meshopt);
-  return { model, rtc: rtc ?? model.rtc ?? null, batchLength: Number.isInteger(featureTable.BATCH_LENGTH) ? featureTable.BATCH_LENGTH : 0, batchTable };
+  const batchLength = Number.isInteger(featureTable.BATCH_LENGTH) ? featureTable.BATCH_LENGTH : 0;
+  return { rtc, batchLength, batchTable, glb: bytes.subarray(glbAt, length) };
+}
+
+/** Reads the b3dm, glb or glTF in `bytes`. */
+export async function readTileContent(bytes: Uint8Array, load: (uri: string) => Promise<Uint8Array>, meshopt?: MeshoptDecode): Promise<TileContent> {
+  const b3dm = splitB3dm(bytes);
+  const model = await readGltf(b3dm ? b3dm.glb : bytes, load, meshopt);
+  return { model, rtc: b3dm?.rtc ?? model.rtc ?? null, batchLength: b3dm?.batchLength ?? 0, batchTable: b3dm?.batchTable ?? null };
 }
