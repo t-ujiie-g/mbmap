@@ -5,7 +5,7 @@
 // GRS 80 and WGS 84 (and Web Mercator's sphere): GDAL's GetSemiMajor for the CRSs grids come in.
 const SEMI_MAJOR = 6378137;
 
-export async function viewshed({ values, size, dem, raster, observer, options, check, checked, writeInput, outputOf, module, crsId, transform, worldWidth }) {
+export async function viewshed({ values, size, dem, raster, observer, options, check, checked, writeInput, f64sOf, module, crsId, transform, tileXY, lngLatOf }) {
   const { observerHeight, targetHeight, maxDistance, curvatureCoeff, mode, visible, invisible, outOfRange } = options ?? {};
   check([observerHeight, targetHeight, maxDistance, curvatureCoeff, mode, visible, invisible, outOfRange].every(Number.isFinite));
   const { width, height } = size;
@@ -13,24 +13,15 @@ export async function viewshed({ values, size, dem, raster, observer, options, c
   let observerXY;
   let toLngLat;
   if (dem) {
-    const [z, x0, y0, tile] = dem;
+    const { tile: [z, x0, y0, tile], res } = dem;
     const n = 2 ** z;
-    const y1 = y0 + height / tile - 1;
-    const lat = Math.atan(Math.sinh(Math.PI * (1 - ((y0 + y1 + 1) / 2) * (2 / n))));
-    const res = (worldWidth / n / tile) * Math.cos(lat);
-    const [lng, la] = observer;
-    const s = Math.sin((Math.max(-85.0511, Math.min(85.0511, la)) * Math.PI) / 180);
-    const px = (((lng + 180) / 360) * n - x0) * tile;
-    const py = ((0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n - y0) * tile;
+    const [tx, ty] = tileXY(...observer, n);
     geo = [0, res, 0, 0, 0, -res];
-    observerXY = [px * res, -py * res];
+    observerXY = [(tx - x0) * tile * res, -(ty - y0) * tile * res];
     // Cell corners back to longitude and latitude through the tiles' Web Mercator pixels.
     toLngLat = async (xy) => {
       const out = new Float64Array(xy.length);
-      for (let i = 0; i < xy.length; i += 2) {
-        out[i] = ((xy[i] / res / tile + x0) / n) * 360 - 180;
-        out[i + 1] = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (-xy[i + 1] / res / tile + y0)) / n))) * 180) / Math.PI;
-      }
+      for (let i = 0; i < xy.length; i += 2) out.set(lngLatOf(xy[i] / res / tile + x0, -xy[i + 1] / res / tile + y0, n), i);
       return out;
     };
   } else {
@@ -43,8 +34,8 @@ export async function viewshed({ values, size, dem, raster, observer, options, c
   }
   const exports = await module("viewshed");
   writeInput(exports, [new Uint8Array(values.buffer)]);
-  const n = checked(exports, exports.viewshed(width, height, ...geo, ...observerXY, observerHeight, targetHeight, maxDistance, curvatureCoeff, SEMI_MAJOR, mode, visible, invisible, outOfRange));
-  const out = new Float64Array(outputOf(exports, n * 8).buffer);
+  const n = exports.viewshed(width, height, ...geo, ...observerXY, observerHeight, targetHeight, maxDistance, curvatureCoeff, SEMI_MAJOR, mode, visible, invisible, outOfRange);
+  const out = f64sOf(exports, n);
   const [w, h, g0, g1, , g3, , g5] = out;
   const corners = await toLngLat(new Float64Array([g0, g3, g0 + w * g1, g3 + h * g5]));
   return {
