@@ -1,0 +1,250 @@
+{
+  "source": "https://assets.cms.plateau.reearth.io/assets/72/e900e5-938c-4376-a9de-a124b270880c/13101_chiyoda-ku_pref_2025_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod2_no_texture/tileset.json",
+  "box": [
+    139.76,
+    35.677,
+    139.772,
+    35.686
+  ],
+  "attribution": "出典：国土交通省 Project PLATEAU（3D都市モデル 建築物モデル 千代田区 2025年度）",
+  "fetched": "2026-11-08",
+  "totalBytes": 25243160,
+  "tiles": {
+    "data/data417.b3dm": {
+      "bytes": 118404,
+      "sha256": "be95e2d8f4e11519d9381a9498597d8f7b733b74602c58e932d706f2ac7b4926"
+    },
+    "data/data418.b3dm": {
+      "bytes": 607780,
+      "sha256": "7c7677d76b41ae41c4134de1bedbb90b32f3d12f1821cb8c43c135ac290ad8e4"
+    },
+    "data/data419.b3dm": {
+      "bytes": 364988,
+      "sha256": "697ea1ba7856586704765a4f2783409ac5e6740a753f7fbb5e599902a35847f9"
+    },
+    "data/data420.b3dm": {
+      "bytes": 217048,
+      "sha256": "2a16e00455ac7a9462902d5933adac54339f9dffc7700b5468b2a721edd8b8fd"
+    },
+    "data/data421.b3dm": {
+      "bytes": 1709036,
+      "sha256": "bccec527517fd114648accfeffba2154692fe8dc9859a77231307a1918fee2b8"
+    },
+    "data/data422.b3dm": {
+      "bytes": 1123968,
+      "sha256": "4a4b15333ab2aba0d7a982124cb197d448c5711bfda4913fc624484f6161bc71"
+    },
+    "data/data423.b3dm": {
+      "bytes": 22812,
+      "sha256": "e986b87799e0f0a0916e5b5bc6150d5b0cddf2ae1a61afa304a45620aa91a5b7"
+    },
+    "data/data424.b3dm": {
+      "bytes": 455804,
+      "sha256": "f4182b71ef7b37304deccb7686f5ac2064c3ddb1adda0c5fbdf4ac9b14a13834"
+    },
+    "data/data425.b3dm": {
+      "bytes": 600712,
+      "sha256": "39c0abd20c447e562b284d71a0f2341ae1980a9baedaee54b5fb6b94bbbd6cd2"
+    },
+    "data/data426.b3dm": {
+      "bytes": 1084784,
+      "sha256": "1bcf3675a2e689a6ec72defa2ca413d8dd650ba84f975e976247fb5577c35ba4"
+    },
+    "data/data427.b3dm": {
+      "bytes": 355048,
+      "sha256": "208f0ddef4d6dea0ee593c68eaee4424ecdba9a9f2bbe66e431094cef727d63a"
+    },
+    "data/data428.b3dm": {
+      "bytes": 243756,
+      "sha256": "1145b03542c06eb23916c7408d85707bca529129dc7a0516821d21e97a56222c"
+    },
+    "data/data429.b3dm": {
+      "bytes": 244440,
+      "sha256": "61f3722ba65425dca37fbf4bda5d88665f023850472bb5a3553605f3ce6dd4b2"
+    },
+    "data/data430.b3dm": {
+      "bytes": 466692,
+      "sha256": "f34a8e0cabd17f2064a31d8566981209be02836ff891a983a3c821d4bebcddda"
+    },
+    "data/data431.b3dm": {
+      "bytes": 496552,
+      "sha256": "6a95565d4293e24e74e553be4157bc08fe4c23f3f3c5275084d7bb7c94c763dd"
+    },
+    "data/data432.b3dm": {
+      "bytes": 212500,
+      "sha256": "8ae8f2cee5826bbbb9271b8843a6b4f3a867d323899662ac7aba8fcae4aa7d82"
+    },
+    "data/data433.b3dm": {
+      "bytes": 702956,
+      "sha256": "dddd8d8d18e153d0d5507eecf52a5e9f3898cd28eec5aa67ead451a78fa08b26"
+    },
+    "data/data434.b3dm": {
+      "bytes": 254052,
+      "sha256": "39c5396a83362c62a658591bed6de7e3cb50fc1a2f857066ed0c79e9e064171d"
+    },
+    "data/data435.b3dm": {
+      "bytes": 304804,
+      "sha256": "dde9363729413e0fa3c2d929f5c1b1b6c05c4ad7fd4303e6ea40916ddc8099d8"
+    },
+    "data/data436.b3dm": {
+      "bytes": 716108,
+      "sha256": "e9181a9738abe669df8e55fe883a39de12a098a40760e95eba903e50079a1067"
+    },
+    "data/data437.b3dm": {
+      "bytes": 832108,
+      "sha256": "42d0adb4d601d1d6d037e80dfb8c5d6320234c442c6334a5a8741d297df2b2e4"
+    },
+    "data/data438.b3dm": {
+      "bytes": 1045188,
+      "sha256": "36e92f0d09b52980d4d874261712b5849423c56c98dba92761607b36c52e1e0f"
+    },
+    "data/data439.b3dm": {
+      "bytes": 736136,
+      "sha256": "95153b404d3f7b05ec2fbd664e1478b39c09e6e56dcc5272fa8bd7944b8a4d67"
+    },
+    "data/data440.b3dm": {
+      "bytes": 35012,
+      "sha256": "918bdc5c646d57eb53a6569dbf2b098d04852b193bdeadc84f9f90c14a8a5b74"
+    },
+    "data/data441.b3dm": {
+      "bytes": 64404,
+      "sha256": "69731788eb2a9c50faaa6a5909f315dbee4e3af87fff017790fbf0d72fc9e9bd"
+    },
+    "data/data442.b3dm": {
+      "bytes": 164404,
+      "sha256": "ef7953673d4d97a34df02a0cc536aa2427adcedf05b1c2e40b198bfe58a07fa4"
+    },
+    "data/data443.b3dm": {
+      "bytes": 301792,
+      "sha256": "feb7e61dc730aa49a5198d68409ac2fb57e8d82ccc72331a612b664b70499ac5"
+    },
+    "data/data444.b3dm": {
+      "bytes": 71640,
+      "sha256": "5f572b96f2097110cdfdcff4eb10561101c6d43457fc98dd10d750a165b2d211"
+    },
+    "data/data445.b3dm": {
+      "bytes": 50524,
+      "sha256": "95bd7bbccdc0e364b3fd984895b3cd190e5fff8a26f9a679f42ab83f4caccd5f"
+    },
+    "data/data446.b3dm": {
+      "bytes": 334572,
+      "sha256": "337ac1b9ddd366db46b3dea79bc2a4271ac984e87184f53edc2f484cf072748f"
+    },
+    "data/data447.b3dm": {
+      "bytes": 386420,
+      "sha256": "58be30ac8c6c52d770fc948e4361e9a8ab0593fb12f72af40e7f1381b8f79b19"
+    },
+    "data/data448.b3dm": {
+      "bytes": 374256,
+      "sha256": "7b4193c5d636c1071b592b5d6118f5c8203464c30f886d88f05af30257137ed9"
+    },
+    "data/data449.b3dm": {
+      "bytes": 30524,
+      "sha256": "15e9ccfd64ce00e597049efee9e809c47769a9a441b3e4216ecc595ecca3bb60"
+    },
+    "data/data450.b3dm": {
+      "bytes": 86188,
+      "sha256": "068dfd6fe8f0db5a07cefd379f3f7dd7d2d6e9f58649554045285bfc25242a97"
+    },
+    "data/data451.b3dm": {
+      "bytes": 552708,
+      "sha256": "e4ad3616b13e984d5fa6cce804f2fc2236eca5e8e65ab28df6a2a639700dfb8e"
+    },
+    "data/data452.b3dm": {
+      "bytes": 339756,
+      "sha256": "f20b65fbaf4eec14dbe28b6723e778c48f2067191b0dce975d06025b4b6dc4cd"
+    },
+    "data/data453.b3dm": {
+      "bytes": 264900,
+      "sha256": "e389d3b31b6a95ff73dd10014555073548c6a1bb6f5ad6a2b9803e3e3fdd3a8b"
+    },
+    "data/data454.b3dm": {
+      "bytes": 243032,
+      "sha256": "39beb7c965b1ccb3adcee8cc565d2eaa547f2b7aaa9b98c3ae9f7e79a9ee6b86"
+    },
+    "data/data455.b3dm": {
+      "bytes": 228288,
+      "sha256": "c334047939ae90d7010546420df5544412d2a4d7351ec24ff2a42f0e98ac715a"
+    },
+    "data/data456.b3dm": {
+      "bytes": 321104,
+      "sha256": "c75166993e3ad100a0d7582544863994c023de539ca123dc1f706cd66ed07dba"
+    },
+    "data/data457.b3dm": {
+      "bytes": 505104,
+      "sha256": "6471c17e78767f8a49d59edf53b77c87f12f41b5caa0c4e8eaaedc742d2bd245"
+    },
+    "data/data458.b3dm": {
+      "bytes": 606516,
+      "sha256": "773fb5a1d71cd942815d2cd7035f9867adfb076b451ff4518bbc9526688d497d"
+    },
+    "data/data459.b3dm": {
+      "bytes": 162564,
+      "sha256": "4c169b9498e976223b98aaa2c3450fcc93f655938f7349070e4e351e2b5e1f56"
+    },
+    "data/data460.b3dm": {
+      "bytes": 1328000,
+      "sha256": "a525aaf80d355d3ccb81a866eb851713a6d88012a68c51c72fee5ca9b1c0bf39"
+    },
+    "data/data462.b3dm": {
+      "bytes": 748036,
+      "sha256": "e3e1827585aa0292f86f48bfa61b518a248066a8b7c8b80f2f3126205ba0c8bc"
+    },
+    "data/data463.b3dm": {
+      "bytes": 434196,
+      "sha256": "922eee0267df460ebfa031a758be5be97d7b12f06bde81f9b895caa9228af53c"
+    },
+    "data/data464.b3dm": {
+      "bytes": 86676,
+      "sha256": "d9b753d24fc2888d87f9b0af54ae8b6b1d2d7e8ddcf0b304f4e5aec74fcbec50"
+    },
+    "data/data465.b3dm": {
+      "bytes": 121284,
+      "sha256": "8b2d0d492ee1e54defb6567270e53e51fd5984ed268fa323984cd713a363c0b6"
+    },
+    "data/data466.b3dm": {
+      "bytes": 17408,
+      "sha256": "4fab87d59e003e36f751a3fc01c3df68f71ea03b5098ae1e75f744b3ad9e77dc"
+    },
+    "data/data467.b3dm": {
+      "bytes": 168076,
+      "sha256": "51e680e2e4b6892e2c2e4c0804f235631603ee4e5e88193bb74475395a6e3183"
+    },
+    "data/data468.b3dm": {
+      "bytes": 453176,
+      "sha256": "52b5296dd08d05fcba6e5771182d1d250b1fce59ec158884bbe600afc4e8a4f2"
+    },
+    "data/data469.b3dm": {
+      "bytes": 332964,
+      "sha256": "fe2b4ad7f1f9bd9ccbcf04d87499216ff25033f22ed42a0cfbaa89fd0ffa7ae1"
+    },
+    "data/data474.b3dm": {
+      "bytes": 293364,
+      "sha256": "19d24bd5ea8dd419811eff9a048ee3913ed2c1df9a1b6a26fe86ae21267672af"
+    },
+    "data/data475.b3dm": {
+      "bytes": 946948,
+      "sha256": "3a5717e502f0c9169eac3cd88526619dade02603658eba21b8d0d67943d2f33d"
+    },
+    "data/data491.b3dm": {
+      "bytes": 849252,
+      "sha256": "de4d848aa6506a1c9d7d58075f03dc665d81ba183d6f617572fc40f4ec80ece8"
+    },
+    "data/data508.b3dm": {
+      "bytes": 480228,
+      "sha256": "d957f20c951b77205d6ea0ae092d54cf360f91e44677c973b3470669a6e0ee3a"
+    },
+    "data/data509.b3dm": {
+      "bytes": 324172,
+      "sha256": "82ffe938a888c7684275b61b9094fd7356c759a9690d7af16a4cacefcd3767eb"
+    },
+    "data/data632.b3dm": {
+      "bytes": 244692,
+      "sha256": "27512799839cc61e06e4f4e5c2c56ab37378e4efe5b54493919e2951bd23face"
+    },
+    "tileset.json": {
+      "bytes": 375304,
+      "sha256": "8f6f92f7b1883e60d2e3a468b6e894ac3ccd494f8da59d9cfb4b07d2bf0eff08"
+    }
+  }
+}

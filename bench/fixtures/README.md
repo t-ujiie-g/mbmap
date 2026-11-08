@@ -41,3 +41,11 @@
 - `protomaps/`：Protomaps のベクトルタイル（Protomaps スキーマ、日ごとのビルド `20261103.pmtiles` から範囲リクエストで取る）の z14、同じ 35 タイル（約 4MB）。© OpenStreetMap contributors（ODbL 1.0）。日ごとのビルドはしばらくしか置かれないので、消えたら新しいビルドを `fetch-tiles.mjs` に書いて `--update` で取り直し、`style:public` の限度を測り直す。
 - `sprites/`：公開スタイルのスプライト（OpenMapTiles のスタイルの gh-pages、CC-BY 4.0。OpenFreeMap の `ofm_f384`、MIT）。1x と 2x。
 - 取得と照合は gsi-bvmap と同じ（マニフェストは `ofm-planet.manifest.json`、`protomaps.manifest.json`、`sprites.manifest.json`）。クラウドのセッションでは Node の `fetch` がプロキシを通るよう `NODE_USE_ENV_PROXY=1` を付ける（`scripts/setup.sh` は付けている）。
+
+## plateau-chiyoda/（3D Tiles）
+
+PLATEAU の 3D都市モデル 建築物モデル（千代田区、2025年度、LOD2 テクスチャなし、3D Tiles 1.0、b3dm）のうち、東京駅周辺の箱（経度 139.760–139.772、緯度 35.677–35.686）にかかるタイルとその祖先だけ（`tileset.json` と b3dm 58 個、約 25MB。全体は 633 タイル）。`tileset.json` は書き換えずにそのまま置くので、箱の外のタイルの内容はない。ゴールデンはこの箱の中の眺めだけを見る。
+
+- 出典：国土交通省 Project PLATEAU（3D都市モデル 建築物モデル 千代田区 2025年度）。データカタログ <https://api.plateauview.mlit.go.jp/datacatalog/plateau-datasets> の `13101_bldg_lod2_no_texture`
+- 利用規約：PLATEAU のサイトポリシー（CC BY 4.0 互換）
+- 取得と照合は gsi-bvmap と同じ（マニフェストは `plateau-chiyoda.manifest.json`、箱も記録する）。これだけを取るときは `node bench/maplibre/fetch-tiles.mjs --only=plateau-chiyoda`。ホスト `assets.cms.plateau.reearth.io` に届く必要がある。
