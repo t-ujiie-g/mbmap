@@ -18,6 +18,8 @@ pub struct TileProcessor {
   priv geometry : @mvt.Geometry
   priv place : @style.TileGeometry
   priv mut globe : Bool
+  priv subdivider : @tess.Subdivider
+  priv line_points : Array[Int32]
   priv scratch : @mvt.Geometry
   priv inputs : Array[(Array[String], Bool)]
   priv vertex_paint : Array[Array[@style.VertexPaint]]
@@ -59,6 +61,8 @@ fn TileProcessor::new(
     geometry: @mvt.Geometry::new(),
     place: @style.TileGeometry::new(),
     globe: false,
+    subdivider: @tess.Subdivider::new(),
+    line_points: [],
     scratch: @mvt.Geometry::new(),
     inputs: style.layers.map(l => {
       if per_vertex(l) {
@@ -448,4 +452,42 @@ fn TileProcessor::write_paint(
     w += n - words * 4
   }
   true
+}
+
+///|
+/// The extent a layer's geometry is packed in: on the globe every layer is
+/// taken to `@core.TILE_EXTENT` first (`on_globe`), as MapLibre subdivides it.
+fn TileProcessor::extent_of(self : TileProcessor, layer : Features) -> Int32 {
+  if self.globe {
+    @core.TILE_EXTENT
+  } else {
+    layer.extent()
+  }
+}
+
+///|
+/// On the globe, the decoded geometry in `@core.TILE_EXTENT` units, rounded as
+/// MapLibre's `loadGeometry` scales it.
+fn TileProcessor::on_globe(self : TileProcessor, layer : Features) -> Unit {
+  let extent = layer.extent()
+  if !self.globe || extent == @core.TILE_EXTENT {
+    return
+  }
+  let k = @core.TILE_EXTENT.to_double() / extent.to_double()
+  let c = self.geometry.coords
+  for i in 0..<c.length() {
+    c[i] = @core.js_round(c[i].to_double() * k).to_int()
+  }
+}
+
+///|
+/// The tile's place for subdivision on the globe, with `granularity` cells.
+fn TileProcessor::subdivision(
+  self : TileProcessor,
+  granularity : Int32,
+) -> (@tess.Subdivider, Int32, @core.TileId)? {
+  guard self.globe else { return None }
+  @core.TileId::new(self.place.z, self.place.x, self.place.y).map(tile => {
+    (self.subdivider, granularity, tile)
+  })
 }

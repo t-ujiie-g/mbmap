@@ -73,3 +73,20 @@ test "outline lists each ring's edges, closing an open ring" {
   out.clear()
   assert_eq(out.outline.length(), 0)
 }
+
+///|
+test "add_polygons subdivides on the globe as subdivide_polygon does" {
+  let fill = @tess.FillTessellator::new()
+  let out = @tess.FillBuffers::new()
+  let tri = [1000, 1000, 3000, 7000, 7000, 2000, 1000, 1000]
+  fill.add_polygons(tri[:], [4][:], out)
+  let flat = out.indices.length()
+  out.clear()
+  let s = @tess.Subdivider::new()
+  let tile = @core.TileId::new(5, 3, 7).unwrap()
+  fill.add_polygons(tri[:], [4][:], out, subdivide=(s, 2, tile))
+  assert_true(out.indices.length() > flat)
+  assert_eq(out.vertices, s.vertices)
+  assert_eq(out.indices, s.triangles)
+  assert_eq(out.outline, s.lines)
+}

@@ -41,12 +41,27 @@ fn TileProcessor::line_layer(
       }
       // A round join makes many vertices of one point: stop once past the budget.
       out.limit(v0 + (self.budget / LINE_VERTEX_BYTES.to_double()).to_int() + 1)
+      self.on_globe(layer)
+      let extent = self.extent_of(layer)
       for r in 0..<g.num_rings() {
         let before = out.num_vertices()
+        // On the globe each line is cut at grid lines first (`subdivideVertexLine`).
+        let (coords, start, end) = if self.globe {
+          let p = self.line_points
+          p.clear()
+          @tess.subdivide_vertex_line(
+            g.coords[g.ring_start(r) * 2:g.ring_ends[r] * 2],
+            @tess.line_granularity(self.place.z),
+            p,
+          )
+          (p, 0, p.length() / 2)
+        } else {
+          (g.coords, g.ring_start(r), g.ring_ends[r])
+        }
         self.line.add_line(
-          g.coords[:],
-          g.ring_start(r),
-          g.ring_ends[r],
+          coords[:],
+          start,
+          end,
           out,
           join~,
           cap~,
@@ -55,7 +70,7 @@ fn TileProcessor::line_layer(
           dashed=sl.line_distances(),
           progress=gradient,
           offset=sl.line_offsets(),
-          extent=layer.extent(),
+          extent~,
         )
         if gradient && out.num_vertices() > before {
           self
@@ -63,8 +78,7 @@ fn TileProcessor::line_layer(
           .add(
             out.num_vertices() - before,
             clip,
-            ring_length(g.coords, g.ring_start(r), g.ring_ends[r]) /
-            layer.extent().to_double(),
+            ring_length(coords, start, end) / extent.to_double(),
           )
         }
       }
@@ -89,7 +103,7 @@ fn TileProcessor::line_layer(
     let b = self.line_buffers(g)
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
-      if !self.out.add_line(index, b, extent=layer.extent()) ||
+      if !self.out.add_line(index, b, extent=self.extent_of(layer)) ||
         (gradient && !self.out.put_progress(b, self.gradient_rows(g))) ||
         (feature_dashes is Some(_) && !self.out.put_dashes(self.dashes(g))) ||
         !self.write_paint(index, layer, self.runs, zoom) {

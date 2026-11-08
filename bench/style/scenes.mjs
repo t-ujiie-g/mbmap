@@ -717,6 +717,16 @@ const GLOBE_SCENES = {
     style: globe([{ id: "heat", type: "heatmap", source: "world", filter: ["==", ["geometry-type"], "Point"], paint: { "heatmap-radius": 30 } }]),
     camera: { center: [0, 10], zoom: 1.3, bearing: 0, pitch: 0 }, limits: { mean: 0.05, p99: 1 },
   },
+  "globe-line-styles": {
+    style: { ...globe([
+      { id: "dashed", type: "line", source: "world", filter: ["==", ["get", "k"], "parallel"],
+        paint: { "line-color": "#1f6fb2", "line-width": 4, "line-dasharray": [2, 1] } },
+      { id: "fade", type: "line", source: "metric", layout: { "line-cap": "round" },
+        paint: { "line-width": 6, "line-gradient": ["interpolate", ["linear"], ["line-progress"], 0, "#2b83ba", 1, "#d7191c"] } },
+      { id: "fill-outline", type: "fill", source: "world", filter: ["==", ["get", "k"], "asia"], paint: { "fill-color": "rgba(0, 0, 0, 0)", "fill-outline-color": "#333333" } },
+    ]), sources: { world: WORLD, metric: { ...WORLD, lineMetrics: true, data: { type: "FeatureCollection", features: WORLD.data.features.filter((f) => f.properties.k === "route") } } } },
+    camera: { center: [60, 30], zoom: 1.4, bearing: -20, pitch: 20 }, limits: { mean: 0.05, p99: 1 },
+  },
   "globe-map-circles": {
     style: globe([{ ...GLOBE_LAYERS[2], paint: { ...GLOBE_LAYERS[2].paint, "circle-radius": 10, "circle-pitch-alignment": "map" } }]),
     camera: { center: [0, 10], zoom: 2, bearing: 0, pitch: 30 }, limits: { mean: 0.05, p99: 1 },

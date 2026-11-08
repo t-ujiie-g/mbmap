@@ -77,6 +77,9 @@ fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
     @math.PI /
     (n * @core.TILE_EXTENT.to_double()) *
     @globe.planet_scale(g.camera().center.lat),
+    // MapLibre's `getPixelScale`, between mercator's and the globe's.
+    pixel_scale: 1.0 +
+    (1.0 / @globe.planet_scale(g.camera().center.lat) - 1.0) * g.transition(),
     granularity: @globe.tile_granularity(id.z),
     north: id.y == 0,
     south: id.y == (1 << id.z) - 1,

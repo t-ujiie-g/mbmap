@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.2b（ワーカーでのベクトルの細分化）。20.1（地球表示のカメラ）と 20.2a（地球表示の配線、ラスタと背景と大気）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.2c（ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に）。20.1（地球表示のカメラ）、20.2a（地球表示の配線、ラスタと背景と大気）、20.2b（面・線・円・heatmap を地球に）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -17,8 +17,8 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 149.3KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
-  | 表示ワーカー | 80.5KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 149.8KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
+  | 表示ワーカー | 84.8KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
   | `mbmap/search` | 2.8KB | 5KB |
@@ -69,6 +69,13 @@
   - pack test に `globe`（`bench/npm/pages/globe/`）：地球の外が透明、`project` / `unproject` / `getBounds`、ドラッグで回り、ホイールで寄り、z13 への飛行がメルカトルで終わり、`setProjection(null)` で平らに戻る。
   - example の 3 通りへの地球表示の切り替えは、ベクトルのレイヤーも地球に載る 20.2c で足す。
   - 大きさ：表示（メイン）133.9 → 149.3KB（予算 155KB）。`globe` の関数が多く薄く広い（覆い方 約 5KB、カメラ 約 8KB、シェーダー・大気・配線 約 2KB）。
+- **20.2b の結果**（面・線・円・heatmap を地球に）：
+  - `tess` に MapLibre の `subdivision.ts` の移植 `Subdivider`（並行のエージェント）：面を格子で切る走査線の三角形化、輪郭の線、極の帽子、z0 の経度の外の切り落とし、`subdivideVertexLine`、地球の粒度（面 128 から 2、線 512 から 0、円 3）。`npm run subdivision:golden`（新設）で GSI の面 300 万件・線 350 万件・乱数の面と線をすべて MapLibre と同じ（頂点・三角形・輪郭の線まで）。
+  - 表示ワーカー：タイルの依頼に `globe` を載せ、地球のときは幾何を `TILE_EXTENT` に揃えて（MapLibre の `loadGeometry` と同じ丸め）面を `subdividePolygon`、線を `subdivideVertexLine` で切る。heatmap と `circle-pitch-alignment: map` の円は四角形を 3 × 3 に（MapLibre の円のバケット）。投影が変わったスタイルはベクトルのタイルを読み直す。
+  - シェーダー：面・輪郭・模様・線（5 種）・円・heatmap に `project()`。線は `lineThickness`（極に向けて太る）と MapLibre の `getPixelScale` で幅を補正し、地球では gamma scale を投影した長さから取る。円（地図に沿うもの）と heatmap の核は球面の上で回す（`globeRotateVector`）。
+  - `npm run style:golden` に地球の場面 6 つ（面・穴・日付変更線・北極までの面・線・点、傾き 45°、heatmap、地図に沿った円、破線・グラデーション・輪郭）。すべて MapLibre と画素で同じ（平均 0〜0.01、99% 点 0）。
+  - 地球の間もまだ描かないもの：記号（ラベル・アイコン）と押し出し。`*-translate` は地球では効かない。20.2c で。
+  - 大きさ：表示（メイン）149.3 → 149.8KB、表示ワーカー 80.5 → 84.8KB（細分化の移植）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

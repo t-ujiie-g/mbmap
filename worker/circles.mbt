@@ -36,13 +36,15 @@ fn TileProcessor::circle_layer(
         }
       }
       let v0 = out.num_vertices()
-      if !self.may_fit(4 * g.num_points(), LINE_VERTEX_BYTES) {
+      if !self.may_fit(16 * g.num_points(), LINE_VERTEX_BYTES) {
         return false
       }
       @tess.add_points(
         g.coords[:g.num_points() * 2],
         out,
         extent=layer.extent(),
+        // On the globe heatmaps and circles on the map follow its curve.
+        subdivided=self.globe && (sl.heatmap is Some(_) || sl.pitch_with_map),
       )
       if !self.spend(
           out.num_vertices() - v0,

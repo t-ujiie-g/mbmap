@@ -6,6 +6,7 @@ pub fn add_points(
   coords : ArrayView[Int32],
   out : LineBuffers,
   extent~ : Int32 = @core.TILE_EXTENT,
+  subdivided~ : Bool = false,
 ) -> Unit {
   let s = EXTRUDE_SCALE
   for i in 0..<(coords.length() / 2) {
@@ -15,6 +16,10 @@ pub fn add_points(
       continue
     }
     let base = out.num_vertices()
+    if subdivided {
+      grid(out, x, y, base)
+      continue
+    }
     corner(out.vertices, x, y, -s, -s)
     corner(out.vertices, x, y, s, -s)
     corner(out.vertices, x, y, s, s)
@@ -43,4 +48,33 @@ fn corner(
   v.push(ey)
   v.push(0)
   v.push(0)
+}
+
+///|
+/// A point's quad as 3 x 3 quads, as MapLibre's circle bucket cuts it on the
+/// globe (`CIRCLE_GRANULARITY`, extrudes 0, 2, 5 and 7 of 7).
+fn grid(out : LineBuffers, x : Int32, y : Int32, base : Int32) -> Unit {
+  let steps : FixedArray[Int32] = [0, 2, 5, 7]
+  let e = (k : Int32) => {
+    (EXTRUDE_SCALE.to_double() * (k.to_double() / 7.0 * 2.0 - 1.0))
+    .round()
+    .to_int()
+  }
+  for row in 0..<4 {
+    for col in 0..<4 {
+      corner(out.vertices, x, y, e(steps[col]), e(steps[row]))
+    }
+  }
+  for row in 0..<3 {
+    for col in 0..<3 {
+      let lower = base + row * 4 + col
+      let upper = base + (row + 1) * 4 + col
+      out.indices.push(lower)
+      out.indices.push(upper + 1)
+      out.indices.push(lower + 1)
+      out.indices.push(lower)
+      out.indices.push(upper)
+      out.indices.push(upper + 1)
+    }
+  }
 }

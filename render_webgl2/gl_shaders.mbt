@@ -112,7 +112,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // width across the line, repeating along a_dist (u_size: its CSS size,
   #|  // u_along: CSS px per tile unit at the integer zoom).
   #|  const lineProgram = (dash, grad, pat) => program(
-  #|    proj + paint + "in vec2 a_pos; in vec4 a_data; in vec2 a_offset; uniform float u_units; uniform float u_dpr;" +
+  #|    proj + paint + "in vec2 a_pos; in vec4 a_data; in vec2 a_offset; uniform float u_units; uniform float u_dpr; uniform vec2 u_half; uniform float u_pixel_scale;" +
   #|    "uniform float u_depth; out vec2 v_edge; out vec2 v_pos; out vec2 v_width; out float v_scale; out vec4 v_color;" +
   #|    (dash ? "in float a_dist; uniform vec4 u_dash; uniform vec2 u_floor; out vec2 v_tex; out float v_gamma;" : "") +
   #|    (dash === 2 ? "in vec4 a_dash; flat out float v_mode;" : "") +
@@ -123,7 +123,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float inset = gap + (gap > 0.0 ? aa : 0.0);" +
   #|    "  float outset = gap + half_ * (gap > 0.0 ? 2.0 : 1.0) + (half_ == 0.0 ? 0.0 : aa);" +
   #|    "  vec2 off = at(a_stroke_width, 5) * u_dpr * a_offset / 63.0;" +
-  #|    "  v_pos = a_pos + (off + a_data.xy / 63.0 * outset) * u_units * lineThickness(a_pos.y); v_color = color();" +
+  #|    "  float k = u_units * lineThickness(a_pos.y) / u_pixel_scale; v_pos = a_pos + (off + a_data.xy / 63.0 * outset) * k; v_color = color();" +
   #|    "  gl_Position = project(v_pos); v_edge = a_data.zw;" +
   #|    (dash ? "  float fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
   #|    (dash === 2 ? "  float row = floor(a_dash.x / 64.0); float h = a_dash.x - row * 64.0;" +
@@ -133,7 +133,11 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    (grad ? "  v_uv = vec2(a_progress.x, (a_progress.y + 0.5) / u_rows); v_opacity = at(a_opacity, 1);" : "") +
   #|    (pat ? "  v_dist = a_dist; v_opacity = at(a_opacity, 1);" +
   #|      "  v_fw = u_floor.x >= 0.0 ? u_floor.x : mix(a_extent.x, a_extent.y, u_floor.y);" : "") +
-  #|    "  v_width = vec2(outset, inset); v_scale = gl_Position.w / u_depth; }",
+  #|    "  v_width = vec2(outset, inset); v_scale = gl_Position.w / u_depth;" +
+  #|    // On the globe MapLibre's gamma scale: the extrusion's length over its projected one.
+  #|    "  if (u_transition > 0.0) { vec4 p0 = project(a_pos + off * k);" +
+  #|    "    float d = length((gl_Position.xy - p0.xy) / gl_Position.w * u_half);" +
+  #|    "    v_scale = d > 0.0 ? length(a_data.xy / 63.0 * outset) / d : 1.0; } }",
   #|    // v_edge is (side, along): its length reaches 1 at the outline and
   #|    // around round caps.
   #|    clip + "in vec4 v_color; in vec2 v_edge; in vec2 v_width; in float v_scale; uniform float u_blur; out vec4 o;" +
@@ -151,7 +155,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  o = c * clamp(min(d - (v_width.y - b), v_width.x - d) / b, 0.0, 1.0);" +
   #|    (dash === 2 ? "  if (v_mode > 1.5) discard; if (v_mode < 0.5)" : "") +
   #|    (dash ? "  o *= smoothstep(0.5 - v_gamma, 0.5 + v_gamma, texture(u_image, v_tex).r);" : "") + " }",
-  #|    [...projUniforms, "u_units", "u_dpr", "u_depth", "u_clip", "u_t", "u_blur", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
+  #|    [...projUniforms, "u_units", "u_dpr", "u_depth", "u_clip", "u_t", "u_blur", "u_half", "u_pixel_scale", ...(dash ? ["u_dash", "u_floor", "u_image"] : []),
   #|      ...(grad ? ["u_rows", "u_image"] : []), ...(pat ? ["u_floor", "u_image", "u_pattern", "u_texsize", "u_size", "u_along"] : [])]);
   #|  const line = lineProgram(false, false, false), lineDash = lineProgram(true, false, false), lineDashFeature = lineProgram(2, false, false);
   #|  const lineGradient = lineProgram(false, true, false), linePattern = lineProgram(false, false, true);
@@ -630,12 +634,14 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    if (p.u_transition === undefined) return;
   #|    const g = c.globe;
   #|    gl.uniform1f(p.u_transition, g ? g.transition : 0);
+  #|    if (p.u_pixel_scale) gl.uniform1f(p.u_pixel_scale, g ? g.pixelScale : 1);
   #|    if (!g) return;
   #|    mat.set(g.matrix);
   #|    gl.uniformMatrix4fv(p.u_globe, false, mat);
   #|    gl.uniform4f(p.u_tile, g.tile[0], g.tile[1], g.tile[2], g.tile[3]);
   #|    gl.uniform4f(p.u_plane, g.plane[0], g.plane[1], g.plane[2], g.plane[3]);
   #|    if (p.u_angle) gl.uniform1f(p.u_angle, g.angle);
+  #|    if (p.u_half) gl.uniform2f(p.u_half, c.size[0] / 2, -c.size[1] / 2);
   #|  };
   #|  // Draws over the tile: its quad, or on the globe its mesh.
   #|  const drawTile = () => {

@@ -19,7 +19,7 @@ pub const LINE_VERTEX_STRIDE : Int32 = 6
 
 pub const MAX_LINE_DISTANCE : Int32 = 16384
 
-pub fn add_points(ArrayView[Int32], LineBuffers, extent? : Int32) -> Unit
+pub fn add_points(ArrayView[Int32], LineBuffers, extent? : Int32, subdivided? : Bool) -> Unit
 
 pub fn fill_granularity(Int32) -> Int32
 
@@ -61,7 +61,7 @@ pub fn FillBuffers::num_vertices(Self) -> Int32
 pub struct FillTessellator {
   // private fields
 }
-pub fn FillTessellator::add_polygons(Self, ArrayView[Int32], ArrayView[Int32], FillBuffers) -> Unit
+pub fn FillTessellator::add_polygons(Self, ArrayView[Int32], ArrayView[Int32], FillBuffers, subdivide? : (Subdivider, Int32, @core.TileId)) -> Unit
 pub fn FillTessellator::new() -> Self
 
 pub struct LineBuffers {
