@@ -25,3 +25,27 @@ test("getProjectionData takes a tile's 8192 units to world pixels", () => {
   assert.deepEqual(t.tileMercatorCoords, [0.5, 0, 1 / 2 / 8192, 1 / 2 / 8192]);
   assert.deepEqual([...o.getProjectionData({ tileID: null }).mainMatrix], identity);
 });
+
+test("on the globe renderInput gives the globe's matrices, MapLibre's globe prelude and Mercator as fallback", () => {
+  const globe = identity.map((v, i) => (i === 12 ? 0.5 : v));
+  const projection = identity.map((v) => v * 2);
+  const o = renderInput([...numbers, 0.75, ...globe, ...projection, 3, 40, 0.1, 0.2, 0.3, 0.4]);
+  assert.deepEqual([...o.modelViewProjectionMatrix], globe);
+  assert.deepEqual([...o.projectionMatrix], projection);
+  assert.deepEqual([o.nearZ, o.farZ], [3, 40]);
+  assert.equal(o.shaderData.variantName, "globe");
+  assert.equal(o.shaderData.define, "#define GLOBE");
+  assert.match(o.shaderData.vertexShaderPrelude, /uniform mat4 u_projection_matrix;\n#define GLOBE_RADIUS/);
+  const d = o.defaultProjectionData;
+  assert.ok(d.mainMatrix instanceof Float32Array);
+  assert.deepEqual([...d.mainMatrix], globe);
+  assert.deepEqual([...d.fallbackMatrix], [512, 0, 0, 0, 0, 512, 0, 0, 0, 0, 256, 0, 0, 0, 0, 1]);
+  assert.deepEqual([d.projectionTransition, ...d.clippingPlane], [0.75, 0.1, 0.2, 0.3, 0.4]);
+  // As MapLibre, a tile's data takes the transition only when asked to.
+  const tileID = { canonical: { x: 1, y: 0, z: 1 } };
+  assert.equal(o.getProjectionData({ tileID }).projectionTransition, 0);
+  const t = o.getProjectionData({ tileID, applyGlobeMatrix: true });
+  assert.equal(t.projectionTransition, 0.75);
+  assert.equal(t.fallbackMatrix[12], 256);
+  assert.deepEqual(t.tileMercatorCoords, [0.5, 0, 1 / 2 / 8192, 1 / 2 / 8192]);
+});
