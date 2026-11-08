@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { createIdentify } from "mbmap/ui";
 import { createCoordinateReadout } from "../../shared/coordinates.js";
 import { createShowcaseDraw } from "../../shared/draw.js";
+import { createAnalysis, routeAnalysisClicks } from "../../shared/analyze.js";
 import { createShowcaseMeasurement, identifyWhenIdle } from "../../shared/measure.js";
+import { Analysis } from "./analysis.jsx";
 import { createShowcaseProfile } from "../../shared/profile.js";
 import { selectedRows } from "../../shared/pick.js";
 import { Draw } from "./draw.jsx";
@@ -46,8 +48,8 @@ function Coordinates({ c, status }) {
 }
 
 /**
- * The identify list, the coordinates table, the drawing, the measurement and its profile, their
- * controllers made once per map; clicks identify unless they measure or draw.
+ * The identify list, the coordinates table, the drawing, the measurement and its profile, the
+ * analysis tab, their controllers made once per map; clicks identify unless they measure, draw or pick.
  */
 export function useIdentify(map, status) {
   const [c, setC] = useState(null);
@@ -55,7 +57,16 @@ export function useIdentify(map, status) {
     if (!map) return;
     const next = { identify: createIdentify(map, { click: false }), coordinates: createCoordinateReadout(map), measurement: createShowcaseMeasurement(map) };
     next.draw = createShowcaseDraw(map, next.measurement);
-    const stop = identifyWhenIdle(map, next.identify, () => next.measurement.state.mode || next.draw.state.mode);
+    next.analysis = createAnalysis(map, () => {
+      next.draw.setMode(null);
+      next.measurement.clear();
+    });
+    const stopClicks = routeAnalysisClicks(map, next.analysis, [next.measurement, next.draw]);
+    const stopIdentify = identifyWhenIdle(map, next.identify, () => next.measurement.state.mode || next.draw.state.mode || next.analysis.state.picking);
+    const stop = () => {
+      stopClicks();
+      stopIdentify();
+    };
     const profile = createShowcaseProfile(next.measurement);
     next.profile = profile.profile;
     window.__identify = next.identify;
@@ -66,5 +77,5 @@ export function useIdentify(map, status) {
       Object.values(next).forEach((x) => x.destroy());
     };
   }, [map]);
-  return c && { picked: <Picked identify={c.identify} />, coordinates: status && <Coordinates c={c.coordinates} status={status} />, measure: <Measure m={c.measurement} beforeStart={() => c.draw.setMode(null)} />, draw: <Draw draw={c.draw} />, profile: <Profile map={map} profile={c.profile} /> };
+  return c && { picked: <Picked identify={c.identify} />, coordinates: status && <Coordinates c={c.coordinates} status={status} />, measure: <Measure m={c.measurement} beforeStart={() => c.draw.setMode(null)} />, draw: <Draw draw={c.draw} />, profile: <Profile map={map} profile={c.profile} />, analysis: <Analysis map={map} a={c.analysis} /> };
 }

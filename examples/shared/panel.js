@@ -1,6 +1,7 @@
 // The panel's basemaps, layer list and legend drawn with plain DOM from
 // `mbmap/ui`'s controllers (the React example draws them its own way).
 import { createBasemaps, createLayerList, createLegend } from "mbmap/ui";
+import { cellsLegendLabel } from "./analyze.js";
 import { BASEMAPS, LAYER_GROUPS, LAYER_TITLES, createStyle, datasets, legendLabel } from "./style.js";
 
 /** CSS for a straight RGBA color in 0 to 1. */
@@ -13,7 +14,7 @@ export const css = ([r, g, b, a]) => `rgba(${Math.round(r * 255)}, ${Math.round(
 export function panelControllers(map, mode, places) {
   const layers = createLayerList(map, { groups: LAYER_GROUPS.map((g) => ({ id: g.name, layers: g.ids })) });
   const hidden = () => new Set(layers.state.items.filter((i) => i.layers.length > 0 && !i.visible).map((i) => i.id));
-  const legend = createLegend(map, { title: (l) => LAYER_TITLES[l.id] ?? datasets.get(l.source)?.name ?? l.id, label: legendLabel });
+  const legend = createLegend(map, { title: (l) => LAYER_TITLES[l.id] ?? datasets.get(l.source)?.name ?? l.id, label: (l, c) => cellsLegendLabel(l, c) ?? legendLabel(l, c) });
   const basemaps = createBasemaps(map, {
     basemaps: BASEMAPS.map((b) => ({ ...b, style: () => createStyle(mode(), hidden(), places(), b.id) })),
     active: "map",

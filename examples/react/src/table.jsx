@@ -1,8 +1,8 @@
-// The places' attribute table in React, from the controller the plain-DOM
+// The places' attribute table and its field form in React, from the controllers the plain-DOM
 // examples draw with the same shared helpers.
 import { useEffect, useState } from "react";
 import { cellText } from "mbmap/ui";
-import { TABLE_COLUMNS, chooseRow, createPlacesTable, onTableKey, sortOf, tableCounts } from "../../shared/table.js";
+import { FIELD_ACTIONS, FIELD_DEFAULTS, chooseRow, createPlacesFields, createPlacesTable, onTableKey, runField, sortOf, tableCounts, tableHeadings } from "../../shared/table.js";
 import { useController } from "./use-controller.js";
 
 /** The table, its controller made once per map. */
@@ -10,15 +10,19 @@ export function AttributeTable({ map }) {
   const [table, setTable] = useState(null);
   useEffect(() => {
     const t = createPlacesTable(map);
-    setTable(t);
+    setTable({ table: t, fields: createPlacesFields(map, t) });
     return () => t.destroy();
   }, [map]);
-  return table && <Table table={table} />;
+  return table && <Table table={table.table} fields={table.fields} />;
 }
 
-function Table({ table }) {
+const PLACEHOLDERS = { name: "列名", expression: "式（JSON）", to: "新しい名前" };
+
+function Table({ table, fields }) {
   const s = useController(table);
   const c = tableCounts(s);
+  const [form, setForm] = useState(FIELD_DEFAULTS);
+  const [status, setStatus] = useState("");
   return (
     <div id="table">
       {/* The native event carries `isComposing`, which React's does not. */}
@@ -26,7 +30,7 @@ function Table({ table }) {
       <table className="attributes">
         <thead>
           <tr>
-            {TABLE_COLUMNS.map(([key, title]) => {
+            {tableHeadings(s).map(([key, title]) => {
               const sort = sortOf(s, key);
               return (
                 <th key={key} aria-sort={sort.aria}>
@@ -39,7 +43,7 @@ function Table({ table }) {
         <tbody>
           {s.rows.map((row, i) => (
             <tr key={row.id ?? `#${i}`} aria-selected={row.id !== null && s.selected.includes(String(row.id))} onClick={(e) => chooseRow(table, row, e.nativeEvent)}>
-              {TABLE_COLUMNS.map(([key]) => <td key={key}>{cellText(row.properties[key])}</td>)}
+              {s.columns.map((key) => <td key={key}>{cellText(row.properties[key])}</td>)}
             </tr>
           ))}
         </tbody>
@@ -49,6 +53,13 @@ function Table({ table }) {
         <span>{c.page}</span>
         <button disabled={s.page >= s.pages - 1} onClick={() => table.next()}>▶</button>
         <span className="table-count">{c.count}</span>
+      </div>
+      <div className="field-form">
+        {Object.keys(FIELD_DEFAULTS).map((k) => <input key={k} id={`field-${k}`} placeholder={PLACEHOLDERS[k]} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />)}
+        <div className="chips">
+          {FIELD_ACTIONS.map(([action, label]) => <button key={action} data-field={action} onClick={async () => setStatus(await runField(fields, action, form))}>{label}</button>)}
+        </div>
+        <p id="field-status" className="hint">{status}</p>
       </div>
     </div>
   );

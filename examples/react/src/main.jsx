@@ -63,9 +63,13 @@ function App() {
     setMode(m);
     ref.current.map?.easeTo({ ...modeCamera(m), duration: 1000 });
   };
-  const addMarker = () => {
-    places.current = withMarker(places.current, ref.current.center, `印 ${places.current.features.length - PLACES.features.length + 1}`);
-    ref.current.map?.getSource("places").setData(places.current);
+  // From the source's data, which the table's field editor may have changed.
+  const addMarker = async () => {
+    const map = ref.current.map;
+    if (!map) return;
+    const data = await map.getSource("places").getData();
+    places.current = withMarker(data, ref.current.center, `印 ${data.features.length - PLACES.features.length + 1}`);
+    map.getSource("places").setData(places.current);
   };
 
   const onLoad = (e) => {
@@ -138,6 +142,9 @@ function App() {
               {tools?.measure}
               <h2>断面図</h2>
               {tools?.profile}
+            </Tab>
+            <Tab id="analysis" tab={tab}>
+              {tools?.analysis}
             </Tab>
             <Tab id="data" tab={tab}>
               <h2>読み込み</h2>
