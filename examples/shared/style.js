@@ -22,7 +22,7 @@ const SPRITE = new URL("../shared/sprite/sprite", location.href).href;
 const HATCH = { id: "structurea-hatch", type: "fill", source: "gsi", "source-layer": "structurea", paint: { "fill-pattern": "hatch" } };
 
 // GSI's buildings have no heights: 30 m for sturdy ones (ftCode 3103), 8 m for others.
-const BUILDINGS_3D = {
+export const BUILDINGS_3D = {
   id: "building-3d", type: "fill-extrusion", source: "gsi", "source-layer": "building",
   filter: ["==", ["geometry-type"], "Polygon"],
   paint: {
@@ -128,15 +128,21 @@ export function withMarker(places, center, name) {
 /** The DEM tiles the style draws (GSI's, or the fixtures with `?local=1`): the profile samples them too. */
 export const DEM_TILES = local ? `${fixtures}gsi-dem/{z}/{x}/{y}.png` : `${GSI}/dem_png/{z}/{x}/{y}.png`;
 
+/** GSI's vector tiles (the fixtures' z14 with `?local=1`) as a style source. */
+export function gsiSource() {
+  const tiles = local
+    ? { tiles: [`${fixtures}gsi-bvmap/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 }
+    : { tiles: [`${GSI}/experimental_bvmap/{z}/{x}/{y}.pbf`], minzoom: 4, maxzoom: 16 };
+  return { type: "vector", ...tiles, attribution: "国土地理院ベクトルタイル提供実験" };
+}
+
 /**
  * "2d", "3d" or "globe" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
  * named in `hidden`; the places are overlays, kept when the basemap changes.
  */
 export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, basemap = "map") {
   const sources = {
-    gsi: local
-      ? { type: "vector", tiles: [`${fixtures}gsi-bvmap/{z}/{x}/{y}.pbf`], minzoom: 14, maxzoom: 14 }
-      : { type: "vector", tiles: [`${GSI}/experimental_bvmap/{z}/{x}/{y}.pbf`], minzoom: 4, maxzoom: 16 },
+    gsi: gsiSource(),
     dem: local
       ? { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 14, maxzoom: 14, encoding: "gsi" }
       : { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, minzoom: 1, maxzoom: 14, encoding: "gsi" },
@@ -156,7 +162,6 @@ export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, bas
       : { type: "raster", tiles: [`${GSI}/seamlessphoto/{z}/{x}/{y}.jpg`], tileSize: 256, minzoom: 2, maxzoom: 18 },
   };
   sources.photo.attribution = "国土地理院 全国最新写真（シームレス）";
-  sources.gsi.attribution = "国土地理院ベクトルタイル提供実験";
   sources.dem.attribution = "国土地理院 標高タイル";
   const overlay = { "mbmap:overlay": true };
   const base =
