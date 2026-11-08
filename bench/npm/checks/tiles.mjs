@@ -22,10 +22,13 @@ export async function tilesChecks(page) {
   const globeBlank = await commonestShare(page);
   // The fixture holds the tiles around Tokyo Station; heights are above the ellipsoid (geoid +36.7 m).
   const plateau = await page.evaluate(async () => {
+    const url = new URL("/bench/fixtures/plateau-chiyoda/tileset.json", location.href).href;
+    // CI's small pages run without the fixtures, as the terrain check does.
+    if (!(await fetch(url, { method: "HEAD" })).ok) return { skipped: "no fixtures" };
     const map = window.__map;
     map.setProjection(null);
     map.removeLayer("blocks");
-    const layer = window.__tilesLayer({ id: "plateau", url: new URL("/bench/fixtures/plateau-chiyoda/tileset.json", location.href).href, height: -36.7 });
+    const layer = window.__tilesLayer({ id: "plateau", url, height: -36.7 });
     map.addLayer(layer);
     window.__layer = layer;
     await layer.ready;
@@ -38,6 +41,6 @@ export async function tilesChecks(page) {
     JSON.stringify(close) === JSON.stringify(["r/0", "r/1", "r/2", "r/3"]) && closeBlank < 0.8 &&
     JSON.stringify(far) === JSON.stringify(["r"]) &&
     globe.length > 0 && globeBlank < 0.99 &&
-    plateau.tiles >= 10 && plateau.ready && plateauBlank < 0.6;
+    (plateau.skipped !== undefined || (plateau.tiles >= 10 && plateau.ready && plateauBlank < 0.6));
   return [ok, { close, closeBlank, far, globe, globeBlank, plateau, plateauBlank }];
 }
