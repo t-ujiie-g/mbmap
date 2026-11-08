@@ -1,10 +1,10 @@
 // The page around the map for the plain-DOM examples (the React example writes the same markup in
-// JSX): a panel with the search and five tabs, the view's buttons, and a status bar. The markup is
+// JSX): a panel with the search and six tabs, the view's buttons, and a status bar. The markup is
 // constant; everything that comes from data goes in later through `textContent`.
 import { icon } from "./icons.js";
 
 /** The panel's tabs as [id, label]. */
-export const TABS = [["explore", "探す"], ["layers", "レイヤー"], ["draw", "作図"], ["measure", "計測"], ["data", "データ"]];
+export const TABS = [["explore", "探す"], ["layers", "レイヤー"], ["draw", "作図"], ["measure", "計測"], ["analysis", "解析"], ["data", "データ"]];
 
 /** The three ways the showcase is written as [path, label]. */
 export const VARIANTS = [["html", "HTML"], ["element", "Element"], ["react", "React"]];
@@ -28,6 +28,11 @@ const TAB_BODIES = {
     <h2>距離と面積</h2><div id="measure" class="chips"></div>
     <dl id="measured" class="rows"></dl>
     <h2>断面図</h2><figure id="profile"></figure>`,
+  analysis: `
+    <h2>階級区分図</h2><div id="analysis-cells" class="chips"></div><dl id="analysis-cells-rows" class="rows"></dl>
+    <h2>道路での経路</h2><div id="analysis-route" class="chips"></div><dl id="analysis-route-rows" class="rows"></dl>
+    <h2>見通しと可視域</h2><div id="analysis-sight" class="chips"></div><dl id="analysis-sight-rows" class="rows"></dl>
+    <p id="analysis-error" class="hint" hidden></p>`,
   data: `
     <h2>読み込み</h2><div id="data"></div>
     <h2>Web サービス</h2><div id="services"></div>

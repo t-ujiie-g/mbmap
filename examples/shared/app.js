@@ -1,6 +1,7 @@
 // The showcase's behaviour for the plain-DOM examples, once the map has loaded; each example only
 // says how it starts the map and how a new style reaches it (`applyStyle`).
 import { describe } from "./analysis.js";
+import { mountAnalysis, routeAnalysisClicks } from "./analyze.js";
 import { mountControls } from "./controls.js";
 import { mountCoordinates } from "./coordinates.js";
 import { mountData } from "./data.js";
@@ -30,7 +31,12 @@ export function mountApp(map, status, applyStyle) {
   let draw = null;
   const measurement = mountMeasurement(map, () => draw?.setMode(null));
   draw = mountDraw(map, measurement);
-  identifyWhenIdle(map, mountIdentify(map), () => measurement.state.mode || draw.state.mode);
+  const analysis = mountAnalysis(map, () => {
+    draw.setMode(null);
+    measurement.clear();
+  });
+  routeAnalysisClicks(map, analysis, [measurement, draw]);
+  identifyWhenIdle(map, mountIdentify(map), () => measurement.state.mode || draw.state.mode || analysis.state.picking);
   mountProfile(map, measurement);
   mountCoordinates(map, status);
   hoverPlaces(map);
@@ -78,7 +84,9 @@ export function mountApp(map, status, applyStyle) {
       return b;
     }),
   );
-  document.getElementById("marker").addEventListener("click", () => {
+  // From the source's data, which the table's field editor may have changed.
+  document.getElementById("marker").addEventListener("click", async () => {
+    places = await map.getSource("places").getData();
     places = withMarker(places, map.getCenter(), `印 ${places.features.length - PLACES.features.length + 1}`);
     map.getSource("places").setData(places);
   });

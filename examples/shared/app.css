@@ -142,6 +142,8 @@ details.legend summary { font-size: 12px; font-weight: 600; color: var(--muted);
 .attributes tbody tr { cursor: pointer; }
 .attributes tbody tr:hover { background: var(--surface-2); }
 .attributes tr[aria-selected="true"] { background: var(--accent-soft); }
+.field-form { display: grid; gap: 6px; margin-top: 10px; }
+.field-form input { font-family: var(--mono, ui-monospace, monospace); font-size: 12px; }
 .table-pager { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .table-count { margin-left: auto; color: var(--muted); }
 

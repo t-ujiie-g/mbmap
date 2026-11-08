@@ -29,7 +29,7 @@ export async function tableChecks(page) {
   await header.click();
   await page.waitForFunction(() => window.__table.state.sort?.direction === "desc");
   const desc = await state();
-  const query = page.locator("#table input");
+  const query = page.locator("#table input[type=search]");
   await query.fill("名所");
   await page.waitForFunction(() => window.__table.state.query === "名所");
   const sights = await state();
@@ -89,6 +89,25 @@ export async function tableChecks(page) {
     const direct = window.__map.evaluateExpression(["*", ["get", "n"], 2], [{ properties: { n: 21 } }, { properties: {} }]);
     return { added, lens, sights, renamed, refused, exists, columns: t.state.columns, restored: JSON.stringify(after) === JSON.stringify(before), direct };
   });
+  // The same through the page's form.
+  const headsAre = (want) =>
+    page.waitForFunction((w) => JSON.stringify([...document.querySelectorAll("#table th")].map((th) => th.textContent)) === w, JSON.stringify(want), { timeout: 5000 }).then(() => true, () => false);
+  const form = async (action, values) => {
+    for (const [k, v] of Object.entries(values)) await page.fill(`#field-${k}`, v);
+    await page.click(`[data-field=${action}]`);
+    await page.waitForFunction(() => document.getElementById("field-status").textContent !== "");
+    const status = await page.evaluate(() => document.getElementById("field-status").textContent);
+    await page.evaluate(() => (document.getElementById("field-status").textContent = ""));
+    return status;
+  };
+  const typed = { calculated: await form("calculate", { name: "label", expression: '["concat", ["get", "name"], "!"]' }) };
+  typed.added = await headsAre(["名前", "種別", "label"]);
+  typed.cell = await page.evaluate(() => document.querySelector("#table tbody tr td:last-child").textContent);
+  typed.renamed = await form("rename", { name: "label", to: "名称" });
+  typed.afterRename = await headsAre(["名前", "種別", "名称"]);
+  typed.bad = await form("calculate", { name: "x", expression: "[oops" });
+  typed.removed = await form("remove", { name: "名称" });
+  typed.after = await headsAre(["名前", "種別"]);
   const near = (a, lng, lat) => Math.abs(a.lng - lng) < 1e-3 && Math.abs(a.lat - lat) < 1e-3;
   const rowsShown = (s) => JSON.stringify(s.cells.map((c) => c[0])) === JSON.stringify(s.names);
   const ok =
@@ -107,6 +126,7 @@ export async function tableChecks(page) {
     JSON.stringify(fields.lens) === JSON.stringify([["上野駅", 3]]) &&
     fields.sights.length === expected.sights.length && fields.sights.every((v) => v === true) && JSON.stringify(fields.renamed.columns) === JSON.stringify(["name", "kind", "title", "len"]) &&
     fields.renamed.keys.indexOf("title") === fields.renamed.keys.length - 1 && /unsupported: expression nope/.test(fields.refused ?? "") && /exists/.test(fields.exists ?? "") &&
-    JSON.stringify(fields.columns) === JSON.stringify(["name", "kind"]) && fields.restored && JSON.stringify(fields.direct) === JSON.stringify([42, null]);
-  return { ok, fields, initial: { total: initial.total, pages: initial.pages, names: initial.names }, asc: asc.names, desc: desc.names, sights: sights.filtered, folded: folded.names, paged, chosen: chosen.selected, picked };
+    JSON.stringify(fields.columns) === JSON.stringify(["name", "kind"]) && fields.restored && JSON.stringify(fields.direct) === JSON.stringify([42, null]) &&
+    typed.added && typed.cell === `${initial.names[0]}!` && typed.afterRename && typed.bad === "式を JSON で書いてください" && typed.after;
+  return { ok, fields, typed, initial: { total: initial.total, pages: initial.pages, names: initial.names }, asc: asc.names, desc: desc.names, sights: sights.filtered, folded: folded.names, paged, chosen: chosen.selected, picked };
 }

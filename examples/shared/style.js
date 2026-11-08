@@ -86,7 +86,8 @@ export const LAYER_TITLES = {
   contour: "等高線", "contour-label": "等高線の高さ", river: "河川", "road-casing": "道路の縁", road: "道路", railway: "鉄道", boundary: "境界",
   elevation: "標高点", symbol: "記号", label: "注記", "label-vertical": "注記（縦書き）", places: "地点", "places-label": "地点名",
   "stations-cluster": "駅のまとまり", stations: "山手線の駅", "stations-count": "駅の数", "stations-heat": "駅の密度", walk: "散歩道",
-  hillshade: "陰影", photo: "写真", sketch: "駅の略図",
+  hillshade: "陰影", photo: "写真", sketch: "駅の略図", "analysis-cells": "地点の領域の面積", "analysis-cells-line": "地点の領域の境界",
+  "analysis-route": "経路", "analysis-route-end": "経路の端", "analysis-viewshed": "可視域", "analysis-sight": "見通し", "analysis-sight-point": "見通しの点",
 };
 
 // GSI's road classes (rdCtg).

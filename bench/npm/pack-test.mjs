@@ -19,6 +19,7 @@ import { queryChecks } from "./checks/query.mjs";
 import { searchChecks } from "./checks/search.mjs";
 import { servicesChecks } from "./checks/services.mjs";
 import { tableChecks } from "./checks/table.mjs";
+import { analyzeChecks } from "./checks/analyze.mjs";
 import { stateChecks } from "./checks/state.mjs";
 import { styleChecks } from "./checks/style.mjs";
 import { tileSourceChecks } from "./checks/tile-sources.mjs";
@@ -521,6 +522,8 @@ async function showcase(page) {
   const searched = await searchChecks(page);
   crumb("tableChecks");
   const tabled = await tableChecks(page);
+  crumb("analyzeChecks");
+  const analyzed = await analyzeChecks(page);
   crumb("showcase: layers, marker, basemaps");
   // The 3D switch went through setStyle; layer groups hide through setLayoutProperty and markers go in with setData.
   const styled = await page.evaluate(async () => {
@@ -577,8 +580,8 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && read.ok && services.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
-  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, read, services, measured, drew, edited, cut, clustered }];
+    saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && analyzed.ok && read.ok && services.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
+  return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, tokyoPin, osakaPin, saved, controls, searched, tabled, analyzed, read, services, measured, drew, edited, cut, clustered }];
 }
 
 async function engineStarted(page) {
