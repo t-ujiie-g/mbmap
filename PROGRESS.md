@@ -116,6 +116,20 @@
   - 地形：地形を入れても深度を共有して建物が地面に立つ（誇張 1 のとき。誇張が 1 でないと高さがずれる）。
   - 大きさ：`3d-tiles.js` 6.9 → 9.9KB（予算 10KB。次に足すときは相談する）、3D ワーカー 26.7 → 29.9KB（45KB）。
   - まだないもの：pnts（20.6）、`3DTILES_batch_table_hierarchy`、地物 ID のテクスチャとプロパティテクスチャ、`EXT_instance_features`、暗黙の地物 ID でのクリック、地形の誇張への追従。
+- **20.5：CesiumJS との比較**（並行のエージェント。比べる項目は 2026-11-08 のユーザー判断：選ぶタイル、読むバイト、落ち着くまでの時間、画面の見比べ、配る大きさ、フレームの CPU）：
+  - `npm run cesium`（新設、`bench/cesium/`）：PLATEAU の東京駅まわり（`plateau-chiyoda`）を mbmap/3d の `tilesLayer`（`height: -36.7`、白い背景だけのスタイル）と CesiumJS 1.146.0（`CesiumWidget`、Ion・画像・地形・空・霧なし、白い楕円体、`maximumScreenSpaceError: 8`、動的・foveated な誤差なし、`skipLevelOfDetail: false`、`cullRequestsWhileMoving: false`、タイルセットを中心の法線に沿って 36.7 m 下げる `modelMatrix`、光は mbmap と同じ向きの `DirectionalLight`）で、800 × 600、dpr 1 の Chromium に描く。カメラは MapLibre のもの（縦の画角 36.87°、中心まで 1.5 画面高を中心の緯度のメートルに）を Cesium の `lookAt`（heading = bearing、pitch = pitch − 90°、中心の 0 m のまわり）にし、`frustum.fov` は横の画角に直す。画面の見比べで同じ建物が同じ所に来る。127.0.0.1 の外への要求があれば失敗にする（どちらもなし）。
+  - 結果（`bench/results/cesium.json`、**SwiftShader** の Chromium 156、3 回の中央値。フレームの数字は M2 の GPU（`-- --gpu`）で取り直すのが本当）：
+
+    | 視点 | 選んだタイル mbmap / Cesium（共通） | b3dm の要求 | 読んだ MB | 落ち着くまで ms | 回転 120 フレームの CPU p50 / p95 ms |
+    | --- | --- | --- | --- | --- | --- |
+    | z17、傾き 50°、方位 -20° | 24 / 23（22） | 53 / 50 | 21.7 / 21.0 | 917 / 4043 | 2.27 / 3.85 ・ 2.76 / 5.50 |
+    | z16、真上 | 27 / 27（27） | 49 / 49 | 20.5 / 20.5 | 892 / 4119 | 2.34 / 4.34 ・ 2.02 / 2.94 |
+    | z18、傾き 60°、方位 30° | 14 / 17（12） | 47 / 46 | 19.1 / 19.1 | 800 / 3713 | 2.35 / 4.28 ・ 2.65 / 5.20 |
+
+  - 配る大きさ（この場面で読んだ .js / .wasm の gzip）：mbmap 284.5KB（`index.js` 151.7、`mbmap.wasm` 80.3、`3d.wasm` 21.5、`3d-tiles.js` 9.9、`3d-worker.js` 8.4、`worker.js` 4.9、`3d.js` 4.9、`custom.js` 2.9）、CesiumJS 1870.7KB（ワーカーを抱えた `Cesium.js` 1782.2、`draco_decoder.wasm` 88.5）＋ 資産 136.3KB（`approximateTerrainHeights.json` など）。
+  - 違い：Cesium は PBR と環境光で青みがかった陰影、mbmap は Lambert の灰色。z18 では Cesium が深く選び、フィクスチャにないタイルを 8 つ求める（フィクスチャは loaders.gl の 60° のカメラで選んだもの）。mbmap と loaders.gl は画面上の誤差の分母を 1.15（60° の画角）に固定し、Cesium は 2 tan(縦の画角 / 2)（36.87° で 0.667）を使うため。
+  - 依存（bench の devDependency）：cesium 1.146.0（Apache-2.0、2026-10-01。1.147.0 は 2 週間たっていない）。その依存の `@cesium/engine` 26.5.0・`@cesium/widgets` 16.3.1・`@cesium/core` 0.1.1・pako 3.0.3 が新しすぎるので `overrides` で 26.4.0・16.3.0・0.1.0・3.0.2 に固定。install スクリプトなし（cesium 自身の `prepare` は npm のレジストリからの導入では走らない）、`npm audit` 0 件。比べるのは配布済みの `Build/Cesium` だけ。
+  - Mac で回すもの：`npm run cesium -- --gpu`（フレームの CPU と落ち着くまでの時間）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

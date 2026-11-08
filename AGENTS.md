@@ -110,6 +110,7 @@ npm run classify:node     # classify.ts vs simple-statistics and geostats on ran
 npm run viewshed:node     # viewshed.wasm vs gdal_viewshed processes (net of a 2 x 2 run) on the Mt Fuji DEM and a 4096 x 4096 mirror of it; needs GDAL (M2)
 npm run split             # the module-split measurement behind "one wasm per entry" (bench/split; rerun when revisiting that granularity)
 npm run render            # mbmap vs MapLibre: first render, frame CPU, bundle sizes (same style); node render/run.mjs --labels adds the label layers, --line-labels contour labels along lines
+npm run cesium            # mbmap/3d's tilesLayer vs CesiumJS 1.146.0 on PLATEAU (plateau-chiyoda), same viewport and cameras: tiles selected, tile requests and bytes, time until settled, screenshots side by side (bench/results/cesium/, gitignored), frame CPU over an orbit, code gzip; requests leaving 127.0.0.1 fail it; `-- --gpu` on the M2 (frame numbers count only there)
 npm run example           # serve the repo on 127.0.0.1:8080 (the dev pages bench/pages/{basic,terrain} need only this)
 npm run examples          # also pack npm/ into examples/{html,element,react} and bench/npm/pages/ (bench/npm/prepare.mjs), then serve /examples/
 npm run npm:pack          # build + npm pack npm/, install it there, check examples and test pages in Chromium (CI runs this; `-- --only=a,b` / `--except=a,b` pick checks by name)

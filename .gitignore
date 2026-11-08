@@ -6,6 +6,7 @@ target/
 .repos/
 node_modules/
 bench/results/*.raw.json
+bench/results/cesium/
 bench/dist/
 bench/fixtures/gsi-bvmap/
 npm/dist/
