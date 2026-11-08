@@ -88,12 +88,13 @@ pub struct Network {
 }
 
 ///|
-/// `PathFinder(network, {tolerance})` with each line of the LineString and
-/// MultiLineString rows as a LineString feature; None where it throws (a NaN in
-/// a line) or past `MAX_ROUTE_VERTICES` line coordinates.
+/// `PathFinder(network, {tolerance})` of the LineString and MultiLineString
+/// rows' lines, through `snap_lines` for a positive `snap` (meters); None for a
+/// NaN, past `MAX_ROUTE_VERTICES` line coordinates or where `snap_lines` fails.
 pub fn Network::new(
   t : @geom.Table,
   tolerance~ : Double = 1.0e-5,
+  snap~ : Double = 0.0,
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> Network? {
   let lines : Array[(Int32, Int32)] = []
@@ -118,14 +119,24 @@ pub fn Network::new(
       }
     }
   }
+  let (coords, lines) = if snap > 0.0 {
+    guard snap_lines(t.coords, lines, snap, trig~) is Some(noded) &&
+      noded.0.length() / 2 <= MAX_ROUTE_VERTICES else {
+      return None
+    }
+    noded
+  } else {
+    (t.coords, lines)
+  }
+  let total = if snap > 0.0 { coords.length() / 2 } else { total }
   let keys = PairIndex::new(total)
   let ids : Array[Int32] = Array(capacity=total)
   let xs : Array[Double] = []
   let ys : Array[Double] = []
   for line in lines {
     for i in line.0..<line.1 {
-      let x = t.coords[i * 2]
-      let y = t.coords[i * 2 + 1]
+      let x = coords[i * 2]
+      let y = coords[i * 2 + 1]
       let kx = key_bits(x, tolerance)
       let ky = key_bits(y, tolerance)
       let id = keys.get(kx, ky)

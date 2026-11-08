@@ -23,7 +23,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 29.8KB（geometry.wasm 41.8KB、relate.wasm 27.0KB、shapes.wasm 27.9KB、surface.wasm 28.9KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 13.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 29.8KB（geometry.wasm 41.8KB、relate.wasm 27.0KB、shapes.wasm 27.9KB、surface.wasm 28.9KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 16.2KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、17KB。viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断。route.wasm は 2026-11-07 に 15KB、`snap` のため 2026-11-08 に 17KB、ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
@@ -51,6 +51,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
   - フィールド演算が編集のたびにデータ全体を `getData`/`setData` する：GeoJSON ソースに MapLibre の `updateData(diff)` を足す。@maplibre/geojson-vt 6.3.0 の更新できる索引（`difference.ts`、`invalidateTiles`、`updateIndex`）まで移植し、更新のあとの全タイルをゴールデンで比べる。段階は、主スレッドの差分と変わったタイルだけの読み直し、ワーカーの増分、フィールド演算の切り替えの 3 つ。予算は GeoJSON のワーカー 30 → 34KB、`clusterProperties` のモジュール 50 → 54KB。
   - タイルの境の道路のつなぎ：`querySourceFeatures` の地物に MapLibre と同じ `tile: {z, x, y}` を付け、example は線を各タイルの範囲で切ってから網にする（ズームが混ざれば最も深いもの）。`network({ snap })`（メートル、既定は使わない）で、線の端から snap 以内の別の線の途中を分けてつなぐ。route.wasm の予算は 15 → 17KB。
     - 1 段目（済み）：`querySourceFeatures` の地物に MapLibre と同じく元のタイル `tile: {z, x, y}` を付けた（`query:golden` も比べて 447 すべて同じ）。example の経路は各道路を自分のタイルの範囲で切り（`examples/shared/tile-lines.js`、緩衝帯の重なりを除く）、ズームが混ざるときはいちばん深いタイルだけを使う。pack test で切り方と経路（572 m）を確かめる。表示（メイン）133.7KB（+21 バイト）。2 段目は `network({ snap })`。
+    - 2 段目（済み）：`Dataset.network({ tolerance, snap })`（メートル、既定 0 でいままでと同じ網。`route:golden` 1400 すべて同じ）。網を作る前に線を節で分ける（`@route.snap_lines`、pgRouting の `pgr_nodeNetwork`・GRASS の `v.clean tool=snap,break` と同じ考え）：線の端は `snap` 以内の最初の端の組に入り、組はそこから `snap` 以内のいちばん近い線分上の点へ動いて、その線分にその点を頂点として足す（別の組の端に寄るときはその組と同じ所へ）。距離は端の緯度の正距円筒（Turf の地球半径）。自分の線は端から線に沿って 2 × `snap` 以内を除く。線分は `snap` と線分の平均の大きさの大きい方の格子に入れ、`MAX_SNAP_CELLS`（800 万）と `MAX_SNAP_TESTS`（2 億）を超えると断る。`npm run route:snap`（新設）：総当たりの検算で、`snap` 以内に相手のある端 17,633 がすべて頂点を共有し、動きは 2 × `snap` 以内、足した頂点は元の線分の上。GSI z14 の 2 × 2 タイルで、タイルで切った道路（`tileLines`）に `snap: 2` の経路は、切らない道路（2 × 2 の範囲で）がつなぐ 285 組のどれも失わず、97 が同じ、161 が短く（最大 3.0 km：GSI の道路は端が別の道路の線分の途中に載るだけで頂点を共有しないことが多く、geojson-path-finder ではつながらない）、27 が端の移動のぶん長い（最大 3.8 m）。T 字路とタイルの境でずれた端は `snap` でだけつながる。端からいちばん近い別の線分までの距離は、0 m（線分の途中に載る）のほかは 0.5 m 以下 9、1 m 以下 5、2 m 以下 8、2〜5 m 42 なので、example は `snap: 2`。route.wasm 13.0 → 16.2KB。網を作る時間（`route:node`）は測っていない。
   - 自然分類の最大の級が 1 つの値だけになる：いまのまま（外れ値を級にするのは jenks の答え）。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
@@ -162,7 +163,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 
 - **19.6 の結果**：
   - `route`（純粋な MoonBit、全バックエンド）：geojson-path-finder 2.1.0 の移植（前処理、頂点の丸め、縮約、ファントム頂点、tinyqueue 2.0.3 の Dijkstra、@turf/distance の重み）。JS の頂点キー（丸めた座標の文字列）は、-0 と NaN をそろえた double のビットで置き換えても同じにまとまる。近傍の並びは JS のオブジェクトの挿入順（消して入れ直すと最後）まで写したので、同じ長さの経路の選び方も同じ。長い鎖の座標はロープでつなぎ（JS は配列のコピーで二乗）、問い合わせのたびに状態を戻す。MultiLineString は線ごとに分ける（JS は LineString だけ）。
-  - `route_worker`（route.wasm 12.9KB、予算 15KB）：網を番号で持ち、同じ網に何度でも問い合わせられる。
+  - `route_worker`（route.wasm 12.9KB、予算 15KB。`snap` を足して 16.2KB、予算 17KB）：網を番号で持ち、同じ網に何度でも問い合わせられる。
   - API：`Dataset.network({ tolerance })` → `Network.route(from, to)` → `{ path, weight }` または null、`dispose()`。
   - `npm run route:golden`：揺らした格子の網 3 つ（600 件）と GSI の 4 タイルの道路（800 件）の経路が、座標も重み（`Object.is`）もすべて geojson-path-finder と同じ。
   - 大きさ：解析ワーカーはつなぎを足して 29.9 / 30KB。19.7 で足りなくなれば、可視域と同じくつなぎを別ファイルに出す。

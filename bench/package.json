@@ -53,6 +53,7 @@
     "relate:node": "npm run build:moon && node relate/node.mjs",
     "shapes:node": "npm run build:moon && node shapes/node.mjs",
     "surface:node": "npm run build:moon && node surface/node.mjs",
+    "route:snap": "npm run build:moon && node route/snap.mjs",
     "route:node": "npm run build:moon && node route/node.mjs",
     "classify:node": "node --experimental-strip-types classify/node.mjs",
     "viewshed:node": "npm run build:moon && node viewshed/node.mjs",

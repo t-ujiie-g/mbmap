@@ -1,0 +1,71 @@
+{
+  "snap": 2,
+  "queries": 300,
+  "tiles": [
+    [
+      14551,
+      6450
+    ],
+    [
+      14552,
+      6450
+    ],
+    [
+      14551,
+      6451
+    ],
+    [
+      14552,
+      6451
+    ]
+  ],
+  "results": {
+    "gsi cut roads": {
+      "lines": 9246,
+      "ends": 18492,
+      "toJoin": 17633,
+      "joined": 17633,
+      "added": 82,
+      "maxMove": 3.9939667383958306
+    },
+    "gsi cut roads, snap 5": {
+      "lines": 9246,
+      "ends": 18492,
+      "toJoin": 17675,
+      "joined": 17675,
+      "added": 230,
+      "maxMove": 8.624046691718473
+    },
+    "jittered streets": {
+      "lines": 400,
+      "ends": 800,
+      "toJoin": 35,
+      "joined": 35,
+      "added": 25,
+      "maxMove": 1.9930245020256856
+    },
+    "gsi routes": {
+      "queries": 300,
+      "truth": 285,
+      "plainSame": 249,
+      "plainMissing": 0,
+      "snappedMissing": 0,
+      "same": 97,
+      "shorter": 161,
+      "maxShorter": 3013.3591593884416,
+      "longer": 27,
+      "maxLonger": 3.824763479847615,
+      "newPaths": 0
+    },
+    "T-junction": {
+      "without": null,
+      "with": 0.1564014824160113
+    },
+    "tile edge": {
+      "without": null,
+      "with": 0.22712312984313432
+    }
+  },
+  "failures": [],
+  "ok": true
+}

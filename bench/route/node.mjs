@@ -33,7 +33,7 @@ for (const [name, sets] of [[`gsi roads (${TILES} tiles)`, networks], ["jittered
   const lines = sets.reduce((s, [, data]) => s + data.features.length, 0);
   const build = (k) => {
     env.put([ids[k]]);
-    return m.network_new(sets[k][2]);
+    return m.network_new(sets[k][2], 0);
   };
   row(`${name}: build the network (${lines} lines)`,
     time(() => sets.forEach(([, data, tolerance]) => new PathFinder(data, { tolerance }))),
