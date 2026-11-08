@@ -510,14 +510,14 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // do not filter) over the u_dem part (offset, scale); a_data.x = 1 on skirts
   #|  // below the edges; u_image is the map drawn for the tile (rows bottom up).
   #|  const terrain = program(
-  #|    "in vec2 a_pos; in vec4 a_data; uniform mat4 u_matrix; uniform sampler2D u_elev; uniform float u_scale;" +
+  #|    proj + "in vec2 a_pos; in vec4 a_data; uniform sampler2D u_elev; uniform float u_scale; uniform float u_per_meter;" +
   #|    "uniform float u_skirt; uniform vec3 u_dem; uniform vec2 u_fog; out vec2 v_uv; out float v_fog;" +
   #|    "float h(ivec2 p) { ivec2 n = textureSize(u_elev, 0) - 1; return texelFetch(u_elev, clamp(p, ivec2(0), n), 0).r; }" +
   #|    "void main() { v_uv = a_pos / " + EF + ";" +
   #|    "  vec2 t = (u_dem.xy + v_uv * u_dem.z) * vec2(textureSize(u_elev, 0)) - 0.5;" +
   #|    "  ivec2 i = ivec2(floor(t)); vec2 f = t - floor(t);" +
   #|    "  float e = mix(mix(h(i), h(i + ivec2(1, 0)), f.x), mix(h(i + ivec2(0, 1)), h(i + ivec2(1, 1)), f.x), f.y);" +
-  #|    "  gl_Position = u_matrix * vec4(a_pos, e * u_scale - a_data.x * u_skirt, 1.0);" +
+  #|    "  float z = e * u_scale - a_data.x * u_skirt; gl_Position = project3d(a_pos, z / u_per_meter, z);" +
   #|    "  float near = u_fog.x, far = u_fog.y;" +
   #|    "  v_fog = ((far + near) / (far - near) - 2.0 * far * near / ((far - near) * gl_Position.w)) * 0.5 + 0.5; }",
   #|    "uniform sampler2D u_image; uniform vec4 u_fog_color; uniform vec4 u_horizon_color;" +
@@ -530,7 +530,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "    float k = max(v_fog - u_fog_blend.x, 0.0) / (1.0 - u_fog_blend.x);" +
   #|    "    c = pow(mix(lin(c), fog, k * k * u_fog_blend.y), vec4(1.0 / 2.2)); }" +
   #|    "  o = c; }",
-  #|    ["u_matrix", "u_elev", "u_scale", "u_skirt", "u_dem", "u_image", "u_fog", "u_fog_color",
+  #|    [...projUniforms, "u_elev", "u_scale", "u_per_meter", "u_skirt", "u_dem", "u_image", "u_fog", "u_fog_color",
   #|     "u_horizon_color", "u_fog_blend"]);
   #|  // The sky: a screen quad (from gl_VertexID, no buffers) colored above the
   #|  // horizon line u_horizon (device pixels from the bottom), blending from

@@ -26,7 +26,8 @@ const globe = {
   sources: { world: { type: "raster", tiles: ["{origin}/bench/fixtures/gsi-std-world/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 3 } },
   layers: [{ id: "world", type: "raster", source: "world" }],
 };
-const styles = { vector: base, terrain, raster, globe };
+const globeTerrain = { ...structuredClone(terrain), projection: { type: "globe" } };
+const styles = { vector: base, terrain, raster, globe, "globe-terrain": globeTerrain };
 for (const [name, style] of Object.entries(styles)) await writeFile(path.join(ROOT, `bench/dist/export-${name}.json`), JSON.stringify(style));
 
 // Each view: its style and camera, the pixel ratio, and the part size of the split image.
@@ -34,12 +35,13 @@ const views = {
   labels: { style: "vector", camera: { center: [139.7671, 35.6812], zoom: 15, bearing: 20, pitch: 50 }, ratio: 2, maxSize: 300 },
   terrain: { style: "terrain", camera: { center: [138.76, 35.33], zoom: 13, bearing: -40, pitch: 75 }, ratio: 2, maxSize: 256 },
   globe: { style: "globe", camera: { center: [139.7671, 35.6812], zoom: 2.2, bearing: 30, pitch: 40 }, ratio: 2, maxSize: 300 },
+  "globe-terrain": { style: "globe-terrain", camera: { center: [138.73, 35.36], zoom: 11, bearing: -40, pitch: 60 }, ratio: 2, maxSize: 256 },
   odd: { style: "vector", camera: { center: [139.7671, 35.6812], zoom: 15.4, bearing: -60, pitch: 0 }, ratio: 1.5, maxSize: 333 },
 };
-// Per-channel differences allowed. Parts are drawn through one more matrix,
-// whose rounding moves a few antialiased edge pixels by a level or so; MapLibre
-// on a 2x screen against mbmap's 2x image as bench/raster/golden.mjs.
-const LIMITS = { split: { mean: 0.01, p99: 0 }, maplibre: { mean: 0.05, p99: 1 } };
+// Per-channel differences allowed. A part's extra matrix moves a few antialiased edge pixels by a level
+// (on the globe, f32 sphere positions by hundredths of a pixel); MapLibre on a 2x screen against mbmap's
+// 2x image as bench/raster/golden.mjs.
+const LIMITS = { split: { mean: 0.01, p99: 0 }, globeSplit: { mean: 0.05, p99: 1 }, maplibre: { mean: 0.05, p99: 1 } };
 
 /** The images `options` list, made in the page, as decoded PNGs. */
 async function images(page, list) {
@@ -102,7 +104,8 @@ try {
     const screen = decodePng(await page.screenshot({ clip: { x: 0, y: 0, width: 800, height: 600 } }));
     const split = compare(whole, parts);
     const shown = compare(overWhite(one), screen);
-    const ok = split.mean <= LIMITS.split.mean && split.p99 <= LIMITS.split.p99 && shown.differ === 0;
+    const limit = v.style.startsWith("globe") ? LIMITS.globeSplit : LIMITS.split;
+    const ok = split.mean <= limit.mean && split.p99 <= limit.p99 && shown.differ === 0;
     if (!ok) failed++;
     results.push({ view: name, ok, size: [whole.width, whole.height], maxSize: v.maxSize, split, screen: shown });
     await page.close();

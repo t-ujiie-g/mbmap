@@ -498,8 +498,7 @@ fn Map::draw_frame(
   let t = self.transform
   let globe = self.on_globe()
   self.renderer.set_pitch(t.camera.pitch)
-  // Terrain is not drawn on the globe yet.
-  let terrain = if globe { None } else { self.terrain_source() }
+  let terrain = self.terrain_source()
   self.prerender_custom()
   self.prepare_relief(draws_of)
   if globe {
@@ -520,23 +519,22 @@ fn Map::draw_frame(
   let light = self.extrusion_light()
   let mut globe_depth = false
   for index, layer in self.style.layers {
-    if globe {
-      if zoom < layer.min_zoom || zoom >= layer.max_zoom {
-        continue
+    // Labels are not on the globe yet.
+    if globe && layer.kind is Symbol {
+      continue
+    }
+    // On terrain backgrounds are in its textures.
+    if globe &&
+      terrain is None &&
+      layer.kind is Background &&
+      zoom >= layer.min_zoom &&
+      zoom < layer.max_zoom {
+      if layer.pattern is Some(_) {
+        self.draw_background_pattern(layer)
+      } else {
+        self.draw_globe_background(layer)
       }
-      // Labels are not on the globe yet.
-      match layer.kind {
-        Background if layer.pattern is Some(_) => {
-          self.draw_background_pattern(layer)
-          continue
-        }
-        Background => {
-          self.draw_globe_background(layer)
-          continue
-        }
-        Symbol => continue
-        _ => ()
-      }
+      continue
     }
     if layer.kind is Background &&
       layer.pattern is Some(_) &&
@@ -565,7 +563,7 @@ fn Map::draw_frame(
       continue
     }
     if layer.extrusion is Some(e) {
-      if globe && !globe_depth {
+      if globe && terrain is None && !globe_depth {
         globe_depth = true
         self.draw_globe_depth()
       }
