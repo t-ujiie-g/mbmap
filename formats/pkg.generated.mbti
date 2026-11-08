@@ -23,6 +23,8 @@ pub fn read_flatgeobuf(BytesView, ids? : Array[Int32]) -> @geom.Table raise Read
 
 pub fn read_geojson(BytesView, slow_number? : (Int32, Int32) -> Double) -> @geom.Table raise GeoJSONError
 
+pub fn read_geojson_features(BytesView, (Int32, Int32) -> Double) -> (@geom.Table, Array[Int32]) raise GeoJSONError
+
 pub fn read_shapefile(BytesView, BytesView?, text~ : (Int32, Int32) -> String, slow_number~ : (Int32, Int32) -> Double) -> @geom.Table raise ReadError
 
 pub fn read_topojson(BytesView, String?, slow_number~ : (Int32, Int32) -> Double) -> (@geom.Table, Array[String]) raise ReadError

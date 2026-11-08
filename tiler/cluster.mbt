@@ -138,6 +138,7 @@ pub struct ClusterIndex {
   priv properties : ClusterProperties?
   priv props : Array[Array[@geom.Prop]]
   priv mut found : FixedArray[Int32]
+  priv source : Source
 }
 
 ///|
@@ -148,21 +149,27 @@ let default_wrap_buffer : Double = {
 }
 
 ///|
-/// Indexes the points of `table` (longitude and latitude) as geojson-vt with
-/// `cluster: true`, copying across the antimeridian those within `wrap_buffer`
-/// (its `buffer` / `extent`) of it; each position of a MultiPoint is a point.
+/// Indexes the points of `table` (longitude and latitude; `feature_ends`, `promote_id` as for
+/// `Tiler::new`) as geojson-vt with `cluster: true`, copying those within `wrap_buffer` (its
+/// `buffer` / `extent`) across the antimeridian; each position of a MultiPoint is a point.
 pub fn ClusterIndex::new(
   table : @geom.Table,
   options~ : ClusterOptions = ClusterOptions::default(),
   wrap_buffer~ : Double = default_wrap_buffer,
   trig~ : Trig = Trig::moonbit(),
   properties? : ClusterProperties,
+  feature_ends? : Array[Int32],
+  promote_id? : String,
 ) -> ClusterIndex {
   let options = {
     ..options,
     min_zoom: clamp(options.min_zoom, 0, MAX_CLUSTER_ZOOM),
     max_zoom: clamp(options.max_zoom, -1, MAX_CLUSTER_ZOOM),
   }
+  let wrap = if options.wrap { Some(wrap_buffer) } else { None }
+  let source = Source::new(
+    table, feature_ends, promote_id, 0.0, false, wrap, trig,
+  )
   let index : ClusterIndex = {
     options,
     trees: [],
@@ -173,15 +180,38 @@ pub fn ClusterIndex::new(
     properties,
     props: [],
     found: FixedArray::make(0, 0),
+    source,
   }
-  let mut set = convert(table, 0.0, trig)
-  if options.wrap {
-    set = wrap(set, wrap_buffer)
+  if !source.features.is_empty() {
+    index.initialize()
   }
-  if set.is_empty() {
-    return index
+  index
+}
+
+///|
+/// geojson-vt's `updateData` and `ClusterTileIndex.updateIndex`: applies `diff`
+/// and builds the trees again from the points. Returns whether anything changed.
+pub fn ClusterIndex::update(self : ClusterIndex, diff : Diff) -> Bool {
+  if self.source.apply(diff).is_empty() {
+    return false
   }
-  for fr in set {
+  let src = self.source
+  if src.may_compact() {
+    src.compact(Array::make(src.table.length(), false)) |> ignore
+  }
+  self.trees.clear()
+  self.xs.clear()
+  self.ys.clear()
+  self.rows.clear()
+  self.props.clear()
+  self.initialize()
+  true
+}
+
+///|
+/// geojson-vt's `initialize`: the trees over the points of the source's features.
+fn ClusterIndex::initialize(self : ClusterIndex) -> Unit {
+  for fr in self.source.features {
     let s = fr.s
     if s.kind[fr.i] != @core.GEOM_POINTS {
       continue
@@ -190,16 +220,15 @@ pub fn ClusterIndex::new(
     for i in @geom.start_of(s.point_ends, r)..<s.point_ends[r] {
       let x = s.pts[i * 3]
       let y = s.pts[i * 3 + 1]
-      if !options.wrap && !(x >= 0.0 && x <= 1.0 && y >= 0.0 && y <= 1.0) {
+      if !self.options.wrap && !(x >= 0.0 && x <= 1.0 && y >= 0.0 && y <= 1.0) {
         continue
       }
-      index.xs.push(x)
-      index.ys.push(y)
-      index.rows.push(s.row[fr.i])
+      self.xs.push(x)
+      self.ys.push(y)
+      self.rows.push(s.row[fr.i])
     }
   }
-  index.create_trees()
-  index
+  self.create_trees()
 }
 
 ///|

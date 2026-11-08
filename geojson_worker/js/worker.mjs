@@ -4,6 +4,7 @@
 
 import { hostNumber, hostText, MAX_INPUT_BYTES, writeInput } from "../../wasmio/js/host.mjs";
 import { fetchInit, readCapped } from "../../worker/js/body.mjs";
+import { loadInput } from "./diff.mjs";
 import { readClusterFeatures } from "./features.mjs";
 
 const decoder = new TextDecoder();
@@ -11,8 +12,9 @@ let ready = null;
 let propsUrl = null;
 let propsReady = null;
 const loads = new Map();
-// The module each source was loaded into.
+// The module each source was loaded into, and the last load message for it.
 const modules = new Map();
+const options = new Map();
 
 function instantiate(url, host) {
   let exports = null;
@@ -24,7 +26,7 @@ const input = (wasm, bytes) => writeInput(wasm, [bytes], "GeoJSON");
 
 const isInt32 = (v) => Number.isInteger(v) && v >= -(2 ** 31) && v < 2 ** 31;
 
-async function load({ source, url, init, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties }, previous) {
+async function load({ source, url, init, bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties, promoteId }, previous) {
   const withProperties = cluster && properties instanceof Uint8Array && properties.length > 0;
   if (withProperties && !propsReady) {
     if (typeof propsUrl !== "string") throw new Error("no module for cluster properties");
@@ -49,12 +51,30 @@ async function load({ source, url, init, bytes, maxzoom, buffer, tolerance, line
     input(wasm, properties);
     if (wasm.set_properties() < 0) throw new Error("malformed cluster properties");
   }
-  input(wasm, data);
+  writeInput(wasm, loadInput(promoteId, data), "GeoJSON");
   const c = cluster ?? { maxZoom: 0, radius: 0, minPoints: 0 };
   const n = wasm.load(source, maxzoom, buffer, tolerance, lineMetrics === true ? 1 : 0, cluster ? 1 : 0, c.maxZoom, c.radius, c.minPoints);
   if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), -n)));
   // Data fetched here goes back to the page, which applies `updateData` diffs to it.
   return { features: n, fetched: bytes instanceof ArrayBuffer ? null : data.buffer };
+}
+
+const EMPTY = new TextEncoder().encode("{}");
+
+// Applies a diff as geojson-vt's `updateData`, to an empty index if the source failed to load (as MapLibre's worker does).
+async function update({ source, diff }, previous) {
+  await previous?.catch(() => {});
+  let wasm = modules.get(source);
+  if (!wasm || wasm.clustered(source) < 0) {
+    const last = options.get(source);
+    if (!last) throw new Error("source not loaded");
+    await load({ ...last, url: undefined, bytes: EMPTY.slice().buffer });
+    wasm = modules.get(source);
+  }
+  writeInput(wasm, [new Uint8Array(diff)], "GeoJSON diff");
+  const n = wasm.update(source);
+  if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), -n)));
+  return { features: n, fetched: null };
 }
 
 function tile({ id, source, z, x, y }) {
@@ -88,8 +108,9 @@ onmessage = (e) => {
   if (msg?.type === "init" && !ready) {
     propsUrl = msg.propsWasm;
     ready = instantiate(msg.wasm, {});
-  } else if (msg?.type === "load" && ready && Number.isInteger(msg.source)) {
-    const done = load(msg, loads.get(msg.source));
+  } else if ((msg?.type === "load" || (msg?.type === "update" && msg.diff instanceof ArrayBuffer)) && ready && Number.isInteger(msg.source)) {
+    if (msg.type === "load") options.set(msg.source, { ...msg, url: undefined, bytes: undefined, init: undefined });
+    const done = (msg.type === "load" ? load : update)(msg, loads.get(msg.source));
     loads.set(msg.source, done);
     const { source, id } = msg;
     done.then(
@@ -99,6 +120,7 @@ onmessage = (e) => {
   } else if (msg?.type === "unload" && Number.isInteger(msg.source)) {
     const done = loads.get(msg.source);
     loads.delete(msg.source);
+    options.delete(msg.source);
     done?.catch(() => {}).then(() => {
       modules.get(msg.source)?.unload(msg.source);
       modules.delete(msg.source);

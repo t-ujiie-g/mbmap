@@ -290,6 +290,35 @@ pub fn TableBuilder::discard_feature(self : TableBuilder) -> Unit {
 }
 
 ///|
+/// Appends a row without geometry with `id` and `props` (the last of a repeated
+/// key wins; None leaves the key out), padding every column; returns its index.
+pub fn Table::push_row(
+  self : Table,
+  id : Prop?,
+  props : ArrayView[(String, Prop?)],
+) -> Int32 {
+  let row = self.length()
+  self.kinds.push(NoGeometry)
+  self.part_ends.push(start_of_last(self.part_ends))
+  self.ids.push(id)
+  for c in self.columns {
+    c.values.push(None)
+  }
+  for p in props {
+    let i = match self.column_index.get(p.0) {
+      Some(i) => i
+      None => {
+        self.columns.push({ name: p.0, values: Array::make(row + 1, None), })
+        self.column_index[p.0] = self.columns.length() - 1
+        self.columns.length() - 1
+      }
+    }
+    self.columns[i].values[row] = p.1
+  }
+  row
+}
+
+///|
 /// The table with every x, y pair mapped by `f`, called once on each pair in
 /// order; a feature with a pair `f` rejects keeps its row, id and properties
 /// with no geometry.

@@ -28,6 +28,13 @@ pub fn load(
 }
 
 ///|
+/// `@geojson_tiles.update` (docs/FORMATS.md "GeoJSON diff").
+#export_name("update")
+pub fn update(source : Int32) -> Int32 {
+  @geojson_tiles.update(source, @wasmio.input_number)
+}
+
+///|
 #export_name("tile")
 pub fn tile(source : Int32, z : Int32, x : Int32, y : Int32) -> Int32 {
   @geojson_tiles.tile(source, z, x, y)

@@ -53,6 +53,7 @@ fn topojson_table(
     next_key: 0,
     max_points,
     max_cells,
+    feature_ends: [],
   }
   let t : Topo = {
     p,

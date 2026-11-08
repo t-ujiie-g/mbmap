@@ -132,6 +132,73 @@ pub fn geojson_clusters_mem(
 }
 
 ///|
+/// `diff_tiler` on the `load` input at `[addr, addr + len)`; `wrap` and
+/// `line_metrics` are 0 or 1.
+#export_name("geojson_tiler_diffs_mem")
+pub fn geojson_tiler_diffs_mem(
+  addr : Int32,
+  len : Int32,
+  max_zoom : Int32,
+  index_max_zoom : Int32,
+  index_max_points : Int32,
+  tolerance : Double,
+  extent : Int32,
+  buffer : Int32,
+  wrap : Int32,
+  line_metrics : Int32,
+) -> Int32 {
+  let options : @tiler.TilerOptions = {
+    max_zoom,
+    index_max_zoom,
+    index_max_points,
+    tolerance,
+    extent,
+    buffer,
+    wrap: wrap != 0,
+    line_metrics: line_metrics != 0,
+  }
+  diff_tiler(bytes_from_mem(addr, len)[:], options, host_trig(), at => {
+    host_slow_number(addr + at)
+  })
+}
+
+///|
+/// `diff_clusters` on the `load` input at `[addr, addr + len)`, without
+/// cluster properties.
+#export_name("geojson_clusters_diffs_mem")
+pub fn geojson_clusters_diffs_mem(
+  addr : Int32,
+  len : Int32,
+  max_zoom : Int32,
+  min_points : Int32,
+  radius : Double,
+  extent : Int32,
+  wrap_buffer : Double,
+) -> Int32 {
+  let options : @tiler.ClusterOptions = {
+    ..@tiler.ClusterOptions::default(),
+    max_zoom,
+    min_points,
+    radius,
+    extent,
+  }
+  diff_clusters(
+    bytes_from_mem(addr, len)[:],
+    options,
+    wrap_buffer,
+    host_trig(),
+    at => host_slow_number(addr + at),
+  )
+}
+
+///|
+/// `apply_diff` on the `update` input at `[addr, addr + len)`.
+#export_name("geojson_update_mem")
+pub fn geojson_update_mem(addr : Int32, len : Int32) -> Int32 {
+  apply_diff(bytes_from_mem(addr, len)[:], at => host_slow_number(addr + at))
+}
+
+///|
 /// `read_only` on GeoJSON at `[addr, addr + len)`.
 #export_name("geojson_read_mem")
 pub fn geojson_read_mem(addr : Int32, len : Int32) -> Int32 {

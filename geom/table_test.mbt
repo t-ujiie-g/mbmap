@@ -368,3 +368,30 @@ test "write_to gives -1 when the sink has no room, whatever part runs out" {
     assert_eq(t.write_to(Capped::{ cap, }), -1)
   }
 }
+
+///|
+test "push_row appends a row without geometry, padding and adding columns" {
+  let b = @geom.TableBuilder::new()
+  b.point(1.0, 2.0)
+  b.end_ring()
+  b.end_part()
+  b.prop("a", Num(1.0))
+  b.end_feature(Point, id=Some(Str("p")))
+  let t = b.finish()
+  assert_eq(
+    t.push_row(Some(Num(2.0)), [
+      ("b", Some(Bool(true))),
+      ("b", Some(Null)),
+      ("c", Some(Null)),
+      ("c", None),
+    ]),
+    1,
+  )
+  assert_eq(t.push_row(None, []), 2)
+  assert_eq(t.kinds, [Point, NoGeometry, NoGeometry])
+  assert_eq(t.ids, [Some(Str("p")), Some(Num(2.0)), None])
+  assert_eq((t.parts(1), t.parts(2)), ((1, 1), (1, 1)))
+  assert_eq(t.column("a").unwrap().values, [Some(Num(1.0)), None, None])
+  assert_eq(t.column("b").unwrap().values, [None, Some(Null), None])
+  assert_eq(t.column("c").unwrap().values, [None, None, None])
+}

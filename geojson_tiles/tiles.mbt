@@ -14,9 +14,9 @@ priv enum Index {
 let sources : Map[Int32, (@geom.Table, Index)] = Map([])
 
 ///|
-/// Reads the input GeoJSON as source `source` with its options (pixels; 1 for `line_metrics`
-/// and `cluster`, docs/FORMATS.md; `properties` for clusters; the host's `trig` and `slow_number`).
-/// Returns the feature count, or minus the length of a UTF-8 error message at `output_addr`.
+/// Reads the input (`promoteId`, GeoJSON) as source `source` with its options (docs/FORMATS.md
+/// "GeoJSON worker messages"; `properties` for clusters; the host's `trig`, `slow_number`). Returns
+/// the feature count, or minus the length of a UTF-8 error message at `output_addr`.
 pub fn load(
   source : Int32,
   max_zoom : Int32,
@@ -41,7 +41,20 @@ pub fn load(
     cluster_max_zoom <= 30) {
     return @wasmio.fail_with("source options out of range")
   }
-  let table = @formats.read_geojson(@wasmio.input_bytes()[:], slow_number~) catch {
+  let input = @wasmio.input_bytes()
+  guard split_input(input) is Some((at, head)) else {
+    return @wasmio.fail_with("malformed input")
+  }
+  let promote_id = match @core.utf8_lossy(head) {
+    "" => None
+    k => Some(k)
+  }
+  let (table, feature_ends) = read_features(
+    input,
+    at,
+    input.length(),
+    slow_number,
+  ) catch {
     e => return @wasmio.fail_with(e.message())
   }
   let buffer = (buffer * units_per_pixel).round().to_int()
@@ -61,6 +74,8 @@ pub fn load(
         wrap_buffer~,
         trig~,
         properties?=properties.map(f => f(table)),
+        feature_ends~,
+        promote_id?,
       ),
     )
   } else {
@@ -71,10 +86,62 @@ pub fn load(
       tolerance: tolerance * units_per_pixel,
       line_metrics: line_metrics != 0,
     }
-    Tiles(@tiler.Tiler::new(table, options~, trig~))
+    Tiles(@tiler.Tiler::new(table, options~, trig~, feature_ends~, promote_id?))
   }
   sources[source] = (table, index)
   table.length()
+}
+
+///|
+/// The input's leading part, a u32 length and that many bytes: where what
+/// follows starts, and the part. None if it does not fit.
+fn split_input(input : Bytes) -> (Int32, BytesView)? {
+  let r = @core.ByteReader::new(input[:])
+  let n = r.u32()
+  guard r.ok() && n >= 0 && n <= r.remaining() else { return None }
+  Some((4 + n, input[4:4 + n]))
+}
+
+///|
+/// The GeoJSON in bytes `from` to `to` of the input and where its features end.
+fn read_features(
+  input : Bytes,
+  from : Int32,
+  to : Int32,
+  slow_number : (Int32, Int32) -> Double,
+) -> (@geom.Table, Array[Int32]) raise @formats.GeoJSONError {
+  @formats.read_geojson_features(input[from:to], (s, e) => {
+    slow_number(s + from, e + from)
+  })
+}
+
+///|
+/// Applies the input, a diff (docs/FORMATS.md "GeoJSON diff"), to source `source`
+/// as geojson-vt's `updateData` does. Returns 1 if it changed the source, 0 if
+/// not, or minus the length of an error message at `output_addr`.
+pub fn update(source : Int32, slow_number : (Int32, Int32) -> Double) -> Int32 {
+  guard sources.get(source) is Some((_, index)) else {
+    return @wasmio.fail_with("source not loaded")
+  }
+  let input = @wasmio.input_bytes()
+  guard split_input(input) is Some((at, _)) else {
+    return @wasmio.fail_with("malformed diff")
+  }
+  let (table, ends) = read_features(input, 4, at, slow_number) catch {
+    e => return @wasmio.fail_with(e.message())
+  }
+  guard @tiler.Diff::read(input[at:], table, ends) is Some(diff) else {
+    return @wasmio.fail_with("malformed diff")
+  }
+  let changed = match index {
+    Tiles(t) => t.update(diff)
+    Clusters(c) => c.update(diff)
+  }
+  if changed {
+    1
+  } else {
+    0
+  }
 }
 
 ///|

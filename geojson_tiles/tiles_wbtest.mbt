@@ -1,10 +1,27 @@
 ///|
-/// Places `json` as the input, as the glue does before `load`.
-fn put_input(json : Bytes) -> Unit {
-  let at = @wasmio.prepare_input(json.length(), @wasmio.MAX_INPUT_BYTES)
-  for i, b in json {
+/// Places `bytes` as the input.
+fn put_bytes(bytes : Bytes) -> Unit {
+  let at = @wasmio.prepare_input(bytes.length(), @wasmio.MAX_INPUT_BYTES)
+  for i, b in bytes {
     store_u8(at + i, b.to_int())
   }
+}
+
+///|
+/// `head` with its u32 length before it, then `rest`.
+fn sized(head : Bytes, rest : Bytes) -> Bytes {
+  let w = @core.ByteWriter::new()
+  w.u32(head.length())
+  let out = w.to_bytes().to_array()
+  out.push_iter(head.iter())
+  out.push_iter(rest.iter())
+  Bytes::from_array(out)
+}
+
+///|
+/// Places `json` as the input, as the glue does before `load` (`promote_id` first).
+fn put_input(json : Bytes, promote_id~ : Bytes = b"") -> Unit {
+  put_bytes(sized(promote_id, json))
 }
 
 ///|
@@ -80,4 +97,40 @@ test "clustered sources answer expansion zooms, children and leaves" {
   assert_eq(cluster_expansion_zoom(9, 0), 0)
   assert_eq(cluster_children(9, 0), -1)
   unload(3)
+}
+
+///|
+test "update applies a diff to a loaded source, found by its promoteId" {
+  let json = b"{\"type\":\"Feature\",\"properties\":{\"k\":5},\"geometry\":{\"type\":\"Point\",\"coordinates\":[10,20]}}"
+  put_input(json, promote_id=b"k")
+  assert_eq(load_test(4), 1)
+  // Removes the feature whose `k` is 5, then adds one at the same place.
+  let w = @core.ByteWriter::new()
+  w.u8(0)
+  w.u32(1)
+  @geom.write_prop(w, Some(Num(5.0)))
+  w.u32(1)
+  w.u32(0)
+  let added = b"{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"properties\":{\"k\":6},\"geometry\":{\"type\":\"Point\",\"coordinates\":[10,20]}}]}"
+  put_bytes(sized(added, w.to_bytes()))
+  assert_eq(update(4, (_, _) => panic()), 1)
+  assert_true(tile(4, 0, 0, 0) > 0)
+  // Nothing left to remove: no change.
+  let none = @core.ByteWriter::new()
+  none.u8(0)
+  none.u32(1)
+  @geom.write_prop(none, Some(Num(5.0)))
+  none.u32(0)
+  none.u32(0)
+  put_bytes(
+    sized(b"{\"type\":\"FeatureCollection\",\"features\":[]}", none.to_bytes()),
+  )
+  assert_eq(update(4, (_, _) => panic()), 0)
+  // A diff that does not match its features, and a source not loaded, are refused.
+  put_bytes(sized(added, b"\x00"))
+  assert_true(update(4, (_, _) => panic()) < 0)
+  put_bytes(b"\x01")
+  assert_true(update(4, (_, _) => panic()) < 0)
+  assert_true(update(99, (_, _) => panic()) < 0)
+  unload(4)
 }

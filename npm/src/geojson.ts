@@ -3,6 +3,7 @@
 import { type ClusterQuery, clusterArgs, loadOptions, sameOptions } from "./geojson-options.ts";
 import { type GeoJSONSourceDiff, type Updateable, applySourceDiff, geometryBounds, isSourceDiff, mergeSourceDiffs, tileMeets, toUpdateable } from "./geojson-diff.ts";
 import { httpUrl, workerScriptUrl, wasmUrl, type TransformedRequest } from "./urls.ts";
+import { encodeDiff } from "../../geojson_worker/js/diff.mjs";
 
 export type { ClusterQuery } from "./geojson-options.ts";
 export type { GeoJSONSourceDiff } from "./geojson-diff.ts";
@@ -151,7 +152,7 @@ export function createGeoJSONTiles(
     if (typeof data !== "string") return toUpdateable(data, key);
     return toUpdateable(l.fetched ? JSON.parse(new TextDecoder().decode(l.fetched)) : null, key);
   };
-  // Applies the diff waiting and loads the data it gives (the worker takes all of it for now).
+  // Applies the diff waiting to the data kept here and sends it to the worker, which updates its index as geojson-vt does.
   const send = (id: string, l: Loaded) => {
     const diff = l.waiting!;
     l.waiting = undefined;
@@ -165,7 +166,9 @@ export function createGeoJSONTiles(
       l.updateable = features;
       l.fetched = undefined;
       l.source = { id, spec: { ...spec, data } };
-      l.busy = load(l.source, l.n);
+      const bytes = encodeDiff(diff).buffer as ArrayBuffer;
+      l.busy = nextLoad++;
+      worker.postMessage({ type: "update", source: l.n, id: l.busy, diff: bytes }, [bytes]);
       const all = diff.removeAll || spec.cluster === true;
       const buffer = loadOptions(spec).buffer / TILE_SIZE;
       const bounds = geometryBounds(affected);
