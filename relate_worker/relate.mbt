@@ -26,8 +26,25 @@ pub fn output_addr() -> Int32 {
 }
 
 ///|
-/// The input's two tables: the first `len_a` bytes, then the rest.
-fn tables(len_a : Int32) -> (@geom.Table, @geom.Table)? {
+/// The two tables of the last call that read them, and the second's index once
+/// built. Datasets never change, so the worker reuses them for the same pair.
+priv struct Kept {
+  a : @geom.Table
+  b : @geom.Table
+  mut index : @analysis.Index?
+}
+
+///|
+let kept : Ref[Kept?] = Ref(None)
+
+///|
+/// The input's two tables (the first `len_a` bytes, then the rest), kept for
+/// later calls; with `len_a` -1, the tables the last call kept.
+fn tables(len_a : Int32) -> Kept? {
+  if len_a == -1 {
+    return kept.val
+  }
+  kept.val = None
   let input = @wasmio.input_bytes()
   @wasmio.clear_input()
   guard len_a >= 0 &&
@@ -36,7 +53,28 @@ fn tables(len_a : Int32) -> (@geom.Table, @geom.Table)? {
     @geom.Table::from_bytes(input[len_a:]) is Some(b) else {
     return None
   }
-  Some((a, b))
+  let k = { a, b, index: None, }
+  kept.val = Some(k)
+  Some(k)
+}
+
+///|
+fn Kept::index(self : Kept) -> @analysis.Index {
+  match self.index {
+    Some(i) => i
+    None => {
+      let i = @analysis.Index::of_table(self.b)
+      self.index = Some(i)
+      i
+    }
+  }
+}
+
+///|
+/// Drops the tables the last call kept.
+#export_name("forget_tables")
+pub fn forget_tables() -> Unit {
+  kept.val = None
 }
 
 ///|
@@ -63,12 +101,12 @@ fn unpack_pattern(packed : Int32) -> String? {
 }
 
 ///|
-/// Pairs (row of the first table, row of the second) whose boxes meet and that
-/// hold predicate `code` (an index of `predicates`) or, with `code` -1, match
-/// `pattern` (`unpack_pattern`); writes them as i32s and returns their count.
+/// Pairs (rows of the `tables`) whose boxes meet and that hold predicate `code`
+/// (an index of `predicates`) or, with `code` -1, match `pattern`
+/// (`unpack_pattern`); writes them as i32s and returns their count.
 #export_name("relate_pairs")
 pub fn relate_pairs(len_a : Int32, code : Int32, pattern : Int32) -> Int32 {
-  guard tables(len_a) is Some((a, b)) else {
+  guard tables(len_a) is Some(k) else {
     return @wasmio.fail_with("malformed tables")
   }
   let pattern = if code == -1 {
@@ -81,7 +119,7 @@ pub fn relate_pairs(len_a : Int32, code : Int32, pattern : Int32) -> Int32 {
   } else {
     None
   }
-  match pairs(a, b, code, pattern) {
+  match pairs(k.a, k.b, code, pattern, index=k.index()) {
     Ok(out) => @wasmio.write_i32s(out[:])
     Err(why) => @wasmio.fail_with(why)
   }
@@ -94,10 +132,10 @@ fn pairs(
   b : @geom.Table,
   code : Int32,
   pattern : String?,
+  index~ : @analysis.Index = @analysis.Index::of_table(b),
   max_candidates~ : Int32 = MAX_RELATE_CANDIDATES,
   max_points~ : Int32 = MAX_RELATE_TESTED_POINTS,
 ) -> Result[Array[Int32], String] {
-  let index = @analysis.Index::of_table(b)
   let out : Array[Int32] = []
   let found : Array[Int32] = []
   let mut candidates = 0L
@@ -151,10 +189,10 @@ let too_many_points = "a pair of features has more than \{@relate.MAX_RELATE_POI
 ///|
 /// Writes the DE-9IM matrix of row `i` of the first table and row `j` of the
 /// second as JTS writes it ("FF2F11212", 9 ASCII bytes) and returns its length,
-/// or minus an error's.
+/// or minus an error's. The tables are read as `tables` reads them.
 #export_name("relate_matrix")
 pub fn relate_matrix(len_a : Int32, i : Int32, j : Int32) -> Int32 {
-  guard tables(len_a) is Some((a, b)) else {
+  guard tables(len_a) is Some({ a, b, .. }) else {
     return @wasmio.fail_with("malformed tables")
   }
   guard i >= 0 && i < a.length() && j >= 0 && j < b.length() else {
