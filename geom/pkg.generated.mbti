@@ -70,8 +70,10 @@ pub fn Table::map_coords(Self, (Double, Double) -> (Double, Double)?) -> Self
 pub fn Table::new() -> Self
 pub fn Table::parts(Self, Int32) -> (Int32, Int32)
 pub fn Table::points(Self, Int32) -> (Int32, Int32)
+pub fn[S : TableSource] Table::read_from(S, Int32) -> Self?
 pub fn Table::rings(Self, Int32) -> (Int32, Int32)
 pub fn Table::to_bytes(Self) -> Bytes
+pub fn[S : TableSink] Table::write_to(Self, S) -> Int32
 
 pub struct TableBuilder {
   table : Table
@@ -87,7 +89,23 @@ pub fn TableBuilder::finish(Self) -> Table
 pub fn TableBuilder::new() -> Self
 pub fn TableBuilder::point(Self, Double, Double) -> Unit
 pub fn TableBuilder::prop(Self, String, Prop) -> Unit
+pub fn TableBuilder::reserve(Self, Int32, Int32) -> Unit
 
 // Type aliases
 
 // Traits
+pub(open) trait TableSink {
+  fn room(Self, Int32) -> Bool
+  fn set_u8(Self, Int32, Int32) -> Unit
+  fn set_u32(Self, Int32, Int32) -> Unit
+  fn set_f64(Self, Int32, Double) -> Unit
+  fn set_bytes(Self, Int32, BytesView) -> Unit
+}
+
+pub(open) trait TableSource {
+  fn u8_at(Self, Int32) -> Int32
+  fn u32_at(Self, Int32) -> Int32
+  fn f64_at(Self, Int32) -> Double
+  fn utf8_at(Self, Int32, Int32) -> String
+}
+pub impl TableSource for BytesView

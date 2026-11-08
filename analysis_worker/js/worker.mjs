@@ -221,10 +221,10 @@ const OPS = {
   // GDAL's viewshed of a grid (viewshed_worker), in its own file loaded with the first one.
   async viewshed({ grid, observer, options }) {
     check((demTiles.has(grid) || rasterGrids.has(grid)) && Array.isArray(observer) && observer.length === 2 && observer.every(Number.isFinite));
-    const values = f64s(wasm.grid_values(grid, 0));
+    const cells = (x, y, w, h) => f64s(wasm.grid_window(grid, x, y, w, h));
     const { viewshed } = await import("./viewshed.mjs");
     return viewshed({
-      values, size: gridSizes.get(grid), dem: demTiles.get(grid), raster: rasterGrids.get(grid), observer, options,
+      cells, size: gridSizes.get(grid), dem: demTiles.get(grid), raster: rasterGrids.get(grid), observer, options,
       check, checked, writeInput, f64sOf, module, crsId, transform: OPS.transform, tileXY, lngLatOf,
     });
   },

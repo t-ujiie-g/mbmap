@@ -25,7 +25,7 @@ fn table_out(table : @geom.Table) -> Int32 {
   if table.ids.iter().any(id => id is Some(_)) {
     last_ids.append(table.ids)
   }
-  @wasmio.write_bytes(table.to_bytes()[:])
+  @wasmio.write_table(table)
 }
 
 ///|
@@ -86,7 +86,7 @@ pub fn write_kml(ids : Int32) -> Int32 {
     return @wasmio.fail_with("invalid ids")
   }
   let end = input.length() - ids
-  guard @geom.Table::from_bytes(input[:end]) is Some(table) else {
+  guard @wasmio.input_table(0, end) is Some(table) else {
     return @wasmio.fail_with("invalid table")
   }
   if ids > 0 {

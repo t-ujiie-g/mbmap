@@ -5,7 +5,7 @@
 // GRS 80 and WGS 84 (and Web Mercator's sphere): GDAL's GetSemiMajor for the CRSs grids come in.
 const SEMI_MAJOR = 6378137;
 
-export async function viewshed({ values, size, dem, raster, observer, options, check, checked, writeInput, f64sOf, module, crsId, transform, tileXY, lngLatOf }) {
+export async function viewshed({ cells, size, dem, raster, observer, options, check, checked, writeInput, f64sOf, module, crsId, transform, tileXY, lngLatOf }) {
   const { observerHeight, targetHeight, maxDistance, curvatureCoeff, mode, visible, invisible, outOfRange } = options ?? {};
   check([observerHeight, targetHeight, maxDistance, curvatureCoeff, mode, visible, invisible, outOfRange].every(Number.isFinite));
   const { width, height } = size;
@@ -33,8 +33,13 @@ export async function viewshed({ values, size, dem, raster, observer, options, c
     toLngLat = (xy) => transform({ coords: xy.buffer, from: crs, to: 4326 });
   }
   const exports = await module("viewshed");
-  writeInput(exports, [new Uint8Array(values.buffer)]);
-  const n = exports.viewshed(width, height, ...geo, ...observerXY, observerHeight, targetHeight, maxDistance, curvatureCoeff, SEMI_MAJOR, mode, visible, invisible, outOfRange);
+  const args = [width, height, ...geo, ...observerXY, observerHeight, targetHeight, maxDistance, curvatureCoeff, SEMI_MAJOR, mode, visible, invisible, outOfRange];
+  // Only the cells the viewshed reads (a max distance cuts them) go into the module.
+  checked(exports, exports.viewshed_window(...args));
+  const at = exports.output_addr();
+  const window = Array.from(new Int32Array(exports.memory.buffer.slice(at, at + 16)));
+  writeInput(exports, [new Uint8Array(cells(...window).buffer)]);
+  const n = exports.viewshed(...args, ...window);
   const out = f64sOf(exports, n);
   const [w, h, g0, g1, , g3, , g5] = out;
   const corners = await toLngLat(new Float64Array([g0, g3, g0 + w * g1, g3 + h * g5]));

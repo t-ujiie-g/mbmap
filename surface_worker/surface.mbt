@@ -27,19 +27,23 @@ priv struct Input {
 
 ///|
 fn input(len_t : Int32, len_s : Int32) -> Input? {
-  let bytes = @wasmio.input_bytes()
-  @wasmio.clear_input()
-  guard @wasmio.lengths_fit(len_t, len_s, bytes.length()) else { return None }
+  let len = @wasmio.input_length()
+  let fit = @wasmio.lengths_fit(len_t, len_s, len) &&
+    (len - len_t - len_s) % 8 == 0
   let table = if len_t == 0 {
-    @geom.Table::new()
+    Some(@geom.Table::new())
   } else {
-    guard @geom.Table::from_bytes(bytes[:len_t]) is Some(t) else { return None }
-    t
+    @wasmio.input_table(0, len_t)
   }
-  let text = @core.utf8_lossy(bytes[len_t:len_t + len_s].to_owned())
-  let rest = bytes[len_t + len_s:]
-  guard rest.length() % 8 == 0 else { return None }
-  let r = @core.ByteReader::new(rest)
+  let text = @core.utf8_lossy(@wasmio.input_slice(len_t, len_s)[:])
+  let rest = if fit {
+    @wasmio.input_slice(len_t + len_s, len - len_t - len_s)
+  } else {
+    Bytes::new(0)
+  }
+  @wasmio.clear_input()
+  guard fit && table is Some(table) else { return None }
+  let r = @core.ByteReader::new(rest[:])
   let numbers = Array::makei(rest.length() / 8, _ => r.f64())
   Some({ table, text, numbers, })
 }
@@ -48,7 +52,7 @@ fn input(len_t : Int32, len_s : Int32) -> Input? {
 /// Writes `out` as table bytes and returns their length, or minus `why`'s.
 fn table(out : @geom.Table?, why : String) -> Int32 {
   match out {
-    Some(t) => @wasmio.write_bytes(t.to_bytes()[:])
+    Some(t) => @wasmio.write_table(t)
     None => @wasmio.fail_with(why)
   }
 }
@@ -304,7 +308,7 @@ pub fn density(
     b.prop("value", Num(c.value))
     b.end_feature(MultiPolygon)
   }
-  @wasmio.write_bytes(b.finish().to_bytes()[:])
+  @wasmio.write_table(b.finish())
 }
 
 ///|

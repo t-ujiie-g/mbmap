@@ -127,24 +127,29 @@ pub fn grid_fits(width : Int32, height : Int32) -> Bool {
 }
 
 ///|
-/// gdal_viewshed's output for a DEM (`values` row by row) with GDAL's
-/// `geotransform`. None where GDAL fails, for NaN angles or pitches, past
-/// `MAX_VIEWSHED_CELLS` or 2^30 cells off; `trig` gives the masks' tan and atan2.
-pub fn viewshed(
-  values : FixedArray[Double],
+/// What `viewshed` works from: the geotransform, the observer's cell and the
+/// output window.
+priv struct Plan {
+  gt : FixedArray[Double]
+  nx : Int32
+  ny : Int32
+  window : Window
+  start_angle : Double
+  end_angle : Double
+}
+
+///|
+/// `viewshed`'s checks and extents, without the cells.
+fn plan(
   width : Int32,
   height : Int32,
   geotransform : FixedArray[Double],
-  nodata : Double?,
-  options : ViewshedOptions,
-  trig~ : @core.Trig = @core.Trig::moonbit(),
-) -> ViewshedResult? {
-  if !grid_fits(width, height) ||
-    values.length() != width * height ||
-    geotransform.length() != 6 {
+  o : ViewshedOptions,
+  trig : @core.Trig,
+) -> Plan? {
+  if !grid_fits(width, height) || geotransform.length() != 6 {
     return None
   }
-  let o = options
   if !(o.max_distance >= 0.0 || o.max_distance.is_nan()) ||
     !(o.min_distance >= 0.0 || o.min_distance.is_nan()) ||
     o.start_angle.is_nan() ||
@@ -180,7 +185,64 @@ pub fn viewshed(
   guard calc_extents(
       trig, o, width, height, nx, ny, inv, start_angle, end_angle,
     )
-    is Some(out) else {
+    is Some(window) else {
+    return None
+  }
+  Some({ gt, nx, ny, window, start_angle, end_angle, })
+}
+
+///|
+/// The cells `viewshed` reads, as (x, y, width, height) in input cells: what
+/// its `cells` may be cut to. None where `viewshed` gives None whatever the
+/// cells.
+pub fn viewshed_window(
+  width : Int32,
+  height : Int32,
+  geotransform : FixedArray[Double],
+  options : ViewshedOptions,
+  trig~ : @core.Trig = @core.Trig::moonbit(),
+) -> (Int32, Int32, Int32, Int32)? {
+  guard plan(width, height, geotransform, options, trig) is Some(p) else {
+    return None
+  }
+  let w = p.window
+  Some((w.x_start, w.y_start, w.x_stop - w.x_start, w.y_stop - w.y_start))
+}
+
+///|
+/// gdal_viewshed's output for a DEM (`values` row by row) with GDAL's
+/// `geotransform`. None where GDAL fails, for NaN angles or pitches, past
+/// `MAX_VIEWSHED_CELLS` or 2^30 cells off; `trig` gives the masks' tan and atan2.
+/// With `cells` (x, y, width, height), `values` holds only those cells of the
+/// DEM, which must take in `viewshed_window`'s.
+pub fn viewshed(
+  values : FixedArray[Double],
+  width : Int32,
+  height : Int32,
+  geotransform : FixedArray[Double],
+  nodata : Double?,
+  options : ViewshedOptions,
+  trig~ : @core.Trig = @core.Trig::moonbit(),
+  cells? : (Int32, Int32, Int32, Int32),
+) -> ViewshedResult? {
+  let o = options
+  guard plan(width, height, geotransform, o, trig) is Some(plan) else {
+    return None
+  }
+  let { gt, nx, ny, window: out, start_angle, end_angle, } = plan
+  let (cx, cy, cw, ch) = match cells {
+    Some(c) => c
+    None => (0, 0, width, height)
+  }
+  if cx < 0 ||
+    cy < 0 ||
+    cw < 0 ||
+    ch < 0 ||
+    cx > out.x_start ||
+    cy > out.y_start ||
+    out.x_stop - cx > cw ||
+    out.y_stop - cy > ch ||
+    values.length().to_int64() != cw.to_int64() * ch.to_int64() {
     return None
   }
   let coeff = match o.curvature_coeff {
@@ -206,7 +268,8 @@ pub fn viewshed(
   let ex : Executor = {
     trig,
     values,
-    width,
+    width: cw,
+    first: cy * cw + cx,
     x_start: out.x_start,
     y_start: out.y_start,
     y_stop: out.y_stop,
@@ -238,6 +301,8 @@ pub fn viewshed(
     },
     test_angle: FixedArray::make(5, 0.0),
     height_adj,
+    adj_high: high_half(height_adj),
+    squares: column_squares(gt, nx - out.x_start, xsize),
     min2,
     max2: if max2 == 0.0 {
       @double.max_value
