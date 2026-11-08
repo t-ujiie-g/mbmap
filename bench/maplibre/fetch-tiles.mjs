@@ -11,7 +11,7 @@ import { tilesetSubset } from "../lib/tileset-subset.mjs";
 export const TILES = { z: 14, x: [14549, 14555], y: [6449, 6453] };
 // [west, south, east, north] in degrees: the 3D Tiles kept are those meeting it and their ancestors.
 const TOKYO_STATION = [139.76, 35.677, 139.772, 35.686];
-const PLATEAU = "出典：国土交通省 Project PLATEAU（3D都市モデル 建築物モデル 千代田区 2025年度）";
+const PLATEAU = "出典：「3D都市モデル（Project PLATEAU）千代田区（2025年度）」（国土交通省）（https://www.mlit.go.jp/plateau/）を加工して作成（東京駅周辺のタイルを抜き出したもの）";
 // The vector tiles, standard map images and DEM of TILES, a DEM of Mt Fuji for relief that shows and
 // the standard map of the whole world at zooms 0 to 3 for the globe.
 const SETS = [

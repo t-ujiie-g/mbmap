@@ -1,6 +1,5 @@
-// PLATEAU's buildings around Tokyo Station (bench/fixtures/plateau-chiyoda, 3D Tiles 1.0 b3dm) streamed
-// by mbmap/3d's tiles layer, for the pack test's tiles check (bench/npm/checks/tiles.mjs).
-// 出典：国土交通省 Project PLATEAU
+// Blocks near Tokyo Station as 3D Tiles 1.0 b3dm (./set, written by bench/tiles/synthetic.mjs) streamed by
+// mbmap/3d's tiles layer, for the pack test's tiles check (bench/npm/checks/tiles.mjs).
 import { Map } from "mbmap";
 import { tilesLayer } from "mbmap/3d";
 
@@ -13,7 +12,6 @@ const map = new Map({
   attributionControl: false,
   style: { version: 8, sources: {}, layers: [{ id: "background", type: "background", paint: { "background-color": "#ffffff" } }] },
 });
-// PLATEAU's heights are above the ellipsoid; the geoid lies about 36.7 m above it at Tokyo Station.
 const layer = tilesLayer({ id: "blocks", url: new URL("./set/tileset.json", location.href).href });
 map.on("error", (e) => console.error(e.error));
 map.once("load").then(() => {
