@@ -60,6 +60,8 @@ declare module "mbmap-engine" {
   /** A GeoJSON source's `clusterProperties` (JSON text) compiled for its worker; empty if they cannot be. */
   export function compile_cluster_properties(json: string): Uint8Array;
   export function map_reload_source(map: EngineMap, id: string): void;
+  /** Loads again the tiles of source `id` that are loading or for which `changed` holds. */
+  export function map_reload_tiles(map: EngineMap, id: string, changed: (z: number, x: number, y: number) => boolean): void;
   /** Shows `picture` (null for nothing) for image, video or canvas source `id`, placed by `quad` (media.ts `quadOf`). */
   export function map_set_media(map: EngineMap, id: string, picture: TexImageSource | null, quad: number[]): void;
   export function map_set_media_quad(map: EngineMap, id: string, quad: number[]): void;

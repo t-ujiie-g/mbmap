@@ -15,9 +15,9 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 133.7KB（式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示（メイン） | 133.8KB（式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
   | 表示ワーカー | 80.5KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
-  | GeoJSON ソース | 1.8KB ＋ ワーカー 29.5KB（`clusterProperties` のあるソースは式を持つワーカー 49.2KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
+  | GeoJSON ソース | 3.9KB ＋ ワーカー 29.6KB（`clusterProperties` のあるソースは式を持つワーカー 49.4KB） | 5KB ＋ 30KB（50KB、2026-11-04 ユーザー判断） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
   | `mbmap/search` | 2.8KB | 5KB |
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
@@ -48,6 +48,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 - **大きさ**：解析ワーカー 29.9 → 29.7KB、relate.wasm 26.5 → 26.8KB、surface.wasm 28.1 → 28.7KB（線分の予算）、`mbmap/analysis` 7.7 → 7.8KB、表示ワーカー 80.5KB、表示（メイン）133.7KB。
 - **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 341、`npm --prefix bench test`、ゴールデン（viewshed・relate・shapes・surface・route・analysis・classify・fields・expression・geojson・cluster・style・labels・query・color）すべて同じ、`npm:pack` 通過。
 - **残り**：振る舞いの候補（フィールド演算が編集のたびにデータ全体を `getData`/`setData` する、タイルの境の道路のつなぎ、自然分類の最大の級が 1 つの値だけになる）は Phase 20 の前に扱いを決める。
+  - **`updateData` の 1 段目（主スレッド）**：MapLibre 6.16 の `GeoJSONSourceDiff`（`removeAll`・`remove`・`add`・`update`）を `geojson.js` 側の `npm/src/geojson-diff.ts`（`toUpdateable`・`applySourceDiff`・`mergeSourceDiffs`・`getGeoJSONBounds`・`shouldReloadTile` の移植）に。id のない・重なる地物は MapLibre と同じ文言の `error` で断る（約束は解決する）。ソースごとに読み込みは 1 つずつで、その間の差分は 1 つにまとめる。`setData` は待っている差分を捨てる。URL のソースは読み込みを待ち、ワーカーが取ってきたバイト列を返すので、その上に差分を当てる。スタイル文書（`getData`・`getStyle`）は変わった地物だけを写して書き換え、`sourcedata` を出す。タイルは差分が触れた形の範囲にバッファ（`buffer` / 512 タイル）を足して交わるものと読み込み中のものだけを読み直す（`Map::reload_tiles`、判定は `geojson.js` から渡す。クラスタと `removeAll` は全部）。ワーカーにはまだ編集後のデータ全体を送る（2 段目で geojson-vt 6.3.0 の差分の索引に）。`npm run geojson:update`（MapLibre の関数そのものと、GSI 地物と日付変更線をまたぐ地物の乱数の差分 180 回、合併 60 回、タイル 18 万）はすべて同じ。pack test の `geojson` で、描画とクエリが変わること、`setData` の 6 タイルに対し 2 タイルだけ読み直すこと、URL ソースと拒否を確かめる。大きさは表示（メイン）133.7 → 133.8KB、GeoJSON ソース 1.8 → 3.9KB、GeoJSON ワーカー 29.5 → 29.6KB（式を持つもの 49.4KB）。判定を MoonBit（core）に置くとメインが 0.24KB 増えたので JS に置いた。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
 
