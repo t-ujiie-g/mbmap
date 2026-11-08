@@ -9,48 +9,48 @@
     "gdal": "GDAL 3.13.3 \"Iowa City\", released 2026/08/13",
     "runs": 5,
     "statistic": "median of runs after one warm-up run each",
-    "columns": "js: GDAL net, the GTiff run's wall clock minus the 2 x 2 run's (baseline); gdalWall / gdalCpu: the GTiff run's wall clock and user + sys; gdalMemWall: wall clock writing to the MEM driver; mbmap: the grid's values out of analysis.wasm, into viewshed.wasm, the call and its output read (one thread); exportOnly: the values copied into viewshed.wasm and the call, its output not read",
+    "columns": "js: GDAL net, the GTiff run's wall clock minus the 2 x 2 run's (baseline); gdalWall / gdalCpu: the GTiff run's wall clock and user + sys; gdalMemWall: wall clock writing to the MEM driver; mbmap: the window of cells the viewshed reads, those cells out of analysis.wasm, into viewshed.wasm, the call and its output read (one thread); exportOnly: the cells copied into viewshed.wasm and the call, its output not read",
     "baseline": {
-      "wall": 132.2370840000001,
-      "cpu": 120
+      "wall": 146.137792,
+      "cpu": 130
     }
   },
   "rows": {
     "viewshed 1024 x 1024, no range (450429 visible cells)": {
-      "js": 21.2,
-      "mbmap": 69.4,
-      "exportOnly": 66.1,
-      "gdalWall": 153.5,
-      "gdalCpu": 150,
-      "gdalMemWall": 151,
-      "ratio": 3.27
+      "js": 17.9,
+      "mbmap": 45.6,
+      "exportOnly": 46.2,
+      "gdalWall": 164,
+      "gdalCpu": 160,
+      "gdalMemWall": 158.8,
+      "ratio": 2.55
     },
     "viewshed 1024 x 1024, 5000 m range (8031 visible cells)": {
-      "js": 4.28,
-      "mbmap": 7.87,
-      "exportOnly": 6.71,
-      "gdalWall": 136.5,
+      "js": -1.63,
+      "mbmap": 3.43,
+      "exportOnly": 3.25,
+      "gdalWall": 144.5,
       "gdalCpu": 130,
-      "gdalMemWall": 136.5,
-      "ratio": 1.84
+      "gdalMemWall": 145.9,
+      "ratio": -2.11
     },
     "viewshed 4096 x 4096, no range (3854904 visible cells)": {
-      "js": 337.6,
-      "mbmap": 1091.5,
-      "exportOnly": 1057.9,
-      "gdalWall": 469.8,
+      "js": 334,
+      "mbmap": 672,
+      "exportOnly": 697.7,
+      "gdalWall": 480.1,
       "gdalCpu": 500,
-      "gdalMemWall": 466.6,
-      "ratio": 3.23
+      "gdalMemWall": 457.8,
+      "ratio": 2.01
     },
     "viewshed 4096 x 4096, 5000 m range (8031 visible cells)": {
-      "js": 4.53,
-      "mbmap": 50.2,
-      "exportOnly": 69.5,
-      "gdalWall": 136.8,
+      "js": -0.596,
+      "mbmap": 3.74,
+      "exportOnly": 3.39,
+      "gdalWall": 145.5,
       "gdalCpu": 130,
-      "gdalMemWall": 135.8,
-      "ratio": 11.1
+      "gdalMemWall": 144,
+      "ratio": -6.27
     }
   }
 }
