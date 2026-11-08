@@ -98,6 +98,7 @@ pub struct Style {
   terrain : Terrain?
   sky : Sky?
   light : Light
+  lights : Lights?
   projection : ProjectionType
   atmosphere_blend : Expr
   warnings : Array[StyleError]
@@ -216,6 +217,13 @@ fn style_of(json : Json, strict : Bool) -> Style raise StyleError {
       Unsupported(_) as e => {
         issues.report(e)
         parse_light(None)
+      }
+      e => raise e
+    },
+    lights: parse_lights(root.get("lights")) catch {
+      Unsupported(_) as e => {
+        issues.report(e)
+        None
       }
       e => raise e
     },

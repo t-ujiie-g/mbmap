@@ -85,10 +85,8 @@ export const SUN_LIGHT_STOPS: readonly (readonly [number, number, number, number
 ];
 
 /**
- * The style `lights` for `date` at `lng`, `lat`: an ambient light and the sun as a directional light,
- * colors and intensities eased between `SUN_LIGHT_STOPS` (smoothstep within each span). `direction`
- * is [azimuthal, polar]: the sun's azimuth clockwise from north and its angle from straight up, held
- * at 90° while it is below the horizon. Throws a RangeError for an invalid date.
+ * The style `lights` for `date` at `lng`, `lat`: ambient and sun eased between `SUN_LIGHT_STOPS`, the sun's
+ * `direction` [azimuth, angle from up] held at 90° below the horizon. Throws a RangeError for an invalid date.
  */
 export function timeOfDayLights(date: Date | number, lng: number, lat: number): Light[] {
   const { azimuth, altitude } = sunPosition(date, lng, lat);

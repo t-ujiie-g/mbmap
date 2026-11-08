@@ -92,3 +92,41 @@ test "an unsupported light goes back to the default light" {
   )
   assert_eq(paths(style), ["light.position"])
 }
+
+///|
+test "lights give an ambient and a directional light, and unknown lights are reported" {
+  let style = @style.Style::parse(
+    (
+      #|{"version": 8, "sources": {}, "layers": [], "lights": [
+      #|  {"id": "a", "type": "ambient", "properties": {"color": "#ff0000", "intensity": 0.3}},
+      #|  {"id": "s", "type": "directional", "properties": {"intensity": 0.6, "direction": [90, 45]}}]}
+    ),
+  )
+  let lights = style.lights.unwrap()
+  assert_eq(lights.direction, (90.0, 45.0))
+  assert_true(lights.ambient_intensity is Lit(Num(0.3)))
+  assert_true(lights.sun_intensity is Lit(Num(0.6)))
+  assert_true(
+    @style.Style::parse("{\"version\": 8, \"sources\": {}, \"layers\": []}").lights
+    is None,
+  )
+  let flash = @style.Style::parse(
+    (
+      #|{"version": 8, "sources": {}, "layers": [], "lights": [{"id": "f", "type": "flashlight"}]}
+    ),
+    strict=false,
+  )
+  assert_true(flash.lights is None)
+  assert_eq(paths(flash), ["lights[0].type"])
+  let bad = try {
+    @style.Style::parse(
+      "{\"version\": 8, \"sources\": {}, \"layers\": [], \"lights\": {}}",
+    )
+    |> ignore
+    false
+  } catch {
+    Invalid(path~, _) => path == "lights"
+    _ => false
+  }
+  assert_true(bad)
+}

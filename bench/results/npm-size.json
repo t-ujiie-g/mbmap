@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 151688,
+      "bytes": 153869,
       "budget": 155000
     },
     {
@@ -41,7 +41,7 @@
     },
     {
       "name": "custom layers (loaded by mbmap with the first one)",
-      "bytes": 2935,
+      "bytes": 2988,
       "budget": 3000
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 85234,
+      "bytes": 85247,
       "budget": 100000
     },
     {
@@ -116,7 +116,7 @@
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 56486,
+      "bytes": 56498,
       "budget": 57000
     },
     {
@@ -181,12 +181,12 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 6387,
+      "bytes": 6544,
       "budget": 10000
     },
     {
       "name": "3D Tiles (loaded by mbmap/3d with the first tilesLayer)",
-      "bytes": 10059,
+      "bytes": 10067,
       "budget": 12000
     },
     {
@@ -196,7 +196,7 @@
     },
     {
       "name": "SLPK (loaded with the first i3sLayer of an .slpk)",
-      "bytes": 4519,
+      "bytes": 4531,
       "budget": 6000
     },
     {

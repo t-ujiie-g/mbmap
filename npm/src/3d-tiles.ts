@@ -193,7 +193,7 @@ export class TilesEngine {
       if (this.#loading >= MAX_LOADS) break;
       this.#load(tile);
     }
-    program.begin(gl, t);
+    program.begin(gl, t, false, options.lights);
     program.setPointSize(this.#pointPixels(gl));
     for (const pass of [0, 1]) {
       gl.depthMask(pass === 0);

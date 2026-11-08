@@ -1,9 +1,6 @@
-// npm/src/sun.ts vs suncalc 2.1.1's getPosition (every number identical, Object.is) on a seeded
-// grid of dates (1900-2100, every month, random days and times) and places (both hemispheres, the
-// poles, the date line), and sunDirection vs CesiumJS 1.146.0's Simon1994PlanetaryPositions taken
-// to the Earth-fixed frame by Transforms.computeIcrfToFixedMatrix and into east, north, up at the
-// place, within TOLERANCE degrees.
-// Usage: node sun/golden.mjs [--per-month=N]; writes bench/results/sun-golden.json.
+// npm/src/sun.ts vs suncalc 2.1.1's getPosition (Object.is) on seeded dates 1900-2100 and places (poles,
+// date line), and sunDirection vs CesiumJS 1.146.0's Simon1994PlanetaryPositions in east, north, up, within
+// TOLERANCE degrees. Usage: node sun/golden.mjs [--per-month=N]; writes bench/results/sun-golden.json.
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getPosition } from "suncalc";

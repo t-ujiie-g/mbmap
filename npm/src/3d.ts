@@ -154,7 +154,7 @@ export class ModelLayer implements CustomLayerInterface {
     // On the globe `mainMatrix` is Float32 and the full-precision globe matrix is the model-view-projection.
     const flat = t > 0 ? d.fallbackMatrix : d.mainMatrix;
     const plane = d.clippingPlane;
-    program.begin(gl, t);
+    program.begin(gl, t, false, options.lights);
     for (const pass of [0, 1]) {
       gl.depthMask(pass === 0);
       for (const inst of this.#instances) {
@@ -283,7 +283,7 @@ export class PointCloudLayer implements CustomLayerInterface {
     const t = d.projectionTransition;
     const [lng, lat, h] = c.center;
     const css = (gl.canvas as HTMLCanvasElement).clientWidth || gl.drawingBufferWidth;
-    program.begin(gl, t);
+    program.begin(gl, t, false, options.lights);
     program.setPointSize((this.#options.pointSize ?? 2) * (gl.drawingBufferWidth / css));
     const flat = mul(t > 0 ? d.fallbackMatrix : d.mainMatrix, mercatorFrame(lng, lat, h));
     const globe = t > 0 ? mul(options.modelViewProjectionMatrix, sphereFrame(lng, lat, h)) : null;

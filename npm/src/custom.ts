@@ -18,6 +18,8 @@ export interface CustomRenderMethodInput {
   projectionMatrix: Float64Array;
   shaderData: { variantName: string; vertexShaderPrelude: string; define: string };
   defaultProjectionData: ProjectionData;
+  /** mbmap's: the style's `lights`, colors times intensities and the direction toward the directional light (east, north, up). */
+  lights?: { ambient: Float64Array; directional: Float64Array; direction: Float64Array };
   getProjectionData(params: {
     tileID: { canonical: { x: number; y: number; z: number }; wrap?: number } | null;
     applyGlobeMatrix?: boolean;
@@ -72,17 +74,14 @@ function scaled(m: Float64Array, x: number, y: number, z: number, tx = 0, ty = 0
   return out;
 }
 
-/**
- * The options of one draw from the engine's numbers (`Map::custom_numbers`): the model-view-projection and
- * projection matrices, the field of view, near and far planes, the world size and pixels per meter; on the
- * globe then the transition, the globe's matrix and projection, its near and far planes and clipping plane.
- */
+/** The options of one draw from the engine's numbers, laid out as `Map::custom_numbers` says. */
 export function renderInput(n: ArrayLike<number>): CustomRenderMethodInput {
-  const at = (i: number) => Float64Array.from({ length: 16 }, (_, j) => n[i + j]);
+  const at = (i: number, length = 16) => Float64Array.from({ length }, (_, j) => n[i + j]);
   const mvp = at(0);
   const [fov, world, ppm] = [n[32], n[35], n[36]];
-  const transition = n[37] ?? 0;
-  const globe = transition > 0;
+  // The globe's numbers (from 37 to 76) come only while it is drawn; the lights, when any, follow.
+  const globe = n.length >= 76;
+  const transition = globe ? n[37] : 0;
   const main = globe ? Float32Array.from(at(38)) : undefined;
   const data = (fallback: Float64Array, coords: [number, number, number, number], t: number, z: number): ProjectionData => ({
     mainMatrix: main ?? fallback,
@@ -92,7 +91,9 @@ export function renderInput(n: ArrayLike<number>): CustomRenderMethodInput {
     projectionTransition: t,
     clipAntimeridian: globe && z === 0,
   });
+  const l = globe ? 76 : 37;
   return {
+    lights: n.length > l ? { ambient: at(l, 3), directional: at(l + 3, 3), direction: at(l + 6, 3) } : undefined,
     farZ: n[globe ? 71 : 34],
     nearZ: n[globe ? 70 : 33],
     fov,

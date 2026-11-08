@@ -31,11 +31,16 @@ fn Map::extrusion_light(self : Map) -> @render_webgl2.ExtrusionLight {
   let light = self.style.light
   let zoom = self.transform.camera.zoom
   let c = color_of(light.color, zoom, JsProps::none())
-  let direction = light_direction(
-    light.position,
-    light.viewport,
-    self.transform.camera.bearing,
-  )
+  let lights = self.lights()
+  let direction = match self.style.lights {
+    Some(l) => light_direction((1.0, l.direction.0, l.direction.1), false, 0.0)
+    None =>
+      light_direction(
+        light.position,
+        light.viewport,
+        self.transform.camera.bearing,
+      )
+  }
   let globe_direction = match self.globe {
     Some(g) if g.is_globe() => {
       let d = g.light_direction({
@@ -52,7 +57,41 @@ fn Map::extrusion_light(self : Map) -> @render_webgl2.ExtrusionLight {
     globe_direction,
     intensity: number_or(light.intensity.eval(zoom, JsProps::none()), 0.5),
     color: (c.r, c.g, c.b),
+    lights: lights.map(l => (l.0, l.1)),
   }
+}
+
+///|
+/// The style's `lights` at this zoom: the ambient and the directional light's
+/// colors times their intensities, and the direction toward the directional one
+/// (east, north, up); None without `lights`.
+pub fn Map::lights(
+  self : Map,
+) -> (
+  (Double, Double, Double),
+  (Double, Double, Double),
+  (Double, Double, Double),
+)? {
+  guard self.style.lights is Some(l) else { None }
+  let zoom = self.transform.camera.zoom
+  let scaled = (color : @style.Expr, intensity : @style.Expr) => {
+    let c = color_of(color, zoom, JsProps::none())
+    let k = number_or(intensity.eval(zoom, JsProps::none()), 0.0)
+    (c.r * k, c.g * k, c.b * k)
+  }
+  let (x, y, z) = light_direction(
+    (1.0, l.direction.0, l.direction.1),
+    false,
+    0.0,
+  )
+  // Tile axes run south; east, north, up turns y.
+  Some(
+    (
+      scaled(l.ambient_color, l.ambient_intensity),
+      scaled(l.sun_color, l.sun_intensity),
+      (x, -y, z),
+    ),
+  )
 }
 
 ///|

@@ -314,6 +314,14 @@ pub struct Light {
   position : (Double, Double, Double)
 }
 
+pub struct Lights {
+  ambient_color : Expr
+  ambient_intensity : Expr
+  sun_color : Expr
+  sun_intensity : Expr
+  direction : (Double, Double)
+}
+
 pub(all) struct NoFeature {
 }
 pub fn NoFeature::accumulated(Self) -> Value
@@ -476,6 +484,7 @@ pub struct Style {
   terrain : Terrain?
   sky : Sky?
   light : Light
+  lights : Lights?
   projection : ProjectionType
   atmosphere_blend : Expr
   warnings : Array[StyleError]

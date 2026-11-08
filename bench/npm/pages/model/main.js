@@ -8,7 +8,16 @@ const map = new Map({
   center: [139.7671, 35.6812],
   zoom: 17,
   attributionControl: false,
-  style: { version: 8, sources: {}, layers: [{ id: "background", type: "background", paint: { "background-color": "#ffffff" } }] },
+  style: {
+    version: 8,
+    sources: {
+      block: { type: "geojson", data: { type: "Polygon", coordinates: [[[139.7674, 35.6806], [139.7678, 35.6806], [139.7678, 35.6809], [139.7674, 35.6809], [139.7674, 35.6806]]] } },
+    },
+    layers: [
+      { id: "background", type: "background", paint: { "background-color": "#ffffff" } },
+      { id: "block", type: "fill-extrusion", source: "block", paint: { "fill-extrusion-color": "#2080c0", "fill-extrusion-height": 20 } },
+    ],
+  },
 });
 const layer = modelLayer({
   id: "boxes",
