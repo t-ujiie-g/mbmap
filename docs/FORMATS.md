@@ -599,14 +599,16 @@ over 255) or null for point formats without colors, `intensity` a Uint16Array, `
 Uint8Array (the 5-bit class of formats 0 to 5, the byte of 6 to 10), `count` the points in the file;
 the typed arrays transferred. A file without a CRS and no `crs` is an error.
 
-`{type: "call", id, op: "i3s", url, buffer, texture?, layer, node}` reads an I3S 1.7 or 1.8 node
+`{type: "call", id, op: "i3s", url | geometry, buffer, texture? | textureBytes?, layer, node}` reads an I3S 1.7 or 1.8 node
 (`npm/src/i3s/content.ts` `readI3sGeometry`): `url` its geometry resource (`nodes/<resource>/geometries/<buffer>`),
 `buffer` the index into its geometry definition's `geometryBuffers` (`geometryBufferOf` prefers the Draco one,
 `nodeResources` gives the paths), `texture` the URL of its texture when the material's texture set has a JPEG or
 PNG format (`textureOf`; other bytes are dropped and the node drawn with its colors), `layer` the layer JSON (at
 least `spatialReference`, which must be 4326, `store.normalReferenceFrame`, `geometryDefinitions`,
 `materialDefinitions`) and `node` its node page entry (`obb.center` or `mbs`, `mesh`). Both are fetched without
-credentials (at most `MAX_I3S_BYTES` and `MAX_I3S_TEXTURE_BYTES`, gunzipped when stored raw as gzip). The
+credentials (at most `MAX_I3S_BYTES` and `MAX_I3S_TEXTURE_BYTES`, gunzipped when stored raw as gzip). In place
+of the URLs, `geometry` and `textureBytes` (Uint8Arrays, transferred) give the resources' bytes, as an SLPK's
+entries read on the main thread (`npm/src/i3s/slpk.ts`); the same caps and gunzipping apply. The
 uncompressed layout is the definition's header (vertex and feature counts as u32 when `offset` is 8 or more, else
 the node page's) and position, normal, uv0, color, uvRegion, featureId (u64) and faceRange (u32 x 2, inclusive
 triangles) one after another; a Draco buffer (3d.wasm's `draco_decode`) names its attributes by Draco type and

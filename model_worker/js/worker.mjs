@@ -62,15 +62,20 @@ async function gunzip(bytes, max) {
 /** The media type of JPEG or PNG bytes, else undefined (DDS and KTX2 textures are not drawn). */
 const imageType = (b) => (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "image/jpeg" : b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 ? "image/png" : undefined);
 
+/** `bytes` given (an SLPK's entry, gunzipped by the caller), else those at `url`, capped at `max`. */
+const resource = (bytes, url, max) => (bytes instanceof Uint8Array ? (bytes.length > max ? Promise.reject(new Error(`more than ${max} bytes`)) : Promise.resolve(bytes)) : fetchBytes(new URL(url), max));
+
 /** An I3S node's geometry buffer (`buffer` of its definition) and JPEG or PNG texture, in east, north, up meters around its center. */
-async function i3s({ url, buffer, texture, layer, node }) {
+async function i3s({ url, geometry, buffer, texture, textureBytes, layer, node }) {
   const obj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-  if (!Number.isInteger(buffer) || buffer < 0 || !obj(layer) || !obj(node) || !(texture === undefined || typeof texture === "string")) throw new Error("invalid arguments");
+  const given = (bytes, at) => (bytes === undefined ? typeof at === "string" : bytes instanceof Uint8Array && at === undefined);
+  const untextured = texture === undefined && textureBytes === undefined;
+  if (!Number.isInteger(buffer) || buffer < 0 || !obj(layer) || !obj(node) || !given(geometry, url) || !(untextured || given(textureBytes, texture))) throw new Error("invalid arguments");
   const def = layer.geometryDefinitions?.[node.mesh?.geometry?.definition]?.geometryBuffers?.[buffer];
   const decoder = def?.compressedAttributes ? draco(await instance()) : undefined;
   const [bytes, image] = await Promise.all([
-    fetchBytes(new URL(url), MAX_I3S_BYTES).then((b) => gunzip(b, MAX_I3S_BYTES)),
-    texture === undefined ? undefined : fetchBytes(new URL(texture), MAX_I3S_TEXTURE_BYTES).then((b) => gunzip(b, MAX_I3S_TEXTURE_BYTES)),
+    resource(geometry, url, MAX_I3S_BYTES).then((b) => gunzip(b, MAX_I3S_BYTES)),
+    untextured ? undefined : resource(textureBytes, texture, MAX_I3S_TEXTURE_BYTES).then((b) => gunzip(b, MAX_I3S_TEXTURE_BYTES)),
   ]);
   const { center, primitive, featureIds, count } = readI3sGeometry(bytes, layer, node, buffer, decoder);
   const mimeType = image && imageType(image);
@@ -228,7 +233,7 @@ onmessage = async (e) => {
     wasmUrl = msg.wasm;
     urls.proj = msg.proj;
     urls.prj = msg.prj;
-  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && typeof msg.url === "string") {
+  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && (typeof msg.url === "string" || msg.op === "i3s")) {
     try {
       const value = await OPS[msg.op](msg);
       postMessage({ type: "result", id: msg.id, value }, transferables(value));
