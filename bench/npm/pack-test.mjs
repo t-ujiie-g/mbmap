@@ -1,6 +1,6 @@
 // Checks the examples built on the packed package in Chromium; without the
 // fixtures tiles 404 and maps load empty, so CI runs it too.
-// Usage: node npm/pack-test.mjs [--screenshots=dir] [--only=check]
+// Usage: node npm/pack-test.mjs [--screenshots=dir] [--only=check,...] [--except=check,...]
 import path from "node:path";
 import { chromium } from "playwright";
 import { serve } from "../lib/serve.mjs";
@@ -30,7 +30,8 @@ import { crumb, mapState, openTab, trail } from "./checks/step.mjs";
 import { arg } from "../lib/args.mjs";
 
 const shots = arg("screenshots");
-const only = arg("only");
+const only = arg("only")?.split(",");
+const except = arg("except")?.split(",") ?? [];
 await prepareExamples();
 
 const ATTRIBUTION = "国土地理院ベクトルタイル提供実験";
@@ -596,6 +597,8 @@ async function engineStarted(page) {
   return [r.frames > 0, r];
 }
 
+const unknown = [...(only ?? []), ...except].filter((name) => !(name in checks));
+if (unknown.length) throw new Error(`pack test: no check named ${unknown.join(", ")}`);
 const { server, origin } = await serve();
 // Metal only exists on macOS; elsewhere (CI) Chromium falls back to SwiftShader.
 // Each example's checks take well under a minute; one that runs longer has hung.
@@ -604,7 +607,7 @@ const gpu = process.platform === "darwin" ? ["--use-angle=metal", "--enable-gpu"
 const browser = await chromium.launch({ args: gpu });
 let failed = false;
 try {
-  for (const [example, check] of Object.entries(checks).filter(([name]) => !only || name === only)) {
+  for (const [example, check] of Object.entries(checks).filter(([name]) => (!only || only.includes(name)) && !except.includes(name))) {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
     const errors = [];
     const requests = [];
