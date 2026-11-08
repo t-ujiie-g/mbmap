@@ -538,7 +538,19 @@ license and source.
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
+- draco/: Draco 1.5.7's mesh decoder (src/draco/compression/decode.cc, point_cloud/,
+  mesh/ (edgebreaker with its standard, predictive and valence traversals, sequential),
+  attributes/ (sequential attribute decoders, prediction schemes and their transforms),
+  entropy/ (rANS), bit_coders/, core/ (DecoderBuffer, varints), attributes/ (quantization and
+  octahedron transforms), mesh/ (corner tables and traversers), metadata/metadata_decoder.cc
+  and javascript/emscripten/decoder_webidl_wrapper.cc) https://github.com/google/draco —
+  Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0), Copyright 2016 The Draco
+  Authors.
+
 Test / benchmark data:
+- bench/fixtures/draco/ (downloaded by bench/draco/golden.mjs, not committed): files of Draco
+  1.5.7's testdata/ (https://github.com/google/draco), Apache License 2.0, Copyright 2016 The
+  Draco Authors. draco/decode_test.mbt embeds small meshes encoded by draco3d 1.5.7.
 - bench/fixtures/gsi-bvmap/ (downloaded, not committed):
   国土地理院ベクトルタイル提供実験 (GSI Japan, experimental_bvmap)
   https://maps.gsi.go.jp/development/vt.html
