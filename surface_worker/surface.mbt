@@ -29,9 +29,7 @@ priv struct Input {
 fn input(len_t : Int32, len_s : Int32) -> Input? {
   let bytes = @wasmio.input_bytes()
   @wasmio.clear_input()
-  guard len_t >= 0 && len_s >= 0 && len_t + len_s <= bytes.length() else {
-    return None
-  }
+  guard @wasmio.lengths_fit(len_t, len_s, bytes.length()) else { return None }
   let table = if len_t == 0 {
     @geom.Table::new()
   } else {
@@ -204,9 +202,8 @@ pub fn isobands(len_t : Int32, len_s : Int32) -> Int32 {
 
 ///|
 /// d3-contour's `contourDensity` of the table's points on a `width` x `height`
-/// pixel grid over the box (the points' own box where it is NaN), weighted by
-/// the property named by the text when `weighted` is 1; each contour becomes a
-/// MultiPolygon row with its `value`, its pixels taken back to the box.
+/// grid over the box (theirs where NaN), weighted by the text's property when
+/// `weighted` is 1: a MultiPolygon row with its `value` per contour.
 #export_name("density")
 pub fn density(
   len_t : Int32,
@@ -323,20 +320,18 @@ pub fn dbscan(
   guard input(len_t, len_s) is Some(i) else {
     return @wasmio.fail_with(malformed)
   }
-  guard @clusters.dbscan_checked(
-      i.table,
-      max_distance,
-      min_points.to_int(),
-      trig~,
-    )
+  guard @wasmio.output_fits(2L * i.table.length().to_int64(), 8) else {
+    return -2
+  }
+  guard @clusters.dbscan(i.table, max_distance, min_points.to_int(), trig~)
     is Some(out) else {
-    return @wasmio.fail_with(too_many_points)
+    return @wasmio.fail_with(too_many)
   }
   @wasmio.write_f64s(FixedArray::makei(out.length(), k => out[k].to_double()))
 }
 
 ///|
-let too_many_points = "more than \{@clusters.MAX_CLUSTER_POINTS} points"
+let too_many = "more than \{@clusters.MAX_CLUSTER_POINTS} points, or too much work"
 
 ///|
 /// Turf's `clustersKmeans` of the table's points (`k` 0 for Turf's default):
@@ -347,10 +342,16 @@ pub fn kmeans(len_t : Int32, len_s : Int32, k : Double) -> Int32 {
   guard input(len_t, len_s) is Some(i) else {
     return @wasmio.fail_with(malformed)
   }
-  guard @clusters.kmeans_checked(i.table, k.to_int()) is Some((rows, centroids)) else {
-    return @wasmio.fail_with(too_many_points)
+  guard @clusters.kmeans(i.table, k.to_int()) is Some((rows, centroids)) else {
+    return @wasmio.fail_with(too_many)
   }
   let n = rows.length()
+  guard @wasmio.output_fits(
+    1L + n.to_int64() + centroids.length().to_int64(),
+    8,
+  ) else {
+    return -2
+  }
   @wasmio.write_f64s(
     FixedArray::makei(1 + n + centroids.length(), j => {
       if j == 0 {

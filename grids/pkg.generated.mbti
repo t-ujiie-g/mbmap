@@ -26,6 +26,5 @@ pub fn triangle_grid(Double, Double, Double, Double, Double, trig? : @core.Trig)
 // Types and methods
 
 // Type aliases
-pub using @core {type Trig}
 
 // Traits

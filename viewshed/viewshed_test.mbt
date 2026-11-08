@@ -661,3 +661,16 @@ test "hostile inputs finish" {
   )
   assert_eq(curved.map(fn(r) { r.values.length() }), Some(25))
 }
+
+///|
+test "grids past MAX_VIEWSHED_CELLS give None, products that overflow included" {
+  let max = @viewshed.MAX_VIEWSHED_CELLS
+  assert_true(@viewshed.grid_fits(max, 1))
+  assert_true(@viewshed.grid_fits(4096, 4096))
+  assert_false(@viewshed.grid_fits(max + 1, 1))
+  assert_false(@viewshed.grid_fits(4097, 4096))
+  assert_false(@viewshed.grid_fits(0, 5))
+  let options = @viewshed.ViewshedOptions::new(0.5, 0.5)
+  let gt = north_up(5, 1.0)
+  assert_true(@viewshed.viewshed([], 65536, 65536, gt, None, options) is None)
+}

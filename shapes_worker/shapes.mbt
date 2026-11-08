@@ -1,5 +1,5 @@
 ///|
-let trig : @lineops.Trig = @wasmio.host_trig()
+let trig : @core.Trig = @wasmio.host_trig()
 
 ///|
 /// Makes room for `len` input bytes and returns where JS should write them,
@@ -39,47 +39,35 @@ fn run(f : (@geom.Table) -> @geom.Table?) -> Int32 {
 /// `@simplify.simplify` of the input table (`high_quality` 0 or 1).
 #export_name("simplify")
 pub fn simplify(tolerance : Double, high_quality : Int32) -> Int32 {
-  run(t => Some(@simplify.simplify(t, tolerance, high_quality != 0)))
-}
-
-///|
-/// Whether the input's vertices fit `@hull.MAX_HULL_POINTS`.
-fn hull_fits(t : @geom.Table) -> Bool {
-  t.coords.length() / 2 <= @hull.MAX_HULL_POINTS
+  run(t => @simplify.simplify(t, tolerance, high_quality != 0))
 }
 
 ///|
 /// `@hull.convex` of the input table.
 #export_name("convex")
 pub fn convex() -> Int32 {
-  run(t => if hull_fits(t) { Some(@hull.convex(t, trig~)) } else { None })
+  run(t => @hull.convex(t, trig~))
 }
 
 ///|
 /// `@hull.concave` of the input table.
 #export_name("concave")
 pub fn concave(concavity : Double, length_threshold : Double) -> Int32 {
-  run(t => {
-    if hull_fits(t) {
-      Some(@hull.concave(t, concavity, length_threshold, trig~))
-    } else {
-      None
-    }
-  })
+  run(t => @hull.concave(t, concavity, length_threshold, trig~))
 }
 
 ///|
 /// `@delaunay.triangles` of the input table's points.
 #export_name("delaunay")
 pub fn delaunay() -> Int32 {
-  run(t => @delaunay.triangles_checked(t, trig~))
+  run(t => @delaunay.triangles(t, trig~))
 }
 
 ///|
 /// `@delaunay.voronoi` of the input table's points within the box.
 #export_name("voronoi")
 pub fn voronoi(x0 : Double, y0 : Double, x1 : Double, y1 : Double) -> Int32 {
-  run(t => @delaunay.voronoi_checked(t, x0, y0, x1, y1, trig~))
+  run(t => @delaunay.voronoi(t, x0, y0, x1, y1, trig~))
 }
 
 ///|
@@ -95,5 +83,6 @@ pub fn line_slice(sx : Double, sy : Double, ex : Double, ey : Double) -> Int32 {
 #export_name("nearest_on_line")
 pub fn nearest_on_line(x : Double, y : Double) -> Int32 {
   guard input() is Some(t) else { return @wasmio.fail_with("malformed table") }
+  guard @wasmio.output_fits(6L * t.length().to_int64(), 8) else { return -2 }
   @wasmio.write_f64s(@lineops.nearest_point_on_line(t, x, y, trig~))
 }

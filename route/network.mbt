@@ -7,11 +7,8 @@
 pub const MAX_ROUTE_VERTICES : Int32 = 2_000_000
 
 ///|
-const PI : Double = 3.141592653589793
-
-///|
 /// Turf's kilometers per radian (`earthRadius / 1e3`).
-const KM_FACTOR : Double = 6371.0088
+const KM_FACTOR : Double = @core.EARTH_RADIUS / 1000.0
 
 ///|
 /// `@turf/distance` in kilometers (haversine), as `lineops` computes it.
@@ -22,30 +19,7 @@ fn distance(
   lng2 : Double,
   lat2 : Double,
 ) -> Double {
-  let d_lat = radians(lat2 - lat1)
-  let d_lng = radians(lng2 - lng1)
-  let s_lat = trig.sin(d_lat / 2.0)
-  let s_lng = trig.sin(d_lng / 2.0)
-  let a = s_lat * s_lat +
-    s_lng * s_lng * trig.cos(radians(lat1)) * trig.cos(radians(lat2))
-  2.0 * trig.atan2(a.sqrt(), (1.0 - a).sqrt()) * KM_FACTOR
-}
-
-///|
-/// Turf's `degreesToRadians`, which first takes the degrees modulo 360.
-fn radians(degrees : Double) -> Double {
-  degrees % 360.0 * PI / 180.0
-}
-
-///|
-/// JavaScript's `Math.round`: halves go up. `x - floor(x)` is exact.
-fn js_round(x : Double) -> Double {
-  let f = x.floor()
-  if x - f >= 0.5 {
-    f + 1.0
-  } else {
-    f
-  }
+  @core.haversine(trig, lng1, lat1, lng2, lat2) * KM_FACTOR
 }
 
 ///|
@@ -53,7 +27,7 @@ fn js_round(x : Double) -> Double {
 /// is one-to-one on doubles but for 0 and -0 ("0") and NaNs ("NaN"), which are
 /// merged here too.
 fn key_bits(c : Double, tolerance : Double) -> Int64 {
-  let r = js_round(c / tolerance) * tolerance
+  let r = @core.js_round(c / tolerance) * tolerance
   if r.is_nan() {
     0x7FF8000000000000L
   } else if r == 0.0 {

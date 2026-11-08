@@ -1,6 +1,14 @@
 ///|
 /// The most pairs `relate_pairs` writes.
-const MAX_RELATE_PAIRS = 10_000_000
+pub const MAX_RELATE_PAIRS : Int32 = 10_000_000
+
+///|
+/// The most candidate pairs (boxes meeting) `relate_pairs` tests.
+pub const MAX_RELATE_CANDIDATES : Int32 = 10_000_000
+
+///|
+/// The most points `relate_pairs` reads over all the pairs it tests.
+pub const MAX_RELATE_TESTED_POINTS : Int32 = 1_000_000_000
 
 ///|
 /// Makes room for `len` input bytes and returns where JS should write them,
@@ -73,36 +81,62 @@ pub fn relate_pairs(len_a : Int32, code : Int32, pattern : Int32) -> Int32 {
   } else {
     None
   }
+  match pairs(a, b, code, pattern) {
+    Ok(out) => @wasmio.write_i32s(out[:])
+    Err(why) => @wasmio.fail_with(why)
+  }
+}
+
+///|
+/// `relate_pairs`' pairs of `a` and `b`, or why there are none.
+fn pairs(
+  a : @geom.Table,
+  b : @geom.Table,
+  code : Int32,
+  pattern : String?,
+  max_candidates~ : Int32 = MAX_RELATE_CANDIDATES,
+  max_points~ : Int32 = MAX_RELATE_TESTED_POINTS,
+) -> Result[Array[Int32], String] {
   let index = @analysis.Index::of_table(b)
   let out : Array[Int32] = []
   let found : Array[Int32] = []
+  let mut candidates = 0L
+  let mut points = 0L
   for i in 0..<a.length() {
     let (x0, y0, x1, y1) = @analysis.bbox(a, i)
     found.clear()
     index.search(x0, y0, x1, y1, found)
     found.sort()
+    candidates += found.length().to_int64()
+    if candidates > max_candidates.to_int64() {
+      return Err("more than \{max_candidates} pairs of features to test")
+    }
     for j in found {
       if !@relate.within_limit(a, i, b, j) {
-        return @wasmio.fail_with(too_many_points)
+        return Err(too_many_points)
+      }
+      points += @relate.pair_points(a, i, b, j).to_int64()
+      if points > max_points.to_int64() {
+        return Err("more than \{max_points} points to test in pairs")
       }
       let holds = match pattern {
         Some(p) =>
           match @relate.relate_checked(a, i, b, j) {
             Some(m) => m.matches(p)
-            None => return @wasmio.fail_with(unrelated(i, j))
+            None => return Err(unrelated(i, j))
           }
         None => @relate.predicate(a, i, b, j, predicates[code])
       }
       if holds {
         if out.length() >= MAX_RELATE_PAIRS * 2 {
-          return @wasmio.fail_with("more than \{MAX_RELATE_PAIRS} pairs")
+          return Err("more than \{MAX_RELATE_PAIRS} pairs")
         }
         out.push(i)
         out.push(j)
       }
     }
   }
-  @wasmio.write_i32s(out[:])
+  Ok(out)
 }
 
 ///|

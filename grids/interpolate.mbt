@@ -116,7 +116,7 @@ pub fn interpolate(
       if d == 0.0 {
         zw = zs[i]
       }
-      let w = 1.0 / (trig.pow)(d, weight)
+      let w = 1.0 / trig.pow(d, weight)
       sw += w
       zw += w * zs[i]
     }

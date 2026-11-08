@@ -84,7 +84,7 @@ fn from_lab(
 fn hcl(trig : @core.Trig, c : Color) -> FixedArray[Double] {
   let v = lab(trig, c)
   let chroma = (v[1] * v[1] + v[2] * v[2]).sqrt()
-  let h = if js_round(chroma * 10000.0) != 0.0 {
+  let h = if @core.js_round(chroma * 10000.0) != 0.0 {
     let h = trig.atan2(v[2], v[1]) * (180.0 / pi) % 360.0
     if h < 0.0 {
       h + 360.0

@@ -11,6 +11,17 @@ pub fn relate(a : @geom.Table, i : Int32, b : @geom.Table, j : Int32) -> Matrix 
 }
 
 ///|
+/// The points rows `i` of `a` and `j` of `b` hold together.
+pub fn pair_points(
+  a : @geom.Table,
+  i : Int32,
+  b : @geom.Table,
+  j : Int32,
+) -> Int32 {
+  Geometry::point_count(a, i) + Geometry::point_count(b, j)
+}
+
+///|
 /// Whether rows `i` of `a` and `j` of `b` hold at most `MAX_RELATE_POINTS`
 /// points together.
 pub fn within_limit(
@@ -19,7 +30,7 @@ pub fn within_limit(
   b : @geom.Table,
   j : Int32,
 ) -> Bool {
-  Geometry::point_count(a, i) + Geometry::point_count(b, j) <= MAX_RELATE_POINTS
+  pair_points(a, i, b, j) <= MAX_RELATE_POINTS
 }
 
 ///|
@@ -52,12 +63,9 @@ pub fn dimension(t : @geom.Table, i : Int32) -> Int32 {
 }
 
 ///|
-/// A JTS geometry predicate of row `i` of `a` against row `j` of `b`, as
-/// JSTS's `Geometry` methods answer it (envelope shortcuts, rectangle
-/// predicates and the rules for empty geometries included): `name` is one of
-/// "intersects", "disjoint", "contains", "within", "covers", "coveredBy",
-/// "touches", "crosses", "overlaps", "equals" (`equalsTopo`); false for any
-/// other name.
+/// The JTS predicate `name` (as JSTS's `Geometry` methods answer it, "equals"
+/// being `equalsTopo`, "disjoint" included) of row `i` of `a` against row `j` of
+/// `b`; false for any other name.
 pub fn predicate(
   a : @geom.Table,
   i : Int32,

@@ -63,6 +63,7 @@ pub struct Table {
   // private fields
 }
 pub fn Table::column(Self, String) -> Column?
+pub fn Table::feature_points(Self, Int32) -> (Int32, Int32)
 pub fn Table::from_bytes(BytesView) -> Self?
 pub fn Table::length(Self) -> Int32
 pub fn Table::map_coords(Self, (Double, Double) -> (Double, Double)?) -> Self

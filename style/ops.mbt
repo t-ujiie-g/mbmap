@@ -231,7 +231,7 @@ fn[C : FeatureContext] call(
           Asin => trig.asin(a)
           Acos => trig.acos(a)
           Atan => trig.atan(a)
-          Round => if a < 0.0 { -js_round(-a) } else { js_round(a) }
+          Round => if a < 0.0 { -@core.js_round(-a) } else { @core.js_round(a) }
           Abs => a.abs()
           Ceil => a.ceil()
           Floor => a.floor()
@@ -370,17 +370,6 @@ fn slice_range(begin : Double, end : Double, len : Int32) -> (Int32, Int32) {
 }
 
 ///|
-/// JavaScript's `Math.round`.
-fn js_round(x : Double) -> Double {
-  let f = x.floor()
-  if x - f >= 0.5 {
-    f + 1.0
-  } else {
-    f
-  }
-}
-
-///|
 /// JavaScript's `toUpperCase` / `toLowerCase` for Latin (ASCII, Latin-1,
 /// Extended-A and fullwidth) and Cyrillic letters; others are kept.
 fn change_case(s : String, up : Bool) -> String {
@@ -485,7 +474,7 @@ fn[C : FeatureContext] value_to_string(ctx : C, v : Value) -> String {
     Num(x) => ctx.number_text(x)
     Str(s) => s
     Color(c) => {
-      let ch = (x : Double) => js_round(x * 255.0).to_int().to_string()
+      let ch = (x : Double) => @core.js_round(x * 255.0).to_int().to_string()
       "rgba(\{ch(c.r)},\{ch(c.g)},\{ch(c.b)},\{ctx.number_text(c.a)})"
     }
     List(_) => json_text(ctx, v)

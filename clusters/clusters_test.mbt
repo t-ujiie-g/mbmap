@@ -1079,7 +1079,7 @@ let km_random : Array[(String, Int32, Array[Int32], Array[Double])] = [
 test "dbscan matches Turf on hand-written cases" {
   for c in db_cases {
     let (rows, d, m, expected) = c
-    assert_eq(ints(@clusters.dbscan(table_of(rows), d, m)), expected)
+    assert_eq(ints(@clusters.dbscan(table_of(rows), d, m).unwrap()), expected)
   }
 }
 
@@ -1088,27 +1088,20 @@ test "dbscan matches Turf on random points" {
   for c in db_random {
     let (name, d, m, expected) = c
     assert_eq(
-      ints(@clusters.dbscan(table_of(random_set(name)), d, m)),
+      ints(@clusters.dbscan(table_of(random_set(name)), d, m).unwrap()),
       expected,
     )
   }
 }
 
 ///|
-test "dbscan_checked matches dbscan under the cap" {
-  let t = table_of(random_set("c200s"))
-  assert_eq(
-    @clusters.dbscan_checked(t, 0.3, 3).map(ints),
-    Some(ints(@clusters.dbscan(t, 0.3, 3))),
-  )
-}
-
-///|
 test "dbscan computes distances through trig" {
   let t = table_of([Some((0.0, 0.0)), Some((0.001, 0.0)), Some((0.002, 0.0))])
-  assert_eq(ints(@clusters.dbscan(t, 1.0, 3)), [0, 0, 0, 0, 0, 0])
+  assert_eq(ints(@clusters.dbscan(t, 1.0, 3).unwrap()), [0, 0, 0, 0, 0, 0])
   let far = { ..@core.Trig::moonbit(), atan2: (_, _) => 1.0, }
-  assert_eq(ints(@clusters.dbscan(t, 1.0, 3, trig=far)), [-1, 2, -1, 2, -1, 2])
+  assert_eq(ints(@clusters.dbscan(t, 1.0, 3, trig=far).unwrap()), [
+    -1, 2, -1, 2, -1, 2,
+  ])
 }
 
 ///|
@@ -1131,7 +1124,7 @@ test "dbscan reads only the first point of a Point row and skips empty ones" {
     b.end_part()
     b.end_feature(Point)
   }
-  assert_eq(ints(@clusters.dbscan(b.finish(), 1.0, 3)), [
+  assert_eq(ints(@clusters.dbscan(b.finish(), 1.0, 3).unwrap()), [
     0, 0, -1, 3, -1, 3, -1, 3, 0, 0, -1, 3, 0, 0,
   ])
 }
@@ -1140,7 +1133,7 @@ test "dbscan reads only the first point of a Point row and skips empty ones" {
 test "kmeans matches Turf on hand-written cases" {
   for c in km_cases {
     let (rows, k, expected, centroids) = c
-    let (idxs, cs) = @clusters.kmeans(table_of(rows), k)
+    let (idxs, cs) = @clusters.kmeans(table_of(rows), k).unwrap()
     assert_eq(ints(idxs), expected)
     assert_eq(doubles(cs), centroids)
   }
@@ -1150,7 +1143,7 @@ test "kmeans matches Turf on hand-written cases" {
 test "kmeans matches Turf on random points" {
   for c in km_random {
     let (name, k, expected, centroids) = c
-    let (idxs, cs) = @clusters.kmeans(table_of(random_set(name)), k)
+    let (idxs, cs) = @clusters.kmeans(table_of(random_set(name)), k).unwrap()
     assert_eq(ints(idxs), expected)
     assert_eq(doubles(cs), centroids)
   }
@@ -1159,8 +1152,8 @@ test "kmeans matches Turf on random points" {
 ///|
 test "kmeans takes a negative k as Turf's default" {
   let t = table_of(random_set("u400"))
-  let (a, ca) = @clusters.kmeans(t, -3)
-  let (b, cb) = @clusters.kmeans(t, 0)
+  let (a, ca) = @clusters.kmeans(t, -3).unwrap()
+  let (b, cb) = @clusters.kmeans(t, 0).unwrap()
   assert_eq(ints(a), ints(b))
   assert_eq(doubles(ca), doubles(cb))
   assert_eq(ca.length(), 2 * 14)
@@ -1168,23 +1161,14 @@ test "kmeans takes a negative k as Turf's default" {
 
 ///|
 test "kmeans of no points is empty" {
-  let (idxs, cs) = @clusters.kmeans(table_of([None, None]), 0)
+  let (idxs, cs) = @clusters.kmeans(table_of([None, None]), 0).unwrap()
   assert_eq(ints(idxs), [-1, -1])
   assert_eq(cs.length(), 0)
-  assert_true(@clusters.kmeans_checked(table_of([]), 3) is Some((_, [])))
+  assert_true(@clusters.kmeans(table_of([]), 3) is Some((_, [])))
 }
 
 ///|
-test "kmeans_checked matches kmeans under the cap" {
-  let t = table_of(random_set("c300"))
-  let (idxs, cs) = @clusters.kmeans(t, 6)
-  guard @clusters.kmeans_checked(t, 6) is Some((i2, c2)) else { fail("None") }
-  assert_eq(ints(i2), ints(idxs))
-  assert_eq(doubles(c2), doubles(cs))
-}
-
-///|
-test "the checked functions refuse past MAX_CLUSTER_POINTS" {
+test "dbscan and kmeans refuse past MAX_CLUSTER_POINTS" {
   let b = @geom.TableBuilder::new()
   for i in 0..<=@clusters.MAX_CLUSTER_POINTS {
     b.point((i % 1000).to_double(), (i / 1000).to_double())
@@ -1193,11 +1177,6 @@ test "the checked functions refuse past MAX_CLUSTER_POINTS" {
     b.end_feature(Point)
   }
   let t = b.finish()
-  assert_true(@clusters.dbscan_checked(t, 1.0, 3) is None)
-  assert_true(@clusters.kmeans_checked(t, 3) is None)
-  let out = @clusters.dbscan(t, 1.0, 3)
-  assert_eq(out.length(), 2 * t.length())
-  assert_eq((out[0], out[1], out[out.length() - 1]), (-1, 3, 3))
-  let (idxs, cs) = @clusters.kmeans(t, 3)
-  assert_eq((idxs.length(), idxs[0], cs.length()), (t.length(), -1, 0))
+  assert_true(@clusters.dbscan(t, 1.0, 3) is None)
+  assert_true(@clusters.kmeans(t, 3) is None)
 }

@@ -2,31 +2,35 @@
 // and other contributors, Copyright 2012 - 2017 @jindw and other contributors. See NOTICE.
 
 ///|
-/// States of xmldom's `parseElementStartPart`: `s_tag` reading the name,
-/// `s_attr` an attribute's name, `s_attr_space` spaces after it, `s_eq` after
-/// `=`, `s_noquote` an unquoted value, `s_attr_end` after a quoted value,
-/// `s_tag_space` spaces between attributes, `s_tag_close` after `/`.
+/// A state of xmldom's `parseElementStartPart`: reading the tag's name.
 let s_tag : Int32 = 0
 
 ///|
+/// Reading an attribute's name.
 let s_attr : Int32 = 1
 
 ///|
+/// Spaces after an attribute's name.
 let s_attr_space : Int32 = 2
 
 ///|
+/// After `=`.
 let s_eq : Int32 = 3
 
 ///|
+/// Reading an unquoted value.
 let s_noquote : Int32 = 4
 
 ///|
+/// After a quoted value.
 let s_attr_end : Int32 = 5
 
 ///|
+/// Spaces between attributes.
 let s_tag_space : Int32 = 6
 
 ///|
+/// After `/`.
 let s_tag_close : Int32 = 7
 
 ///|

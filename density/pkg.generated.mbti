@@ -8,6 +8,10 @@ import {
 // Values
 pub const MAX_CONTOUR_CELLS : Int64 = 16_777_216
 
+pub const MAX_CONTOUR_NESTING_TESTS : Int64 = 100_000_000
+
+pub const MAX_CONTOUR_SEGMENTS : Int64 = 4_000_000
+
 pub const MAX_CONTOUR_WORK : Int64 = 134_217_728
 
 pub const MAX_THRESHOLDS : Int32 = 4096
@@ -27,6 +31,5 @@ pub struct Contour {
 }
 
 // Type aliases
-pub using @core {type Trig}
 
 // Traits

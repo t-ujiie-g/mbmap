@@ -241,3 +241,25 @@ test "Table::from_bytes ties geometry kinds to parts" {
   assert_true(@geom.Table::from_bytes(bytes(1, 0)[:]) is None)
   assert_true(@geom.Table::from_bytes(bytes(0, 1)[:]) is None)
 }
+
+///|
+test "feature_points spans a feature's rings and parts, (0, 0) without points" {
+  let b = @geom.TableBuilder::new()
+  b.point(0.0, 0.0)
+  b.end_ring()
+  b.end_part()
+  b.end_feature(Point)
+  b.end_feature(NoGeometry)
+  b.point(1.0, 1.0)
+  b.point(2.0, 2.0)
+  b.end_ring()
+  b.end_part()
+  b.point(3.0, 3.0)
+  b.end_ring()
+  b.end_part()
+  b.end_feature(MultiPoint)
+  let t = b.finish()
+  assert_eq(t.feature_points(0), (0, 1))
+  assert_eq(t.feature_points(1), (0, 0))
+  assert_eq(t.feature_points(2), (1, 4))
+}

@@ -120,6 +120,13 @@ pub const DEFAULT_CURVATURE_COEFF : Double = 0.85714
 const WGS84_SEMI_MAJOR : Double = 6378137.0
 
 ///|
+/// Whether a `width` x `height` DEM is within `MAX_VIEWSHED_CELLS`: the cells
+/// `viewshed` takes.
+pub fn grid_fits(width : Int32, height : Int32) -> Bool {
+  width > 0 && height > 0 && width <= MAX_VIEWSHED_CELLS / height
+}
+
+///|
 /// gdal_viewshed's output for a DEM (`values` row by row) with GDAL's
 /// `geotransform`. None where GDAL fails, for NaN angles or pitches, past
 /// `MAX_VIEWSHED_CELLS` or 2^30 cells off; `trig` gives the masks' tan and atan2.
@@ -132,9 +139,7 @@ pub fn viewshed(
   options : ViewshedOptions,
   trig~ : @core.Trig = @core.Trig::moonbit(),
 ) -> ViewshedResult? {
-  if width <= 0 ||
-    height <= 0 ||
-    width > MAX_VIEWSHED_CELLS / height ||
+  if !grid_fits(width, height) ||
     values.length() != width * height ||
     geotransform.length() != 6 {
     return None
@@ -222,12 +227,12 @@ pub fn viewshed(
     low_pitch_masking: o.low_pitch > -90.0,
     high_pitch_masking: o.high_pitch < 90.0,
     low_tan: if o.low_pitch != -90.0 {
-      (trig.tan)(o.low_pitch * (2.0 * PI / 360.0))
+      trig.tan(o.low_pitch * (2.0 * PI / 360.0))
     } else {
       @double.not_a_number
     },
     high_tan: if o.high_pitch != 90.0 {
-      (trig.tan)(o.high_pitch * (2.0 * PI / 360.0))
+      trig.tan(o.high_pitch * (2.0 * PI / 360.0))
     } else {
       @double.not_a_number
     },

@@ -14,6 +14,32 @@ pub const MAX_THRESHOLDS : Int32 = 4096
 pub const MAX_CONTOUR_WORK : Int64 = 134_217_728
 
 ///|
+/// Most marching-squares segments one call stitches over all its thresholds.
+pub const MAX_CONTOUR_SEGMENTS : Int64 = 4_000_000
+
+///|
+/// Most hole-in-polygon edge tests one call spends (d3's nesting is quadratic
+/// in rings).
+pub const MAX_CONTOUR_NESTING_TESTS : Int64 = 100_000_000
+
+///|
+/// The segments and nesting tests a call has spent so far, and the most it may.
+priv struct Budget {
+  mut segments : Int64
+  mut tests : Int64
+  max_segments : Int64
+  max_tests : Int64
+}
+
+///|
+fn Budget::new(
+  max_segments~ : Int64 = MAX_CONTOUR_SEGMENTS,
+  max_tests~ : Int64 = MAX_CONTOUR_NESTING_TESTS,
+) -> Budget {
+  { segments: 0L, tests: 0L, max_segments, max_tests, }
+}
+
+///|
 /// One of d3's contours: its threshold `value` and the MultiPolygon's
 /// `coordinates` (polygons of rings of x, y points, each ring closed by its
 /// first point repeated).
@@ -120,14 +146,15 @@ fn above(values : FixedArray[Double], i : Int32, value : Double) -> Int32 {
 
 ///|
 /// d3's `isorings`: marching squares stitched into rings, each passed to
-/// `callback` once closed.
+/// `callback` once closed; false once `budget` runs out of segments.
 fn isorings(
   values : FixedArray[Double],
   dx : Int32,
   dy : Int32,
   value : Double,
+  budget : Budget,
   callback : (Array[(Double, Double)]) -> Unit,
-) -> Unit {
+) -> Bool {
   let by_start : Map[Int64, Fragment] = Map([])
   let by_end : Map[Int64, Fragment] = Map([])
   let mut x = -1
@@ -138,6 +165,7 @@ fn isorings(
 
   fn stitch(c : Int32) {
     let line = cases[c]
+    budget.segments += (line.length() / 4).to_int64()
     for l = 0; l < line.length(); l = l + 4 {
       let start = (line[l] + x.to_double(), line[l + 1] + y.to_double())
       let end = (line[l + 2] + x.to_double(), line[l + 3] + y.to_double())
@@ -210,9 +238,11 @@ fn isorings(
     x += 1
   }
   stitch(t1)
-  // The rows between.
   y += 1
   while y < dy - 1 {
+    if budget.segments > budget.max_segments {
+      return false
+    }
     x = -1
     t1 = above(values, y * dx + dx, value)
     let mut t2 = above(values, y * dx, value)
@@ -241,6 +271,7 @@ fn isorings(
     x += 1
   }
   stitch(t2 << 3)
+  budget.segments <= budget.max_segments
 }
 
 ///|
@@ -267,16 +298,11 @@ fn sign(x : Double) -> Double {
 }
 
 ///|
-fn finite(x : Double) -> Bool {
-  !x.is_nan() && !x.is_inf()
-}
-
-///|
 /// d3's `smooth1`: where between two samples the threshold lies.
 fn smooth1(x : Double, v0 : Double, v1 : Double, value : Double) -> Double {
   let a = value - v0
   let b = v1 - v0
-  let d = if finite(a) || finite(b) { a / b } else { sign(a) / sign(b) }
+  let d = if a.is_finite() || b.is_finite() { a / b } else { sign(a) / sign(b) }
   if d.is_nan() {
     x
   } else {
@@ -327,8 +353,10 @@ fn area(ring : Array[(Double, Double)]) -> Double {
 fn contains(
   ring : Array[(Double, Double)],
   hole : Array[(Double, Double)],
+  budget : Budget,
 ) -> Int32 {
   for p in hole {
+    budget.tests += ring.length().to_int64()
     let c = ring_contains(ring, p)
     if c != 0 {
       return c
@@ -378,17 +406,19 @@ fn segment_contains(
 
 ///|
 /// d3's `contour(values, value)`: exterior rings (positive area) as polygons,
-/// each other ring a hole of the first polygon not reporting it outside.
+/// each other ring a hole of the first polygon not reporting it outside. None
+/// once `budget` runs out.
 fn contour(
   values : FixedArray[Double],
   dx : Int32,
   dy : Int32,
   value : Double,
   smooth : Bool,
-) -> Array[Array[Array[(Double, Double)]]] {
+  budget : Budget,
+) -> Array[Array[Array[(Double, Double)]]]? {
   let polygons : Array[Array[Array[(Double, Double)]]] = []
   let holes = []
-  isorings(values, dx, dy, value, ring => {
+  let complete = isorings(values, dx, dy, value, budget, ring => {
     if smooth {
       smooth_ring(ring, values, dx, dy, value)
     }
@@ -398,15 +428,40 @@ fn contour(
       holes.push(ring)
     }
   })
+  guard complete else { return None }
   for hole in holes {
     for polygon in polygons {
-      if contains(polygon[0], hole) != -1 {
+      let inside = contains(polygon[0], hole, budget) != -1
+      if budget.tests > budget.max_tests {
+        return None
+      }
+      if inside {
         polygon.push(hole)
         break
       }
     }
   }
-  polygons
+  Some(polygons)
+}
+
+///|
+/// `contour` at each of `levels`, or None once one gives None.
+fn contour_levels(
+  values : FixedArray[Double],
+  dx : Int32,
+  dy : Int32,
+  levels : Array[Double],
+  smooth : Bool,
+  budget~ : Budget = Budget::new(),
+) -> Array[Array[Array[Array[(Double, Double)]]]]? {
+  let out = Array(capacity=levels.length())
+  for level in levels {
+    guard contour(values, dx, dy, level, smooth, budget) is Some(c) else {
+      return None
+    }
+    out.push(c)
+  }
+  Some(out)
 }
 
 ///|
@@ -442,10 +497,8 @@ fn work_ok(width : Int32, height : Int32, thresholds : Int32) -> Bool {
 
 ///|
 /// d3-contour's `contours().size([width, height]).smooth(smooth)
-/// .thresholds(thresholds)(values)`: a contour per threshold in ascending
-/// order, over `values` row by row (missing and NaN values are below every
-/// threshold). None where d3 throws (a negative size, a NaN threshold) and
-/// past `MAX_CONTOUR_CELLS`, `MAX_THRESHOLDS` and `MAX_CONTOUR_WORK`.
+/// .thresholds(thresholds)(values)`, ascending, over `values` row by row (NaN
+/// below every threshold). None where d3 throws and past the `MAX_CONTOUR_*` caps.
 pub fn contours(
   values : FixedArray[Double],
   width : Int32,
@@ -457,10 +510,8 @@ pub fn contours(
     sorted(thresholds) is Some(tz) else {
     return None
   }
-  Some(
-    tz.map(value => {
-      value,
-      coordinates: contour(values, width, height, value, smooth),
-    }),
-  )
+  guard contour_levels(values, width, height, tz, smooth) is Some(cs) else {
+    return None
+  }
+  Some(tz.mapi((i, value) => { value, coordinates: cs[i], }))
 }
