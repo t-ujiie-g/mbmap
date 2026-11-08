@@ -54,27 +54,28 @@ export function createAnalysis(map, beforePick = () => {}) {
     data[id] = fc;
     map.getSource(id)?.setData(fc);
   };
-  // A new style drops what the tab added: put it back, under the places.
+  // A new style drops what the tab added: put it back, under the places and the radius ring (ring.js).
   const keep = () => {
     if (!map.getStyle()) return;
-    const below = map.getLayer("places") ? "places" : undefined;
+    // Asked at each layer: adding one fires styledata, which may bring the ring back meanwhile.
+    const below = () => ["radius-ring", "places"].find((id) => map.getLayer(id));
     for (const id of Object.keys(data)) if (!map.getSource(id)) map.addSource(id, { type: "geojson", data: data[id] });
     if (cellPaint && !map.getLayer("analysis-cells")) {
-      map.addLayer({ id: "analysis-cells", type: "fill", source: "analysis-cells", paint: { "fill-color": cellPaint, "fill-opacity": 0.6 } }, below);
-      map.addLayer({ id: "analysis-cells-line", type: "line", source: "analysis-cells", paint: { "line-color": "#7a2e14", "line-width": 1 } }, below);
+      map.addLayer({ id: "analysis-cells", type: "fill", source: "analysis-cells", paint: { "fill-color": cellPaint, "fill-opacity": 0.6 } }, below());
+      map.addLayer({ id: "analysis-cells-line", type: "line", source: "analysis-cells", paint: { "line-color": "#7a2e14", "line-width": 1 } }, below());
     }
     if (viewshed && !map.getSource("analysis-viewshed")) {
       const [w, s, e, n] = viewshed.bounds;
       map.addSource("analysis-viewshed", { type: "canvas", canvas, coordinates: [[w, n], [e, n], [e, s], [w, s]], animate: false });
-      map.addLayer({ id: "analysis-viewshed", type: "raster", source: "analysis-viewshed", paint: { "raster-opacity": 0.85 } }, below);
+      map.addLayer({ id: "analysis-viewshed", type: "raster", source: "analysis-viewshed", paint: { "raster-opacity": 0.85 } }, below());
     }
     if (!map.getLayer("analysis-route")) {
-      map.addLayer({ id: "analysis-route", type: "line", source: "analysis-route", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": "#1f6feb", "line-width": 5, "line-opacity": 0.85 } }, below);
-      map.addLayer({ id: "analysis-route-end", type: "circle", source: "analysis-route", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 6, "circle-color": "#1f6feb", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } }, below);
+      map.addLayer({ id: "analysis-route", type: "line", source: "analysis-route", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": "#1f6feb", "line-width": 5, "line-opacity": 0.85 } }, below());
+      map.addLayer({ id: "analysis-route-end", type: "circle", source: "analysis-route", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 6, "circle-color": "#1f6feb", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } }, below());
     }
     if (!map.getLayer("analysis-sight")) {
-      map.addLayer({ id: "analysis-sight", type: "line", source: "analysis-sight", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": ["case", ["get", "visible"], "#2da44e", "#cf222e"], "line-width": 3, "line-dasharray": [2, 1] } }, below);
-      map.addLayer({ id: "analysis-sight-point", type: "circle", source: "analysis-sight", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": ["case", ["get", "blocked"], "#cf222e", "#2da44e"], "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } }, below);
+      map.addLayer({ id: "analysis-sight", type: "line", source: "analysis-sight", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": ["case", ["get", "visible"], "#2da44e", "#cf222e"], "line-width": 3, "line-dasharray": [2, 1] } }, below());
+      map.addLayer({ id: "analysis-sight-point", type: "circle", source: "analysis-sight", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": ["case", ["get", "blocked"], "#cf222e", "#2da44e"], "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } }, below());
     }
   };
   map.on("styledata", keep);
