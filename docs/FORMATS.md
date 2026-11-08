@@ -564,8 +564,9 @@ Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
 ## Model worker messages (`model_worker/js/worker.mjs`)
 
-In: `{type: "init", wasm}` (3d.wasm, instantiated on the first load), then `{type: "call", id, op:
-"load", url}`: the glTF 2.0 model at `url` (.glb, or .gltf with its buffers and images fetched
+In: `{type: "init", wasm, proj?, prj?}` (3d.wasm, instantiated on the first load; `proj` the URL of
+proj.wasm, instantiated with `{ Math }`, and `prj` of prjwkt.js, each loaded on the first point cloud
+that needs it), then `{type: "call", id, op: "load", url}`: the glTF 2.0 model at `url` (.glb, or .gltf with its buffers and images fetched
 relative to it; http, https, blob and data URLs, without credentials), read by
 `npm/src/model/gltf.ts` with meshopt-compressed buffer views decoded by the wasm's
 `meshopt_decode(count, size, mode, filter)` (the input the compressed bytes; modes ATTRIBUTES,
@@ -579,6 +580,23 @@ i3dm's `matrices`, 16 f64 per instance in tile coordinates, and `batchIds`) and 
 EXT_structural_metadata with copies of only the buffer views its property tables use). Feature ids
 follow the 3D Metadata specification: variable-length array offsets are element indices, 64-bit
 integers are bigints.
+
+`{type: "call", id, op: "las", url, maxPoints, crs?}` reads an uncompressed LAS 1.0 to 1.4 point cloud
+(`npm/src/model/las.ts` `readLas`; LAZ refused; fetched without credentials, at most `MAX_LAS_BYTES`):
+`maxPoints` a positive integer up to `MAX_LAS_POINTS` (more points in the file keep every k-th, k =
+ceil(count / maxPoints)), `crs` an EPSG code or a "CRS definition" (the facade's `crsArg` turns a PROJ
+string into one) overriding the file's (its GeoTIFF keys' EPSG code, or its WKT's: the top-level
+authority of the horizontal CRS, else the WKT parsed by prjwkt.js). x and y go to longitude and
+latitude through proj.wasm's `transform_coords` (`data_worker/js/crs.mjs` `transformPairs`, at most
+2^22 pairs per call; skipped for EPSG:4326 and 4979); z passes as is (meters only when the file's
+are). It answers `{center: [lng, lat, h], positions, colors, intensity, classification, count, kept,
+bounds: [west, south, minH, east, north, maxH]}`: `center` the middle of `bounds` (the kept points',
+in degrees and the file's heights), `positions` a Float32Array of east, north, up meters per kept point
+from `center` through the WGS 84 east-north-up frame there (`npm/src/tiles/geo.ts`, in f64, then
+rounded), `colors` a Uint8Array of r, g, b per point (16-bit LAS colors divided by 256 unless none is
+over 255) or null for point formats without colors, `intensity` a Uint16Array, `classification` a
+Uint8Array (the 5-bit class of formats 0 to 5, the byte of 6 to 10), `count` the points in the file;
+the typed arrays transferred. A file without a CRS and no `crs` is an error.
 
 Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
 image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
