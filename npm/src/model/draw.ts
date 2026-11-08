@@ -16,6 +16,7 @@ layout(location = 1) in vec3 a_normal;
 layout(location = 2) in vec2 a_uv0;
 layout(location = 3) in vec2 a_uv1;
 layout(location = 4) in vec4 a_color;
+layout(location = 5) in float a_feature;
 uniform mat4 u_model;
 uniform mat4 u_flat;
 uniform mat4 u_globe;
@@ -27,8 +28,10 @@ out vec3 v_enu;
 out vec3 v_normal;
 out vec2 v_uv;
 out vec4 v_color;
+flat out float v_feature;
 void main() {
   vec4 p = u_model * vec4(a_pos, 1.0);
+  v_feature = a_feature;
   v_enu = p.xyz;
   v_normal = u_normal * a_normal;
   v_uv = (u_uv * vec3(u_uv_set == 1 ? a_uv1 : a_uv0, 1.0)).xy;
@@ -43,6 +46,7 @@ in vec3 v_enu;
 in vec3 v_normal;
 in vec2 v_uv;
 in vec4 v_color;
+flat in float v_feature;
 uniform vec4 u_color;
 uniform sampler2D u_image;
 uniform bool u_textured;
@@ -50,8 +54,15 @@ uniform int u_shading;
 uniform float u_cutoff;
 uniform float u_opacity;
 uniform vec3 u_light;
+uniform vec2 u_pick;
+uniform bool u_picking;
 out vec4 o;
 void main() {
+  if (u_picking) {
+    float f = clamp(floor(v_feature + 0.5), 0.0, 65535.0);
+    o = vec4(u_pick, floor(f / 256.0) / 255.0, mod(f, 256.0) / 255.0);
+    return;
+  }
   vec4 c = u_color * v_color;
   if (u_textured) c *= texture(u_image, v_uv);
   if (u_cutoff >= 0.0) { if (c.a < u_cutoff) discard; c.a = 1.0; }
@@ -62,7 +73,7 @@ void main() {
   o = vec4(c.rgb * lit * a, a);
 }`;
 
-const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light"] as const;
+const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking"] as const;
 type Uniforms = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
 /** A primitive on the GPU: its vertex array, how to draw it, and what it is drawn with. */
@@ -77,8 +88,9 @@ export interface Mesh {
   shading: number;
 }
 
-const ATTRIBUTE_LOCATIONS: Record<string, number> = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, TEXCOORD_1: 3, COLOR_0: 4 };
-const DEFAULTS: Record<number, number[]> = { 1: [0, 0, 1, 0], 2: [0, 0, 0, 0], 3: [0, 0, 0, 0], 4: [1, 1, 1, 1] };
+/** Where each attribute goes; a feature's id (`_BATCHID` in b3dm, EXT_mesh_features' `_FEATURE_ID_0`) at 5, for picking. */
+const ATTRIBUTE_LOCATIONS: Record<string, number> = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, TEXCOORD_1: 3, COLOR_0: 4, _BATCHID: 5, _FEATURE_ID_0: 5 };
+const DEFAULTS: Record<number, number[]> = { 1: [0, 0, 1, 0], 2: [0, 0, 0, 0], 3: [0, 0, 0, 0], 4: [1, 1, 1, 1], 5: [0, 0, 0, 0] };
 const IDENTITY3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 /** A model on the GPU: its meshes and textures. */
@@ -114,7 +126,7 @@ export function uploadModel(gl: WebGL2RenderingContext, model: DrawableModel, ax
     }
     for (const [name, at] of Object.entries(ATTRIBUTE_LOCATIONS)) {
       const v = DEFAULTS[at];
-      if (!v || p.attributes[name]) continue;
+      if (!v || Object.keys(p.attributes).some((n) => ATTRIBUTE_LOCATIONS[n] === at) || (at === 5 && name !== "_BATCHID")) continue;
       gl.disableVertexAttribArray(at);
       gl.vertexAttrib4f(at, v[0], v[1], v[2], v[3]);
     }
@@ -168,15 +180,21 @@ export class ModelProgram {
     this.#u = Object.fromEntries(UNIFORMS.map((u) => [u, gl.getUniformLocation(p, u)])) as Uniforms;
   }
 
+  /** While picking, what the next draws write besides their feature id: `id` (0 to 65535) in two bytes. */
+  setPickId(gl: WebGL2RenderingContext, id: number): void {
+    gl.uniform2f(this.#u.u_pick, Math.floor(id / 256) / 255, (id % 256) / 255);
+  }
+
   delete(gl: WebGL2RenderingContext): void {
     gl.deleteProgram(this.#program);
   }
 
-  /** Starts drawing with the globe's `transition` (0: Web Mercator only). */
-  begin(gl: WebGL2RenderingContext, transition: number): void {
+  /** Starts drawing with the globe's `transition` (0: Web Mercator only), colors or, `picking`, ids. */
+  begin(gl: WebGL2RenderingContext, transition: number, picking = false): void {
     const u = this.#u;
     gl.useProgram(this.#program);
     gl.uniform1f(u.u_t, transition);
+    gl.uniform1i(u.u_picking, picking ? 1 : 0);
     gl.uniform3fv(u.u_light, LIGHT);
     gl.uniform1i(u.u_image, 0);
     gl.activeTexture(gl.TEXTURE0);
@@ -184,10 +202,13 @@ export class ModelProgram {
 
   /**
    * Draws `model`'s meshes of `pass` (0: opaque, 1: blended, or all of them with `translucent`): `place`
-   * (meters to meters) goes before each mesh's matrix, then `flat` and `globe` take meters to clip space.
+   * (meters to meters) goes before each mesh's matrix, then `flat` and `globe` take meters to clip space;
+   * `feature` is the id meshes without an id attribute are picked with.
    */
-  draw(gl: WebGL2RenderingContext, model: GpuModel, place: ArrayLike<number>, flat: ArrayLike<number>, globe: ArrayLike<number> | null, opacity: number, translucent: boolean, pass: number): void {
+  draw(gl: WebGL2RenderingContext, model: GpuModel, place: ArrayLike<number>, flat: ArrayLike<number>, globe: ArrayLike<number> | null, opacity: number, translucent: boolean, pass: number, feature?: number): void {
     const u = this.#u;
+    // An instance's feature id, for meshes with no id attribute of their own.
+    gl.vertexAttrib4f(5, feature ?? 0, 0, 0, 0);
     gl.uniformMatrix4fv(u.u_flat, false, new Float32Array(flat));
     if (globe) gl.uniformMatrix4fv(u.u_globe, false, new Float32Array(globe));
     gl.uniform1f(u.u_opacity, opacity);

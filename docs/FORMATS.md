@@ -573,11 +573,15 @@ TRIANGLES, INDICES as 0 to 2, filters NONE, OCTAHEDRAL, QUATERNION, EXPONENTIAL,
 returns the output length, -1 for malformed data, -2 without memory).
 
 `{type: "call", id, op: "tile", url}` reads a 3D tile's content the same way (`npm/src/tiles/content.ts`:
-a b3dm's feature table, batch table and glb, or a glTF).
+b3dm, i3dm, cmpt or glTF) and answers `{parts}`: one per inner tile of a cmpt, else one, each a model with
+`rtc`, `batchLength`, `batchTable` (JSON), `batchBinary` (its binary body, copied), `instances` (an
+i3dm's `matrices`, 16 f64 per instance in tile coordinates, and `batchIds`) and `metadata` (a glTF's
+EXT_structural_metadata with copies of only the buffer views its property tables use). Feature ids
+follow the 3D Metadata specification: variable-length array offsets are element indices, 64-bit
+integers are bigints.
 
 Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
-image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred; a tile's also with
-`rtc`, its RTC_CENTER or CESIUM_RTC center or null, and `batchLength`), or
+image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
 `{type: "result", id, error}`.
 
 ## Draco output (`draco/output.mbt`, written by `model_worker`'s `draco_decode`)

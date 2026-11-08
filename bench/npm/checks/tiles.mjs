@@ -1,13 +1,22 @@
 // mbmap/3d's tiles layer on bench/npm/pages/tiles: the synthetic b3dm tileset (bench/tiles/synthetic.mjs)
-// is refined into its four tiles up close, coarsened to its root from afar, and drawn on the globe;
-// PLATEAU's Draco-compressed buildings around Tokyo Station are refined and drawn.
+// (a cmpt of b3dm and instanced i3dm trees among them) is refined into its four tiles up close, coarsened to its root from afar, and drawn on the globe;
+// PLATEAU's Draco-compressed buildings around Tokyo Station are refined and drawn; a click picks a
+// feature with its batch table's properties.
 import { commonestShare } from "./pixels.mjs";
 
 export async function tilesChecks(page) {
   await page.evaluate(() => window.__layer.ready);
   await page.evaluate(() => window.__settled());
   const close = await page.evaluate(() => window.__layer.selected.map((t) => t.path).sort());
+  // A block under the screen's center, with its batch table's height; nothing in the sky.
+  const picked = await page.evaluate(async () => [await window.__layer.queryFeature({ x: 400, y: 300 }), await window.__layer.queryFeature({ x: 5, y: 5 })]);
   const closeBlank = await commonestShare(page);
+  // The first quadrant is a cmpt with a row of instanced trees (i3dm); one is under (361, 312) here.
+  const tree = await page.evaluate(async () => {
+    window.__map.jumpTo({ center: [139.7652, 35.6774], zoom: 18, pitch: 55, bearing: 0 });
+    await window.__settled();
+    return window.__layer.queryFeature({ x: 361, y: 312 });
+  });
   await page.evaluate(async () => {
     window.__map.jumpTo({ zoom: 12, pitch: 0 });
     await window.__settled();
@@ -34,13 +43,16 @@ export async function tilesChecks(page) {
     await layer.ready;
     map.jumpTo({ center: [139.7671, 35.6812], zoom: 17, pitch: 50, bearing: -20 });
     await window.__settled();
-    return { tiles: layer.selected.length, ready: layer.selected.every((t) => t.state === "ready") };
+    const hit = await layer.queryFeature({ x: 400, y: 300 });
+    return { tiles: layer.selected.length, ready: layer.selected.every((t) => t.state === "ready"), city: hit?.properties.city_code, gml: typeof hit?.properties.gml_id };
   });
   const plateauBlank = await commonestShare(page);
   const ok =
     JSON.stringify(close) === JSON.stringify(["r/0", "r/1", "r/2", "r/3"]) && closeBlank < 0.8 &&
+    close.includes(picked[0]?.tile) && typeof picked[0]?.properties.height === "number" && picked[1] === null &&
+    tree?.tile === "r/0" && tree.properties.kind === "tree" &&
     JSON.stringify(far) === JSON.stringify(["r"]) &&
     globe.length > 0 && globeBlank < 0.99 &&
-    (plateau.skipped !== undefined || (plateau.tiles >= 10 && plateau.ready && plateauBlank < 0.6));
-  return [ok, { close, closeBlank, far, globe, globeBlank, plateau, plateauBlank }];
+    (plateau.skipped !== undefined || (plateau.tiles >= 10 && plateau.ready && plateauBlank < 0.6 && plateau.city === "13101" && plateau.gml === "string"));
+  return [ok, { close, picked, tree, closeBlank, far, globe, globeBlank, plateau, plateauBlank }];
 }

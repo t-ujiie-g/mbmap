@@ -86,7 +86,9 @@
     "geometry:node": "npm run build:moon && node clipper/node.mjs",
     "model:golden": "node model/golden.mjs",
     "tiles:golden": "node tiles/golden.mjs",
-    "tiles:synthetic": "node tiles/synthetic.mjs"
+    "tiles:properties": "node tiles/properties-golden.mjs",
+    "tiles:synthetic": "node tiles/synthetic.mjs",
+    "tiles:contents": "node tiles/contents-golden.mjs"
   },
   "devDependencies": {
     "@camptocamp/ogc-client": "2.0.2",

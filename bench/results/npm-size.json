@@ -181,17 +181,17 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 4581,
+      "bytes": 4891,
       "budget": 10000
     },
     {
       "name": "3D Tiles (loaded by mbmap/3d with the first tilesLayer)",
-      "bytes": 6886,
+      "bytes": 9868,
       "budget": 10000
     },
     {
       "name": "3d worker",
-      "bytes": 26731,
+      "bytes": 29861,
       "budget": 45000
     },
     {

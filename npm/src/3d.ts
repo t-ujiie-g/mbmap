@@ -183,6 +183,13 @@ export interface TilesLayerOptions extends ModelOptions {
   maximumLoadedTiles?: number;
 }
 
+/** A feature of a 3D tile: its tile's `path`, its `id` in the tile and its `properties`. */
+export interface TileFeature {
+  tile: string;
+  id: number;
+  properties: Record<string, unknown>;
+}
+
 /** A custom layer streaming a 3D Tiles tileset (`tilesLayer`); its work is in `3d-tiles.js`, loaded with the first. */
 export class TilesLayer implements CustomLayerInterface {
   readonly id: string;
@@ -223,6 +230,17 @@ export class TilesLayer implements CustomLayerInterface {
   /** Whether the last frame asked for no content and none is loading. */
   get idle(): boolean {
     return this.#engine?.idle ?? false;
+  }
+
+  /**
+   * The feature drawn at CSS pixel `point` of the map's canvas, after the next frame: its tile's `path`,
+   * its `id` (b3dm batch id or EXT_mesh_features feature id) and `properties`, or null.
+   */
+  async queryFeature(point: { x: number; y: number }): Promise<TileFeature | null> {
+    const hit = (await this.#engine?.pick(point.x, point.y)) ?? null;
+    if (!hit) return null;
+    const properties = hit.part.properties(hit.feature);
+    return { tile: hit.tile.path, id: hit.feature, properties };
   }
 
   onAdd(map: unknown, gl: WebGL2RenderingContext): void {
