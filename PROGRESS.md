@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：VISION §8 の Phase 20（範囲と段階を確かめてから）。Phase 19 の後のリファクタリング・セキュリティチェック（#135）と速さの比較（下の節「Phase 19 の速さの比較」）は済んだ。振る舞いの候補 3 つは Phase 20 の前に扱いを決める（「Phase 19 の後の点検」の残り）。
+- **次**：Phase 20 の前に、Phase 19 の速さの改善（下の節「Phase 19 の速さの比較」）と、GeoJSON ソースの `updateData`・道路網の `snap`（下の「Phase 19 の後の点検」の残り）を行う（2026-11-08 ユーザー判断）。その後は VISION §8 の Phase 20（範囲と段階を確かめてから）。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
 - **Mac で回すもの**（残り。Phase 19 の分は下の節）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
@@ -47,7 +47,10 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 - **依存**：`npm audit` は `npm/`・`bench/`・`examples/react/` とも 0 件、Dependabot の警告 0 件。ゴールデンのための依存は MIT・ISC・BSD・Unlicense・EDL/EPL で、NOTICE にある。Mac の `bench/node_modules` が古かった（jsts 2.7.1）ので `npm ci` し直した。
 - **大きさ**：解析ワーカー 29.9 → 29.7KB、relate.wasm 26.5 → 26.8KB、surface.wasm 28.1 → 28.7KB（線分の予算）、`mbmap/analysis` 7.7 → 7.8KB、表示ワーカー 80.5KB、表示（メイン）133.7KB。
 - **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 341、`npm --prefix bench test`、ゴールデン（viewshed・relate・shapes・surface・route・analysis・classify・fields・expression・geojson・cluster・style・labels・query・color）すべて同じ、`npm:pack` 通過。
-- **残り**：振る舞いの候補（フィールド演算が編集のたびにデータ全体を `getData`/`setData` する、タイルの境の道路のつなぎ、自然分類の最大の級が 1 つの値だけになる）は Phase 20 の前に扱いを決める。
+- **残り**（振る舞いの候補の扱い、2026-11-08 ユーザー判断）：
+  - フィールド演算が編集のたびにデータ全体を `getData`/`setData` する：GeoJSON ソースに MapLibre の `updateData(diff)` を足す。@maplibre/geojson-vt 6.3.0 の更新できる索引（`difference.ts`、`invalidateTiles`、`updateIndex`）まで移植し、更新のあとの全タイルをゴールデンで比べる。段階は、主スレッドの差分と変わったタイルだけの読み直し、ワーカーの増分、フィールド演算の切り替えの 3 つ。予算は GeoJSON のワーカー 30 → 34KB、`clusterProperties` のモジュール 50 → 54KB。
+  - タイルの境の道路のつなぎ：`querySourceFeatures` の地物に MapLibre と同じ `tile: {z, x, y}` を付け、example は線を各タイルの範囲で切ってから網にする（ズームが混ざれば最も深いもの）。`network({ snap })`（メートル、既定は使わない）で、線の端から snap 以内の別の線の途中を分けてつなぐ。route.wasm の予算は 15 → 17KB。
+  - 自然分類の最大の級が 1 つの値だけになる：いまのまま（外れ値を級にするのは jenks の答え）。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
 
