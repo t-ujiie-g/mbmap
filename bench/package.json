@@ -94,6 +94,7 @@
     "tiles:contents": "node tiles/contents-golden.mjs",
     "i3s:contents": "cd .. && moon build model_worker --release --target wasm-gc && cd bench && node i3s/content-golden.mjs",
     "i3s:synthetic": "node i3s/synthetic.mjs",
+    "i3s:slpk": "node i3s/slpk-golden.mjs",
     "cesium": "npm --prefix ../npm run build && node cesium/run.mjs"
   },
   "devDependencies": {

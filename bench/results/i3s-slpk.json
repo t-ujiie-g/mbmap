@@ -1,0 +1,307 @@
+{
+  "date": "2026-11-08T22:21:50.143Z",
+  "node": "v22.23.4",
+  "layers": {
+    "synthetic": {
+      "resources": 29,
+      "variants": {
+        "stored, hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "hash"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "hash"
+          }
+        },
+        "stored, no hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "directory"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "directory"
+          }
+        },
+        "zip64, hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "hash"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "hash"
+          }
+        },
+        "deflated, no hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "directory"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "directory"
+          }
+        }
+      },
+      "reads (hash table)": {
+        "file": 3734853,
+        "index": "hash",
+        "open": {
+          "requests": 2,
+          "bytes": 611823
+        },
+        "layerAndFirstPage": {
+          "requests": 2,
+          "bytes": 2170
+        },
+        "nodePages": {
+          "count": 1,
+          "requests": 0,
+          "bytes": 0
+        },
+        "node": {
+          "resources": 5,
+          "requests": 5,
+          "bytes": 1898
+        }
+      },
+      "reads (central directory)": {
+        "file": 3254031,
+        "index": "directory",
+        "open": {
+          "requests": 2,
+          "bytes": 1582174
+        },
+        "layerAndFirstPage": {
+          "requests": 2,
+          "bytes": 2298
+        },
+        "nodePages": {
+          "count": 1,
+          "requests": 0,
+          "bytes": 0
+        },
+        "node": {
+          "resources": 5,
+          "requests": 5,
+          "bytes": 2218
+        }
+      }
+    },
+    "i3s-sf": {
+      "resources": 853,
+      "variants": {
+        "stored, hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "hash"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "hash"
+          }
+        },
+        "stored, no hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "directory"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "directory"
+          }
+        },
+        "zip64, hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "hash"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "hash"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "hash"
+          }
+        },
+        "deflated, no hash table": {
+          "bytes": {
+            "mode": "whole",
+            "index": "directory"
+          },
+          "differ": 0,
+          "Blob": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "ranges": {
+            "mode": "range",
+            "index": "directory"
+          },
+          "whole": {
+            "mode": "whole",
+            "index": "directory"
+          }
+        }
+      },
+      "reads (hash table)": {
+        "file": 11784024,
+        "index": "hash",
+        "open": {
+          "requests": 2,
+          "bytes": 631599
+        },
+        "layerAndFirstPage": {
+          "requests": 2,
+          "bytes": 10628
+        },
+        "nodePages": {
+          "count": 780,
+          "requests": 779,
+          "bytes": 7026318
+        },
+        "node": {
+          "resources": 4,
+          "requests": 4,
+          "bytes": 2496
+        }
+      },
+      "reads (central directory)": {
+        "file": 11283426,
+        "index": "directory",
+        "open": {
+          "requests": 2,
+          "bytes": 1637798
+        },
+        "layerAndFirstPage": {
+          "requests": 2,
+          "bytes": 10756
+        },
+        "nodePages": {
+          "count": 780,
+          "requests": 779,
+          "bytes": 7076174
+        },
+        "node": {
+          "resources": 4,
+          "requests": 4,
+          "bytes": 2752
+        }
+      }
+    }
+  },
+  "hostile": [
+    {
+      "what": "truncated",
+      "refused": true
+    },
+    {
+      "what": "half a file",
+      "refused": true
+    },
+    {
+      "what": "no end record",
+      "refused": true
+    },
+    {
+      "what": "directory past the end",
+      "refused": true
+    },
+    {
+      "what": "absurd entry count",
+      "refused": true
+    },
+    {
+      "what": "directory record of another signature",
+      "refused": true
+    },
+    {
+      "what": "entries overlapping (a zip bomb's shared data)",
+      "refused": true
+    },
+    {
+      "what": "entry offset past the directory",
+      "refused": true
+    },
+    {
+      "what": "entry sizes past the cap",
+      "refused": true
+    },
+    {
+      "what": "local header of another name",
+      "refused": true
+    },
+    {
+      "what": "hash table offsets past the directory",
+      "refused": true
+    },
+    {
+      "what": "gzip bomb entry",
+      "refused": true
+    }
+  ],
+  "differ": 0
+}
