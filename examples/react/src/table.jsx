@@ -2,7 +2,7 @@
 // examples draw with the same shared helpers.
 import { useEffect, useState } from "react";
 import { cellText } from "mbmap/ui";
-import { FIELD_ACTIONS, FIELD_DEFAULTS, chooseRow, createPlacesFields, createPlacesTable, onTableKey, runField, sortOf, tableCounts, tableHeadings } from "../../shared/table.js";
+import { FIELD_ACTIONS, FIELD_DEFAULTS, FIELD_PLACEHOLDERS, chooseRow, createPlacesFields, createPlacesTable, onTableKey, runField, sortOf, tableCounts, tableHeadings } from "../../shared/table.js";
 import { useController } from "./use-controller.js";
 
 /** The table, its controller made once per map. */
@@ -15,8 +15,6 @@ export function AttributeTable({ map }) {
   }, [map]);
   return table && <Table table={table.table} fields={table.fields} />;
 }
-
-const PLACEHOLDERS = { name: "列名", expression: "式（JSON）", to: "新しい名前" };
 
 function Table({ table, fields }) {
   const s = useController(table);
@@ -55,7 +53,7 @@ function Table({ table, fields }) {
         <span className="table-count">{c.count}</span>
       </div>
       <div className="field-form">
-        {Object.keys(FIELD_DEFAULTS).map((k) => <input key={k} id={`field-${k}`} placeholder={PLACEHOLDERS[k]} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />)}
+        {Object.keys(FIELD_DEFAULTS).map((k) => <input key={k} id={`field-${k}`} placeholder={FIELD_PLACEHOLDERS[k]} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />)}
         <div className="chips">
           {FIELD_ACTIONS.map(([action, label]) => <button key={action} data-field={action} onClick={async () => setStatus(await runField(fields, action, form))}>{label}</button>)}
         </div>

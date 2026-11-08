@@ -25,11 +25,14 @@ export function createPlacesFields(map, table) {
 /** The columns shown as [key, heading]: the known ones by name, the others by their key. */
 export function tableHeadings(s) {
   const titles = Object.fromEntries(TABLE_COLUMNS);
-  return s.columns.map((k) => [k, titles[k] ?? k]);
+  return s.columns.map((k) => [k, Object.hasOwn(titles, k) ? titles[k] : k]);
 }
 
 /** The field form's starting values: a column name, its expression (JSON), the name to rename it to. */
 export const FIELD_DEFAULTS = { name: "label", expression: '["concat", ["get", "name"], "（", ["get", "kind"], "）"]', to: "名称" };
+
+/** The field form's placeholders, by the keys of FIELD_DEFAULTS. */
+export const FIELD_PLACEHOLDERS = { name: "列名", expression: "式（JSON）", to: "新しい名前" };
 
 /** The form's operations as [action, label]. */
 export const FIELD_ACTIONS = [["calculate", "計算"], ["rename", "名前を変える"], ["remove", "削除"]];
@@ -104,7 +107,7 @@ export function mountTable(map) {
   pager.append(prev, page, next, count);
   const form = el("div", { className: "field-form" });
   const inputs = Object.fromEntries(
-    Object.entries(FIELD_DEFAULTS).map(([k, v]) => [k, el("input", { id: `field-${k}`, value: v, placeholder: { name: "列名", expression: "式（JSON）", to: "新しい名前" }[k] })]),
+    Object.entries(FIELD_DEFAULTS).map(([k, v]) => [k, el("input", { id: `field-${k}`, value: v, placeholder: FIELD_PLACEHOLDERS[k] })]),
   );
   const status = el("p", { id: "field-status", className: "hint" });
   const buttons = el("div", { className: "chips" });
