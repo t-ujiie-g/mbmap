@@ -562,6 +562,20 @@ with `op` and its arguments, positions as `[lng, lat]`:
 
 Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
+## Model worker messages (`model_worker/js/worker.mjs`)
+
+In: `{type: "init", wasm}` (3d.wasm, instantiated on the first load), then `{type: "call", id, op:
+"load", url}`: the glTF 2.0 model at `url` (.glb, or .gltf with its buffers and images fetched
+relative to it; http, https, blob and data URLs, without credentials), read by
+`npm/src/model/gltf.ts` with meshopt-compressed buffer views decoded by the wasm's
+`meshopt_decode(count, size, mode, filter)` (the input the compressed bytes; modes ATTRIBUTES,
+TRIANGLES, INDICES as 0 to 2, filters NONE, OCTAHEDRAL, QUATERNION, EXPONENTIAL, COLOR as 0 to 4;
+returns the output length, -1 for malformed data, -2 without memory).
+
+Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
+image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
+`{type: "result", id, error}`.
+
 ## Services worker messages (`services_worker/js/worker.mjs`)
 
 In: `{type: "init", wasm}` (instantiated with `host.number`, `wasmio/js/host.mjs`), then

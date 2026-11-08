@@ -81,7 +81,8 @@
     "color:golden": "cd .. && moon build bench/expr --release --target js && cd bench && node lib/run-bundled.mjs bench/style/colors.mjs",
     "draw:golden": "npm --prefix ../npm run build && node draw/golden.mjs",
     "draw:many": "npm --prefix ../npm run build && node draw/many-run.mjs --shapes=2000",
-    "geometry:node": "npm run build:moon && node clipper/node.mjs"
+    "geometry:node": "npm run build:moon && node clipper/node.mjs",
+    "model:golden": "node model/golden.mjs"
   },
   "devDependencies": {
     "@camptocamp/ogc-client": "2.0.2",

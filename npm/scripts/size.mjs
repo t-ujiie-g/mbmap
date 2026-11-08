@@ -49,6 +49,8 @@ const ENTRIES = [
   { name: "coordinate systems (loaded by the analysis and data workers on first use)", files: ["proj.wasm"], budget: 25_000, references: [] },
   { name: "mbmap/geodesic", files: ["geodesic.js"], budget: 2_000, references: ["./geodesic-worker.js", "./geodesic.wasm"] },
   { name: "geodesic worker", files: ["geodesic-worker.js", "geodesic.wasm"], budget: 15_000, references: [] },
+  { name: "mbmap/3d", files: ["3d.js"], budget: 10_000, references: ["./3d-worker.js", "./3d.wasm"] },
+  { name: "3d worker", files: ["3d-worker.js", "3d.wasm"], budget: 45_000, references: [] },
   { name: "mbmap/data", files: ["data.js"], budget: 6_000, references: ["./projstring.js", "./data-worker.js", "./data.wasm", "./proj.wasm", "./prjwkt.js", "./xml.wasm", "./geotiff.wasm"] },
   { name: "data worker", files: ["data-worker.js", "data.wasm"], budget: 41_000, references: ["./data-zip.js", "./data-crs.js", "./data-fgb.js", "./data-geotiff.js", "./data-reproject.js"] },
   { name: "zip archives (loaded by the data worker with the first one)", files: ["data-zip.js"], budget: 2_000, references: [] },

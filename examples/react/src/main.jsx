@@ -10,6 +10,7 @@ import { panelControllers } from "../../shared/panel.js";
 import { hoverPlaces } from "../../shared/pick.js";
 import { DESTINATIONS, PLACES } from "../../shared/places.js";
 import { cameraRows, nearLines } from "../../shared/readout.js";
+import { keepModels } from "../../shared/models.js";
 import { keepRadiusRing } from "../../shared/ring.js";
 import { TABS, VARIANTS } from "../../shared/shell.js";
 import { zoomIntoClusters } from "../../shared/stations.js";
@@ -79,6 +80,7 @@ function App() {
     window.__map = map;
     hoverPlaces(map);
     keepRadiusRing(map);
+    window.__models = keepModels(map);
     zoomIntoClusters(map);
     pinDestinations(map, document.body);
     setMap(map);

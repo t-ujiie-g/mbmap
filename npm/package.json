@@ -39,6 +39,10 @@
       "types": "./dist/geodesic.d.ts",
       "default": "./dist/geodesic.js"
     },
+    "./3d": {
+      "types": "./dist/3d.d.ts",
+      "default": "./dist/3d.js"
+    },
     "./data": {
       "types": "./dist/data.d.ts",
       "default": "./dist/data.js"
@@ -68,6 +72,8 @@
     "./proj.wasm": "./dist/proj.wasm",
     "./geodesic-worker.js": "./dist/geodesic-worker.js",
     "./geodesic.wasm": "./dist/geodesic.wasm",
+    "./3d-worker.js": "./dist/3d-worker.js",
+    "./3d.wasm": "./dist/3d.wasm",
     "./data-worker.js": "./dist/data-worker.js",
     "./data.wasm": "./dist/data.wasm",
     "./data-zip.js": "./dist/data-zip.js",

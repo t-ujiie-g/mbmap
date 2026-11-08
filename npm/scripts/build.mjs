@@ -1,5 +1,5 @@
 // Builds dist/: the facade and the files it loads, `<mb-map>`, the ui, search, draw, services, GeoJSON,
-// analysis, geodesic and data modules, and their workers with their wasm. Usage: node scripts/build.mjs
+// analysis, geodesic, 3d and data modules, and their workers with their wasm. Usage: node scripts/build.mjs
 import { execFileSync } from "node:child_process";
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -25,6 +25,7 @@ const WASM = {
   route_worker: "route.wasm",
   proj_worker: "proj.wasm",
   geodesic_worker: "geodesic.wasm",
+  model_worker: "3d.wasm",
   data_worker: "data.wasm",
   xml_worker: "xml.wasm",
   geotiff_worker: "geotiff.wasm",
@@ -76,6 +77,8 @@ const ENTRIES = [
   ["analysis-viewshed.js", "analysis_worker/js/viewshed.mjs"],
   ["geodesic.js", "npm/src/geodesic.ts"],
   ["geodesic-worker.js", "geodesic_worker/js/worker.mjs"],
+  ["3d.js", "npm/src/3d.ts"],
+  ["3d-worker.js", "model_worker/js/worker.mjs"],
   ["data.js", "npm/src/data.ts", { plugins: [PROJSTRING] }],
   ["data-worker.js", "data_worker/js/worker.mjs", { plugins: [separate(DATA_PARTS)] }],
   ...Object.entries(DATA_PARTS).map(([source, file]) => [file.slice(2), path.join("data_worker/js", source)]),
