@@ -11,7 +11,7 @@ import { buildTree, Traversal, type Tile } from "./tiles/tileset";
 
 /** What the layer lends the engine: the 3D worker's `tile` call, the model upload, a repaint. */
 export interface TilesParts {
-  loadTile(url: string): Promise<LoadedModel & { rtc: [number, number, number] | null }>;
+  loadTile(url: string): Promise<LoadedModel & { rtc: [number, number, number] | null; batchTable: Record<string, unknown> | null }>;
   upload(gl: WebGL2RenderingContext, model: LoadedModel, axis: ArrayLike<number>): GpuModel;
   release(gl: WebGL2RenderingContext, model: GpuModel): void;
   repaint(): void;
@@ -23,8 +23,9 @@ const MAX_LOADS = 6;
 const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
 /** A loaded tile's model on the GPU and where its meters (east, north, up) stand. */
-interface TileModel {
+export interface TileModel {
   gpu: GpuModel;
+  batchTable: Record<string, unknown> | null;
   lng: number;
   lat: number;
   height: number;
@@ -61,6 +62,8 @@ export class TilesEngine {
   #loaded = new Set<Tile>();
   #gl: WebGL2RenderingContext | null = null;
   #generation = 0;
+  #picks: { x: number; y: number; resolve: (hit: { tile: Tile; feature: number } | null) => void }[] = [];
+  #target: { fb: WebGLFramebuffer; color: WebGLRenderbuffer; depth: WebGLRenderbuffer; w: number; h: number } | null = null;
 
   constructor(root: Tile, options: TilesLayerOptions, parts: TilesParts) {
     this.#root = root;
@@ -80,6 +83,8 @@ export class TilesEngine {
   /** Frees every loaded content (the layer was removed). */
   release(gl: WebGL2RenderingContext): void {
     for (const tile of this.#loaded) this.#unload(tile, gl);
+    if (this.#target) this.#freeTarget(gl);
+    for (const p of this.#picks.splice(0)) p.resolve(null);
     this.#gl = null;
     this.#generation++;
   }
@@ -100,23 +105,96 @@ export class TilesEngine {
       if (this.#loading >= MAX_LOADS) break;
       this.#load(tile);
     }
-    const plane = d.clippingPlane;
-    const offset = this.#options.height ?? 0;
     program.begin(gl, t);
     for (const pass of [0, 1]) {
       gl.depthMask(pass === 0);
-      for (const tile of this.#traversal.selected.values()) {
-        const m = tile.content as TileModel | null;
-        if (!m) continue;
-        const sphere = sphereFrame(m.lng, m.lat, m.height + offset);
-        if (t > 0 && sphere[12] * plane[0] + sphere[13] * plane[1] + sphere[14] * plane[2] + plane[3] < 0) continue;
-        const flatMatrix = mul(flat, mercatorFrame(m.lng, m.lat, m.height + offset));
-        const globe = t > 0 ? mul(options.modelViewProjectionMatrix, sphere) : null;
-        program.draw(gl, m.gpu, IDENTITY, flatMatrix, globe, 1, false, pass);
-      }
+      this.#drawTiles(gl, program, options, pass);
     }
     gl.depthMask(true);
+    if (this.#picks.length) this.#pick(gl, program, options);
     this.#evict(gl);
+  }
+
+  /** Draws the selected tiles' meshes of `pass`, each told its place in the list first when picking. */
+  #drawTiles(gl: WebGL2RenderingContext, program: ModelProgram, options: CustomRenderMethodInput, pass: number, picking = false): Tile[] {
+    const d = options.defaultProjectionData;
+    const t = d.projectionTransition;
+    const flat = t > 0 ? d.fallbackMatrix : d.mainMatrix;
+    const plane = d.clippingPlane;
+    const offset = this.#options.height ?? 0;
+    const drawn: Tile[] = [];
+    for (const tile of this.#traversal.selected.values()) {
+      const m = tile.content as TileModel | null;
+      if (!m) continue;
+      const sphere = sphereFrame(m.lng, m.lat, m.height + offset);
+      if (t > 0 && sphere[12] * plane[0] + sphere[13] * plane[1] + sphere[14] * plane[2] + plane[3] < 0) continue;
+      drawn.push(tile);
+      if (picking) program.setPickId(gl, drawn.length);
+      const flatMatrix = mul(flat, mercatorFrame(m.lng, m.lat, m.height + offset));
+      const globe = t > 0 ? mul(options.modelViewProjectionMatrix, sphere) : null;
+      program.draw(gl, m.gpu, IDENTITY, flatMatrix, globe, 1, false, pass);
+    }
+    return drawn;
+  }
+
+  /** Asks which tile and feature are drawn at CSS pixel (`x`, `y`) of the canvas, answered after the next frame. */
+  pick(x: number, y: number): Promise<{ tile: Tile; feature: number } | null> {
+    return new Promise((resolve) => {
+      this.#picks.push({ x, y, resolve });
+      this.#parts.repaint();
+    });
+  }
+
+  /** Draws the tiles' ids (tile in red and green, feature in blue and alpha) offscreen and reads the picked pixels. */
+  #pick(gl: WebGL2RenderingContext, program: ModelProgram, options: CustomRenderMethodInput): void {
+    const [w, h] = [gl.drawingBufferWidth, gl.drawingBufferHeight];
+    if (!this.#target || this.#target.w !== w || this.#target.h !== h) {
+      if (this.#target) this.#freeTarget(gl);
+      const fb = gl.createFramebuffer()!;
+      const color = gl.createRenderbuffer()!;
+      const depth = gl.createRenderbuffer()!;
+      gl.bindRenderbuffer(gl.RENDERBUFFER, color);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, w, h);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, depth);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, color);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
+      this.#target = { fb, color, depth, w, h };
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.#target.fb);
+    gl.viewport(0, 0, w, h);
+    gl.disable(gl.BLEND);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(true);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clearDepth(1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    program.begin(gl, options.defaultProjectionData.projectionTransition, true);
+    let drawn: Tile[] = [];
+    for (const pass of [0, 1]) drawn = this.#drawTiles(gl, program, options, pass, true);
+    const canvas = gl.canvas as HTMLCanvasElement;
+    const ratio = w / (canvas.clientWidth || w);
+    const px = new Uint8Array(4);
+    for (const { x, y, resolve } of this.#picks.splice(0)) {
+      const [cx, cy] = [Math.floor(x * ratio), Math.floor(h - 1 - y * ratio)];
+      if (cx < 0 || cy < 0 || cx >= w || cy >= h) {
+        resolve(null);
+        continue;
+      }
+      gl.readPixels(cx, cy, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const tile = drawn[px[0] * 256 + px[1] - 1];
+      resolve(tile ? { tile, feature: px[2] * 256 + px[3] } : null);
+    }
+  }
+
+  #freeTarget(gl: WebGL2RenderingContext): void {
+    const t = this.#target!;
+    gl.deleteFramebuffer(t.fb);
+    gl.deleteRenderbuffer(t.color);
+    gl.deleteRenderbuffer(t.depth);
+    this.#target = null;
   }
 
   #load(tile: Tile): void {
@@ -156,7 +234,7 @@ export class TilesEngine {
         const center = tile.volume.center;
         const carto = toCartographic(center) ?? [0, 0, 0];
         const axis = multiply(rigidInverse(eastNorthUp(center)), toEcef);
-        tile.content = { gpu: this.#parts.upload(gl, content, axis), lng: carto[0], lat: carto[1], height: carto[2] } satisfies TileModel;
+        tile.content = { gpu: this.#parts.upload(gl, content, axis), lng: carto[0], lat: carto[1], height: carto[2], batchTable: content.batchTable } satisfies TileModel;
         tile.state = "ready";
         this.#loaded.add(tile);
       })

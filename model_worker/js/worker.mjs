@@ -93,7 +93,7 @@ async function tile({ url }) {
   const exports = await instance();
   const content = await readTileContent(await fetchBytes(base), (uri) => fetchBytes(new URL(uri, base)), meshopt(exports), draco(exports));
   const images = await Promise.all(content.model.images.map(bitmap));
-  return { primitives: content.model.primitives, materials: content.model.materials, images, rtc: content.rtc, batchLength: content.batchLength };
+  return { primitives: content.model.primitives, materials: content.model.materials, images, rtc: content.rtc, batchLength: content.batchLength, batchTable: content.batchTable };
 }
 
 const OPS = { load, tile };
