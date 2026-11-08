@@ -8,6 +8,7 @@ import { TilesEngine, type GpuPart, type TileModel, type TileSource, type TilesP
 import { nodeResources, readI3sAttribute, type I3sValues } from "./i3s/content";
 import { lodStatus, nodeById, nodeTile, readLayer, resourceUrl, type I3sNode, type I3sScene } from "./i3s/scene";
 import { Traversal, type Tile } from "./tiles/tileset";
+import { cloudColors, type CloudColor, type CloudPoints } from "./model/cloud";
 
 /** A node's content as the 3D worker's `i3s` op gives it: meters east, north, up of `center`. */
 export interface NodeContent {
@@ -21,6 +22,22 @@ export interface NodeContent {
 /** What the layer lends the engine for I3S: the tiles parts, and the 3D worker's `i3s` call. */
 export interface I3sParts extends TilesParts {
   loadNode(args: { url: string; buffer: number; texture?: string; layer: object; node: I3sNode }): Promise<NodeContent>;
+  loadPoints(args: { url: string; center: number[]; rgb?: string; intensity?: string; classification?: string; classType?: string }): Promise<CloudPoints & { center: [number, number, number] }>;
+}
+
+/** A point cloud layer's attribute resources by what they hold (`attributeStorageInfo`, PCSL). */
+function pointAttributes(scene: I3sScene, resource: number, mode: CloudColor | undefined) {
+  const infos: any[] = (scene.json.attributeStorageInfo as any[]) ?? [];
+  const path = (info: any) => info && resourceUrl(scene, `nodes/${resource}/attributes/${info.key}/0`);
+  const rgb = infos.find((i) => i.encoding === "lepcc-rgb");
+  const intensity = infos.find((i) => i.encoding === "lepcc-intensity");
+  const classes = infos.find((i) => /^class(_?code)?$/i.test(i.name ?? "") && !i.encoding);
+  return {
+    rgb: (mode ?? "rgb") === "rgb" ? path(rgb) : undefined,
+    intensity: mode === "intensity" ? path(intensity) : undefined,
+    classification: mode === "classification" ? path(classes) : undefined,
+    classType: classes?.attributeValues?.valueType,
+  };
 }
 
 const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
@@ -66,7 +83,7 @@ export async function openI3s(url: string, options: TilesLayerOptions, parts: I3
   const pending = new Set<Tile>();
   const layer = { spatialReference: scene.json.spatialReference, store: scene.json.store, geometryDefinitions: scene.json.geometryDefinitions, materialDefinitions: scene.json.materialDefinitions, textureSetDefinitions: scene.json.textureSetDefinitions };
   const source: TileSource = {
-    root: nodeTile(scene, await nodeById(scene, 0, fetchJson), null),
+    root: nodeTile(scene, await nodeById(scene, 0, fetchJson), null, 0),
     traversal: new Traversal(8, (tile, frame) => lodStatus(tile, frame) === "DIG"),
     expand(tiles, repaint) {
       for (const tile of tiles.values()) {
@@ -74,7 +91,8 @@ export async function openI3s(url: string, options: TilesLayerOptions, parts: I3
         pending.add(tile);
         Promise.all((tile.header.children as number[]).map((id) => nodeById(scene, id, fetchJson)))
           .then((nodes) => {
-            if (tile.children.length === 0) for (const node of nodes) nodeTile(scene, node, tile);
+            const ids: number[] = tile.header.children;
+            if (tile.children.length === 0) nodes.forEach((node, i) => nodeTile(scene, node, tile, ids[i]));
           })
           .catch(() => {})
           .finally(repaint);
@@ -82,6 +100,19 @@ export async function openI3s(url: string, options: TilesLayerOptions, parts: I3
     },
     async load(tile, gl): Promise<TileModel> {
       const node: I3sNode = tile.header.node;
+      if (scene.points) {
+        const center = node.obb.center;
+        const mode = (options as { color?: CloudColor }).color;
+        const points = await parts.loadPoints({ url: tile.contentUrl!, center, ...pointAttributes(scene, node.resourceId!, mode) });
+        const root = this.root.header.node.obb;
+        const range: [number, number] = [root.center[2] - root.halfSize[2] - center[2], root.center[2] + root.halfSize[2] - center[2]];
+        const color = { data: cloudColors(points, mode, mode === "height" ? range : undefined), size: 3, type: gl.UNSIGNED_BYTE, normalized: true };
+        const position = { data: points.positions, size: 3, type: gl.FLOAT, normalized: false };
+        const material: Material = { color: [1, 1, 1, 1], alphaMode: "OPAQUE", alphaCutoff: 0.5, doubleSided: true, unlit: true };
+        const primitive: Primitive = { attributes: { POSITION: position, COLOR_0: color }, mode: gl.POINTS, material: 0, matrix: IDENTITY };
+        const gpu = parts.upload(gl, { primitives: [primitive], materials: [material], images: [] }, IDENTITY);
+        return { parts: [{ gpu, places: [IDENTITY], batchIds: null, properties: async () => Object.create(null) }], lng: center[0], lat: center[1], height: center[2] };
+      }
       const res = nodeResources(scene.json, node)!;
       const content = await parts.loadNode({ url: tile.contentUrl!, buffer: res.buffer!, texture: res.texture && resourceUrl(scene, res.texture), layer, node });
       const gpu: GpuModel = parts.upload(gl, content, IDENTITY);

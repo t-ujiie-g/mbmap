@@ -13,10 +13,14 @@ export const MAX_NODES = 1_000_000;
 
 /** A node of a node page (I3S 1.7 `node`), as far as mbmap reads it. */
 export interface I3sNode {
-  index: number;
+  index?: number;
   lodThreshold?: number;
   obb: { center: [number, number, number]; halfSize: [number, number, number]; quaternion: [number, number, number, number] };
   children?: number[];
+  resourceId?: number;
+  firstChild?: number;
+  childCount?: number;
+  vertexCount?: number;
   mesh?: {
     material?: { definition: number; resource: number };
     geometry?: { definition: number; resource: number; vertexCount?: number; featureCount?: number };
@@ -31,6 +35,8 @@ export interface I3sScene {
   query: string;
   nodesPerPage: number;
   squared: boolean;
+  /** A point cloud scene layer (PCSL), whose `lodThreshold` is an area (`density-threshold`). */
+  points: boolean;
   pages: Map<number, Promise<I3sNode[]>>;
 }
 
@@ -51,15 +57,16 @@ export function layerBase(url: string): { base: string; query: string } {
 /** The URL of resource `path` (`nodepages/0`, `nodes/3/geometries/1`, …) of `layer`. */
 export const resourceUrl = (layer: Pick<I3sScene, "base" | "query">, path: string): string => `${layer.base}/${path}${layer.query}`;
 
-/** Reads a layer document: 3DObject or IntegratedMesh with node pages. */
+/** Reads a layer document: 3DObject or IntegratedMesh with node pages, or PointCloud (whose index is in `store.index`). */
 export function readLayer(json: Record<string, any>, url: string): I3sScene {
   const type = json?.layerType;
-  if (type !== "3DObject" && type !== "IntegratedMesh") throw new Error(`the I3S layer is ${type ?? "of no type"}, not 3DObject or IntegratedMesh`);
-  if (!json.nodePages) throw new Error("only I3S layers with node pages (1.7 and later) are read");
+  if (type !== "3DObject" && type !== "IntegratedMesh" && type !== "PointCloud") throw new Error(`the I3S layer is ${type ?? "of no type"}, not 3DObject, IntegratedMesh or PointCloud`);
+  const index = type === "PointCloud" ? json.store?.index : json.nodePages;
+  if (!index) throw new Error("only I3S layers with node pages (1.7 and later) are read");
   checkSpatialReference(json);
-  const nodesPerPage = json.nodePages.nodesPerPage ?? 64;
+  const nodesPerPage = index.nodesPerPage ?? 64;
   if (!Number.isInteger(nodesPerPage) || nodesPerPage < 1 || nodesPerPage > MAX_NODES) throw new Error("the I3S layer's nodesPerPage is not a positive integer");
-  return { json, ...layerBase(url), nodesPerPage, squared: json.nodePages.lodSelectionMetricType === "maxScreenThresholdSQ", pages: new Map() };
+  return { json, ...layerBase(url), nodesPerPage, squared: index.lodSelectionMetricType === "maxScreenThresholdSQ", points: type === "PointCloud", pages: new Map() };
 }
 
 /** Node `id` of `layer`, its node page fetched with `fetchJson` the first time. */
@@ -72,7 +79,8 @@ export async function nodeById(layer: I3sScene, id: number, fetchJson: (url: str
     layer.pages.set(page, nodes);
   }
   const node = (await nodes)[id % layer.nodesPerPage];
-  if (!node || node.index !== id || !node.obb) throw new Error(`no I3S node ${id}`);
+  // Point cloud nodes carry no index of their own.
+  if (!node || (node.index ?? id) !== id || !node.obb) throw new Error(`no I3S node ${id}`);
   return node;
 }
 
@@ -99,24 +107,26 @@ function transformQuat(v: ArrayLike<number>, q: ArrayLike<number>): Vec3 {
  * its geometry resource as content, its level-of-detail value (`maxScreenThresholdSQ` as a diameter in
  * pixels) and the radius of the OBB's bounding sphere, which the level of detail projects.
  */
-export function nodeTile(layer: I3sScene, node: I3sNode, parent: Tile | null): Tile {
+export function nodeTile(layer: I3sScene, node: I3sNode, parent: Tile | null, id = node.index ?? 0): Tile {
   const { center, halfSize: h, quaternion: q } = node.obb;
   const c = toCartesian(center[0], center[1], center[2]);
   const axes = [transformQuat([1, 0, 0], q), transformQuat([0, 1, 0], q), transformQuat([0, 0, 1], q)].map((a, i) => scale(a, h[i]));
   const d = fromQuat(q);
   const corner = [0, 1, 2].map((k) => d[k] * h[0] + d[3 + k] * h[1] + d[6 + k] * h[2]);
-  const geometry = nodeResources(layer.json, node)?.geometry;
+  const geometry = layer.points ? (node.resourceId === undefined ? undefined : `nodes/${node.resourceId}/geometries/0`) : nodeResources(layer.json, node)?.geometry;
+  const children = layer.points ? Array.from({ length: Math.max(0, Math.min(node.childCount ?? 0, MAX_NODES)) }, (_, i) => (node.firstChild ?? 0) + i) : (node.children ?? []);
   const lod = typeof node.lodThreshold === "number" ? node.lodThreshold : NaN;
   const header = {
     boundingVolume: { box: [...c, ...axes.flat()] },
     refine: "REPLACE",
     content: geometry ? { uri: resourceUrl(layer, geometry) } : undefined,
-    children: node.children ?? [],
+    children,
     node,
+    points: layer.points,
     mbs: [center[0], center[1], center[2], length(corner)],
     lodMetricValue: layer.squared ? Math.sqrt(lod / (Math.PI * 0.25)) : lod,
   };
-  const tile = new Tile(header, parent, String(node.index), layer.base + "/");
+  const tile = new Tile(header, parent, String(id), layer.base + "/");
   parent?.children.push(tile);
   return tile;
 }
@@ -162,10 +172,30 @@ export function projectedRadius(tile: Tile, frame: FrameState, project = project
 
 /** loaders.gl's `getLodStatus`: whether to refine `tile` ("DIG"), draw it, or leave it ("OUT", under 2 px). */
 export function lodStatus(tile: Tile, frame: FrameState): "DIG" | "DRAW" | "OUT" {
+  if (tile.header.points) return pointsStatus(tile, frame);
   const value: number = tile.header.lodMetricValue;
   if (value === 0 || Number.isNaN(value)) return "DIG";
   const size = 2 * projectedRadius(tile, frame);
   if (size < 2) return "OUT";
   if (!tile.header.children || size <= value) return "DRAW";
   return "DIG";
+}
+
+/** Points per square pixel below which a point cloud node gives way to its children. */
+export const POINT_DENSITY = 0.5;
+
+/**
+ * A point cloud node's level of detail (`density-threshold`): its points per square meter
+ * (`vertexCount` over the area `lodThreshold`) on screen, at the pixels per meter its bounding
+ * sphere projects to, refined while sparser than `POINT_DENSITY`.
+ */
+function pointsStatus(tile: Tile, frame: FrameState): "DIG" | "DRAW" | "OUT" {
+  const node: I3sNode = tile.header.node;
+  const radius = projectedRadius(tile, frame);
+  if (2 * radius < 2) return "OUT";
+  if (!tile.header.children.length) return "DRAW";
+  const area = node.lodThreshold ?? 0;
+  if (!(area > 0)) return "DIG";
+  const perPixel = tile.header.mbs[3] / radius;
+  return ((node.vertexCount ?? 0) / area) * perPixel * perPixel < POINT_DENSITY ? "DIG" : "DRAW";
 }
