@@ -1,10 +1,11 @@
 # PROGRESS
 
-## 現在の状況（2026-11-07）
+## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。
-- **次**：Phase 19（解析 第2弾、下の節）。19.1（DE-9IM、#126）。19.2（形の操作、#127）。19.3（分類と統計、#128）。19.4（面と点の集まり、#129）。19.5（可視域と見通し、#130。GDAL との突き合わせは Mac で）。19.6（経路探索、#131）。19.7（フィールド演算、#132）。19.8（example の仕上げ）を報告中。Phase 18（GIS の Web サービス）は18.1〜18.4a（#115〜#118）と `TILE_EXTENT` 8192（#119）が終わった。18.4b（#120）、18.5（#121）、18.6（#122）が終わった。18.7 は 18.7a（WFS の GML、#123）と 18.7b（example、#124）に分けた。Phase 18 は完了。Phase 18 の後の点検（#125）。
-- **Mac で回すもの**（残り）：
+- **次**：Phase 19 の後の点検（リファクタリング・セキュリティチェック・速さの比較）を、Mac で回すものと合わせて Mac でまとめて行う（2026-11-08 ユーザー判断。下の節「Phase 19 の後の点検（Mac で行う）」が手順と候補）。その後は VISION §8 の Phase 20。
+- **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
+- **Mac で回すもの**（残り。Phase 19 の分は下の節）：
   - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
   - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
   - 主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。
@@ -22,10 +23,38 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 7.0KB（分類と統計 1.8KB を含む） ＋ ワーカー 28.8KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.0KB、route.wasm 12.9KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 7.7KB（分類と統計 1.8KB を含む） ＋ ワーカー 29.9KB（geometry.wasm 41.7KB、relate.wasm 26.5KB、shapes.wasm 27.9KB、surface.wasm 28.1KB、viewshed.wasm と `analysis-viewshed.js` 10.0KB、route.wasm 12.9KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
-## Phase 19：解析 第2弾（2026-11-07〜）
+## Phase 19 の後の点検（Mac で行う）
+
+Phase 19 で足したもの（下の節）を、AGENTS §7（リファクタリング）・§8（セキュリティ）で見直す。Web の環境では回せないもの（GDAL、性能のベンチ）も含め、Mac でまとめて行う（2026-11-08 ユーザー判断）。見つけたものは、AGENTS §7 のとおり直す前に一覧にする。
+
+- **対象**：
+  - MoonBit のパッケージ：`relate`・`relate_worker`、`robust`・`simplify`・`hull`・`delaunay`・`lineops`・`shapes_worker`、`grids`・`clusters`・`isolines`・`density`・`surface_worker`、`viewshed`・`viewshed_worker`、`route`・`route_worker`、`map/expression.mbt`。
+  - TS：`npm/src/classify.ts`、`relate-pattern.ts`、`sight.ts`、`analysis.ts` の Phase 19 の API、`ui/field-editor.ts`・`ui/table-fields.ts`・`ui/attribute-table.ts`（`setColumns`・`passing`）、`index.ts` の `evaluateExpression`。
+  - JS：`analysis_worker/js/worker.mjs`（モジュールの読み込みと各操作）、`analysis_worker/js/viewshed.mjs`。
+  - example：`examples/shared/analyze.js`・`table.js`、`react/src/analysis.jsx`・`table.jsx`、`bench/npm/checks/analyze.mjs`・`table.mjs`。
+- **Mac で回すもの**：
+  1. `npm --prefix bench run viewshed:golden`（GDAL 3.13.3 が要る）。clang（arm64）が `a*b + c` を FMA にすると、DEM・GROUND の値が 1 ulp ずれる可能性がある。ずれたら、移植は x86-64 の GDAL と同じ値を返しているので、ずれたセルの数と大きさを記録して扱いを決める。
+  2. 速さの比較（VISION §8 の Phase 19 は「黄金テストと速度比較」だが、ベンチはまだない）：`relate` 対 JSTS、`simplify`・hull・ドロネー・ボロノイ対 Turf・concaveman・d3-delaunay、格子・IDW・等値線・密度・DBSCAN・k-means 対 Turf・d3-contour、`route` 対 geojson-path-finder、`classBreaks` 対 simple-statistics。各ゴールデンの入力を流用して `*:node` のベンチを作る（例：`bench/relate/node.mjs`、結果は `bench/results/*.json`）。可視域は `gdal_viewshed` と時間を比べる。
+  3. 上の「Mac で回すもの」（`style:public` などの以前からの残り）。
+- **確かめる候補**（Phase 19 の作業中に気づいたもの）：
+  - セキュリティ：
+    - `route_worker` の網の表（`networks`）に数の上限がなく、`dispose` しない呼び手がメモリを使い切れる。ほかのワーカーのデータセットや格子の表と扱いを揃える。
+    - 各ワーカーの export が、線形メモリから読む長さ（テーブル、文字列、f64）を `MAX_INPUT_BYTES` と各パッケージの上限（`MAX_RELATE_POINTS`、`MAX_HULL_POINTS`、`MAX_DELAUNAY_POINTS`、`MAX_GRID_CELLS`、`MAX_CLUSTER_POINTS`、`MAX_GRID_POINTS`、`MAX_CONTOUR_CELLS`、`MAX_VIEWSHED_CELLS`、`MAX_ROUTE_VERTICES` など）の前に確かめているか。
+    - `evaluateExpression` に渡る式の大きさ（`MAX_EXPR_NODES` で止まる）。フィールド演算の列名（`__proto__` は断っている）。
+    - ゴールデンのために `bench/` に足した依存（jsts、concaveman、delaunator、d3-delaunay、simple-statistics、geostats、d3-contour、geojson-path-finder など）の `npm audit` とライセンス、NOTICE。
+  - 大きさ（余裕がない）：解析ワーカー 29.9 / 30KB（次に足すものは、可視域と同じく、つなぎを遅れて読み込むファイルに出す）、表示（メイン）133.7 / 135KB、属性テーブル単独 2.0 / 2.2KB、`mbmap/analysis` 7.7 / 9KB、shapes.wasm 27.9 / 30KB、surface.wasm 28.1 / 30KB。
+  - 振る舞い：
+    - `evaluateExpression` は、オブジェクトや配列の属性を null として読む（表示の `JsProps` と同じ。MapLibre の GeoJSON は値を読む）。
+    - フィールド演算は、編集のたびにデータ全体を `getData` / `setData` する（大きなデータでは重い。取り消しはない）。
+    - タイルから作る道路網は、タイルの境で切れた線を頂点の丸め（許容値 1e-5°）でつなぐだけ。example の経路は描いているタイルの道路だけを使う。
+    - example の自然分類は、最大の級が 1 つの値だけになることがある（区切りが 24.91 / 24.91）。
+  - 整理：`node bench/lib/long-comments.mjs` の 32 件、Phase 19 のパッケージの定数と重複（`bbox`・`centroid` などの小さな幾何の補助が `grids`・`clusters`・`hull` に分かれていないか）、`analysis_worker/js/worker.mjs` の操作ごとの分岐。
+- **終わりの確認**：AGENTS §2 の検証（`moon check --target all --deny-warn`、`moon test --target all`、`moon fmt`、`moon info`、`npm` の build・test・size、`npm --prefix bench test`、`npm:pack`）と、Phase 19 のゴールデン（`relate`・`shapes`・`classify`・`surface`・`viewshed`・`route`・`fields`、すべて all identical）。
+
+## Phase 19：解析 第2弾（2026-11-07〜11-08）
 
 範囲・段階・予算の扱いは 2026-11-07 にユーザーが決めた。VISION §8 の Phase 19 の項目のうち、測地線の計測は Phase 14 で済んでいるので除く。
 
