@@ -1,6 +1,6 @@
 // A 3D tile's content for mbmap/3d: Batched 3D Model (b3dm: feature table with BATCH_LENGTH and
 // RTC_CENTER, batch table JSON, then a glb) or a glTF itself (3D Tiles 1.1). Import-free.
-import { readGltf, type MeshoptDecode, type Model } from "../model/gltf.ts";
+import { readGltf, type DracoDecode, type MeshoptDecode, type Model } from "../model/gltf.ts";
 
 const B3DM = 0x6d643362;
 const HEADER_BYTES = 28;
@@ -41,8 +41,8 @@ export function splitB3dm(bytes: Uint8Array): { rtc: TileContent["rtc"]; batchLe
 }
 
 /** Reads the b3dm, glb or glTF in `bytes`. */
-export async function readTileContent(bytes: Uint8Array, load: (uri: string) => Promise<Uint8Array>, meshopt?: MeshoptDecode): Promise<TileContent> {
+export async function readTileContent(bytes: Uint8Array, load: (uri: string) => Promise<Uint8Array>, meshopt?: MeshoptDecode, draco?: DracoDecode): Promise<TileContent> {
   const b3dm = splitB3dm(bytes);
-  const model = await readGltf(b3dm ? b3dm.glb : bytes, load, meshopt);
+  const model = await readGltf(b3dm ? b3dm.glb : bytes, load, meshopt, draco);
   return { model, rtc: b3dm?.rtc ?? model.rtc ?? null, batchLength: b3dm?.batchLength ?? 0, batchTable: b3dm?.batchTable ?? null };
 }

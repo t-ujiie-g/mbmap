@@ -1,5 +1,6 @@
 // Blocks near Tokyo Station as 3D Tiles 1.0 b3dm (./set, written by bench/tiles/synthetic.mjs) streamed by
-// mbmap/3d's tiles layer, for the pack test's tiles check (bench/npm/checks/tiles.mjs).
+// mbmap/3d's tiles layer, for the pack test's tiles check (bench/npm/checks/tiles.mjs), which also
+// streams PLATEAU's buildings (bench/fixtures/plateau-chiyoda, Draco-compressed b3dm).
 import { Map } from "mbmap";
 import { tilesLayer } from "mbmap/3d";
 
@@ -20,13 +21,14 @@ map.once("load").then(() => {
 });
 window.__map = map;
 window.__layer = layer;
-// Resolves once nothing is loading and the tiles drawn stay the same for a few frames.
+window.__tilesLayer = tilesLayer;
+// Resolves once nothing is asked for or loading and the tiles drawn stay the same for a few frames.
 window.__settled = () => new Promise((done) => {
   let last = "";
   let same = 0;
   const check = () => {
-    const now = layer.selected.map((t) => t.path).sort().join();
-    const busy = layer.selected.length === 0 || [...layer.selected].some((t) => t.state !== "ready");
+    const now = window.__layer.selected.map((t) => t.path).sort().join();
+    const busy = !window.__layer.idle || window.__layer.selected.length === 0;
     same = now === last && !busy && !map.isMoving() ? same + 1 : 0;
     last = now;
     if (same > 10) done();

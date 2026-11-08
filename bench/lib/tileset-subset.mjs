@@ -1,18 +1,24 @@
 // The contents of a 3D Tiles 1.0 tileset to keep for views of a box: every tile whose `region`
-// meets `box` ([west, south, east, north] in degrees) and every ancestor of one.
+// meets `box` ([west, south, east, north] in degrees), every ancestor of one, and their siblings
+// (a REPLACE tile gives way to its children only once all of them are loaded).
 export function tilesetSubset(tileset, box) {
   const [w, s, e, n] = box.map((d) => (d * Math.PI) / 180);
   const meets = (r) => r[0] <= e && r[2] >= w && r[1] <= n && r[3] >= s;
   const kept = new Set();
-  const walk = (tile, chain) => {
+  const own = (tile) => {
+    const uri = tile.content?.uri ?? tile.content?.url;
+    return uri === undefined ? [] : [contentPath(uri)];
+  };
+  const walk = (tile, chain, siblings) => {
     const region = tile.boundingVolume?.region;
     if (!region) throw new Error("tileset: a tile without a region bounding volume");
-    const uri = tile.content?.uri ?? tile.content?.url;
-    if (uri !== undefined) chain = [...chain, contentPath(uri)];
-    if (meets(region)) for (const u of chain) kept.add(u);
-    for (const child of tile.children ?? []) walk(child, chain);
+    chain = [...chain, ...own(tile)];
+    if (meets(region)) for (const u of [...chain, ...siblings]) kept.add(u);
+    const children = tile.children ?? [];
+    const next = [...siblings, ...children.flatMap(own)];
+    for (const child of children) walk(child, chain, next);
   };
-  walk(tileset.root, []);
+  walk(tileset.root, [], []);
   return [...kept].sort();
 }
 

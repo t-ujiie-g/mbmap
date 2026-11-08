@@ -72,6 +72,15 @@ export interface Model {
   rtc?: [number, number, number];
 }
 
+/** A Draco mesh decoded: its corner indices and its attributes by Draco unique id. */
+export interface DracoMesh {
+  indices: Uint32Array;
+  attributes: Map<number, Attribute>;
+}
+
+/** Decodes a KHR_draco_mesh_compression buffer view (throws on malformed data). */
+export type DracoDecode = (bytes: Uint8Array) => DracoMesh;
+
 /** MeshoptDecoder.decodeGltfBuffer's arguments: writes `count` elements of `size` bytes into `target`. */
 export type MeshoptDecode = (target: Uint8Array, count: number, size: number, source: Uint8Array, mode: string, filter: string) => void;
 
@@ -84,6 +93,7 @@ export const EXTENSIONS = new Set([
   "KHR_meshopt_compression",
   "EXT_texture_webp",
   "CESIUM_RTC",
+  "KHR_draco_mesh_compression",
 ]);
 
 /** Splits a .glb into its JSON and binary chunk; a .gltf (JSON text) has no binary chunk. */
@@ -173,9 +183,9 @@ export function textureTransform(t: Record<string, any>): Float64Array {
 
 /**
  * Reads a glTF from `bytes` (.glb or .gltf JSON): `load` fetches the URIs of its other buffers and
- * images (relative to the model), `meshopt` decodes compressed buffer views.
+ * images (relative to the model), `meshopt` and `draco` decode compressed buffer views and primitives.
  */
-export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise<Uint8Array>, meshopt?: MeshoptDecode): Promise<Model> {
+export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise<Uint8Array>, meshopt?: MeshoptDecode, draco?: DracoDecode): Promise<Model> {
   const { json, bin } = splitGlb(bytes);
   const gltf = obj(json);
   if (!/^2\./.test(String(obj(gltf.asset).version))) throw new Error("only glTF 2.0 is read");
@@ -289,10 +299,30 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
       if (!mesh) throw new Error(`no mesh ${node.mesh}`);
       for (const p of list(mesh.primitives).map(obj)) {
         const attributes: Record<string, Attribute> = {};
-        for (const [name, accessor] of Object.entries(obj(p.attributes))) attributes[name] = readAccessor(int(accessor, -1));
+        const compressed = obj(obj(p.extensions).KHR_draco_mesh_compression);
+        const ids = obj(compressed.attributes);
+        let decoded: DracoMesh | undefined;
+        if (Object.keys(compressed).length) {
+          if (!draco) throw new Error("Draco compression is not available");
+          decoded = draco(viewBytes(int(compressed.bufferView, -1)));
+          spend(decoded.indices.byteLength);
+        }
+        for (const [name, accessor] of Object.entries(obj(p.attributes))) {
+          const id = ids[name];
+          if (decoded && id !== undefined) {
+            const a = decoded.attributes.get(int(id, -1));
+            if (!a) throw new Error(`the Draco mesh has no attribute ${id}`);
+            spend(a.data.byteLength);
+            attributes[name] = { ...a, normalized: accessors[int(accessor, -1)]?.normalized === true };
+          } else {
+            attributes[name] = readAccessor(int(accessor, -1));
+          }
+        }
         if (!attributes.POSITION) continue;
         let indices: Primitive["indices"];
-        if (p.indices !== undefined) {
+        if (decoded) {
+          indices = decoded.indices;
+        } else if (p.indices !== undefined) {
           const a = readAccessor(int(p.indices, -1));
           if (!(a.data instanceof Uint8Array || a.data instanceof Uint16Array || a.data instanceof Uint32Array) || a.size !== 1) throw new Error("indices must be unsigned scalars");
           indices = a.data;

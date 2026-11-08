@@ -5,7 +5,7 @@ import { tilesetSubset } from "./tileset-subset.mjs";
 const R = Math.PI / 180;
 const region = (w, s, e, n) => ({ region: [w * R, s * R, e * R, n * R, 0, 100] });
 
-test("tilesetSubset keeps tiles meeting the box and their ancestors only", () => {
+test("tilesetSubset keeps tiles meeting the box, their ancestors and their siblings only", () => {
   const tileset = {
     root: {
       boundingVolume: region(139, 35, 141, 37),
@@ -19,7 +19,8 @@ test("tilesetSubset keeps tiles meeting the box and their ancestors only", () =>
       ],
     },
   };
-  assert.deepEqual(tilesetSubset(tileset, [139.55, 35.55, 139.56, 35.56]), ["data/a.b3dm", "data/b.b3dm"]);
+  // c (b's sibling) and d (a's sibling) are kept for REPLACE refinement; not d's children, if it had any.
+  assert.deepEqual(tilesetSubset(tileset, [139.55, 35.55, 139.56, 35.56]), ["data/a.b3dm", "data/b.b3dm", "data/c.b3dm", "data/d.b3dm"]);
 });
 
 test("tilesetSubset refuses content paths that leave the tileset's directory", () => {

@@ -8,8 +8,16 @@
   ],
   "attribution": "出典：「3D都市モデル（Project PLATEAU）千代田区（2025年度）」（国土交通省）（https://www.mlit.go.jp/plateau/）を加工して作成（東京駅周辺のタイルを抜き出したもの）",
   "fetched": "2026-11-08",
-  "totalBytes": 25243160,
+  "totalBytes": 27803296,
   "tiles": {
+    "data/data240.b3dm": {
+      "bytes": 386476,
+      "sha256": "41113760cf2c5bc9b4dbddcdaf24b65fe6e80d16c2983662b0102c98310d8dc4"
+    },
+    "data/data416.b3dm": {
+      "bytes": 132532,
+      "sha256": "79c7d7d674136fd46ccae1be4b1d984cdb758960eaefb5d396003b4bfb8a2c34"
+    },
     "data/data417.b3dm": {
       "bytes": 118404,
       "sha256": "be95e2d8f4e11519d9381a9498597d8f7b733b74602c58e932d706f2ac7b4926"
@@ -186,6 +194,10 @@
       "bytes": 1328000,
       "sha256": "a525aaf80d355d3ccb81a866eb851713a6d88012a68c51c72fee5ca9b1c0bf39"
     },
+    "data/data461.b3dm": {
+      "bytes": 22588,
+      "sha256": "eda0a19d740497b057bbc631232cc393f4b05dc15ae2bbd42b1d73c8b3042cd0"
+    },
     "data/data462.b3dm": {
       "bytes": 748036,
       "sha256": "e3e1827585aa0292f86f48bfa61b518a248066a8b7c8b80f2f3126205ba0c8bc"
@@ -218,6 +230,10 @@
       "bytes": 332964,
       "sha256": "fe2b4ad7f1f9bd9ccbcf04d87499216ff25033f22ed42a0cfbaa89fd0ffa7ae1"
     },
+    "data/data473.b3dm": {
+      "bytes": 245056,
+      "sha256": "fcdf73ba26b4192a285ce402a5c36860f9c2f0820af74a957b07707b76ebe103"
+    },
     "data/data474.b3dm": {
       "bytes": 293364,
       "sha256": "19d24bd5ea8dd419811eff9a048ee3913ed2c1df9a1b6a26fe86ae21267672af"
@@ -226,9 +242,29 @@
       "bytes": 946948,
       "sha256": "3a5717e502f0c9169eac3cd88526619dade02603658eba21b8d0d67943d2f33d"
     },
+    "data/data480.b3dm": {
+      "bytes": 79176,
+      "sha256": "741b0ebea02b039a010a6b146641f0f4d83fef9b89ee0c669976998032b8b487"
+    },
+    "data/data485.b3dm": {
+      "bytes": 759960,
+      "sha256": "c31736eaef62dff3e68d19f05aa4f3ef8b56d177f4a1d876d24b3a559810dbeb"
+    },
+    "data/data490.b3dm": {
+      "bytes": 286608,
+      "sha256": "28585438c9e988a65528041bd80d769b7d034d467faaa2cbd353f168664b240e"
+    },
     "data/data491.b3dm": {
       "bytes": 849252,
       "sha256": "de4d848aa6506a1c9d7d58075f03dc665d81ba183d6f617572fc40f4ec80ece8"
+    },
+    "data/data492.b3dm": {
+      "bytes": 30480,
+      "sha256": "1367d345f074cfe29b23fae03e2e33d0f5aac2044344ea8a019c36c04a8179be"
+    },
+    "data/data507.b3dm": {
+      "bytes": 431696,
+      "sha256": "9aef963edf389c883a2e34d7a4a499216cc96a37bf328bfdfdf78bee864c5ea6"
     },
     "data/data508.b3dm": {
       "bytes": 480228,
@@ -237,6 +273,10 @@
     "data/data509.b3dm": {
       "bytes": 324172,
       "sha256": "82ffe938a888c7684275b61b9094fd7356c759a9690d7af16a4cacefcd3767eb"
+    },
+    "data/data631.b3dm": {
+      "bytes": 185564,
+      "sha256": "d175ea1f75086d6f0883c7621388c44b849d1af2ac1055474372866b8e424bd1"
     },
     "data/data632.b3dm": {
       "bytes": 244692,
