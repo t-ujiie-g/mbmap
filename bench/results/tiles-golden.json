@@ -167,7 +167,7 @@
       "tileset": "plateau-chiyoda",
       "view": "high",
       "same": true,
-      "selected": 1,
+      "selected": 49,
       "onlyOurs": [],
       "onlyTheirs": []
     },
@@ -175,7 +175,7 @@
       "tileset": "plateau-chiyoda",
       "view": "tilted",
       "same": true,
-      "selected": 1,
+      "selected": 25,
       "onlyOurs": [],
       "onlyTheirs": []
     },
@@ -183,7 +183,7 @@
       "tileset": "plateau-chiyoda",
       "view": "low",
       "same": true,
-      "selected": 1,
+      "selected": 36,
       "onlyOurs": [],
       "onlyTheirs": []
     },
@@ -191,7 +191,7 @@
       "tileset": "plateau-chiyoda",
       "view": "street",
       "same": true,
-      "selected": 1,
+      "selected": 13,
       "onlyOurs": [],
       "onlyTheirs": []
     },
@@ -204,7 +204,7 @@
       "onlyTheirs": []
     },
     {
-      "contents": 63,
+      "contents": 73,
       "differ": 0
     }
   ]

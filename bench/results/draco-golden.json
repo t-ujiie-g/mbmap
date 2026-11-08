@@ -4,11 +4,11 @@
     "node": "v22.23.4"
   },
   "cases": 60,
-  "total": 11668,
-  "identical": 11596,
+  "total": 11678,
+  "identical": 11606,
   "capped": 0,
   "differ": 0,
-  "plateauFiles": 58,
+  "plateauFiles": 68,
   "testdataFiles": 8,
   "rows": [
     {
@@ -247,8 +247,8 @@
     },
     {
       "group": "plateau",
-      "cases": 58,
-      "identical": 58,
+      "cases": 68,
+      "identical": 68,
       "refused": 0,
       "capped": 0,
       "aborted": 0,
@@ -267,7 +267,7 @@
       "group": "corrupted",
       "cases": 2400,
       "identical": 2400,
-      "refused": 406,
+      "refused": 432,
       "capped": 0,
       "aborted": 0,
       "differ": 0
@@ -276,7 +276,7 @@
       "group": "corrupted header bit",
       "cases": 2400,
       "identical": 2400,
-      "refused": 1529,
+      "refused": 1559,
       "capped": 0,
       "aborted": 0,
       "differ": 0
@@ -312,7 +312,7 @@
       "group": "random after header",
       "cases": 1200,
       "identical": 1200,
-      "refused": 1200,
+      "refused": 1199,
       "capped": 0,
       "aborted": 0,
       "differ": 0
