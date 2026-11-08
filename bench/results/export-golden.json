@@ -28,7 +28,7 @@
       ],
       "maxSize": 300,
       "split": {
-        "differ": 1366,
+        "differ": 1365,
         "mean": 0.001,
         "p99": 0,
         "max": 25
