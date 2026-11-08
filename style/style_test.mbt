@@ -833,7 +833,9 @@ test "source zooms lie in 0-24 and tiles may not be empty" {
 test "projection and the atmosphere's blend" {
   let plain = @style.Style::parse("{\"layers\": []}")
   assert_true(plain.projection is Mercator)
-  assert_eq(plain.atmosphere_blend.eval(3.0, @style.NoFeature::{ }), Num(0.8))
+  assert_eq(plain.atmosphere_blend.eval(3.0, @style.NoFeature::{ }), Num(0.0))
+  let sky = @style.Style::parse("{\"layers\": [], \"sky\": {}}")
+  assert_eq(sky.atmosphere_blend.eval(3.0, @style.NoFeature::{ }), Num(0.8))
   let g = @style.Style::parse(
     (
       #|{"layers": [], "projection": {"type": "globe"},

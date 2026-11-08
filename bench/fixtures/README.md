@@ -20,6 +20,10 @@
 - 利用規約：国土地理院コンテンツ利用規約
 - 取得と照合は gsi-bvmap と同じ（マニフェストは `gsi-std.manifest.json`）。
 
+## gsi-std-world/
+
+国土地理院の標準地図の z0〜z3 の全タイル（85 タイル、約 3.2MB）。地球表示のラスタの比較に使う。出典・利用規約・取得と照合は gsi-std と同じ（マニフェストは `gsi-std-world.manifest.json`）。
+
 ## gsi-dem/、gsi-dem-fuji/
 
 国土地理院の標高タイル（`dem_png`）。`gsi-dem/` は z14 の東京駅周辺 7×5 タイル（ベクトルタイルと同じ範囲、約 1.3MB）、

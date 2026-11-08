@@ -659,7 +659,7 @@ pub fn Style::from_compiled(bytes : BytesView) -> Style raise StyleError {
       position: (0.0, 0.0, 0.0),
     },
     projection: Mercator,
-    atmosphere_blend: Lit(Num(0.8)),
+    atmosphere_blend: Lit(Num(0.0)),
     warnings: [],
   }
 }

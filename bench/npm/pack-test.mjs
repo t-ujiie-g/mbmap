@@ -12,6 +12,7 @@ import { imageChecks } from "./checks/images.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
 import { mediaChecks } from "./checks/media.mjs";
 import { customChecks } from "./checks/custom.mjs";
+import { globeChecks } from "./checks/globe.mjs";
 import { cameraChecks } from "./checks/camera.mjs";
 import { controlChecks } from "./checks/controls.mjs";
 import { atCentre } from "./checks/pixels.mjs";
@@ -47,6 +48,7 @@ const PAGES = {
   media: "bench/npm/pages/media/",
   services: "bench/npm/pages/services/",
   custom: "bench/npm/pages/custom/",
+  globe: "bench/npm/pages/globe/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
   "showcase-html": "examples/html/?local=1",
@@ -455,6 +457,10 @@ const checks = {
 
   async custom(page) {
     return customChecks(page);
+  },
+
+  async globe(page) {
+    return globeChecks(page);
   },
 
   async services(page, requests) {

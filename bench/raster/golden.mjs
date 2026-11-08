@@ -1,5 +1,6 @@
 // Raster sources and paints vs MapLibre GL JS 6.16.0 in Chromium, pixel by pixel, on GSI's standard
-// map (z14 fixtures), and the tile URLs both request from templates with every placeholder.
+// map (z14 fixtures, and the world at z0-3 for the globe), and the tile URLs both request from
+// templates with every placeholder.
 // Writes bench/results/raster-golden.json. Needs `npm --prefix npm run build`.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -57,22 +58,70 @@ try {
     }
   }
 
+  // The globe (style `projection`), on the whole world's standard map at zooms 0 to 3; zoom 11.5 is
+  // halfway into mercator, zoom 12.5 past it, and a sky brings the atmosphere.
+  const world = { type: "raster", tiles: ["{origin}/bench/fixtures/gsi-std-world/{z}/{x}/{y}.png"], tileSize: 256, minzoom: 0, maxzoom: 3 };
+  const globeStyles = {
+    globe: { projection: { type: "globe" } },
+    "globe-sky": { projection: { type: "globe" }, sky: {} },
+    "vertical-perspective": { projection: { type: "vertical-perspective" } },
+  };
+  const globeCameras = {
+    z0: { center: [0, 0], zoom: 0.3, bearing: 0, pitch: 0 },
+    z1: { center: [139.7, 35.7], zoom: 1, bearing: 0, pitch: 0 },
+    z2: { center: [139.7, 35.7], zoom: 2.3, bearing: 30, pitch: 40 },
+    z5: { center: [-100, 70], zoom: 5, bearing: -120, pitch: 60 },
+    z11: { center: [139.7671, 35.6812], zoom: 11.5, bearing: 10, pitch: 30 },
+    z12: { center: [139.7671, 35.6812], zoom: 12.5, bearing: 0, pitch: 0 },
+  };
+  for (const [name, extra] of Object.entries(globeStyles)) {
+    const style = {
+      version: 8, ...extra,
+      sources: { std: world },
+      layers: [{ id: "bg", type: "background", paint: { "background-color": "#203040" } }, { id: "std", type: "raster", source: "std" }],
+    };
+    const file = `bench/dist/raster-${name}.json`;
+    await writeFile(path.join(ROOT, file), JSON.stringify(style));
+    for (const [view, camera] of Object.entries(globeCameras)) {
+      if (name !== "globe" && view !== "z1" && view !== "z11") continue;
+      const page = await browser.newPage({ viewport: { width: 800, height: 1200 } });
+      page.on("pageerror", (e) => console.log(name, "pageerror", e.message));
+      await page.goto(`${origin}/bench/query/index.html?style=/${file}&camera=${encodeURIComponent(JSON.stringify(camera))}`);
+      await page.waitForFunction(() => window.__ready, null, { timeout: 60000 });
+      const shot = (y) => page.screenshot({ clip: { x: 0, y, width: 800, height: 600 } }).then((b) => decodePng(b));
+      const [a, b] = [await shot(0), await shot(600)];
+      const diffs = [];
+      for (let i = 0; i < a.rgba.length; i += 4) for (let c = 0; c < 3; c++) diffs.push(Math.abs(a.rgba[i + c] - b.rgba[i + c]));
+      diffs.sort((x, y) => x - y);
+      const mean = diffs.reduce((s, d) => s + d, 0) / diffs.length;
+      const p99 = diffs[Math.floor(diffs.length * 0.99)];
+      const ok = mean <= LIMITS.mean && p99 <= LIMITS.p99;
+      if (!ok) failed++;
+      results.push({ paint: name, view, ok, mean: Number(mean.toFixed(3)), p99, max: diffs.at(-1) });
+      await page.close();
+    }
+  }
+
   // Each engine's template carries its name, so the requests of the two can be told apart.
   const tile = await readFile(path.join(ROOT, "bench/fixtures/gsi-std/14/14552/6451.png"));
   const placeholders = "p={prefix}&q={quadkey}&r={ratio}&b={bbox-epsg-3857}&c={bbox}&z={z}&x={x}&y={y}";
   const urlStyle = (engine, scheme) => ({
     version: 8,
+    ...(scheme === "globe" ? { projection: { type: "globe" } } : {}),
     sources: {
       s: {
-        type: "raster", scheme, tileSize: 256, minzoom: 0, maxzoom: 14,
+        type: "raster", scheme: scheme === "globe" ? "xyz" : scheme, tileSize: 256, minzoom: 0, maxzoom: 14,
         tiles: ["a", "b"].map((host) => `{origin}/bench/fixtures/gsi-std/{z}/{x}/{y}.png?engine=${engine}&host=${host}&${placeholders}`),
       },
     },
     layers: [{ id: "s", type: "raster", source: "s" }],
   });
-  for (const scheme of ["xyz", "tms"]) {
-    for (const ratio of [1, 2]) {
-      for (const [view, camera] of Object.entries({ ...cameras, z3: { center: [139.7671, 35.6812], zoom: 3.4, bearing: 0, pitch: 0 } })) {
+  for (const scheme of ["xyz", "tms", "globe"]) {
+    for (const ratio of scheme === "globe" ? [1] : [1, 2]) {
+      const views = scheme === "globe"
+        ? { z1: globeCameras.z1, z2: globeCameras.z2, z5: globeCameras.z5, z11: globeCameras.z11 }
+        : { ...cameras, z3: { center: [139.7671, 35.6812], zoom: 3.4, bearing: 0, pitch: 0 } };
+      for (const [view, camera] of Object.entries(views)) {
         const files = {};
         for (const engine of ["mbmap", "maplibre"]) {
           files[engine] = `bench/dist/raster-urls-${engine}.json`;

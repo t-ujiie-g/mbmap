@@ -1,10 +1,7 @@
 ///|
-/// Where a tile goes on the globe: `matrix` takes the unit sphere to clip
-/// space, `tile` is the tile's mercator corner and size per tile unit (x, y,
-/// sx, sy), `plane` the horizon plane (a, b, c, d) past which the sphere is
-/// hidden, `transition` how far toward the globe the map is (0 to 1); the tile
-/// is drawn as a mesh of `granularity` quads per edge reaching the poles when
-/// `north` or `south`.
+/// Where a tile goes on the globe: `matrix` (unit sphere to clip space), its
+/// mercator corner and size per unit `tile`, the horizon `plane`, `transition`
+/// (0 to 1), and its mesh's `granularity`, reaching the `north` or `south` pole.
 pub(all) struct GlobeTile {
   matrix : FixedArray[Double]
   tile : FixedArray[Double]
@@ -30,8 +27,12 @@ extern "js" fn js_globe(
   #|(matrix, tile, plane, transition, key) => ({ matrix, tile, plane, transition, key })
 
 ///|
-extern "js" fn gl_set_globe(gl : Gl, g : JsGlobe?) -> Unit =
-  #|(c, g) => { c.globe = g ?? null; }
+extern "js" fn gl_set_globe(gl : Gl, g : JsGlobe) -> Unit =
+  #|(c, g) => { c.globe = g; }
+
+///|
+extern "js" fn gl_flat(gl : Gl) -> Unit =
+  #|(c) => { c.globe = null; }
 
 ///|
 extern "js" fn gl_has_tile_mesh(gl : Gl, key : String) -> Bool =
@@ -50,7 +51,7 @@ extern "js" fn gl_add_tile_mesh(
 /// Makes the next tile draws go onto the globe as `g` says, or flat for None.
 fn Renderer::use_globe(self : Renderer, g : GlobeTile?) -> Unit {
   match g {
-    None => gl_set_globe(self.gl, None)
+    None => gl_flat(self.gl)
     Some(g) => {
       let key = "\{g.granularity}\{if g.north { "n" } else { "" }}\{if g.south { "s" } else { "" }}"
       if !gl_has_tile_mesh(self.gl, key) {
@@ -63,7 +64,7 @@ fn Renderer::use_globe(self : Renderer, g : GlobeTile?) -> Unit {
       }
       gl_set_globe(
         self.gl,
-        Some(js_globe(g.matrix, g.tile, g.plane, g.transition, key)),
+        js_globe(g.matrix, g.tile, g.plane, g.transition, key),
       )
     }
   }
@@ -102,10 +103,9 @@ extern "js" fn gl_draw_background(
   #|}
 
 ///|
-/// Draws MapLibre's atmosphere around the globe: `inverse_projection` takes
-/// clip space back to the camera's, `sun` is the light's direction there,
-/// `globe` the globe's center in it and `radius` its radius (CSS pixels);
-/// `blend` scales its opacity.
+/// Draws MapLibre's atmosphere: `sun` and the `globe`'s center in the camera's
+/// space (which `inverse_projection` leads back to), its `radius` in CSS pixels;
+/// `blend` scales the opacity.
 pub fn Renderer::draw_atmosphere(
   self : Renderer,
   inverse_projection : @core.Mat4,

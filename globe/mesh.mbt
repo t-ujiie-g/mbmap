@@ -1,7 +1,5 @@
-// MapLibre GL JS 6.16.0's tile meshes for the globe (src/util/create_tile_mesh.ts,
-// src/render/subdivision_granularity_settings.ts and the globe's settings in
-// src/geo/projection/vertical_perspective_projection.ts), BSD-3-Clause, Copyright (c) 2020
-// MapLibre contributors; see NOTICE.
+// MapLibre GL JS 6.16.0's globe tile meshes (src/util/create_tile_mesh.ts and the globe's granularity),
+// BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
 /// The y of a vertex at the north pole (MapLibre's `NORTH_POLE_Y`): globe shaders
@@ -21,10 +19,9 @@ pub fn tile_granularity(z : Int32) -> Int32 {
 }
 
 ///|
-/// A tile's grid of `granularity` quads per edge (MapLibre's `createTileMesh`):
-/// x, y pairs in tile units (`@core.TILE_EXTENT` per edge) and triangle
-/// indices. `borders` adds a ring of quads just outside the tile, `north` and
-/// `south` a row reaching the pole.
+/// A tile's grid of `granularity` quads per edge (`createTileMesh`): x, y pairs in
+/// tile units and triangle indices; `borders` adds a ring of quads just outside,
+/// `north` and `south` a row reaching the pole.
 pub fn tile_mesh(
   granularity : Int32,
   borders~ : Bool = false,

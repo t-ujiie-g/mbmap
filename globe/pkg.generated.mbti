@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub const NORTH_POLE_Y : Int32 = -32768
+
+pub const SOUTH_POLE_Y : Int32 = 32767
+
 pub fn atmosphere_blend(Double, Double) -> Double
 
 pub fn globe_radius(Double, Double) -> Double
@@ -16,6 +20,10 @@ pub fn planet_scale(Double) -> Double
 pub fn surface_point(Vec3) -> @core.LngLat
 
 pub fn surface_vector(@core.LngLat) -> Vec3
+
+pub fn tile_granularity(Int32) -> Int32
+
+pub fn tile_mesh(Int32, borders? : Bool, north? : Bool, south? : Bool) -> (FixedArray[Int32], FixedArray[Int32])
 
 pub fn tile_vector(Double, Double, Int32, Int32, Int32, extent? : Double) -> Vec3
 
@@ -28,6 +36,7 @@ pub struct Globe {
   // private fields
 }
 pub fn Globe::apply_controls(Self, Double, Double, pan? : (Double, Double), zoom? : Double, bearing? : Double, pitch? : Double) -> Unit
+pub fn Globe::atmosphere(Self) -> (@core.Mat4, Vec3, Double, Double)
 pub fn Globe::bounds(Self) -> @core.LngLatBounds
 pub fn Globe::camera(Self) -> @core.Camera
 pub fn Globe::camera_altitude(Self) -> Double
@@ -41,20 +50,24 @@ pub fn Globe::fly_to(Self, @core.CameraTarget, curve? : Double, speed? : Double,
 pub fn Globe::globe_matrix(Self) -> @core.Mat4
 pub fn Globe::is_globe(Self) -> Bool
 pub fn Globe::jump_to(Self, center? : @core.LngLat, zoom? : Double, bearing? : Double, pitch? : Double) -> Unit
+pub fn Globe::limits(Self) -> @core.Limits
 pub fn Globe::mercator(Self) -> @core.Transform
 pub fn Globe::new(@core.Camera, Double, Double, limits? : @core.Limits, projection? : Projection) -> Self
 pub fn Globe::occluded(Self, @core.LngLat) -> Bool
 pub fn Globe::on_surface(Self, Double, Double) -> Bool
 pub fn Globe::pan_inertia(Self, (Double, Double)) -> (@core.LngLat, (Double, Double))
 pub fn Globe::project(Self, @core.LngLat) -> (Double, Double)
-pub fn Globe::projection(Self) -> (@core.Mat4, Double, Double)
+pub fn Globe::projection(Self) -> Projection
+pub fn Globe::projection_matrix(Self) -> (@core.Mat4, Double, Double)
 pub fn Globe::ray_direction(Self, Double, Double) -> Vec3
 pub fn Globe::resize(Self, Double, Double) -> Unit
 pub fn Globe::set_bearing(Self, Double) -> Unit
+pub fn Globe::set_camera(Self, @core.Camera) -> Unit
 pub fn Globe::set_center(Self, @core.LngLat) -> Unit
 pub fn Globe::set_location_at_point(Self, @core.LngLat, Double, Double) -> Unit
 pub fn Globe::set_pitch(Self, Double) -> Unit
 pub fn Globe::set_zoom(Self, Double) -> Unit
+pub fn Globe::sun(Self, Vec3, map~ : Bool) -> Vec3
 pub fn Globe::transition(Self) -> Double
 pub fn Globe::unproject(Self, Double, Double) -> @core.LngLat
 pub fn Globe::update_transition(Self) -> Unit

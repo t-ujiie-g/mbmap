@@ -1,8 +1,6 @@
-// globe's camera (bench/entry/globe.mbt) vs MapLibre GL JS 6.16.0's globe projection in Node with
-// frozen time: the transform createProjectionFromName gives, driven by its Camera and camera helpers,
-// the transition taken from the zoom after every frame as the map does. Fails beyond 1e-6 px,
-// 1e-7°, 1e-8 zoom, 1e-5 ms or a 1e-6 relative difference; coveringTiles must give the same tiles in order.
-// Usage: node lib/run-bundled.mjs bench/camera/globe-golden.mjs; writes bench/results/globe-golden.json.
+// globe's camera (bench/entry/globe.mbt) vs MapLibre 6.16.0's globe transform driven by its Camera in
+// Node with frozen time, the transition taken from each frame's zoom; tolerances as camera:golden, and
+// coveringTiles must give the same tiles in order. Writes bench/results/globe-golden.json.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import Point from "@mapbox/point-geometry";

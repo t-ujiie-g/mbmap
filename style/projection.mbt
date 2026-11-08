@@ -24,12 +24,12 @@ fn parse_projection(json : Json?) -> ProjectionType raise StyleError {
 }
 
 ///|
-/// The sky's `atmosphere-blend`, drawn on the globe also when the style has no
-/// `sky` (MapLibre keeps one with the defaults).
+/// The sky's `atmosphere-blend`: 0.8 by default, none without a `sky` (MapLibre's
+/// `Sky.setSky`).
 fn parse_atmosphere(json : Json?) -> Expr raise StyleError {
-  let sky = match json {
-    Some(Object(s)) => s
-    _ => {}
+  match json {
+    Some(Object(sky)) =>
+      paint_expr(sky, "atmosphere-blend", "sky", NumberType, Json::number(0.8))
+    _ => Lit(Num(0.0))
   }
-  paint_expr(sky, "atmosphere-blend", "sky", NumberType, Json::number(0.8))
 }

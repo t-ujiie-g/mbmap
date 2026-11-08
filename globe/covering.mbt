@@ -153,10 +153,9 @@ fn meet(p0 : Plane, p1 : Plane, p2 : Plane) -> Vec3 {
 }
 
 ///|
-/// The view frustum on the unit sphere's scale, its far plane brought in to
-/// the horizon (`Frustum.fromInvProjectionMatrix` as `_calcMatrices` calls it:
-/// z flipped, near and far swapped, from the inverse `mat4.clone` rounds to
-/// Float32).
+/// The view frustum on the unit sphere's scale, far plane at the horizon, as
+/// `_calcMatrices` builds it (z flipped, near and far swapped, from the inverse
+/// that `mat4.clone` rounds to Float32).
 fn Globe::frustum(self : Globe) -> Volume {
   let vp = self.vp()
   let corners = [

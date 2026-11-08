@@ -3,10 +3,9 @@
 // (src/geo/transform_helper.ts), BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
-/// The camera of a map with a globe projection, kept as MapLibre keeps it:
-/// one camera state that each change constrains, drawn as a globe while
-/// `transition` is above 0 and as mercator (`@core.Transform`) at 0. Setters
-/// change it in place, as MapLibre's transform; `copy` makes another.
+/// A globe projection's camera, one state that each change constrains in place
+/// as MapLibre's transform does (`copy` makes another): drawn as a globe while
+/// `transition` is above 0, as mercator (`@core.Transform`) at 0.
 pub struct Globe {
   priv mut center : @core.LngLat
   priv mut zoom : Double
@@ -37,10 +36,9 @@ priv struct Vp {
 }
 
 ///|
-/// A globe camera on a `width` x `height` CSS-pixel viewport, as MapLibre gets
-/// it from the camera's `jumpTo` once the style has set `projection` (a new
-/// globe transform starts drawn as a globe); the transition then follows the
-/// zoom it ends at.
+/// A globe camera on a `width` x `height` viewport as MapLibre's `jumpTo` gives it
+/// once the style sets `projection` (a new globe transform starts as a globe);
+/// the transition then follows the zoom it ends at.
 pub fn Globe::new(
   camera : @core.Camera,
   width : Double,

@@ -66,10 +66,9 @@ pub fn Renderer::release(self : Renderer, mesh : Mesh) -> Unit {
 }
 
 ///|
-/// Where a mesh is drawn: `matrix` (and `raster_matrix`, on the pixel grid at
-/// rest) maps tile units to clip space; `units_per_pixel` at `center_depth`; only
-/// `clip` (tile units) shows; `latitudes` are the tile's north and south edges;
-/// `globe`, if set, puts raster-like draws onto the globe.
+/// Where a mesh is drawn: `matrix` (`raster_matrix` on the pixel grid at rest)
+/// to clip space, `units_per_pixel` at `center_depth`, only `clip` shows, the
+/// tile's edge `latitudes`; `globe` puts raster-like draws onto the globe.
 pub(all) struct Placement {
   matrix : @core.Mat4
   raster_matrix : @core.Mat4
@@ -523,6 +522,16 @@ pub fn Renderer::index_count(
 ) -> Int32 {
   gl_index_count(mesh, outline)
 }
+
+///|
+/// The camera's pitch in degrees this frame (raster tiles are filtered by it).
+pub fn Renderer::set_pitch(self : Renderer, pitch : Double) -> Unit {
+  gl_set_pitch(self.gl, pitch)
+}
+
+///|
+extern "js" fn gl_set_pitch(gl : Gl, pitch : Double) -> Unit =
+  #|(c, pitch) => { c.pitch = pitch; }
 
 ///|
 /// Uploads a raster tile's image (an ImageBitmap, closed after).

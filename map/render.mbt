@@ -496,6 +496,7 @@ fn Map::draw_frame(
 ) -> Unit {
   let t = self.transform
   let globe = self.on_globe()
+  self.renderer.set_pitch(t.camera.pitch)
   // Terrain is not drawn on the globe yet.
   let terrain = if globe { None } else { self.terrain_source() }
   self.prerender_custom()
