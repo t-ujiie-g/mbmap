@@ -34,11 +34,13 @@ fn Lines::new(n : Int32) -> Lines {
 
 ///|
 /// `ViewshedExecutor` without the standard-deviation band. `nx` is relative to
-/// the output window, `ny` to the input raster.
+/// the output window, `ny` to the input raster; input cell (x, y) is
+/// `values[y * width + x - first]`.
 priv struct Executor {
   trig : @core.Trig
   values : FixedArray[Double]
   width : Int32
+  first : Int32
   x_start : Int32
   y_start : Int32
   y_stop : Int32
@@ -62,6 +64,8 @@ priv struct Executor {
   high_tan : Double
   test_angle : FixedArray[Double]
   height_adj : Double
+  adj_high : Double
+  squares : FixedArray[Double]
   min2 : Double
   max2 : Double
   mut z_observer : Double
@@ -119,6 +123,22 @@ fn height_edge(i : Int32, j : Int32, za : Double, zb : Double) -> Double {
 }
 
 ///|
+/// The `Edge` height of `zcalc`.
+fn edge(
+  x : Int32,
+  y : Int32,
+  this_prev : Double,
+  last : Double,
+  last_prev : Double,
+) -> Double {
+  if x >= y {
+    height_edge(y, x, last_prev, this_prev)
+  } else {
+    height_edge(x, y, last_prev, last)
+  }
+}
+
+///|
 /// `oZcalc`: `this_prev` is the cell toward the observer on this line, `last`
 /// the cell above (or below) on the previous line, `last_prev` the diagonal.
 fn Executor::zcalc(
@@ -129,18 +149,11 @@ fn Executor::zcalc(
   last : Double,
   last_prev : Double,
 ) -> Double {
-  let edge = fn() {
-    if x >= y {
-      height_edge(y, x, last_prev, this_prev)
-    } else {
-      height_edge(x, y, last_prev, last)
-    }
-  }
   match self.cell_mode {
-    Edge => edge()
+    Edge => edge(x, y, this_prev, last, last_prev)
     Diagonal => height_diagonal(x, y, this_prev, last)
     Min => {
-      let e = edge()
+      let e = edge(x, y, this_prev, last, last_prev)
       let d = height_diagonal(x, y, this_prev, last)
       if d < e {
         d
@@ -149,7 +162,7 @@ fn Executor::zcalc(
       }
     }
     Max => {
-      let e = edge()
+      let e = edge(x, y, this_prev, last, last_prev)
       let d = height_diagonal(x, y, this_prev, last)
       if e < d {
         d
@@ -189,7 +202,7 @@ fn Executor::set_output(
 /// `readLine`: the input row's cells in the window, and the result's start in
 /// `Dem` (the DEM) and `Ground` (0) modes.
 fn Executor::read_line(self : Executor, line : Int32, lines : Lines) -> Unit {
-  let base = line * self.width + self.x_start
+  let base = line * self.width + self.x_start - self.first
   for i in 0..<self.xsize {
     lines.cur[i] = self.values[base + i]
   }
@@ -239,6 +252,68 @@ fn Executor::check_nodata(self : Executor, v : Double) -> Unit {
 }
 
 ///|
+/// The squared distance `adjustHeight` finds to cell `px` (`off` from the
+/// observer) on a line `line_x`, `line_y` away. A north-up raster's `dx` is the
+/// same on every line, so the square and its error come from `squares`.
+fn Executor::distance2(
+  self : Executor,
+  px : Int32,
+  off : Int32,
+  line_x : Double,
+  line_y : Double,
+) -> Double {
+  let gt = self.gt
+  if self.squares.length() == 0 {
+    let dx = fma(gt[1], off.to_double(), line_x)
+    let dy = fma(gt[4], off.to_double(), line_y)
+    return fma(dx, dx, dy * dy)
+  }
+  // `gt[4]` is 0, so `dy` is `line_y`.
+  let p = self.squares[2 * px]
+  let c = line_y * line_y
+  if fma_trivial(p, c) {
+    p + c
+  } else {
+    fma_rest(p, self.squares[2 * px + 1], c)
+  }
+}
+
+///|
+/// `fma(height_adj, r2, z_observer)`, with `height_adj` split once.
+fn Executor::curvature(self : Executor, r2 : Double) -> Double {
+  let p = self.height_adj * r2
+  if fma_trivial(p, self.z_observer) {
+    p + self.z_observer
+  } else {
+    let al = self.height_adj - self.adj_high
+    fma_rest(p, product_error(self.adj_high, al, r2, p), self.z_observer)
+  }
+}
+
+///|
+/// `squares` of a north-up raster (`gt[2]` and `gt[4]` 0, so `dx` does not
+/// depend on the line): each output column's `dx * dx` and its exact error.
+fn column_squares(
+  gt : FixedArray[Double],
+  nx : Int32,
+  xsize : Int32,
+) -> FixedArray[Double] {
+  if gt[2] != 0.0 || gt[4] != 0.0 {
+    return []
+  }
+  let out = FixedArray::make(2 * xsize, 0.0)
+  for px in 0..<xsize {
+    // `fma(gt[1], off, ±0)` is the product (its zero's sign is squared away).
+    let dx = gt[1] * (px - nx).to_double()
+    let p = dx * dx
+    let dh = high_half(dx)
+    out[2 * px] = p
+    out[2 * px + 1] = product_error(dh, dx - dh, dx, p)
+  }
+  out
+}
+
+///|
 /// `adjustHeight`: heights relative to the observer, lowered by the earth's
 /// curvature, and the line's limits by distance.
 fn Executor::adjust_height(
@@ -252,15 +327,12 @@ fn Executor::adjust_height(
   let cur = lines.cur
   let pitch = self.low_pitch_masking || self.high_pitch_masking
   if self.height_adj != 0.0 || pitch || self.max2 > 0.0 || self.min2 > 0.0 {
-    let gt = self.gt
-    let line_x = gt[2] * y_offset.to_double()
-    let line_y = gt[5] * y_offset.to_double()
+    let line_x = self.gt[2] * y_offset.to_double()
+    let line_y = self.gt[5] * y_offset.to_double()
     let mut off = x_start - nx
     while off >= -nx {
       let px = nx + off
-      let dx = fma(gt[1], off.to_double(), line_x)
-      let dy = fma(gt[4], off.to_double(), line_y)
-      let r2 = fma(dx, dx, dy * dy)
+      let r2 = self.distance2(px, off, line_x, line_y)
       if r2 < self.min2 {
         ll.left_min -= 1
       } else if r2 > self.max2 {
@@ -268,7 +340,7 @@ fn Executor::adjust_height(
         break
       }
       self.check_nodata(cur[px])
-      cur[px] = cur[px] - fma(self.height_adj, r2, self.z_observer)
+      cur[px] = cur[px] - self.curvature(r2)
       if pitch {
         self.calc_pitch_mask(cur[px], r2.sqrt(), lines.result[px], lines, px)
       }
@@ -277,9 +349,7 @@ fn Executor::adjust_height(
     off = x_start - nx + 1
     while off < self.xsize - nx {
       let px = nx + off
-      let dx = fma(gt[1], off.to_double(), line_x)
-      let dy = fma(gt[4], off.to_double(), line_y)
-      let r2 = fma(dx, dx, dy * dy)
+      let r2 = self.distance2(px, off, line_x, line_y)
       if r2 < self.min2 {
         ll.right_min += 1
       } else if r2 > self.max2 {
@@ -287,7 +357,7 @@ fn Executor::adjust_height(
         break
       }
       self.check_nodata(cur[px])
-      cur[px] = cur[px] - fma(self.height_adj, r2, self.z_observer)
+      cur[px] = cur[px] - self.curvature(r2)
       if pitch {
         self.calc_pitch_mask(cur[px], r2.sqrt(), lines.result[px], lines, px)
       }

@@ -4,6 +4,7 @@
 
 import {
   "t-ujiie-g/mbmap/core",
+  "t-ujiie-g/mbmap/geom",
   "moonbitlang/core/encoding/utf8",
 }
 

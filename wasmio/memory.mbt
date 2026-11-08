@@ -116,9 +116,36 @@ pub fn input_bytes() -> Bytes {
 }
 
 ///|
+/// Input bytes `[start, start + len)` copied into a `Bytes`, four bytes per
+/// load; empty unless they are all input.
+pub fn input_slice(start : Int32, len : Int32) -> Bytes {
+  guard lengths_fit(start, len, input_len.val) else { return Bytes::new(0) }
+  let arr = FixedArray::make(len, b'\x00')
+  let words = len / 4
+  let at = PAGE + start
+  for w in 0..<words {
+    let v = load_i32(at + w * 4)
+    let i = w * 4
+    arr[i] = v.to_byte()
+    arr[i + 1] = (v >> 8).to_byte()
+    arr[i + 2] = (v >> 16).to_byte()
+    arr[i + 3] = (v >> 24).to_byte()
+  }
+  for i in (words * 4)..<len {
+    arr[i] = load_u8(at + i).to_byte()
+  }
+  // Nothing else holds `arr`, so the reinterpretation cannot be observed mutating.
+  arr.unsafe_reinterpret_as_bytes()
+}
+
+///|
 /// The input read as f64s (a trailing part of one is left out).
 pub fn input_f64s() -> FixedArray[Double] {
-  FixedArray::makei(input_len.val / 8, i => load_f64(PAGE + i * 8))
+  let out = FixedArray::make(input_len.val / 8, 0.0)
+  for i in 0..<out.length() {
+    out[i] = load_f64(PAGE + i * 8)
+  }
+  out
 }
 
 ///|
@@ -149,6 +176,60 @@ pub fn write_f64s(values : FixedArray[Double]) -> Int32 {
   let at = output_addr()
   for i, v in values {
     store_f64(at + i * 8, v)
+  }
+  n
+}
+
+///|
+/// Writes `head` then `values` as f64s to the output; returns their count, or
+/// -2 without memory.
+pub fn write_f64s_after(
+  head : FixedArray[Double],
+  values : FixedArray[Double],
+) -> Int32 {
+  let h = head.length()
+  let n = h + values.length()
+  guard n >= h && n <= MAX_OUTPUT_BYTES / 8 && reserve(n * 8) else { return -2 }
+  let at = output_addr()
+  for i, v in head {
+    store_f64(at + i * 8, v)
+  }
+  let at = at + h * 8
+  for i, v in values {
+    store_f64(at + i * 8, v)
+  }
+  n
+}
+
+///|
+/// Writes the `w` x `h` cells from (`x`, `y`) of a grid `stride` cells wide,
+/// `values` row by row, as f64s; returns their count, -1 if they are not all in
+/// the grid, or -2 without memory.
+pub fn write_f64_rows(
+  values : FixedArray[Double],
+  stride : Int32,
+  x : Int32,
+  y : Int32,
+  w : Int32,
+  h : Int32,
+) -> Int32 {
+  guard stride > 0 &&
+    lengths_fit(x, w, stride) &&
+    y >= 0 &&
+    h >= 0 &&
+    (y.to_int64() + h.to_int64()) * stride.to_int64() <=
+    values.length().to_int64() else {
+    return -1
+  }
+  let n = w * h
+  guard n <= MAX_OUTPUT_BYTES / 8 && reserve(n * 8) else { return -2 }
+  let mut at = output_addr()
+  for row in y..<(y + h) {
+    let base = row * stride + x
+    for i in 0..<w {
+      store_f64(at + i * 8, values[base + i])
+    }
+    at += w * 8
   }
   n
 }

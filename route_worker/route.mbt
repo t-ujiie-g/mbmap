@@ -25,11 +25,9 @@ let next_handle : Ref[Int32] = Ref(0)
 /// meters when positive) and returns its handle, or minus an error's length.
 #export_name("network_new")
 pub fn network_new(tolerance : Double, snap : Double) -> Int32 {
-  let bytes = @wasmio.input_bytes()
+  let table = @wasmio.input_table(0, @wasmio.input_length())
   @wasmio.clear_input()
-  guard @geom.Table::from_bytes(bytes[:]) is Some(t) else {
-    return @wasmio.fail_with("malformed table")
-  }
+  guard table is Some(t) else { return @wasmio.fail_with("malformed table") }
   guard @route.Network::new(t, tolerance~, snap~, trig=@wasmio.host_trig())
     is Some(n) else {
     return @wasmio.fail_with(

@@ -50,3 +50,32 @@ test "lengths_fit refuses negative lengths and sums past the total, overflowing 
   assert_false(lengths_fit(2147483647, 2, 10))
   assert_false(lengths_fit(2, 2147483647, 10))
 }
+
+///|
+test "write_bytes, write_f64s_after and write_f64_rows place every value" {
+  clear_input()
+  assert_eq(write_bytes(b"abcdef"[:]), 6)
+  assert_eq(load_i32(PAGE), 0x64636261)
+  assert_eq((load_u8(PAGE + 4), load_u8(PAGE + 5)), (101, 102))
+  assert_eq(write_f64s_after([1.0, 2.0], [3.0]), 3)
+  assert_eq(
+    (load_f64(PAGE), load_f64(PAGE + 8), load_f64(PAGE + 16)),
+    (1.0, 2.0, 3.0),
+  )
+  let grid = FixedArray::makei(12, i => i.to_double())
+  assert_eq(write_f64_rows(grid, 4, 1, 1, 2, 2), 4)
+  assert_eq(
+    (
+      load_f64(PAGE),
+      load_f64(PAGE + 8),
+      load_f64(PAGE + 16),
+      load_f64(PAGE + 24),
+    ),
+    (5.0, 6.0, 9.0, 10.0),
+  )
+  assert_eq(write_f64_rows(grid, 4, 3, 0, 2, 1), -1)
+  assert_eq(write_f64_rows(grid, 4, 0, 2, 1, 2), -1)
+  assert_eq(write_f64_rows(grid, 4, 0, -1, 1, 1), -1)
+  assert_eq(write_f64_rows(grid, 4, 0, 2147483647, 1, 2), -1)
+  assert_eq(write_f64_rows(grid, 0, 0, 0, 0, 0), -1)
+}

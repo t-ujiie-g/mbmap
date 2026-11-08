@@ -33,7 +33,7 @@ fn table_out(table : @geom.Table) -> Int32 {
   if table.ids.iter().any(id => id is Some(_)) {
     last_ids.append(table.ids)
   }
-  @wasmio.write_bytes(table.to_bytes()[:])
+  @wasmio.write_table(table)
 }
 
 ///|
@@ -299,7 +299,7 @@ pub fn write_csv(
   guard column_names(input, names) is Some(given) else {
     return @wasmio.fail_with("invalid column names")
   }
-  guard @geom.Table::from_bytes(input[names:]) is Some(table) else {
+  guard @wasmio.input_table(names, input.length() - names) is Some(table) else {
     return @wasmio.fail_with("invalid table")
   }
   let mut mode = mode

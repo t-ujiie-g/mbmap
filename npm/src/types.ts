@@ -1,6 +1,7 @@
 // The facade's public types (VISION §6), apart from the `Map` that uses them.
 import type { FitBoundsOptions, LngLat, LngLatBoundsLike, LngLatLike } from "./camera";
 import type { Map } from "./index";
+import type { GeoJSONSourceDiff } from "./geojson-diff";
 import type { GeoJSONFeature } from "./query";
 import type { LayerSpecification, StyleSpecification } from "./style";
 import type { TransformedRequest } from "./urls";
@@ -46,7 +47,7 @@ export type RequestTransformFunction = (
 ) => TransformedRequest | undefined;
 
 /**
- * What `getSource` gives, with MapLibre's members for its type: its `promoteId`; GeoJSON `setData`, `getData` (a copy of the data, fetched if a URL) and cluster queries (null without
+ * What `getSource` gives, with MapLibre's members for its type: its `promoteId`; GeoJSON `setData`, `updateData` (MapLibre's diffs, for data whose features all have ids of their own), `getData` (a copy of the data, fetched if a URL) and cluster queries (null without
  * clustering; `limit` 10 by default, Infinity for all); image, video and canvas `setCoordinates` (corners clockwise from the
  * top left), `updateImage`, `play` and `pause` (a playing canvas is redrawn every frame), `getVideo`, `getCanvas`.
  */
@@ -55,6 +56,7 @@ export interface Source {
   type: string;
   promoteId?: unknown;
   setData?(data: unknown): void;
+  updateData?(diff: GeoJSONSourceDiff): Promise<void>;
   getData?(): Promise<unknown>;
   getClusterExpansionZoom?(clusterId: number): Promise<number | null>;
   getClusterChildren?(clusterId: number): Promise<GeoJSONFeature[] | null>;

@@ -389,7 +389,7 @@ In:
   (`geojson_props_worker`) instantiated for the first source with cluster properties.
   Both import `Math` and `host.number` (`hostNumber`, for numbers past the reader's
   fast path); the one with expressions adds `hostText`'s, as the display worker's.
-- `{type: "load", source, url, init | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties}`:
+- `{type: "load", source, id, url, init | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties}`:
   `source` is an integer naming the source; `url` (http(s)) is fetched with `init`,
   what the map's `transformRequest` gave, checked as a tile's (string `headers` and a
   `credentials` mode, else none are sent), up to `MAX_INPUT_BYTES` (256 MiB);
@@ -407,6 +407,7 @@ In:
   `properties`, with `cluster`, is its `clusterProperties` as "Compiled style"'s
   cluster properties (a Uint8Array); such a source goes to the module with expressions.
   Loading a number again replaces its data once the earlier load has finished.
+  `id` (any value) comes back in the load's answer.
 - `{type: "unload", source}`: forgets the source.
 - `{type: "tile", id, source, z, x, y}`: waits until the source has loaded.
 - `{type: "cluster", id, source, op, cluster, limit, offset}`: `op` is `"expansion"`,
@@ -415,7 +416,8 @@ In:
 
 Out:
 
-- `{type: "loaded", source, features}`, `{type: "error", source, message}`.
+- `{type: "loaded", source, id, features, fetched}`, `{type: "error", source, id, message}`:
+  `fetched` is the data fetched from `url` (an ArrayBuffer, transferred), null for `bytes`.
 - `{type: "tile", id, bytes}`: a columnar tile (transferred), or null when the source
   has nothing there, failed or was never loaded.
 - `{type: "cluster", id, result}`: the expansion zoom, or the features as GeoJSON
@@ -475,8 +477,12 @@ In:
     empty for no path; `disposeNetwork` (`network`);
   - `viewshed` (`grid`, `observer` [lng, lat], `options` observerHeight, targetHeight,
     maxDistance, curvatureCoeff, mode 0 normal, 1 DEM, 2 ground, visible, invisible, outOfRange):
-    `{width, height, bounds, values}` from the viewshed module, which takes the elevations as f64s
-    and answers the output's width, height and geotransform, then its cells;
+    `{width, height, bounds, values}` from the viewshed module: `viewshed_window` (the same
+    arguments) answers the cells it reads as i32 x, y, width, height; `viewshed` takes those
+    cells' elevations as f64s (its arguments: width, height, geotransform, observer x, y, the
+    options, semi-major axis (NaN for none), mode 0 normal, 1 DEM, 2 ground, the three values,
+    then the cells' x, y, width, height, width 0 for the whole grid) and answers the output's
+    width, height and geotransform, then its cells;
   - `surface` (`dataset`, -1 for the grids, `fn` an export of surface_worker, `args` its numbers,
     `text` a property name, `numbers` f64s such as breaks): the module's input is the table, the
     text as UTF-8 and the f64s one after another; a new dataset, or for `dbscan` two f64s per

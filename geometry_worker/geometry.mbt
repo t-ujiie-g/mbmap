@@ -17,22 +17,22 @@ pub fn output_addr() -> Int32 {
 /// Writes `t` as table bytes at `output_addr`; returns their length.
 fn finish(t : @geom.Table) -> Int32 {
   @wasmio.clear_input()
-  @wasmio.write_bytes(t.to_bytes()[:])
+  @wasmio.write_table(t)
 }
 
 ///|
 /// The input's first table (`len` bytes, or all of it if -1) and the rest.
 fn tables(len : Int32) -> (@geom.Table, @geom.Table?)? {
-  let input = @wasmio.input_bytes()
+  let n = @wasmio.input_length()
   let usable = (t : @geom.Table) => @overlay.refusal(t) is None
   if len < 0 {
-    return @geom.Table::from_bytes(input[:]).filter(usable).map(t => (t, None))
+    return @wasmio.input_table(0, n).filter(usable).map(t => (t, None))
   }
-  if len > input.length() {
+  if len > n {
     return None
   }
-  guard @geom.Table::from_bytes(input[:len]) is Some(a) &&
-    @geom.Table::from_bytes(input[len:]) is Some(b) &&
+  guard @wasmio.input_table(0, len) is Some(a) &&
+    @wasmio.input_table(len, n - len) is Some(b) &&
     usable(a) &&
     usable(b) else {
     return None

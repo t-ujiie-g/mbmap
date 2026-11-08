@@ -53,7 +53,8 @@ async function load({ source, url, init, bytes, maxzoom, buffer, tolerance, line
   const c = cluster ?? { maxZoom: 0, radius: 0, minPoints: 0 };
   const n = wasm.load(source, maxzoom, buffer, tolerance, lineMetrics === true ? 1 : 0, cluster ? 1 : 0, c.maxZoom, c.radius, c.minPoints);
   if (n < 0) throw new Error(decoder.decode(new Uint8Array(wasm.memory.buffer, wasm.output_addr(), -n)));
-  return n;
+  // Data fetched here goes back to the page, which applies `updateData` diffs to it.
+  return { features: n, fetched: bytes instanceof ArrayBuffer ? null : data.buffer };
 }
 
 function tile({ id, source, z, x, y }) {
@@ -90,9 +91,10 @@ onmessage = (e) => {
   } else if (msg?.type === "load" && ready && Number.isInteger(msg.source)) {
     const done = load(msg, loads.get(msg.source));
     loads.set(msg.source, done);
+    const { source, id } = msg;
     done.then(
-      (features) => postMessage({ type: "loaded", source: msg.source, features }),
-      (err) => postMessage({ type: "error", source: msg.source, message: String(err?.message ?? err) }),
+      ({ features, fetched }) => postMessage({ type: "loaded", source, id, features, fetched }, fetched ? [fetched] : []),
+      (err) => postMessage({ type: "error", source, id, message: String(err?.message ?? err) }),
     );
   } else if (msg?.type === "unload" && Number.isInteger(msg.source)) {
     const done = loads.get(msg.source);

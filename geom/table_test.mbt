@@ -263,3 +263,108 @@ test "feature_points spans a feature's rings and parts, (0, 0) without points" {
   assert_eq(t.feature_points(1), (0, 0))
   assert_eq(t.feature_points(2), (1, 4))
 }
+
+///|
+test "to_bytes writes the Table form value by value" {
+  let b = @geom.TableBuilder::new()
+  b.point(1.0, 2.0)
+  b.end_ring()
+  b.end_part()
+  b.prop("k", Str("é"))
+  b.end_feature(Point)
+  b.prop("k", Num(3.0))
+  b.prop("m", Null)
+  b.end_feature(Point)
+  let t = b.finish()
+  let w = @core.ByteWriter::new()
+  for v in [2, 1, 1, 1, 2] {
+    w.u32(v)
+  }
+  w.u8(1)
+  w.u8(0)
+  w.pad4()
+  for e in [1, 1, 1, 1] {
+    w.u32(e)
+  }
+  w.f64(1.0)
+  w.f64(2.0)
+  w.utf8("k")
+  w.utf8("m")
+  let values : Array[@geom.Prop?] = [
+    Some(Str("é")),
+    Some(Num(3.0)),
+    None,
+    Some(Null),
+  ]
+  for v in values {
+    @geom.write_prop(w, v)
+  }
+  let expected = w.to_bytes()
+  assert_eq(t.to_bytes(), expected)
+  assert_eq(
+    @geom.Table::read_from(expected[:], expected.length() - 1).map(u => {
+      u.length()
+    }),
+    None,
+  )
+  assert_eq(
+    @geom.Table::read_from(expected[:], expected.length()).map(u => u.to_bytes()),
+    Some(expected),
+  )
+}
+
+///|
+test "reserve leaves a builder's table as it was" {
+  let b = @geom.TableBuilder::new()
+  b.reserve(10, 40)
+  assert_eq(b.table.length(), 0)
+  b.point(1.0, 2.0)
+  b.end_ring()
+  b.end_part()
+  b.end_feature(Point)
+  b.reserve(5, 5)
+  assert_eq((b.finish().length(), b.table.coords), (1, [1.0, 2.0]))
+}
+
+///|
+/// A sink with room for `cap` bytes, which it drops.
+struct Capped {
+  cap : Int32
+}
+
+///|
+impl @geom.TableSink for Capped with fn room(self, n) {
+  n <= self.cap
+}
+
+///|
+impl @geom.TableSink for Capped with fn set_u8(_, _, _) {
+  ()
+}
+
+///|
+impl @geom.TableSink for Capped with fn set_u32(_, _, _) {
+  ()
+}
+
+///|
+impl @geom.TableSink for Capped with fn set_f64(_, _, _) {
+  ()
+}
+
+///|
+test "write_to gives -1 when the sink has no room, whatever part runs out" {
+  let b = @geom.TableBuilder::new()
+  b.point(1.0, 2.0)
+  b.end_ring()
+  b.end_part()
+  b.prop("name", Str("abc"))
+  b.prop("n", Num(1.0))
+  b.end_feature(Point)
+  let t = b.finish()
+  let n = t.to_bytes().length()
+  assert_eq(t.write_to(Capped::{ cap: n, }), n)
+  for cap in [0, 20, 40, 48, n - 9, n - 1] {
+    assert_eq(t.write_to(Capped::{ cap, }), -1)
+  }
+}

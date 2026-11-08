@@ -94,6 +94,7 @@ pub fn point_grid(
   }
   guard within_cap(nx, ny) else { return None }
   let b = @geom.TableBuilder::new()
+  b.reserve(nx * ny, nx * ny)
   let mut x = start_x
   for _ in 0..<nx {
     let mut y = start_y
@@ -132,6 +133,7 @@ fn rectangle_grid(
   let delta_x = (bbox_width - columns * cell_width) / 2.0
   let delta_y = (bbox_height - rows * cell_height) / 2.0
   let b = @geom.TableBuilder::new()
+  b.reserve(nx * ny, nx * ny * 5)
   let mut x = x0 + delta_x
   for _ in 0..<nx {
     let mut y = y0 + delta_y
@@ -221,6 +223,7 @@ pub fn hex_grid(
   let rx = cell_width / 2.0
   let ry = cell_height / 2.0
   let b = @geom.TableBuilder::new()
+  b.reserve(cells.to_int(), cells.to_int() * (if triangles { 4 } else { 7 }))
   for x in 0..<nx {
     for y in 0..<ny {
       let is_odd = x % 2 == 1
@@ -274,6 +277,7 @@ pub fn triangle_grid(
   guard inner_steps(nx, y0, y1, h) is Some(ny) else { return None }
   guard within_cap(nx, ny * 2) else { return None }
   let b = @geom.TableBuilder::new()
+  b.reserve(nx * ny * 2, nx * ny * 8)
   let mut x = x0
   for xi in 0..<nx {
     let mut y = y0

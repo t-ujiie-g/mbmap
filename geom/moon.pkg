@@ -5,4 +5,5 @@
 import {
   "t-ujiie-g/mbmap/core",
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 }

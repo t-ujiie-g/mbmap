@@ -12,7 +12,9 @@ pub const MAX_VIEWSHED_CELLS : Int32 = 16_777_216
 
 pub fn grid_fits(Int32, Int32) -> Bool
 
-pub fn viewshed(FixedArray[Double], Int32, Int32, FixedArray[Double], Double?, ViewshedOptions, trig? : @core.Trig) -> ViewshedResult?
+pub fn viewshed(FixedArray[Double], Int32, Int32, FixedArray[Double], Double?, ViewshedOptions, trig? : @core.Trig, cells? : (Int32, Int32, Int32, Int32)) -> ViewshedResult?
+
+pub fn viewshed_window(Int32, Int32, FixedArray[Double], ViewshedOptions, trig? : @core.Trig) -> (Int32, Int32, Int32, Int32)?
 
 // Errors
 

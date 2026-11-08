@@ -98,6 +98,10 @@ license and source.
     line bucket of src/data/bucket/line_bucket.ts (joins, offset normals, sharp
     corners and `linesofar`, `dashDependencies`, `lineClipsArray`) and the points
     the circle bucket keeps
+  - npm/src/geojson-diff.ts and npm/src/geojson.ts: src/source/geojson_source_diff.ts
+    (`toUpdateable`, `applySourceDiff`, `mergeSourceDiffs`), `getGeoJSONBounds` of
+    src/util/geojson_bounds.ts, `tileIdToLngLatBounds` of src/tile/, `LngLatBounds.intersects`
+    and `GeoJSONSource.updateData` / `shouldReloadTile` of src/source/geojson_source.ts
   - npm/src/media.ts and map/media.mbt: `ImageSource.setCoordinates` and
     `calculateImageWarp` of src/source/image_source.ts, the video and canvas
     sources of video_source.ts and canvas_source.ts
