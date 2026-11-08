@@ -110,12 +110,12 @@ fn height_line3(n : Int32, zcur : Double, za : Double) -> Double {
 
 ///|
 fn height_diagonal(i : Int32, j : Int32, za : Double, zb : Double) -> Double {
-  (za * i.to_double() + zb * j.to_double()) / (i + j - 1).to_double()
+  fma(za, i.to_double(), zb * j.to_double()) / (i + j - 1).to_double()
 }
 
 ///|
 fn height_edge(i : Int32, j : Int32, za : Double, zb : Double) -> Double {
-  (za * i.to_double() + zb * (j - i).to_double()) / (j - 1).to_double()
+  fma(za, i.to_double(), zb * (j - i).to_double()) / (j - 1).to_double()
 }
 
 ///|
@@ -258,9 +258,9 @@ fn Executor::adjust_height(
     let mut off = x_start - nx
     while off >= -nx {
       let px = nx + off
-      let dx = gt[1] * off.to_double() + line_x
-      let dy = gt[4] * off.to_double() + line_y
-      let r2 = dx * dx + dy * dy
+      let dx = fma(gt[1], off.to_double(), line_x)
+      let dy = fma(gt[4], off.to_double(), line_y)
+      let r2 = fma(dx, dx, dy * dy)
       if r2 < self.min2 {
         ll.left_min -= 1
       } else if r2 > self.max2 {
@@ -268,7 +268,7 @@ fn Executor::adjust_height(
         break
       }
       self.check_nodata(cur[px])
-      cur[px] = cur[px] - (self.height_adj * r2 + self.z_observer)
+      cur[px] = cur[px] - fma(self.height_adj, r2, self.z_observer)
       if pitch {
         self.calc_pitch_mask(cur[px], r2.sqrt(), lines.result[px], lines, px)
       }
@@ -277,9 +277,9 @@ fn Executor::adjust_height(
     off = x_start - nx + 1
     while off < self.xsize - nx {
       let px = nx + off
-      let dx = gt[1] * off.to_double() + line_x
-      let dy = gt[4] * off.to_double() + line_y
-      let r2 = dx * dx + dy * dy
+      let dx = fma(gt[1], off.to_double(), line_x)
+      let dy = fma(gt[4], off.to_double(), line_y)
+      let r2 = fma(dx, dx, dy * dy)
       if r2 < self.min2 {
         ll.right_min += 1
       } else if r2 > self.max2 {
@@ -287,7 +287,7 @@ fn Executor::adjust_height(
         break
       }
       self.check_nodata(cur[px])
-      cur[px] = cur[px] - (self.height_adj * r2 + self.z_observer)
+      cur[px] = cur[px] - fma(self.height_adj, r2, self.z_observer)
       if pitch {
         self.calc_pitch_mask(cur[px], r2.sqrt(), lines.result[px], lines, px)
       }

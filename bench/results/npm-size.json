@@ -156,7 +156,7 @@
     },
     {
       "name": "viewshed (GDAL's; loaded by the analysis worker on first use)",
-      "bytes": 9956,
+      "bytes": 10188,
       "budget": 12000
     },
     {

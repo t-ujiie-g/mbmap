@@ -67,7 +67,7 @@ fn invert_geotransform(gt : FixedArray[Double]) -> FixedArray[Double]? {
       1.0 / gt[5],
     ])
   }
-  let det = gt[1] * gt[5] - gt[2] * gt[4]
+  let det = fma(gt[1], gt[5], -(gt[2] * gt[4]))
   let a = gt[1].abs()
   let b = gt[2].abs()
   let c = gt[4].abs()
@@ -80,10 +80,10 @@ fn invert_geotransform(gt : FixedArray[Double]) -> FixedArray[Double]? {
   }
   let inv_det = 1.0 / det
   Some([
-    (gt[2] * gt[3] - gt[0] * gt[5]) * inv_det,
+    fma(gt[2], gt[3], -(gt[0] * gt[5])) * inv_det,
     gt[5] * inv_det,
     -gt[2] * inv_det,
-    (-gt[1] * gt[3] + gt[0] * gt[4]) * inv_det,
+    fma(-gt[1], gt[3], gt[0] * gt[4]) * inv_det,
     -gt[4] * inv_det,
     gt[1] * inv_det,
   ])
@@ -184,14 +184,14 @@ fn vertical_intersect(
     if are_real_equal(angle, 0.0) {
       ny.to_double()
     } else if angle < PI / 2.0 || angle > PI * 3.0 / 2.0 {
-      ny.to_double() + (nx - x).to_double() * (trig.tan)(angle)
+      fma((nx - x).to_double(), (trig.tan)(angle), ny.to_double())
     } else {
       @double.not_a_number
     }
   } else if are_real_equal(angle, PI) {
     ny.to_double()
   } else if angle > PI / 2.0 && angle < PI * 3.0 / 2.0 {
-    ny.to_double() - (x - nx).to_double() * (trig.tan)(angle)
+    fma(-(x - nx).to_double(), (trig.tan)(angle), ny.to_double())
   } else {
     @double.not_a_number
   }
