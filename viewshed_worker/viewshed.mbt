@@ -14,11 +14,9 @@ pub fn output_addr() -> Int32 {
 }
 
 ///|
-/// `@viewshed.viewshed` of the input f64s (`width` x `height` elevations, row by
-/// row from the north, NaN for none) with the geotransform `g0`..`g5`, the
-/// observer at (`ox`, `oy`) and gdal_viewshed's options (`mode` 0 normal, 1 DEM,
-/// 2 ground; `semi_major` NaN for no curvature). Writes the output's width,
-/// height and geotransform, then its cells; returns the f64 count.
+/// `@viewshed.viewshed` of the input's `width` x `height` f64 elevations: the
+/// arguments and output as docs/FORMATS.md "Analysis worker messages" `viewshed`
+/// lists them (`mode` 0 normal, 1 DEM, 2 ground; `semi_major` NaN for none).
 #export_name("viewshed")
 pub fn viewshed(
   width : Int32,
@@ -41,6 +39,11 @@ pub fn viewshed(
   invisible : Double,
   out_of_range : Double,
 ) -> Int32 {
+  guard @viewshed.grid_fits(width, height) &&
+    @wasmio.input_length() == width * height * 8 else {
+    @wasmio.clear_input()
+    return @wasmio.fail_with(no_viewshed)
+  }
   let values = @wasmio.input_f64s()
   @wasmio.clear_input()
   let options = @viewshed.ViewshedOptions::new(
@@ -70,9 +73,7 @@ pub fn viewshed(
       trig=@wasmio.host_trig(),
     )
     is Some(r) else {
-    return @wasmio.fail_with(
-      "no viewshed: check the observer, the distances and the grid (at most \{@viewshed.MAX_VIEWSHED_CELLS} cells)",
-    )
+    return @wasmio.fail_with(no_viewshed)
   }
   let out = FixedArray::make(8 + r.values.length(), 0.0)
   out[0] = r.width.to_double()
@@ -85,3 +86,6 @@ pub fn viewshed(
   }
   @wasmio.write_f64s(out)
 }
+
+///|
+let no_viewshed = "no viewshed: check the observer, the distances and the grid (at most \{@viewshed.MAX_VIEWSHED_CELLS} cells)"

@@ -48,18 +48,6 @@ test "log10 as V8's Math.log10" {
 }
 
 ///|
-test "js_round as Math.round" {
-  assert_eq(js_round(2.5), 3.0)
-  assert_eq(js_round(-2.5), -2.0)
-  assert_eq(1.0 / js_round(-0.4), @double.neg_infinity)
-  assert_eq(js_round(0.49999999999999994), 0.0)
-  assert_eq(js_round(1.5), 2.0)
-  assert_eq(js_round(-1.5), -1.0)
-  assert_eq(js_round(4503599627370495.5), 4503599627370496.0)
-  assert_true(js_round(@double.not_a_number).is_nan())
-}
-
-///|
 test "max_of skips NaN as d3-array's max" {
   let f = Float::from_double
   assert_eq(max_of([f(1.0), f(@double.not_a_number), f(3.5), f(-2.0)]), 3.5)

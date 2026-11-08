@@ -2,9 +2,7 @@
 // and @turf/bbox (MIT License, Copyright (c) 2017 TurfJS). See NOTICE.
 
 ///|
-/// The trigonometry `isobands` uses (`@core.Trig`): a wasm build passes the
-/// host's `Math` to match Turf bit for bit; `@math` can differ in the last bit.
-pub using @core {type Trig}
+using @core {type Trig}
 
 ///|
 /// Most Point rows `isolines` and `isobands` take (AGENTS.md §8.2).
@@ -84,7 +82,7 @@ fn grid_of(t : @geom.Table, z_property : String) -> Grid? {
     let c = t.points(t.rings(t.parts(f).0).0).0
     let x = t.coords[c * 2]
     let y = t.coords[c * 2 + 1]
-    if !finite(x) || !finite(y) {
+    if !x.is_finite() || !y.is_finite() {
       return None
     }
     xs[f] = x
@@ -139,11 +137,6 @@ fn grid_of(t : @geom.Table, z_property : String) -> Grid? {
     }
   }
   Some({ rows, cols, z, min_x, min_y, max_x, max_y, })
-}
-
-///|
-fn finite(x : Double) -> Bool {
-  !x.is_nan() && !x.is_inf()
 }
 
 ///|

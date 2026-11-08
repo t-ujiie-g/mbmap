@@ -337,7 +337,7 @@ fn edge_distance(p : Coord, p0 : Coord, p1 : Coord) -> Double {
     let pdy = (p.y - p0.y).abs()
     let dist = if dx > dy { pdx } else { pdy }
     if dist == 0.0 && !p.eq2d(p0) {
-      js_max(pdx, pdy)
+      @core.js_max(pdx, pdy)
     } else {
       dist
     }

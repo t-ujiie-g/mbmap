@@ -28,14 +28,7 @@ fn degree_xy(p : @clipper.Point64) -> (Double, Double) {
 ///|
 /// Feature `f`'s bounding box: west, south, east, north (None without points).
 fn bbox_of(t : @geom.Table, f : Int32) -> (Double, Double, Double, Double)? {
-  let (p0, p1) = t.parts(f)
-  if p0 == p1 {
-    return None
-  }
-  let (r0, _) = t.rings(p0)
-  let (_, r1) = t.rings(p1 - 1)
-  let (i0, _) = t.points(r0)
-  let (_, i1) = t.points(r1 - 1)
+  let (i0, i1) = t.feature_points(f)
   if i0 == i1 {
     return None
   }

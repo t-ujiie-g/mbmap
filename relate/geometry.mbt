@@ -203,51 +203,19 @@ fn seg_env_has(p1 : Coord, p2 : Coord, q : Coord) -> Bool {
 }
 
 ///|
-/// JavaScript's `Math.min`: NaN if either is.
-fn js_min(a : Double, b : Double) -> Double {
-  if a.is_nan() || b.is_nan() {
-    @double.not_a_number
-  } else if a < b {
-    a
-  } else if b < a {
-    b
-  } else if a == 0.0 && (1.0 / a < 0.0 || 1.0 / b < 0.0) {
-    -0.0
-  } else {
-    a
-  }
-}
-
-///|
-/// JavaScript's `Math.max`: NaN if either is.
-fn js_max(a : Double, b : Double) -> Double {
-  if a.is_nan() || b.is_nan() {
-    @double.not_a_number
-  } else if a > b {
-    a
-  } else if b > a {
-    b
-  } else if a == 0.0 && (1.0 / a > 0.0 || 1.0 / b > 0.0) {
-    0.0
-  } else {
-    a
-  }
-}
-
-///|
 /// The static `Envelope.intersects(p1, p2, q1, q2)`.
 fn seg_envs_meet(p1 : Coord, p2 : Coord, q1 : Coord, q2 : Coord) -> Bool {
-  let mut minq = js_min(q1.x, q2.x)
-  let mut maxq = js_max(q1.x, q2.x)
-  let mut minp = js_min(p1.x, p2.x)
-  let mut maxp = js_max(p1.x, p2.x)
+  let mut minq = @core.js_min(q1.x, q2.x)
+  let mut maxq = @core.js_max(q1.x, q2.x)
+  let mut minp = @core.js_min(p1.x, p2.x)
+  let mut maxp = @core.js_max(p1.x, p2.x)
   if minp > maxq || maxp < minq {
     return false
   }
-  minq = js_min(q1.y, q2.y)
-  maxq = js_max(q1.y, q2.y)
-  minp = js_min(p1.y, p2.y)
-  maxp = js_max(p1.y, p2.y)
+  minq = @core.js_min(q1.y, q2.y)
+  maxq = @core.js_max(q1.y, q2.y)
+  minp = @core.js_min(p1.y, p2.y)
+  maxp = @core.js_max(p1.y, p2.y)
   !(minp > maxq || maxp < minq)
 }
 

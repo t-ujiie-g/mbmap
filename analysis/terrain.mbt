@@ -64,7 +64,7 @@ pub fn Grid::slope(self : Grid, trig : Trig) -> FixedArray[Double] {
     let (wx, ny) = self.horn(k % self.width, k / self.width)
     let dx = wx / self.res_x
     let dy = ny / self.res_y
-    (trig.atan2)((dx * dx + dy * dy).sqrt() / 8.0, 1.0) * 180.0 / @math.PI
+    trig.atan2((dx * dx + dy * dy).sqrt() / 8.0, 1.0) * 180.0 / @math.PI
   })
 }
 
@@ -80,7 +80,7 @@ pub fn Grid::aspect(self : Grid, trig : Trig) -> FixedArray[Double] {
     if dx == 0.0 && dy == 0.0 {
       return @double.not_a_number
     }
-    let a = (trig.atan2)(dy, -dx) * 180.0 / @math.PI
+    let a = trig.atan2(dy, -dx) * 180.0 / @math.PI
     let azimuth = if a > 90.0 { 450.0 - a } else { 90.0 - a }
     if azimuth == 360.0 {
       0.0
@@ -102,10 +102,10 @@ pub fn Grid::hillshade(
 ) -> Bytes {
   let rad = @math.PI / 180.0
   let zf = z / 8.0
-  let sin_alt = (trig.sin)(altitude * rad)
-  let cos_alt = (trig.cos)(altitude * rad) * zf
-  let cos_az = (trig.cos)(azimuth * rad) * cos_alt
-  let sin_az = (trig.sin)(azimuth * rad) * cos_alt
+  let sin_alt = trig.sin(altitude * rad)
+  let cos_alt = trig.cos(altitude * rad) * zf
+  let cos_az = trig.cos(azimuth * rad) * cos_alt
+  let sin_az = trig.sin(azimuth * rad) * cos_alt
   let out = FixedArray::make(self.width * self.height, b'\x00')
   for k in 0..<(self.width * self.height) {
     let (wx, ny) = self.horn(k % self.width, k / self.width)

@@ -17,13 +17,13 @@ pub const DBSCAN_SKIPPED : Int32 = 3
 
 pub const MAX_CLUSTER_POINTS : Int32 = 1_000_000
 
-pub fn dbscan(@geom.Table, Double, Int32, trig? : @core.Trig) -> FixedArray[Int32]
+pub const MAX_DBSCAN_CANDIDATES : Int64 = 1_000_000_000
 
-pub fn dbscan_checked(@geom.Table, Double, Int32, trig? : @core.Trig) -> FixedArray[Int32]?
+pub const MAX_KMEANS_DISTANCES : Int64 = 10_000_000_000
 
-pub fn kmeans(@geom.Table, Int32) -> (FixedArray[Int32], FixedArray[Double])
+pub fn dbscan(@geom.Table, Double, Int32, trig? : @core.Trig) -> FixedArray[Int32]?
 
-pub fn kmeans_checked(@geom.Table, Int32) -> (FixedArray[Int32], FixedArray[Double])?
+pub fn kmeans(@geom.Table, Int32) -> (FixedArray[Int32], FixedArray[Double])?
 
 // Errors
 

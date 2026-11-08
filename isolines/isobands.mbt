@@ -1,6 +1,6 @@
 // Point in polygon follows point-in-polygon-hao 1.2.4 (MIT License, Copyright
-// (c) 2021 Rowan Winsemius) as @turf/boolean-point-in-polygon 7.4.0 calls it,
-// and ring areas @turf/area 7.4.0. See NOTICE.
+// (c) 2021 Rowan Winsemius) as @turf/boolean-point-in-polygon 7.4.0 calls it.
+// See NOTICE.
 
 ///|
 /// Most ring pairs plus edge tests `isobands` spends nesting one band's rings
@@ -8,18 +8,9 @@
 pub const MAX_NESTING_TESTS : Int64 = 100_000_000
 
 ///|
-/// Turf's mean earth radius in meters.
-const EARTH_RADIUS : Double = 6371008.8
-
-///|
-const PI_OVER_180 : Double = 3.141592653589793 / 180.0
-
-///|
-/// Turf's `assembleRings`: segments joined into contours, open ones closed
-/// along the grid's edges counter-clockwise, rings under 4 points dropped.
-/// Rings as flat x, y with the first point repeated last. None where Turf
-/// throws (a contour ending inside the grid) or loops forever (an open
-/// contour that no contour, itself included, starts along the edges after).
+/// Turf's `assembleRings`: closed flat x, y rings, open contours closed along
+/// the grid's edges. None where Turf throws (a contour ending inside the grid)
+/// or loops forever (no contour starts along the edges after an open one).
 fn assemble(seg : Array[Double], g : Grid) -> Array[Array[Double]]? {
   let contours = join(seg)
   let count = contours.length()
@@ -119,25 +110,6 @@ fn assemble(seg : Array[Double], g : Grid) -> Array[Array[Double]]? {
 }
 
 ///|
-/// @turf/area's `ringArea` (signed, square meters) of a closed flat ring.
-fn ring_area(r : Array[Double], trig : Trig) -> Double {
-  let len = r.length() / 2 - 1
-  if len <= 2 {
-    return 0.0
-  }
-  let mut total = 0.0
-  for i in 0..<len {
-    let middle = if i + 1 == len { 0 } else { i + 1 }
-    let upper = if i + 2 >= len { (i + 2) % len } else { i + 2 }
-    let lower_x = r[i * 2] * PI_OVER_180
-    let middle_y = r[middle * 2 + 1] * PI_OVER_180
-    let upper_x = r[upper * 2] * PI_OVER_180
-    total += (upper_x - lower_x) * trig.sin(middle_y)
-  }
-  total * (EARTH_RADIUS * EARTH_RADIUS / 2.0)
-}
-
-///|
 /// point-in-polygon-hao on one closed flat ring: 0 on its boundary, 1 inside,
 /// -1 outside.
 fn in_ring(r : Array[Double], x : Double, y : Double) -> Int32 {
@@ -188,15 +160,14 @@ fn ring_box(r : Array[Double]) -> (Double, Double, Double, Double) {
 }
 
 ///|
-/// Turf's `orderByArea` and `groupNestedRings`: rings by decreasing area
-/// (stable), then each ring not yet grouped starts a polygon taking every
-/// later ungrouped ring all of whose points are in or on it and in or on none
-/// of the polygon's holes so far. A ring reaching out of another's bounding
-/// box is not inside it, which skips Turf's point tests with the same answer.
-/// None past `MAX_NESTING_TESTS`.
+/// Turf's `orderByArea` and `groupNestedRings`, None past `MAX_NESTING_TESTS`.
+/// A ring reaching out of another's box is not inside it, which skips Turf's
+/// point tests with the same answer.
 fn nest(rings : Array[Array[Double]], trig : Trig) -> Array[Array[Int32]]? {
   let count = rings.length()
-  let areas = rings.map(r => ring_area(r, trig).abs())
+  let areas = rings.map(r => {
+    @core.turf_ring_area(trig, r, 0, r.length() / 2).abs()
+  })
   let order = Array::makei(count, i => i)
   order.sort_by((a, b) => {
     if areas[a] > areas[b] {
@@ -260,16 +231,9 @@ fn nest(rings : Array[Array[Double]], trig : Trig) -> Array[Array[Int32]]? {
 }
 
 ///|
-/// Turf's `isobands(grid, breaks, { zProperty })` over the table's Point rows
-/// and their `z_property` values (read as `isolines` reads them): a
-/// MultiPolygon row per pair of consecutive breaks, with `z_property` set to
-/// Turf's label `lower + "-" + upper` (numbers by `number_text`, JavaScript's
-/// `String(x)` by default). Rings, their order, starts and nesting are Turf's,
-/// nested in matrix units, where Turf measures ring areas on the sphere as if
-/// they were degrees (`trig`). A band meeting no cell has no geometry unless
-/// the grid's first value lies in it, which gives Turf's whole-grid rectangle.
-/// None where `isolines` gives None, where Turf throws (a contour ending inside
-/// the grid) or never returns, and past `MAX_NESTING_TESTS`.
+/// Turf's `isobands(grid, breaks, { zProperty })`: a MultiPolygon row per pair of
+/// breaks labelled `lower-upper` by `number_text`, nested by areas of matrix units
+/// taken as degrees, as Turf does. None where `isolines` is or Turf fails.
 pub fn isobands(
   t : @geom.Table,
   breaks : Array[Double],

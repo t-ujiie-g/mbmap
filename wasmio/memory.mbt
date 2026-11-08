@@ -76,6 +76,25 @@ pub fn output_addr() -> Int32 {
 }
 
 ///|
+/// How many input bytes `prepare_input` made room for.
+pub fn input_length() -> Int32 {
+  input_len.val
+}
+
+///|
+/// Whether `count` values of `size` bytes fit the output, so an entry can check
+/// before it builds them.
+pub fn output_fits(count : Int64, size : Int32) -> Bool {
+  count >= 0L && count * size.to_int64() <= MAX_OUTPUT_BYTES.to_int64()
+}
+
+///|
+/// Whether parts of `a` then `b` bytes fit in `total` (without overflowing).
+pub fn lengths_fit(a : Int32, b : Int32, total : Int32) -> Bool {
+  a >= 0 && b >= 0 && a <= total && b <= total - a
+}
+
+///|
 /// The input copied into a `Bytes`, four bytes per load.
 pub fn input_bytes() -> Bytes {
   let len = input_len.val

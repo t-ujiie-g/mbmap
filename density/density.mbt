@@ -17,18 +17,9 @@ fn pow2(e : Int32) -> Double {
 }
 
 ///|
-/// d3-contour's `contourDensity().x(..).y(..).weight(..).size([width, height])
-/// .cellSize(cell_size).bandwidth(bandwidth).thresholds(thresholds)(data)`
-/// over points `xs`, `ys` with `weights` (1 each without): the points are
-/// splatted into a Float32 grid of cells `cell_size` wide (rounded down to a
-/// power of two, padded by three blur radii), blurred, and contoured at
-/// d3-array's `ticks` of `thresholds` uniform values from `Number.MIN_VALUE` to
-/// the densest cell; coordinates in the points' units, `value` in points (or
-/// weight) per square unit. Points with a NaN coordinate or a zero or NaN
-/// weight count for nothing, as in d3. None where d3 throws (a negative size or
-/// bandwidth, a cell size under 1) and for `xs`, `ys` and `weights` of unequal
-/// lengths, more than `MAX_THRESHOLDS` thresholds, a padded grid past
-/// `MAX_CONTOUR_CELLS` or `MAX_CONTOUR_WORK`, or past `MAX_TICKS`.
+/// d3-contour's `contourDensity()` with `size([width, height])`, `cellSize`,
+/// `bandwidth` and `thresholds` over `xs`, `ys` and `weights` (1 each without).
+/// None where d3 throws, for unequal lengths and past the `MAX_*` caps.
 pub fn contour_density(
   xs : FixedArray[Double],
   ys : FixedArray[Double],
@@ -105,9 +96,11 @@ pub fn contour_density(
   }
   let grid = FixedArray::makei(n * m, i => values[i].to_double())
   let scale = pow2(k)
+  guard contour_levels(grid, n, m, levels, true) is Some(cs) else {
+    return None
+  }
   Some(
-    levels.mapi((i, level) => {
-      let coordinates = contour(grid, n, m, level, true)
+    cs.mapi((i, coordinates) => {
       for polygon in coordinates {
         for ring in polygon {
           for j, p in ring {

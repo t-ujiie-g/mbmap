@@ -28,6 +28,5 @@ pub fn isolines(@geom.Table, Array[Double], String) -> @geom.Table?
 // Types and methods
 
 // Type aliases
-pub using @core {type Trig}
 
 // Traits
