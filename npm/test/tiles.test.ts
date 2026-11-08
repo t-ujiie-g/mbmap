@@ -4,7 +4,7 @@ import { boundingVolume, distanceSquaredTo, eastNorthUp, intersectPlane, INSIDE,
 import { buildTree, Traversal, type FrameState } from "../src/tiles/tileset.ts";
 import { expandImplicit, readSubtree } from "../src/tiles/implicit.ts";
 import { frameState, invert } from "../src/tiles/frame.ts";
-import { splitB3dm } from "../src/tiles/content.ts";
+import { readTileContent, splitB3dm } from "../src/tiles/content.ts";
 
 const near = (a: ArrayLike<number>, b: ArrayLike<number>, eps: number) => Array.from(a).every((v, i) => Math.abs(v - b[i]) <= eps);
 
@@ -170,10 +170,113 @@ test("splitB3dm reads the feature and batch tables and refuses broken headers", 
   bytes.set(bt, 28 + ft.length);
   bytes.set(glb, 28 + ft.length + bt.length);
   const b = splitB3dm(bytes)!;
-  assert.deepEqual([b.rtc, b.batchLength, b.batchTable, [...b.glb]], [[1, 2, 3], 2, { id: [5, 6] }, [9, 9]]);
+  assert.deepEqual([b.rtc, b.batchLength, b.batchTable, [...b.batchBinary], [...b.glb]], [[1, 2, 3], 2, { id: [5, 6] }, [], [9, 9]]);
   assert.equal(splitB3dm(new Uint8Array([1, 2, 3, 4])), null);
   v.setUint32(12, 1 << 20, true);
   assert.throws(() => splitB3dm(bytes), /run past the file/);
   v.setUint32(4, 2, true);
   assert.throws(() => splitB3dm(bytes), /version 1/);
+});
+
+const words = (bytes: Uint8Array, ...xs: number[]) => xs.forEach((x, i) => new DataView(bytes.buffer, bytes.byteOffset).setUint32(i * 4, x, true));
+const GLTF = new TextEncoder().encode('{"asset":{"version":"2.0"},"buffers":[{"uri":"b.bin","byteLength":4}]}');
+const loadAny = async () => new Uint8Array(4);
+
+/** An i3dm of a feature table (JSON padded to 8, then `bin`) and `body` after it, gltfFormat `format`. */
+function i3dm(ft: object, bin: Uint8Array, body: Uint8Array, format = 1): Uint8Array {
+  let text = JSON.stringify(ft);
+  while (text.length % 8) text += " ";
+  const out = new Uint8Array(32 + text.length + bin.length + body.length);
+  words(out, 0x6d643369, 1, out.length, text.length, bin.length, 0, 0, format);
+  out.set(new TextEncoder().encode(text), 32);
+  out.set(bin, 32 + text.length);
+  out.set(body, 32 + text.length + bin.length);
+  return out;
+}
+
+const f32Bytes = (xs: number[]) => new Uint8Array(new Float32Array(xs).buffer);
+
+test("readTileContent reads an i3dm's instances: positions, RTC_CENTER, SCALE and BATCH_ID", async () => {
+  const bin = new Uint8Array(32);
+  bin.set(f32Bytes([1, 2, 3, 4, 5, 6]), 0);
+  bin.set(f32Bytes([2, 0.5]), 24);
+  const ft = { INSTANCES_LENGTH: 2, RTC_CENTER: [100, 200, 300], POSITION: { byteOffset: 0 }, SCALE: { byteOffset: 24 }, BATCH_ID: [7, 3] };
+  const c = await readTileContent(i3dm(ft, bin, GLTF), loadAny);
+  assert.equal(c.kind, "i3dm");
+  assert.equal(c.rtc, null);
+  assert.equal(c.batchLength, 2);
+  assert.deepEqual([...c.instances!.batchIds], [7, 3]);
+  assert.deepEqual([...c.instances!.matrices], [2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 101, 202, 303, 1, 0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0.5, 0, 104, 205, 306, 1]);
+});
+
+test("i3dm orientations: quantized positions, NORMAL_UP and NORMAL_RIGHT, oct-encoded normals, EAST_NORTH_UP", async () => {
+  const q = new Uint8Array(new Uint16Array([0, 65535, 0, 0]).buffer);
+  const quantized = await readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION_QUANTIZED: { byteOffset: 0 }, QUANTIZED_VOLUME_OFFSET: [10, 20, 30], QUANTIZED_VOLUME_SCALE: [5, 6, 7] }, q, GLTF), loadAny);
+  assert.deepEqual([...quantized.instances!.matrices.subarray(12, 15)], [10, 26, 30]);
+  // Right +Y and up +Z make forward +X.
+  const normals = new Uint8Array(40);
+  normals.set(f32Bytes([0, 0, 0, 0, 0, 1, 0, 1, 0]));
+  const turned = await readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION: { byteOffset: 0 }, NORMAL_UP: { byteOffset: 12 }, NORMAL_RIGHT: { byteOffset: 24 } }, normals, GLTF), loadAny);
+  assert.ok(near(turned.instances!.matrices.subarray(0, 12), [0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0], 1e-15));
+  // Oct (65535, 32768) is about +X and (32768, 65535) about +Y.
+  const oct = new Uint8Array(24);
+  oct.set(new Uint8Array(new Uint16Array([32768, 65535, 65535, 32768]).buffer), 12);
+  const decoded = await readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION: { byteOffset: 0 }, NORMAL_UP_OCT32P: { byteOffset: 12 }, NORMAL_RIGHT_OCT32P: { byteOffset: 16 } }, oct, GLTF), loadAny);
+  assert.ok(near(decoded.instances!.matrices.subarray(0, 12), [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0], 1e-4));
+  const enu = await readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION: [6378137, 0, 0], EAST_NORTH_UP: true }, new Uint8Array(0), GLTF), loadAny);
+  assert.ok(near(enu.instances!.matrices, [0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 6378137, 0, 0, 1], 1e-12));
+});
+
+test("an i3dm's glTF by URI loads beside it, and broken i3dm are refused", async () => {
+  const asked: string[] = [];
+  const load = async (u: string) => {
+    asked.push(u);
+    return u === "models/a.gltf" ? GLTF : new Uint8Array(4);
+  };
+  const byUri = i3dm({ INSTANCES_LENGTH: 1, POSITION: [0, 0, 0] }, new Uint8Array(0), new TextEncoder().encode("models/a.gltf\0\0\0"), 0);
+  await readTileContent(byUri, load);
+  assert.deepEqual(asked, ["models/a.gltf", "models/b.bin"]);
+  const ok = i3dm({ INSTANCES_LENGTH: 1, POSITION: [0, 0, 0] }, new Uint8Array(0), GLTF);
+  await assert.rejects(readTileContent(ok.subarray(0, 40), load), /cut short/);
+  await assert.rejects(readTileContent(i3dm({ INSTANCES_LENGTH: 2e6, POSITION: [0, 0, 0] }, new Uint8Array(0), GLTF), load), /more than 1000000/);
+  await assert.rejects(readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION: { byteOffset: 4 } }, new Uint8Array(8), GLTF), load), /runs past the feature table/);
+  await assert.rejects(readTileContent(i3dm({ INSTANCES_LENGTH: 1 }, new Uint8Array(0), GLTF), load), /neither POSITION/);
+  await assert.rejects(readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION: [0, 0, 0] }, new Uint8Array(0), GLTF, 2), load), /gltfFormat/);
+  await assert.rejects(readTileContent(i3dm({ INSTANCES_LENGTH: 1, POSITION: [0, 0, 0] }, new Uint8Array(0), new Uint8Array(0)), load), /no glTF/);
+});
+
+/** A cmpt of `tiles` back to back. */
+function cmpt(tiles: Uint8Array[]): Uint8Array {
+  const out = new Uint8Array(16 + tiles.reduce((a, t) => a + t.length, 0));
+  words(out, 0x74706d63, 1, out.length, tiles.length);
+  let at = 16;
+  for (const t of tiles) {
+    out.set(t, at);
+    at += t.length;
+  }
+  return out;
+}
+
+test("readTileContent of a cmpt gives its inner tiles as parts, nested ones flattened and pnts skipped", async () => {
+  const b3dm = new Uint8Array(28 + GLTF.length);
+  words(b3dm, 0x6d643362, 1, b3dm.length, 0, 0, 0, 0);
+  b3dm.set(GLTF, 28);
+  const pnts = new Uint8Array(28);
+  words(pnts, 0x73746e70, 1, 28);
+  const one = i3dm({ INSTANCES_LENGTH: 1, POSITION: [0, 0, 0] }, new Uint8Array(0), GLTF);
+  const c = await readTileContent(cmpt([b3dm, cmpt([pnts, one]), one]), loadAny);
+  assert.equal(c.kind, "cmpt");
+  assert.deepEqual(c.model, { primitives: [], materials: [], images: [] });
+  assert.deepEqual(c.parts.map((p) => p.kind), ["b3dm", "i3dm", "i3dm"]);
+  assert.equal(c.skipped, 1);
+  let deep = b3dm;
+  for (let i = 0; i < 10; i++) deep = cmpt([deep]);
+  await assert.rejects(readTileContent(deep, loadAny), /nest deeper/);
+  const empty = cmpt([b3dm]);
+  words(empty.subarray(16 + 8), 0);
+  await assert.rejects(readTileContent(empty, loadAny), /runs past the file/);
+  await assert.rejects(readTileContent(cmpt([b3dm]).subarray(0, 20), loadAny), /cut short/);
+  const unknown = cmpt([b3dm]);
+  words(unknown.subarray(16), 0x12345678);
+  await assert.rejects(readTileContent(unknown, loadAny), /neither b3dm/);
 });
