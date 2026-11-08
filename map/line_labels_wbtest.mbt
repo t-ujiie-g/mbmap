@@ -85,3 +85,23 @@ test "circles cover the path as MapLibre's interpolator spaces them" {
   circles_along([5.0, 5.0, 6.0, 5.0], 10.0, out)
   assert_eq(out, [5.5, 5.0, 10.0])
 }
+
+///|
+test "longest_unhidden keeps the longest run of points the globe does not hide" {
+  let path = [0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 5.0]
+  let depths = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  let (kept, ahead) = longest_unhidden(path, depths, [
+    false, true, false, false, false, true,
+  ])
+  assert_eq(kept, [2.0, 2.0, 3.0, 3.0, 4.0, 4.0])
+  assert_true(ahead)
+  // A point of the run behind the camera leaves no path to place on.
+  let (_, ahead) = longest_unhidden(path, [1.0, 1.0, 1.0, -1.0, 1.0, 1.0], [
+    false, true, false, false, false, true,
+  ])
+  assert_false(ahead)
+  let (none, _) = longest_unhidden(path, depths, [
+    true, true, true, true, true, true,
+  ])
+  assert_eq(none, [])
+}

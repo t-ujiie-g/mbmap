@@ -264,17 +264,23 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // a_size: text size in 1/16 px, all times MapLibre's perspective ratio; a_ele: anchor
   #|  // height (m); a_fill a format section's color where a_section is 1.
   #|  // The anchor in clip space and its visibility behind terrain (v_alpha).
-  #|  const symbolBase = "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; in vec3 a_glyph;" +
-  #|    "uniform mat4 u_matrix; uniform float u_along;" +
+  #|  const symbolBase = proj + "in vec2 a_pos; in vec2 a_data; in vec2 a_tex; in float a_size; in float a_ele; in vec2 a_shift; in vec3 a_glyph;" +
+  #|    "uniform float u_along; uniform float u_pitched_scale;" +
   #|    "uniform vec2 u_px; uniform float u_dpr; uniform vec2 u_atlas; uniform float u_center; uniform float u_scale;" +
   #|    "uniform highp sampler2D u_depth; uniform bool u_occlude; out vec2 v_tex; out float v_scale; out float v_alpha; out float v_gamma;" +
   #|    "float visible(vec3 f) { float d = texture(u_depth, f.xy * 0.5 + 0.5).r * 2.0 - 1.0 + 0.0001 - f.z;" +
   #|    "  return 1.0 - clamp(-d * 500.0, 0.0, 1.0); }" +
-  #|    "vec4 anchor() { vec4 c = u_matrix * vec4(a_pos, a_ele * u_scale, 1.0); v_alpha = 1.0;" +
+  #|    // A point at the anchor's height, on the globe as MapLibre's projectTileWithElevation; what lies
+  #|    // on the globe is scaled by its projectionScaling (u_pitched_scale: getCircleRadiusCorrection).
+  #|    "vec4 ground(vec2 p) { return u_transition <= 0.0 ? u_matrix * vec4(p, a_ele * u_scale, 1.0) : globeAt(p, sphere(p)); }" +
+  #|    "float pitchedScaling(float y) { if (u_transition <= 0.0) return 1.0;" +
+  #|    "  float t = exp(PI - (u_tile.y + u_tile.w * y) * PI * 2.0);" +
+  #|    "  return mix(1.0, 1.0 / (2.0 * t / (t * t + 1.0)) * u_pitched_scale, u_transition); }" +
+  #|    "vec4 anchor() { vec4 c = ground(a_pos); v_alpha = 1.0;" +
   #|    "  if (u_occlude) { vec3 f = c.xyz / c.w; v_alpha = visible(f);" +
   #|    "    if (v_alpha <= 0.95) v_alpha = (v_alpha + visible(f + vec3(0.0, 0.01, 0.0))) / 2.0; }" +
   #|    "  v_tex = a_tex / u_atlas; return c; }";
-  #|  const symbolUniforms = ["u_matrix", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_along", "u_glyphs", "u_color",
+  #|  const symbolUniforms = [...projUniforms, "u_pitched_scale", "u_px", "u_dpr", "u_atlas", "u_center", "u_scale", "u_depth", "u_occlude", "u_along", "u_glyphs", "u_color",
   #|    "u_halo_color", "u_halo", "u_opacity", "u_gamma_scale"];
   #|  // MapLibre's symbol_sdf fragment: the SDF's edge at 0.75 (d its `channel`), 1/8 per glyph px at
   #|  // v_scale (its fontScale), smoothed by v_gamma over u_gamma_scale; u_halo: width, blur, plain.
@@ -297,7 +303,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    // by MapLibre's ratio for text pitched with the map; u_along is tile units per px.
   #|    "  if (u_along > 0.0) { float q = clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
   #|    "    float s = sin(a_glyph.z), k = cos(a_glyph.z);" +
-  #|    "    vec4 p = u_matrix * vec4(a_glyph.xy + mat2(k, s, -s, k) * a_data * 0.0625 * q * u_along, a_ele * u_scale, 1.0);" +
+  #|    "    vec4 p = ground(a_glyph.xy + mat2(k, s, -s, k) * a_data * 0.0625 * q * u_along * pitchedScaling(a_glyph.y));" +
   #|    "    gl_Position = p; v_scale = a_size / 384.0 * q; v_gamma = p.w; return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0);" +
   #|    "  vec2 off = (a_data * 0.0625 + a_shift) * r * u_dpr * u_px * vec2(1.0, -1.0);" +
@@ -314,12 +320,11 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  if (v_alpha < 0.1 || (along && a_glyph.x < -1e8)) { gl_Position = vec4(-2.0, -2.0, -2.0, 1.0); return; }" +
   #|    "  float size = u_size >= 0.0 ? u_size : a_size / 128.0; vec2 off = a_data / 32.0;" +
   #|    "  if (u_pitch) { if (u_persp) size *= clamp(0.5 + 0.5 * c.w / u_center, 0.0, 4.0);" +
-  #|    "    float t = u_angle + (along ? a_glyph.z : 0.0), s = sin(t), k = cos(t);" +
-  #|    "    gl_Position = u_matrix * vec4((along ? a_glyph.xy : a_pos) + mat2(k, s, -s, k) * (off * size + a_shift) * u_units," +
-  #|    "      a_ele * u_scale, 1.0);" +
+  #|    "    float t = u_angle + (along ? a_glyph.z : 0.0), s = sin(t), k = cos(t); vec2 base = along ? a_glyph.xy : a_pos;" +
+  #|    "    gl_Position = ground(base + mat2(k, s, -s, k) * (off * size + a_shift) * u_units * pitchedScaling(base.y));" +
   #|    "    v_scale = size; v_gamma = gl_Position.w; return; }" +
   #|    "  float r = clamp(0.5 + 0.5 * u_center / c.w, 0.0, 4.0); if (u_persp) size *= r; off *= size;" +
-  #|    "  if (u_rotate) { vec4 e = u_matrix * vec4(a_pos + vec2(1.0, 0.0), a_ele * u_scale, 1.0);" +
+  #|    "  if (u_rotate) { vec4 e = ground(a_pos + vec2(1.0, 0.0));" +
   #|    "    vec2 d = e.xy / e.w - c.xy / c.w; float t = atan(d.y * u_px.x / u_px.y, d.x), s = sin(t), k = cos(t);" +
   #|    "    off = mat2(k, -s, s, k) * off; }" +
   #|    "  gl_Position = vec4(c.xy + (off + a_shift * r) * u_dpr * u_px * vec2(1.0, -1.0) * c.w, c.z, c.w);" +

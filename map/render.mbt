@@ -355,7 +355,7 @@ fn Map::draw_layer(
         s.drawn = self.frame_count
         if s.line is Some(l) {
           let tile_px = at.units_per_pixel * dpr
-          self.lay_line_glyphs(m.mesh, at, s, l, tile_px, height_scale)
+          self.lay_line_glyphs(m.mesh, at, id, s, l, tile_px, height_scale)
         }
         self.renderer.draw_symbols(
           m.mesh,
@@ -519,10 +519,6 @@ fn Map::draw_frame(
   let light = self.extrusion_light()
   let mut globe_depth = false
   for index, layer in self.style.layers {
-    // Labels are not on the globe yet.
-    if globe && layer.kind is Symbol {
-      continue
-    }
     // On terrain backgrounds are in its textures.
     if globe &&
       terrain is None &&

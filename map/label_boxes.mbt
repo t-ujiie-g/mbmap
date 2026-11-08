@@ -93,28 +93,30 @@ fn insert_box(
 }
 
 ///|
-/// Where label `i` of `s` lies on the grid by `at`: its anchor's grid point, its
-/// perspective ratio and whether it is near enough to be placed.
+/// Where label `i` of `s` in tile `id` lies on the grid by `at`: its anchor's grid point, its
+/// perspective ratio and whether it is near enough to be placed and not behind the globe.
 fn Map::grid_point(
   self : Map,
   at : @render_webgl2.Placement,
+  id : @core.TileId,
   s : LabelSet,
   i : Int32,
   height_scale : Double,
 ) -> (Double, Double, Double, Bool) {
   let t = self.transform
   let row = i * LABEL_FLOATS
-  let (cx, cy, _, cw) = at.matrix.apply(
+  let (cx, cy, cw, hidden) = self.label_clip(
+    at,
+    id,
     f32_at(s.labels, row),
     f32_at(s.labels, row + LABEL_Y),
     s.heights[i] * height_scale,
-    1.0,
   )
   let ratio = perspective_ratio(at, cw)
   (
     screen_x(cx, cw, t.width) + VIEWPORT_PADDING,
     screen_y(cy, cw, t.height) + VIEWPORT_PADDING,
     ratio,
-    cw > 0.0 && ratio >= MIN_PERSPECTIVE_RATIO,
+    cw > 0.0 && ratio >= MIN_PERSPECTIVE_RATIO && !hidden,
   )
 }

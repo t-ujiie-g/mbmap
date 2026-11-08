@@ -86,6 +86,7 @@ fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
     pixel_scale: 1.0 +
     (1.0 / @globe.planet_scale(g.camera().center.lat) - 1.0) * g.transition(),
     translate: (0.0, 0.0),
+    radius_correction: g.radius_correction(),
     granularity: @globe.tile_granularity(id.z),
     north: id.y == 0,
     south: id.y == (1 << id.z) - 1,

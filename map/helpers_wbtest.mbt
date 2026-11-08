@@ -104,6 +104,19 @@ test "placement_order puts deeper tiles first, then by x and y" {
     (1, 0, 1),
     (1, 1, 0),
   ])
+  // On the globe tiles on a later world copy come after.
+  let wrapped = placement_order([draw(1, 1, 0), draw(1, 0, 1), draw(1, 1, 1)], wrap=id => {
+    if id.x == 0 {
+      1
+    } else {
+      0
+    }
+  })
+  assert_eq(wrapped.map(d => (d.id.z, d.id.x, d.id.y)), [
+    (1, 1, 0),
+    (1, 1, 1),
+    (1, 0, 1),
+  ])
 }
 
 ///|
