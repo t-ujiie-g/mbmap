@@ -35,6 +35,7 @@ pub fn Globe::camera_for_bounds(Self, @core.LngLatBounds, bearing? : Double, pad
 pub fn Globe::camera_position(Self) -> Vec3
 pub fn Globe::clipping_plane_of(Self) -> (Double, Double, Double, Double)
 pub fn Globe::copy(Self) -> Self
+pub fn Globe::covering_tiles(Self, tile_size? : Int32, min_zoom? : Int32, max_zoom? : Int32, round_zoom? : Bool) -> Array[@core.TileId]
 pub fn Globe::ease_to(Self, @core.CameraTarget) -> GlobeEase
 pub fn Globe::fly_to(Self, @core.CameraTarget, curve? : Double, speed? : Double, screen_speed? : Double, min_zoom? : Double) -> GlobeFlight?
 pub fn Globe::globe_matrix(Self) -> @core.Mat4
