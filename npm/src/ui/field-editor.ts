@@ -3,7 +3,7 @@
 import type { Map } from "../index";
 import type { AttributeTable } from "./attribute-table";
 import { featuresOf, rowsOf, type TableRow } from "./table-rows";
-import { checkColumn, removeColumn, renameColumn, setColumn } from "./table-fields";
+import { checkColumn, idsOf, propertiesDiff, removeColumn, renameColumn, setColumn } from "./table-fields";
 
 /** `source`: the GeoJSON source to edit; `table`: an attribute table of it, whose rows `only` picks from and whose columns follow the edits. */
 export interface FieldEditorOptions {
@@ -20,7 +20,8 @@ export interface FieldEditor {
   /**
    * Sets `column` (added if new) of every feature, or `only` some, to `value`: a style expression
    * evaluated for each (`Map.evaluateExpression`; `["id"]` the row's id, promoted ids included), or
-   * a function of its row (values from `mbmap/analysis`, say). Writes the data with `setData`.
+   * a function of its row (values from `mbmap/analysis`, say). Writes the changed features with
+   * `updateData` (`setData` when the features lack unique ids).
    */
   calculate(column: string, value: unknown, options?: CalculateOptions): Promise<void>;
   /** `calculate` of a column no feature has yet (`value` default null). */
@@ -76,16 +77,22 @@ class Editor implements FieldEditor {
 
   /**
    * Reads the source's data, lets `change` edit its features (with a row for each) and, given
-   * `columns`, sets the data back and gives the table the columns it shows changed by `columns`.
+   * `columns`, writes the changed features back (`updateData`) and gives the table its columns.
    */
   async #edit(change: (features: Feature[], rows: TableRow[]) => void, columns?: (shown: string[]) => string[]): Promise<void> {
     const source = this.#map.getSource(this.#options.source);
     if (!source?.getData || !source.setData) throw new Error("mbmap: field editor: only GeoJSON sources can be edited");
     const data = await source.getData();
     const features = featuresOf(data) as Feature[];
+    const promoteId = typeof source.promoteId === "string" ? source.promoteId : undefined;
+    const [properties, ids] = [features.map((f) => f.properties), idsOf(features, promoteId) ?? []];
     change(features, features.map((f) => rowsOf([f], source.promoteId as string | undefined)[0]));
     if (!columns) return;
-    source.setData(data);
+    // Only the features whose properties changed go to the worker, unless ids are missing or edited.
+    const changed = features.flatMap((f, i) => (f.properties !== properties[i] ? [i] : []));
+    const diff = source.updateData && ids.length > 0 && propertiesDiff(features, changed, ids, promoteId);
+    if (diff) await source.updateData!(diff);
+    else source.setData(data);
     const table = this.#options.table;
     if (table) {
       await table.refresh();

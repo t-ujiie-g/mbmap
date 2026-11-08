@@ -41,3 +41,30 @@ export function renameColumn(features: Feature[], from: string, to: string): voi
     f.properties = Object.fromEntries(Object.keys(p).map((k) => [k === from ? to : k, p[k]]));
   }
 }
+
+interface Identified extends Feature {
+  id?: unknown;
+}
+
+/**
+ * The `updateData` diff that gives `features[i]` its properties for each `i` in `changed`, ids taken
+ * as MapLibre's `toUpdateable` takes them (`promoteId`'s property, else the feature's id); undefined
+ * when a feature lacks an id, two share one, or `before` (the ids before the edit) differs.
+ */
+export function propertiesDiff(features: Identified[], changed: readonly number[], before: readonly unknown[], promoteId?: string) {
+  const ids = idsOf(features, promoteId);
+  if (!ids || ids.some((id, i) => !Object.is(id, before[i]))) return undefined;
+  return {
+    update: changed.map((i) => ({
+      id: ids[i] as string | number,
+      removeAllProperties: true,
+      addOrUpdateProperties: Object.entries(features[i].properties ?? {}).map(([key, value]) => ({ key, value })),
+    })),
+  };
+}
+
+/** Each feature's id (`promoteId`'s property, else its id), or undefined when one is missing or repeated. */
+export function idsOf(features: Identified[], promoteId?: string): unknown[] | undefined {
+  const ids = features.map((f) => (promoteId ? f.properties?.[promoteId] : f.id));
+  return ids.some((id) => id == null) || new Set(ids).size < ids.length ? undefined : ids;
+}
