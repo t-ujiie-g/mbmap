@@ -121,6 +121,7 @@ pub fn Map::set_style(
   self.sources.push_iter(sources.iter())
   self.prune_media(next.sources)
   self.style = next
+  self.follow_projection()
   if next.terrain.map(t => t.source) != old.terrain.map(t => t.source) {
     self.raise_dem_tiles()
   }

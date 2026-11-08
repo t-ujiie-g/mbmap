@@ -71,9 +71,78 @@ pub fn Map::transform(self : Map) -> @core.Transform {
 }
 
 ///|
+/// The box around the places at the view's edges (MapLibre's `getBounds`).
+pub fn Map::bounds(self : Map) -> @core.LngLatBounds {
+  match self.globe {
+    Some(g) => g.bounds()
+    None => self.transform.bounds()
+  }
+}
+
+///|
+/// The camera showing `b` (MapLibre's `cameraForBounds`; see
+/// `@core.Transform::camera_for_bounds`), on the globe when drawn as one.
+pub fn Map::camera_for_bounds(
+  self : Map,
+  b : @core.LngLatBounds,
+  bearing~ : Double = 0.0,
+  padding~ : @core.Padding = @core.Padding::uniform(0.0),
+  offset~ : (Double, Double) = (0.0, 0.0),
+  max_zoom? : Double,
+) -> @core.Camera? {
+  match self.globe {
+    Some(g) => g.camera_for_bounds(b, bearing~, padding~, offset~, max_zoom?)
+    None =>
+      self.transform.camera_for_bounds(
+        b,
+        bearing~,
+        padding~,
+        offset~,
+        max_zoom?,
+      )
+  }
+}
+
+///|
+/// The zoom `zoom` becomes at the current center once the camera keeps to
+/// its limits.
+pub fn Map::constrained_zoom(self : Map, zoom : Double) -> Double {
+  match self.globe {
+    Some(g) => {
+      let h = g.copy()
+      h.set_zoom(zoom)
+      h.camera().zoom
+    }
+    None => {
+      let t = self.transform
+      t.with_camera({ ..t.camera, zoom, }).camera.zoom
+    }
+  }
+}
+
+///|
 /// Sets the zoom and pitch ranges and bounds the camera keeps to; the camera
 /// moves at once if it is outside them.
 pub fn Map::set_limits(self : Map, limits : @core.Limits) -> Unit {
+  if self.globe is Some(g) {
+    let h = @globe.Globe::new(
+      g.camera(),
+      self.transform.width,
+      self.transform.height,
+      limits~,
+      projection=g.projection(),
+    )
+    let moved = h.camera() != g.camera()
+    self.globe = Some(h)
+    self.transform = h.mercator()
+    if moved {
+      self.begin_move(no_event())
+      self.fire_move(h.camera())
+      self.end_move(no_event())
+    }
+    self.request_render()
+    return
+  }
   let next = self.transform.with_limits(limits)
   let moved = next.camera != self.transform.camera
   self.transform = next
@@ -167,7 +236,7 @@ fn Map::end_move(self : Map, event : Event) -> Unit {
 /// Moves the camera for an input event: starts the movement if needed and
 /// fires `move` with the event at hand.
 fn Map::move_camera(self : Map, camera : @core.Camera, event : Event) -> Unit {
-  if self.transform.with_camera(camera).camera == self.transform.camera {
+  if self.constrained(camera) == self.transform.camera {
     return
   }
   self.begin_move(event)
@@ -245,8 +314,16 @@ pub fn Map::ease_to(
   id~ : String = "",
   event~ : Event = no_event(),
 ) -> Unit {
-  let e = self.transform.ease_to(target)
-  self.animate(k => e.at(k), duration, easing, id, event)
+  match self.globe {
+    Some(g) => {
+      let e = g.ease_to(target)
+      self.animate(k => e.at(k), duration, easing, id, event)
+    }
+    None => {
+      let e = self.transform.ease_to(target)
+      self.animate(k => e.at(k), duration, easing, id, event)
+    }
+  }
 }
 
 ///|
@@ -265,15 +342,24 @@ pub fn Map::fly_to(
   easing~ : (Double) -> Double = ease,
   event~ : Event = no_event(),
 ) -> Unit {
-  guard self.transform.fly_to(target, curve~, speed~, screen_speed?, min_zoom?)
-    is Some(f) else {
+  let flight : ((Double) -> @core.Camera, Double)? = match self.globe {
+    Some(g) =>
+      g
+      .fly_to(target, curve~, speed~, screen_speed?, min_zoom?)
+      .map(f => (k => f.at(k), f.duration))
+    None =>
+      self.transform
+      .fly_to(target, curve~, speed~, screen_speed?, min_zoom?)
+      .map(f => (k => f.at(k), f.duration))
+  }
+  guard flight is Some((at, natural)) else {
     self.ease_to(target, duration=duration.unwrap_or(500.0), easing~, event~)
     return
   }
-  let d = duration.unwrap_or(f.duration)
+  let d = duration.unwrap_or(natural)
   let d = match max_duration {
     Some(m) if d > m => 0.0
     _ => d
   }
-  self.animate(k => f.at(k), d, easing, "", event)
+  self.animate(at, d, easing, "", event)
 }

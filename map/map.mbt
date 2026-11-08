@@ -104,6 +104,7 @@ pub struct Map {
   priv sources : Array[SourceTiles]
   priv geojson : Provider
   priv mut transform : @core.Transform
+  priv mut globe : @globe.Globe?
   priv workers : Array[Worker]
   priv failed_workers : Array[Bool]
   priv mut next_worker : Int32
@@ -230,6 +231,7 @@ pub fn Map::new(
       css_height(canvas),
       limits~,
     ),
+    globe: None,
     workers: [],
     failed_workers: [],
     next_worker: 0,
@@ -287,6 +289,7 @@ pub fn Map::new(
     media: [],
     custom: no_custom(),
   }
+  map.follow_projection(camera~)
   let wasm = absolute_url(wasm_url)
   let count = if workers > 0 {
     workers
@@ -320,7 +323,20 @@ pub fn Map::camera(self : Map) -> @core.Camera {
 /// unchanged, so an outside state store can echo cameras back safely.
 pub fn Map::set_camera(self : Map, camera : @core.Camera) -> Unit {
   self.stop()
-  if self.transform.with_camera(camera).camera == self.transform.camera {
+  let camera = match self.globe {
+    Some(g) => {
+      let h = g.copy()
+      h.jump_to(
+        center=camera.center,
+        zoom=camera.zoom,
+        bearing=camera.bearing,
+        pitch=camera.pitch,
+      )
+      h.camera()
+    }
+    None => camera
+  }
+  if self.constrained(camera) == self.transform.camera {
     return
   }
   self.begin_move(no_event())
@@ -398,7 +414,17 @@ pub fn Map::destroy(self : Map) -> Unit {
 
 ///|
 fn Map::apply_camera(self : Map, camera : @core.Camera) -> Unit {
-  let next = self.transform.with_camera(camera)
+  let next = match self.globe {
+    // Globe moves come constrained by the globe's own camera.
+    Some(g) => {
+      if camera == self.transform.camera {
+        return
+      }
+      g.set_camera(camera)
+      g.mercator()
+    }
+    None => self.transform.with_camera(camera)
+  }
   if next.camera == self.transform.camera {
     return
   }
@@ -406,6 +432,16 @@ fn Map::apply_camera(self : Map, camera : @core.Camera) -> Unit {
   self.idle_fired = false
   self.fire_move(next.camera)
   self.request_render()
+}
+
+///|
+/// `camera` as the map would keep it: as it is on the globe, else kept to
+/// the limits.
+fn Map::constrained(self : Map, camera : @core.Camera) -> @core.Camera {
+  match self.globe {
+    Some(_) => camera
+    None => self.transform.with_camera(camera).camera
+  }
 }
 
 ///|

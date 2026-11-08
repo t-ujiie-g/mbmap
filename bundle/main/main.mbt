@@ -268,7 +268,7 @@ pub fn map_unproject(
 /// West, south, east, north of the view.
 #export_name("map_bounds")
 pub fn map_bounds(map : @map.Map) -> FixedArray[Double] {
-  let b = map.transform().bounds()
+  let b = map.bounds()
   [b.west, b.south, b.east, b.north]
 }
 
@@ -281,15 +281,13 @@ pub fn map_camera_for_bounds(
   map : @map.Map,
   b : FixedArray[Double],
 ) -> FixedArray[Double] {
-  let fit = map
-    .transform()
-    .camera_for_bounds(
-      { west: b[0], south: b[1], east: b[2], north: b[3], },
-      bearing=b[4],
-      padding={ top: b[5], right: b[6], bottom: b[7], left: b[8], },
-      offset=(b[9], b[10]),
-      max_zoom?=if b[11].is_nan() { None } else { Some(b[11]) },
-    )
+  let fit = map.camera_for_bounds(
+    { west: b[0], south: b[1], east: b[2], north: b[3], },
+    bearing=b[4],
+    padding={ top: b[5], right: b[6], bottom: b[7], left: b[8], },
+    offset=(b[9], b[10]),
+    max_zoom?=if b[11].is_nan() { None } else { Some(b[11]) },
+  )
   match fit {
     Some(c) => [c.center.lng, c.center.lat, c.zoom, c.bearing, c.pitch]
     None => []
@@ -562,8 +560,7 @@ pub fn map_render_region(
 /// the limits (MapLibre's `getMinZoom(true)` asks it of the minimum).
 #export_name("map_constrained_zoom")
 pub fn map_constrained_zoom(map : @map.Map, zoom : Double) -> Double {
-  let t = map.transform()
-  t.with_camera({ ..t.camera, zoom, }).camera.zoom
+  map.constrained_zoom(zoom)
 }
 
 ///|

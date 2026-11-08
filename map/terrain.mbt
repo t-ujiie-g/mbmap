@@ -114,6 +114,7 @@ fn texture_placement(
     clip: d.at.clip,
     latitudes: d.at.latitudes,
     pattern: d.at.pattern,
+    globe: None,
   }
 }
 
@@ -392,6 +393,10 @@ fn Map::terrain_pick(self : Map) -> @core.Terrain? {
 /// `isLocationOccluded`).
 pub fn Map::locate(self : Map, p : @core.LngLat) -> (Double, Double, Bool) {
   let t = self.transform
+  if self.globe is Some(g) && g.is_globe() {
+    let (x, y) = g.project(p)
+    return (x, y, g.occluded(p))
+  }
   match self.terrain_pick() {
     None => {
       let (x, y) = t.project(p)
@@ -410,6 +415,9 @@ pub fn Map::locate(self : Map, p : @core.LngLat) -> (Double, Double, Bool) {
 /// The point under screen point (x, y), on the terrain if any (MapLibre's
 /// `unproject`).
 pub fn Map::point_location(self : Map, x : Double, y : Double) -> @core.LngLat {
+  if self.globe is Some(g) && g.is_globe() {
+    return g.unproject(x, y)
+  }
   match self.terrain_pick() {
     None => self.transform.unproject(x, y)
     Some(terrain) => self.transform.unproject_on(x, y, terrain)

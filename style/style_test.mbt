@@ -828,3 +828,39 @@ test "source zooms lie in 0-24 and tiles may not be empty" {
   )
   assert_eq(g.source("g").unwrap().max_zoom, 24)
 }
+
+///|
+test "projection and the atmosphere's blend" {
+  let plain = @style.Style::parse("{\"layers\": []}")
+  assert_true(plain.projection is Mercator)
+  assert_eq(plain.atmosphere_blend.eval(3.0, @style.NoFeature::{ }), Num(0.8))
+  let g = @style.Style::parse(
+    (
+      #|{"layers": [], "projection": {"type": "globe"},
+      #| "sky": {"atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 10, 0]}}
+    ),
+  )
+  assert_true(g.projection is Globe)
+  assert_eq(g.atmosphere_blend.eval(5.0, @style.NoFeature::{ }), Num(0.5))
+  let v = @style.Style::parse(
+    "{\"layers\": [], \"projection\": {\"type\": \"vertical-perspective\"}}",
+  )
+  assert_true(v.projection is VerticalPerspective)
+  let e = @style.Style::parse(
+    "{\"layers\": [], \"projection\": {\"type\": [\"literal\", \"globe\"]}}",
+    strict=false,
+  )
+  assert_true(e.projection is Mercator)
+  assert_eq(e.warnings.length(), 1)
+  for
+    c in [
+      "{\"layers\": [], \"projection\": 1}", "{\"layers\": [], \"projection\": {\"type\": \"albers\"}}",
+    ] {
+    try @style.Style::parse(c) catch {
+      Invalid(_) => ()
+      e => fail("unexpected \{Repr(e)}")
+    } noraise {
+      _ => fail("expected \{c} to be invalid")
+    }
+  }
+}

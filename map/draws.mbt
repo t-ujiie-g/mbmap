@@ -9,10 +9,31 @@ fn Map::placement(
 ) -> @render_webgl2.Placement {
   let t = self.transform
   let extent = @core.TILE_EXTENT
+  let globe = self.globe_tile(id)
   let rect : FixedArray[Double] = match clip {
     // A tile draws only within itself: features reach into the buffer
     // around it, which its neighbors draw too (twice blended otherwise).
-    None => [0.0, 0.0, extent.to_double(), extent.to_double()]
+    // On the globe the first and last rows of tiles reach the poles.
+    None => {
+      let (north, south) = match globe {
+        Some(g) => (g.north, g.south)
+        None => (false, false)
+      }
+      [
+        0.0,
+        if north {
+          @globe.NORTH_POLE_Y.to_double()
+        } else {
+          0.0
+        },
+        extent.to_double(),
+        if south {
+          @globe.SOUTH_POLE_Y.to_double() + 1.0
+        } else {
+          extent.to_double()
+        },
+      ]
+    }
     Some(c) => {
       let dz = c.z - id.z
       let size = (extent >> dz).to_double()
@@ -37,6 +58,7 @@ fn Map::placement(
     clip: rect,
     latitudes: (bounds.max_y, bounds.min_y),
     pattern: pattern_tile(t, id),
+    globe,
   }
 }
 
@@ -66,6 +88,11 @@ fn Map::cover(self : Map, src : SourceTiles) -> Array[@core.TileId] {
   let z = t.tile_zoom(s.min_zoom, s.max_zoom, tile_size=s.tile_size)
   if s.kind is Image {
     []
+  } else if self.globe is Some(g) && g.is_globe() {
+    let round = s.kind is (Raster | RasterDem)
+    self
+    .globe_cover(g, s.tile_size, s.min_zoom, s.max_zoom, round)
+    .filter(id => s.covers(id.z, id.x, id.y))
   } else if t.camera.zoom + @core.zoom_shift(s.tile_size).to_double() <
     s.min_zoom.to_double() {
     []

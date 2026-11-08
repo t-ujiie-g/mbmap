@@ -641,7 +641,7 @@ pub fn read_expr(r : @core.ByteReader) -> Expr? {
 ///|
 /// Reads `Style::to_compiled`'s bytes. Sources lack their tile URLs, bounds and
 /// scheme, layers their main-thread paint (hillshade, color relief, raster) and
-/// icon `layout`, and the style its terrain, sky, light and warnings.
+/// icon `layout`, and the style its terrain, sky, light, projection and warnings.
 pub fn Style::from_compiled(bytes : BytesView) -> Style raise StyleError {
   let i : StyleReader = { r: @core.ByteReader::new(bytes), left: 0, }
   let sources = i.list(() => i.source())
@@ -658,6 +658,8 @@ pub fn Style::from_compiled(bytes : BytesView) -> Style raise StyleError {
       intensity: Lit(Null),
       position: (0.0, 0.0, 0.0),
     },
+    projection: Mercator,
+    atmosphere_blend: Lit(Num(0.8)),
     warnings: [],
   }
 }

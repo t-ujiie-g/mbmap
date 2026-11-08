@@ -87,7 +87,7 @@ pub fn globe_bounds(a : FixedArray[Double]) -> String {
 #export_name("globe_matrices")
 pub fn globe_matrices(a : FixedArray[Double]) -> String {
   let g = globe_of(a)
-  let (p, near, far) = g.projection()
+  let (p, near, far) = g.projection_matrix()
   let c = g.camera_position()
   let (pa, pb, pc, pd) = g.clipping_plane_of()
   joined(

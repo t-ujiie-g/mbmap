@@ -692,6 +692,15 @@ export class Map {
     return edit.copy(this.#style?.sky ?? null);
   }
 
+  /** `{type: "globe"}` draws the world as a globe up to zoom 11, mercator from 12 (MapLibre's); `"vertical-perspective"` keeps the globe; null or `"mercator"` flattens it. */
+  setProjection(projection: { type: "mercator" | "globe" | "vertical-perspective" } | null): this {
+    return this.#edit((s) => edit.setRoot(s, "projection", projection));
+  }
+
+  getProjection(): unknown {
+    return edit.copy(this.#style?.projection ?? null);
+  }
+
   setLight(light: Record<string, unknown> | null): this {
     return this.#edit((s) => edit.setRoot(s, "light", light));
   }

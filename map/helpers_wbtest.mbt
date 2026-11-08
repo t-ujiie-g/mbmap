@@ -15,6 +15,7 @@ fn placement_stub() -> @render_webgl2.Placement {
     clip: [0.0, 0.0, 8192.0, 8192.0],
     latitudes: (0.0, 0.0),
     pattern: { x: 0.0, y: 0.0, units: 1.0, height_factor: -1.0, },
+    globe: None,
   }
 }
 

@@ -69,8 +69,7 @@ extern "js" fn gl_draw_hillshade(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.bindVertexArray(c.quad);
-  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  c.drawTile();
   #|}
 
 ///|
@@ -178,8 +177,7 @@ extern "js" fn gl_draw_relief(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.bindVertexArray(c.quad);
-  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  c.drawTile();
   #|}
 
 ///|
@@ -230,8 +228,7 @@ extern "js" fn gl_draw_raster(
   #|    gl.bindVertexArray(c.imageGrid);
   #|    gl.drawElements(gl.TRIANGLES, 16 * 16 * 6, gl.UNSIGNED_SHORT, 0);
   #|  } else {
-  #|    gl.bindVertexArray(c.quad);
-  #|    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|    c.drawTile();
   #|  }
   #|}
 

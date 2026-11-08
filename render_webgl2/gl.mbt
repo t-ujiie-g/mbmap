@@ -26,8 +26,14 @@ extern "js" fn gl_viewport(gl : Gl, width : Int32, height : Int32) -> Unit =
   #|(c, w, h) => { c.gl.viewport(0, 0, w, h); c.px = [2 / w, 2 / h]; c.size = [w, h]; }
 
 ///|
-extern "js" fn gl_clear(gl : Gl, r : Double, g : Double, b : Double) -> Unit =
-  #|(c, r, g, b) => { c.gl.clearColor(r, g, b, 1); c.gl.clear(c.gl.COLOR_BUFFER_BIT | c.gl.DEPTH_BUFFER_BIT); }
+extern "js" fn gl_clear(
+  gl : Gl,
+  r : Double,
+  g : Double,
+  b : Double,
+  a : Double,
+) -> Unit =
+  #|(c, r, g, b, a) => { c.gl.clearColor(r, g, b, a); c.gl.clear(c.gl.COLOR_BUFFER_BIT | c.gl.DEPTH_BUFFER_BIT); }
 
 ///|
 extern "js" fn gl_upload(
