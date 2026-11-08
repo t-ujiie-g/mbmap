@@ -53,9 +53,9 @@ export function sphereToEcef(p: ArrayLike<number>): Vec3 {
 
 /**
  * The frame state of the view `matrix` (clip space from Web Mercator, or from the unit sphere with
- * `globe`) draws, on a screen `height` CSS pixels tall; null if the matrix cannot be inverted.
+ * `globe`) draws, on a screen `width` x `height` CSS pixels; null if the matrix cannot be inverted.
  */
-export function frameState(matrix: ArrayLike<number>, height: number, globe = false): FrameState | null {
+export function frameState(matrix: ArrayLike<number>, height: number, globe = false, width = height): FrameState | null {
   const inv = invert(matrix);
   if (!inv) return null;
   const at = (x: number, y: number, z: number): number[] => {
@@ -84,5 +84,5 @@ export function frameState(matrix: ArrayLike<number>, height: number, globe = fa
     if (dot(n, direction) < 0) n = scale(n, -1);
     planes.push(planeFromPointNormal(eye, n));
   }
-  return { position: eye, direction, up, planes, height, sseDenominator: 1.15 };
+  return { position: eye, direction, up, planes, height, sseDenominator: 1.15, view: { matrix, globe, lat0, width } };
 }

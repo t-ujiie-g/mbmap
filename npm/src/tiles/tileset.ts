@@ -13,6 +13,8 @@ export interface FrameState {
   height: number;
   /** loaders.gl's 1.15, `2 tan(fovy / 2)` for a 60° field of view. */
   sseDenominator: number;
+  /** The matrix the view was taken from (frame.ts), for I3S's level of detail, which projects onto the screen. */
+  view?: { matrix: ArrayLike<number>; globe: boolean; lat0: number; width: number };
 }
 
 export type TileState = "unloaded" | "loading" | "ready" | "failed";
@@ -104,23 +106,30 @@ export function buildTree(json: Record<string, any>, base: string, parent: Tile 
 export class Traversal {
   selected = new Map<string, Tile>();
   requested = new Map<string, Tile>();
+  /** Tiles to refine whose children are not built yet (I3S nodes whose node pages are still to load). */
+  expand = new Map<string, Tile>();
   #frame = 0;
   #maximumScreenSpaceError: number;
+  #refines: ((tile: Tile, frame: FrameState) => boolean) | undefined;
 
-  constructor(maximumScreenSpaceError = 8) {
+  /** `refines` replaces the screen-space error test (I3S's level of detail). */
+  constructor(maximumScreenSpaceError = 8, refines?: (tile: Tile, frame: FrameState) => boolean) {
     this.#maximumScreenSpaceError = maximumScreenSpaceError;
+    this.#refines = refines;
   }
 
   traverse(root: Tile, frame: FrameState): void {
     this.#frame++;
     this.selected = new Map();
     this.requested = new Map();
+    this.expand = new Map();
     this.#update(root, frame);
     const stack: Tile[] = [root];
     while (stack.length > 0) {
       const tile = stack.pop()!;
       let shouldRefine = false;
-      if (this.#canTraverse(tile)) {
+      if (this.#canTraverse(tile, frame)) {
+        if (tile.children.length < (tile.header.children?.length ?? 0)) this.expand.set(tile.path, tile);
         for (const child of tile.children) this.#update(child, frame);
         shouldRefine = this.#pushChildren(tile, frame, stack);
       }
@@ -176,7 +185,7 @@ export class Traversal {
     const stack = [root];
     while (stack.length > 0) {
       const tile = stack.pop()!;
-      const traverse = !tile.hasRenderContent && this.#canTraverse(tile);
+      const traverse = !tile.hasRenderContent && this.#canTraverse(tile, frame);
       const emptyLeaf = !tile.hasRenderContent && tile.children.length === 0;
       if (!traverse && !tile.contentAvailable && !emptyLeaf) allLoaded = false;
       this.#update(tile, frame);
@@ -189,9 +198,10 @@ export class Traversal {
     return root.hasEmptyContent || allLoaded;
   }
 
-  #canTraverse(tile: Tile): boolean {
+  #canTraverse(tile: Tile, frame: FrameState): boolean {
     if (!tile.hasChildren) return false;
     if (tile.isTileset) return true;
+    if (this.#refines) return this.#refines(tile, frame);
     return tile.sse > this.#maximumScreenSpaceError;
   }
 

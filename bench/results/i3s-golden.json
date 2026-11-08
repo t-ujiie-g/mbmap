@@ -1,0 +1,43 @@
+{
+  "env": {
+    "loaders": "@loaders.gl/tiles 4.5.4, @loaders.gl/i3s 4.5.4",
+    "layer": "SanFrancisco_Bldgs"
+  },
+  "results": [
+    {
+      "view": "city",
+      "selected": 40,
+      "same": true,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "view": "downtown",
+      "selected": 24,
+      "same": true,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "view": "street",
+      "selected": 15,
+      "same": true,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "view": "mission",
+      "selected": 42,
+      "same": true,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "view": "edge",
+      "selected": 11,
+      "same": true,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    }
+  ]
+}

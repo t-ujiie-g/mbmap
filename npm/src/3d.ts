@@ -399,7 +399,7 @@ export class TilesLayer implements CustomLayerInterface {
   async queryFeature(point: { x: number; y: number }): Promise<TileFeature | null> {
     const hit = (await this.#engine?.pick(point.x, point.y)) ?? null;
     if (!hit) return null;
-    const properties = hit.part.properties(hit.feature);
+    const properties = await hit.part.properties(hit.feature);
     return { tile: hit.tile.path, id: hit.feature, properties };
   }
 

@@ -56,6 +56,12 @@ const SETS = [
     name: "plateau-chiyoda", box: TOKYO_STATION, attribution: PLATEAU,
     tileset: `https://assets.cms.plateau.reearth.io/assets/72/e900e5-938c-4376-a9de-a124b270880c/13101_chiyoda-ku_pref_2025_citygml_1_op_bldg_3dtiles_13101_chiyoda-ku_lod2_no_texture/tileset.json`,
   },
+  // Esri's San Francisco buildings sample (I3S 3DObject): the layer document and every node page, for
+  // the I3S selection golden (bench/i3s/golden.mjs).
+  {
+    name: "i3s-sf-pages", attribution: "Esri sample scene layer SanFrancisco_Bldgs (tiles.arcgis.com), fetched for comparison only",
+    i3s: "https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/arcgis/rest/services/SanFrancisco_Bldgs/SceneServer/layers/0",
+  },
 ];
 
 // The public styles' sprites (style/public-styles.mjs), each at 1x and 2x.
@@ -109,6 +115,8 @@ for (const set of SETS.filter((s) => !only || only.includes(s.name))) {
   const jobs = [];
   if (set.tileset) {
     jobs.push({ key: "tileset.json", file: path.join(dir, "tileset.json"), url: set.tileset });
+  } else if (set.i3s) {
+    jobs.push({ key: "layer.json", file: path.join(dir, "layer.json"), url: `${set.i3s}?f=json` });
   } else if (set.files) {
     for (const [key, url] of Object.entries(set.files)) jobs.push({ key, file: path.join(dir, key), url });
   } else {
@@ -152,6 +160,16 @@ for (const set of SETS.filter((s) => !only || only.includes(s.name))) {
       for (const key of tilesetSubset(tileset, set.box))
         jobs.push({ key, file: path.join(dir, key), url: new URL(key, set.tileset).href });
     }
+    // An I3S layer's node pages, until one is short of nodesPerPage.
+    if (set.i3s) {
+      const layer = JSON.parse((await fetchJob(jobs.shift())).toString("utf8"));
+      const perPage = layer.nodePages?.nodesPerPage ?? 64;
+      for (let page = 0, full = true; full; page += 4) {
+        const batch = [0, 1, 2, 3].map((i) => ({ key: `nodepages/${page + i}`, file: path.join(dir, `nodepages/${page + i}`), url: `${set.i3s}/nodepages/${page + i}` }));
+        const pages = await Promise.all(batch.map((job) => fetchJob(job).then((b) => JSON.parse(b.toString("utf8")).nodes?.length ?? 0)));
+        full = pages.every((n) => n === perPage);
+      }
+    }
     await Promise.all([worker(), worker(), worker(), worker()]);
   } catch (e) {
     console.error(`${set.name}: not fetched (${e.message})`);
@@ -162,7 +180,7 @@ for (const set of SETS.filter((s) => !only || only.includes(s.name))) {
     const tiles = Object.fromEntries(Object.entries(entries).sort());
     const total = Object.values(tiles).reduce((a, t) => a + t.bytes, 0);
     await writeFile(manifestPath, JSON.stringify({
-      source: set.url ?? set.pmtiles ?? set.tileset ?? "see bench/maplibre/fetch-tiles.mjs",
+      source: set.url ?? set.pmtiles ?? set.tileset ?? set.i3s ?? "see bench/maplibre/fetch-tiles.mjs",
       ...(set.box && { box: set.box }),
       attribution: set.attribution,
       fetched: new Date().toISOString().slice(0, 10),
