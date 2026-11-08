@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub const EARTH_RADIUS : Double = 6371008.8
+
 pub const FIELD_OF_VIEW : Double = 0.6435011087932844
 
 pub const GEOMETRY_TYPE_KEY : String = "$type"
@@ -35,6 +37,8 @@ pub const MAX_PITCH : Double = 85.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
+pub const PI : Double = 3.141592653589793
+
 pub const PROP_ABSENT : Int32 = 5
 
 pub const PROP_FALSE : Int32 = 1
@@ -54,6 +58,14 @@ pub const TILE_SIZE : Double = 512.0
 pub fn clamp_i16(Int32) -> Int32
 
 pub let exact_powers : FixedArray[Double]
+
+pub fn haversine(Trig, Double, Double, Double, Double) -> Double
+
+pub fn js_max(Double, Double) -> Double
+
+pub fn js_min(Double, Double) -> Double
+
+pub fn js_round(Double) -> Double
 
 pub fn json_string_text(BytesView) -> String
 
@@ -75,9 +87,15 @@ pub fn read_json_number(BytesView, Int32, (Int32, Int32) -> Double) -> (Double, 
 
 pub fn stable_order(ArrayView[Double]) -> FixedArray[Int32]
 
+pub fn[T] stable_sort(Array[T], (T, T) -> Bool) -> Unit
+
 pub fn strconv_number(BytesView) -> Double
 
 pub fn tile_containing(MercatorCoord, Int32) -> TileId?
+
+pub fn turf_radians(Double) -> Double
+
+pub fn turf_ring_area(Trig, Array[Double], Int32, Int32) -> Double
 
 pub fn utf8_lossy(BytesView) -> String
 
