@@ -1,6 +1,7 @@
 // Writes the pack test's 3D Tiles (bench/npm/pages/tiles/set/): blocks near Tokyo Station as b3dm with
 // RTC_CENTER and a batch table, glTF +Y up as 3D Tiles 1.0 wants; a root of one block per quadrant
-// refined (REPLACE) into four tiles of eight to sixteen blocks each. Usage: node tiles/synthetic.mjs
+// refined (REPLACE) into four tiles of eight to sixteen blocks each, the first a cmpt that adds a row
+// of instanced "trees" (i3dm, east-north-up). Usage: node tiles/synthetic.mjs
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Document, NodeIO } from "@gltf-transform/core";
@@ -74,6 +75,68 @@ async function b3dm(blocks, rtc) {
   return out;
 }
 
+/** An i3dm of a 6 m green box at each of `points` ([lng, lat]), upright (EAST_NORTH_UP), around ECEF `rtc`. */
+async function i3dm(points, rtc) {
+  const doc = new Document();
+  const buf = doc.createBuffer();
+  const pos = [];
+  const nor = [];
+  const idx = [];
+  for (const [n, corners] of [
+    [[1, 0, 0], [[1, 0, -1], [1, 0, 1], [1, 2, 1], [1, 2, -1]]],
+    [[-1, 0, 0], [[-1, 0, 1], [-1, 0, -1], [-1, 2, -1], [-1, 2, 1]]],
+    [[0, 0, 1], [[1, 0, 1], [-1, 0, 1], [-1, 2, 1], [1, 2, 1]]],
+    [[0, 0, -1], [[-1, 0, -1], [1, 0, -1], [1, 2, -1], [-1, 2, -1]]],
+    [[0, 1, 0], [[-1, 2, -1], [1, 2, -1], [1, 2, 1], [-1, 2, 1]]],
+  ]) {
+    const at = pos.length / 3;
+    for (const c of corners) {
+      pos.push(...c.map((v) => v * 3));
+      nor.push(...n);
+    }
+    idx.push(at, at + 1, at + 2, at, at + 2, at + 3);
+  }
+  const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buf);
+  doc.createScene().addChild(doc.createNode().setMesh(doc.createMesh().addPrimitive(doc.createPrimitive()
+    .setAttribute("POSITION", acc("VEC3", new Float32Array(pos)))
+    .setAttribute("NORMAL", acc("VEC3", new Float32Array(nor)))
+    .setIndices(acc("SCALAR", new Uint16Array(idx)))
+    .setMaterial(doc.createMaterial().setBaseColorFactor([0.2, 0.6, 0.25, 1])))));
+  const glb = await new NodeIO().writeBinary(doc);
+  const positions = new Float32Array(points.flatMap(([lng, lat]) => Ellipsoid.WGS84.cartographicToCartesian([lng, lat, 0]).map((v, k) => v - rtc[k])));
+  const pad = (s) => s + " ".repeat((8 - (s.length % 8)) % 8);
+  const ft = new TextEncoder().encode(pad(JSON.stringify({ INSTANCES_LENGTH: points.length, RTC_CENTER: rtc, EAST_NORTH_UP: true, POSITION: { byteOffset: 0 } })));
+  const ftBin = new Uint8Array(positions.buffer);
+  const bt = new TextEncoder().encode(pad(JSON.stringify({ kind: points.map(() => "tree") })));
+  const out = new Uint8Array(32 + ft.length + ftBin.length + bt.length + glb.length);
+  const v = new DataView(out.buffer);
+  [0x6d643369, 1, out.length, ft.length, ftBin.length, bt.length, 0, 1].forEach((x, i) => v.setUint32(i * 4, x, true));
+  out.set(ft, 32);
+  out.set(ftBin, 32 + ft.length);
+  out.set(bt, 32 + ft.length + ftBin.length);
+  out.set(glb, 32 + ft.length + ftBin.length + bt.length);
+  return out;
+}
+
+/** A cmpt of `tiles` (each padded to 8 bytes as the specification asks). */
+function cmpt(tiles) {
+  const padded = tiles.map((t) => {
+    const p = new Uint8Array((t.length + 7) & ~7);
+    p.set(t);
+    new DataView(p.buffer).setUint32(8, p.length, true);
+    return p;
+  });
+  const out = new Uint8Array(16 + padded.reduce((n, t) => n + t.length, 0));
+  const v = new DataView(out.buffer);
+  [0x74706d63, 1, out.length, tiles.length].forEach((x, i) => v.setUint32(i * 4, x, true));
+  let at = 16;
+  for (const t of padded) {
+    out.set(t, at);
+    at += t.length;
+  }
+  return out;
+}
+
 const colors = [[0.85, 0.35, 0.25, 1], [0.3, 0.55, 0.85, 1], [0.35, 0.7, 0.4, 1], [0.9, 0.75, 0.3, 1]];
 const region = (w, s, e, n, h) => [w * rad, s * rad, e * rad, n * rad, 0, h];
 const span = 0.004;
@@ -89,7 +152,14 @@ const quadrants = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([qx, qy], q) => {
 await mkdir(DIR, { recursive: true });
 const ecef = (lng, lat) => [...Ellipsoid.WGS84.cartographicToCartesian([lng, lat, 0])];
 for (const [q, quad] of quadrants.entries()) {
-  await writeFile(path.join(DIR, `q${q}.b3dm`), await b3dm(quad.blocks, ecef(quad.w + span / 2, quad.s + span / 2)));
+  const rtc = ecef(quad.w + span / 2, quad.s + span / 2);
+  const blocks = await b3dm(quad.blocks, rtc);
+  if (q > 0) {
+    await writeFile(path.join(DIR, `q${q}.b3dm`), blocks);
+    continue;
+  }
+  const trees = Array.from({ length: 12 }, (_, i) => [quad.w + span * (0.05 + 0.075 * i), quad.s + span * 0.03]);
+  await writeFile(path.join(DIR, "q0.cmpt"), cmpt([blocks, await i3dm(trees, rtc)]));
 }
 const coarse = quadrants.map((quad) => [quad.w + span / 2, quad.s + span / 2, span * 70000, span * 70000, 60, quad.color]);
 await writeFile(path.join(DIR, "root.b3dm"), await b3dm(coarse, ecef(...CENTER)));
@@ -101,7 +171,7 @@ const tileset = {
     geometricError: 120,
     refine: "REPLACE",
     content: { uri: "root.b3dm" },
-    children: quadrants.map((quad, q) => ({ boundingVolume: { region: region(quad.w, quad.s, quad.e, quad.n, 200) }, geometricError: 0, content: { uri: `q${q}.b3dm` } })),
+    children: quadrants.map((quad, q) => ({ boundingVolume: { region: region(quad.w, quad.s, quad.e, quad.n, 200) }, geometricError: 0, content: { uri: q === 0 ? "q0.cmpt" : `q${q}.b3dm` } })),
   },
 };
 await writeFile(path.join(DIR, "tileset.json"), JSON.stringify(tileset, null, 1) + "\n");

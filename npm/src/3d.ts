@@ -5,7 +5,7 @@ import type { Material, Primitive } from "./model/gltf";
 import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/draw";
 import { Y_UP, triple, mercatorFrame, mul, placement, points, sphereFrame, value, type Value } from "./model/place";
 import type { Tile } from "./tiles/tileset";
-import type { TileModel, TilesEngine, TilesParts } from "./3d-tiles";
+import type { TilesEngine, TilesParts } from "./3d-tiles";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -239,7 +239,7 @@ export class TilesLayer implements CustomLayerInterface {
   async queryFeature(point: { x: number; y: number }): Promise<TileFeature | null> {
     const hit = (await this.#engine?.pick(point.x, point.y)) ?? null;
     if (!hit) return null;
-    const table = (hit.tile.content as TileModel | null)?.batchTable ?? null;
+    const table = hit.part.batchTable;
     const properties: Record<string, unknown> = Object.create(null);
     if (table) for (const [key, values] of Object.entries(table)) if (Array.isArray(values)) properties[key] = values[hit.feature];
     return { tile: hit.tile.path, id: hit.feature, properties };

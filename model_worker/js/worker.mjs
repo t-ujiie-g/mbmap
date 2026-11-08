@@ -88,22 +88,40 @@ async function load({ url }) {
   return { primitives: model.primitives, materials: model.materials, images };
 }
 
+/** A tile's content as parts to draw: a cmpt's inner tiles, else the content itself. */
 async function tile({ url }) {
   const base = new URL(url);
   const exports = await instance();
   const content = await readTileContent(await fetchBytes(base), (uri) => fetchBytes(new URL(uri, base)), meshopt(exports), draco(exports));
-  const images = await Promise.all(content.model.images.map(bitmap));
-  return { primitives: content.model.primitives, materials: content.model.materials, images, rtc: content.rtc, batchLength: content.batchLength, batchTable: content.batchTable };
+  const parts = content.kind === "cmpt" ? content.parts : [content];
+  return {
+    parts: await Promise.all(
+      parts.map(async (c) => ({
+        primitives: c.model.primitives,
+        materials: c.model.materials,
+        images: await Promise.all(c.model.images.map(bitmap)),
+        rtc: c.rtc,
+        batchLength: c.batchLength,
+        batchTable: c.batchTable,
+        batchBinary: c.batchBinary.slice(),
+        instances: c.instances,
+      })),
+    ),
+  };
 }
 
 const OPS = { load, tile };
 
-/** Every ArrayBuffer and ImageBitmap of `value`, once each. */
+/** Every ArrayBuffer and ImageBitmap of a model or a tile's parts, once each. */
 function transferables(value) {
-  const out = new Set(value.images);
-  for (const p of value.primitives) {
-    for (const a of Object.values(p.attributes)) out.add(a.data.buffer);
-    if (p.indices) out.add(p.indices.buffer);
+  const out = new Set();
+  for (const part of value.parts ?? [value]) {
+    for (const image of part.images) out.add(image);
+    for (const p of part.primitives) {
+      for (const a of Object.values(p.attributes)) out.add(a.data.buffer);
+      if (p.indices) out.add(p.indices.buffer);
+    }
+    if (part.instances) for (const a of [part.instances.matrices, part.instances.batchIds]) out.add(a.buffer);
   }
   return [...out];
 }

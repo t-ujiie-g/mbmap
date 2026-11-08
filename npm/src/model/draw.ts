@@ -202,10 +202,13 @@ export class ModelProgram {
 
   /**
    * Draws `model`'s meshes of `pass` (0: opaque, 1: blended, or all of them with `translucent`): `place`
-   * (meters to meters) goes before each mesh's matrix, then `flat` and `globe` take meters to clip space.
+   * (meters to meters) goes before each mesh's matrix, then `flat` and `globe` take meters to clip space;
+   * `feature` is the id meshes without an id attribute are picked with.
    */
-  draw(gl: WebGL2RenderingContext, model: GpuModel, place: ArrayLike<number>, flat: ArrayLike<number>, globe: ArrayLike<number> | null, opacity: number, translucent: boolean, pass: number): void {
+  draw(gl: WebGL2RenderingContext, model: GpuModel, place: ArrayLike<number>, flat: ArrayLike<number>, globe: ArrayLike<number> | null, opacity: number, translucent: boolean, pass: number, feature?: number): void {
     const u = this.#u;
+    // An instance's feature id, for meshes with no id attribute of their own.
+    gl.vertexAttrib4f(5, feature ?? 0, 0, 0, 0);
     gl.uniformMatrix4fv(u.u_flat, false, new Float32Array(flat));
     if (globe) gl.uniformMatrix4fv(u.u_globe, false, new Float32Array(globe));
     gl.uniform1f(u.u_opacity, opacity);
