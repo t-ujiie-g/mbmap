@@ -49,13 +49,35 @@ export interface Material {
   unlit: boolean;
 }
 
-/** One primitive of a mesh in the scene: `mode` a WebGL draw mode, `material` an index or -1, `matrix` its node's world matrix (column-major). */
+/**
+ * One set of a primitive's feature IDs: per vertex from `attribute` (`_BATCHID`, or EXT_mesh_features'
+ * `_FEATURE_ID_n`), else `implicit`, `offset + floor(vertex / repeat)` (1 and 0 unless a draft's fields say).
+ * `nullFeatureId` marks vertices of no feature; `featureCount` is unknown for `_BATCHID` (the b3dm's BATCH_LENGTH).
+ */
+export interface FeatureIds {
+  attribute?: Attribute;
+  implicit?: { offset: number; repeat: number };
+  nullFeatureId?: number;
+  featureCount?: number;
+  propertyTable?: number;
+  label?: string;
+}
+
+/** One primitive of a mesh in the scene: `mode` a WebGL draw mode, `material` an index or -1, `matrix` its node's world matrix (column-major), `featureIds` when it has any. */
 export interface Primitive {
   attributes: Record<string, Attribute>;
   indices?: Uint8Array | Uint16Array | Uint32Array;
   mode: number;
   material: number;
   matrix: Float64Array;
+  featureIds?: FeatureIds[];
+}
+
+/** EXT_structural_metadata: `schema` and `propertyTables` as the JSON has them, and copies of the buffer views the tables reference. */
+export interface StructuralMetadata {
+  schema: Record<string, any>;
+  propertyTables: Record<string, any>[];
+  bufferViews: Record<number, Uint8Array>;
 }
 
 /** An image's encoded bytes and media type. */
@@ -70,6 +92,7 @@ export interface Model {
   materials: Material[];
   images: ImageData[];
   rtc?: [number, number, number];
+  metadata?: StructuralMetadata;
 }
 
 /** A Draco mesh decoded: its corner indices and its attributes by Draco unique id. */
@@ -94,6 +117,8 @@ export const EXTENSIONS = new Set([
   "EXT_texture_webp",
   "CESIUM_RTC",
   "KHR_draco_mesh_compression",
+  "EXT_mesh_features",
+  "EXT_structural_metadata",
 ]);
 
 /** Splits a .glb into its JSON and binary chunk; a .gltf (JSON text) has no binary chunk. */
@@ -327,7 +352,10 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
           if (!(a.data instanceof Uint8Array || a.data instanceof Uint16Array || a.data instanceof Uint32Array) || a.size !== 1) throw new Error("indices must be unsigned scalars");
           indices = a.data;
         }
-        primitives.push({ attributes, indices, mode: int(p.mode, 4), material: p.material === undefined ? -1 : int(p.material, -1), matrix });
+        const primitive: Primitive = { attributes, indices, mode: int(p.mode, 4), material: p.material === undefined ? -1 : int(p.material, -1), matrix };
+        const featureIds = readFeatureIds(p, attributes);
+        if (featureIds.length) primitive.featureIds = featureIds;
+        primitives.push(primitive);
       }
     }
     for (const child of list(node.children)) visit(int(child, -1), matrix, depth + 1, seen);
@@ -337,7 +365,51 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
   for (const root of roots) visit(root, identity, 0, new Set());
   const center = list(obj(obj(gltf.extensions).CESIUM_RTC).center);
   const rtc = center.length === 3 && center.every((v) => typeof v === "number" && Number.isFinite(v)) ? (center as [number, number, number]) : undefined;
-  return { primitives, materials, images, rtc };
+  const model: Model = { primitives, materials, images, rtc };
+  const metadata = obj(obj(gltf.extensions).EXT_structural_metadata);
+  if (Object.keys(metadata).length) model.metadata = readMetadata(metadata, viewBytes, spend);
+  return model;
+}
+
+/** A primitive's EXT_mesh_features feature IDs (feature ID textures left out), else its `_BATCHID`. */
+function readFeatureIds(p: Record<string, any>, attributes: Record<string, Attribute>): FeatureIds[] {
+  const out: FeatureIds[] = [];
+  for (const f of list(obj(obj(p.extensions).EXT_mesh_features).featureIds).map(obj)) {
+    if (f.attribute === undefined && f.texture !== undefined) continue;
+    const ids: FeatureIds = { featureCount: int(f.featureCount) };
+    if (f.attribute !== undefined) {
+      const attribute = attributes[`_FEATURE_ID_${int(f.attribute, -1)}`];
+      if (!attribute || attribute.size !== 1) throw new Error(`no feature ID attribute ${f.attribute}`);
+      ids.attribute = attribute;
+    } else {
+      ids.implicit = { offset: int(f.offset), repeat: Math.max(1, int(f.repeat, 1)) };
+    }
+    if (Number.isInteger(f.nullFeatureId) && f.nullFeatureId >= 0) ids.nullFeatureId = f.nullFeatureId;
+    if (Number.isInteger(f.propertyTable) && f.propertyTable >= 0) ids.propertyTable = f.propertyTable;
+    if (typeof f.label === "string") ids.label = f.label;
+    out.push(ids);
+  }
+  if (!out.length && attributes._BATCHID?.size === 1) out.push({ attribute: attributes._BATCHID });
+  return out;
+}
+
+/** The property tables of EXT_structural_metadata with their buffer views; an external schema (`schemaUri`) is not fetched. */
+function readMetadata(ext: Record<string, any>, viewBytes: (i: number) => Uint8Array, spend: (n: number) => void): StructuralMetadata {
+  const propertyTables = list(ext.propertyTables).map(obj);
+  const bufferViews: Record<number, Uint8Array> = Object.create(null);
+  for (const table of propertyTables) {
+    for (const property of Object.values(obj(table.properties)).map(obj)) {
+      for (const key of ["values", "arrayOffsets", "stringOffsets"]) {
+        if (property[key] === undefined) continue;
+        const index = int(property[key], -1);
+        if (bufferViews[index]) continue;
+        const bytes = viewBytes(index);
+        spend(bytes.length);
+        bufferViews[index] = bytes.slice();
+      }
+    }
+  }
+  return { schema: obj(ext.schema), propertyTables, bufferViews };
 }
 
 function slice(buffer: Uint8Array | undefined, offset: number, length: number): Uint8Array {
