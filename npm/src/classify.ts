@@ -285,9 +285,8 @@ export function classBreaks(
 
 /**
  * A style `step` expression giving `outputs[i]` (colors, widths, …) to values of class `i`:
- * `["step", input, outputs[0], breaks[1], outputs[1], …]`, which `mbmap/ui`'s legend lists as entries.
- * Breaks must ascend; where two are equal (an empty class, as jenks and quantile may give) the later
- * class's output stands, since a `step` takes strictly ascending stops.
+ * `["step", input, outputs[0], breaks[1], outputs[1], …]`, which `mbmap/ui`'s legend lists as entries. Breaks
+ * must ascend; of two equal ones (an empty class, which jenks and quantile may give) the later output stands.
  */
 export function classStep(input: unknown, breaks: number[], outputs: unknown[]): unknown[] {
   if (breaks.length < 2 || outputs.length !== breaks.length - 1) throw new Error("mbmap: classify: give one output per class");
