@@ -5,10 +5,12 @@ import { clusterArgs, loadOptions, sameOptions } from "../src/geojson-options.ts
 const INT32_MAX = 2 ** 31 - 1;
 
 test("loadOptions takes MapLibre's defaults", () => {
-  assert.deepEqual(loadOptions({ type: "geojson", data: {} }), { maxzoom: 18, buffer: 128, tolerance: 0.375, lineMetrics: false, cluster: null });
+  assert.deepEqual(loadOptions({ type: "geojson", data: {} }), { maxzoom: 18, buffer: 128, tolerance: 0.375, lineMetrics: false, cluster: null, promoteId: undefined });
   assert.deepEqual(loadOptions({ cluster: true }).cluster, { maxZoom: 17, radius: 50, minPoints: 2 });
-  assert.deepEqual(loadOptions({ maxzoom: 10, buffer: 0, tolerance: 1, lineMetrics: true }), { maxzoom: 10, buffer: 0, tolerance: 1, lineMetrics: true, cluster: null });
+  assert.deepEqual(loadOptions({ maxzoom: 10, buffer: 0, tolerance: 1, lineMetrics: true }), { maxzoom: 10, buffer: 0, tolerance: 1, lineMetrics: true, cluster: null, promoteId: undefined });
   assert.equal(loadOptions({ maxzoom: "12" }).maxzoom, 18);
+  assert.equal(loadOptions({ promoteId: "code" }).promoteId, "code");
+  assert.equal(loadOptions({ promoteId: { layer: "code" } }).promoteId, undefined);
 });
 
 test("loadOptions clamps the cluster options", () => {
@@ -29,6 +31,7 @@ test("sameOptions compares the data by identity and the options by value", () =>
   assert.equal(sameOptions({ data, cluster: true, clusterProperties: sum }, { data, cluster: true, clusterProperties: { ...sum } }), true);
   assert.equal(sameOptions({ data, cluster: true, clusterProperties: sum }, { data, cluster: true }), false);
   assert.equal(sameOptions({ data: "a.json" }, { data: "a.json", attribution: "x" }), true);
+  assert.equal(sameOptions({ data, promoteId: "a" }, { data, promoteId: "b" }), false);
 });
 
 test("clusterArgs keeps ids in int32 and maps limits as the worker takes them", () => {

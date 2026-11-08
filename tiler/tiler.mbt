@@ -32,10 +32,11 @@ pub fn TilerOptions::default() -> TilerOptions {
 
 ///|
 /// Cuts a table's features into vector tiles: some up front, the rest when
-/// `tile` asks for them (geojson-vt's `GeoJSONVT` with a `TileIndex`).
+/// `tile` asks for them (geojson-vt's `GeoJSONVT` with a `TileIndex`, updateable).
 pub struct Tiler {
   priv options : TilerOptions
   priv tiles : Map[Int64, Tile]
+  priv source : Source
 }
 
 ///|
@@ -48,34 +49,142 @@ fn tile_key(z : Int32, x : Int32, y : Int32) -> Int64 {
 pub const MAX_ZOOM : Int32 = 24
 
 ///|
-/// Indexes `table`, whose coordinates are longitude and latitude (`trig`
-/// projects them; see `Trig`).
+/// Indexes `table` (longitude and latitude, projected by `trig`), its features ending at
+/// `feature_ends` (a row each by default); `update` finds them by `promote_id`'s property, which
+/// becomes the table's ids, else by id. The table keeps their properties; updates add rows to it.
 pub fn Tiler::new(
   table : @geom.Table,
   options~ : TilerOptions = TilerOptions::default(),
   trig~ : Trig = Trig::moonbit(),
+  feature_ends? : Array[Int32],
+  promote_id? : String,
 ) -> Tiler {
   let max_zoom = @cmp.maximum(0, @cmp.minimum(MAX_ZOOM, options.max_zoom))
   let options = { ..options, max_zoom, }
-  let t : Tiler = { options, tiles: Map([]), }
   let z = (1 << max_zoom).to_double() * options.extent.to_double()
   let sq_tolerance = options.tolerance / z * (options.tolerance / z)
-  let metrics = options.line_metrics
-  let mut set = convert(table, sq_tolerance, trig, metrics~)
   let buffer = options.buffer.to_double() / options.extent.to_double()
-  if options.wrap {
-    set = wrap(set, buffer, metrics~)
-  } else {
-    let inf = @double.infinity
-    let in_x = clip(set, 1.0, -buffer, 1.0 + buffer, 0, -inf, inf, metrics~).unwrap_or([],
-    )
-    set = clip(in_x, 1.0, -buffer, 1.0 + buffer, 1, -inf, inf, metrics~).unwrap_or([],
-    )
-  }
-  if !set.is_empty() {
-    t.split(set, 0, 0, 0, None)
+  let source = Source::new(
+    table,
+    feature_ends,
+    promote_id,
+    sq_tolerance,
+    options.line_metrics,
+    if options.wrap {
+      Some(buffer)
+    } else {
+      None
+    },
+    trig,
+  )
+  let t : Tiler = { options, tiles: Map([]), source, }
+  if !source.features.is_empty() {
+    t.split(t.clip_to_world(source.features), 0, 0, 0, None)
   }
   t
+}
+
+///|
+/// geojson-vt's `clipToWorld`: the features the top tile starts from. A world
+/// that does not wrap keeps what lies inside it and its buffer.
+fn Tiler::clip_to_world(self : Tiler, set : Array[FRef]) -> Array[FRef] {
+  let o = self.options
+  if o.wrap {
+    return set
+  }
+  let buffer = o.buffer.to_double() / o.extent.to_double()
+  let inf = @double.infinity
+  let metrics = o.line_metrics
+  let in_x = clip(set, 1.0, -buffer, 1.0 + buffer, 0, -inf, inf, metrics~).unwrap_or([],
+  )
+  clip(in_x, 1.0, -buffer, 1.0 + buffer, 1, -inf, inf, metrics~).unwrap_or([])
+}
+
+///|
+/// geojson-vt's `updateData` and `TileIndex.updateIndex`: applies `diff`, drops
+/// the tiles the features it affected reach and cuts the top tile again.
+/// Returns whether anything changed.
+pub fn Tiler::update(self : Tiler, diff : Diff) -> Bool {
+  let affected = self.source.apply(diff)
+  if affected.is_empty() {
+    return false
+  }
+  self.invalidate(affected)
+  let root = self.clip_to_world(self.source.features)
+  let tile = create_tile(root, 0, 0, 0, self.options)
+  tile.source = Some(root)
+  self.tiles[tile_key(0, 0, 0)] = tile
+  self.compact()
+  true
+}
+
+///|
+/// geojson-vt's `invalidateTiles`: drops every tile whose buffered extent meets
+/// one of `features`.
+fn Tiler::invalidate(self : Tiler, features : Array[FRef]) -> Unit {
+  let mut min_x = @double.infinity
+  let mut max_x = @double.neg_infinity
+  let mut min_y = @double.infinity
+  let mut max_y = @double.neg_infinity
+  for f in features {
+    min_x = @cmp.minimum(min_x, f.s.min_x[f.i])
+    max_x = @cmp.maximum(max_x, f.s.max_x[f.i])
+    min_y = @cmp.minimum(min_y, f.s.min_y[f.i])
+    max_y = @cmp.maximum(max_y, f.s.max_y[f.i])
+  }
+  let k1 = self.options.buffer.to_double() / self.options.extent.to_double()
+  let removed = []
+  for key, tile in self.tiles {
+    let z2 = (1 << tile.z).to_double()
+    let x0 = (tile.x.to_double() - k1) / z2
+    let x1 = (tile.x.to_double() + 1.0 + k1) / z2
+    let y0 = (tile.y.to_double() - k1) / z2
+    let y1 = (tile.y.to_double() + 1.0 + k1) / z2
+    if max_x < x0 || min_x >= x1 || max_y < y0 || min_y >= y1 {
+      continue
+    }
+    for f in features {
+      let s = f.s
+      if s.max_x[f.i] >= x0 &&
+        s.min_x[f.i] < x1 &&
+        s.max_y[f.i] >= y0 &&
+        s.min_y[f.i] < y1 {
+        removed.push(key)
+        break
+      }
+    }
+  }
+  for key in removed {
+    self.tiles.remove(key)
+  }
+}
+
+///|
+/// Drops table rows nothing references any more once they outnumber the rest
+/// (`Source::compact`), renumbering the tiles'.
+fn Tiler::compact(self : Tiler) -> Unit {
+  let src = self.source
+  guard src.may_compact() else { return }
+  let live = Array::make(src.table.length(), false)
+  for _, tile in self.tiles {
+    for row in tile.rows {
+      live[row] = true
+    }
+    if tile.source is Some(set) {
+      for f in set {
+        live[f.row()] = true
+      }
+    }
+  }
+  guard src.compact(live) is Some(map) else { return }
+  for _, tile in self.tiles {
+    for i, row in tile.rows {
+      tile.rows[i] = map[row]
+    }
+    if tile.source is Some(set) {
+      src.renumber(set, map)
+    }
+  }
 }
 
 ///|

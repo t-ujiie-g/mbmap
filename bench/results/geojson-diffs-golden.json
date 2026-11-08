@@ -1,0 +1,139 @@
+{
+  "env": {
+    "geojsonVt": "6.3.0"
+  },
+  "results": [
+    {
+      "run": "mixed/maplibre",
+      "features": 116844,
+      "steps": 15,
+      "tiles": 292,
+      "compared": 4672
+    },
+    {
+      "run": "mixed/maplibre/promoteId",
+      "features": 116844,
+      "steps": 15,
+      "tiles": 292,
+      "compared": 4672
+    },
+    {
+      "run": "mixed/defaults",
+      "features": 116844,
+      "steps": 15,
+      "tiles": 192,
+      "compared": 3072
+    },
+    {
+      "run": "mixed/noWrap",
+      "features": 116844,
+      "steps": 15,
+      "tiles": 192,
+      "compared": 3072
+    },
+    {
+      "run": "mixed/lineMetrics",
+      "features": 116844,
+      "steps": 15,
+      "tiles": 292,
+      "compared": 4672
+    },
+    {
+      "run": "mixed/shallow",
+      "features": 116844,
+      "steps": 15,
+      "tiles": 192,
+      "compared": 3072
+    },
+    {
+      "run": "world/maplibre",
+      "features": 3004,
+      "steps": 40,
+      "tiles": 434,
+      "compared": 17794
+    },
+    {
+      "run": "world/maplibre/promoteId",
+      "features": 3004,
+      "steps": 40,
+      "tiles": 434,
+      "compared": 17794
+    },
+    {
+      "run": "world/defaults",
+      "features": 3004,
+      "steps": 40,
+      "tiles": 434,
+      "compared": 17794
+    },
+    {
+      "run": "world/noWrap",
+      "features": 3004,
+      "steps": 40,
+      "tiles": 434,
+      "compared": 17794
+    },
+    {
+      "run": "world/lineMetrics",
+      "features": 3004,
+      "steps": 40,
+      "tiles": 434,
+      "compared": 17794
+    },
+    {
+      "run": "world/shallow",
+      "features": 3004,
+      "steps": 40,
+      "tiles": 434,
+      "compared": 17794
+    },
+    {
+      "run": "clusters/points/maplibre",
+      "features": 8022,
+      "steps": 30,
+      "tiles": 515,
+      "compared": 15965
+    },
+    {
+      "run": "clusters/points/maplibre/promoteId",
+      "features": 8022,
+      "steps": 30,
+      "tiles": 515,
+      "compared": 15965
+    },
+    {
+      "run": "clusters/points/properties",
+      "features": 8022,
+      "steps": 30,
+      "tiles": 515,
+      "compared": 15965
+    },
+    {
+      "run": "clusters/random/maplibre",
+      "features": 3004,
+      "steps": 30,
+      "tiles": 130,
+      "compared": 4030
+    },
+    {
+      "run": "clusters/random/maplibre/promoteId",
+      "features": 3004,
+      "steps": 30,
+      "tiles": 130,
+      "compared": 4030
+    },
+    {
+      "run": "clusters/random/properties",
+      "features": 3004,
+      "steps": 30,
+      "tiles": 130,
+      "compared": 4030
+    }
+  ],
+  "runs": 18,
+  "diffs": 510,
+  "tiles": 189981,
+  "features": 73677655,
+  "queries": 49119,
+  "differ": 0
+}

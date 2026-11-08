@@ -269,3 +269,20 @@ test "malformed JSON gives the first error and where it is" {
     "malformed GeoJSON at 29: unterminated array or object",
   )
 }
+
+///|
+test "read_geojson_features ends each feature after its rows" {
+  let text =
+    #|{"type": "FeatureCollection", "features": [
+    #| {"type": "Feature", "id": 1, "geometry": {"type": "Point", "coordinates": [1, 2]}},
+    #| {"type": "Feature", "geometry": {"type": "GeometryCollection", "geometries": [
+    #|   {"type": "Point", "coordinates": [1, 1]}, {"type": "LineString", "coordinates": [[0, 0], [1, 0]]}]}},
+    #| {"type": "Feature", "geometry": {"type": "GeometryCollection", "geometries": []}},
+    #| {"type": "Feature", "geometry": null}
+    #|]}
+  let (t, ends) = @formats.read_geojson_features(@utf8.encode(text)[:], (_, _) => {
+    @double.not_a_number
+  })
+  assert_eq(t.kinds, [Point, Point, LineString, NoGeometry, NoGeometry])
+  assert_eq(ends, [1, 3, 4, 5])
+}

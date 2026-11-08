@@ -389,7 +389,7 @@ In:
   (`geojson_props_worker`) instantiated for the first source with cluster properties.
   Both import `Math` and `host.number` (`hostNumber`, for numbers past the reader's
   fast path); the one with expressions adds `hostText`'s, as the display worker's.
-- `{type: "load", source, id, url, init | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties}`:
+- `{type: "load", source, id, url, init | bytes, maxzoom, buffer, tolerance, lineMetrics, cluster, properties, promoteId}`:
   `source` is an integer naming the source; `url` (http(s)) is fetched with `init`,
   what the map's `transformRequest` gave, checked as a tile's (string `headers` and a
   `credentials` mode, else none are sent), up to `MAX_INPUT_BYTES` (256 MiB);
@@ -406,8 +406,16 @@ In:
   most 30, `radius` finite and not negative); its tiles then hold points and clusters.
   `properties`, with `cluster`, is its `clusterProperties` as "Compiled style"'s
   cluster properties (a Uint8Array); such a source goes to the module with expressions.
+  `promoteId` (a string, else none) is the property features are found by in
+  diffs and the id their tiles carry, as geojson-vt's. The module's input is a u32
+  byte length and the `promoteId` in UTF-8 (empty for none), then the GeoJSON
+  (`geojson_worker/js/diff.mjs` `loadInput`).
   Loading a number again replaces its data once the earlier load has finished.
   `id` (any value) comes back in the load's answer.
+- `{type: "update", source, id, diff}`: MapLibre's `GeoJSONSourceDiff` as "GeoJSON
+  diff" (an ArrayBuffer, `encodeDiff` on the main thread), applied once the earlier loads and updates have finished, as geojson-vt 6.3.0's
+  `updateData` (to an empty index if the load failed, as MapLibre's worker does);
+  answered as a load (`fetched` null).
 - `{type: "unload", source}`: forgets the source.
 - `{type: "tile", id, source, z, x, y}`: waits until the source has loaded.
 - `{type: "cluster", id, source, op, cluster, limit, offset}`: `op` is `"expansion"`,
@@ -427,6 +435,25 @@ Out:
 The main thread's `map` asks for GeoJSON tiles through a provider (`map/dom.mbt`
 `Provider`, served by `npm/src/geojson.ts`): `(source id, z, x, y) =>
 Promise<ArrayBuffer | null>`.
+
+## GeoJSON diff (`geojson_worker/js/diff.mjs`, read by `@tiler.Diff::read`)
+
+A u32 byte length and that many bytes of UTF-8 GeoJSON, a FeatureCollection of the
+diff's features: those of `add` (each as `{type, id, geometry, properties}`, a
+geometry that is not an object as null, properties that are not an object as
+null), then for each update with a `newGeometry` a Feature with it. Then:
+
+- u8 `removeAll` (1 or 0);
+- u32 count and the ids of `remove`, each a property value (objects are left
+  out: as `Map` keys they match no feature);
+- u32 count of the features of `add` (the first ones of the GeoJSON);
+- u32 count of the updates (objects with an id that is not an object), each its id
+  (absent for `undefined`), u8 flags (1 a `newGeometry`, the next feature of the
+  GeoJSON; 2 `removeAllProperties`), u32 count and the keys of `removeProperties`
+  (UTF-8), u32 count and the `addOrUpdateProperties` as key (UTF-8) and value
+  (objects and arrays as their JSON, `undefined` absent).
+
+Nothing may follow, and every feature of the GeoJSON must be used.
 
 ## Cluster features (`tiler/encode.mbt`, read by `geojson_worker/js/features.mjs`)
 

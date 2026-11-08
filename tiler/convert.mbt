@@ -27,24 +27,51 @@ fn project_y(trig : Trig, lat : Double) -> Double {
 }
 
 ///|
-/// Projects the table's features into `store` with simplification data
-/// (geojson-vt's `convertToInternal`) and returns their indices; with line
-/// `metrics`, each line becomes a feature of its own.
+/// Projects the table's features into a store with simplification data
+/// (geojson-vt's `convertToInternal`) and returns them; with line `metrics`,
+/// each line becomes a feature of its own.
 fn convert(
   table : @geom.Table,
   sq_tolerance : Double,
   trig : Trig,
   metrics~ : Bool = false,
 ) -> Array[FRef] {
-  let store = Store::new()
   let out = []
-  for f in 0..<table.length() {
+  convert_into(
+    Store::new(),
+    out,
+    table,
+    0,
+    table.length(),
+    sq_tolerance,
+    trig,
+    metrics~,
+  )
+  out
+}
+
+///|
+/// `convert` of rows `from` to `to` into `store`, appended to `out`, each
+/// feature keeping table row `row_of(row)`.
+fn convert_into(
+  store : Store,
+  out : Array[FRef],
+  table : @geom.Table,
+  from : Int32,
+  to : Int32,
+  sq_tolerance : Double,
+  trig : Trig,
+  metrics~ : Bool = false,
+  row_of~ : (Int32) -> Int32 = r => r,
+) -> Unit {
+  for f in from..<to {
     let kind = match table.kinds[f] {
       Point | MultiPoint => @core.GEOM_POINTS
       LineString | MultiLineString => @core.GEOM_LINES
       Polygon | MultiPolygon => @core.GEOM_POLYGONS
       NoGeometry => continue
     }
+    let row = row_of(f)
     let (p0, p1) = table.parts(f)
     for p in p0..<p1 {
       let (r0, r1) = table.rings(p)
@@ -71,7 +98,7 @@ fn convert(
         )
         if metrics && kind == @core.GEOM_LINES {
           store.end_part()
-          let i = store.end_feature(kind, f)
+          let i = store.end_feature(kind, row)
           if i >= 0 {
             out.push({ s: store, i, })
           }
@@ -91,12 +118,11 @@ fn convert(
     if metrics && kind == @core.GEOM_LINES {
       continue
     }
-    let i = store.end_feature(kind, f)
+    let i = store.end_feature(kind, row)
     if i >= 0 {
       out.push({ s: store, i, })
     }
   }
-  out
 }
 
 ///|

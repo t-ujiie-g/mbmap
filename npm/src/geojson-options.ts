@@ -27,7 +27,11 @@ export function loadOptions(spec: Record<string, unknown>) {
     maxzoom,
     buffer: within(num(spec.buffer, 128), 0, 512),
     tolerance: Math.max(0, num(spec.tolerance, 0.375)),
-    lineMetrics: spec.lineMetrics === true, cluster };
+    lineMetrics: spec.lineMetrics === true,
+    cluster,
+    // MapLibre gives geojson-vt a `promoteId` only when it is a string; the worker finds diffs' features by it.
+    promoteId: typeof spec.promoteId === "string" ? spec.promoteId : undefined,
+  };
 }
 
 /** Whether two specifications load the same: the same data (by identity), options and cluster properties. */

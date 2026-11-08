@@ -37,8 +37,9 @@ pub struct ClusterIndex {
 pub fn ClusterIndex::children(Self, Int32) -> Array[ClusterFeature]?
 pub fn ClusterIndex::expansion_zoom(Self, Int32) -> Int32
 pub fn ClusterIndex::leaves(Self, Int32, limit? : Int32, offset? : Int32) -> Array[ClusterFeature]?
-pub fn ClusterIndex::new(@geom.Table, options? : ClusterOptions, wrap_buffer? : Double, trig? : @core.Trig, properties? : ClusterProperties) -> Self
+pub fn ClusterIndex::new(@geom.Table, options? : ClusterOptions, wrap_buffer? : Double, trig? : @core.Trig, properties? : ClusterProperties, feature_ends? : Array[Int32], promote_id? : String) -> Self
 pub fn ClusterIndex::tile(Self, Int32, Int32, Int32) -> Array[ClusterFeature]?
+pub fn ClusterIndex::update(Self, Diff) -> Bool
 
 pub(all) struct ClusterOptions {
   min_zoom : Int32
@@ -57,6 +58,23 @@ pub(all) struct ClusterProperties {
   reduce : (Array[@geom.Prop], Array[@geom.Prop]) -> Unit
 }
 
+pub(all) struct Diff {
+  remove_all : Bool
+  remove : Array[@geom.Prop?]
+  table : @geom.Table
+  add : Array[Int32]
+  update : Array[FeatureDiff]
+}
+pub fn Diff::read(BytesView, @geom.Table, Array[Int32]) -> Self?
+
+pub(all) struct FeatureDiff {
+  id : @geom.Prop?
+  geometry : (Int32, Int32)?
+  remove_all_properties : Bool
+  remove_properties : Array[String]
+  add_properties : Array[(String, @geom.Prop?)]
+}
+
 pub struct TileData {
   types : Array[Int32]
   rows : Array[Int32]
@@ -69,8 +87,9 @@ pub struct TileData {
 pub struct Tiler {
   // private fields
 }
-pub fn Tiler::new(@geom.Table, options? : TilerOptions, trig? : @core.Trig) -> Self
+pub fn Tiler::new(@geom.Table, options? : TilerOptions, trig? : @core.Trig, feature_ends? : Array[Int32], promote_id? : String) -> Self
 pub fn Tiler::tile(Self, Int32, Int32, Int32) -> TileData?
+pub fn Tiler::update(Self, Diff) -> Bool
 
 pub(all) struct TilerOptions {
   max_zoom : Int32

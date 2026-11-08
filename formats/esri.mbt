@@ -35,6 +35,7 @@ fn esri_json_table(
     next_key: 0,
     max_points,
     max_cells,
+    feature_ends: [],
   }
   let mut features = -1
   let mut id_field : String? = None

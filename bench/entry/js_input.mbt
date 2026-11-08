@@ -50,6 +50,90 @@ pub fn geojson_tiler(
 }
 
 ///|
+/// `strconv` for a part of `bytes` starting at an offset.
+fn js_slow(bytes : Bytes) -> (Int32) -> (Int32, Int32) -> Double {
+  at => (s, e) => @core.strconv_number(bytes[at + s:at + e])
+}
+
+///|
+/// `diff_tiler` on the GeoJSON worker's `load` input.
+#export_name("geojson_tiler_diffs")
+pub fn geojson_tiler_diffs(
+  bytes : Bytes,
+  max_zoom : Int32,
+  index_max_zoom : Int32,
+  index_max_points : Int32,
+  tolerance : Double,
+  extent : Int32,
+  buffer : Int32,
+  wrap : Bool,
+  line_metrics : Bool,
+) -> Int32 {
+  let options : @tiler.TilerOptions = {
+    max_zoom,
+    index_max_zoom,
+    index_max_points,
+    tolerance,
+    extent,
+    buffer,
+    wrap,
+    line_metrics,
+  }
+  diff_tiler(bytes[:], options, @tiler.Trig::moonbit(), js_slow(bytes))
+}
+
+///|
+/// `diff_clusters` on the GeoJSON worker's `load` input; `properties` as for
+/// `geojson_clusters`.
+#export_name("geojson_clusters_diffs")
+pub fn geojson_clusters_diffs(
+  bytes : Bytes,
+  max_zoom : Int32,
+  min_points : Int32,
+  radius : Double,
+  extent : Int32,
+  wrap_buffer : Double,
+  properties : Bytes,
+) -> Int32 {
+  let properties = if properties.length() == 0 {
+    None
+  } else {
+    let json = @core.parse_json(properties[:]) catch { _ => return -1 }
+    let compiled = @style.compile_cluster_properties(json) catch {
+      _ => return -1
+    }
+    Some(compiled)
+  }
+  let options : @tiler.ClusterOptions = {
+    ..@tiler.ClusterOptions::default(),
+    max_zoom,
+    min_points,
+    radius,
+    extent,
+  }
+  diff_clusters(
+    bytes[:],
+    options,
+    wrap_buffer,
+    @tiler.Trig::moonbit(),
+    js_slow(bytes),
+    properties?,
+    hooks={
+      ..@cluster_props.Hooks::default(),
+      number_text: js_number_text,
+      text_number: js_text_number,
+    },
+  )
+}
+
+///|
+/// `apply_diff` on the GeoJSON worker's `update` input.
+#export_name("geojson_update")
+pub fn geojson_update(bytes : Bytes) -> Int32 {
+  apply_diff(bytes[:], js_slow(bytes))
+}
+
+///|
 /// `build_clusters` on the GeoJSON's UTF-8 Uint8Array.
 #export_name("geojson_clusters")
 pub fn geojson_clusters(

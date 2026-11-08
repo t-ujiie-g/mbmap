@@ -509,8 +509,9 @@ Test / benchmark data:
   Used under the GSI content terms of use (国土地理院コンテンツ利用規約).
 
 - tiler/*.mbt: port of @maplibre/geojson-vt 6.3.0 (src/convert.ts, simplify.ts,
-  clip.ts, wrap.ts, tile.ts, transform.ts, tile-index.ts, cluster-tile-index.ts;
-  without updates, line metrics and cluster map/reduce)
+  clip.ts, wrap.ts, tile.ts, transform.ts, tile-index.ts, cluster-tile-index.ts,
+  difference.ts and geojsonvt.ts's updateable index; line metrics and cluster
+  map/reduce included)
   https://github.com/maplibre/geojson-vt — MIT License and ISC License:
 
     The MIT License (MIT)

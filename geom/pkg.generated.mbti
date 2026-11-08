@@ -70,6 +70,7 @@ pub fn Table::map_coords(Self, (Double, Double) -> (Double, Double)?) -> Self
 pub fn Table::new() -> Self
 pub fn Table::parts(Self, Int32) -> (Int32, Int32)
 pub fn Table::points(Self, Int32) -> (Int32, Int32)
+pub fn Table::push_row(Self, Prop?, ArrayView[(String, Prop?)]) -> Int32
 pub fn[S : TableSource] Table::read_from(S, Int32) -> Self?
 pub fn Table::rings(Self, Int32) -> (Int32, Int32)
 pub fn Table::to_bytes(Self) -> Bytes

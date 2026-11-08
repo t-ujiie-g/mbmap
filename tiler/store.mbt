@@ -2,9 +2,9 @@
 // MapLibre contributors, and ISC License, Copyright (c) 2024, Mapbox. See NOTICE.
 
 ///|
-/// geojson-vt's projected features, nested like `@geom.Table`: `pts` as (x, y,
-/// importance), `size` a ring's length or area, `from`/`to` a line slice's place
-/// along it. Each conversion or clip has its own store (`FRef` shares features).
+/// geojson-vt's projected features, nested like `@geom.Table`: `pts` as (x, y, importance), `size`
+/// a ring's length or area, `from`/`to` a line slice's place along it; `epoch` the last compaction
+/// that renumbered `row`. Each conversion or clip has its own store (`FRef` shares features).
 priv struct Store {
   kind : Array[Int32]
   row : Array[Int32]
@@ -19,6 +19,7 @@ priv struct Store {
   from : Array[Double]
   to : Array[Double]
   pts : Array[Double]
+  mut epoch : Int32
 }
 
 ///|
@@ -37,6 +38,7 @@ fn Store::new() -> Store {
     from: [],
     to: [],
     pts: [],
+    epoch: 0,
   }
 }
 
@@ -130,4 +132,10 @@ fn Store::end_feature(self : Store, kind : Int32, row : Int32) -> Int32 {
 priv struct FRef {
   s : Store
   i : Int32
+}
+
+///|
+/// The table row of `f`.
+fn FRef::row(self : FRef) -> Int32 {
+  self.s.row[self.i]
 }

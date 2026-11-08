@@ -33,7 +33,18 @@ pub fn read_geojson(
     @core.strconv_number(bytes[s:e])
   },
 ) -> @geom.Table raise GeoJSONError {
-  read_points(bytes, slow_number, @geom.MAX_TABLE_POINTS)
+  read_points(bytes, slow_number, @geom.MAX_TABLE_POINTS, [])
+}
+
+///|
+/// `read_geojson` that also gives where each feature's rows end (a GeometryCollection
+/// has a row per member), as geojson-vt's features for `@tiler.Source`.
+pub fn read_geojson_features(
+  bytes : BytesView,
+  slow_number : (Int32, Int32) -> Double,
+) -> (@geom.Table, Array[Int32]) raise GeoJSONError {
+  let ends = []
+  (read_points(bytes, slow_number, @geom.MAX_TABLE_POINTS, ends), ends)
 }
 
 ///|
@@ -43,6 +54,7 @@ fn read_points(
   bytes : BytesView,
   slow_number : (Int32, Int32) -> Double,
   max_points : Int32,
+  feature_ends : Array[Int32],
 ) -> @geom.Table raise GeoJSONError {
   let p : Parser = {
     b: bytes,
@@ -55,6 +67,7 @@ fn read_points(
     next_key: 0,
     max_points,
     max_cells: @geom.MAX_TABLE_CELLS,
+    feature_ends,
   }
   p.feature_like()
   if p.error is None && p.peek() != -1 {
@@ -80,6 +93,7 @@ priv struct Parser {
   mut next_key : Int32
   max_points : Int32
   max_cells : Int32
+  feature_ends : Array[Int32]
 }
 
 ///|
@@ -434,6 +448,7 @@ fn Parser::feature_like(self : Parser) -> Unit {
       return
     }
   }
+  self.feature_ends.push(self.out.table.length())
 }
 
 ///|

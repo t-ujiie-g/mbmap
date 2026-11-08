@@ -36,11 +36,17 @@ pub fn geojson_cluster_expansion(Int32) -> Int32
 
 pub fn geojson_cluster_hash(Int32, Int32, Int32, Int32) -> Int32
 
+pub fn geojson_clusters_diffs_mem(Int32, Int32, Int32, Int32, Double, Int32, Double) -> Int32
+
 pub fn geojson_clusters_mem(Int32, Int32, Int32, Int32, Double, Int32, Double, Int32) -> Int32
 
 pub fn geojson_read_mem(Int32, Int32) -> Int32
 
 pub fn geojson_tile(Int32, Int32, Int32) -> FixedArray[Int32]
+
+pub fn geojson_tile_bytes(Int32, Int32, Int32) -> Bytes
+
+pub fn geojson_tile_bytes_hash(Int32, Int32, Int32) -> Int32
 
 pub fn geojson_tile_clips(Int32, Int32, Int32) -> FixedArray[Double]
 
@@ -52,9 +58,13 @@ pub fn geojson_tile_mem(Int32, Int32, Int32, Int32) -> Int32
 
 pub fn geojson_tile_size(Int32, Int32, Int32) -> Int32
 
+pub fn geojson_tiler_diffs_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32, Int32) -> Int32
+
 pub fn geojson_tiler_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32, Int32) -> Int32
 
 pub fn geojson_tiler_table_mem(Int32, Int32, Int32, Int32, Int32, Double, Int32, Int32, Int32) -> Int32
+
+pub fn geojson_update_mem(Int32, Int32) -> Int32
 
 pub fn grow_memory(Int32) -> Int32
 

@@ -1,0 +1,32 @@
+{
+  "env": {
+    "runtime": "node v22.23.4",
+    "v8": "12.4.254.21-node.57"
+  },
+  "features": 116840,
+  "tiles": 100,
+  "results": [
+    {
+      "edit": "properties of 10 features",
+      "setData": {
+        "mbmap": 1200.7958330000001,
+        "geojson-vt": 1141.2267090000005
+      },
+      "updateData": {
+        "mbmap": 340.921709000002,
+        "geojson-vt": 678.9848329999986
+      }
+    },
+    {
+      "edit": "geometry of 1 feature",
+      "setData": {
+        "mbmap": 1305.7625830000034,
+        "geojson-vt": 1371.6102079999982
+      },
+      "updateData": {
+        "mbmap": 273.981832999998,
+        "geojson-vt": 534.7672500000044
+      }
+    }
+  ]
+}
