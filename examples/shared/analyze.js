@@ -1,7 +1,6 @@
-// The analysis tab: places' Voronoi cells classed by area (mbmap/analysis's voronoi and areas, the
-// field editor's columns, jenks breaks as a `step` the legend lists), the shortest way along the
-// roads drawn (GSI's road features as a network), and what the center sees (GSI's DEM: a viewshed
-// on a canvas source, and a line of sight to a clicked place).
+// The analysis tab: places' Voronoi cells classed by area (field editor columns, jenks as a `step`
+// the legend lists), the shortest way along the drawn roads, and what the center sees (GSI's DEM:
+// a viewshed on a canvas source, a line of sight to a click).
 import { classBreaks, classStep, load, loadDem } from "mbmap/analysis";
 import { createFieldEditor } from "mbmap/ui";
 import { PLACES } from "./places.js";
@@ -21,10 +20,8 @@ const line = (coordinates, properties = {}) => ({ type: "Feature", properties, g
 const point = (coordinates, properties = {}) => ({ type: "Feature", properties, geometry: { type: "Point", coordinates } });
 
 /**
- * `cells` (null, "loading", or `{ breaks, count }`), `route` (null, "loading", `{ length, steps }`
- * or `{ error }`), `sight` (null, "loading", `{ visible }` share of the cells seen), `target` (the
- * line of sight: null, `{ visible, blockedAt }` or `{ error }`), `picking` ("route", "sight" or
- * null, while clicks go to the tab), `points` clicked for the route, and the last `error`.
+ * `cells` `{ breaks, count }`, `route` `{ length, steps }`, `sight` `{ visible }` (share seen), `target` `{ visible, blockedAt }`
+ * (each null, "loading" or `{ error }`); `picking` "route" | "sight" | null while clicks go here; route `points`; last `error`.
  */
 function initial() {
   return { cells: null, route: null, sight: null, target: null, picking: null, points: [], error: null };
