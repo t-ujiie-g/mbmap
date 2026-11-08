@@ -113,20 +113,29 @@ fn Voronoi::new(
 /// None where it returns null.
 fn Voronoi::cell_polygon(self : Voronoi, i : Int32) -> Array[Double]? {
   guard self.clip(i) is Some(points) && points.length() > 0 else { None }
-  let out = [points[0], points[1]]
   let mut n = points.length()
   while n > 1 && points[0] == points[n - 2] && points[1] == points[n - 1] {
     n -= 2
   }
+  // In place: `clip` gives a new array.
+  let mut w = 2
+  let mut px = points[0]
+  let mut py = points[1]
   for k = 2; k < n; k = k + 2 {
-    if points[k] != points[k - 2] || points[k + 1] != points[k - 1] {
-      out.push(points[k])
-      out.push(points[k + 1])
+    let x = points[k]
+    let y = points[k + 1]
+    if x != px || y != py {
+      points[w] = x
+      points[w + 1] = y
+      w += 2
     }
+    px = x
+    py = y
   }
-  out.push(out[0])
-  out.push(out[1])
-  Some(out)
+  points.truncate(w)
+  points.push(points[0])
+  points.push(points[1])
+  Some(points)
 }
 
 ///|
@@ -160,7 +169,7 @@ fn Voronoi::cell(self : Voronoi, i : Int32) -> Array[Double]? {
   if e0 == -1 {
     return None
   }
-  let points = []
+  let points = Array(capacity=16)
   let mut e = e0
   for _ in 0..<=d.halfedges.length() {
     let t = e / 3
@@ -196,15 +205,19 @@ fn Voronoi::clip(self : Voronoi, i : Int32) -> Array[Double]? {
 }
 
 ///|
-fn push_xy(p : Array[Double]?, x : Double, y : Double) -> Array[Double] {
-  match p {
-    Some(p) => {
-      p.push(x)
-      p.push(y)
-      p
-    }
-    None => [x, y]
+fn push_xy(
+  p : Array[Double]?,
+  x : Double,
+  y : Double,
+  capacity : Int32,
+) -> Array[Double] {
+  let p = match p {
+    Some(p) => p
+    None => Array(capacity~)
   }
+  p.push(x)
+  p.push(y)
+  p
 }
 
 ///|
@@ -228,7 +241,7 @@ fn Voronoi::clip_finite(
     c1 = self.regioncode(x1, y1)
     if c0 == 0 && c1 == 0 {
       e1 = 0
-      p = Some(push_xy(p, x1, y1))
+      p = Some(push_xy(p, x1, y1, n + 8))
     } else {
       let (sx1, sy1) = if c0 == 0 {
         guard self.clip_segment(x0, y0, x1, y1, c0, c1) is Some(s) else {
@@ -245,7 +258,7 @@ fn Voronoi::clip_finite(
         if e0 != 0 && e1 != 0 && p is Some(q) {
           let _ = self.edge(i, e0, e1, q, q.length())
         }
-        p = Some(push_xy(p, sx0, sy0))
+        p = Some(push_xy(p, sx0, sy0, n + 8))
         (sx1, sy1)
       }
       let e0 = e1
@@ -253,7 +266,7 @@ fn Voronoi::clip_finite(
       if e0 != 0 && e1 != 0 && p is Some(q) {
         let _ = self.edge(i, e0, e1, q, q.length())
       }
-      p = Some(push_xy(p, sx1, sy1))
+      p = Some(push_xy(p, sx1, sy1, n + 8))
     }
   }
   match p {

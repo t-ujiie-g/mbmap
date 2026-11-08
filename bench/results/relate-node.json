@@ -13,76 +13,76 @@
   },
   "rows": {
     "read GeoJSON (43847 GSI features; mbmap: JSON text into a dataset)": {
-      "js": 27.4,
-      "mbmap": 183.3,
-      "stringify": 51.2,
-      "ratio": 6.69
+      "js": 27.5,
+      "mbmap": 185.8,
+      "stringify": 51.7,
+      "ratio": 6.75
     },
     "gsi buildings x roads intersects (24 pairs)": {
-      "js": 248.8,
-      "mbmap": 121.7,
-      "tablesIn": 10.8,
-      "ratio": 0.489
+      "js": 246.7,
+      "mbmap": 122.8,
+      "tablesIn": 10.9,
+      "ratio": 0.498
     },
     "gsi buildings x roads touches (0 pairs)": {
-      "js": 248.8,
-      "mbmap": 122.5,
-      "tablesIn": 8.76,
-      "ratio": 0.492
+      "js": 247.8,
+      "mbmap": 123.3,
+      "tablesIn": 9,
+      "ratio": 0.497
     },
     "gsi water x roads intersects (51 pairs)": {
-      "js": 18.7,
+      "js": 18.5,
       "mbmap": 13,
-      "tablesIn": 2.4,
-      "ratio": 0.694
+      "tablesIn": 2.43,
+      "ratio": 0.7
     },
     "gsi water x roads touches (0 pairs)": {
-      "js": 18.7,
-      "mbmap": 13,
-      "tablesIn": 2.39,
-      "ratio": 0.698
+      "js": 18.6,
+      "mbmap": 13.1,
+      "tablesIn": 2.43,
+      "ratio": 0.703
     },
     "gsi roads x roads (200) intersects (2824 pairs)": {
-      "js": 26.4,
+      "js": 26.6,
       "mbmap": 10.1,
-      "tablesIn": 0.271,
-      "ratio": 0.382
+      "tablesIn": 0.272,
+      "ratio": 0.379
     },
     "gsi roads x roads (200) touches (2014 pairs)": {
       "js": 26.4,
       "mbmap": 10.1,
-      "tablesIn": 0.27,
-      "ratio": 0.382
+      "tablesIn": 0.271,
+      "ratio": 0.383
     },
     "gsi buildings x buildings (200) intersects (818 pairs)": {
-      "js": 35.2,
+      "js": 35.4,
       "mbmap": 14.9,
       "tablesIn": 0.595,
-      "ratio": 0.423
+      "ratio": 0.421
     },
     "gsi buildings x buildings (200) touches (10 pairs)": {
-      "js": 35.5,
+      "js": 35.4,
       "mbmap": 14.9,
-      "tablesIn": 0.595,
-      "ratio": 0.42
+      "tablesIn": 0.596,
+      "ratio": 0.421
     },
     "random sets (20 of 60 x 60) intersects (24273 pairs)": {
-      "js": 551.4,
-      "mbmap": 198.4,
-      "tablesIn": 0.623,
-      "ratio": 0.36
+      "js": 550.1,
+      "mbmap": 197.1,
+      "tablesIn": 0.624,
+      "ratio": 0.358
     },
     "random sets (20 of 60 x 60) touches (9265 pairs)": {
-      "js": 701.9,
-      "mbmap": 251.8,
-      "tablesIn": 0.622,
-      "ratio": 0.359
+      "js": 702.8,
+      "mbmap": 251.5,
+      "tablesIn": 0.623,
+      "ratio": 0.358
     },
-    "100 DE-9IM matrices (random pairs, tables copied per call)": {
-      "js": 0.999,
-      "mbmap": 8.95,
-      "tablesIn": 5.27,
-      "ratio": 8.97
+    "100 DE-9IM matrices (random pairs, one call a pair, tables copied by the first)": {
+      "js": 1.01,
+      "mbmap": 0.46,
+      "tablesIn": 0.0535,
+      "ratio": 0.458
     }
   }
 }

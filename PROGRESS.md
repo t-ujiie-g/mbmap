@@ -23,7 +23,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.0KB（19,966 バイト）（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 20KB（2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 29.7KB（geometry.wasm 41.8KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 28.7KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 13.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
+  | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 29.8KB（geometry.wasm 41.8KB、relate.wasm 27.0KB、shapes.wasm 27.9KB、surface.wasm 28.9KB、viewshed.wasm と `analysis-viewshed.js` 10.1KB、route.wasm 13.0KB） | 9KB ＋ 30KB（50KB、30KB、30KB、30KB、12KB、15KB。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 39.9KB（`reprojected` のタイル 1.8KB、`xml.wasm` 25.7KB、GeoTIFF 19.2KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 40KB（2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
@@ -61,19 +61,19 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 | relate：intersects、GSI 建物 × 道路（JSTS、候補は flatbush） | 248.8 | 121.7 | 0.49 |
 | relate：intersects、道路 × 道路 200 | 26.4 | 10.1 | 0.38 |
 | relate：touches、ランダムな 60 × 60 を 20 組 | 701.9 | 251.8 | 0.36 |
-| relate：DE-9IM 行列 100 組（1 組 1 呼び出し） | 1.0 | 8.95（うちテーブルの写し 5.27） | 8.97 |
+| relate：DE-9IM 行列 100 組（1 組 1 呼び出し） | 1.01 | 0.46（直す前 8.95） | 0.46 |
 | GeoJSON 43847 地物の読み込み（JSTS の reader 対 `load`） | 27.4 | 183.3（うち `JSON.stringify` 51.2） | 6.7 |
 | simplify：GSI 道路 13004 | 1.98 | 9.52 | 4.8 |
 | simplify：GSI 建物 30758 | 58.6 | 53.1 | 0.91 |
 | 凸包（建物 8000）／凹包（58177 点） | 24.8／64.7 | 22.3／48.7 | 0.90／0.75 |
 | ドロネー 10 万点（d3-delaunay の三角形まで） | 86.6 | 158.9（export まで 125.7） | 1.83 |
 | ドロネー 10 万点（delaunator、添字だけ） | 47.1 | 172 | 3.65 |
-| ドロネー 1000 点／ボロノイ 10 万点 | 0.374／96.5 | 1.33／178.7 | 3.55／1.85 |
+| ドロネー 1000 点／ボロノイ 10 万点 | 0.374／93.2 | 1.33／169.7（直す前 178.7） | 3.55／1.82 |
 | nearestPointOnLine（1522 線 × 10 点）／lineSlice（1502 線 × 10） | 100.6／192.8 | 29.3／52.4 | 0.29／0.27 |
 | 点の格子 0.1 km（10192）／三角形の格子（20384） | 0.193／1.5 | 2.28（export まで 1.55）／9.63 | 11.8／6.4 |
 | 六角形の格子（3747）／正方形の格子（12321） | 0.883／0.957 | 2.67／6.75 | 3.0／7.1 |
 | IDW 200 点、0.25 km の正方形 | 68.1 | 22.7 | 0.33 |
-| 等値線／等値帯（6497 点の格子、7 区切り） | 0.936／1.75 | 2.19／2.88 | 2.3／1.65 |
+| 等値線／等値帯（6497 点の格子、7 区切り） | 0.91／1.75 | 1.7／2.38（直す前 2.19／2.88） | 1.87／1.36 |
 | 密度（6000 点、d3-contour） | 14.4 | 11.4 | 0.79 |
 | DBSCAN 6000 点 2 km／k-means 既定の k | 1974.3／132.5 | 896.7／56.6 | 0.45／0.43 |
 | 経路：網を作る（GSI 道路 13008 線）／800 経路 | 89.1／376.6 | 17.8／79.7 | 0.20／0.21 |
@@ -88,12 +88,17 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 - **可視域の測り方**：`gdal_viewshed` は 1 回ごとのプロセスなので、2 × 2 の DEM での実行（起動、ドライバ、小さな入出力。132 ms）を引いた正味と比べる。1024² では正味が起動より小さく揺れるので、起動が目立たない 4096²（富士山の DEM を 4 × 4 に鏡映）も測った。GDAL の CPU 時間は壁時計とほぼ同じ（ほぼ 1 スレッド）で、MEM ドライバに書いても GTiff と変わらない。mbmap は 1 スレッドで、格子の値を analysis.wasm から出して入れ、出力を読むまで。
 - **速いもの**：述語（0.36〜0.7）、経路（0.08〜0.21）、IDW・DBSCAN・k-means（0.3〜0.56）、線の操作（0.27〜0.29）、凸包・凹包・密度・建物の simplify（0.75〜0.91）。
 - **分類は直した**：毎回 `x.slice().sort((a, b) => a - b)` で並べていた（100 万値で約 330 ms、統計 349.2 ms、等間隔 344.1 ms）。有限の値を `Float64Array` に集め、統計と等間隔は最小・最大を走査、中央値と等量は simple-statistics の quickselect と multiselect をそのまま移し（ゼロの符号まで同じになる）、jenks と ckmeans は `Float64Array` の `sort()` で並べて -0 と 0 だけ元の順に戻す。標準偏差は中央値を求めない。`classify:golden` に符号つきゼロの 20 組を足し、すべて同じ。`[-0, 0]` の最大は前は 0 で、simple-statistics と同じ -0 になった。入口は 7.8KB → 8.3KB（分類は 1.9KB → 2.4KB）。等間隔に値を写さず走査だけする版は速くならず（2.75 → 3.0 ms、有限の判定が費用）、戻した。
+- **直したもの**（2026-11-08、表の「直す前」と同じ測り方）：
+  - DE-9IM 行列 8.95 → 0.46 ms（JSTS の 0.46 倍）：時間のほとんどは 1 組ごとのテーブルの写しと `Table::from_bytes` で、relate の計算は 1 組 4.5 µs ほど。relate.wasm が最後の組のテーブル（と 2 つめの索引）を持ち、ワーカーは同じデータセットの組なら `len_a` -1 で写さずに呼ぶ（データセットは変わらず番号も使い回さない。`dispose` で `forget_tables`）。
+  - 等値線 2.19 → 1.7、等値帯 2.88 → 2.38 ms：格子の点の並べ替え（`sort_by`、計算の 2 割弱）を、行か列の順に並んだ格子（Turf の `pointGrid` は列の順）なら 1 回の走査で確かめて済ませる（`lat_lng_order`。順序は全順序なので確かめた候補が並べ替えの答えと同じ）。
+  - ボロノイ 10 万点 178.7 → 169.7 ms：セルごとの配列の伸長と写しを減らす（容量を見込み、重なる点を除くのはその場で）。
+  - 試して戻したもの：ドロネーの点の取り出しを `FixedArray` に直接、delaunator の結果を `blit_to` で写す（10 万点で差が雑音の内）。
 - **遅いものと原因の候補**（いまは直さない）：
   - 格子と道路の simplify：テーブルを作って analysis.wasm に読み戻す固定費。点の格子は export だけで Turf の 8 倍、読み戻しが 0.7 ms。道路の simplify はテーブルの写し（2.4 ms）だけで JS の全体を超える。`TableBuilder` の地物ごとの費用と `load_table` を見る。
-  - DE-9IM 行列：1 組ごとに両方のテーブルを写し（100 組で 5.3 ms）、export も JSTS の 3.7 倍。1 組を問うときにテーブル全体を読んで索引を作っているなら、その 2 行だけ読む。
-  - ドロネー・ボロノイ：export だけで d3-delaunay の 1.4 倍、delaunator の 2.7 倍（点が少ないほど比が悪い）。delaunator の移植の配列（`Array` と `FixedArray`）、点の取り出し、多角形のテーブルにする出力を wat で見る。
+  - ドロネー・ボロノイ：プロファイル（`--no-strip` の名前つき）では、10 万点のドロネーの export の約 4 割が出力のテーブルのバイト化（`ByteWriter::f64` の 1 バイトずつの `push` と `Array[Byte]` の伸長、`write_bytes` の 1 バイトずつの書き込み）。delaunator の移植そのもの（`legalize`・`update`・`quicksort`）は約 40 ms で delaunator（47 ms）と同じくらい。残りは共有のテーブルの入出力の側。
+  - 等値線・等値帯：直したあとは、時間の 6 割強がテーブルの写し（analysis.wasm の `table_out` と `Table::from_bytes`）。等値線の計算そのものは約 2 割。
   - 可視域：GDAL の約 3 倍。範囲つきでも格子全体（4096² で 134 MB）を写し、`input_f64s` が `FixedArray::makei` で 1 値ずつ読む（§4 で遅いとした形）。範囲の窓だけ写す、4 バイトずつの読み書き、`ViewshedExecutor` の内側のループ（ソフトウェアの `fma`）を見る。
-  - 等値線・等値帯は Turf の 2 倍前後（点を格子に並べる段か）。GeoJSON の読み込みは半分強が `JSON.stringify` と文字列からの解析で、Phase 17 の `data:node` と合わせて見る。
+  - GeoJSON の読み込みは半分強が `JSON.stringify` と文字列からの解析で、Phase 17 の `data:node` と合わせて見る。
 
 ## Phase 19：解析 第2弾（2026-11-07〜11-08）
 
