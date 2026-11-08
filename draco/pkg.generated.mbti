@@ -8,9 +8,15 @@ pub const MAX_ATTRIBUTE_BYTES : Int32 = 0x10000000
 
 pub const MAX_FACES : Int32 = 0x400000
 
+pub const MAX_KD_DIMENSIONS : Int32 = 1024
+
 pub const MAX_POINTS : Int32 = 0x400000
 
+pub fn decode(FixedArray[Byte], Int32, Int32) -> DracoMesh?
+
 pub fn decode_mesh(FixedArray[Byte], Int32, Int32) -> DracoMesh?
+
+pub fn decode_point_cloud(FixedArray[Byte], Int32, Int32) -> DracoMesh?
 
 // Errors
 

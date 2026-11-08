@@ -62,9 +62,11 @@ priv struct SequentialDecoder {
 }
 
 ///|
-/// `SequentialAttributeDecodersController`.
+/// An `AttributesDecoder`: a `SequentialAttributeDecodersController` over `sequencer`, or a
+/// `KdTreeAttributesDecoder` when `kd`.
 priv struct AttributesDecoder {
   sequencer : Sequencer
+  kd : Bool
   ids : Array[Int32]
   local_ids : Array[Int32]
   decoders : Array[SequentialDecoder]
@@ -72,7 +74,12 @@ priv struct AttributesDecoder {
 
 ///|
 fn AttributesDecoder::new(sequencer : Sequencer) -> AttributesDecoder {
-  { sequencer, ids: [], local_ids: [], decoders: [], }
+  { sequencer, kd: false, ids: [], local_ids: [], decoders: [], }
+}
+
+///|
+fn AttributesDecoder::kd_tree() -> AttributesDecoder {
+  { sequencer: Linear(0), kd: true, ids: [], local_ids: [], decoders: [], }
 }
 
 ///|
@@ -93,10 +100,19 @@ fn store_u32(out : FixedArray[Byte], at : Int32, v : Int32) -> Unit {
 }
 
 ///|
+/// `DecodeAttributesDecoderData`: the attributes' descriptors, then (for the sequential
+/// controller) each attribute's decoder type.
 fn Decoder::decode_attributes_data(
   self : Decoder,
   d : AttributesDecoder,
 ) -> Bool {
+  guard self.decode_descriptors(d) else { return false }
+  d.kd || self.decode_decoder_types(d)
+}
+
+///|
+/// `AttributesDecoder::DecodeAttributesDecoderData`.
+fn Decoder::decode_descriptors(self : Decoder, d : AttributesDecoder) -> Bool {
   let b = self.b
   let n = b.varint()
   guard !b.failed else { return false }
@@ -141,6 +157,12 @@ fn Decoder::decode_attributes_data(
     }
     d.local_ids[att_id] = i
   }
+  true
+}
+
+///|
+fn Decoder::decode_decoder_types(self : Decoder, d : AttributesDecoder) -> Bool {
+  let b = self.b
   for att in d.ids {
     let kind = b.u8()
     guard !b.failed else { return false }
@@ -305,12 +327,7 @@ fn Decoder::decode_integer_values(
   }
   if num_values > 0 && !positive {
     for i in 0..<num_values {
-      let v = data[i]
-      data[i] = if (v & 1) == 0 {
-        (v.reinterpret_as_uint() >> 1).reinterpret_as_int()
-      } else {
-        -(v.reinterpret_as_uint() >> 1).reinterpret_as_int() - 1
-      }
+      data[i] = signed_of_symbol(data[i])
     }
   }
   if scheme is Some(s) {
@@ -429,6 +446,7 @@ fn Decoder::store_values(self : Decoder, sd : SequentialDecoder) -> Bool {
 ///|
 /// `SequentialAttributeDecodersController::DecodeAttributes`.
 fn Decoder::decode_attributes(self : Decoder, d : AttributesDecoder) -> Bool {
+  guard !d.kd else { return self.decode_kd_attributes(d) }
   guard d.sequencer.generate(self.faces) is Some(points) else { return false }
   for att in d.ids {
     guard d.sequencer.mapping(self.faces, self.num_points) is Some(map) else {

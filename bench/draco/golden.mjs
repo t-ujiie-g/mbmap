@@ -1,9 +1,8 @@
-// draco (js build of bench/entry and the wasm-gc build of model_worker) vs draco3d 1.5.7's decoder:
-// seeded grids, spheres, seamed meshes and triangle soups with position, normal, tex coord, color
-// and generic attributes of every type, encoded by draco3d's encoder at every speed, both methods
-// and many quantization settings; every Draco buffer of the PLATEAU fixture; and truncated or
-// corrupted copies of them. Indices and attribute values must be bitwise identical, and the port
-// must refuse exactly what draco3d refuses (or what passes its caps, counted apart).
+// draco (js build of bench/entry and the wasm-gc build of model_worker) vs draco3d 1.5.7's decoder
+// on seeded meshes and point clouds of every attribute type, encoded by draco3d's encoder with every
+// method, speed and many quantizations (and kd-trees in the older framings of bitstreams 2.0-2.2),
+// on PLATEAU's and Draco's test files, and on truncated or corrupted copies. Values must be bitwise
+// identical and refusals the same (past the port's caps, or where draco3d overreads, counted apart).
 // Usage: node draco/golden.mjs [--cases=N]; writes bench/results/draco-golden.json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -50,20 +49,32 @@ async function reference(bytes) {
   let decoder, mesh;
   try {
     decoder = new dm.Decoder();
-    mesh = new dm.Mesh();
-    const status = decoder.DecodeArrayToMesh(new Int8Array(bytes.buffer, bytes.byteOffset, bytes.length), bytes.length, mesh);
+    // A point cloud's header (encoder type 0) goes to DecodeArrayToPointCloud, as `@draco.decode`.
+    const pointCloud = bytes.length > 7 && bytes[7] === 0;
+    mesh = pointCloud ? new dm.PointCloud() : new dm.Mesh();
+    const array = new Int8Array(bytes.buffer, bytes.byteOffset, bytes.length);
+    const status = pointCloud ? decoder.DecodeArrayToPointCloud(array, bytes.length, mesh) : decoder.DecodeArrayToMesh(array, bytes.length, mesh);
     if (!status.ok()) return null;
-    const numFaces = mesh.num_faces();
+    const numFaces = pointCloud ? 0 : mesh.num_faces();
     const numPoints = mesh.num_points();
-    if (numFaces > CAPS.faces || numPoints > CAPS.points || mesh.num_attributes() > CAPS.attributes) return "capped";
+    // A point cloud's count is an int32 that draco3d keeps even when negative (with no attributes).
+    if (numFaces > CAPS.faces || numPoints < 0 || numPoints > CAPS.points || mesh.num_attributes() > CAPS.attributes) return "capped";
     const n = numFaces * 3;
-    const ptr = dm._malloc(Math.max(4, n * 4));
-    decoder.GetTrianglesUInt32Array(mesh, n * 4, ptr);
-    const indices = new Uint32Array(dm.HEAPU8.buffer, ptr, n).slice();
-    dm._free(ptr);
+    let indices = new Uint32Array(0);
+    if (!pointCloud) {
+      const ptr = dm._malloc(Math.max(4, n * 4));
+      decoder.GetTrianglesUInt32Array(mesh, n * 4, ptr);
+      indices = new Uint32Array(dm.HEAPU8.buffer, ptr, n).slice();
+      dm._free(ptr);
+    }
     const attributes = [];
     for (let i = 0; i < mesh.num_attributes(); i++) {
       const att = decoder.GetAttribute(mesh, i);
+      // A legacy kd-tree sizes its attributes by a count of its own, which the port caps, and
+      // draco3d reads past the values of one sized below the point count (undefined behaviour);
+      // the port refuses such point clouds.
+      if (pointCloud && att.size() >>> 0 > CAPS.points) return "capped";
+      if (pointCloud && att.size() >>> 0 < numPoints) return "overread";
       const dataType = att.data_type();
       // The binding reads num_components as an int8, and GetAttributeDataArrayForAllPoints refuses
       // the attributes whose count is negative so; their values are not compared.
@@ -149,13 +160,14 @@ function same(want, got) {
 const stats = {};
 const failures = [];
 async function compare(group, bytes) {
-  const s = (stats[group] ??= { cases: 0, identical: 0, refused: 0, capped: 0, aborted: 0, differ: 0 });
+  const s = (stats[group] ??= { cases: 0, identical: 0, refused: 0, capped: 0, aborted: 0, overread: 0, differ: 0 });
   s.cases++;
   const want = await reference(bytes);
   const js = oursJs(bytes);
   const wasm = oursGc(bytes);
-  if (want === "capped" || want === "aborted") {
-    // draco3d decoded (or ran out of memory on) a mesh past the port's caps, which refuses it.
+  if (want === "capped" || want === "aborted" || want === "overread") {
+    // draco3d decoded (or ran out of memory on, or read past an attribute of) a mesh past the
+    // port's caps, which refuses it.
     if (js === null && wasm === null) {
       s[want]++;
       return null;
@@ -354,7 +366,7 @@ async function encoded(group, geometry, settings) {
     bytes = null;
   }
   if (!bytes) {
-    (stats["encoder refused"] ??= { cases: 0, identical: 0, refused: 0, capped: 0, aborted: 0, differ: 0 }).cases++;
+    (stats["encoder refused"] ??= { cases: 0, identical: 0, refused: 0, capped: 0, aborted: 0, overread: 0, differ: 0 }).cases++;
     return;
   }
   const kind = settings.sequential ? "sequential" : `edgebreaker ${bytes[10] & 0x80 ? "" : bytes[11] === 2 ? "valence" : "standard"}`;
@@ -379,9 +391,174 @@ for (let speed = 0; speed <= 10; speed++) {
   }
 }
 
-// Draco's own test files (Apache License 2.0), bitstreams 2.0 to 2.2, fetched once and pinned.
+// Point clouds: seeded points with position, normal, colors and generic attributes, encoded by
+// the sequential and the kd-tree encoders (kd-tree compression level 10 - speed, at most 6).
+function cloud(n) {
+  const pos = new Float32Array(n * 3);
+  const clustered = random() < 0.4;
+  for (let i = 0; i < n; i++) {
+    const c = clustered ? int(4) * 50 : 0;
+    for (let k = 0; k < 3; k++) pos[3 * i + k] = c + (random() - 0.5) * (clustered ? 5 : 1000);
+  }
+  // Repeated points, which the kd-tree keeps together down to its last level.
+  for (let i = 0; i < n / 20; i++) pos.copyWithin(3 * int(n), 3 * int(n), 3 * int(n) + 3);
+  return pos;
+}
+
+function encodePointCloud(n, settings) {
+  const em = encoderModule;
+  const builder = new em.PointCloudBuilder();
+  const pc = new em.PointCloud();
+  const encoder = new em.Encoder();
+  const dracoArray = new em.DracoInt8Array();
+  try {
+    const pos = cloud(n);
+    if (settings.position === "float") builder.AddFloatAttribute(pc, em.POSITION, n, 3, pos);
+    else if (settings.position) builder[ADD[settings.position].replace("ToMesh", "")](pc, em.POSITION, n, 3, integers(settings.position, n, 3, false));
+    if (settings.normals) builder.AddFloatAttribute(pc, em.NORMAL, n, 3, normalsOf(pos, settings.normals));
+    if (settings.color === "uint8" || settings.color === "uint16") {
+      const nc = 3 + int(2);
+      const id = builder[settings.color === "uint8" ? "AddUInt8Attribute" : "AddUInt16Attribute"](pc, em.COLOR, n, nc, integers(settings.color, n, nc, false));
+      builder.SetNormalizedFlagForAttribute(pc, id, true);
+    } else if (settings.color === "float") {
+      builder.AddFloatAttribute(pc, em.COLOR, n, 3, new Float32Array(n * 3).map(() => random()));
+    }
+    for (const g of settings.generic) {
+      if (g.type === "float") builder.AddFloatAttribute(pc, em.GENERIC, n, g.nc, new Float32Array(n * g.nc).map((_, i) => Math.sin(i) * 100));
+      else builder[ADD[g.type].replace("ToMesh", "")](pc, em.GENERIC, n, g.nc, integers(g.type, n, g.nc, g.smooth));
+    }
+    if (settings.metadata) {
+      const md = new em.Metadata();
+      const mb = new em.MetadataBuilder();
+      mb.AddStringEntry(md, "name", "points");
+      builder.AddMetadata(pc, md);
+      em.destroy(mb);
+    }
+    for (const [type, bits] of Object.entries(settings.bits)) if (bits > 0) encoder.SetAttributeQuantization(em[type], bits);
+    encoder.SetSpeedOptions(settings.speed, settings.speed);
+    if (settings.method !== null) encoder.SetEncodingMethod(settings.method);
+    const size = encoder.EncodePointCloudToDracoBuffer(pc, settings.deduplicate, dracoArray);
+    if (size <= 0) return null;
+    const out = new Uint8Array(size);
+    for (let i = 0; i < size; i++) out[i] = dracoArray.GetValue(i);
+    return out;
+  } finally {
+    em.destroy(dracoArray);
+    em.destroy(encoder);
+    em.destroy(pc);
+    em.destroy(builder);
+  }
+}
+
+function randomCloudSettings(c, kd) {
+  const bits = (lo, hi) => lo + int(hi - lo + 1);
+  const generic = [];
+  for (let k = int(3); k > 0; k--) {
+    generic.push({ type: pick(["float", "int8", "uint8", "int16", "uint16", "int32", "uint32"]), nc: 1 + int(4), smooth: random() < 0.5 });
+  }
+  // The kd-tree encoder takes floats only quantized.
+  const quantized = kd || random() < 0.6;
+  return {
+    position: random() < 0.85 ? "float" : pick(["uint8", "uint16", "uint32", "int16", "int32"]),
+    normals: random() < 0.5 ? pick(["position", "random", "axis"]) : null,
+    color: pick([null, "uint8", "uint16", "float"]),
+    generic,
+    metadata: random() < 0.15,
+    bits: quantized ? { POSITION: bits(1, 30), NORMAL: bits(2, 29), COLOR: bits(1, 30), GENERIC: bits(1, 30) } : {},
+    speed: kd ? c % 11 : int(11),
+    method: kd ? encoderModule.MESH_EDGEBREAKER_ENCODING : random() < 0.5 ? encoderModule.MESH_SEQUENTIAL_ENCODING : null,
+    deduplicate: random() < 0.3,
+  };
+}
+
+const kdSingles = [];
+async function encodedCloud(group, n, settings) {
+  let bytes;
+  try {
+    bytes = encodePointCloud(n, settings);
+  } catch {
+    encoderModule = await draco3d.createEncoderModule({});
+    bytes = null;
+  }
+  if (!bytes) {
+    (stats["encoder refused"] ??= { cases: 0, identical: 0, refused: 0, capped: 0, aborted: 0, overread: 0, differ: 0 }).cases++;
+    return null;
+  }
+  const kind = bytes[8] === 1 ? `kd-tree ${bytes[6] === 3 ? "" : "legacy "}` : "sequential";
+  const want = await compare(`${group} ${kind}`, bytes);
+  if (want && bytes.length < 300000) valid.push(bytes);
+  return want;
+}
+
+for (let c = 0; c < CASES; c++) {
+  const n = c < 4 ? 1 + c : c % 5 === 0 ? 1000 + int(5000) : 2 + int(300);
+  await encodedCloud("points", n, randomCloudSettings(c, true));
+  await encodedCloud("points", n, randomCloudSettings(c, false));
+}
+// Every kd-tree level with one attribute of each kind, kept for the legacy copies below.
+for (let speed = 0; speed <= 10; speed++) {
+  for (const position of ["float", "uint32", "uint16", "uint8"]) {
+    const settings = { ...randomCloudSettings(speed, true), position, normals: null, color: null, generic: [], metadata: false, speed, deduplicate: false };
+    settings.bits = { POSITION: position === "float" ? 1 + int(30) : 0 };
+    const n = speed === 0 ? 1 : 1 + int(800);
+    const bytes = encodePointCloud(n, settings);
+    if (bytes) kdSingles.push({ bytes, position });
+    await encodedCloud("every kd level", n, settings);
+  }
+}
+// About 100k points with every attribute, both encoders.
+for (const kd of [true, false]) {
+  const settings = { ...randomCloudSettings(7, kd), position: "float", normals: "random", color: "uint8", generic: [{ type: "uint16", nc: 2, smooth: true }] };
+  settings.bits = kd ? { POSITION: 16, NORMAL: 10, COLOR: 8, GENERIC: 8 } : { POSITION: 14 };
+  await encodedCloud("100k points", 100000, settings);
+}
+
+/** The kd-tree payload of a single-attribute 2.3 point cloud: its descriptor, level and tree bytes. */
+function kdParts(bytes) {
+  if (bytes[10] & 0x80 || bytes[15] !== 1 || bytes[16] !== 1 || bytes[21] >= 0x80) return null;
+  return { numPoints: bytes.subarray(11, 15), descriptor: bytes.subarray(16, 22), level: bytes[22], tree: bytes.subarray(23) };
+}
+
+const u32 = (v) => new Uint8Array(new Uint32Array([v]).buffer);
+const concat = (...parts) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) out.set(p, at), (at += p.length);
+  return out;
+};
+
+// Point clouds of bitstreams 2.0 to 2.2, which draco3d 1.5.7 still reads but no longer writes:
+// the kd-tree of an unsigned attribute behind the older integer framing, and the float tree
+// (FloatPointsTreeDecoder) around a three-component tree of the same points.
+for (const { bytes, position } of kdSingles) {
+  const parts = kdParts(bytes);
+  if (!parts || position === "float") continue;
+  const level = parts.level;
+  const minors = level < 2 ? [0, 1, 2] : [2];
+  for (const minor of minors) {
+    const head = new Uint8Array([68, 82, 65, 67, 79, 2, minor, 0, 1, 0, 0]);
+    const legacy = concat(head, parts.numPoints, [1], parts.descriptor, [1, level], parts.numPoints, parts.tree);
+    await compare(`legacy kd-tree 2.${minor} integer`, legacy);
+    valid.push(legacy);
+    if (position !== "uint32") continue;
+    const descriptor = parts.descriptor.slice();
+    descriptor[2] = 9;
+    const bits = 1 + int(31);
+    for (const version of [2, 3]) {
+      const tree = concat(u32(version), version === 3 ? [1] : [], u32(bits), new Uint8Array(new Float32Array([random() * 1000]).buffer), parts.numPoints, u32(level), parts.tree);
+      const float = concat(head, parts.numPoints, [1], descriptor, [0, level], parts.numPoints, tree);
+      await compare(`legacy kd-tree 2.${minor} float`, float);
+      valid.push(float);
+    }
+  }
+}
+
+// Draco's own test files (Apache License 2.0), bitstreams 2.0 to 2.3, fetched once and pinned.
 const TESTDATA_URL = "https://raw.githubusercontent.com/google/draco/1.5.7/testdata/";
 const TESTDATA = {
+  "pc_color.drc": "69154c00d5c81796cf919fe89bd7427bf9467d088f21c09bb3b78c7f7593a65a",
+  "pc_kd_color.drc": "4510aea1076b43498907cb11210938dc984238adced93c6e91ca406081202bad",
+  "point_cloud_no_qp.drc": "047d271ed8f3f6f02723e9bd8d4901e021519564ef0d52fb9ecf491723aacc5d",
   "bunny_gltf.drc": "c1bf564f279849f311c4b4205dd16d729557c208fd9502ab124b784d146add80",
   "car.drc": "8c712644d842606223329ae3c8ce69d9d4ec9338a8e179b08486507bfa0f4101",
   "test_nm.obj.edgebreaker.1.0.0.drc": "43a7a9eba2d1ef2471ceb30e65c707f93f6dd7754f8d434b6cd32f0eda8c45b1",
@@ -458,8 +635,9 @@ for (let c = 0; c < CASES * 40; c++) {
   longer.set(src);
   await compare("padded", longer);
 }
-for (const src of pool.slice(0, CASES * 4)) {
-  for (const minor of [0, 1]) {
+for (const src of [...pool.slice(0, CASES * 4), ...pool.filter((b) => b[7] === 0).slice(0, CASES * 4)]) {
+  for (const minor of src[7] === 0 ? [0, 1, 2] : [0, 1]) {
+    if (minor === src[6]) continue;
     const older = src.slice();
     older[6] = minor;
     await compare(`as version 2.${minor}`, older);
@@ -467,25 +645,29 @@ for (const src of pool.slice(0, CASES * 4)) {
 }
 for (let c = 0; c < CASES * 20; c++) {
   const garbage = new Uint8Array(11 + int(300)).map(() => int(256));
-  garbage.set([68, 82, 65, 67, 79, 2, 2, 1, int(2), 0, 0]);
-  if (garbage[8] === 1) garbage[11] = int(3);
+  const pointCloud = c % 2 === 1;
+  garbage.set([68, 82, 65, 67, 79, 2, pointCloud ? int(4) : 2, pointCloud ? 0 : 1, int(2), 0, 0]);
+  if (!pointCloud && garbage[8] === 1) garbage[11] = int(3);
+  // A plausible point count and one attributes decoder, so the attribute decoders are reached.
+  if (pointCloud && c % 4 === 1 && garbage.length >= 17) garbage.set([int(200), 0, 0, 0, 1, 1 + int(2)], 11);
   await compare("random after header", garbage);
 }
 
 const rows = Object.entries(stats).map(([group, r]) => ({ group, ...r }));
-let total = 0, identical = 0, differ = 0, capped = 0;
+let total = 0, identical = 0, differ = 0, capped = 0, overread = 0;
 for (const r of rows) {
   total += r.cases;
   identical += r.identical;
   differ += r.differ;
   capped += r.capped + r.aborted;
-  console.log(`${r.group.padEnd(40)} ${String(r.cases).padStart(6)} cases, ${String(r.identical).padStart(6)} identical (${r.refused} refused by both), ${r.capped + r.aborted} past caps, ${r.differ} differ`);
+  overread += r.overread;
+  console.log(`${r.group.padEnd(40)} ${String(r.cases).padStart(6)} cases, ${String(r.identical).padStart(6)} identical (${r.refused} refused by both), ${r.capped + r.aborted} past caps, ${r.overread} overread, ${r.differ} differ`);
 }
-console.log(`draco golden: ${total} cases, ${identical} identical (js and wasm-gc), ${capped} past the caps, ${differ} differ; ${plateauFiles} PLATEAU tiles, ${testdataFiles} Draco test files; ${restarts} draco3d restarts`);
+console.log(`draco golden: ${total} cases, ${identical} identical (js and wasm-gc), ${capped} past the caps, ${overread} read past an attribute by draco3d, ${differ} differ; ${plateauFiles} PLATEAU tiles, ${testdataFiles} Draco test files; ${restarts} draco3d restarts`);
 for (const f of failures) console.log(`DIFF ${f.group}: ${f.bytes} bytes: want ${f.want}, js ${f.js}, wasm-gc ${f.wasm}`);
 if (failures.length) await writeFile(path.join(ROOT, "bench/results/draco-golden-failures.json"), JSON.stringify(failures));
 await writeFile(
   path.join(ROOT, "bench/results/draco-golden.json"),
-  `${JSON.stringify({ env: { draco3d: "draco3d 1.5.7", node: process.version }, cases: CASES, total, identical, capped, differ, plateauFiles, testdataFiles, rows }, null, 2)}\n`,
+  `${JSON.stringify({ env: { draco3d: "draco3d 1.5.7", node: process.version }, cases: CASES, total, identical, capped, overread, differ, plateauFiles, testdataFiles, rows }, null, 2)}\n`,
 );
 if (differ > 0) process.exitCode = 1;
