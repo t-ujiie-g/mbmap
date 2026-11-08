@@ -325,3 +325,46 @@ test "reserve leaves a builder's table as it was" {
   b.reserve(5, 5)
   assert_eq((b.finish().length(), b.table.coords), (1, [1.0, 2.0]))
 }
+
+///|
+/// A sink with room for `cap` bytes, which it drops.
+struct Capped {
+  cap : Int32
+}
+
+///|
+impl @geom.TableSink for Capped with fn room(self, n) {
+  n <= self.cap
+}
+
+///|
+impl @geom.TableSink for Capped with fn set_u8(_, _, _) {
+  ()
+}
+
+///|
+impl @geom.TableSink for Capped with fn set_u32(_, _, _) {
+  ()
+}
+
+///|
+impl @geom.TableSink for Capped with fn set_f64(_, _, _) {
+  ()
+}
+
+///|
+test "write_to gives -1 when the sink has no room, whatever part runs out" {
+  let b = @geom.TableBuilder::new()
+  b.point(1.0, 2.0)
+  b.end_ring()
+  b.end_part()
+  b.prop("name", Str("abc"))
+  b.prop("n", Num(1.0))
+  b.end_feature(Point)
+  let t = b.finish()
+  let n = t.to_bytes().length()
+  assert_eq(t.write_to(Capped::{ cap: n, }), n)
+  for cap in [0, 20, 40, 48, n - 9, n - 1] {
+    assert_eq(t.write_to(Capped::{ cap, }), -1)
+  }
+}

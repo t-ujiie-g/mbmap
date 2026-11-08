@@ -90,7 +90,6 @@ pub(open) trait TableSink {
   fn set_u8(Self, Int32, Int32) -> Unit
   fn set_u32(Self, Int32, Int32) -> Unit
   fn set_f64(Self, Int32, Double) -> Unit
-  fn set_bytes(Self, Int32, BytesView) -> Unit
 }
 
 ///|
@@ -158,13 +157,6 @@ impl TableSink for Growing with fn set_f64(self, at, v) {
   let bits = v.reinterpret_as_uint64()
   TableSink::set_u32(self, at, bits.to_int())
   TableSink::set_u32(self, at + 4, (bits >> 32).to_int())
-}
-
-///|
-impl TableSink for Growing with fn set_bytes(self, at, b) {
-  for i, x in b {
-    self.buf[at + i] = x
-  }
 }
 
 ///|
@@ -239,7 +231,9 @@ fn[S : TableSink] write_text(out : S, at : Int32, s : String) -> Int32 {
   let b = @utf8.encode(s)
   guard at >= 0 && fits(out, at, 4 + b.length()) else { return -1 }
   out.set_u32(at, b.length())
-  out.set_bytes(at + 4, b[:])
+  for i, x in b {
+    out.set_u8(at + 4 + i, x.to_int())
+  }
   at + 4 + b.length()
 }
 
@@ -415,8 +409,10 @@ pub fn[S : TableSource] Table::read_from(src : S, n : Int32) -> Table? {
     }
   }
   guard r.has(pts * 16) else { return None }
-  let at = r.at
-  let coords = Array::makei(pts * 2, i => src.f64_at(at + i * 8))
+  let coords = Array::make(pts * 2, 0.0)
+  for i in 0..<(pts * 2) {
+    coords[i] = src.f64_at(r.at + i * 8)
+  }
   r.at += pts * 16
   let t = {
     kinds,

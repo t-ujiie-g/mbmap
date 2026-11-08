@@ -51,13 +51,6 @@ impl @geom.TableSink for Linear with fn set_f64(self, at, v) {
 }
 
 ///|
-impl @geom.TableSink for Linear with fn set_bytes(self, at, b) {
-  for i, x in b {
-    store_u8(self.base + at + i, x.to_int())
-  }
-}
-
-///|
 /// `@geom.Table::from_bytes` of input bytes `[start, start + len)`, read in
 /// place; None if they are malformed or not all input.
 pub fn input_table(start : Int32, len : Int32) -> @geom.Table? {

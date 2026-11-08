@@ -54,11 +54,18 @@ execFileSync("gdal_translate", ["-q", "-oo", "DATATYPE=Float64", "-ot", "Float64
 
 const { instance } = await WebAssembly.instantiate(await readFile(path.join(ROOT, "_build/wasm-gc/release/build/viewshed_worker/viewshed_worker.wasm")), { Math });
 const v = instance.exports;
+// As the analysis worker calls it: only the window of cells the viewshed reads goes in.
 const ours = (o) => {
-  const bytes = new Uint8Array(elev.buffer);
+  const args = [width, height, 0, res, 0, 0, 0, -res, o.x, o.y, o.oz, o.tz, o.md, o.cc, 6378137, ["NORMAL", "DEM", "GROUND"].indexOf(o.om), 255, 0, 0];
+  let count = v.viewshed_window(...args);
+  if (count < 0) return { error: new TextDecoder().decode(new Uint8Array(v.memory.buffer, v.output_addr(), -count)) };
+  const [wx, wy, ww, wh] = new Int32Array(v.memory.buffer.slice(v.output_addr(), v.output_addr() + 16));
+  const cut = new Float64Array(ww * wh);
+  for (let y = 0; y < wh; y++) cut.set(elev.subarray((wy + y) * width + wx, (wy + y) * width + wx + ww), y * ww);
+  const bytes = new Uint8Array(cut.buffer);
   const p = v.prepare_input(bytes.length);
   new Uint8Array(v.memory.buffer, p, bytes.length).set(bytes);
-  const count = v.viewshed(width, height, 0, res, 0, 0, 0, -res, o.x, o.y, o.oz, o.tz, o.md, o.cc, 6378137, ["NORMAL", "DEM", "GROUND"].indexOf(o.om), 255, 0, 0);
+  count = v.viewshed(...args, wx, wy, ww, wh);
   if (count < 0) return { error: new TextDecoder().decode(new Uint8Array(v.memory.buffer, v.output_addr(), -count)) };
   const out = new Float64Array(v.memory.buffer, v.output_addr(), count).slice();
   return { width: out[0], height: out[1], geotransform: Array.from(out.subarray(2, 8)), values: out.subarray(8) };

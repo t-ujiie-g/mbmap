@@ -210,11 +210,9 @@ pub fn viewshed_window(
 }
 
 ///|
-/// gdal_viewshed's output for a DEM (`values` row by row) with GDAL's
-/// `geotransform`. None where GDAL fails, for NaN angles or pitches, past
-/// `MAX_VIEWSHED_CELLS` or 2^30 cells off; `trig` gives the masks' tan and atan2.
-/// With `cells` (x, y, width, height), `values` holds only those cells of the
-/// DEM, which must take in `viewshed_window`'s.
+/// gdal_viewshed's output for a DEM (`values` row by row, or only its `cells`
+/// x, y, width, height taking in `viewshed_window`'s). None where GDAL fails,
+/// past `MAX_VIEWSHED_CELLS` or 2^30 cells off; `trig` gives tan and atan2.
 pub fn viewshed(
   values : FixedArray[Double],
   width : Int32,
