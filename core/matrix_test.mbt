@@ -60,3 +60,14 @@ test "mul composes transforms as their builders chain them" {
   assert_eq(@core.Mat4::identity().mul(a), a)
   assert_eq(a.mul(b).apply(1.0, 1.0, 1.0, 1.0), (3.0, 6.0, 11.0, 1.0))
 }
+
+///|
+test "rotate_y turns x toward -z" {
+  let (x, y, z, w) = @core.Mat4::identity()
+    .rotate_y(@math.PI / 2.0)
+    .apply(1.0, 0.0, 0.0, 1.0)
+  assert_true(
+    x.abs() < 0.000000000001 && y == 0.0 && (z + 1.0).abs() < 0.000000000001,
+  )
+  assert_eq(w, 1.0)
+}

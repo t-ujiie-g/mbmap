@@ -1,0 +1,3060 @@
+{
+  "reference": "maplibre-gl 6.16.0",
+  "worst": {
+    "px": 1.6759713616920635e-9,
+    "deg": 3.865329745167401e-8,
+    "zoom": 1.3301786339070532e-9,
+    "ms": 4.5141678128857166e-7,
+    "rel": 5.954528038938417e-8
+  },
+  "rows": [
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "px": 0,
+      "rel": 5.8884375820280844e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 3.3306690738754696e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 7.014477887423709e-11,
+      "zoom": 2.877698079828406e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "px": 0,
+      "rel": 4.0693291705185974e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 4.618527782440651e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 4.440892098500626e-16,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 4.440892098500626e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 5.934452929068357e-11,
+      "zoom": 1.092459456231154e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "px": 0,
+      "rel": 5.90269743066334e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 2.4215296434704214e-11,
+      "zoom": 3.1175062531474396e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 1.7763568394002505e-15,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 1.9035439891013084e-11,
+      "zoom": 3.3573144264664734e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "px": 0,
+      "rel": 4.924055272382016e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 4.618527782440651e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 1.5006662579253316e-11,
+      "zoom": 6.750155989720952e-14
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 8.881784197001252e-16,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 1.7598722479306161e-10,
+      "zoom": 1.5720758028692217e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "px": 1.0913936421275139e-9
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.8189894035458565e-12
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 2.1032064978498966e-12
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.1368683772161603e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "ms": 4.3155523599125445e-9,
+      "deg": 1.000444171950221e-11,
+      "zoom": 5.144329406903125e-12
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 7.197797913249815e-12,
+      "zoom": 1.971756091734278e-13
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "ms": 1.77351466845721e-10,
+      "deg": 2.538769194870838e-11,
+      "zoom": 2.540190280342358e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 4.547473508864641e-13,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 2.2737367544323206e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "ms": 4.5141678128857166e-7,
+      "deg": 3.865329745167401e-8,
+      "zoom": 1.3301786339070532e-9
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.1368683772161603e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "ms": 5.4569682106375694e-12,
+      "deg": 2.3959501049830578e-11,
+      "zoom": 9.50350909079134e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.4310330698208418e-11,
+      "zoom": 3.1441516057384433e-13
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "ms": 5.4569682106375694e-12,
+      "deg": 1.7905676941154525e-11,
+      "zoom": 3.397282455352979e-13
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 5.7980287238024175e-12,
+      "zoom": 0
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 9.094947017729282e-13,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "px": 0,
+      "rel": 5.7032274043169006e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 2.842170943040401e-14,
+      "zoom": 6.217248937900877e-15
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 7.105427357601002e-15,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 2.8990143619012088e-11,
+      "zoom": 1.0658141036401503e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 3.552713678800501e-15,
+      "zoom": 2.220446049250313e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 5.343281372915953e-12,
+      "zoom": 4.315992008230296e-14
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "px": 0,
+      "rel": 5.411835536678018e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 2.220446049250313e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 1.1901590823981678e-11,
+      "zoom": 1.5898393712632242e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "px": 0,
+      "rel": 6.55112437909458e-9
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 3.3306690738754696e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 1.3883294514016598e-10,
+      "zoom": 1.7115198147621413e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z2 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "px": 0,
+      "rel": 4.433163852653267e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 6.394884621840902e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 4.440892098500626e-16,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "ms": 0,
+      "deg": 4.440892098500626e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 2.3305801732931286e-10,
+      "zoom": 1.6133760993852775e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z3.5 p40 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "px": 0,
+      "rel": 5.0972105387525844e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 5.184119800105691e-11,
+      "zoom": 6.883382752675971e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "ms": 0,
+      "deg": 8.881784197001252e-15,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 1.8349055608268827e-10,
+      "zoom": 1.4424017535930034e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z6 p60 b-120",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "px": 0,
+      "rel": 4.79131314347443e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 6.394884621840902e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 9.663381206337363e-12,
+      "zoom": 1.758593271006248e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 8.881784197001252e-16,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "ms": 0,
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 1.2676082405960187e-10,
+      "zoom": 1.270095140171179e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z11.5 p30 b10",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "px": 1.6759713616920635e-9
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 3.183231456205249e-12
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 3.0127011996228248e-12
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 2.0463630789890885e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "ms": 7.335074769798666e-9,
+      "deg": 6.366462912410498e-12,
+      "zoom": 8.926193117986259e-12
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.4708234630234074e-11,
+      "zoom": 2.7000623958883807e-13
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "ms": 5.975380190648139e-10,
+      "deg": 3.433342499192804e-11,
+      "zoom": 6.377121053446899e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.2505552149377763e-12,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 2.3874235921539366e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "ms": 2.000888343900442e-11,
+      "deg": 3.9904080040287226e-11,
+      "zoom": 4.0101255649460654e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 2.0463630789890885e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "ms": 9.094947017729282e-12,
+      "deg": 3.2514435588382185e-11,
+      "zoom": 8.499867476530198e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 1.4551915228366852e-11,
+      "zoom": 2.5845992013273644e-13
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "ms": 9.094947017729282e-12,
+      "deg": 7.821654435247183e-11,
+      "zoom": 6.332712132461893e-13
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 4.092726157978177e-12,
+      "zoom": 0
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 4.973799150320701e-13,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z14 p45 b30",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "px": 0,
+      "rel": 1.8156613660619052e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 2.842170943040401e-14,
+      "zoom": 7.105427357601002e-15
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 3.228706191293895e-11,
+      "zoom": 2.34035013590983e-13
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 2.220446049250313e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 1.475086719437968e-11,
+      "zoom": 2.9359847886212265e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z0.5 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "px": 0,
+      "rel": 4.240949713050211e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 2.220446049250313e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 1.7763568394002505e-15,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "ms": 0,
+      "deg": 2.2737367544323206e-13,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 4.3023362650274066e-11,
+      "zoom": 6.201705815556124e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 600x900 139.7671,35.6812 z1 p75 b170",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "px": 0,
+      "rel": 5.190993930106716e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "ms": 0,
+      "deg": 7.105427357601002e-15,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 2.220446049250313e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 3.552713678800501e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "ms": 0,
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 8.822098607197404e-11,
+      "zoom": 1.4841461393189093e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 179.5,70 z3 p30 b-45",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "px": 0,
+      "rel": 5.688099582535365e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "ms": 0,
+      "deg": 3.552713678800501e-15,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 10,-84 z2 p0 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "px": 0,
+      "rel": 5.954528038938417e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 2.220446049250313e-16,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "ms": 0,
+      "deg": 2.220446049250313e-16,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 -30,88 z4 p20 b60",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "px": 0,
+      "rel": 4.757956757377628e-10
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 2.842170943040401e-14,
+      "zoom": 2.1316282072803006e-14
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 6.443201527872588e-11,
+      "zoom": 1.163513729807164e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z9 p0 b0 limits",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "px": 0,
+      "rel": 5.037277515219243e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "ms": 0,
+      "deg": 4.440892098500626e-16,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 2.220446049250313e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 5.343281372915953e-12,
+      "zoom": 3.907985046680551e-14
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 2.7974067506875144e-11,
+      "zoom": 4.68070027181966e-13
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "globe 800x600 139.7671,35.6812 z4 p0 b0 bounds",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "px": 0
+    },
+    {
+      "op": "unproject",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0
+    },
+    {
+      "op": "globe matrices",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "px": 0,
+      "rel": 5.359155689993587e-8
+    },
+    {
+      "op": "getBounds",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "ms": 0,
+      "deg": 0,
+      "zoom": 5.329070518200751e-15
+    },
+    {
+      "op": "easeTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 8.881784197001252e-16,
+      "zoom": 1.7763568394002505e-15
+    },
+    {
+      "op": "flyTo",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "ms": 0,
+      "deg": 8.881784197001252e-16,
+      "zoom": 0
+    },
+    {
+      "op": "gestures",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 1.787157088983804e-10,
+      "zoom": 3.19211324040225e-12
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "vertical-perspective 800x600 139.7671,35.6812 z13 p50 b20",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "constrain",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "project and occlusion",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "px": 6.821210263296962e-13
+    },
+    {
+      "op": "unproject",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 4.774847184307873e-12
+    },
+    {
+      "op": "getBounds",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 3.581135388230905e-12
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "cameraForBounds",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "zoom": 0
+    },
+    {
+      "op": "easeTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 4.547473508864641e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "ms": 1.1368683772161603e-12,
+      "deg": 4.547473508864641e-12,
+      "zoom": 8.881784197001252e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 4.547473508864641e-12,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "flyTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "ms": 1.7280399333685637e-11,
+      "deg": 4.547473508864641e-12,
+      "zoom": 3.863576125695545e-14
+    },
+    {
+      "op": "easeTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 1.1368683772161603e-12,
+      "zoom": 4.440892098500626e-16
+    },
+    {
+      "op": "easeTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 4.661160346586257e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "ms": 5.854872142663226e-11,
+      "deg": 4.661160346586257e-12,
+      "zoom": 4.529709940470639e-14
+    },
+    {
+      "op": "easeTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 4.547473508864641e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "ms": 3.3651303965598345e-11,
+      "deg": 4.547473508864641e-12,
+      "zoom": 5.46229728115577e-14
+    },
+    {
+      "op": "easeTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 4.547473508864641e-12,
+      "zoom": 0
+    },
+    {
+      "op": "flyTo",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "ms": 3.728928277269006e-11,
+      "deg": 4.547473508864641e-12,
+      "zoom": 4.374278717023117e-14
+    },
+    {
+      "op": "gestures",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 7.503331289626658e-12,
+      "zoom": 0
+    },
+    {
+      "op": "setLocationAtPoint",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 3.126388037344441e-13,
+      "zoom": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "px": 0
+    },
+    {
+      "op": "pan inertia",
+      "view": "mercator 800x600 139.7671,35.6812 z3 p10 b0",
+      "deg": 0,
+      "px": 0
+    }
+  ]
+}

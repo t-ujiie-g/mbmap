@@ -37,6 +37,8 @@ pub const MAX_PITCH : Double = 85.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
+pub const MAX_VALID_LATITUDE : Double = 85.051129
+
 pub const PI : Double = 3.141592653589793
 
 pub const PROP_ABSENT : Int32 = 5
@@ -59,6 +61,8 @@ pub fn clamp_i16(Int32) -> Int32
 
 pub let exact_powers : FixedArray[Double]
 
+pub fn fit_box(LngLatBounds, Double, Double, Double, bearing~ : Double, padding~ : Padding, offset~ : (Double, Double), max_zoom~ : Double) -> (LngLat, Double)?
+
 pub fn haversine(Trig, Double, Double, Double, Double) -> Double
 
 pub fn js_max(Double, Double) -> Double
@@ -68,6 +72,8 @@ pub fn js_min(Double, Double) -> Double
 pub fn js_round(Double) -> Double
 
 pub fn json_string_text(BytesView) -> String
+
+pub fn mercator_constrain(LngLat, Double, Limits, Double, Double) -> (LngLat, Double)
 
 pub fn parse_json(BytesView, slow_number? : (Int32, Int32) -> Double, max_depth? : Int32) -> @json.Json raise JsonError
 
@@ -241,6 +247,7 @@ pub fn Mat4::mul(Self, Self) -> Self
 pub fn Mat4::not_equal(Self, Self) -> Bool
 pub fn Mat4::perspective(Double, Double, Double, Double) -> Self
 pub fn Mat4::rotate_x(Self, Double) -> Self
+pub fn Mat4::rotate_y(Self, Double) -> Self
 pub fn Mat4::rotate_z(Self, Double) -> Self
 pub fn Mat4::scale(Self, Double, Double, Double) -> Self
 pub fn Mat4::to_repr(Self) -> @debug.Repr
@@ -306,6 +313,7 @@ pub fn Transform::camera_for_bounds(Self, LngLatBounds, bearing? : Double, paddi
 pub fn Transform::center_depth(Self) -> Double
 pub fn Transform::covering_tiles(Self, Int32, Int32) -> Array[TileId]
 pub fn Transform::ease_to(Self, CameraTarget) -> Ease
+pub fn Transform::exact(Camera, Double, Double, limits? : Limits) -> Self
 pub fn Transform::fly_to(Self, CameraTarget, curve? : Double, speed? : Double, screen_speed? : Double, min_zoom? : Double) -> Flight?
 pub fn Transform::fog_range(Self) -> (Double, Double)
 pub fn Transform::horizon(Self) -> Double
@@ -317,6 +325,7 @@ pub fn Transform::panned(Self, Double, Double, Double, Double) -> Camera
 pub fn Transform::pixels_per_meter(Self) -> Double
 pub fn Transform::project(Self, LngLat, elevation? : Double) -> (Double, Double)
 pub fn Transform::projection(Self) -> (Mat4, Double, Double)
+pub fn Transform::ray_ground(Self, Double, Double) -> MercatorCoord
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
 pub fn Transform::tile_matrix(Self, TileId, Int32, aligned? : Bool) -> Mat4

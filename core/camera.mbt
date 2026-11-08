@@ -79,7 +79,7 @@ pub fn Transform::project(
 ///|
 /// Where the ray through screen point (x, y) meets the ground at sea level,
 /// in mercator units; above the horizon the ray meets it behind the camera.
-fn Transform::ray_ground(
+pub fn Transform::ray_ground(
   self : Transform,
   x : Double,
   y : Double,
@@ -161,10 +161,40 @@ pub fn Transform::camera_for_bounds(
   offset~ : (Double, Double) = (0.0, 0.0),
   max_zoom? : Double,
 ) -> Camera? {
-  let max_zoom = max_zoom.unwrap_or(self.limits.max_zoom)
+  guard fit_box(
+      b,
+      self.camera.zoom,
+      self.width,
+      self.height,
+      bearing~,
+      padding~,
+      offset~,
+      max_zoom=max_zoom.unwrap_or(self.limits.max_zoom),
+    )
+    is Some((center, zoom)) else {
+    return None
+  }
+  Some({ ..self.camera, center, zoom, bearing, })
+}
+
+///|
+/// The center and zoom MapLibre's `cameraForBoxAndBearing` gives for `b` on a
+/// `width` x `height` mercator view at `zoom`; None when the padding leaves
+/// no room.
+pub fn fit_box(
+  b : LngLatBounds,
+  zoom : Double,
+  width : Double,
+  height : Double,
+  bearing~ : Double,
+  padding~ : Padding,
+  offset~ : (Double, Double),
+  max_zoom~ : Double,
+) -> (LngLat, Double)? {
   // `adjustAntiMeridian`: a box across the antimeridian runs past 180°.
   let east = if b.west > b.east { b.east + 360.0 } else { b.east }
-  let ws = self.world_size()
+  let scale = @math.pow(2.0, zoom)
+  let ws = TILE_SIZE * scale
   let south = @cmp.maximum(-MAX_LATITUDE, @cmp.minimum(MAX_LATITUDE, b.south))
   let north = @cmp.maximum(-MAX_LATITUDE, @cmp.minimum(MAX_LATITUDE, b.north))
   let nw = ({ lng: b.west, lat: north, } : LngLat).to_mercator()
@@ -181,14 +211,13 @@ pub fn Transform::camera_for_bounds(
     max_x = @cmp.maximum(max_x, x)
     max_y = @cmp.maximum(max_y, y)
   }
-  let available_w = self.width - (padding.left + padding.right)
-  let available_h = self.height - (padding.top + padding.bottom)
+  let available_w = width - (padding.left + padding.right)
+  let available_h = height - (padding.top + padding.bottom)
   let scale_x = available_w / (max_x - min_x)
   let scale_y = available_h / (max_y - min_y)
   guard scale_x >= 0.0 && scale_y >= 0.0 && !(max_x - min_x).is_inf() else {
     return None
   }
-  let scale = @math.pow(2.0, self.camera.zoom)
   let zoom = @cmp.minimum(
     @math.log2(scale * @cmp.minimum(scale_x, scale_y)),
     max_zoom,
@@ -206,12 +235,7 @@ pub fn Transform::camera_for_bounds(
       x: ((nw.x + se.x) * ws / 2.0 - ox) / ws,
       y: ((nw.y + se.y) * ws / 2.0 - oy) / ws,
     } : MercatorCoord).to_lnglat()
-  Some({
-    ..self.camera,
-    center: { lng: wrap180(center.lng), lat: center.lat, },
-    zoom,
-    bearing,
-  })
+  Some(({ lng: wrap180(center.lng), lat: center.lat, }, zoom))
 }
 
 ///|

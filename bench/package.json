@@ -42,6 +42,7 @@
     "export:golden": "npm --prefix ../npm run build && node export/golden.mjs",
     "ui:golden": "npm --prefix ../npm run build && node ui/golden.mjs",
     "camera:golden": "npm run build:moon && node lib/run-bundled.mjs bench/camera/golden.mjs",
+    "globe:golden": "npm run build:moon && node lib/run-bundled.mjs bench/camera/globe-golden.mjs",
     "proj:golden": "npm run build:moon && node proj/golden.mjs",
     "proj:node": "npm run build:moon && node proj/node.mjs",
     "buffer:check": "npm run build:moon && node clipper/buffer-check.mjs",

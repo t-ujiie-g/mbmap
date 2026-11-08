@@ -89,6 +89,18 @@ pub fn Mat4::rotate_x(self : Mat4, rad : Double) -> Mat4 {
 }
 
 ///|
+/// Rotation by `rad` about the y axis.
+pub fn Mat4::rotate_y(self : Mat4, rad : Double) -> Mat4 {
+  let (s, c) = (@math.sin(rad), @math.cos(rad))
+  let r = Mat4::identity()
+  r.m[0] = c
+  r.m[2] = -s
+  r.m[8] = s
+  r.m[10] = c
+  self.mul(r)
+}
+
+///|
 /// Rotation by `rad` about the z axis.
 pub fn Mat4::rotate_z(self : Mat4, rad : Double) -> Mat4 {
   let (s, c) = (@math.sin(rad), @math.cos(rad))

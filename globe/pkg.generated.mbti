@@ -1,0 +1,98 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/globe"
+
+import {
+  "moonbitlang/core/debug",
+  "t-ujiie-g/mbmap/core",
+}
+
+// Values
+pub fn atmosphere_blend(Double, Double) -> Double
+
+pub fn globe_radius(Double, Double) -> Double
+
+pub fn planet_scale(Double) -> Double
+
+pub fn surface_point(Vec3) -> @core.LngLat
+
+pub fn surface_vector(@core.LngLat) -> Vec3
+
+pub fn tile_vector(Double, Double, Int32, Int32, Int32, extent? : Double) -> Vec3
+
+pub fn zoom_adjustment(Double, Double) -> Double
+
+// Errors
+
+// Types and methods
+pub struct Globe {
+  // private fields
+}
+pub fn Globe::apply_controls(Self, Double, Double, pan? : (Double, Double), zoom? : Double, bearing? : Double, pitch? : Double) -> Unit
+pub fn Globe::bounds(Self) -> @core.LngLatBounds
+pub fn Globe::camera(Self) -> @core.Camera
+pub fn Globe::camera_altitude(Self) -> Double
+pub fn Globe::camera_for_bounds(Self, @core.LngLatBounds, bearing? : Double, padding? : @core.Padding, offset? : (Double, Double), max_zoom? : Double) -> @core.Camera?
+pub fn Globe::camera_position(Self) -> Vec3
+pub fn Globe::clipping_plane_of(Self) -> (Double, Double, Double, Double)
+pub fn Globe::copy(Self) -> Self
+pub fn Globe::ease_to(Self, @core.CameraTarget) -> GlobeEase
+pub fn Globe::fly_to(Self, @core.CameraTarget, curve? : Double, speed? : Double, screen_speed? : Double, min_zoom? : Double) -> GlobeFlight?
+pub fn Globe::globe_matrix(Self) -> @core.Mat4
+pub fn Globe::is_globe(Self) -> Bool
+pub fn Globe::jump_to(Self, center? : @core.LngLat, zoom? : Double, bearing? : Double, pitch? : Double) -> Unit
+pub fn Globe::mercator(Self) -> @core.Transform
+pub fn Globe::new(@core.Camera, Double, Double, limits? : @core.Limits, projection? : Projection) -> Self
+pub fn Globe::occluded(Self, @core.LngLat) -> Bool
+pub fn Globe::on_surface(Self, Double, Double) -> Bool
+pub fn Globe::pan_inertia(Self, (Double, Double)) -> (@core.LngLat, (Double, Double))
+pub fn Globe::project(Self, @core.LngLat) -> (Double, Double)
+pub fn Globe::projection(Self) -> (@core.Mat4, Double, Double)
+pub fn Globe::ray_direction(Self, Double, Double) -> Vec3
+pub fn Globe::resize(Self, Double, Double) -> Unit
+pub fn Globe::set_bearing(Self, Double) -> Unit
+pub fn Globe::set_center(Self, @core.LngLat) -> Unit
+pub fn Globe::set_location_at_point(Self, @core.LngLat, Double, Double) -> Unit
+pub fn Globe::set_pitch(Self, Double) -> Unit
+pub fn Globe::set_zoom(Self, Double) -> Unit
+pub fn Globe::transition(Self) -> Double
+pub fn Globe::unproject(Self, Double, Double) -> @core.LngLat
+pub fn Globe::update_transition(Self) -> Unit
+pub fn Globe::world_size(Self) -> Double
+
+pub struct GlobeEase {
+  // private fields
+}
+pub fn GlobeEase::at(Self, Double) -> @core.Camera
+pub fn GlobeEase::transform(Self) -> Globe
+
+pub struct GlobeFlight {
+  duration : Double
+  // private fields
+}
+pub fn GlobeFlight::at(Self, Double) -> @core.Camera
+pub fn GlobeFlight::transform(Self) -> Globe
+
+#derive(Eq, @debug.Debug)
+pub(all) enum Projection {
+  Mercator
+  Globe
+  VerticalPerspective
+}
+pub fn Projection::equal(Self, Self) -> Bool
+pub fn Projection::not_equal(Self, Self) -> Bool
+pub fn Projection::to_repr(Self) -> @debug.Repr
+pub fn Projection::transition(Self, Double) -> Double
+
+#derive(Eq, @debug.Debug)
+pub(all) struct Vec3 {
+  x : Double
+  y : Double
+  z : Double
+}
+pub fn Vec3::equal(Self, Self) -> Bool
+pub fn Vec3::not_equal(Self, Self) -> Bool
+pub fn Vec3::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
