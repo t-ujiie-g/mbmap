@@ -325,6 +325,14 @@ const checks = {
       const routes = { diagonal: (await net.route([0, 0], [1, 1]))?.path, off: await net.route([0, 0], [5, 5]) };
       net.dispose();
       const disposedRoute = await net.route([0, 0], [1, 1]).then(() => "", (e) => e.message);
+      // A street ending 1.1 m short of another joins it with snap.
+      const tee = await load(fc([[[0, 0], [0.001, 0]], [[0.0005, 0.00001], [0.0005, 0.001]]].map((c) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: c } }))));
+      const snapped = {};
+      for (const snap of [0, 2]) {
+        const n = await tee.network({ snap });
+        snapped[snap] = (await n.route([0, 0], [0.0005, 0.001]))?.path ?? null;
+        n.dispose();
+      }
       // Classes and statistics on the main thread.
       const { classBreaks, classStep, statistics } = await import("mbmap/analysis");
       const numbers = [1, 2, 4, 5, 7, 9, 10, 20, 21, 22];
@@ -369,6 +377,7 @@ const checks = {
         classes,
         surfaces,
         routes,
+        snapped,
         disposedRoute,
         ix: [Math.round(ix[0] * 1000) / 1000, Math.round(ix[1] * 1000) / 1000],
         back: back.map((v) => Math.round(v * 1e7) / 1e7),
@@ -420,7 +429,8 @@ const checks = {
       r.geometry.surfaces.hexes === 5 && r.geometry.surfaces.idw === 20 && r.geometry.surfaces.lines === 1 && r.geometry.surfaces.density &&
       JSON.stringify(r.geometry.surfaces.bands) === JSON.stringify(["10-20", "20-30", "30-40", "40-50"]) &&
       JSON.stringify(r.geometry.surfaces.dbscan) === JSON.stringify(["core", "core", "core", "core"]) && r.geometry.surfaces.kmeans.length === 4 &&
-      JSON.stringify(r.geometry.routes) === JSON.stringify({ diagonal: [[0, 0], [1, 1]], off: null }) && /disposed/.test(r.geometry.disposedRoute) &&
+      JSON.stringify(r.geometry.routes) === JSON.stringify({ diagonal: [[0, 0], [1, 1]], off: null }) &&
+      JSON.stringify(r.geometry.snapped) === JSON.stringify({ 0: null, 2: [[0, 0], [0.0005, 0], [0.0005, 0.001]] }) && /disposed/.test(r.geometry.disposedRoute) &&
       JSON.stringify(r.geometry.classes) === JSON.stringify({ jenks: [1, 7, 20, 22], mean: 10.1, step: ["step", ["get", "v"], "a", 7, "b", 20, "c"] }) &&
       // proj4js: (-5995.185, -35367.230) for Tokyo Station in EPSG:6677.
       JSON.stringify(r.geometry.ix) === JSON.stringify([-5995.185, -35367.23]) &&

@@ -78,6 +78,8 @@ pub fn offset_hash_mem(Int32, Int32, Double, Int32, Int32, Double, Double) -> In
 
 pub fn proj_mem(Int32, Int32, Int32, Int32, Int32) -> Int32
 
+pub fn route_snap(FixedArray[Int32], FixedArray[Double], Double) -> FixedArray[Double]
+
 pub fn tess_mem(Int32, Int32, Int32) -> Int32
 
 // Errors

@@ -231,10 +231,10 @@ const OPS = {
     });
   },
   // geojson-path-finder's graph of a dataset's lines, kept by handle in route_worker.
-  async network({ dataset, tolerance }) {
-    check(isId(dataset) && tolerance > 0 && Number.isFinite(tolerance));
+  async network({ dataset, tolerance, snap }) {
+    check(isId(dataset) && tolerance > 0 && Number.isFinite(tolerance) && snap >= 0 && Number.isFinite(snap));
     const { exports } = await withTables("route", [dataset]);
-    return checked(exports, exports.network_new(tolerance));
+    return checked(exports, exports.network_new(tolerance, snap));
   },
   // The shortest path of `network` between two points on it: weight (km), then x, y pairs; empty for none.
   async route({ network, from, to }) {

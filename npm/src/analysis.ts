@@ -460,11 +460,13 @@ export class Dataset {
 
   /**
    * geojson-path-finder's graph of the lines here (`tolerance` in degrees: vertices this close are one), kept
-   * in the worker for `Network.route` until disposed.
+   * in the worker for `Network.route` until disposed. With `snap` (meters), a line's end within `snap` of
+   * another line's segment is joined to it at its nearest point, and ends that close to each other become one.
    */
-  async network({ tolerance = 1e-5 }: { tolerance?: number } = {}): Promise<Network> {
+  async network({ tolerance = 1e-5, snap = 0 }: { tolerance?: number; snap?: number } = {}): Promise<Network> {
     if (!(tolerance > 0)) throw new Error("mbmap: analysis: invalid tolerance");
-    return new Network(await this.#call<number>("network", { tolerance }));
+    if (!(snap >= 0 && snap < Infinity)) throw new Error("mbmap: analysis: invalid snap");
+    return new Network(await this.#call<number>("network", { tolerance, snap }));
   }
 
   /** The DE-9IM matrix of feature `i` here and feature `j` of `other`, as JTS writes it (`"FF2F11212"`). */
