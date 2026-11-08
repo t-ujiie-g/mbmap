@@ -1,0 +1,35 @@
+{
+  "env": {
+    "maplibre": "6.16"
+  },
+  "results": [
+    {
+      "set": "mixed",
+      "promoteId": null,
+      "features": 116840,
+      "diffs": 60,
+      "merges": 20,
+      "tiles": 65760,
+      "reloads": 5229
+    },
+    {
+      "set": "mixed",
+      "promoteId": "uid",
+      "features": 116840,
+      "diffs": 60,
+      "merges": 20,
+      "tiles": 65760,
+      "reloads": 4329
+    },
+    {
+      "set": "world",
+      "promoteId": null,
+      "features": 3000,
+      "diffs": 60,
+      "merges": 20,
+      "tiles": 52080,
+      "reloads": 8687
+    }
+  ],
+  "differ": 0
+}

@@ -23,7 +23,7 @@ import {
   toLngLat,
   toPoint,
 } from "./camera";
-import type { ClusterQuery, GeoJSONSource, GeoJSONTiles } from "./geojson";
+import type { ClusterQuery, GeoJSONSource, GeoJSONSourceDiff, GeoJSONTiles } from "./geojson";
 import type { Media, UpdateImageOptions } from "./media";
 import type { CustomLayerInterface, CustomLayers } from "./custom";
 import { type GeoJSONFeature, orderRendered, queryArgs, queryLayers, queryPoints } from "./query";
@@ -76,6 +76,7 @@ export type {
 export type { LayerSpecification, StyleSpecification } from "./style";
 export type { CustomLayerInterface, CustomRenderMethodInput, ProjectionData } from "./custom";
 export type { GeoJSONFeature } from "./query";
+export type { GeoJSONFeatureDiff, GeoJSONSourceDiff } from "./geojson-diff";
 export type {
   MapGeoJSONFeature,
   FeatureIdentifier,
@@ -620,15 +621,18 @@ export class Map {
     const source: Source = { id, type: s.type };
     if ("promoteId" in s) source.promoteId = edit.copy(s.promoteId);
     if (s.type === "geojson") {
+      const geojson = <T,>(f: (t: GeoJSONTiles) => Promise<T>): Promise<T> =>
+        (this.#geojsonLoading ?? Promise.resolve(null)).then((t) => {
+          if (!t) throw new Error("mbmap: GeoJSON sources did not load");
+          return f(t);
+        });
       const ask =
         (op: ClusterQuery["op"]) =>
         (cluster: number, limit?: number, offset?: number): Promise<never> =>
-          (this.#geojsonLoading ?? Promise.resolve(null)).then((t) => {
-            if (!t) throw new Error("mbmap: GeoJSON sources did not load");
-            return t.cluster(id, { op, cluster, limit, offset } as ClusterQuery) as Promise<never>;
-          });
+          geojson((t) => t.cluster(id, { op, cluster, limit, offset } as ClusterQuery) as Promise<never>);
       Object.assign(source, {
         setData: (data: unknown) => void this.#edit((st) => edit.setSourceData(st, id, data)),
+        updateData: (diff: GeoJSONSourceDiff) => geojson((t) => t.update(id, diff)),
         getData: (): Promise<unknown> => {
           const data = (this.#style && (edit.sourceOf(this.#style, id) as { data?: unknown } | undefined))?.data;
           if (typeof data !== "string") return Promise.resolve(edit.copy(data));
@@ -715,6 +719,14 @@ export class Map {
             { workerUrl: o.geojsonWorkerUrl, wasmUrl: o.geojsonWasmUrl, propertiesWasmUrl: o.geojsonPropertiesWasmUrl },
             (json) => engine.compile_cluster_properties(json),
             (url) => this.#transform?.(url, "Source"),
+            (id, data, reload) => {
+              const now = this.#style && edit.sourceOf(this.#style, id);
+              if (now) edit.setOwn(this.#style!.sources, id, { ...now, data });
+              if (!this.#engine) return;
+              if (reload) engine.map_reload_tiles(this.#engine, id, reload);
+              else engine.map_reload_source(this.#engine, id);
+              this.#events.sourceData(id);
+            },
           );
           return this.#geojson;
         },

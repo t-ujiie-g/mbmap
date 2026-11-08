@@ -394,6 +394,17 @@ pub fn map_reload_source(map : @map.Map, id : String) -> Unit {
 }
 
 ///|
+/// Loads again the tiles of source `id` that are loading or `changed`.
+#export_name("map_reload_tiles")
+pub fn map_reload_tiles(
+  map : @map.Map,
+  id : String,
+  changed : (Int32, Int32, Int32) -> Bool,
+) -> Unit {
+  map.reload_tiles(id, changed)
+}
+
+///|
 /// Shows `picture` (null for nothing) for image, video or canvas source `id`
 /// placed by `quad` (see `@map.Map::set_media_quad`).
 #export_name("map_set_media")
