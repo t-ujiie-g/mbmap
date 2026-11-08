@@ -971,6 +971,16 @@ Test / benchmark data (continued):
   Used under PLATEAU's site policy (Public Data License 1.0, compatible with CC BY 4.0;
   the 3D city models' copyright belongs to the local governments). Catalog: https://api.plateauview.mlit.go.jp/datacatalog/plateau-datasets
   (id 13101_bldg_lod2_no_texture).
+- bench/fixtures/i3s-sf/, bench/fixtures/i3s-frankfurt/ (downloaded, not committed): layer
+  JSON, node pages and the geometry and attribute resources of a few nodes of Esri's public
+  sample I3S scene services on ArcGIS Online, SanFrancisco_Bldgs (3DObject) and
+  Frankfurt2017_vi3s_18 (IntegratedMesh), https://tiles.arcgis.com/tiles/z2tnIkrLQ2BRzr6P/
+  arcgis/rest/services/. © Esri and its data providers; used for testing under Esri's terms
+  of use, not redistributed.
+- npm/src/i3s/content.ts reads I3S node resources as @loaders.gl/i3s 4.5.4 does
+  (src/lib/parsers/parse-i3s-tile-content.ts, parse-i3s-attribute.ts) and computes ECEF as
+  math.gl 4.1's Ellipsoid.cartographicToCartesian: MIT License, Copyright (c) vis.gl
+  contributors (https://github.com/visgl/loaders.gl, https://github.com/visgl/math.gl).
 - @protomaps/basemaps 5.7.2 (bench devDependency, not shipped): builds the Protomaps
   styles compared by bench/style/public.mjs and compat.mjs. BSD-3-Clause,
   © The Protomaps Authors.

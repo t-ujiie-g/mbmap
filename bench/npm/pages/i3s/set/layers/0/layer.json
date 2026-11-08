@@ -1,0 +1,266 @@
+{
+ "id": 0,
+ "version": "{6F2E9C4A-1B7D-4C55-9E21-5A0F3B8D7C10}",
+ "name": "Synthetic buildings",
+ "href": "./layers/0",
+ "layerType": "3DObject",
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "heightModelInfo": {
+  "heightModel": "ellipsoidal",
+  "vertCRS": "WGS_84",
+  "heightUnit": "meter"
+ },
+ "alias": "Synthetic buildings",
+ "copyrightText": "mbmap test data",
+ "capabilities": [
+  "View",
+  "Query"
+ ],
+ "fullExtent": {
+  "wkid": 4326,
+  "latestWkid": 4326,
+  "xmin": 139.7631,
+  "xmax": 139.7711,
+  "ymin": 35.6782,
+  "ymax": 35.6842,
+  "zmin": 0,
+  "zmax": 150
+ },
+ "store": {
+  "id": "{0B3D6E6A-6C1E-4F44-8F0B-7B2C1D9E5A31}",
+  "profile": "meshpyramids",
+  "version": "1.8",
+  "resourcePattern": [
+   "3dNodeIndexDocument",
+   "Attributes",
+   "SharedResource",
+   "Geometry"
+  ],
+  "rootNode": "./nodes/root",
+  "extent": [
+   139.7631,
+   35.6782,
+   139.7711,
+   35.6842
+  ],
+  "indexCRS": "http://www.opengis.net/def/crs/EPSG/0/4326",
+  "vertexCRS": "http://www.opengis.net/def/crs/EPSG/0/4326",
+  "normalReferenceFrame": "earth-centered",
+  "lodType": "MeshPyramid",
+  "lodModel": "node-switching",
+  "defaultGeometrySchema": {
+   "geometryType": "triangles",
+   "header": [
+    {
+     "property": "vertexCount",
+     "type": "UInt32"
+    },
+    {
+     "property": "featureCount",
+     "type": "UInt32"
+    }
+   ],
+   "topology": "PerAttributeArray",
+   "ordering": [
+    "position",
+    "normal",
+    "uv0",
+    "color"
+   ],
+   "vertexAttributes": {
+    "position": {
+     "valueType": "Float32",
+     "valuesPerElement": 3
+    },
+    "normal": {
+     "valueType": "Float32",
+     "valuesPerElement": 3
+    },
+    "uv0": {
+     "valueType": "Float32",
+     "valuesPerElement": 2
+    },
+    "color": {
+     "valueType": "UInt8",
+     "valuesPerElement": 4
+    }
+   },
+   "featureAttributeOrder": [
+    "id",
+    "faceRange"
+   ],
+   "featureAttributes": {
+    "id": {
+     "valueType": "UInt64",
+     "valuesPerElement": 1
+    },
+    "faceRange": {
+     "valueType": "UInt32",
+     "valuesPerElement": 2
+    }
+   }
+  }
+ },
+ "nodePages": {
+  "nodesPerPage": 64,
+  "lodSelectionMetricType": "maxScreenThresholdSQ"
+ },
+ "materialDefinitions": [
+  {
+   "cullFace": "back",
+   "pbrMetallicRoughness": {
+    "metallicFactor": 0
+   }
+  },
+  {
+   "cullFace": "back",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "textureSetDefinitionId": 0,
+     "texCoord": 0
+    },
+    "metallicFactor": 0
+   }
+  }
+ ],
+ "textureSetDefinitions": [
+  {
+   "formats": [
+    {
+     "name": "0",
+     "format": "png"
+    }
+   ]
+  }
+ ],
+ "geometryDefinitions": [
+  {
+   "geometryBuffers": [
+    {
+     "offset": 8,
+     "position": {
+      "type": "Float32",
+      "component": 3
+     },
+     "normal": {
+      "type": "Float32",
+      "component": 3
+     },
+     "uv0": {
+      "type": "Float32",
+      "component": 2
+     },
+     "color": {
+      "type": "UInt8",
+      "component": 4
+     },
+     "featureId": {
+      "type": "UInt64",
+      "component": 1,
+      "binding": "per-feature"
+     },
+     "faceRange": {
+      "type": "UInt32",
+      "component": 2,
+      "binding": "per-feature"
+     }
+    },
+    {
+     "compressedAttributes": {
+      "encoding": "draco",
+      "attributes": [
+       "position",
+       "normal",
+       "uv0",
+       "color",
+       "feature-index"
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "fields": [
+  {
+   "name": "OBJECTID",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID"
+  },
+  {
+   "name": "name",
+   "type": "esriFieldTypeString",
+   "alias": "name"
+  },
+  {
+   "name": "height",
+   "type": "esriFieldTypeDouble",
+   "alias": "height"
+  }
+ ],
+ "attributeStorageInfo": [
+  {
+   "key": "f_0",
+   "name": "OBJECTID",
+   "header": [
+    {
+     "property": "count",
+     "valueType": "UInt32"
+    }
+   ],
+   "ordering": [
+    "attributeValues"
+   ],
+   "attributeValues": {
+    "valueType": "Oid32",
+    "valuesPerElement": 1
+   }
+  },
+  {
+   "key": "f_1",
+   "name": "name",
+   "header": [
+    {
+     "property": "count",
+     "valueType": "UInt32"
+    },
+    {
+     "property": "attributeValuesByteCount",
+     "valueType": "UInt32"
+    }
+   ],
+   "ordering": [
+    "attributeByteCounts",
+    "attributeValues"
+   ],
+   "attributeByteCounts": {
+    "valueType": "UInt32",
+    "valuesPerElement": 1
+   },
+   "attributeValues": {
+    "valueType": "String",
+    "encoding": "UTF-8",
+    "valuesPerElement": 1
+   }
+  },
+  {
+   "key": "f_2",
+   "name": "height",
+   "header": [
+    {
+     "property": "count",
+     "valueType": "UInt32"
+    }
+   ],
+   "ordering": [
+    "attributeValues"
+   ],
+   "attributeValues": {
+    "valueType": "Float64",
+    "valuesPerElement": 1
+   }
+  }
+ ]
+}

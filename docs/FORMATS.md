@@ -599,6 +599,29 @@ over 255) or null for point formats without colors, `intensity` a Uint16Array, `
 Uint8Array (the 5-bit class of formats 0 to 5, the byte of 6 to 10), `count` the points in the file;
 the typed arrays transferred. A file without a CRS and no `crs` is an error.
 
+`{type: "call", id, op: "i3s", url, buffer, texture?, layer, node}` reads an I3S 1.7 or 1.8 node
+(`npm/src/i3s/content.ts` `readI3sGeometry`): `url` its geometry resource (`nodes/<resource>/geometries/<buffer>`),
+`buffer` the index into its geometry definition's `geometryBuffers` (`geometryBufferOf` prefers the Draco one,
+`nodeResources` gives the paths), `texture` the URL of its texture when the material's texture set has a JPEG or
+PNG format (`textureOf`; other bytes are dropped and the node drawn with its colors), `layer` the layer JSON (at
+least `spatialReference`, which must be 4326, `store.normalReferenceFrame`, `geometryDefinitions`,
+`materialDefinitions`) and `node` its node page entry (`obb.center` or `mbs`, `mesh`). Both are fetched without
+credentials (at most `MAX_I3S_BYTES` and `MAX_I3S_TEXTURE_BYTES`, gunzipped when stored raw as gzip). The
+uncompressed layout is the definition's header (vertex and feature counts as u32 when `offset` is 8 or more, else
+the node page's) and position, normal, uv0, color, uvRegion, featureId (u64) and faceRange (u32 x 2, inclusive
+triangles) one after another; a Draco buffer (3d.wasm's `draco_decode`) names its attributes by Draco type and
+`i3s-attribute-type` metadata, takes `i3s-scale_x` / `_y` for positions and `i3s-feature-ids` (int32) for ids,
+the metadata read in JS (`dracoMetadata`). It answers `{center: [lng, lat, h], primitives: [primitive],
+materials: [material], images, featureIds, count}`: `center` the node's (positions are offsets from it in degrees
+for x and y and meters for z), the primitive (`gltf.ts` `Primitive`, triangles, identity matrix, material 0;
+Draco keeps its u32 indices, uncompressed buffers have none) with POSITION f32 east, north, up meters from
+`center` through ECEF in f64 (math.gl's), NORMAL turned into that frame when earth-centered (east-north-up ones
+as they are), TEXCOORD_0, COLOR_0 (u8, normalized), `_UV_REGION` (u16 x 4, normalized: an atlas's region, for
+the shader to apply as `region.xy + fract(uv) * (region.zw - region.xy)`) and `_BATCHID` (f32 feature index into
+`featureIds`, -1 for none), `material` from `materialOf` (texture image 0 when `images` holds the decoded
+texture), `featureIds` a Float64Array (strings when an id passes 2^53), `count` the vertices. Attribute buffers
+(`attributeStorageInfo`) are read on the main thread by `readI3sAttribute`, no worker call.
+
 Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
 image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
 `{type: "result", id, error}`.

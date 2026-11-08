@@ -1,0 +1,64 @@
+{
+  "source": "see bench/maplibre/fetch-tiles.mjs",
+  "attribution": "Esri's sample scene services on ArcGIS Online (SanFrancisco_Bldgs, Frankfurt2017_vi3s_18); Esri's terms of use",
+  "fetched": "2026-11-08",
+  "totalBytes": 867288,
+  "tiles": {
+    "layer.json": {
+      "bytes": 3275,
+      "sha256": "fec964457d791d973c9bbb7cbb7e174c7f690eb3946e74fbaa15471741be9e52"
+    },
+    "nodepages/0": {
+      "bytes": 33202,
+      "sha256": "b06009b27a24c1ec8407f50ffdb88f7097dc78875aa713799a122562d3eec055"
+    },
+    "nodes/1/geometries/0": {
+      "bytes": 76704,
+      "sha256": "003a9f717c31975465352e2008d0b48d9063d69214eb960f0f1b6d910dd05e15"
+    },
+    "nodes/1/geometries/1": {
+      "bytes": 11806,
+      "sha256": "fe27ae391de5bebaacbb3f63f8726f2517ca8c031cd6a8e2d249c4e9b752ae9f"
+    },
+    "nodes/1322/geometries/0": {
+      "bytes": 672,
+      "sha256": "78d2877b78d2ea8f09f002dab2c4355689a0adfaf38ccae82af553a0ff3e0f11"
+    },
+    "nodes/1322/geometries/1": {
+      "bytes": 484,
+      "sha256": "c9796c068b53a4e6855ed689aa0f7200c6902c53288f429b0ae26726004d0e5d"
+    },
+    "nodes/160/geometries/0": {
+      "bytes": 61692,
+      "sha256": "e3d032d51640235f8c297a07a4ad13c656e1f14b17afcf60d2333c5f43b4340e"
+    },
+    "nodes/160/geometries/1": {
+      "bytes": 9625,
+      "sha256": "bda4b30f67acff43da43019f26c3ff314e058782d23b68a178dffc80035299e3"
+    },
+    "nodes/2844/geometries/0": {
+      "bytes": 551256,
+      "sha256": "5c2cb1c1355a4a2221994e6fd463cb50b29a3a54753681fede4b9c4a2ee50e07"
+    },
+    "nodes/2844/geometries/1": {
+      "bytes": 53364,
+      "sha256": "8904b2cc907c2643bdaa93b55a2a499ded6b0c1419e857fc87a33d8300b376da"
+    },
+    "nodes/5/geometries/0": {
+      "bytes": 54456,
+      "sha256": "fb1931fe9fea9f505d32e7c2e1e47c18bebf8b0c99855b5cc4fdb51e14fd525e"
+    },
+    "nodes/5/geometries/1": {
+      "bytes": 8451,
+      "sha256": "d03d02ffa75eb97e157f6f73eb7c38661437f01159b80c0cfb33c5f275f7ac92"
+    },
+    "nodes/725/geometries/0": {
+      "bytes": 1536,
+      "sha256": "64bdf8eddfb61358b0009cb066368452311eb2b730a9649d29ba78fd953fffa7"
+    },
+    "nodes/725/geometries/1": {
+      "bytes": 765,
+      "sha256": "59e930cb3733a07b814eaa66c7a9920b0c4a228b690d1d164b2cbd6dba5f94e3"
+    }
+  }
+}

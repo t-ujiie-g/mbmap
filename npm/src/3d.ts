@@ -5,7 +5,8 @@ import type { Material, Primitive } from "./model/gltf";
 import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/draw";
 import { Y_UP, triple, mercatorFrame, mul, placement, points, sphereFrame, value, type Value } from "./model/place";
 import type { Tile } from "./tiles/tileset";
-import type { TilesEngine, TilesParts } from "./3d-tiles";
+import type { TilesEngine } from "./3d-tiles";
+import type { I3sParts } from "./3d-i3s";
 import { crsArg, type Crs } from "./crs";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
@@ -362,20 +363,22 @@ export class TilesLayer implements CustomLayerInterface {
   #gl: WebGL2RenderingContext | null = null;
   #program: ModelProgram | null = null;
 
-  constructor(options: TilesLayerOptions) {
+  /** `i3s` reads `url` as an I3S scene layer (`i3sLayer`) instead of a 3D Tiles tileset. */
+  constructor(options: TilesLayerOptions, i3s = false) {
     this.id = options.id;
     const url = new URL(options.url, document.baseURI).href;
-    const parts: TilesParts = {
-      loadTile: (tileUrl) => {
-        start(options);
-        return client.call("tile", { url: tileUrl });
-      },
+    const call = <T>(op: string, args: object) => {
+      start(options);
+      return client.call<T>(op, args);
+    };
+    const parts: I3sParts = {
+      loadTile: (tileUrl) => call("tile", { url: tileUrl }),
+      loadNode: (args) => call("i3s", args),
       upload: uploadModel,
       release: releaseModel,
       repaint: () => this.#map?.triggerRepaint?.(),
     };
-    this.ready = import("./3d-tiles.js")
-      .then((m) => m.openTileset(url, options, parts))
+    this.ready = (i3s ? import("./3d-i3s.js").then((m) => m.openI3s(url, options, parts)) : import("./3d-tiles.js").then((m) => m.openTileset(url, options, parts)))
       .then((engine) => {
         this.#engine = engine;
         this.#map?.triggerRepaint?.();
@@ -399,7 +402,7 @@ export class TilesLayer implements CustomLayerInterface {
   async queryFeature(point: { x: number; y: number }): Promise<TileFeature | null> {
     const hit = (await this.#engine?.pick(point.x, point.y)) ?? null;
     if (!hit) return null;
-    const properties = hit.part.properties(hit.feature);
+    const properties = await hit.part.properties(hit.feature);
     return { tile: hit.tile.path, id: hit.feature, properties };
   }
 
@@ -425,5 +428,19 @@ export class TilesLayer implements CustomLayerInterface {
 /** A custom layer for `map.addLayer` streaming the 3D Tiles tileset at `options.url`. */
 export function tilesLayer(options: TilesLayerOptions): TilesLayer {
   return new TilesLayer(options);
+}
+
+/**
+ * An I3S layer: the 3DObject or IntegratedMesh scene layer (I3S 1.7 and later, node pages, WGS 84) at
+ * `url` — a SceneServer layer (`…/SceneServer/layers/0`) or a layer document `….json` with its resources
+ * beside it — its nodes chosen by their `lodThreshold` as loaders.gl does, with the options of
+ * `tilesLayer` (`height`, `maximumLoadedTiles`; JPEG and PNG textures only). `queryFeature` gives a
+ * feature's attributes.
+ */
+export type I3sLayerOptions = Omit<TilesLayerOptions, "maximumScreenSpaceError" | "pointSize">;
+
+/** A custom layer for `map.addLayer` streaming the I3S scene layer at `options.url`. */
+export function i3sLayer(options: I3sLayerOptions): TilesLayer {
+  return new TilesLayer(options, true);
 }
 

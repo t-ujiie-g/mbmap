@@ -77,8 +77,10 @@ const ENTRIES = [
   ["analysis-viewshed.js", "analysis_worker/js/viewshed.mjs"],
   ["geodesic.js", "npm/src/geodesic.ts"],
   ["geodesic-worker.js", "geodesic_worker/js/worker.mjs"],
-  ["3d.js", "npm/src/3d.ts", { plugins: [separate(same(["3d-tiles"])), PROJSTRING] }],
+  ["3d.js", "npm/src/3d.ts", { plugins: [separate(same(["3d-tiles", "3d-i3s"])), PROJSTRING] }],
   ["3d-tiles.js", "npm/src/3d-tiles.ts"],
+  // I3S's work shares 3d-tiles.js's engine.
+  ["3d-i3s.js", "npm/src/3d-i3s.ts", { plugins: [separate(same(["3d-tiles"]))] }],
   ["3d-worker.js", "model_worker/js/worker.mjs"],
   ["data.js", "npm/src/data.ts", { plugins: [PROJSTRING] }],
   ["data-worker.js", "data_worker/js/worker.mjs", { plugins: [separate(DATA_PARTS)] }],

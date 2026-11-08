@@ -85,12 +85,15 @@
     "draw:many": "npm --prefix ../npm run build && node draw/many-run.mjs --shapes=2000",
     "geometry:node": "npm run build:moon && node clipper/node.mjs",
     "model:golden": "node model/golden.mjs",
+    "i3s:golden": "node i3s/golden.mjs",
     "tiles:golden": "node tiles/golden.mjs",
     "tiles:properties": "node tiles/properties-golden.mjs",
     "las:golden": "npm --prefix ../npm run build && node las/golden.mjs",
     "las:synthetic": "node las/synthetic.mjs",
     "tiles:synthetic": "node tiles/synthetic.mjs",
     "tiles:contents": "node tiles/contents-golden.mjs",
+    "i3s:contents": "cd .. && moon build model_worker --release --target wasm-gc && cd bench && node i3s/content-golden.mjs",
+    "i3s:synthetic": "node i3s/synthetic.mjs",
     "cesium": "npm --prefix ../npm run build && node cesium/run.mjs"
   },
   "devDependencies": {
@@ -101,6 +104,7 @@
     "@loaders.gl/3d-tiles": "4.5.4",
     "@loaders.gl/core": "4.5.4",
     "@loaders.gl/gltf": "4.5.4",
+    "@loaders.gl/i3s": "4.5.4",
     "@loaders.gl/las": "4.5.4",
     "@loaders.gl/tiles": "4.5.4",
     "@mapbox/vector-tile": "3.0.0",

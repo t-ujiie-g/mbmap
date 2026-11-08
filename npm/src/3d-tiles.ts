@@ -41,8 +41,8 @@ export interface GpuPart {
   gpu: GpuModel;
   places: Float64Array[];
   batchIds: Uint32Array | null;
-  /** The properties of feature `id` (batch table, or the EXT_structural_metadata property table its ids name). */
-  properties(id: number): Record<string, unknown>;
+  /** The properties of feature `id` (batch table, EXT_structural_metadata property table, I3S attributes). */
+  properties(id: number): Record<string, unknown> | Promise<Record<string, unknown>>;
 }
 
 /** A tile's part drawn in the pick pass, and the feature hit in it. */
@@ -88,17 +88,57 @@ function propertiesOf(part: ContentPart): (id: number) => Record<string, unknown
   return (id) => (props && id >= 0 && id < props.count ? props.get(id) : Object.create(null));
 }
 
+/**
+ * Where an engine's tiles come from: the tree's `root`, the `traversal` selecting it, a tile's content
+ * (`load`, on `gl`) and the children of the tiles the traversal wants refined (`expand`, which repaints when they come).
+ */
+export interface TileSource {
+  root: Tile;
+  traversal: Traversal;
+  load(tile: Tile, gl: WebGL2RenderingContext): Promise<TileModel | null>;
+  expand?(tiles: Map<string, Tile>, repaint: () => void): void;
+}
+
+/** A 3D Tiles tile's content: an external tileset hung under it (null), else its parts placed in meters. */
+async function loadTile3D(tile: Tile, gl: WebGL2RenderingContext, parts: TilesParts): Promise<TileModel | null> {
+  const url = tile.contentUrl!;
+  if (/\.json([?#]|$)/i.test(url)) {
+    buildTree(await expandTileset(JSON.parse(new TextDecoder().decode(await fetchBytes(url))), url, fetchBytes), url, tile);
+    tile.isTileset = true;
+    return null;
+  }
+  const content = await parts.loadTile(url);
+  // Meters of each part: east, north, up at the tile's center from the tile's transform, then
+  // RTC_CENTER and glTF's +Y up turned to +Z (a pnts is +Z up already), or each instance's matrix (RTC included).
+  const center = tile.volume.center;
+  const carto = toCartographic(center) ?? [0, 0, 0];
+  const base = multiply(rigidInverse(eastNorthUp(center)), tile.transform);
+  const gpuParts = content.parts.map((part): GpuPart => {
+    let places: Float64Array[];
+    if (part.instances) {
+      const m = part.instances.matrices;
+      places = Array.from({ length: m.length / 16 }, (_, i) => multiply(multiply(base, m.subarray(i * 16, i * 16 + 16)), Y_UP));
+    } else {
+      const placed = multiply(base, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...(part.rtc ?? [0, 0, 0]), 1]);
+      places = [part.kind === "pnts" ? placed : multiply(placed, Y_UP)];
+    }
+    return { gpu: parts.upload(gl, part, IDENTITY), places, batchIds: part.instances?.batchIds ?? null, properties: propertiesOf(part) };
+  });
+  return { parts: gpuParts, lng: carto[0], lat: carto[1], height: carto[2] };
+}
+
 /** Reads the tileset at `url` (implicit tiling expanded) and returns its engine. */
 export async function openTileset(url: string, options: TilesLayerOptions, parts: TilesParts): Promise<TilesEngine> {
   const json = await expandTileset(JSON.parse(new TextDecoder().decode(await fetchBytes(url))), url, fetchBytes);
-  return new TilesEngine(buildTree(json, url), options, parts);
+  const source: TileSource = { root: buildTree(json, url), traversal: new Traversal(options.maximumScreenSpaceError ?? 8), load: (tile, gl) => loadTile3D(tile, gl, parts) };
+  return new TilesEngine(source, options, parts);
 }
 
 /** A tileset's tree, its selection each frame, and its loaded contents. */
 export class TilesEngine {
   #options: TilesLayerOptions;
   #parts: TilesParts;
-  #root: Tile;
+  #source: TileSource;
   #traversal: Traversal;
   #loading = 0;
   #loaded = new Set<Tile>();
@@ -107,11 +147,11 @@ export class TilesEngine {
   #picks: { x: number; y: number; resolve: (hit: Hit | null) => void }[] = [];
   #target: { fb: WebGLFramebuffer; color: WebGLRenderbuffer; depth: WebGLRenderbuffer; w: number; h: number } | null = null;
 
-  constructor(root: Tile, options: TilesLayerOptions, parts: TilesParts) {
-    this.#root = root;
+  constructor(source: TileSource, options: TilesLayerOptions, parts: TilesParts) {
+    this.#source = source;
     this.#options = options;
     this.#parts = parts;
-    this.#traversal = new Traversal(options.maximumScreenSpaceError ?? 8);
+    this.#traversal = source.traversal;
   }
 
   get selected(): Tile[] {
@@ -119,7 +159,7 @@ export class TilesEngine {
   }
 
   get idle(): boolean {
-    return this.#loading === 0 && this.#traversal.requested.size === 0;
+    return this.#loading === 0 && this.#traversal.requested.size === 0 && this.#traversal.expand.size === 0;
   }
 
   /** `pointSize` (CSS pixels) in the drawing buffer's pixels. */
@@ -139,15 +179,15 @@ export class TilesEngine {
 
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, program: ModelProgram): void {
     this.#gl = gl;
-    const root = this.#root;
     const d = options.defaultProjectionData;
     const t = d.projectionTransition;
     const flat = t > 0 ? d.fallbackMatrix : d.mainMatrix;
     const canvas = gl.canvas as HTMLCanvasElement;
-    const height = canvas.clientHeight || gl.drawingBufferHeight;
-    const frame = t > 0.5 ? frameState(options.modelViewProjectionMatrix, height, true) : frameState(flat, height);
+    const globe = t > 0.5;
+    const frame = frameState(globe ? options.modelViewProjectionMatrix : flat, canvas.clientHeight || gl.drawingBufferHeight, globe, canvas.clientWidth || gl.drawingBufferWidth);
     if (!frame) return;
-    this.#traversal.traverse(root, frame);
+    this.#traversal.traverse(this.#source.root, frame);
+    this.#source.expand?.(this.#traversal.expand, this.#parts.repaint);
     const wanted = [...this.#traversal.requested.values()].sort((a, b) => a.distance - b.distance);
     for (const tile of wanted) {
       if (this.#loading >= MAX_LOADS) break;
@@ -250,57 +290,27 @@ export class TilesEngine {
   }
 
   #load(tile: Tile): void {
-    const url = tile.contentUrl!;
     const generation = this.#generation;
+    const gl = this.#gl!;
     tile.state = "loading";
     this.#loading++;
-    const done = () => {
-      this.#loading--;
-      this.#parts.repaint();
-    };
-    if (/\.json([?#]|$)/i.test(url)) {
-      fetchBytes(url)
-        .then((bytes) => expandTileset(JSON.parse(new TextDecoder().decode(bytes)), url, fetchBytes))
-        .then((json) => {
-          buildTree(json, url, tile);
-          tile.isTileset = true;
-          tile.state = "ready";
-        })
-        .catch(() => (tile.state = "failed"))
-        .finally(done);
-      return;
-    }
-    this.#parts
-      .loadTile(url)
-      .then((content) => {
-        const gl = this.#gl;
-        if (!gl || generation !== this.#generation) {
+    this.#source
+      .load(tile, gl)
+      .then((model) => {
+        if (generation !== this.#generation) {
+          if (model) for (const part of model.parts) this.#parts.release(gl, part.gpu);
           tile.state = "unloaded";
           return;
         }
-        // Meters of each part: east, north, up at the tile's center from the tile's transform, then
-        // RTC_CENTER and glTF's +Y up turned to +Z (a pnts is +Z up already), or each instance's matrix (RTC included).
-        const center = tile.volume.center;
-        const carto = toCartographic(center) ?? [0, 0, 0];
-        const base = multiply(rigidInverse(eastNorthUp(center)), tile.transform);
-        const parts = content.parts.map((part): GpuPart => {
-          let places: Float64Array[];
-          if (part.instances) {
-            const m = part.instances.matrices;
-            places = Array.from({ length: m.length / 16 }, (_, i) => multiply(multiply(base, m.subarray(i * 16, i * 16 + 16)), Y_UP));
-          } else {
-            const rtc = part.rtc ?? [0, 0, 0];
-            const placed = multiply(base, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...rtc, 1]);
-            places = [part.kind === "pnts" ? placed : multiply(placed, Y_UP)];
-          }
-          return { gpu: this.#parts.upload(gl, part, IDENTITY), places, batchIds: part.instances?.batchIds ?? null, properties: propertiesOf(part) };
-        });
-        tile.content = { parts, lng: carto[0], lat: carto[1], height: carto[2] } satisfies TileModel;
+        tile.content = model;
         tile.state = "ready";
-        this.#loaded.add(tile);
+        if (model) this.#loaded.add(tile);
       })
       .catch(() => (tile.state = "failed"))
-      .finally(done);
+      .finally(() => {
+        this.#loading--;
+        this.#parts.repaint();
+      });
   }
 
   #unload(tile: Tile, gl: WebGL2RenderingContext): void {
