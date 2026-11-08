@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CURVATURE_COEFF, EARTH_RADIUS, groundDistance, sight } from "../src/sight.ts";
+import { CURVATURE_COEFF, distance, EARTH_RADIUS, SEMI_MAJOR, sight } from "../src/sight.ts";
 
 const flat = (n: number, step: number) => Array.from({ length: n }, (_, i) => i * step);
 
@@ -18,7 +18,7 @@ test("sight lowers far ground by the earth's curvature as gdal_viewshed does", (
   const d = flat(201, 100);
   const sea = d.map(() => 0);
   assert.equal(sight(sea, d, 2, 0, 0).visible, true);
-  const drop = (CURVATURE_COEFF / (2 * 6378137)) * 20000 ** 2;
+  const drop = (CURVATURE_COEFF / (2 * SEMI_MAJOR)) * 20000 ** 2;
   assert.ok(drop > 26 && drop < 28);
   assert.equal(sight(sea, d, 2, 0).visible, false);
   assert.equal(sight(sea, d, 2, drop).visible, true);
@@ -29,7 +29,13 @@ test("sight refuses fewer than two samples or mismatched distances", () => {
   assert.throws(() => sight([1, 2], [0]), /two or more samples/);
 });
 
-test("groundDistance measures on Turf's sphere", () => {
-  assert.equal(groundDistance([0, 0], [0, 0]), 0);
-  assert.ok(Math.abs(groundDistance([0, 0], [1, 0]) - (Math.PI / 180) * EARTH_RADIUS) < 1e-6);
+test("sight sees a target where the observer stands", () => {
+  assert.deepEqual(sight([10, 500, 10], [0, 0, 0]), { visible: true, blockedAt: null });
+  assert.deepEqual(sight([10, 10], [0, 0], 2, -50), { visible: true, blockedAt: null });
+});
+
+test("distance measures on Turf's sphere", () => {
+  assert.equal(distance([0, 0], [0, 0]), 0);
+  assert.ok(Math.abs(distance([0, 0], [1, 0]) - (Math.PI / 180) * EARTH_RADIUS) < 1e-6);
+  assert.equal(distance([0, 0], [361, 0]), distance([0, 0], [1, 0]));
 });

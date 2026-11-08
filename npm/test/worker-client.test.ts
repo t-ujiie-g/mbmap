@@ -97,6 +97,7 @@ test("onerror rejects every pending call and stops the worker", async () => {
   const calls = [client.call("read", {}), client.call("read", {})];
   worker.onerror!({ message: "failed to load" });
   for (const call of calls) await assert.rejects(call, /^Error: mbmap: data: failed to load$/);
+  assert.equal(client.generation, 1);
   assert.equal(worker.terminated, true);
   assert.equal(client.started, false);
   await assert.rejects(client.call("read", {}), /has not been started/);
@@ -119,9 +120,11 @@ test("onmessageerror rejects pending calls", async () => {
 test("terminate rejects pending calls and lets the client start again", async () => {
   const { client, worker } = started();
   const call = client.call("read", {});
+  const generation = client.generation;
   client.terminate();
   await assert.rejects(call, /^Error: mbmap: data: terminated$/);
   assert.equal(worker.terminated, true);
+  assert.equal(client.generation, generation + 1);
   client.start("./data-worker.js", () => ({}));
   assert.notEqual(FakeWorker.last, worker);
   const next = client.call("read", {});
