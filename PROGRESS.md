@@ -17,8 +17,8 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 149.8KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
-  | 表示ワーカー | 84.8KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
+  | 表示（メイン） | 151.7KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
+  | 表示ワーカー | 85.2KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
   | `mbmap/search` | 2.8KB | 5KB |
@@ -84,7 +84,10 @@
   - カスタムレイヤー：地球のあいだは MapLibre と同じ options（`shaderData` は地球の prelude、`modelViewProjectionMatrix` と `projectionMatrix` は地球の、`defaultProjectionData` と `getProjectionData` は地球の行列とメルカトルの fallback・地平の面・遷移）。pack test の `globe` ページで地球の prelude を通した四角形が描けることを確かめる。`custom.js` は 1.8 → 2.9KB（予算 3KB）。
   - 書き出し：地球の行列と大気の光線も分割の窓を通す。画像は不透明に固定せずストレートアルファに（地球の周りの宇宙は透明、キャンバスと同じ）。`export:golden` に `globe`（ラスタの世界、大気）と `globe-terrain`（富士山、z11）。地球では f32 の球面の座標が窓の行列で 1/100 px ほど動くので、分割の比較の許容を平均 0.05・99% 点 1 に。
   - example：3 通りのショーケースに「地球儀」の切り替え（ズーム 2 まで引く）。pack test で投影と中心を確かめる。
-  - ラベル：（並行のエージェントの結果をここに）
+  - ラベル・アイコン（並行のエージェント）：配置は地球のあいだ MapLibre と同じく純粋な地球の投影で（`globe/symbols.mbt`：`projectTileCoordinates` と地平の面での隠れ、`getPitchedTextCorrection`、`getCircleRadiusCorrection`、`getWrap`）、地平の向こうの点のラベルは置かない、線のラベルは隠れていない最長の区間を使う。シェーダーは記号とアイコンも `proj` の prelude を通す。`labels:golden` に地球の 11 場面（点、アイコン、可変アンカー、線に沿った文字、傾き 70°、遷移中のズーム 11.3・11.5）、全 67 場面が同じ。`style:golden` に地球の記号の 4 場面（許容の中）。
+  - ついでに直したもの（メルカトルでも）：ソースの maxzoom より浅いタイルでもラベルを overscale として配置していたのを、MapLibre の `overscaledZ` と同じく maxzoom を超えたときだけに。
+  - MapLibre と違うところ：記号の `*-translate` は地球では効かない。遷移中（0 < t < 1）の可変アンカーのずらしはシェーダーで混ぜたアンカーから（MapLibre は CPU で地球の投影から。配置は同じ）。地球の画面に沿う文字の深度はアンカーの z のまま（MapLibre は 0）。地図に沿う SDF アイコンの縁の gamma がメルカトルでも少し違う（平らな場面で平均 0.078、既存の差）。
+  - 大きさ：表示（メイン）149.8 → 151.7KB（ラベル、押し出し、地形、クエリ、書き出しを地球に）、表示ワーカー 84.8 → 85.2KB（押し出しの細分化、クエリの地球）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 
