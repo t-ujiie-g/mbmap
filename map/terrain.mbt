@@ -188,7 +188,7 @@ fn Map::render_terrain(
     Some(g) if g.is_globe() =>
       (
         self.globe_cover(g, 512, src.source.min_zoom, z, false),
-        { ..self.fog(), opacity: 0.0 },
+        { ..self.fog(), opacity: 0.0, },
       )
     _ => (t.covering_tiles(src.source.min_zoom, z), self.fog())
   }
@@ -215,8 +215,8 @@ fn Map::render_terrain(
     for d in drawn {
       let (mesh, target, at, part) = d
       self.renderer.draw_terrain(
-      mesh, target, at, scale, skirt, per_meter, part, fog,
-    )
+        mesh, target, at, scale, skirt, per_meter, part, fog,
+      )
     }
     self.renderer.end_depth()
   } else {

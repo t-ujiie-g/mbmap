@@ -1,8 +1,7 @@
 ///|
-/// A tile on the globe: `matrix`, its mercator corner and unit size `tile`, the horizon `plane`,
-/// `transition`, the radians a unit spans (`angle`), MapLibre's `pixel_scale` and `radius_correction`
-/// (`getCircleRadiusCorrection`), a layer's `translate` (tile units) and its mesh's `granularity`,
-/// reaching the `north`/`south` pole.
+/// A tile on the globe: `matrix`, its mercator corner and unit size `tile`, the horizon `plane`, `transition`,
+/// the radians a unit spans (`angle`), MapLibre's `pixel_scale` and `radius_correction`, a layer's `translate`
+/// (tile units) and its mesh's `granularity`, reaching the `north`/`south` pole.
 pub(all) struct GlobeTile {
   matrix : FixedArray[Double]
   tile : FixedArray[Double]

@@ -64,10 +64,9 @@ pub fn Renderer::clear_depth(self : Renderer) -> Unit {
 }
 
 ///|
-/// Draws a terrain tile: `mesh`'s elevations (`dem`: offset x, y and scale in
-/// the DEM tile) lift its grid by `scale` world pixels per meter, with skirts
-/// `skirt` deep, `target` on it and `fog` in the distance; on the globe the lift
-/// is taken back to meters by `per_meter`, the world pixels of a meter.
+/// Draws a terrain tile: `mesh`'s elevations (`dem`: offset x, y and scale in the DEM tile) lift its
+/// grid by `scale` world pixels per meter (meters on the globe, by `per_meter`), with skirts `skirt`
+/// deep, `target` on it and `fog` in the distance.
 pub fn Renderer::draw_terrain(
   self : Renderer,
   mesh : Mesh,

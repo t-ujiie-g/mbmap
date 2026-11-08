@@ -21,6 +21,7 @@ fn query_request(
   for v in m {
     w.f64(v)
   }
+  w.u8(0)
   for _ in 0..<2 {
     w.u32(points.length())
     for p in points {

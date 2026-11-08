@@ -3,10 +3,9 @@
 // Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
-/// A query of one tile, fields in docs/FORMATS.md "Query"'s order: `matrix` also takes
-/// heights in world pixels (`meters` per meter); on the globe, `globe` is its matrix
-/// and the tile's mercator corner and unit size; `layers` None asks for all; `symbols`
-/// are (layer, feature) pairs of the labels the main thread found under the query.
+/// A query of one tile, fields as docs/FORMATS.md "Query" lists them: `matrix` takes heights in
+/// world pixels (`meters` per meter), `globe` the globe's matrix and the tile's mercator corner and
+/// unit size; `layers` None asks for all; `symbols` are (layer, feature) of labels found there.
 priv struct Query {
   zoom : Double
   pixels : Double

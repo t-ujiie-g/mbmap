@@ -44,9 +44,11 @@ pub fn Map::trigger_repaint(self : Map) -> Unit {
 /// the globe's matrix and projection, its near and far planes and its clipping plane.
 fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
   let t = self.transform
-  let windowed = (m : @core.Mat4) => match self.window {
-    None => m
-    Some(w) => w.matrix.mul(m)
+  let windowed = (m : @core.Mat4) => {
+    match self.window {
+      None => m
+      Some(w) => w.matrix.mul(m)
+    }
   }
   let (p, near, far) = t.projection()
   let out = [..windowed(t.world_matrix()).m, ..windowed(p).m]
