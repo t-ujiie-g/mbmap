@@ -1,2 +1,2 @@
-// Draco meshes as glTF's KHR_draco_mesh_compression stores them, decoded as Draco 1.5.7's decoder
-// (draco3d 1.5.7) does. Pure MoonBit, tested on every backend.
+// Draco meshes (as glTF's KHR_draco_mesh_compression stores them) and point clouds, decoded as
+// Draco 1.5.7's decoder (draco3d 1.5.7) does. Pure MoonBit, tested on every backend.

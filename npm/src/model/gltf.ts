@@ -345,14 +345,16 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
         }
         if (!attributes.POSITION) continue;
         let indices: Primitive["indices"];
+        const mode = int(p.mode, 4);
+        // A Draco point cloud has no faces: its points are drawn in order.
         if (decoded) {
-          indices = decoded.indices;
+          if (mode !== 0 || decoded.indices.length) indices = decoded.indices;
         } else if (p.indices !== undefined) {
           const a = readAccessor(int(p.indices, -1));
           if (!(a.data instanceof Uint8Array || a.data instanceof Uint16Array || a.data instanceof Uint32Array) || a.size !== 1) throw new Error("indices must be unsigned scalars");
           indices = a.data;
         }
-        const primitive: Primitive = { attributes, indices, mode: int(p.mode, 4), material: p.material === undefined ? -1 : int(p.material, -1), matrix };
+        const primitive: Primitive = { attributes, indices, mode, material: p.material === undefined ? -1 : int(p.material, -1), matrix };
         const featureIds = readFeatureIds(p, attributes);
         if (featureIds.length) primitive.featureIds = featureIds;
         primitives.push(primitive);

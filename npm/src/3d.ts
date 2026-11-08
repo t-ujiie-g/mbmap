@@ -6,6 +6,7 @@ import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/
 import { Y_UP, triple, mercatorFrame, mul, placement, points, sphereFrame, value, type Value } from "./model/place";
 import type { Tile } from "./tiles/tileset";
 import type { TilesEngine, TilesParts } from "./3d-tiles";
+import { crsArg, type Crs } from "./crs";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
@@ -50,6 +51,8 @@ const client = new WorkerClient("3d");
 function start(options: ModelOptions): void {
   client.start(options.workerUrl ?? new URL("./3d-worker.js", import.meta.url), (page) => ({
     wasm: wasmUrl(options.wasmUrl ?? new URL("./3d.wasm", import.meta.url), page),
+    proj: wasmUrl(new URL("./proj.wasm", import.meta.url), page),
+    prj: new URL("./prjwkt.js", import.meta.url).href,
   }));
 }
 
@@ -170,10 +173,166 @@ export function modelLayer(options: ModelLayerOptions): ModelLayer {
 }
 
 /**
- * A 3D Tiles layer: the tileset at `url` (3D Tiles 1.0 or 1.1: b3dm and glTF contents, external
- * tilesets, implicit tiling), refined while a tile's screen-space error exceeds
+ * A point cloud layer: the uncompressed LAS (1.0 to 1.4) at `url`, its coordinates in the file's CRS
+ * (GeoTIFF keys or WKT) or `crs` (an EPSG code or PROJ string, which wins), heights as they are, thinned to at most `maxPoints` (default 2 000 000),
+ * drawn `pointSize` CSS pixels across (default 2) colored by `color`: `"rgb"` (the file's colors, the
+ * default when it has them), `"height"`, `"intensity"` or `"classification"` (ASPRS classes).
+ */
+export interface PointCloudLayerOptions extends ModelOptions {
+  id: string;
+  url: string | URL;
+  crs?: Crs;
+  maxPoints?: number;
+  pointSize?: number;
+  color?: "rgb" | "height" | "intensity" | "classification";
+}
+
+/** A LAS point cloud as the 3D worker gives it: meters east, north, up of `center` ([lng, lat, h]). */
+interface LoadedCloud {
+  center: [number, number, number];
+  positions: Float32Array;
+  colors: Uint8Array | null;
+  intensity: Uint16Array;
+  classification: Uint8Array;
+  count: number;
+  kept: number;
+  bounds: [number, number, number, number, number, number];
+}
+
+/** ASPRS classes 0 to 18 (LAS 1.4 R15 table 17) as RGB: unclassified gray, ground brown, vegetation greens, buildings orange, water blue. */
+const CLASS_COLORS = [
+  [150, 150, 150], [170, 170, 170], [150, 110, 70], [140, 200, 110], [70, 160, 70], [30, 110, 40], [230, 130, 60], [230, 60, 200], [160, 160, 160],
+  [70, 130, 220], [200, 180, 60], [90, 90, 90], [200, 200, 200], [240, 220, 40], [240, 220, 40], [180, 60, 60], [240, 220, 40], [120, 100, 160], [230, 60, 200],
+];
+/** Low to high, as viridis' ends and middle. */
+const RAMP = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
+
+/** The RGB of each point for `mode`. */
+function cloudColors(c: LoadedCloud, mode: PointCloudLayerOptions["color"]): Uint8Array {
+  if ((mode ?? "rgb") === "rgb" && c.colors) return c.colors;
+  const n = c.kept;
+  const out = new Uint8Array(3 * n);
+  if (mode === "classification") {
+    for (let i = 0; i < n; i++) out.set(CLASS_COLORS[c.classification[i]] ?? CLASS_COLORS[1], 3 * i);
+    return out;
+  }
+  const value = mode === "intensity" ? (i: number) => c.intensity[i] : (i: number) => c.positions[3 * i + 2];
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < n; i++) {
+    lo = Math.min(lo, value(i));
+    hi = Math.max(hi, value(i));
+  }
+  for (let i = 0; i < n; i++) {
+    const t = hi > lo ? ((value(i) - lo) / (hi - lo)) * (RAMP.length - 1) : 0;
+    const k = Math.min(Math.floor(t), RAMP.length - 2);
+    const f = t - k;
+    for (let j = 0; j < 3; j++) out[3 * i + j] = Math.round(RAMP[k][j] + (RAMP[k + 1][j] - RAMP[k][j]) * f);
+  }
+  return out;
+}
+
+const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+/** A custom layer drawing a LAS point cloud (`pointCloudLayer`). */
+export class PointCloudLayer implements CustomLayerInterface {
+  readonly id: string;
+  readonly type = "custom" as const;
+  readonly renderingMode = "3d" as const;
+  /** Settles once the cloud is read (or rejects with why it was not). */
+  readonly ready: Promise<void>;
+  #options: PointCloudLayerOptions;
+  #cloud: LoadedCloud | null = null;
+  #map: { triggerRepaint?: () => void } | null = null;
+  #gl: WebGL2RenderingContext | null = null;
+  #program: ModelProgram | null = null;
+  #gpu: GpuModel | null = null;
+
+  constructor(options: PointCloudLayerOptions) {
+    this.id = options.id;
+    this.#options = options;
+    start(options);
+    const url = new URL(options.url, document.baseURI).href;
+    const crs = options.crs === undefined ? Promise.resolve(undefined) : crsArg(options.crs, "3d");
+    this.ready = crs.then((c) => client.call<LoadedCloud>("las", { url, maxPoints: options.maxPoints ?? 2_000_000, crs: c })).then((c) => {
+      this.#cloud = c;
+      if (this.#gl) this.#upload(this.#gl);
+      this.#map?.triggerRepaint?.();
+    });
+  }
+
+  /** [west, south, east, north] of the points read, once `ready`. */
+  get bounds(): [number, number, number, number] | null {
+    const b = this.#cloud?.bounds;
+    return b ? [b[0], b[1], b[3], b[4]] : null;
+  }
+
+  /** The points in the file and those drawn (after thinning to `maxPoints`), once `ready`. */
+  get counts(): { file: number; drawn: number } | null {
+    return this.#cloud ? { file: this.#cloud.count, drawn: this.#cloud.kept } : null;
+  }
+
+  /** Colors the points by `mode` from now on. */
+  setColor(mode: NonNullable<PointCloudLayerOptions["color"]>): void {
+    this.#options = { ...this.#options, color: mode };
+    if (this.#gl && this.#cloud) this.#upload(this.#gl);
+    this.#map?.triggerRepaint?.();
+  }
+
+  onAdd(map: unknown, gl: WebGL2RenderingContext): void {
+    this.#map = map as { triggerRepaint?: () => void };
+    this.#gl = gl;
+    this.#program = new ModelProgram(gl);
+    if (this.#cloud) this.#upload(gl);
+  }
+
+  onRemove(_map: unknown, gl: WebGL2RenderingContext): void {
+    if (this.#gpu) releaseModel(gl, this.#gpu);
+    this.#program?.delete(gl);
+    this.#gpu = null;
+    this.#program = null;
+    this.#map = null;
+    this.#gl = null;
+  }
+
+  #upload(gl: WebGL2RenderingContext): void {
+    const c = this.#cloud!;
+    if (this.#gpu) releaseModel(gl, this.#gpu);
+    const color = { data: cloudColors(c, this.#options.color), size: 3, type: gl.UNSIGNED_BYTE, normalized: true };
+    const position = { data: c.positions, size: 3, type: gl.FLOAT, normalized: false };
+    const material = { color: [1, 1, 1, 1] as [number, number, number, number], alphaMode: "OPAQUE" as const, alphaCutoff: 0.5, doubleSided: true, unlit: true };
+    const primitive = { attributes: { POSITION: position, COLOR_0: color }, mode: gl.POINTS, material: 0, matrix: IDENTITY };
+    this.#gpu = uploadModel(gl, { primitives: [primitive], materials: [material], images: [] }, IDENTITY);
+  }
+
+  render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
+    const program = this.#program;
+    const gpu = this.#gpu;
+    const c = this.#cloud;
+    if (!program || !gpu || !c) return;
+    const d = options.defaultProjectionData;
+    const t = d.projectionTransition;
+    const [lng, lat, h] = c.center;
+    const css = (gl.canvas as HTMLCanvasElement).clientWidth || gl.drawingBufferWidth;
+    program.begin(gl, t);
+    program.setPointSize((this.#options.pointSize ?? 2) * (gl.drawingBufferWidth / css));
+    const flat = mul(t > 0 ? d.fallbackMatrix : d.mainMatrix, mercatorFrame(lng, lat, h));
+    const globe = t > 0 ? mul(options.modelViewProjectionMatrix, sphereFrame(lng, lat, h)) : null;
+    program.draw(gl, gpu, IDENTITY, flat, globe, 1, false, 0);
+  }
+}
+
+/** A custom layer for `map.addLayer` drawing the LAS point cloud at `options.url`. */
+export function pointCloudLayer(options: PointCloudLayerOptions): PointCloudLayer {
+  return new PointCloudLayer(options);
+}
+
+/**
+ * A 3D Tiles layer: the tileset at `url` (3D Tiles 1.0 or 1.1: b3dm, i3dm, pnts, cmpt and glTF contents,
+ * external tilesets, implicit tiling), refined while a tile's screen-space error exceeds
  * `maximumScreenSpaceError` (default 8, as loaders.gl), `height` meters added to every tile (to set
- * ellipsoidal heights on the map's ground), at most `maximumLoadedTiles` contents kept (default 256).
+ * ellipsoidal heights on the map's ground), at most `maximumLoadedTiles` contents kept (default 256),
+ * points drawn `pointSize` CSS pixels across (default 2).
  */
 export interface TilesLayerOptions extends ModelOptions {
   id: string;
@@ -181,6 +340,7 @@ export interface TilesLayerOptions extends ModelOptions {
   maximumScreenSpaceError?: number;
   height?: number;
   maximumLoadedTiles?: number;
+  pointSize?: number;
 }
 
 /** A feature of a 3D tile: its tile's `path`, its `id` in the tile and its `properties`. */

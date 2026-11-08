@@ -1,6 +1,6 @@
-// A 3D tile's content for mbmap/3d: Batched 3D Model (b3dm), Instanced 3D Model (i3dm), Composite
-// (cmpt) of those, or a glTF itself (3D Tiles 1.1). Import-free.
-import { readGltf, type DracoDecode, type MeshoptDecode, type Model } from "../model/gltf.ts";
+// A 3D tile's content for mbmap/3d: Batched 3D Model (b3dm), Instanced 3D Model (i3dm), Point Cloud
+// (pnts), Composite (cmpt) of those, or a glTF itself (3D Tiles 1.1). Import-free.
+import { readGltf, type Attribute, type DracoDecode, type Material, type MeshoptDecode, type Model } from "../model/gltf.ts";
 import { cross, eastNorthUp, normalize, type Vec3 } from "./geo.ts";
 
 const B3DM = 0x6d643362;
@@ -9,12 +9,14 @@ const CMPT = 0x74706d63;
 const PNTS = 0x73746e70;
 const GLB = 0x46546c67;
 const B3DM_HEADER_BYTES = 28;
+const PNTS_HEADER_BYTES = 28;
 const I3DM_HEADER_BYTES = 32;
 const CMPT_HEADER_BYTES = 16;
 const INNER_HEADER_BYTES = 12;
 export const MAX_INSTANCES = 1_000_000;
 export const MAX_COMPOSITE_TILES = 65536;
 export const MAX_COMPOSITE_DEPTH = 8;
+export const MAX_POINTS = 10_000_000;
 
 /**
  * An i3dm's instances: `matrices` (16 f64 per instance, column-major) take the model, its glTF +Y up
@@ -27,11 +29,12 @@ export interface Instances {
 }
 
 /**
- * A tile's model with `rtc` (RTC_CENTER or CESIUM_RTC; null for i3dm), its batch and an i3dm's `instances`.
- * A cmpt has an empty model, its inner contents in `parts` (nested cmpts flattened) and `skipped` pnts.
+ * A tile's model with `rtc` (RTC_CENTER or CESIUM_RTC, plus a pnts' QUANTIZED_VOLUME_OFFSET; null for i3dm),
+ * its batch and an i3dm's `instances`. A pnts' model is one POINTS primitive in tile coordinates (+Z up,
+ * unlike glTF). A cmpt has an empty model and its inner contents in `parts` (nested cmpts flattened).
  */
 export interface TileContent {
-  kind: "b3dm" | "i3dm" | "cmpt" | "glTF";
+  kind: "b3dm" | "i3dm" | "pnts" | "cmpt" | "glTF";
   model: Model;
   rtc: [number, number, number] | null;
   batchLength: number;
@@ -39,7 +42,6 @@ export interface TileContent {
   batchBinary: Uint8Array;
   instances: Instances | null;
   parts: TileContent[];
-  skipped: number;
 }
 
 type Json = Record<string, any>;
@@ -128,10 +130,10 @@ function perInstance(ft: Json, bin: Uint8Array, name: string, type: string, n: n
   return out;
 }
 
-/** AttributeCompression.octDecodeInRange(x, y, 65535) of Cesium, as @loaders.gl/math has it. */
-function octDecode(x: number, y: number): Vec3 {
-  let vx = (x / 65535) * 2 - 1;
-  let vy = (y / 65535) * 2 - 1;
+/** AttributeCompression.octDecodeInRange(x, y, range) of Cesium, as @loaders.gl/math has it. */
+function octDecode(x: number, y: number, range = 65535): Vec3 {
+  let vx = (x / range) * 2 - 1;
+  let vy = (y / range) * 2 - 1;
   const vz = 1 - (Math.abs(vx) + Math.abs(vy));
   if (vz < 0) {
     const old = vx;
@@ -234,7 +236,7 @@ function readInstances(ft: Json, bin: Uint8Array): Instances {
 const empty = (): Model => ({ primitives: [], materials: [], images: [] });
 
 function content(kind: TileContent["kind"], model: Model, rest: Partial<TileContent> = {}): TileContent {
-  return { kind, model, rtc: null, batchLength: 0, batchTable: null, batchBinary: new Uint8Array(0), instances: null, parts: [], skipped: 0, ...rest };
+  return { kind, model, rtc: null, batchLength: 0, batchTable: null, batchBinary: new Uint8Array(0), instances: null, parts: [], ...rest };
 }
 
 /** A b3dm's tables and its glb, or null when `bytes` is not a b3dm. */
@@ -270,6 +272,101 @@ async function readI3dm(bytes: Uint8Array, load: Load, meshopt?: MeshoptDecode, 
   return content("i3dm", model, { ...batch, instances });
 }
 
+const GL_BYTE = 5121;
+const GL_FLOAT = 5126;
+const attribute = (data: Attribute["data"], size: number, type: number, normalized = false): Attribute => ({ data, size, type, normalized });
+
+/** The Draco-compressed semantics of a pnts (3DTILES_draco_point_compression), decoded by unique id. */
+function dracoPoints(ft: Json, bin: Uint8Array, bt: Json | null, draco?: DracoDecode): { feature: Map<string, Attribute>; batch: Map<string, Attribute> } | null {
+  const ext = ft.extensions?.["3DTILES_draco_point_compression"];
+  if (!ext) return null;
+  const at = ext.byteOffset;
+  const length = ext.byteLength;
+  if (!Number.isInteger(at) || !Number.isInteger(length) || at < 0 || length < 0 || at + length > bin.length) throw new Error("the pnts' Draco data runs past the feature table");
+  if (!draco) throw new Error("Draco compression is not available");
+  const decoded = draco(bin.subarray(at, at + length));
+  const pick = (properties: unknown) => {
+    const out = new Map<string, Attribute>();
+    if (!properties || typeof properties !== "object") return out;
+    for (const [name, id] of Object.entries(properties)) {
+      const a = decoded.attributes.get(Number(id));
+      if (!a) throw new Error(`the pnts' Draco data has no attribute ${id}`);
+      out.set(name, a);
+    }
+    return out;
+  };
+  return { feature: pick(ext.properties), batch: pick(bt?.extensions?.["3DTILES_draco_point_compression"]?.properties) };
+}
+
+/** A pnts as one POINTS primitive: positions (dequantized), colors, normals and batch ids per point. */
+function readPnts(bytes: Uint8Array, draco?: DracoDecode): TileContent {
+  const t = readTables(bytes, "pnts", PNTS_HEADER_BYTES);
+  const ft = t.featureTable;
+  const bin = t.featureBinary;
+  const n = ft.POINTS_LENGTH;
+  if (!Number.isInteger(n) || n < 0) throw new Error("the pnts has no POINTS_LENGTH");
+  if (n > MAX_POINTS) throw new Error(`the pnts has more than ${MAX_POINTS} points`);
+  const compressed = dracoPoints(ft, bin, t.batchTable, draco);
+  const semantic = (name: string, type: string, size: number) => {
+    const d = compressed?.feature.get(name);
+    if (d) {
+      if (d.data.length < n * size) throw new Error(`${name} has too few values`);
+      return d.data;
+    }
+    return perInstance(ft, bin, name, type, size, n);
+  };
+  const rtc = globalFloats(ft, bin, "RTC_CENTER", 3) ?? [0, 0, 0];
+  const attributes: Record<string, Attribute> = {};
+  const position = semantic("POSITION", "FLOAT", 3);
+  if (position) {
+    attributes.POSITION = attribute(Float32Array.from(position.length > 3 * n ? Array.prototype.slice.call(position, 0, 3 * n) : position), 3, GL_FLOAT);
+  } else {
+    const quantized = semantic("POSITION_QUANTIZED", "UNSIGNED_SHORT", 3);
+    if (!quantized) throw new Error("the pnts has neither POSITION nor POSITION_QUANTIZED");
+    const offset = globalFloats(ft, bin, "QUANTIZED_VOLUME_OFFSET", 3);
+    const scale = globalFloats(ft, bin, "QUANTIZED_VOLUME_SCALE", 3);
+    if (!offset || !scale) throw new Error("POSITION_QUANTIZED needs QUANTIZED_VOLUME_OFFSET and QUANTIZED_VOLUME_SCALE");
+    // The volume's offset goes with RTC_CENTER, in f64.
+    attributes.POSITION = attribute(Float32Array.from({ length: 3 * n }, (_, i) => (quantized[i] / 65535) * scale[i % 3]), 3, GL_FLOAT);
+    for (let k = 0; k < 3; k++) rtc[k] += offset[k];
+  }
+  const rgba = semantic("RGBA", "UNSIGNED_BYTE", 4);
+  const rgb = rgba ? null : semantic("RGB", "UNSIGNED_BYTE", 3);
+  const rgb565 = rgba || rgb ? null : semantic("RGB565", "UNSIGNED_SHORT", 1);
+  if (rgba) attributes.COLOR_0 = attribute(Uint8Array.from(Array.prototype.slice.call(rgba, 0, 4 * n)), 4, GL_BYTE, true);
+  else if (rgb) attributes.COLOR_0 = attribute(Uint8Array.from(Array.prototype.slice.call(rgb, 0, 3 * n)), 3, GL_BYTE, true);
+  else if (rgb565) {
+    const c = new Uint8Array(3 * n);
+    for (let i = 0; i < n; i++) {
+      const v = rgb565[i];
+      c.set([((v >> 11) & 31) * (255 / 31), ((v >> 5) & 63) * (255 / 63), (v & 31) * (255 / 31)].map(Math.round), 3 * i);
+    }
+    attributes.COLOR_0 = attribute(c, 3, GL_BYTE, true);
+  }
+  const normal = semantic("NORMAL", "FLOAT", 3);
+  const oct = normal ? null : semantic("NORMAL_OCT16P", "UNSIGNED_BYTE", 2);
+  if (normal) attributes.NORMAL = attribute(Float32Array.from(Array.prototype.slice.call(normal, 0, 3 * n)), 3, GL_FLOAT);
+  else if (oct) attributes.NORMAL = attribute(Float32Array.from({ length: 3 * n }, (_, i) => octDecode(oct[2 * Math.floor(i / 3)], oct[2 * Math.floor(i / 3) + 1], 255)[i % 3]), 3, GL_FLOAT);
+  const ids = semantic("BATCH_ID", "UNSIGNED_SHORT", 1);
+  const batchTable = t.batchTable;
+  // Without BATCH_ID the batch table has a row per point.
+  if (ids) attributes._BATCHID = attribute(Float32Array.from(Array.prototype.slice.call(ids, 0, n)), 1, GL_FLOAT);
+  else if (batchTable) attributes._BATCHID = attribute(Float32Array.from({ length: n }, (_, i) => i), 1, GL_FLOAT);
+  const batchLength = ids ? (Number.isInteger(ft.BATCH_LENGTH) ? ft.BATCH_LENGTH : 0) : batchTable ? n : 0;
+  if (batchTable && compressed) {
+    for (const [name, a] of compressed.batch) {
+      batchTable[name] = Array.from({ length: batchLength }, (_, i) => (a.size === 1 ? a.data[i] : Array.prototype.slice.call(a.data, i * a.size, (i + 1) * a.size)));
+    }
+    delete batchTable.extensions;
+  }
+  const constant = globalFloats(ft, bin, "CONSTANT_RGBA", 4);
+  const color: Material["color"] = constant ? [constant[0] / 255, constant[1] / 255, constant[2] / 255, constant[3] / 255] : [1, 1, 1, 1];
+  const material: Material = { color, alphaMode: rgba || color[3] < 1 ? "BLEND" : "OPAQUE", alphaCutoff: 0.5, doubleSided: true, unlit: !attributes.NORMAL };
+  const matrix = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  const model: Model = { primitives: [{ attributes, mode: 0, material: 0, matrix }], materials: [material], images: [] };
+  return content("pnts", model, { rtc: [rtc[0], rtc[1], rtc[2]], batchLength, batchTable, batchBinary: t.batchBinary });
+}
+
 /** A cmpt's inner tiles, nested cmpts flattened into `parts`. */
 async function readCmpt(bytes: Uint8Array, load: Load, depth: number, meshopt?: MeshoptDecode, draco?: DracoDecode): Promise<TileContent> {
   if (depth > MAX_COMPOSITE_DEPTH) throw new Error(`cmpt tiles nest deeper than ${MAX_COMPOSITE_DEPTH}`);
@@ -289,13 +386,10 @@ async function readCmpt(bytes: Uint8Array, load: Load, depth: number, meshopt?: 
     const magic = view.getUint32(at, true);
     const inner = bytes.subarray(at, at + size);
     at += size;
-    if (magic === PNTS) {
-      out.skipped++;
-    } else if (magic === CMPT) {
+    if (magic === CMPT) {
       const nested = await readCmpt(inner, load, depth + 1, meshopt, draco);
       out.parts.push(...nested.parts);
-      out.skipped += nested.skipped;
-    } else if (magic === B3DM || magic === I3DM || magic === GLB) {
+    } else if (magic === B3DM || magic === I3DM || magic === PNTS || magic === GLB) {
       out.parts.push(await readTileContent(inner, load, meshopt, draco));
     } else {
       throw new Error("a cmpt tile is neither b3dm, i3dm, cmpt, pnts nor glTF");
@@ -305,11 +399,12 @@ async function readCmpt(bytes: Uint8Array, load: Load, depth: number, meshopt?: 
   return out;
 }
 
-/** Reads the b3dm, i3dm, cmpt, glb or glTF in `bytes`; `load` fetches URIs relative to the tile. */
+/** Reads the b3dm, i3dm, pnts, cmpt, glb or glTF in `bytes`; `load` fetches URIs relative to the tile. */
 export async function readTileContent(bytes: Uint8Array, load: Load, meshopt?: MeshoptDecode, draco?: DracoDecode): Promise<TileContent> {
   const magic = bytes.length >= 4 ? viewOf(bytes).getUint32(0, true) : 0;
   if (magic === I3DM) return readI3dm(bytes, load, meshopt, draco);
   if (magic === CMPT) return readCmpt(bytes, load, 0, meshopt, draco);
+  if (magic === PNTS) return readPnts(bytes, draco);
   const b3dm = splitB3dm(bytes);
   const model = await readGltf(b3dm ? b3dm.glb : bytes, load, meshopt, draco);
   if (!b3dm) return content("glTF", model, { rtc: model.rtc ?? null });

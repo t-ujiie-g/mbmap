@@ -1,11 +1,14 @@
 // Writes the pack test's 3D Tiles (bench/npm/pages/tiles/set/): blocks near Tokyo Station as b3dm with
 // RTC_CENTER and a batch table, glTF +Y up as 3D Tiles 1.0 wants; a root of one block per quadrant
 // refined (REPLACE) into four tiles of eight to sixteen blocks each, the first a cmpt that adds a row
-// of instanced "trees" (i3dm, east-north-up). Usage: node tiles/synthetic.mjs
+// of instanced "trees" (i3dm, east-north-up). Beside it (points/) a pnts of colored points with a row
+// per point in its batch table, ADD-refined by a glTF of points and a Draco-compressed pnts (draco3d's
+// kd-tree, a batch property compressed too). Usage: node tiles/synthetic.mjs
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Document, NodeIO } from "@gltf-transform/core";
 import { Ellipsoid } from "@math.gl/geospatial";
+import draco3d from "draco3d";
 import { ROOT } from "../lib/root.mjs";
 
 const DIR = path.join(ROOT, "bench/npm/pages/tiles/set");
@@ -175,3 +178,93 @@ const tileset = {
   },
 };
 await writeFile(path.join(DIR, "tileset.json"), JSON.stringify(tileset, null, 1) + "\n");
+
+// Points: a 40 m red and blue checkerboard of points near Tokyo Station (pnts, `kind` per point) and a
+// green ring of glTF points around it (a child, ADD).
+const POINTS_DIR = path.join(DIR, "../points");
+await mkdir(POINTS_DIR, { recursive: true });
+const PLACE = [139.7655, 35.6795];
+const prtc = ecef(...PLACE);
+const grid = [];
+for (let i = 0; i < 60; i++) for (let j = 0; j < 60; j++) grid.push([i - 30, j - 30, 2 + ((i * 7 + j * 3) % 5)]);
+const local = (e, n, u) => {
+  const m = Ellipsoid.WGS84.eastNorthUpToFixedFrame(prtc);
+  return [0, 1, 2].map((k) => m[k] * e + m[4 + k] * n + m[8 + k] * u);
+};
+const ppos = new Float32Array(grid.flatMap(([e, n, u]) => local(e, n, u)));
+const prgb = new Uint8Array(grid.flatMap(([e, n]) => (Math.floor((e + 30) / 10) + Math.floor((n + 30) / 10)) % 2 ? [220, 40, 40] : [40, 70, 220]));
+const pkind = grid.map(([e, n]) => ((Math.floor((e + 30) / 10) + Math.floor((n + 30) / 10)) % 2 ? "red" : "blue"));
+{
+  const pad = (s) => s + " ".repeat((8 - (s.length % 8)) % 8);
+  const ftBin = new Uint8Array(ppos.byteLength + prgb.byteLength + ((8 - (prgb.byteLength % 8)) % 8));
+  ftBin.set(new Uint8Array(ppos.buffer), 0);
+  ftBin.set(prgb, ppos.byteLength);
+  const ft = new TextEncoder().encode(pad(JSON.stringify({ POINTS_LENGTH: grid.length, RTC_CENTER: prtc, POSITION: { byteOffset: 0 }, RGB: { byteOffset: ppos.byteLength } })));
+  const bt = new TextEncoder().encode(pad(JSON.stringify({ kind: pkind })));
+  const out = new Uint8Array(28 + ft.length + ftBin.length + bt.length);
+  [0x73746e70, 1, out.length, ft.length, ftBin.length, bt.length, 0].forEach((x, i) => new DataView(out.buffer).setUint32(i * 4, x, true));
+  out.set(ft, 28);
+  out.set(ftBin, 28 + ft.length);
+  out.set(bt, 28 + ft.length + ftBin.length);
+  await writeFile(path.join(POINTS_DIR, "grid.pnts"), out);
+}
+{
+  const doc = new Document();
+  const buf = doc.createBuffer();
+  const ring = Array.from({ length: 360 }, (_, i) => [45 * Math.cos((i * Math.PI) / 180), 45 * Math.sin((i * Math.PI) / 180), 3]);
+  // glTF is +Y up: (east, north, up) as (east, up, -north); the tile's transform is the place's frame.
+  const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buf);
+  const prim = doc.createPrimitive()
+    .setMode(0)
+    .setAttribute("POSITION", acc("VEC3", new Float32Array(ring.flatMap(([e, n, u]) => [e, u, -n]))))
+    .setAttribute("COLOR_0", acc("VEC4", new Uint8Array(ring.flatMap(() => [30, 170, 60, 255]))).setNormalized(true));
+  doc.createScene().addChild(doc.createNode().setMesh(doc.createMesh().addPrimitive(prim)));
+  await writeFile(path.join(POINTS_DIR, "ring.glb"), await new NodeIO().writeBinary(doc));
+}
+// A yellow 20 m square of points 80 m east, Draco-compressed with a `height` per point in its batch table.
+{
+  const em = await draco3d.createEncoderModule({});
+  const square = [];
+  for (let i = 0; i < 20; i++) for (let j = 0; j < 20; j++) square.push([70 + i, j - 10, 1 + (i % 4)]);
+  const builder = new em.PointCloudBuilder();
+  const pc = new em.PointCloud();
+  const encoder = new em.Encoder();
+  const out = new em.DracoInt8Array();
+  const n = square.length;
+  const position = builder.AddFloatAttribute(pc, em.POSITION, n, 3, new Float32Array(square.flatMap(([e, nn, u]) => local(e, nn, u))));
+  const rgb = builder.AddUInt8Attribute(pc, em.COLOR, n, 3, new Uint8Array(square.flatMap(() => [240, 200, 20])));
+  const height = builder.AddFloatAttribute(pc, em.GENERIC, n, 1, new Float32Array(square.map(([, , u]) => u)));
+  encoder.SetAttributeQuantization(em.POSITION, 16);
+  encoder.SetSpeedOptions(5, 5);
+  const size = encoder.EncodePointCloudToDracoBuffer(pc, false, out);
+  const bytes = new Uint8Array(size);
+  for (let i = 0; i < size; i++) bytes[i] = out.GetValue(i) & 255;
+  [builder, pc, encoder, out].forEach((x) => em.destroy(x));
+  const pad = (s) => s + " ".repeat((8 - (s.length % 8)) % 8);
+  const ftBin = new Uint8Array(size + ((8 - (size % 8)) % 8));
+  ftBin.set(bytes);
+  const draco = { properties: { POSITION: position, RGB: rgb }, byteOffset: 0, byteLength: size };
+  const ft = new TextEncoder().encode(pad(JSON.stringify({ POINTS_LENGTH: n, RTC_CENTER: prtc, POSITION: { byteOffset: 0 }, RGB: { byteOffset: 0 }, extensions: { "3DTILES_draco_point_compression": draco } })));
+  const bt = new TextEncoder().encode(pad(JSON.stringify({ height: { byteOffset: 0, componentType: "FLOAT", type: "SCALAR" }, extensions: { "3DTILES_draco_point_compression": { properties: { height } } } })));
+  const file = new Uint8Array(28 + ft.length + ftBin.length + bt.length);
+  [0x73746e70, 1, file.length, ft.length, ftBin.length, bt.length, 0].forEach((x, i) => new DataView(file.buffer).setUint32(i * 4, x, true));
+  file.set(ft, 28);
+  file.set(ftBin, 28 + ft.length);
+  file.set(bt, 28 + ft.length + ftBin.length);
+  await writeFile(path.join(POINTS_DIR, "square.pnts"), file);
+}
+const pbox = region(PLACE[0] - 0.0006, PLACE[1] - 0.0006, PLACE[0] + 0.0011, PLACE[1] + 0.0006, 20);
+await writeFile(path.join(POINTS_DIR, "tileset.json"), JSON.stringify({
+  asset: { version: "1.1" },
+  geometricError: 100,
+  root: {
+    boundingVolume: { region: pbox },
+    geometricError: 50,
+    refine: "ADD",
+    content: { uri: "grid.pnts" },
+    children: [
+      { boundingVolume: { region: pbox }, geometricError: 0, content: { uri: "ring.glb" }, transform: [...Ellipsoid.WGS84.eastNorthUpToFixedFrame(prtc)] },
+      { boundingVolume: { region: pbox }, geometricError: 0, content: { uri: "square.pnts" } },
+    ],
+  },
+}, null, 1) + "\n");

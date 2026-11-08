@@ -15,6 +15,7 @@ import { customChecks } from "./checks/custom.mjs";
 import { modelChecks } from "./checks/model.mjs";
 import { tilesChecks } from "./checks/tiles.mjs";
 import { plateauChecks } from "./checks/plateau.mjs";
+import { pointCloudChecks } from "./checks/pointcloud.mjs";
 import { globeChecks } from "./checks/globe.mjs";
 import { cameraChecks } from "./checks/camera.mjs";
 import { controlChecks } from "./checks/controls.mjs";
@@ -53,6 +54,7 @@ const PAGES = {
   custom: "bench/npm/pages/custom/",
   model: "bench/npm/pages/model/",
   tiles: "bench/npm/pages/tiles/",
+  pointcloud: "bench/npm/pages/pointcloud/",
   globe: "bench/npm/pages/globe/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
@@ -471,6 +473,10 @@ const checks = {
 
   async tiles(page) {
     return tilesChecks(page);
+  },
+
+  async pointcloud(page) {
+    return pointCloudChecks(page);
   },
 
   async plateau(page) {

@@ -1,0 +1,2097 @@
+{
+  "env": {
+    "loaders": "@loaders.gl/las 4.5.4",
+    "pdalFiles": 6
+  },
+  "results": [
+    {
+      "case": "1.0 format 0, scale 0",
+      "parser": "laz-rs",
+      "points": 452,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 0",
+      "parser": "laz-perf",
+      "points": 452,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 378,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 378,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 2",
+      "parser": "laz-rs",
+      "points": 538,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 2",
+      "parser": "laz-perf",
+      "points": 538,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 67,
+      "same": true
+    },
+    {
+      "case": "1.0 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 67,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 0",
+      "parser": "laz-rs",
+      "points": 518,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 0",
+      "parser": "laz-perf",
+      "points": 518,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 514,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 514,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 2",
+      "parser": "laz-rs",
+      "points": 119,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 2",
+      "parser": "laz-perf",
+      "points": 119,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 419,
+      "same": true
+    },
+    {
+      "case": "1.0 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 419,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 0",
+      "parser": "laz-rs",
+      "points": 256,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 0",
+      "parser": "laz-perf",
+      "points": 256,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 518,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 518,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 2",
+      "parser": "laz-rs",
+      "points": 282,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 2",
+      "parser": "laz-perf",
+      "points": 282,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 437,
+      "same": true
+    },
+    {
+      "case": "1.1 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 437,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 0",
+      "parser": "laz-rs",
+      "points": 263,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 0",
+      "parser": "laz-perf",
+      "points": 263,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 71,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 71,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 2",
+      "parser": "laz-rs",
+      "points": 528,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 2",
+      "parser": "laz-perf",
+      "points": 528,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 421,
+      "same": true
+    },
+    {
+      "case": "1.1 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 421,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 0",
+      "parser": "laz-rs",
+      "points": 243,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 0",
+      "parser": "laz-perf",
+      "points": 243,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 245,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 245,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 2",
+      "parser": "laz-rs",
+      "points": 76,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 2",
+      "parser": "laz-perf",
+      "points": 76,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 202,
+      "same": true
+    },
+    {
+      "case": "1.2 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 202,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 0",
+      "parser": "laz-rs",
+      "points": 189,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 0",
+      "parser": "laz-perf",
+      "points": 189,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 323,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 323,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 2",
+      "parser": "laz-rs",
+      "points": 246,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 2",
+      "parser": "laz-perf",
+      "points": 246,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 80,
+      "same": true
+    },
+    {
+      "case": "1.2 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 80,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 53,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 0, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 53,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 76,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 76,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 152,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 2, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 152,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 288,
+      "same": true
+    },
+    {
+      "case": "1.2 format 2, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 288,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 571,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 0, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 571,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 441,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 441,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 329,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 2, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 329,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 437,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 437,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 0",
+      "parser": "laz-rs",
+      "points": 109,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 0",
+      "parser": "laz-perf",
+      "points": 109,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 122,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 122,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 2",
+      "parser": "laz-rs",
+      "points": 364,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 2",
+      "parser": "laz-perf",
+      "points": 364,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 512,
+      "same": true
+    },
+    {
+      "case": "1.3 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 512,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 0",
+      "parser": "laz-rs",
+      "points": 36,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 0",
+      "parser": "laz-perf",
+      "points": 36,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 403,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 403,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 2",
+      "parser": "laz-rs",
+      "points": 492,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 2",
+      "parser": "laz-perf",
+      "points": 492,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 33,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-perf",
+      "points": 33,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 128,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 0, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 128,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 77,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 77,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 570,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 2, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 570,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 595,
+      "same": true
+    },
+    {
+      "case": "1.3 format 2, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 595,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 354,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 0, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 354,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 295,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 295,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 152,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 2, 16-bit colors",
+      "parser": "laz-perf",
+      "points": 152,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 507,
+      "same": true
+    },
+    {
+      "case": "1.3 format 3, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-perf",
+      "points": 507,
+      "same": true
+    },
+    {
+      "case": "1.3 format 4, scale 0",
+      "parser": "laz-rs",
+      "points": 209,
+      "same": true
+    },
+    {
+      "case": "1.3 format 4, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 199,
+      "same": true
+    },
+    {
+      "case": "1.3 format 4, scale 2",
+      "parser": "laz-rs",
+      "points": 153,
+      "same": true
+    },
+    {
+      "case": "1.3 format 4, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 455,
+      "same": true
+    },
+    {
+      "case": "1.3 format 5, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 291,
+      "same": true
+    },
+    {
+      "case": "1.3 format 5, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 193,
+      "same": true
+    },
+    {
+      "case": "1.3 format 5, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 285,
+      "same": true
+    },
+    {
+      "case": "1.3 format 5, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 56,
+      "same": true
+    },
+    {
+      "case": "1.4 format 0, scale 0",
+      "parser": "laz-rs",
+      "points": 414,
+      "same": true
+    },
+    {
+      "case": "1.4 format 0, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 520,
+      "same": true
+    },
+    {
+      "case": "1.4 format 0, scale 2",
+      "parser": "laz-rs",
+      "points": 203,
+      "same": true
+    },
+    {
+      "case": "1.4 format 0, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 237,
+      "same": true
+    },
+    {
+      "case": "1.4 format 1, scale 0",
+      "parser": "laz-rs",
+      "points": 412,
+      "same": true
+    },
+    {
+      "case": "1.4 format 1, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 348,
+      "same": true
+    },
+    {
+      "case": "1.4 format 1, scale 2",
+      "parser": "laz-rs",
+      "points": 74,
+      "same": true
+    },
+    {
+      "case": "1.4 format 1, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 111,
+      "same": true
+    },
+    {
+      "case": "1.4 format 2, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 554,
+      "same": true
+    },
+    {
+      "case": "1.4 format 2, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 148,
+      "same": true
+    },
+    {
+      "case": "1.4 format 2, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 222,
+      "same": true
+    },
+    {
+      "case": "1.4 format 2, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 183,
+      "same": true
+    },
+    {
+      "case": "1.4 format 3, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 509,
+      "same": true
+    },
+    {
+      "case": "1.4 format 3, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 180,
+      "same": true
+    },
+    {
+      "case": "1.4 format 3, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 394,
+      "same": true
+    },
+    {
+      "case": "1.4 format 3, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 588,
+      "same": true
+    },
+    {
+      "case": "1.4 format 4, scale 0",
+      "parser": "laz-rs",
+      "points": 505,
+      "same": true
+    },
+    {
+      "case": "1.4 format 4, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 85,
+      "same": true
+    },
+    {
+      "case": "1.4 format 4, scale 2",
+      "parser": "laz-rs",
+      "points": 413,
+      "same": true
+    },
+    {
+      "case": "1.4 format 4, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 271,
+      "same": true
+    },
+    {
+      "case": "1.4 format 5, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 426,
+      "same": true
+    },
+    {
+      "case": "1.4 format 5, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 342,
+      "same": true
+    },
+    {
+      "case": "1.4 format 5, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 302,
+      "same": true
+    },
+    {
+      "case": "1.4 format 5, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 264,
+      "same": true
+    },
+    {
+      "case": "1.4 format 6, scale 0",
+      "parser": "laz-rs",
+      "points": 462,
+      "same": true
+    },
+    {
+      "case": "1.4 format 6, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 75,
+      "same": true
+    },
+    {
+      "case": "1.4 format 6, scale 2",
+      "parser": "laz-rs",
+      "points": 243,
+      "same": true
+    },
+    {
+      "case": "1.4 format 6, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 201,
+      "same": true
+    },
+    {
+      "case": "1.4 format 7, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 572,
+      "same": true
+    },
+    {
+      "case": "1.4 format 7, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 180,
+      "same": true
+    },
+    {
+      "case": "1.4 format 7, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 168,
+      "same": true
+    },
+    {
+      "case": "1.4 format 7, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 344,
+      "same": true
+    },
+    {
+      "case": "1.4 format 8, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 246,
+      "same": true
+    },
+    {
+      "case": "1.4 format 8, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 495,
+      "same": true
+    },
+    {
+      "case": "1.4 format 8, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 519,
+      "same": true
+    },
+    {
+      "case": "1.4 format 8, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 267,
+      "same": true
+    },
+    {
+      "case": "1.4 format 9, scale 0",
+      "parser": "laz-rs",
+      "points": 497,
+      "same": true
+    },
+    {
+      "case": "1.4 format 9, scale 1, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 272,
+      "same": true
+    },
+    {
+      "case": "1.4 format 9, scale 2",
+      "parser": "laz-rs",
+      "points": 270,
+      "same": true
+    },
+    {
+      "case": "1.4 format 9, scale 3, 13 extra bytes",
+      "parser": "laz-rs",
+      "points": 283,
+      "same": true
+    },
+    {
+      "case": "1.4 format 10, scale 0, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 246,
+      "same": true
+    },
+    {
+      "case": "1.4 format 10, scale 1, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 366,
+      "same": true
+    },
+    {
+      "case": "1.4 format 10, scale 2, 16-bit colors",
+      "parser": "laz-rs",
+      "points": 60,
+      "same": true
+    },
+    {
+      "case": "1.4 format 10, scale 3, 13 extra bytes, 8-bit colors in 16",
+      "parser": "laz-rs",
+      "points": 424,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, 500 points thinned to 167",
+      "parser": "laz-rs",
+      "points": 167,
+      "same": true
+    },
+    {
+      "case": "1.2 format 3, 500 points thinned to 167",
+      "parser": "laz-perf",
+      "points": 167,
+      "same": true
+    },
+    {
+      "case": "1.4 format 7, 500 points thinned to 72",
+      "parser": "laz-rs",
+      "points": 72,
+      "same": true
+    },
+    {
+      "case": "1.4 format 10, 1000 points thinned to 999",
+      "parser": "laz-rs",
+      "points": 500,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, 10 points thinned to 1",
+      "parser": "laz-rs",
+      "points": 1,
+      "same": true
+    },
+    {
+      "case": "1.3 format 1, 10 points thinned to 1",
+      "parser": "laz-perf",
+      "points": 1,
+      "same": true
+    },
+    {
+      "case": "crs: GeoTIFF keys, projected",
+      "parser": "laz-rs",
+      "points": 3,
+      "same": true
+    },
+    {
+      "case": "crs: GeoTIFF keys, projected",
+      "parser": "laz-perf",
+      "points": 3,
+      "same": true
+    },
+    {
+      "case": "crs: GeoTIFF keys, projected",
+      "same": true,
+      "crs": {
+        "epsg": 6677
+      }
+    },
+    {
+      "case": "crs: GeoTIFF keys, geographic",
+      "parser": "laz-rs",
+      "points": 3,
+      "same": true
+    },
+    {
+      "case": "crs: GeoTIFF keys, geographic",
+      "parser": "laz-perf",
+      "points": 3,
+      "same": true
+    },
+    {
+      "case": "crs: GeoTIFF keys, geographic",
+      "same": true,
+      "crs": {
+        "epsg": 4326
+      }
+    },
+    {
+      "case": "crs: WKT in an EVLR, its bit set",
+      "parser": "laz-rs",
+      "points": 3,
+      "same": true
+    },
+    {
+      "case": "crs: WKT in an EVLR, its bit set",
+      "same": true,
+      "crs": {
+        "epsg": 6677,
+        "wkt": "PROJCS[\"JGD2011 / Japan Plane Rectangular CS IX\",GEOGCS[\"JGD2011\",AUTHORITY[\"EPSG\",\"6668\"]],UNIT[\"metre\",1],AUTHORITY[\"EPSG\",\"6677\"]]"
+      }
+    },
+    {
+      "case": "crs: WKT and keys, WKT bit clear",
+      "parser": "laz-rs",
+      "points": 3,
+      "same": true
+    },
+    {
+      "case": "crs: WKT and keys, WKT bit clear",
+      "same": true,
+      "crs": {
+        "epsg": 2451
+      }
+    },
+    {
+      "case": "PDAL simple.las",
+      "parser": "laz-rs",
+      "points": 1065,
+      "same": true
+    },
+    {
+      "case": "PDAL simple.las",
+      "parser": "laz-perf",
+      "points": 1065,
+      "same": true
+    },
+    {
+      "case": "PDAL simple.las thinned to 100",
+      "parser": "laz-rs",
+      "points": 97,
+      "same": true
+    },
+    {
+      "case": "PDAL simple.las thinned to 100",
+      "parser": "laz-perf",
+      "points": 97,
+      "same": true
+    },
+    {
+      "case": "PDAL simple.las crs",
+      "same": true,
+      "crs": null
+    },
+    {
+      "case": "PDAL test_epsg_4326.las",
+      "parser": "laz-rs",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4326.las",
+      "parser": "laz-perf",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4326.las thinned to 100",
+      "parser": "laz-rs",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4326.las thinned to 100",
+      "parser": "laz-perf",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4326.las crs",
+      "same": true,
+      "crs": {
+        "epsg": 4326
+      }
+    },
+    {
+      "case": "PDAL test_epsg_4047.las",
+      "parser": "laz-rs",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4047.las",
+      "parser": "laz-perf",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4047.las thinned to 100",
+      "parser": "laz-rs",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4047.las thinned to 100",
+      "parser": "laz-perf",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_epsg_4047.las crs",
+      "same": true,
+      "crs": {
+        "epsg": 4047
+      }
+    },
+    {
+      "case": "PDAL test_utm17.las",
+      "parser": "laz-rs",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_utm17.las",
+      "parser": "laz-perf",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_utm17.las thinned to 100",
+      "parser": "laz-rs",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_utm17.las thinned to 100",
+      "parser": "laz-perf",
+      "points": 10,
+      "same": true
+    },
+    {
+      "case": "PDAL test_utm17.las crs",
+      "same": true,
+      "crs": {
+        "epsg": 32617
+      }
+    },
+    {
+      "case": "PDAL extrabytes.las",
+      "parser": "laz-rs",
+      "points": 1065,
+      "same": true
+    },
+    {
+      "case": "PDAL extrabytes.las thinned to 100",
+      "parser": "laz-rs",
+      "points": 97,
+      "same": true
+    },
+    {
+      "case": "PDAL extrabytes.las crs",
+      "same": true,
+      "crs": null
+    },
+    {
+      "case": "PDAL 4_6.las",
+      "parser": "laz-rs",
+      "points": 198975,
+      "same": true
+    },
+    {
+      "case": "PDAL 4_6.las thinned to 100",
+      "parser": "laz-rs",
+      "points": 100,
+      "same": true
+    },
+    {
+      "case": "PDAL 4_6.las crs",
+      "same": true,
+      "crs": {
+        "epsg": 2903,
+        "wkt": "COMPD_CS[\"unknown\",PROJCS[\"NAD83(HARN) / New Mexico Central (ftUS)\",GEOGCS[\"NAD83(HARN)\",DATUM[\"NAD83_High_Accuracy_Reference_Network\",SPHEROID[\"GRS 1980\",6378137,298.2572221008916,AUTHORITY[\"EPSG\",\"7019\"]],AUTHORITY[\"EPSG\",\"6152\"]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4152\"]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",31],PARAMETER[\"central_meridian\",-106.25],PARAMETER[\"scale_factor\",0.9999],PARAMETER[\"false_easting\",1640416.66666667],PARAMETER[\"false_northing\",0],UNIT[\"US survey foot\",0.3048006096012192,AUTHORITY[\"EPSG\",\"9003\"]],AUTHORITY[\"EPSG\",\"2903\"]],VERT_CS[\"unknown\",VERT_DATUM[\"unknown\",2005,AUTHORITY[\"EPSG\",\"5703\"]],UNIT[\"US survey foot\",0.3048006096012192,AUTHORITY[\"EPSG\",\"9003\"]],AXIS[\"Up\",UP],AUTHORITY[\"EPSG\",\"5103\"]]]"
+      }
+    },
+    {
+      "case": "worker: pack test fixture (GeoTIFF keys 6677)",
+      "same": true,
+      "diff": null,
+      "worst": 0.000003847131594625353
+    },
+    {
+      "case": "worker: pack test fixture thinned to 10000",
+      "same": true,
+      "diff": null,
+      "worst": 0.000003835955752151676
+    },
+    {
+      "case": "worker: no CRS, crs 6677 given",
+      "same": true,
+      "diff": null,
+      "worst": 0.000007640492185601033
+    },
+    {
+      "case": "worker: GeoTIFF keys 4326 overridden by a definition",
+      "same": true,
+      "diff": null,
+      "worst": 0.000007628511383472869
+    },
+    {
+      "case": "worker: WKT without an authority (prjwkt)",
+      "same": true,
+      "diff": null,
+      "worst": 0.000007610920874867588
+    },
+    {
+      "case": "worker: compound WKT, horizontal 6677",
+      "same": true,
+      "diff": null,
+      "worst": 0.000007647909995966984
+    },
+    {
+      "case": "worker: GeoTIFF keys 4326, no proj.wasm",
+      "same": true,
+      "diff": null,
+      "worst": 0.0004871785640716553
+    },
+    {
+      "case": "worker refuses: no CRS anywhere",
+      "same": true,
+      "error": "LAS: the file states no CRS; give crs"
+    },
+    {
+      "case": "worker refuses: LAZ",
+      "same": true,
+      "error": "LAS: LAZ (compressed LAS) is not supported"
+    },
+    {
+      "case": "worker refuses: maxPoints 0",
+      "same": true,
+      "error": "invalid arguments"
+    },
+    {
+      "case": "worker refuses: maxPoints past MAX_LAS_POINTS",
+      "same": true,
+      "error": "invalid arguments"
+    },
+    {
+      "case": "worker refuses: crs a short definition",
+      "same": true,
+      "error": "invalid arguments"
+    },
+    {
+      "case": "worker refuses: crs a string",
+      "same": true,
+      "error": "invalid arguments"
+    },
+    {
+      "case": "worker refuses: out of reach of the CRS",
+      "same": true,
+      "error": "LAS: coordinates out of reach of the CRS"
+    },
+    {
+      "case": "hostile: LAZ point format bit 7",
+      "same": true,
+      "refused": "LAS: LAZ (compressed LAS) is not supported",
+      "ms": 0
+    },
+    {
+      "case": "hostile: LAZ point format bit 6",
+      "same": true,
+      "refused": "LAS: LAZ (compressed LAS) is not supported",
+      "ms": 0
+    },
+    {
+      "case": "hostile: laszip VLR",
+      "same": true,
+      "refused": "LAS: LAZ (compressed LAS) is not supported",
+      "ms": 0
+    },
+    {
+      "case": "hostile: not LASF",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: version 1.5",
+      "same": true,
+      "refused": "LAS: version 1.5 is not supported",
+      "ms": 0
+    },
+    {
+      "case": "hostile: version 2.0",
+      "same": true,
+      "refused": "LAS: version 2.0 is not supported",
+      "ms": 0
+    },
+    {
+      "case": "hostile: point format 11",
+      "same": true,
+      "refused": "LAS: point data format 11 is not supported",
+      "ms": 0
+    },
+    {
+      "case": "hostile: record length shorter than the format",
+      "same": true,
+      "refused": "LAS: record length 20 is shorter than format 3's 34 bytes",
+      "ms": 0
+    },
+    {
+      "case": "hostile: header size 100",
+      "same": true,
+      "refused": "LAS: header size 100 does not fit version 1.2",
+      "ms": 0
+    },
+    {
+      "case": "hostile: header size 227 for 1.4",
+      "same": true,
+      "refused": "LAS: header size 227 does not fit version 1.4",
+      "ms": 0
+    },
+    {
+      "case": "hostile: header size past the file",
+      "same": true,
+      "refused": "LAS: header size 4000 does not fit version 1.2",
+      "ms": 0
+    },
+    {
+      "case": "hostile: point offset past the file",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: point offset inside the header",
+      "same": true,
+      "refused": "LAS: point data inside the header",
+      "ms": 0
+    },
+    {
+      "case": "hostile: legacy count past the file",
+      "same": true,
+      "refused": "LAS: 4294967295 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 64-bit count past the file",
+      "same": true,
+      "refused": "LAS: 1099511627776 points of 36 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 64-bit count 2^63",
+      "same": true,
+      "refused": "LAS: point count out of range",
+      "ms": 0
+    },
+    {
+      "case": "hostile: VLR count 2^32 - 1",
+      "same": true,
+      "refused": "LAS: more than 4096 VLRs",
+      "ms": 0
+    },
+    {
+      "case": "hostile: VLR count past the file",
+      "same": true,
+      "refused": "LAS: VLR 4 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: VLR length past the file",
+      "same": true,
+      "refused": "LAS: VLR 0 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: EVLR offset past the file",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: EVLR length past the file",
+      "same": true,
+      "refused": "LAS: EVLR 0 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: EVLR count 2^32 - 1",
+      "same": true,
+      "refused": "LAS: more than 4096 EVLRs",
+      "ms": 0
+    },
+    {
+      "case": "hostile: scale NaN",
+      "same": true,
+      "refused": "LAS: scale and offset must be finite",
+      "ms": 0
+    },
+    {
+      "case": "hostile: offset Infinity",
+      "same": true,
+      "refused": "LAS: scale and offset must be finite",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 0 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 37 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 74 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 111 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 148 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 185 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 222 of 1997",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 259 of 1997",
+      "same": true,
+      "refused": "LAS: VLR 0 beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 296 of 1997",
+      "same": true,
+      "refused": "LAS: VLR 0 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 333 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 370 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 407 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 444 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 481 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 518 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 555 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 592 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 629 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 666 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 703 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 740 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 777 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 814 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 851 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 888 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 925 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 962 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 999 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1036 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1073 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1110 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1147 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1184 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1221 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1258 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1295 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1332 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1369 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1406 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1443 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1480 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1517 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1554 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1591 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1628 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1665 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1702 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1739 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1776 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1813 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1850 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1887 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1924 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.2 cut at 1961 of 1997",
+      "same": true,
+      "refused": "LAS: 50 points of 34 bytes beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 0 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 37 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 74 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 111 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 148 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 185 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 222 of 2439",
+      "same": true,
+      "refused": "LAS: not a LAS file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 259 of 2439",
+      "same": true,
+      "refused": "LAS: header size 375 does not fit version 1.4",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 296 of 2439",
+      "same": true,
+      "refused": "LAS: header size 375 does not fit version 1.4",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 333 of 2439",
+      "same": true,
+      "refused": "LAS: header size 375 does not fit version 1.4",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 370 of 2439",
+      "same": true,
+      "refused": "LAS: header size 375 does not fit version 1.4",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 407 of 2439",
+      "same": true,
+      "refused": "LAS: VLR 0 beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 444 of 2439",
+      "same": true,
+      "refused": "LAS: VLR 0 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 481 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 518 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 555 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 592 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 629 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 666 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 703 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 740 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 777 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 814 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 851 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 888 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 925 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 962 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 999 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1036 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1073 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1110 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1147 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1184 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1221 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1258 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1295 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1332 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1369 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1406 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1443 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1480 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1517 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1554 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1591 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1628 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1665 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1702 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1739 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1776 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1813 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1850 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1887 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1924 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1961 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 1998 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2035 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2072 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2109 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2146 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2183 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2220 of 2439",
+      "same": true,
+      "refused": "LAS: EVLRs beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2257 of 2439",
+      "same": true,
+      "refused": "LAS: EVLR 0 beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2294 of 2439",
+      "same": true,
+      "refused": "LAS: EVLR 0 beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2331 of 2439",
+      "same": true,
+      "refused": "LAS: EVLR 0 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2368 of 2439",
+      "same": true,
+      "refused": "LAS: EVLR 0 data beyond the file",
+      "ms": 0
+    },
+    {
+      "case": "hostile: 1.4 cut at 2405 of 2439",
+      "same": true,
+      "refused": "LAS: EVLR 0 data beyond the file",
+      "ms": 0
+    }
+  ]
+}

@@ -1,5 +1,6 @@
-// mbmap/3d's i3dm and cmpt contents vs @loaders.gl/3d-tiles 4.5.4 on synthetic tiles, hostile ones
-// refused; normals, which loaders.gl ignores or refuses, vs its own loop with Cesium's orientation.
+// mbmap/3d's i3dm, pnts and cmpt contents vs @loaders.gl/3d-tiles 4.5.4 on synthetic tiles, hostile ones
+// refused; normals, which loaders.gl ignores or refuses, vs its own loop with Cesium's orientation, and
+// pnts' RGB565 and oct normals vs Cesium's decoding (loaders.gl shifts RGB565 and reads octs at 256).
 // Usage: node tiles/contents-golden.mjs; writes bench/results/tiles-contents.json.
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -263,11 +264,64 @@ for (const [name, bytes] of referenceCases) {
   record({ case: name, against: "reference (loaders.gl's loop with Cesium's orientation)", instances: ft.INSTANCES_LENGTH, same: sameNumbers([...ours.instances.matrices], ref) });
 }
 
-/** loaders.gl's inner tiles in order, nested cmpts flattened, pnts counted apart. */
-function flatten(theirs, out = { parts: [], skipped: 0 }) {
+/** Whether our pnts `o` holds loaders.gl's `t`: positions (dequantized, RTC added), colors, normals, batch ids and table. */
+function samePnts(o, t, { rgb565, oct, table, ids: written } = {}) {
+  const [p] = o.model.primitives;
+  // loaders.gl gives some attributes as {value, size} and others as the array itself.
+  const a = Object.fromEntries(Object.entries(t.attributes).map(([k, v]) => [k, v && !ArrayBuffer.isView(v) ? v : v ? { value: v, size: { positions: 3, colors: 3, normals: 3, batchIds: 1 }[k] } : null]));
+  const n = t.pointsLength;
+  const rtc = t.rtcCenter ? [...t.rtcCenter] : [0, 0, 0];
+  const offset = t.isQuantized ? t.quantizedVolumeOffset : [0, 0, 0];
+  const expected = Array.from(a.positions.value, (v, i) => (t.isQuantized ? Math.fround((v / 65535) * t.quantizedVolumeScale[i % 3]) : v) + (rtc[i % 3] + offset[i % 3]));
+  let same = o.kind === "pnts" && p.mode === 0 && sameNumbers(Array.from(p.attributes.POSITION.data, (v, i) => v + o.rtc[i % 3]), expected);
+  const colors = p.attributes.COLOR_0;
+  if (rgb565) same &&= sameNumbers([...colors.data], rgb565);
+  else if (a.colors) same &&= colors && colors.size === a.colors.size && sameNumbers([...colors.data], [...a.colors.value]);
+  else same &&= !colors;
+  if (oct) same &&= p.attributes.NORMAL.data.every((v, i) => Math.abs(v - oct[i]) < 1e-6);
+  else if (a.normals) same &&= sameNumbers([...p.attributes.NORMAL.data], [...a.normals.value]);
+  const ids = p.attributes._BATCHID;
+  if (a.batchIds) same &&= sameNumbers([...ids.data], [...a.batchIds.value]);
+  else if (t.batchTableJson) same &&= sameNumbers([...ids.data], Array.from({ length: n }, (_, i) => i));
+  else if (written) same &&= sameNumbers([...ids.data], [...written]) && o.batchLength === 5;
+  same &&= JSON.stringify(o.batchTable) === JSON.stringify(table ?? t.batchTableJson ?? null);
+  if (t.constantRGBA) same &&= sameNumbers(o.model.materials[0].color.map((c) => Math.round(c * 255)), [...t.constantRGBA]);
+  return same;
+}
+
+/** A pnts of `fields` ([semantic, typed array, componentType?]), global `json` and batch table `bt`. */
+function pntsOf(fields, json, bt) {
+  const { bin, refs } = body(fields);
+  return tile(PNTS, 28, { ...refs, ...json }, bin, bt ?? null, new Uint8Array(0), new Uint8Array(0));
+}
+
+const P = 40;
+const rgb565 = Uint16Array.from({ length: P }, () => Math.floor(65536 * rand()));
+const oct16 = Uint8Array.from({ length: 2 * P }, () => Math.floor(256 * rand()));
+const cesium565 = [...rgb565].flatMap((v) => [Math.round(((v >> 11) & 31) * (255 / 31)), Math.round(((v >> 5) & 63) * (255 / 63)), Math.round((v & 31) * (255 / 31))]);
+const cesiumOct = Array.from({ length: P }, (_, i) => [...octDecodeInRange(oct16[2 * i], oct16[2 * i + 1], 255, new Vector3())]).flat();
+// loaders.gl takes colors from a batch table's `dimensions` when points have BATCH_ID and fails without
+// one, so it reads this pnts without BATCH_ID and its table, and ours is checked against those written.
+const batchNames = { name: ["a", "b", "c", "d", "e"] };
+const quantizedFields = [["POSITION_QUANTIZED", Uint16Array.from({ length: 3 * P }, () => Math.floor(65536 * rand()))], ["RGBA", Uint8Array.from({ length: 4 * P }, () => Math.floor(256 * rand()))], ["BATCH_ID", Uint8Array.from({ length: P }, (_, i) => i % 5), "UNSIGNED_BYTE"]];
+const quantizedJson = { POINTS_LENGTH: P, QUANTIZED_VOLUME_OFFSET: TOKYO, QUANTIZED_VOLUME_SCALE: [300, 200, 100], BATCH_LENGTH: 5 };
+const quantized = [pntsOf(quantizedFields, quantizedJson, batchNames), { table: batchNames, ids: quantizedFields[2][1], theirs: pntsOf(quantizedFields.slice(0, 2), { ...quantizedJson, BATCH_LENGTH: undefined }) }];
+const pointCases = [
+  ["pnts: POSITION, RGB, NORMAL, RTC_CENTER", pntsOf([["POSITION", local(P)], ["RGB", Uint8Array.from({ length: 3 * P }, () => Math.floor(256 * rand()))], ["NORMAL", unit(P)]], { POINTS_LENGTH: P, RTC_CENTER: RTC })],
+  ["pnts: POSITION_QUANTIZED, RGBA, BATCH_ID (u8) and its table (vs the table written)", ...quantized],
+  ["pnts: ECEF POSITION, a batch table row per point, CONSTANT_RGBA", pntsOf([["POSITION", ecefPositions.slice(0, 3 * N)]], { POINTS_LENGTH: N, CONSTANT_RGBA: [10, 20, 30, 128] }, { height: Array.from({ length: N }, (_, i) => i / 2) })],
+  ["pnts: RGB565 and NORMAL_OCT16P (vs Cesium's decoding)", pntsOf([["POSITION", local(P)], ["RGB565", rgb565], ["NORMAL_OCT16P", oct16]], { POINTS_LENGTH: P }), { rgb565: cesium565, oct: cesiumOct }],
+];
+for (const [name, bytes, decoded] of pointCases) {
+  const theirs = await theirsOf(decoded?.theirs ?? bytes);
+  const ours = await readTileContent(bytes, load);
+  record({ case: name, against: decoded?.rgb565 ? "loaders.gl, colors and normals vs Cesium's decoding" : "loaders.gl", points: theirs.pointsLength, same: samePnts(ours, theirs, decoded) });
+}
+
+/** loaders.gl's inner tiles in order, nested cmpts flattened. */
+function flatten(theirs, out = { parts: [] }) {
   for (const t of theirs.tiles) {
     if (t.type === "cmpt") flatten(t, out);
-    else if (t.type === "pnts") out.skipped++;
     else out.parts.push(t);
   }
   return out;
@@ -282,7 +336,7 @@ const composites = [
 for (const [name, bytes] of composites) {
   const theirs = flatten(await theirsOf(bytes));
   const ours = await readTileContent(bytes, load);
-  let same = ours.kind === "cmpt" && ours.parts.length === theirs.parts.length && ours.skipped === theirs.skipped && ours.model.primitives.length === 0;
+  let same = ours.kind === "cmpt" && ours.parts.length === theirs.parts.length && ours.model.primitives.length === 0;
   for (const [i, t] of theirs.parts.entries()) {
     const o = ours.parts[i];
     if (!same || o.kind !== t.type) {
@@ -291,12 +345,14 @@ for (const [name, bytes] of composites) {
     }
     if (t.type === "b3dm") {
       same &&= o.batchLength === t.featureTableJson.BATCH_LENGTH && JSON.stringify(o.rtc) === JSON.stringify(t.rtcCenter ? [...t.rtcCenter] : null) && JSON.stringify(o.batchTable) === JSON.stringify(t.batchTableJson) && o.model.primitives.length === 1;
+    } else if (t.type === "pnts") {
+      same &&= samePnts(o, t);
     } else {
       const ti = theirInstances(t);
       same &&= sameNumbers([...o.instances.matrices], ti.matrices) && sameNumbers([...o.instances.batchIds], ti.batchIds);
     }
   }
-  record({ case: `cmpt: ${name}`, against: "loaders.gl", parts: theirs.parts.map((t) => t.type).join(","), skipped: theirs.skipped, same });
+  record({ case: `cmpt: ${name}`, against: "loaders.gl", parts: theirs.parts.map((t) => t.type).join(","), same });
 }
 
 // Hostile files: each must be refused with an Error, never read past its buffer or hang.
@@ -332,6 +388,12 @@ const hostile = [
   ["cmpt tilesLength absurd", withWord(cmpt([b3dm(1)]), 12, 0xffffffff)],
   ["cmpt cut short", cmpt([b3dm(1)]).subarray(0, 100)],
   ["cmpt of an unknown tile", withWord(cmpt([b3dm(1)]), 16, 0x12345678)],
+  ["POINTS_LENGTH absurd", pntsOf([["POSITION", local(1)]], { POINTS_LENGTH: 1e9 })],
+  ["POINTS_LENGTH past POSITION", pntsOf([["POSITION", local(2)]], { POINTS_LENGTH: 3 })],
+  ["POINTS_LENGTH missing", pntsOf([["POSITION", local(2)]], {})],
+  ["pnts without positions", pntsOf([["RGB", new Uint8Array(3)]], { POINTS_LENGTH: 1 })],
+  ["pnts POSITION_QUANTIZED without its volume", pntsOf([["POSITION_QUANTIZED", new Uint16Array(3)]], { POINTS_LENGTH: 1 })],
+  ["pnts Draco data past the binary", pntsOf([["POSITION", local(1)]], { POINTS_LENGTH: 1, extensions: { "3DTILES_draco_point_compression": { properties: { POSITION: 0 }, byteOffset: 0, byteLength: 1 << 20 } } })],
 ];
 for (const [name, bytes] of hostile) {
   let refused = null;

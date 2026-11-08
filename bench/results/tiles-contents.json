@@ -110,24 +110,45 @@
       "same": true
     },
     {
+      "case": "pnts: POSITION, RGB, NORMAL, RTC_CENTER",
+      "against": "loaders.gl",
+      "points": 40,
+      "same": true
+    },
+    {
+      "case": "pnts: POSITION_QUANTIZED, RGBA, BATCH_ID (u8) and its table (vs the table written)",
+      "against": "loaders.gl",
+      "points": 40,
+      "same": true
+    },
+    {
+      "case": "pnts: ECEF POSITION, a batch table row per point, CONSTANT_RGBA",
+      "against": "loaders.gl",
+      "points": 24,
+      "same": true
+    },
+    {
+      "case": "pnts: RGB565 and NORMAL_OCT16P (vs Cesium's decoding)",
+      "against": "loaders.gl, colors and normals vs Cesium's decoding",
+      "points": 40,
+      "same": true
+    },
+    {
       "case": "cmpt: b3dm and i3dm",
       "against": "loaders.gl",
       "parts": "b3dm,i3dm",
-      "skipped": 0,
       "same": true
     },
     {
       "case": "cmpt: nested cmpts",
       "against": "loaders.gl",
       "parts": "b3dm,i3dm,i3dm,i3dm,b3dm",
-      "skipped": 0,
       "same": true
     },
     {
       "case": "cmpt: with pnts",
       "against": "loaders.gl",
-      "parts": "i3dm",
-      "skipped": 2,
+      "parts": "pnts,pnts,i3dm",
       "same": true
     },
     {
@@ -244,6 +265,36 @@
       "case": "hostile: cmpt of an unknown tile",
       "same": true,
       "refused": "a cmpt tile is neither b3dm, i3dm, cmpt, pnts nor glTF"
+    },
+    {
+      "case": "hostile: POINTS_LENGTH absurd",
+      "same": true,
+      "refused": "the pnts has more than 10000000 points"
+    },
+    {
+      "case": "hostile: POINTS_LENGTH past POSITION",
+      "same": true,
+      "refused": "POSITION runs past the feature table"
+    },
+    {
+      "case": "hostile: POINTS_LENGTH missing",
+      "same": true,
+      "refused": "the pnts has no POINTS_LENGTH"
+    },
+    {
+      "case": "hostile: pnts without positions",
+      "same": true,
+      "refused": "the pnts has neither POSITION nor POSITION_QUANTIZED"
+    },
+    {
+      "case": "hostile: pnts POSITION_QUANTIZED without its volume",
+      "same": true,
+      "refused": "POSITION_QUANTIZED needs QUANTIZED_VOLUME_OFFSET and QUANTIZED_VOLUME_SCALE"
+    },
+    {
+      "case": "hostile: pnts Draco data past the binary",
+      "same": true,
+      "refused": "the pnts' Draco data runs past the feature table"
     }
   ]
 }

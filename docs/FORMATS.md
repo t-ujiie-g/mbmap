@@ -564,8 +564,9 @@ Out: `{type: "result", id, value}` or `{type: "result", id, error}`.
 
 ## Model worker messages (`model_worker/js/worker.mjs`)
 
-In: `{type: "init", wasm}` (3d.wasm, instantiated on the first load), then `{type: "call", id, op:
-"load", url}`: the glTF 2.0 model at `url` (.glb, or .gltf with its buffers and images fetched
+In: `{type: "init", wasm, proj?, prj?}` (3d.wasm, instantiated on the first load; `proj` the URL of
+proj.wasm, instantiated with `{ Math }`, and `prj` of prjwkt.js, each loaded on the first point cloud
+that needs it), then `{type: "call", id, op: "load", url}`: the glTF 2.0 model at `url` (.glb, or .gltf with its buffers and images fetched
 relative to it; http, https, blob and data URLs, without credentials), read by
 `npm/src/model/gltf.ts` with meshopt-compressed buffer views decoded by the wasm's
 `meshopt_decode(count, size, mode, filter)` (the input the compressed bytes; modes ATTRIBUTES,
@@ -573,12 +574,30 @@ TRIANGLES, INDICES as 0 to 2, filters NONE, OCTAHEDRAL, QUATERNION, EXPONENTIAL,
 returns the output length, -1 for malformed data, -2 without memory).
 
 `{type: "call", id, op: "tile", url}` reads a 3D tile's content the same way (`npm/src/tiles/content.ts`:
-b3dm, i3dm, cmpt or glTF) and answers `{parts}`: one per inner tile of a cmpt, else one, each a model with
-`rtc`, `batchLength`, `batchTable` (JSON), `batchBinary` (its binary body, copied), `instances` (an
+b3dm, i3dm, pnts, cmpt or glTF) and answers `{parts}`: one per inner tile of a cmpt, else one, each a model with
+its `kind` (`"b3dm"`, `"i3dm"`, `"pnts"`: one POINTS primitive in tile coordinates, +Z up; `"glTF"`), `rtc`
+(a pnts' QUANTIZED_VOLUME_OFFSET added), `batchLength`, `batchTable` (JSON), `batchBinary` (its binary body, copied), `instances` (an
 i3dm's `matrices`, 16 f64 per instance in tile coordinates, and `batchIds`) and `metadata` (a glTF's
 EXT_structural_metadata with copies of only the buffer views its property tables use). Feature ids
 follow the 3D Metadata specification: variable-length array offsets are element indices, 64-bit
 integers are bigints.
+
+`{type: "call", id, op: "las", url, maxPoints, crs?}` reads an uncompressed LAS 1.0 to 1.4 point cloud
+(`npm/src/model/las.ts` `readLas`; LAZ refused; fetched without credentials, at most `MAX_LAS_BYTES`):
+`maxPoints` a positive integer up to `MAX_LAS_POINTS` (more points in the file keep every k-th, k =
+ceil(count / maxPoints)), `crs` an EPSG code or a "CRS definition" (the facade's `crsArg` turns a PROJ
+string into one) overriding the file's (its GeoTIFF keys' EPSG code, or its WKT's: the top-level
+authority of the horizontal CRS, else the WKT parsed by prjwkt.js). x and y go to longitude and
+latitude through proj.wasm's `transform_coords` (`data_worker/js/crs.mjs` `transformPairs`, at most
+2^22 pairs per call; skipped for EPSG:4326 and 4979); z passes as is (meters only when the file's
+are). It answers `{center: [lng, lat, h], positions, colors, intensity, classification, count, kept,
+bounds: [west, south, minH, east, north, maxH]}`: `center` the middle of `bounds` (the kept points',
+in degrees and the file's heights), `positions` a Float32Array of east, north, up meters per kept point
+from `center` through the WGS 84 east-north-up frame there (`npm/src/tiles/geo.ts`, in f64, then
+rounded), `colors` a Uint8Array of r, g, b per point (16-bit LAS colors divided by 256 unless none is
+over 255) or null for point formats without colors, `intensity` a Uint16Array, `classification` a
+Uint8Array (the 5-bit class of formats 0 to 5, the byte of 6 to 10), `count` the points in the file;
+the typed arrays transferred. A file without a CRS and no `crs` is an error.
 
 Out: `{type: "result", id, value: {primitives, materials, images}}` (`Model` of `gltf.ts` with each
 image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred), or
@@ -586,7 +605,8 @@ image as an ImageBitmap, not premultiplied; typed arrays and bitmaps transferred
 
 ## Draco output (`draco/output.mbt`, written by `model_worker`'s `draco_decode`)
 
-A mesh of KHR_draco_mesh_compression decoded by `@draco.decode_mesh`; all little-endian:
+A Draco mesh (KHR_draco_mesh_compression) or point cloud (face count 0, no indices) decoded by
+`@draco.decode`; all little-endian:
 
 | Bytes | Content |
 | --- | --- |
@@ -596,8 +616,9 @@ A mesh of KHR_draco_mesh_compression decoded by `@draco.decode_mesh`; all little
 | per attribute | its data, `p` × `c` values of its data type (quantized and octahedral attributes as FLOAT32, dequantized; draco3d's `GetAttributeDataArrayForAllPoints` in the attribute's own type), padded with zeros to a multiple of 4 bytes |
 
 `draco_decode()` reads the input (the buffer view's bytes) and returns the output length, -1 for
-data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes past `@draco.MAX_FACES`,
-`MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`), -2 without memory.
+data draco3d 1.5.7 refuses (and bitstreams before 2.0, or meshes and point clouds past
+`@draco.MAX_FACES`, `MAX_POINTS`, `MAX_ATTRIBUTES`, `MAX_ATTRIBUTE_BYTES`, `MAX_KD_DIMENSIONS`), -2
+without memory.
 
 ## Services worker messages (`services_worker/js/worker.mjs`)
 
