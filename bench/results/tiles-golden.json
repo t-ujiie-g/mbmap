@@ -1,0 +1,207 @@
+{
+  "env": {
+    "loaders": "@loaders.gl/tiles 4.5.4"
+  },
+  "results": [
+    {
+      "tileset": "boxes",
+      "view": "high",
+      "same": true,
+      "selected": 27,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "boxes",
+      "view": "tilted",
+      "same": true,
+      "selected": 145,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "boxes",
+      "view": "low",
+      "same": true,
+      "selected": 17,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "boxes",
+      "view": "street",
+      "same": true,
+      "selected": 131,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "boxes",
+      "view": "far",
+      "same": true,
+      "selected": 5,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "spheres",
+      "view": "high",
+      "same": true,
+      "selected": 73,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "spheres",
+      "view": "tilted",
+      "same": true,
+      "selected": 48,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "spheres",
+      "view": "low",
+      "same": true,
+      "selected": 47,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "spheres",
+      "view": "street",
+      "same": true,
+      "selected": 14,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "spheres",
+      "view": "far",
+      "same": true,
+      "selected": 11,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "quadtree",
+      "view": "high",
+      "same": true,
+      "selected": 9,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "quadtree",
+      "view": "tilted",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "quadtree",
+      "view": "low",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "quadtree",
+      "view": "street",
+      "same": true,
+      "selected": 9,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "quadtree",
+      "view": "far",
+      "same": true,
+      "selected": 2,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "octree",
+      "view": "high",
+      "same": true,
+      "selected": 81,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "octree",
+      "view": "tilted",
+      "same": true,
+      "selected": 19,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "octree",
+      "view": "low",
+      "same": true,
+      "selected": 6,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "octree",
+      "view": "street",
+      "same": true,
+      "selected": 32,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "octree",
+      "view": "far",
+      "same": true,
+      "selected": 69,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "plateau-chiyoda",
+      "view": "high",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "plateau-chiyoda",
+      "view": "tilted",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "plateau-chiyoda",
+      "view": "low",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "plateau-chiyoda",
+      "view": "street",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    },
+    {
+      "tileset": "plateau-chiyoda",
+      "view": "far",
+      "same": true,
+      "selected": 1,
+      "onlyOurs": [],
+      "onlyTheirs": []
+    }
+  ]
+}

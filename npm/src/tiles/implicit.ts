@@ -99,13 +99,14 @@ export async function expandImplicit(header: Record<string, any>, base: string, 
   const bits = octree ? 3 : 2;
   const maximumLevel = Number.isFinite(imp.availableLevels) ? imp.availableLevels - 1 : imp.maximumLevel;
   const subtreeLevels = imp.subtreeLevels;
-  const subtreeTemplate = new URL(imp.subtrees?.uri ?? "", base).href;
-  const contentTemplate = typeof header.content?.uri === "string" ? new URL(header.content.uri, base).href : "";
+  // Templates are resolved once filled in: `new URL` would percent-encode their braces.
+  const subtreeTemplate = String(imp.subtrees?.uri ?? "");
+  const contentTemplate = typeof header.content?.uri === "string" ? header.content.uri : "";
   const root = header.boundingVolume ?? {};
   const rootError = header.geometricError;
   let count = 0;
   const subtreeAt = async (level: number, x: number, y: number, z: number) => {
-    const url = template(subtreeTemplate, level, x, y, z);
+    const url = new URL(template(subtreeTemplate, level, x, y, z), base).href;
     return readSubtree(await load(url), (uri) => load(new URL(uri, url).href));
   };
   type Parent = { morton: number; local: number; lx: number; ly: number; lz: number };
@@ -136,7 +137,7 @@ export async function expandImplicit(header: Record<string, any>, base: string, 
     }
     if (!available(next.tile, index)) return null;
     if (++count > MAX_IMPLICIT_TILES) throw new Error("the implicit tileset has too many tiles");
-    const uri = available(next.content, index) ? template(contentTemplate, level, x, y, z) : "";
+    const uri = available(next.content, index) && contentTemplate ? new URL(template(contentTemplate, level, x, y, z), base).href : "";
     const children: Record<string, any>[] = [];
     for (let i = 0; i < perTile; i++) {
       const c = await visit(next, nextAt, nextParent, i);
