@@ -177,6 +177,18 @@ test("openSlpk reads the whole file when ranges are refused, and finds the size 
   await check(file, () => openSlpk("https://x/a.slpk", hidden.fetchRange), "hash");
 });
 
+test("openSlpk reads the whole file when the server refuses a suffix range longer than it (HTTP 416)", async () => {
+  const file = slpk(FILES, { hash: true });
+  let requests = 0;
+  const fetchRange: FetchRange = async (_url, init) => {
+    requests++;
+    return new Headers(init.headers).get("range") ? new Response(null, { status: 416 }) : new Response(file.slice(), { status: 200 });
+  };
+  const s = await check(file, () => openSlpk("https://x/a.slpk", fetchRange));
+  assert.equal(s.mode, "whole");
+  assert.equal(requests, 2);
+});
+
 test("openSlpk coalesces requests for the same entry and keeps recent ones", async () => {
   const file = slpk(FILES, { hash: true, filler: 3000 });
   const { fetchRange, log } = server(file);

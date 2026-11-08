@@ -181,7 +181,7 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 6360,
+      "bytes": 6387,
       "budget": 10000
     },
     {
@@ -191,12 +191,17 @@
     },
     {
       "name": "I3S (loaded by mbmap/3d with the first i3sLayer)",
-      "bytes": 6630,
+      "bytes": 7923,
       "budget": 10000
     },
     {
+      "name": "SLPK (loaded with the first i3sLayer of an .slpk)",
+      "bytes": 4519,
+      "budget": 6000
+    },
+    {
       "name": "3d worker",
-      "bytes": 43072,
+      "bytes": 43803,
       "budget": 50000
     },
     {
@@ -211,7 +216,7 @@
     },
     {
       "name": "zip archives (loaded by the data worker with the first one)",
-      "bytes": 1175,
+      "bytes": 1255,
       "budget": 2000
     },
     {

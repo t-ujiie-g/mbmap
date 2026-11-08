@@ -85,7 +85,9 @@ const memory = (bytes: Uint8Array): Source => ({ size: bytes.length, mode: "whol
 
 /** An HTTP source: the tail asked for by a suffix range; a 200 answer is the whole file, kept in memory. */
 async function http(url: string, fetchRange: FetchRange): Promise<{ source: Source; tail?: Uint8Array }> {
-  const res = await fetchRange(url, { headers: { Range: `bytes=-${TAIL_BYTES}` } });
+  let res = await fetchRange(url, { headers: { Range: `bytes=-${TAIL_BYTES}` } });
+  // Some servers refuse a suffix longer than the file (HTTP 416) instead of sending all of it.
+  if (res.status === 416) res = await fetchRange(url, {});
   if (res.status === 200) return { source: memory(await body(res, MAX_SLPK_BYTES)) };
   if (res.status !== 206) fail(`${url}: HTTP ${res.status}`);
   const tail = await body(res, TAIL_BYTES);

@@ -25,7 +25,7 @@ test("rejects dotfiles, NUL bytes and malformed escapes", () => {
   }
 });
 
-test("byteRange takes one range, clamps its end and refuses others", () => {
+test("byteRange takes one range or a suffix, clamps them to the file and refuses others", () => {
   assert.deepEqual(byteRange("bytes=0-99", 1000), [0, 99]);
   assert.deepEqual(byteRange("bytes=900-", 1000), [900, 999]);
   assert.deepEqual(byteRange("bytes=900-5000", 1000), [900, 999]);
@@ -33,6 +33,9 @@ test("byteRange takes one range, clamps its end and refuses others", () => {
   assert.equal(byteRange("bytes=1000-", 1000), "bad");
   assert.equal(byteRange("bytes=0-1,5-9", 1000), "bad");
   assert.equal(byteRange("items=0-1", 1000), "bad");
+  assert.deepEqual(byteRange("bytes=-100", 1000), [900, 999]);
+  assert.deepEqual(byteRange("bytes=-5000", 1000), [0, 999]);
+  assert.equal(byteRange("bytes=-0", 1000), "bad");
 });
 
 test("answers a request target that is no URL with 400 and goes on serving", async () => {
