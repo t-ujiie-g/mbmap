@@ -87,15 +87,16 @@ async function i3s({ url, geometry, buffer, texture, textureBytes, layer, node }
 const PCSL_TYPES = { UInt8: Uint8Array, UInt16: Uint16Array, UInt32: Uint32Array, Int8: Int8Array, Int16: Int16Array, Int32: Int32Array, Float32: Float32Array, Float64: Float64Array };
 
 /**
- * An I3S point cloud node: its LEPCC xyz (longitude, latitude, height) in f32 east, north, up meters
+ * An I3S point cloud node (each resource a URL or its bytes): its LEPCC xyz (longitude, latitude, height) in f32 east, north, up meters
  * around `center`, and the attributes asked for (`rgb` and `intensity` LEPCC-coded, `classification`
  * a plain array of `classType` values).
  */
 async function pcsl({ url, center, rgb, intensity, classification, classType }) {
-  const str = (v) => v === undefined || typeof v === "string";
-  if (typeof url !== "string" || !Array.isArray(center) || center.length !== 3 || !center.every(Number.isFinite) || ![rgb, intensity, classification].every(str)) throw new Error("invalid arguments");
+  const str = (v) => v === undefined || typeof v === "string" || v instanceof Uint8Array;
+  if (!str(url) || url === undefined || !Array.isArray(center) || center.length !== 3 || !center.every(Number.isFinite) || ![rgb, intensity, classification].every(str)) throw new Error("invalid arguments");
   const codec = lepcc(await instance());
-  const get = (u) => (u === undefined ? undefined : fetchBytes(new URL(u), MAX_I3S_BYTES).then((b) => gunzip(b, MAX_I3S_BYTES)));
+  // URLs, or the bytes an SLPK gave the main thread.
+  const get = (u) => (u === undefined ? undefined : (u instanceof Uint8Array ? Promise.resolve(u) : fetchBytes(new URL(u), MAX_I3S_BYTES)).then((b) => gunzip(b, MAX_I3S_BYTES)));
   const [xyzBytes, rgbBytes, intensityBytes, classBytes] = await Promise.all([get(url), get(rgb), get(intensity), get(classification)]);
   const xyz = codec.xyz(xyzBytes);
   const count = xyz.length / 3;
@@ -233,7 +234,7 @@ onmessage = async (e) => {
     wasmUrl = msg.wasm;
     urls.proj = msg.proj;
     urls.prj = msg.prj;
-  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && (typeof msg.url === "string" || msg.op === "i3s")) {
+  } else if (msg?.type === "call" && wasmUrl !== null && Number.isInteger(msg.id) && Object.hasOwn(OPS, msg.op) && (typeof msg.url === "string" || msg.op === "i3s" || msg.op === "pcsl")) {
     try {
       const value = await OPS[msg.op](msg);
       postMessage({ type: "result", id: msg.id, value }, transferables(value));
