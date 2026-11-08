@@ -27,11 +27,9 @@ pub let xmlns_namespace : String = "http://www.w3.org/2000/xmlns/"
 pub let xml_namespace : String = "http://www.w3.org/XML/1998/namespace"
 
 ///|
-/// A parsed document: nodes numbered in document order, so an element's
-/// descendants are the nodes after it up to its `end`. Per node, `names` holds
-/// the element's name id (or `text_name`, `cdata_name`, `document_name`);
-/// `starts`/`stops` its text's byte range, or an element's attribute range;
-/// `nss` an element's namespace id (-1: none).
+/// A parsed document, nodes in document order (an element's descendants follow it
+/// up to its `end`); per node a name id (or `text_name`, ...), the text's byte or
+/// the element's attribute range in `starts`/`stops`, and a namespace id (-1: none).
 pub struct Document {
   priv src : Bytes
   priv names : Array[Int32]

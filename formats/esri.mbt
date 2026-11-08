@@ -2,11 +2,9 @@
 // Systems Research Institute, Inc. See NOTICE.
 
 ///|
-/// Reads an ArcGIS REST feature set (a query's `f=json`) as @terraformer/arcgis's
-/// `arcgisToGeoJSON` makes GeoJSON of it: rings wound as RFC 7946 wants and holes
-/// given to the outer ring that holds them; each feature's id from `objectIdFieldName`,
-/// else `OBJECTID` or `FID`. Gives the table and whether `exceededTransferLimit` is set.
-/// `slow_number` as `read_geojson`'s.
+/// Reads an ArcGIS REST feature set (`f=json`) as @terraformer/arcgis's
+/// `arcgisToGeoJSON` does (ids from `objectIdFieldName`, else `OBJECTID` or `FID`),
+/// with whether `exceededTransferLimit` is set; `slow_number` as `read_geojson`'s.
 pub fn read_esri_json(
   bytes : BytesView,
   slow_number~ : (Int32, Int32) -> Double,
@@ -369,10 +367,9 @@ fn boxes_meet(a : FixedArray[Double], b : FixedArray[Double]) -> Bool {
 }
 
 ///|
-/// terraformer's `convertRingsToGeoJSON`: rings closed; clockwise ones are outer
-/// rings, wound counter-clockwise; the others holes, wound clockwise, given to the
-/// last outer ring that holds them (else one they cross, else made outer rings).
-/// `steps` counts the edge and point comparisons of a read: false once past `MAX_RING_STEPS`.
+/// terraformer's `convertRingsToGeoJSON` (clockwise rings outer, holes to the last
+/// outer ring holding them, else one they cross); false once the comparisons
+/// `steps` counts pass `MAX_RING_STEPS`.
 fn esri_rings(
   rings : Array[Array[Double]],
   s : Shapes,

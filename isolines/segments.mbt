@@ -133,10 +133,8 @@ fn first_at(
 }
 
 ///|
-/// Turf's stitching of segments into contours: from the first segment left,
-/// repeatedly the first one starting where the contour ends (appended) or
-/// ending where it starts (prepended). Indexed by end point instead of
-/// Turf's scan of the list, with the same result. Contours as flat x, y.
+/// Turf's stitching of segments into flat x, y contours, indexed by end point
+/// instead of Turf's scan of the list (the same result).
 fn join(seg : Array[Double]) -> Array[Array[Double]] {
   let count = seg.length() / 4
   let by_start = index_by(seg, 0)

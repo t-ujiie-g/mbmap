@@ -6,20 +6,9 @@ fn work_ok(g : Grid, breaks : Int32) -> Bool {
 }
 
 ///|
-/// Turf's `isolines(grid, breaks, { zProperty })` over the table's Point rows
-/// and their `z_property` values: a MultiLineString row per break, in order,
-/// with `z_property` set to the break (no geometry where it meets no cell).
-/// As Turf's `gridToMatrix`, points form rows by latitude (south to north,
-/// each west to east, ties in table order) of equal length, at least 2 x 2;
-/// rows need not line up, since positions in the matrix are used, rescaled to
-/// the points' bounding box. Missing, null, false, "", 0 and NaN values are 0.
-/// Turf's `commonProperties` and `breaksProperties` are left to the caller.
-/// None where Turf throws (rows other than Points, too few or uneven rows, no
-/// rows); for values Turf keeps as non-numbers (true, a non-empty string),
-/// whose JavaScript coercions are not followed; for non-finite coordinates,
-/// which Turf sorts inconsistently; and past `MAX_GRID_POINTS`, `MAX_BREAKS`,
-/// `MAX_CELL_BREAKS`, `MAX_SEGMENTS` and `MAX_ABS_VALUE` (grid values and
-/// finite breaks).
+/// Turf's `isolines(grid, breaks, { zProperty })` over Point rows gridded as its
+/// `gridToMatrix` does: a MultiLineString row per break. None where Turf throws,
+/// for values it keeps as non-numbers or non-finite coordinates, and past the caps.
 pub fn isolines(
   t : @geom.Table,
   breaks : Array[Double],

@@ -117,11 +117,9 @@ pub fn TiffError::message(self : TiffError) -> String {
 }
 
 ///|
-/// One image (IFD) as geotiff's `GeoTIFFImage` sees it: `blocks` across and down, each
-/// `block_width` x `block_height` pixels (a strip is as wide as the image); per sample `bits` and
-/// `formats` (1 unsigned, 2 signed, 3 float); `offsets` and `counts` per block (per sample too
-/// with `planar` 2); the geo tags' values (empty when absent), the GeoKeys' EPSG code (0 for
-/// none) and raster type, and `nodata` (GDAL_NODATA's text).
+/// One image (IFD) as geotiff's `GeoTIFFImage` sees it: blocks (a strip as wide as the image),
+/// per sample `bits` and `formats` (1 unsigned, 2 signed, 3 float), `offsets` and `counts` per
+/// block (and sample with `planar` 2), geo tags (empty when absent) and `epsg` (0 for none).
 pub struct Image {
   width : Int32
   height : Int32
