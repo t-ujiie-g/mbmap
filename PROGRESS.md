@@ -48,6 +48,7 @@ Phase 19 で足したものを中心に、プロジェクト全体との重な�
 - **大きさ**：解析ワーカー 29.9 → 29.7KB、relate.wasm 26.5 → 26.8KB、surface.wasm 28.1 → 28.7KB（線分の予算）、`mbmap/analysis` 7.7 → 7.8KB、表示ワーカー 80.5KB、表示（メイン）133.7KB。
 - **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 341、`npm --prefix bench test`、ゴールデン（viewshed・relate・shapes・surface・route・analysis・classify・fields・expression・geojson・cluster・style・labels・query・color）すべて同じ、`npm:pack` 通過。
 - **残り**：振る舞いの候補（フィールド演算が編集のたびにデータ全体を `getData`/`setData` する、タイルの境の道路のつなぎ、自然分類の最大の級が 1 つの値だけになる）は Phase 20 の前に扱いを決める。
+  - タイルの境の道路（1 段目）：`querySourceFeatures` の地物に MapLibre と同じく元のタイル `tile: {z, x, y}` を付けた（`query:golden` も比べて 447 すべて同じ）。example の経路は各道路を自分のタイルの範囲で切り（`examples/shared/tile-lines.js`、緩衝帯の重なりを除く）、ズームが混ざるときはいちばん深いタイルだけを使う。pack test で切り方と経路（572 m）を確かめる。表示（メイン）133.7KB（+21 バイト）。2 段目は `network({ snap })`。
 
 ### Phase 19 の速さの比較（2026-11-08、M2、Node 22.23.4）
 

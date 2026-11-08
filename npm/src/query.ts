@@ -3,12 +3,13 @@
 // Imports only camera.ts (by its extension), so that `npm test` can load it.
 import { type PointLike, toPoint } from "./camera.ts";
 
-/** A GeoJSON feature as a query returns it. */
+/** A GeoJSON feature as a query returns it; `querySourceFeatures` adds `tile`, the source tile it came from (MapLibre's canonical tile). */
 export interface GeoJSONFeature {
   type: "Feature";
   id?: number | string;
   geometry: { type: string; coordinates: unknown } | null;
   properties: Record<string, unknown>;
+  tile?: { z: number; x: number; y: number };
 }
 
 /** One tile's answer from the engine: each hit's layer id, feature index, depth (extrusions) and feature. */
