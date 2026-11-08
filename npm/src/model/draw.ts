@@ -24,6 +24,7 @@ uniform float u_t;
 uniform mat3 u_normal;
 uniform mat3 u_uv;
 uniform int u_uv_set;
+uniform float u_point;
 out vec3 v_enu;
 out vec3 v_normal;
 out vec2 v_uv;
@@ -37,6 +38,7 @@ void main() {
   v_uv = (u_uv * vec3(u_uv_set == 1 ? a_uv1 : a_uv0, 1.0)).xy;
   v_color = a_color;
   vec4 f = u_flat * p;
+  gl_PointSize = u_point;
   gl_Position = u_t > 0.999 ? u_globe * p : u_t > 0.0 ? mix(f, u_globe * p, u_t) : f;
 }`;
 
@@ -56,8 +58,10 @@ uniform float u_opacity;
 uniform vec3 u_light;
 uniform vec2 u_pick;
 uniform bool u_picking;
+uniform float u_point;
 out vec4 o;
 void main() {
+  if (u_point > 0.0 && length(gl_PointCoord - 0.5) > 0.5) discard;
   if (u_picking) {
     float f = clamp(floor(v_feature + 0.5), 0.0, 65535.0);
     o = vec4(u_pick, floor(f / 256.0) / 255.0, mod(f, 256.0) / 255.0);
@@ -73,7 +77,7 @@ void main() {
   o = vec4(c.rgb * lit * a, a);
 }`;
 
-const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking"] as const;
+const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point"] as const;
 type Uniforms = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
 /** A primitive on the GPU: its vertex array, how to draw it, and what it is drawn with. */
@@ -91,6 +95,7 @@ export interface Mesh {
 /** Where each attribute goes; a feature's id (`_BATCHID` in b3dm, EXT_mesh_features' `_FEATURE_ID_0`) at 5, for picking. */
 const ATTRIBUTE_LOCATIONS: Record<string, number> = { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2, TEXCOORD_1: 3, COLOR_0: 4, _BATCHID: 5, _FEATURE_ID_0: 5 };
 const DEFAULTS: Record<number, number[]> = { 1: [0, 0, 1, 0], 2: [0, 0, 0, 0], 3: [0, 0, 0, 0], 4: [1, 1, 1, 1], 5: [0, 0, 0, 0] };
+const POINTS = 0;
 const IDENTITY3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 /** A model on the GPU: its meshes and textures. */
@@ -143,7 +148,8 @@ export function uploadModel(gl: WebGL2RenderingContext, model: DrawableModel, ax
     gl.bindVertexArray(null);
     const material = model.materials[p.material];
     const matrix = mul(axis, p.matrix);
-    const shading = material?.unlit ? 0 : p.attributes.NORMAL ? 1 : 2;
+    // Points without normals have no surface to light.
+    const shading = material?.unlit ? 0 : p.attributes.NORMAL ? 1 : p.mode === POINTS ? 0 : 2;
     meshes.push({ vao, buffers, mode: p.mode, count, indexType, matrix, material, shading });
   }
   return { meshes, textures };
@@ -162,6 +168,7 @@ export function releaseModel(gl: WebGL2RenderingContext, model: GpuModel): void 
 export class ModelProgram {
   #program: WebGLProgram;
   #u: Uniforms;
+  #pointSize = 2;
 
   constructor(gl: WebGL2RenderingContext) {
     const shader = (type: number, source: string) => {
@@ -183,6 +190,11 @@ export class ModelProgram {
   /** While picking, what the next draws write besides their feature id: `id` (0 to 65535) in two bytes. */
   setPickId(gl: WebGL2RenderingContext, id: number): void {
     gl.uniform2f(this.#u.u_pick, Math.floor(id / 256) / 255, (id % 256) / 255);
+  }
+
+  /** The diameter points are drawn with from the next draw on, in device pixels. */
+  setPointSize(size: number): void {
+    this.#pointSize = Math.max(1, size);
   }
 
   delete(gl: WebGL2RenderingContext): void {
@@ -226,6 +238,7 @@ export class ModelProgram {
     gl.uniformMatrix3fv(u.u_normal, false, normalMatrix(matrix));
     gl.uniform4fv(u.u_color, mat?.color ?? [1, 1, 1, 1]);
     gl.uniform1i(u.u_shading, m.shading);
+    gl.uniform1f(u.u_point, m.mode === POINTS ? this.#pointSize : 0);
     gl.uniform1f(u.u_cutoff, mat?.alphaMode === "MASK" ? mat.alphaCutoff : -1);
     const tex = mat?.texture;
     const texture = tex ? model.textures[tex.image] : undefined;

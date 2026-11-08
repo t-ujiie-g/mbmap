@@ -246,6 +246,102 @@ test("an i3dm's glTF by URI loads beside it, and broken i3dm are refused", async
 });
 
 /** A cmpt of `tiles` back to back. */
+/** A pnts of feature table `ft` and `bin`, and batch table `bt` (JSON) when given. */
+function pnts(ft: object, bin: Uint8Array, bt?: object): Uint8Array {
+  const pad = (t: string) => t + " ".repeat((8 - (t.length % 8)) % 8);
+  const f = new TextEncoder().encode(pad(JSON.stringify(ft)));
+  const b = bt ? new TextEncoder().encode(pad(JSON.stringify(bt))) : new Uint8Array(0);
+  const out = new Uint8Array(28 + f.length + bin.length + b.length);
+  words(out, 0x73746e70, 1, out.length, f.length, bin.length, b.length, 0);
+  out.set(f, 28);
+  out.set(bin, 28 + f.length);
+  out.set(b, 28 + f.length + bin.length);
+  return out;
+}
+
+const u16Bytes = (xs: number[]) => new Uint8Array(new Uint16Array(xs).buffer);
+
+test("readTileContent reads a pnts as one POINTS primitive: positions, RGB, normals, RTC_CENTER", async () => {
+  const bin = new Uint8Array(32);
+  bin.set(f32Bytes([1, 2, 3, 4, 5, 6]), 0);
+  bin.set([255, 0, 0, 0, 128, 255], 24);
+  const c = await readTileContent(pnts({ POINTS_LENGTH: 2, RTC_CENTER: [10, 20, 30], POSITION: { byteOffset: 0 }, RGB: { byteOffset: 24 }, NORMAL: [0, 0, 1, 0, 1, 0] }, bin), loadAny);
+  assert.equal(c.kind, "pnts");
+  assert.deepEqual(c.rtc, [10, 20, 30]);
+  const [p] = c.model.primitives;
+  assert.equal(p.mode, 0);
+  assert.equal(p.indices, undefined);
+  assert.deepEqual([...p.attributes.POSITION.data], [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual({ data: [...p.attributes.COLOR_0.data], size: p.attributes.COLOR_0.size, normalized: p.attributes.COLOR_0.normalized }, { data: [255, 0, 0, 0, 128, 255], size: 3, normalized: true });
+  assert.deepEqual([...p.attributes.NORMAL.data], [0, 0, 1, 0, 1, 0]);
+  assert.equal(p.attributes._BATCHID, undefined);
+  assert.deepEqual(c.model.materials[0], { color: [1, 1, 1, 1], alphaMode: "OPAQUE", alphaCutoff: 0.5, doubleSided: true, unlit: false });
+});
+
+test("readTileContent dequantizes pnts positions into RTC, decodes RGB565, oct normals and CONSTANT_RGBA", async () => {
+  const bin = new Uint8Array(24);
+  bin.set(u16Bytes([0, 65535, 0, 65535, 0, 65535]), 0);
+  bin.set(u16Bytes([0xf800, 0x07e0]), 12);
+  bin.set([255, 128, 128, 128], 16);
+  const ft = { POINTS_LENGTH: 2, RTC_CENTER: [1, 1, 1], QUANTIZED_VOLUME_OFFSET: [100, 200, 300], QUANTIZED_VOLUME_SCALE: [10, 20, 30], POSITION_QUANTIZED: { byteOffset: 0 }, RGB565: { byteOffset: 12 }, NORMAL_OCT16P: { byteOffset: 16 }, CONSTANT_RGBA: [255, 255, 255, 51] };
+  const c = await readTileContent(pnts(ft, bin), loadAny);
+  assert.deepEqual(c.rtc, [101, 201, 301]);
+  const [p] = c.model.primitives;
+  assert.deepEqual([...p.attributes.POSITION.data], [0, 20, 0, 10, 0, 30]);
+  assert.deepEqual([...p.attributes.COLOR_0.data], [255, 0, 0, 0, 255, 0]);
+  assert.ok(near(p.attributes.NORMAL.data, [1, 0, 0, 0, 0, 1], 1e-2));
+  assert.equal(c.model.materials[0].alphaMode, "BLEND");
+  assert.ok(near(c.model.materials[0].color, [1, 1, 1, 0.2], 1e-9));
+  await assert.rejects(readTileContent(pnts({ ...ft, QUANTIZED_VOLUME_SCALE: undefined }, bin), loadAny), /needs QUANTIZED_VOLUME_OFFSET/);
+});
+
+test("readTileContent gives pnts points their batch ids: BATCH_ID, else one row per point", async () => {
+  const bin = new Uint8Array(16);
+  bin.set(f32Bytes([0, 0, 0]), 0);
+  bin.set(u16Bytes([7]), 12);
+  const byId = await readTileContent(pnts({ POINTS_LENGTH: 1, BATCH_LENGTH: 8, POSITION: { byteOffset: 0 }, BATCH_ID: { byteOffset: 12 } }, bin, { kind: Array(8).fill("a") }), loadAny);
+  assert.deepEqual([...byId.model.primitives[0].attributes._BATCHID.data], [7]);
+  assert.equal(byId.batchLength, 8);
+  const perPoint = await readTileContent(pnts({ POINTS_LENGTH: 2, POSITION: [0, 0, 0, 1, 1, 1] }, new Uint8Array(0), { kind: ["a", "b"] }), loadAny);
+  assert.deepEqual([...perPoint.model.primitives[0].attributes._BATCHID.data], [0, 1]);
+  assert.equal(perPoint.batchLength, 2);
+  assert.deepEqual(perPoint.batchTable, { kind: ["a", "b"] });
+});
+
+test("readTileContent decodes a pnts' Draco semantics and batch properties through `draco`", async () => {
+  const bin = new Uint8Array(8);
+  const ft = { POINTS_LENGTH: 2, POSITION: { byteOffset: 0 }, extensions: { "3DTILES_draco_point_compression": { properties: { POSITION: 0, RGB: 1 }, byteOffset: 0, byteLength: 8 } } };
+  const bt = { extensions: { "3DTILES_draco_point_compression": { properties: { height: 2 } } } };
+  const calls: number[] = [];
+  const draco = (bytes: Uint8Array) => {
+    calls.push(bytes.length);
+    const attributes = new Map([
+      [0, { data: new Float32Array([1, 2, 3, 4, 5, 6]), size: 3, type: 5126, normalized: false }],
+      [1, { data: new Uint8Array([1, 2, 3, 4, 5, 6]), size: 3, type: 5121, normalized: true }],
+      [2, { data: new Float32Array([7.5, 8.5]), size: 1, type: 5126, normalized: false }],
+    ]);
+    return { indices: new Uint32Array(0), attributes };
+  };
+  const c = await readTileContent(pnts(ft, bin, bt), loadAny, undefined, draco);
+  assert.deepEqual(calls, [8]);
+  const [p] = c.model.primitives;
+  assert.deepEqual([...p.attributes.POSITION.data], [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual([...p.attributes.COLOR_0.data], [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(c.batchTable, { height: [7.5, 8.5] });
+  await assert.rejects(readTileContent(pnts(ft, bin, bt), loadAny), /Draco compression is not available/);
+  const past = { ...ft, extensions: { "3DTILES_draco_point_compression": { properties: { POSITION: 0 }, byteOffset: 4, byteLength: 8 } } };
+  await assert.rejects(readTileContent(pnts(past, bin), loadAny, undefined, draco), /runs past the feature table/);
+  const missing = { ...ft, extensions: { "3DTILES_draco_point_compression": { properties: { POSITION: 9 }, byteOffset: 0, byteLength: 8 } } };
+  await assert.rejects(readTileContent(pnts(missing, bin), loadAny, undefined, draco), /has no attribute 9/);
+});
+
+test("readTileContent refuses pnts without POINTS_LENGTH or positions, or with too many points", async () => {
+  await assert.rejects(readTileContent(pnts({}, new Uint8Array(0)), loadAny), /no POINTS_LENGTH/);
+  await assert.rejects(readTileContent(pnts({ POINTS_LENGTH: 1 }, new Uint8Array(0)), loadAny), /neither POSITION nor POSITION_QUANTIZED/);
+  await assert.rejects(readTileContent(pnts({ POINTS_LENGTH: 1e9, POSITION: { byteOffset: 0 } }, new Uint8Array(0)), loadAny), /more than/);
+  await assert.rejects(readTileContent(pnts({ POINTS_LENGTH: 2, POSITION: { byteOffset: 0 } }, new Uint8Array(12)), loadAny), /runs past the feature table/);
+});
+
 function cmpt(tiles: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(16 + tiles.reduce((a, t) => a + t.length, 0));
   words(out, 0x74706d63, 1, out.length, tiles.length);
@@ -257,18 +353,16 @@ function cmpt(tiles: Uint8Array[]): Uint8Array {
   return out;
 }
 
-test("readTileContent of a cmpt gives its inner tiles as parts, nested ones flattened and pnts skipped", async () => {
+test("readTileContent of a cmpt gives its inner tiles as parts, nested ones flattened", async () => {
   const b3dm = new Uint8Array(28 + GLTF.length);
   words(b3dm, 0x6d643362, 1, b3dm.length, 0, 0, 0, 0);
   b3dm.set(GLTF, 28);
-  const pnts = new Uint8Array(28);
-  words(pnts, 0x73746e70, 1, 28);
+  const points = pnts({ POINTS_LENGTH: 1, POSITION: { byteOffset: 0 } }, f32Bytes([1, 2, 3]));
   const one = i3dm({ INSTANCES_LENGTH: 1, POSITION: [0, 0, 0] }, new Uint8Array(0), GLTF);
-  const c = await readTileContent(cmpt([b3dm, cmpt([pnts, one]), one]), loadAny);
+  const c = await readTileContent(cmpt([b3dm, cmpt([points, one]), one]), loadAny);
   assert.equal(c.kind, "cmpt");
   assert.deepEqual(c.model, { primitives: [], materials: [], images: [] });
-  assert.deepEqual(c.parts.map((p) => p.kind), ["b3dm", "i3dm", "i3dm"]);
-  assert.equal(c.skipped, 1);
+  assert.deepEqual(c.parts.map((p) => p.kind), ["b3dm", "pnts", "i3dm", "i3dm"]);
   let deep = b3dm;
   for (let i = 0; i < 10; i++) deep = cmpt([deep]);
   await assert.rejects(readTileContent(deep, loadAny), /nest deeper/);

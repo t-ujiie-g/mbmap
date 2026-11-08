@@ -25,8 +25,9 @@ const MAX_LOADS = 6;
 const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
 /** A loaded tile's model on the GPU and where its meters (east, north, up) stand. */
-/** A part of a tile's content as the 3D worker gives it: a b3dm, i3dm or glTF (a cmpt's are several). */
+/** A part of a tile's content as the 3D worker gives it: a b3dm, i3dm, pnts or glTF (a cmpt's are several). */
 export interface ContentPart extends LoadedModel {
+  kind: "b3dm" | "i3dm" | "pnts" | "glTF";
   rtc: [number, number, number] | null;
   batchLength: number;
   batchTable: Record<string, unknown> | null;
@@ -121,6 +122,12 @@ export class TilesEngine {
     return this.#loading === 0 && this.#traversal.requested.size === 0;
   }
 
+  /** `pointSize` (CSS pixels) in the drawing buffer's pixels. */
+  #pointPixels(gl: WebGL2RenderingContext): number {
+    const css = (gl.canvas as HTMLCanvasElement).clientWidth || gl.drawingBufferWidth;
+    return (this.#options.pointSize ?? 2) * (gl.drawingBufferWidth / css);
+  }
+
   /** Frees every loaded content (the layer was removed). */
   release(gl: WebGL2RenderingContext): void {
     for (const tile of this.#loaded) this.#unload(tile, gl);
@@ -147,6 +154,7 @@ export class TilesEngine {
       this.#load(tile);
     }
     program.begin(gl, t);
+    program.setPointSize(this.#pointPixels(gl));
     for (const pass of [0, 1]) {
       gl.depthMask(pass === 0);
       this.#drawTiles(gl, program, options, pass);
@@ -215,6 +223,7 @@ export class TilesEngine {
     gl.clearDepth(1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     program.begin(gl, options.defaultProjectionData.projectionTransition, true);
+    program.setPointSize(this.#pointPixels(gl));
     let drawn: Picked[] = [];
     for (const pass of [0, 1]) drawn = this.#drawTiles(gl, program, options, pass, true);
     const canvas = gl.canvas as HTMLCanvasElement;
@@ -270,7 +279,7 @@ export class TilesEngine {
           return;
         }
         // Meters of each part: east, north, up at the tile's center from the tile's transform, then
-        // RTC_CENTER and glTF's +Y up turned to +Z, or each instance's matrix (RTC included).
+        // RTC_CENTER and glTF's +Y up turned to +Z (a pnts is +Z up already), or each instance's matrix (RTC included).
         const center = tile.volume.center;
         const carto = toCartographic(center) ?? [0, 0, 0];
         const base = multiply(rigidInverse(eastNorthUp(center)), tile.transform);
@@ -281,7 +290,8 @@ export class TilesEngine {
             places = Array.from({ length: m.length / 16 }, (_, i) => multiply(multiply(base, m.subarray(i * 16, i * 16 + 16)), Y_UP));
           } else {
             const rtc = part.rtc ?? [0, 0, 0];
-            places = [multiply(multiply(base, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...rtc, 1]), Y_UP)];
+            const placed = multiply(base, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...rtc, 1]);
+            places = [part.kind === "pnts" ? placed : multiply(placed, Y_UP)];
           }
           return { gpu: this.#parts.upload(gl, part, IDENTITY), places, batchIds: part.instances?.batchIds ?? null, properties: propertiesOf(part) };
         });

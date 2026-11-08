@@ -97,6 +97,7 @@ async function tile({ url }) {
   return {
     parts: await Promise.all(
       parts.map(async (c) => ({
+        kind: c.kind,
         primitives: c.model.primitives,
         materials: c.model.materials,
         images: await Promise.all(c.model.images.map(bitmap)),

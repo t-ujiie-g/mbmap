@@ -170,10 +170,11 @@ export function modelLayer(options: ModelLayerOptions): ModelLayer {
 }
 
 /**
- * A 3D Tiles layer: the tileset at `url` (3D Tiles 1.0 or 1.1: b3dm and glTF contents, external
- * tilesets, implicit tiling), refined while a tile's screen-space error exceeds
+ * A 3D Tiles layer: the tileset at `url` (3D Tiles 1.0 or 1.1: b3dm, i3dm, pnts, cmpt and glTF contents,
+ * external tilesets, implicit tiling), refined while a tile's screen-space error exceeds
  * `maximumScreenSpaceError` (default 8, as loaders.gl), `height` meters added to every tile (to set
- * ellipsoidal heights on the map's ground), at most `maximumLoadedTiles` contents kept (default 256).
+ * ellipsoidal heights on the map's ground), at most `maximumLoadedTiles` contents kept (default 256),
+ * points drawn `pointSize` CSS pixels across (default 2).
  */
 export interface TilesLayerOptions extends ModelOptions {
   id: string;
@@ -181,6 +182,7 @@ export interface TilesLayerOptions extends ModelOptions {
   maximumScreenSpaceError?: number;
   height?: number;
   maximumLoadedTiles?: number;
+  pointSize?: number;
 }
 
 /** A feature of a 3D tile: its tile's `path`, its `id` in the tile and its `properties`. */
