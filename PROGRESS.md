@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.3（`mbmap/3d` と glTF）。20.1（地球表示のカメラ）、20.2a（地球表示の配線、ラスタと背景と大気）、20.2b（面・線・円・heatmap を地球に）、20.2c（ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.4（3D Tiles）。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -25,6 +25,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.2KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 21KB（2026-11-08 に 20KB から、2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
+  | `mbmap/3d` | 4.3KB ＋ ワーカー 7.4KB（glTF の読み込みと 3d.wasm の meshopt） | 10KB ＋ 45KB（2026-11-08 ユーザー判断） |
   | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 16.1KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、17KB（2026-11-08 に 15KB から）。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 40.6KB（`reprojected` のタイル 1.8KB、`xml.wasm` 26.7KB、GeoTIFF 19.8KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 41KB（ワーカーは 2026-11-08 に 40KB から。2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
@@ -88,6 +89,15 @@
   - ついでに直したもの（メルカトルでも）：ソースの maxzoom より浅いタイルでもラベルを overscale として配置していたのを、MapLibre の `overscaledZ` と同じく maxzoom を超えたときだけに。
   - MapLibre と違うところ：記号の `*-translate` は地球では効かない。遷移中（0 < t < 1）の可変アンカーのずらしはシェーダーで混ぜたアンカーから（MapLibre は CPU で地球の投影から。配置は同じ）。地球の画面に沿う文字の深度はアンカーの z のまま（MapLibre は 0）。地図に沿う SDF アイコンの縁の gamma がメルカトルでも少し違う（平らな場面で平均 0.078、既存の差）。
   - 大きさ：表示（メイン）149.8 → 151.7KB（ラベル、押し出し、地形、クエリ、書き出しを地球に）、表示ワーカー 84.8 → 85.2KB（押し出しの細分化、クエリの地球）。
+- **20.3 の結果**（`mbmap/3d` の入口、glTF / glb と meshopt、モデルの配置）。描き方・比べる相手・配置の API は 2026-11-08 のユーザー判断（`AskUserQuestion`）：カスタムレイヤー経由（地図本体は 3D の入口を読み込まない）、loaders.gl と meshoptimizer と比べる、関数 API と GeoJSON の点：
+  - `meshopt`（純粋な MoonBit、並行のエージェント）：meshoptimizer 1.3.0 の復号（頂点コーデックの版 0 と 1、インデックスの三角形と列、フィルター 5 種）の移植。`npm run meshopt:golden`（新設）で npm の `MeshoptDecoder.decodeGltfBuffer` と 12040 件すべてバイト単位で同じ（js と wasm-gc の両方）。Node の復号器は SIMD 版なので、壊れた入力の扱いはそれに合わせた。指数フィルターで仮数 0・指数 -128 の NaN は CPU で違う（x86 は 0xFFC00000）ので、その場合だけ NaN 同士を同じと数える。
+  - 3D ワーカー（`model_worker/js/worker.mjs`、wasm は `model_worker` の 3d.wasm）：glTF を取って `npm/src/model/gltf.ts` で読み、meshopt で圧縮されたバッファビューを wasm で解き、画像を ImageBitmap に。`KHR_mesh_quantization`（量子化のまま GPU へ）、`KHR_texture_transform`、`EXT_texture_webp`、`KHR_materials_unlit`、疎なアクセサー、インターリーブ、.gltf の外部ファイル。上限（JSON 64MB、出力 512MB、ノードの深さ 64）と、それ以外の必須拡張（Draco など）は断る。
+  - `npm run model:golden`（新設）：gltf-transform 4.5.1 で書いた 8 つのモデル（素のもの、WebP とテクスチャ変換と unlit、9 万頂点、量子化、meshopt の 2 方式と `KHR_meshopt_compression`、.gltf と .bin と画像）を Chromium の `loadModel` で読み、@loaders.gl/gltf 4.5.4 の属性・インデックス・材質・テクスチャ変換と gltf-transform のワールド行列に比べてすべて同じ。壊れたファイル 8 つ（途中で切れたもの、チャンクの長さ、JSON でないもの、glTF 1.0、未対応の必須拡張、ノードの循環、範囲外のアクセサー、壊した meshopt）はすべてエラーで断る。loaders.gl は Node では `EXT_texture_webp` を必須にしたファイルを断るので、比べる側だけ必須から外す。
+  - `modelLayer`：GeoJSON の点ごとにモデルを置くカスタムレイヤー（`renderingMode: "3d"`）。`scale` / `rotation` / `translation`（Mapbox の `model-*` の名前、定数か `["get", key]`）は東・北・上のメートル。インスタンスごとに f64 でメルカトルの行列（地球では MapLibre の fallback）と単位球の行列を作り、シェーダーで遷移の割合で混ぜる（MapLibre の `interpolateProjectionFor3D`）。地球の裏のインスタンスは地平の面で外す。光は Mapbox の既定の向きの Lambert、法線がなければ画面の微分から、面は両面、半透明は深度を書かない 2 つ目のパス（並べ替えなし）。
+  - pack test に `model` ページ（量子化と meshopt の箱、回転、地球）。3 通りのショーケースに時計塔のモデル（`examples/shared/tower.glb`、4.3KB、`bench/model/example-model.mjs` で作る）。
+  - 大きさ：`mbmap/3d` 4.3KB、3D ワーカー 7.4KB（3d.wasm を含む）。予算は 10KB ＋ 45KB（2026-11-08 ユーザー判断：20.4〜20.7 の 3D Tiles・点群・I3S も同じ入口とワーカーに入るので目安のまま。各段階で測り、超えそうなら相談）。表示（メイン）は変わらない。
+  - 依存（bench の devDependencies、すべて MIT、install スクリプトなし、2 週間以上前の版）：meshoptimizer 1.3.0、@loaders.gl/gltf と @loaders.gl/core 4.5.4、@gltf-transform/core・extensions・functions 4.5.1。
+  - まだないもの：アニメーション、スキン、モーフ、カメラ、`EXT_mesh_gpu_instancing`、PBR の金属・粗さ・法線・発光・遮蔽のテクスチャ、地形の上への配置、クエリ（20.4 以降で 3D Tiles と一緒に）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

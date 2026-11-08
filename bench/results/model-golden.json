@@ -1,0 +1,162 @@
+{
+  "env": {
+    "loaders": "@loaders.gl/gltf 4.5.4",
+    "gltfTransform": "4.5.1",
+    "meshoptimizer": "1.3.0",
+    "browser": "chromium"
+  },
+  "results": [
+    {
+      "model": "plain.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 638,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "webp-transform-unlit.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 638,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "large.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 90614,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "quantized.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 638,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "meshopt-quantize.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 40414,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "meshopt-filter.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 40414,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "meshopt-khr.glb",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 40414,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "separate.gltf",
+      "ok": true,
+      "primitives": 3,
+      "vertices": 638,
+      "images": [
+        [
+          16,
+          16
+        ]
+      ],
+      "differences": []
+    },
+    {
+      "model": "truncated.glb",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: a GLB chunk runs past the file"
+    },
+    {
+      "model": "bad-chunk.glb",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: a GLB chunk runs past the file"
+    },
+    {
+      "model": "not-json.gltf",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+    },
+    {
+      "model": "glTF-1.gltf",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: only glTF 2.0 is read"
+    },
+    {
+      "model": "unknown-required.gltf",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: unsupported glTF extensions: KHR_draco_mesh_compression"
+    },
+    {
+      "model": "cycle.gltf",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: the node tree is malformed"
+    },
+    {
+      "model": "past-view.gltf",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: accessor 0 runs past its buffer view"
+    },
+    {
+      "model": "bad-meshopt.glb",
+      "hostile": true,
+      "ok": true,
+      "error": "mbmap: 3d: meshopt data could not be decoded"
+    }
+  ]
+}

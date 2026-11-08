@@ -97,6 +97,13 @@ pub fn lengths_fit(a : Int32, b : Int32, total : Int32) -> Bool {
 ///|
 /// The input copied into a `Bytes`, four bytes per load.
 pub fn input_bytes() -> Bytes {
+  // Nothing else holds the array, so the reinterpretation cannot be observed mutating.
+  input_byte_array().unsafe_reinterpret_as_bytes()
+}
+
+///|
+/// The input copied into a byte array, four bytes per load.
+pub fn input_byte_array() -> FixedArray[Byte] {
   let len = input_len.val
   let arr = FixedArray::make(len, b'\x00')
   let words = len / 4
@@ -111,8 +118,7 @@ pub fn input_bytes() -> Bytes {
   for i in (words * 4)..<len {
     arr[i] = load_u8(PAGE + i).to_byte()
   }
-  // Nothing else holds `arr`, so the reinterpretation cannot be observed mutating.
-  arr.unsafe_reinterpret_as_bytes()
+  arr
 }
 
 ///|

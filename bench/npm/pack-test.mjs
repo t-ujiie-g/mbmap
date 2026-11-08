@@ -12,6 +12,7 @@ import { imageChecks } from "./checks/images.mjs";
 import { drawChecks, editChecks, measureChecks, splitChecks } from "./checks/geo-tools.mjs";
 import { mediaChecks } from "./checks/media.mjs";
 import { customChecks } from "./checks/custom.mjs";
+import { modelChecks } from "./checks/model.mjs";
 import { globeChecks } from "./checks/globe.mjs";
 import { cameraChecks } from "./checks/camera.mjs";
 import { controlChecks } from "./checks/controls.mjs";
@@ -48,6 +49,7 @@ const PAGES = {
   media: "bench/npm/pages/media/",
   services: "bench/npm/pages/services/",
   custom: "bench/npm/pages/custom/",
+  model: "bench/npm/pages/model/",
   globe: "bench/npm/pages/globe/",
   basic: "bench/pages/basic/",
   terrain: "bench/pages/terrain/",
@@ -459,6 +461,10 @@ const checks = {
     return customChecks(page);
   },
 
+  async model(page) {
+    return modelChecks(page);
+  },
+
   async globe(page) {
     return globeChecks(page);
   },
@@ -591,17 +597,18 @@ async function showcase(page) {
   crumb("showcaseServicesChecks");
   const services = await showcaseServicesChecks(page);
   crumb("showcase: globe");
-  // The globe zooms out to 2 and keeps the places; the custom layer goes on it too.
+  // The globe zooms out to 2 and keeps the places; the custom layers (the ring, the tower model) go on it too.
   await page.click("#modes button >> text=地球儀");
   await page.waitForFunction(() => Math.abs(window.__map.getZoom() - 2) < 1e-9 && !window.__map.isMoving(), null, { timeout: 30000 });
-  const globe = await page.evaluate(() => {
+  const globe = await page.evaluate(async () => {
     const map = window.__map;
+    const model = await window.__models.ready.then(() => map.getLayer("models")?.type === "custom", (e) => String(e));
     const p = map.project(map.getCenter());
     const canvas = map.getCanvas();
     const order = map.getLayersOrder();
     return {
       projection: map.getProjection()?.type, pitch: map.getPitch(), centre: [p.x - canvas.clientWidth / 2, p.y - canvas.clientHeight / 2],
-      ring: order.indexOf("radius-ring") === order.indexOf("places") - 1,
+      ring: order.indexOf("radius-ring") === order.indexOf("places") - 1, model,
     };
   });
   const ok =
@@ -620,7 +627,7 @@ async function showcase(page) {
     osaka.plane.zone === "第VI系" &&
     shown.includes("135.49590") && shown.includes("第VI系") &&
     atCentre(tokyoPin) && atCentre(osakaPin) &&
-    globe.projection === "globe" && globe.pitch === 0 && Math.abs(globe.centre[0]) < 1e-6 && Math.abs(globe.centre[1]) < 1e-6 && globe.ring &&
+    globe.projection === "globe" && globe.pitch === 0 && Math.abs(globe.centre[0]) < 1e-6 && Math.abs(globe.centre[1]) < 1e-6 && globe.ring && globe.model === true &&
     saved.type === "image/png" && saved.size > 0 && controls.ok && searched.ok && tabled.ok && tabled.marked && analyzed.ok && read.ok && services.ok && measured.ok && drew.ok && edited.ok && cut.ok && clustered.ok;
   return [ok, { first, picked, identified, coordinates, hovered, tilted, osaka: osaka.near, shown, styled, globe, tokyoPin, osakaPin, saved, controls, searched, tabled, analyzed, read, services, measured, drew, edited, cut, clustered }];
 }

@@ -14,6 +14,7 @@ import { hoverPlaces, mountIdentify } from "./pick.js";
 import { DESTINATIONS, PLACES } from "./places.js";
 import { mountProfile } from "./profile.js";
 import { cameraRows, nearLines, showRows } from "./readout.js";
+import { keepModels } from "./models.js";
 import { keepRadiusRing } from "./ring.js";
 import { mountSearch } from "./search.js";
 import { zoomIntoClusters } from "./stations.js";
@@ -41,6 +42,7 @@ export function mountApp(map, status, applyStyle) {
   mountCoordinates(map, status);
   hoverPlaces(map);
   keepRadiusRing(map);
+  window.__models = keepModels(map);
   zoomIntoClusters(map);
   pinDestinations(map, document.body);
   mountControls(map, document.body, status);
