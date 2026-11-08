@@ -18,6 +18,7 @@
     "tess:node": "npm run build:moon && node lib/run-bundled.mjs bench/tess/node.mjs",
     "tess:browser": "npm run build:moon && node tess/browser.mjs",
     "subdivision:golden": "cd .. && moon build bench/entry --release --target js && cd bench && node lib/run-bundled.mjs bench/tess/subdivision-golden.mjs",
+    "lepcc:golden": "cd .. && moon build bench/entry --release --target js && moon build model_worker --release --target wasm-gc && cd bench && node lepcc/golden.mjs",
     "draco:golden": "cd .. && moon build bench/entry --release --target js && moon build model_worker --release --target wasm-gc && cd bench && node draco/golden.mjs",
     "meshopt:golden": "cd .. && moon build bench/entry --release --target js && moon build bench/entry --release --target wasm-gc && cd bench && node meshopt/golden.mjs",
     "render": "npm run build:moon && node render/run.mjs && node render/run.mjs --uncapped",
@@ -94,6 +95,7 @@
     "tiles:contents": "node tiles/contents-golden.mjs",
     "i3s:contents": "cd .. && moon build model_worker --release --target wasm-gc && cd bench && node i3s/content-golden.mjs",
     "i3s:synthetic": "node i3s/synthetic.mjs",
+    "i3s:pcsl-synthetic": "node i3s/pcsl-synthetic.mjs",
     "cesium": "npm --prefix ../npm run build && node cesium/run.mjs"
   },
   "devDependencies": {

@@ -1,0 +1,131 @@
+{
+ "id": 0,
+ "layerType": "PointCloud",
+ "name": "Synthetic point cloud",
+ "alias": "Synthetic point cloud",
+ "desc": "mbmap test data: a ground grid and colored blocks near Tokyo Station",
+ "copyrightText": "mbmap test data",
+ "capabilities": [
+  "View"
+ ],
+ "spatialReference": {
+  "wkid": 4326,
+  "latestWkid": 4326
+ },
+ "heightModelInfo": {
+  "heightModel": "ellipsoidal",
+  "vertCRS": "WGS_84",
+  "heightUnit": "meter"
+ },
+ "store": {
+  "id": "",
+  "profile": "PointCloud",
+  "version": "2.0",
+  "extent": [
+   139.76513123907557,
+   35.67959368856295,
+   139.7690688049374,
+   35.68280628676591
+  ],
+  "index": {
+   "nodeVersion": 1,
+   "boundingVolumeType": "obb",
+   "nodesPerPage": 64,
+   "lodSelectionMetricType": "density-threshold"
+  },
+  "defaultGeometrySchema": {
+   "geometryType": "points",
+   "header": [],
+   "topology": "PerAttributeArray",
+   "encoding": "lepcc-xyz",
+   "vertexAttributes": {
+    "position": {
+     "valueType": "Float64",
+     "valuesPerElement": 3
+    }
+   },
+   "ordering": [
+    "position"
+   ]
+  }
+ },
+ "attributeStorageInfo": [
+  {
+   "key": "1",
+   "name": "ELEVATION",
+   "encoding": "embedded-elevation"
+  },
+  {
+   "key": "2",
+   "name": "INTENSITY",
+   "ordering": [
+    "attributeValues"
+   ],
+   "attributeValues": {
+    "valueType": "UInt16",
+    "valuesPerElement": 1
+   },
+   "encoding": "lepcc-intensity"
+  },
+  {
+   "key": "4",
+   "name": "RGB",
+   "ordering": [
+    "attributeValues"
+   ],
+   "attributeValues": {
+    "valueType": "UInt8",
+    "valuesPerElement": 3
+   },
+   "encoding": "lepcc-rgb"
+  },
+  {
+   "key": "8",
+   "name": "CLASS_CODE",
+   "ordering": [
+    "attributeValues"
+   ],
+   "attributeValues": {
+    "valueType": "UInt8",
+    "valuesPerElement": 1
+   }
+  }
+ ],
+ "fields": [
+  {
+   "name": "ELEVATION",
+   "type": "esriFieldTypeDouble",
+   "alias": "ELEVATION"
+  },
+  {
+   "name": "INTENSITY",
+   "type": "esriFieldTypeInteger",
+   "alias": "INTENSITY"
+  },
+  {
+   "name": "RGB",
+   "type": "esriFieldTypeString",
+   "alias": "RGB"
+  },
+  {
+   "name": "CLASS_CODE",
+   "type": "esriFieldTypeSmallInteger",
+   "alias": "CLASS_CODE"
+  }
+ ],
+ "drawingInfo": {
+  "renderer": {
+   "type": "pointCloudRGBRenderer",
+   "field": "RGB",
+   "pointsPerInch": 25,
+   "pointSizeAlgorithm": {
+    "type": "pointCloudSplatAlgorithm",
+    "scaleFactor": 1,
+    "minSize": 4
+   }
+  }
+ },
+ "elevationInfo": {
+  "mode": "absoluteHeight"
+ }
+}
