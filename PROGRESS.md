@@ -25,7 +25,7 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.2KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 21KB（2026-11-08 に 20KB から、2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/3d` | 4.3KB ＋ ワーカー 7.4KB（glTF の読み込みと 3d.wasm の meshopt） | 10KB ＋ 45KB（20.3 の目安） |
+  | `mbmap/3d` | 4.3KB ＋ ワーカー 7.4KB（glTF の読み込みと 3d.wasm の meshopt） | 10KB ＋ 45KB（2026-11-08 ユーザー判断） |
   | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 16.1KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、17KB（2026-11-08 に 15KB から）。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 40.6KB（`reprojected` のタイル 1.8KB、`xml.wasm` 26.7KB、GeoTIFF 19.8KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 41KB（ワーカーは 2026-11-08 に 40KB から。2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
@@ -95,7 +95,7 @@
   - `npm run model:golden`（新設）：gltf-transform 4.5.1 で書いた 8 つのモデル（素のもの、WebP とテクスチャ変換と unlit、9 万頂点、量子化、meshopt の 2 方式と `KHR_meshopt_compression`、.gltf と .bin と画像）を Chromium の `loadModel` で読み、@loaders.gl/gltf 4.5.4 の属性・インデックス・材質・テクスチャ変換と gltf-transform のワールド行列に比べてすべて同じ。壊れたファイル 8 つ（途中で切れたもの、チャンクの長さ、JSON でないもの、glTF 1.0、未対応の必須拡張、ノードの循環、範囲外のアクセサー、壊した meshopt）はすべてエラーで断る。loaders.gl は Node では `EXT_texture_webp` を必須にしたファイルを断るので、比べる側だけ必須から外す。
   - `modelLayer`：GeoJSON の点ごとにモデルを置くカスタムレイヤー（`renderingMode: "3d"`）。`scale` / `rotation` / `translation`（Mapbox の `model-*` の名前、定数か `["get", key]`）は東・北・上のメートル。インスタンスごとに f64 でメルカトルの行列（地球では MapLibre の fallback）と単位球の行列を作り、シェーダーで遷移の割合で混ぜる（MapLibre の `interpolateProjectionFor3D`）。地球の裏のインスタンスは地平の面で外す。光は Mapbox の既定の向きの Lambert、法線がなければ画面の微分から、面は両面、半透明は深度を書かない 2 つ目のパス（並べ替えなし）。
   - pack test に `model` ページ（量子化と meshopt の箱、回転、地球）。3 通りのショーケースに時計塔のモデル（`examples/shared/tower.glb`、4.3KB、`bench/model/example-model.mjs` で作る）。
-  - 大きさ：`mbmap/3d` 4.3KB、3D ワーカー 7.4KB（3d.wasm を含む）。予算は目安の 10KB ＋ 45KB のまま（決め方はこの段階の報告で聞く）。表示（メイン）は変わらない。
+  - 大きさ：`mbmap/3d` 4.3KB、3D ワーカー 7.4KB（3d.wasm を含む）。予算は 10KB ＋ 45KB（2026-11-08 ユーザー判断：20.4〜20.7 の 3D Tiles・点群・I3S も同じ入口とワーカーに入るので目安のまま。各段階で測り、超えそうなら相談）。表示（メイン）は変わらない。
   - 依存（bench の devDependencies、すべて MIT、install スクリプトなし、2 週間以上前の版）：meshoptimizer 1.3.0、@loaders.gl/gltf と @loaders.gl/core 4.5.4、@gltf-transform/core・extensions・functions 4.5.1。
   - まだないもの：アニメーション、スキン、モーフ、カメラ、`EXT_mesh_gpu_instancing`、PBR の金属・粗さ・法線・発光・遮蔽のテクスチャ、地形の上への配置、クエリ（20.4 以降で 3D Tiles と一緒に）。
 
