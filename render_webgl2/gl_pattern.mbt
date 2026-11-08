@@ -63,8 +63,7 @@ extern "js" fn gl_draw_background_pattern(
   #|  c.place(p, matrix);
   #|  gl.uniform1f(p.u_opacity, opacity);
   #|  gl.uniform4f(p.u_color, color[0], color[1], color[2], color[3]);
-  #|  gl.bindVertexArray(c.quad);
-  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  c.drawTile();
   #|  gl.bindVertexArray(null);
   #|}
 

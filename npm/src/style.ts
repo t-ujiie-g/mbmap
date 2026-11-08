@@ -256,8 +256,8 @@ export function hasLegacy(style: StyleSpecification): boolean {
   return layers(style).some((l) => isLegacyFilter(l.filter) || fn(l.paint) || fn(l.layout));
 }
 
-/** Sets a top-level property such as `terrain`, `sky` or `light`; undefined or null removes it. */
-export function setRoot(style: StyleSpecification, key: "terrain" | "sky" | "light", value: unknown): StyleSpecification {
+/** Sets a top-level property such as `terrain`, `sky`, `light` or `projection`; undefined or null removes it. */
+export function setRoot(style: StyleSpecification, key: "terrain" | "sky" | "light" | "projection", value: unknown): StyleSpecification {
   const { [key]: _, ...rest } = style;
   return (value === undefined || value === null ? rest : { ...rest, [key]: copy(value) }) as StyleSpecification;
 }

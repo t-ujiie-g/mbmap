@@ -3,10 +3,9 @@
 // (src/geo/transform_helper.ts), BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
-/// The camera of a map with a globe projection, kept as MapLibre keeps it:
-/// one camera state that each change constrains, drawn as a globe while
-/// `transition` is above 0 and as mercator (`@core.Transform`) at 0. Setters
-/// change it in place, as MapLibre's transform; `copy` makes another.
+/// A globe projection's camera, one state that each change constrains in place
+/// as MapLibre's transform does (`copy` makes another): drawn as a globe while
+/// `transition` is above 0, as mercator (`@core.Transform`) at 0.
 pub struct Globe {
   priv mut center : @core.LngLat
   priv mut zoom : Double
@@ -37,10 +36,9 @@ priv struct Vp {
 }
 
 ///|
-/// A globe camera on a `width` x `height` CSS-pixel viewport, as MapLibre gets
-/// it from the camera's `jumpTo` once the style has set `projection` (a new
-/// globe transform starts drawn as a globe); the transition then follows the
-/// zoom it ends at.
+/// A globe camera on a `width` x `height` viewport as MapLibre's `jumpTo` gives it
+/// once the style sets `projection` (a new globe transform starts as a globe);
+/// the transition then follows the zoom it ends at.
 pub fn Globe::new(
   camera : @core.Camera,
   width : Double,
@@ -90,6 +88,18 @@ pub fn Globe::camera(self : Globe) -> @core.Camera {
     bearing: self.bearing / @math.PI * 180.0,
     pitch: self.pitch / @math.PI * 180.0,
   }
+}
+
+///|
+/// The projection the camera follows.
+pub fn Globe::projection(self : Globe) -> Projection {
+  self.projection
+}
+
+///|
+/// The zoom, pitch and bounds limits the camera keeps to.
+pub fn Globe::limits(self : Globe) -> @core.Limits {
+  self.limits
 }
 
 ///|
@@ -361,7 +371,7 @@ pub fn Globe::globe_matrix(self : Globe) -> @core.Mat4 {
 
 ///|
 /// The globe's projection matrix and its near and far planes (CSS pixels).
-pub fn Globe::projection(self : Globe) -> (@core.Mat4, Double, Double) {
+pub fn Globe::projection_matrix(self : Globe) -> (@core.Mat4, Double, Double) {
   let vp = self.vp()
   (vp.projection, vp.near, vp.far)
 }
@@ -635,4 +645,47 @@ fn Globe::globe_location_at_point(
   } else {
     None
   }
+}
+
+///|
+/// Puts the camera at `camera` as it is, unconstrained (MapLibre's
+/// `applyUpdatedTransform` taking an animation's or gesture's transform).
+pub fn Globe::set_camera(self : Globe, camera : @core.Camera) -> Unit {
+  self.center = camera.center
+  self.zoom = camera.zoom
+  self.bearing = camera.bearing * @math.PI / 180.0
+  self.pitch = camera.pitch * @math.PI / 180.0
+  self.changed()
+}
+
+///|
+/// What MapLibre's atmosphere is drawn from: the projection's inverse, the
+/// globe's center in the camera's space (CSS pixels), its radius and the
+/// share of the atmosphere the camera's height leaves (`drawAtmosphere`).
+pub fn Globe::atmosphere(self : Globe) -> (@core.Mat4, Vec3, Double, Double) {
+  let vp = self.vp()
+  let inverse = vp.projection.invert().unwrap_or(@core.Mat4::identity())
+  let (x, y, z, w) = vp.view.apply(0.0, 0.0, 0.0, 1.0)
+  let (cx, cy, cz, cw) = inverse.apply(x, y, z, w)
+  let center : Vec3 = { x: cx / cw, y: cy / cw, z: cz / cw, }
+  let r = globe_radius(self.world_size(), self.center.lat)
+  (inverse, center, r, atmosphere_blend(center.length() - r, r))
+}
+
+///|
+/// A light's direction `v` (the style light's, toward it) as the atmosphere
+/// takes the sun: turned with the globe when the light is anchored to the
+/// map (`getSunPos`).
+pub fn Globe::sun(self : Globe, v : Vec3, map~ : Bool) -> Vec3 {
+  let v = v.scale(-1.0)
+  if !map {
+    return v
+  }
+  let m = @core.Mat4::identity()
+    .rotate_x(-self.pitch)
+    .rotate_z(self.bearing)
+    .rotate_x(self.center.lat * @math.PI / 180.0)
+    .rotate_y(-self.center.lng * @math.PI / 180.0)
+  let (x, y, z, w) = m.apply(v.x, v.y, v.z, 1.0)
+  { x: x / w, y: y / w, z: z / w, }
 }

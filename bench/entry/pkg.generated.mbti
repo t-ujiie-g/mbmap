@@ -72,6 +72,8 @@ pub fn globe_bounds(FixedArray[Double]) -> String
 
 pub fn globe_controls(FixedArray[Double], FixedArray[Double]) -> String
 
+pub fn globe_covering(FixedArray[Double], FixedArray[Double]) -> String
+
 pub fn globe_ease(FixedArray[Double], FixedArray[Double], FixedArray[Double]) -> String
 
 pub fn globe_fit(FixedArray[Double], FixedArray[Double]) -> String

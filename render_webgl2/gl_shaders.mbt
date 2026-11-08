@@ -4,7 +4,7 @@
 extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|(canvas, E) => {
   #|  const EF = E.toFixed(1);
-  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: true, stencil: true, premultipliedAlpha: true });
+  #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, depth: true, stencil: true, premultipliedAlpha: true });
   #|  if (!gl) return null;
   #|  const compile = (type, src) => {
   #|    const s = gl.createShader(type);
@@ -45,6 +45,24 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // loaded ancestor stands in for a missing tile clipped to its area.
   #|  const clip = "uniform vec4 u_clip; in vec2 v_pos;" +
   #|    "bool outside() { return any(lessThan(v_pos, u_clip.xy)) || any(greaterThanEqual(v_pos, u_clip.zw)); }";
+  #|  // project(p): tile units through u_matrix, or onto the globe as MapLibre's
+  #|  // projectTile (_projection_globe.vertex.glsl) while u_transition is above 0:
+  #|  // u_tile is the tile's mercator corner and size per unit, u_globe the unit
+  #|  // sphere to clip space, u_plane the horizon plane hiding the far side.
+  #|  const proj = "uniform mat4 u_matrix; uniform mat4 u_globe; uniform vec4 u_tile; uniform vec4 u_plane;" +
+  #|    "uniform float u_transition; const float PI = 3.141592653589793;" +
+  #|    "vec4 project(vec2 p) { vec4 flat_ = u_matrix * vec4(p, 0.0, 1.0); if (u_transition <= 0.0) return flat_;" +
+  #|    "  vec2 m = u_tile.xy + u_tile.zw * p; float sx = m.x * PI * 2.0 + PI;" +
+  #|    "  float t = exp(PI - m.y * PI * 2.0); float d = t * t + 1.0; float cy = 2.0 * t / d;" +
+  #|    "  vec3 s = vec3(sin(sx) * cy, (t * t - 1.0) / d, cos(sx) * cy);" +
+  #|    "  if (p.y < -32767.5) s = vec3(0.0, 1.0, 0.0); if (p.y > 32766.5) s = vec3(0.0, -1.0, 0.0);" +
+  #|    "  vec4 g = u_globe * vec4(s, 1.0); g.z = (1.0 - (dot(s, u_plane.xyz) + u_plane.w)) * g.w;" +
+  #|    "  if (u_transition > 0.999) return g;" +
+  #|    "  vec4 r = g; r.z = mix(0.0, g.z, clamp((u_transition - 0.2) / 0.8, 0.0, 1.0));" +
+  #|    "  r.xyw = mix(flat_.xyw, g.xyw, u_transition);" +
+  #|    "  if (p.y < -32767.5 || p.y > 32766.5) { r = g; r.z = mix(g.z, 100.0, pow(max((1.0 - u_transition) / 0.02, 0.0), 8.0)); }" +
+  #|    "  return r; }";
+  #|  const projUniforms = ["u_matrix", "u_globe", "u_tile", "u_plane", "u_transition"];
   #|  // Paint values: each slot holds a value and the next along its zoom curve,
   #|  // mixed by u_t (one per slot); colors are straight RGBA, premultiplied here.
   #|  const paint = "uniform float u_t[6]; in vec4 a_color_lo; in vec4 a_color_hi; in vec2 a_opacity; in vec2 a_extent;" +
@@ -161,11 +179,14 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  o = patternColor(v_pat, v_color, v_opacity) * (1.0 - smoothstep(0.0, 1.0, length(v_line - gl_FragCoord.xy))); }",
   #|    ["u_matrix", "u_clip", "u_t", "u_world", ...patternUniforms]);
   #|  const backgroundPattern = program(
-  #|    patternPos + "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pat;" +
-  #|    "void main() { v_pat = patternPos(a_pos); gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    proj + patternPos + "in vec2 a_pos; out vec2 v_pat;" +
+  #|    "void main() { v_pat = patternPos(a_pos); gl_Position = project(a_pos); }",
   #|    patternColor + "uniform float u_opacity; uniform vec4 u_color; in vec2 v_pat; out vec4 o;" +
   #|    "void main() { o = patternColor(v_pat, u_color, u_opacity); }",
-  #|    ["u_matrix", "u_opacity", "u_color", ...patternUniforms]);
+  #|    [...projUniforms, "u_opacity", "u_color", ...patternUniforms]);
+  #|  // The background on the globe, one tile mesh at a time (MapLibre's background shader).
+  #|  const background = program(proj + "in vec2 a_pos; void main() { gl_Position = project(a_pos); }",
+  #|    "uniform vec4 u_color; out vec4 o; void main() { o = u_color; }", [...projUniforms, "u_color"]);
   #|  gl.enable(gl.BLEND);
   #|  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   #|  // MapLibre's circles: facing the viewer (u_pitch false) and grown as the map
@@ -337,8 +358,8 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // slopes inside their border, u_lat is the tile's north and south latitude; u_method numbers
   #|  // standard 0, combined 1, igor 2, multidirectional 3, basic 4; u_count lights.
   #|  const hillshade = program(
-  #|    "in vec2 a_pos; uniform mat4 u_matrix; out vec2 v_pos; out vec2 v_tex;" +
-  #|    "void main() { v_pos = a_pos; v_tex = a_pos / " + EF + "; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0); }",
+  #|    proj + "in vec2 a_pos; out vec2 v_pos; out vec2 v_tex;" +
+  #|    "void main() { v_pos = a_pos; v_tex = clamp(a_pos / " + EF + ", 0.0, 1.0); gl_Position = project(a_pos); }",
   #|    clip + `uniform sampler2D u_image; uniform vec2 u_lat; uniform float u_exaggeration; uniform vec4 u_accent;
   #|    uniform int u_method; uniform int u_count; uniform float u_altitudes[8]; uniform float u_azimuths[8];
   #|    uniform vec4 u_shadows[8]; uniform vec4 u_highlights[8]; in vec2 v_tex; out vec4 o;
@@ -386,15 +407,15 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|      vec2 deriv = (texture(u_image, texturePos).rg - 128.0 / 255.0) * 8.0 / scaleFactor;
   #|      if (u_method == 4) basic(deriv); else if (u_method == 1) combined(deriv); else if (u_method == 2) igor(deriv);
   #|      else if (u_method == 3) multidirectional(deriv); else standard(deriv); }`,
-  #|    ["u_matrix", "u_clip", "u_image", "u_lat", "u_exaggeration", "u_accent", "u_method", "u_count", "u_altitudes",
+  #|    [...projUniforms, "u_clip", "u_image", "u_lat", "u_exaggeration", "u_accent", "u_method", "u_count", "u_altitudes",
   #|     "u_azimuths", "u_shadows", "u_highlights"]);
   #|  // MapLibre's color_relief shaders: elevations packed in the DEM tile's RGB (u_unpack; the
   #|  // texture u_dimension wide with a border) colored between u_color_ramp_size stops.
   #|  const colorRelief = program(
-  #|    "in vec2 a_pos; uniform mat4 u_matrix; uniform vec2 u_dimension; out vec2 v_pos; out vec2 v_tex;" +
-  #|    "void main() { v_pos = a_pos; gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);" +
+  #|    proj + "in vec2 a_pos; uniform vec2 u_dimension; out vec2 v_pos; out vec2 v_tex;" +
+  #|    "void main() { v_pos = a_pos; gl_Position = project(a_pos);" +
   #|    "  highp vec2 epsilon = 2.0 / u_dimension; float scale = (u_dimension.x - 4.0) / u_dimension.x;" +
-  #|    "  v_tex = (a_pos / " + EF + ") * scale + epsilon; }",
+  #|    "  v_tex = clamp(a_pos / " + EF + ", 0.0, 1.0) * scale + epsilon; }",
   #|    clip + `uniform sampler2D u_image; uniform vec4 u_unpack; uniform sampler2D u_elevation_stops;
   #|    uniform sampler2D u_color_stops; uniform int u_color_ramp_size; uniform float u_opacity; in vec2 v_tex; out vec4 o;
   #|    float getElevation(vec2 coord) { vec4 data = texture(u_image, coord) * 255.0; data.a = -1.0; return dot(data, u_unpack); }
@@ -408,22 +429,22 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|        if (el < el_m) { r = m; el_r = el_m; } else { l = m; el_l = el_m; } }
   #|      float x = (float(l) + (el - el_l) / (el_r - el_l) + 0.5)/float(u_color_ramp_size);
   #|      o = u_opacity*texture(u_color_stops, vec2(x, 0)); }`,
-  #|    ["u_matrix", "u_clip", "u_dimension", "u_image", "u_unpack", "u_elevation_stops", "u_color_stops",
+  #|    [...projUniforms, "u_clip", "u_dimension", "u_image", "u_unpack", "u_elevation_stops", "u_color_stops",
   #|     "u_color_ramp_size", "u_opacity"]);
   #|  // MapLibre's raster shaders without the parent cross-fade: the quad's corners
   #|  // (u_top: top left, right; u_bottom: bottom left, right) warped by u_warp, the
   #|  // premultiplied image unpremultiplied, hue spun, saturated, contrasted and
   #|  // mapped between the brightness bounds (u_bright).
   #|  const raster = program(
-  #|    "in vec2 a_pos; uniform mat4 u_matrix; uniform vec4 u_top; uniform vec4 u_bottom; uniform vec3 u_warp;" +
+  #|    proj + "in vec2 a_pos; uniform vec4 u_top; uniform vec4 u_bottom; uniform vec3 u_warp;" +
   #|    "out vec2 v_pos; out vec3 v_tex;" +
-  #|    "void main() { vec2 f = a_pos / " + EF + ";" +
+  #|    "void main() { vec2 f = a_pos / " + EF + "; vec2 ft = clamp(f, 0.0, 1.0);" +
   #|    "  vec2 bilinear = mix(mix(u_top.xy, u_top.zw, f.x), mix(u_bottom.xy, u_bottom.zw, f.x), f.y);" +
   #|    "  float d = dot(u_warp.xy, f) + 1.0;" +
   #|    "  vec2 across = u_top.zw - u_top.xy + u_warp.x * u_top.zw, down = u_bottom.xy - u_top.xy + u_warp.y * u_bottom.xy;" +
   #|    "  v_pos = mix((across * f.x + down * f.y + u_top.xy) / d, bilinear, u_warp.z);" +
-  #|    "  float r = mix(1.0 / d, 1.0, u_warp.z); v_tex = vec3(f * r, r);" +
-  #|    "  gl_Position = u_matrix * vec4(v_pos, 0.0, 1.0); }",
+  #|    "  float r = mix(1.0 / d, 1.0, u_warp.z); v_tex = vec3(ft * r, r);" +
+  #|    "  gl_Position = project(v_pos); }",
   #|    clip + "uniform sampler2D u_image; uniform float u_opacity; uniform vec2 u_bright; uniform float u_saturation;" +
   #|    "uniform float u_contrast; uniform vec3 u_spin; in vec3 v_tex; out vec4 o;" +
   #|    "void main() { if (outside()) discard; vec4 color = texture(u_image, v_tex.xy / v_tex.z);" +
@@ -432,7 +453,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float average = (color.r + color.g + color.b) / 3.0; rgb += (average - rgb) * u_saturation;" +
   #|    "  rgb = (rgb - 0.5) * u_contrast + 0.5;" +
   #|    "  o = vec4(mix(vec3(u_bright.x), vec3(u_bright.y), rgb) * color.a, color.a); }",
-  #|    ["u_matrix", "u_clip", "u_image", "u_opacity", "u_bright", "u_saturation", "u_contrast", "u_spin",
+  #|    [...projUniforms, "u_clip", "u_image", "u_opacity", "u_bright", "u_saturation", "u_contrast", "u_spin",
   #|     "u_top", "u_bottom", "u_warp"]);
   #|  // One quad over a tile, for raster layers.
   #|  const quad = gl.createVertexArray();
@@ -492,6 +513,62 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "void main() { float b = gl_FragCoord.y - u_horizon; if (b <= 0.0) discard;" +
   #|    "  o = b < u_blend ? mix(u_sky, u_horizon_color, pow(1.0 - b / u_blend, 2.0)) : u_sky; }",
   #|    ["u_sky", "u_horizon_color", "u_horizon", "u_blend"]);
+  #|  // MapLibre's atmosphere on the globe (atmosphere.*.glsl, from glsl-atmosphere): a
+  #|  // screen quad whose rays u_inv_proj gives, scattered around a planet the size of
+  #|  // the Earth seen from u_globe_position scaled by u_globe_radius.
+  #|  const atmosphere = program(
+  #|    "uniform mat4 u_inv_proj; out vec3 view_direction;" +
+  #|    "void main() { vec2 a = vec2(float(gl_VertexID & 1) * 2.0 - 1.0, float(gl_VertexID >> 1) * 2.0 - 1.0);" +
+  #|    "  view_direction = (u_inv_proj * vec4(a, 0.0, 1.0)).xyz; gl_Position = vec4(a, 0.0, 1.0); }",
+  #|    `in vec3 view_direction; uniform vec3 u_sun_pos; uniform vec3 u_globe_position; uniform float u_globe_radius;
+  #|    uniform float u_atmosphere_blend; out vec4 o; const float PI = 3.141592653589793; const int iSteps = 5; const int jSteps = 3;
+  #|    const float EARTH_RADIUS = 6371e3; const float ATMOS_RADIUS = 6471e3;
+  #|    vec2 rsi(vec3 r0, vec3 rd, float sr) { float a = dot(rd, rd); float b = 2.0 * dot(rd, r0); float c = dot(r0, r0) - (sr * sr);
+  #|      float d = (b*b) - 4.0*a*c; if (d < 0.0) return vec2(1e5,-1e5); return vec2((-b - sqrt(d))/(2.0*a), (-b + sqrt(d))/(2.0*a)); }
+  #|    vec4 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g) {
+  #|      pSun = normalize(pSun); r = normalize(r); vec2 p = rsi(r0, r, rAtmos); if (p.x > p.y) return vec4(0.0, 0.0, 0.0, 1.0);
+  #|      if (p.x < 0.0) p.x = 0.0; vec3 pos = r0 + r * p.x; vec2 p2 = rsi(r0, r, rPlanet);
+  #|      if (p2.x <= p2.y && p2.x > 0.0) p.y = min(p.y, p2.x);
+  #|      float iStepSize = (p.y - p.x) / float(iSteps); float iTime = p.x + iStepSize * 0.5;
+  #|      vec3 totalRlh = vec3(0,0,0); vec3 totalMie = vec3(0,0,0); float iOdRlh = 0.0; float iOdMie = 0.0;
+  #|      float mu = dot(r, pSun); float mumu = mu * mu; float gg = g * g; float pRlh = 3.0 / (16.0 * PI) * (1.0 + mumu);
+  #|      float pMie = 3.0 / (8.0 * PI) * ((1.0 - gg) * (mumu + 1.0)) / (pow(1.0 + gg - 2.0 * mu * g, 1.5) * (2.0 + gg));
+  #|      for (int i = 0; i < iSteps; i++) {
+  #|        vec3 iPos = r0 + r * iTime; float iHeight = length(iPos) - rPlanet;
+  #|        float odStepRlh = exp(-iHeight / shRlh) * iStepSize; float odStepMie = exp(-iHeight / shMie) * iStepSize;
+  #|        iOdRlh += odStepRlh; iOdMie += odStepMie;
+  #|        float jStepSize = rsi(iPos, pSun, rAtmos).y / float(jSteps); float jTime = jStepSize * 0.5; float jOdRlh = 0.0; float jOdMie = 0.0;
+  #|        for (int j = 0; j < jSteps; j++) { vec3 jPos = iPos + pSun * jTime; float jHeight = length(jPos) - rPlanet;
+  #|          jOdRlh += exp(-jHeight / shRlh) * jStepSize; jOdMie += exp(-jHeight / shMie) * jStepSize; jTime += jStepSize; }
+  #|        vec3 attn = exp(-(kMie * (iOdMie + jOdMie) + kRlh * (iOdRlh + jOdRlh)));
+  #|        totalRlh += odStepRlh * attn; totalMie += odStepMie * attn; iTime += iStepSize; }
+  #|      float opacity = exp(-(length(kRlh) * length(totalRlh) + kMie * length(totalMie)));
+  #|      vec3 color = iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie); return vec4(color, opacity); }
+  #|    void main() { vec3 scale_camera_pos = -u_globe_position * EARTH_RADIUS / u_globe_radius;
+  #|      vec4 color = atmosphere(normalize(view_direction), scale_camera_pos, u_sun_pos, 22.0, EARTH_RADIUS, ATMOS_RADIUS,
+  #|        vec3(5.5e-6, 13.0e-6, 22.4e-6), 21e-6, 8e3, 1.2e3, 0.758);
+  #|      color.rgb = 1.0 - exp(-1.0 * color.rgb); color = pow(color, vec4(1.0 / 2.2));
+  #|      o = vec4(color.rgb, 1.0 - color.a) * u_atmosphere_blend; }`,
+  #|    ["u_inv_proj", "u_sun_pos", "u_globe_position", "u_globe_radius", "u_atmosphere_blend"]);
+  #|  // Globe tile meshes by key (granularity and poles), uploaded once (`addTileMesh`).
+  #|  const tileMeshes = new Map();
+  #|  const tileMesh = (g) => {
+  #|    let m = tileMeshes.get(g.key);
+  #|    if (!m) {
+  #|      const vao = gl.createVertexArray();
+  #|      gl.bindVertexArray(vao);
+  #|      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  #|      gl.bufferData(gl.ARRAY_BUFFER, new Int16Array(g.vertices), gl.STATIC_DRAW);
+  #|      gl.enableVertexAttribArray(0);
+  #|      gl.vertexAttribPointer(0, 2, gl.SHORT, false, 4, 0);
+  #|      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  #|      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(g.indices), gl.STATIC_DRAW);
+  #|      gl.bindVertexArray(null);
+  #|      m = { vao, count: g.indices.length };
+  #|      tileMeshes.set(g.key, m);
+  #|    }
+  #|    return m;
+  #|  };
   #|  const empty = gl.createVertexArray();
   #|  // The grid: 65 x 65 vertices, then a skirt vertex under each edge vertex.
   #|  const N = 64, verts = [], data = [], idx = [];
@@ -534,14 +611,37 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  };
   #|  // Reused for every draw, so WebGL does not convert an array each time.
   #|  const mat = new Float32Array(16);
-  #|  // Sets a program's u_matrix and, if given, its u_clip.
+  #|  // Sets a program's u_matrix and, if given, its u_clip; programs that project
+  #|  // onto the globe also get the tile's globe placement (`c.globe`, or none).
   #|  const place = (p, matrix, clip) => {
   #|    mat.set(matrix);
   #|    gl.uniformMatrix4fv(p.u_matrix, false, mat);
   #|    if (clip) gl.uniform4f(p.u_clip, clip[0], clip[1], clip[2], clip[3]);
+  #|    if (p.u_transition === undefined) return;
+  #|    const g = c.globe;
+  #|    gl.uniform1f(p.u_transition, g ? g.transition : 0);
+  #|    if (!g) return;
+  #|    mat.set(g.matrix);
+  #|    gl.uniformMatrix4fv(p.u_globe, false, mat);
+  #|    gl.uniform4f(p.u_tile, g.tile[0], g.tile[1], g.tile[2], g.tile[3]);
+  #|    gl.uniform4f(p.u_plane, g.plane[0], g.plane[1], g.plane[2], g.plane[3]);
+  #|  };
+  #|  // Draws over the tile: its quad, or on the globe its mesh.
+  #|  const drawTile = () => {
+  #|    if (c.globe) {
+  #|      const m = tileMesh(c.globe);
+  #|      gl.bindVertexArray(m.vao);
+  #|      gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+  #|    } else {
+  #|      gl.bindVertexArray(quad);
+  #|      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|    }
   #|  };
   #|  // Draws a mesh's triangles, or the part `set_range` picked.
   #|  const draw = (m) => gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
-  #|  return { gl, extent: E, place, draw, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
+  #|  const hasTileMesh = (key) => tileMeshes.has(key);
+  #|  const addTileMesh = (key, vertices, indices) => tileMesh({ key, vertices, indices });
+  #|  const c = { gl, extent: E, place, draw, drawTile, globe: null, hasTileMesh, addTileMesh, background, atmosphere, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
   #|    atlas: null, px: [0, 0], size: [1, 1] };
+  #|  return c;
   #|}

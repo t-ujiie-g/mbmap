@@ -90,6 +90,86 @@
       "max": 179
     },
     {
+      "paint": "globe",
+      "view": "z0",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 4
+    },
+    {
+      "paint": "globe",
+      "view": "z1",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 187
+    },
+    {
+      "paint": "globe",
+      "view": "z2",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 178
+    },
+    {
+      "paint": "globe",
+      "view": "z5",
+      "ok": true,
+      "mean": 0.001,
+      "p99": 0,
+      "max": 223
+    },
+    {
+      "paint": "globe",
+      "view": "z11",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 0
+    },
+    {
+      "paint": "globe",
+      "view": "z12",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 0
+    },
+    {
+      "paint": "globe-sky",
+      "view": "z1",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 80
+    },
+    {
+      "paint": "globe-sky",
+      "view": "z11",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 0
+    },
+    {
+      "paint": "vertical-perspective",
+      "view": "z1",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 187
+    },
+    {
+      "paint": "vertical-perspective",
+      "view": "z11",
+      "ok": true,
+      "mean": 0,
+      "p99": 0,
+      "max": 0
+    },
+    {
       "urls": "xyz",
       "ratio": 1,
       "view": "z14",
@@ -194,6 +274,42 @@
       "view": "z3",
       "ok": true,
       "requested": 9,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "globe",
+      "ratio": 1,
+      "view": "z1",
+      "ok": true,
+      "requested": 11,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "globe",
+      "ratio": 1,
+      "view": "z2",
+      "ok": true,
+      "requested": 17,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "globe",
+      "ratio": 1,
+      "view": "z5",
+      "ok": true,
+      "requested": 37,
+      "mbmapOnly": [],
+      "maplibreOnly": []
+    },
+    {
+      "urls": "globe",
+      "ratio": 1,
+      "view": "z11",
+      "ok": true,
+      "requested": 25,
       "mbmapOnly": [],
       "maplibreOnly": []
     }

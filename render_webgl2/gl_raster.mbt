@@ -69,8 +69,7 @@ extern "js" fn gl_draw_hillshade(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.bindVertexArray(c.quad);
-  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  c.drawTile();
   #|}
 
 ///|
@@ -178,8 +177,7 @@ extern "js" fn gl_draw_relief(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
   #|  gl.uniform1i(p.u_image, 0);
-  #|  gl.bindVertexArray(c.quad);
-  #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  c.drawTile();
   #|}
 
 ///|
@@ -225,13 +223,17 @@ extern "js" fn gl_draw_raster(
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
   #|  // Pictures have no mipmaps: MapLibre then minifies linearly, even when `nearest`.
   #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, q ? gl.LINEAR : nearest ? gl.NEAREST : gl.LINEAR_MIPMAP_NEAREST);
+  #|  // MapLibre filters mipmapped tiles anisotropically above 20° of pitch (and leaves it on).
+  #|  if (!q && c.pitch > 20) {
+  #|    c.aniso ??= gl.getExtension("EXT_texture_filter_anisotropic") ?? false;
+  #|    if (c.aniso) gl.texParameterf(gl.TEXTURE_2D, c.aniso.TEXTURE_MAX_ANISOTROPY_EXT, gl.getParameter(c.aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT));
+  #|  }
   #|  gl.uniform1i(p.u_image, 0);
   #|  if (q && q[11]) {
   #|    gl.bindVertexArray(c.imageGrid);
   #|    gl.drawElements(gl.TRIANGLES, 16 * 16 * 6, gl.UNSIGNED_SHORT, 0);
   #|  } else {
-  #|    gl.bindVertexArray(c.quad);
-  #|    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|    c.drawTile();
   #|  }
   #|}
 

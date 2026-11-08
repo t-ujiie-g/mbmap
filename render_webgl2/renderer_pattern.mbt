@@ -101,12 +101,14 @@ pub fn Renderer::draw_fill_outline_pattern(
 pub fn Renderer::draw_background_pattern(
   self : Renderer,
   matrix : @core.Mat4,
+  globe? : GlobeTile,
   pos : PatternPosition,
   tile : PatternTile,
   opacity : Double,
   color : FixedArray[Double],
 ) -> Unit {
   self.use_pattern("backgroundPattern", pos, tile)
+  self.use_globe(globe)
   let a = color[3] * opacity
   gl_draw_background_pattern(self.gl, matrix.m, opacity, [
     color[0] * a,

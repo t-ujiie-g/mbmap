@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.2（地球表示の描画）。20.1（地球表示のカメラ）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.2b（ワーカーでのベクトルの細分化）。20.1（地球表示のカメラ）と 20.2a（地球表示の配線、ラスタと背景と大気）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -17,7 +17,7 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 133.8KB（式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 135KB（2026-11-04、ユーザー判断。120KB から引き上げ） |
+  | 表示（メイン） | 149.3KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 1.8KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
   | 表示ワーカー | 80.5KB（ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
@@ -34,7 +34,7 @@
 
 - **段階**（1 段階 1 PR、この順）：
   - 20.1：地球表示のカメラ（MapLibre 6.16 の `GlobeTransform` の移植）。
-  - 20.2：地球表示の描画（タイルの細分化、地球のシェーダー、大気、地形とラベル）。`style:golden` に地球の場面を足して MapLibre と画素で比べる。
+  - 20.2：地球表示の描画。2026-11-08 のユーザー判断で 3 つに分けた：20.2a カメラの配線（スタイルの `projection`、操作・アニメーション、地球上のタイルの覆い方、大気）とラスタ・背景の描画（`raster:golden` に地球の場面）、20.2b ワーカーでのベクトルの細分化（MapLibre の `subdivision.ts`、面・線・円・heatmap、`style:golden` に地球の場面）、20.2c ラベル・クエリ・地形・押し出し・カスタムレイヤー・書き出しを地球に。
   - 20.3：`mbmap/3d` の入口、3D のワーカーと wasm、glTF / glb（`KHR_mesh_quantization`、`KHR_texture_transform`、WebP）、meshopt の移植、glTF モデルの配置。
   - 20.4：3D Tiles 1.0 / 1.1（tileset.json、境界、画面上の誤差による詳細度、REPLACE / ADD、外部タイルセット、暗黙のタイリング、b3dm / i3dm / pnts / cmpt / glb、バッチテーブルと `EXT_structural_metadata`、クエリ）。
   - 20.5：PLATEAU の建物を表示する example（3 通り）と CesiumJS との描画・速度の比較。
@@ -43,7 +43,7 @@
   - 20.8：太陽の位置と光と影（mbmap の拡張として）。
   - 20.9：3D の計測・見通し・断面（クリッピング）。
 - **決めたこと**：
-  - 地球表示は表示（メイン）の入口に入るが、メインは 133.8 / 135KB なので、`projection` が `globe` のスタイルのときだけ読み込む `globe.js` に分ける（20.2 で測ってから確定）。
+  - 地球表示は表示（メイン）の入口に入れる（2026-11-08 ユーザー判断：遅延ロードの `globe.js` にすると地図のカメラの処理を差し替え口越しにする大きな改造と core の写しが要るので、メインに入れて予算を 147KB に。20.2a で 149.3KB になったので、20.2b・c の分も含めて 155KB に）。
   - Draco と LAZ（COPC）には対応しない。どちらも上流の wasm が大きい（draco3d 1.5.9 の `draco_decoder.wasm` は gzip 81.4KB ＋ glue 13.1KB、laz-perf 0.0.7 は 72.6KB）。PLATEAU の公式の 3D Tiles は Draco も meshopt も使っていない。meshopt は MoonBit に移植する（参照の JS 実装は 472 行、gzip 4.2KB）。
   - 光と影は、Mapbox GL JS v3 とそのスタイル仕様が Mapbox の利用規約のもとにあり（オープンソースでない）、移植もゴールデンもできないので、mbmap の拡張として作る：Mapbox の公開文書のプロパティ名（`lights`、`cast-shadows` など）だけを使い、太陽の位置は suncalc の移植（ゴールデン）、影は解析的な場面（高さ h の箱の影の長さ h / tan(高度)）と CesiumJS との見た目の比較で確かめる。
   - `mbmap/3d` の予算は、入口 10KB ＋ ワーカー 45KB を目安に 20.3 で測ってから決める。
@@ -57,7 +57,18 @@
   - `globe`（純粋な MoonBit、全バックエンド。まだ `map` からは使わない）：MapLibre の `GlobeTransform`（vertical perspective と、メルカトルと共有するカメラの状態 `TransformHelper`）、地球とメルカトルのカメラの補助（`jumpTo`、`easeTo`、`flyTo`、`cameraForBounds`、操作、慣性）、ハンドラーマネージャーの操作の 1 フレームを、変更のたびに MapLibre と同じく制約をかける 1 つの可変の `Globe` に移した。遷移（`transition`）が 0 より大きい間は地球として、0 では同じ状態の `@core.Transform::exact` で答える。アニメーションは自分の変換を持ち、増える割合で進めると、MapLibre の次のフレームと同じく新しいズームから遷移を取り直すので、メルカトルと地球をまたぐ飛行も同じになる。
   - `core` に足したもの：`Mat4::rotate_y`、制約なしの `Transform::exact`、メルカトルの制約 `mercator_constrain`、箱に合わせる `fit_box`（`camera_for_bounds` はこれを使う）、`Transform::ray_ground` の公開。
   - `npm run globe:golden`（新設）：MapLibre の `createProjectionFromName` の変換をその `Camera` とカメラの補助で動かし、フレームごとにズームから遷移を取り直して比べる。21 の視点（`globe` の z0.5〜14、ピッチ 85° 近くまで、日付変更線、極の近く、ズームとピッチの上限、`maxBounds`、`vertical-perspective`、`mercator`）で 501 の比較（制約、投影と遮蔽、逆投影、地球の行列と射影・近遠面・カメラの位置・地平の面・高度、`getBounds`、`cameraForBounds` 4 種、`easeTo` 6 種と `flyTo` 5 種の各 7 フレーム、操作 7 フレーム、`setLocationAtPoint`、慣性）がすべて許容差（1e-6 px、1e-7°、1e-8 ズーム、相対 1e-6）の中。最大の差は 1.7e-9 px、3.9e-8°、1.3e-9 ズーム。
-  - 大きさ：`globe` はまだどの入口にも入らない。表示（メイン）は `fit_box` を分けたぶん 40 バイト増えた（133.8KB のまま）。20.2 で `globe.js` に入れて測る。
+  - 大きさ：`globe` はまだどの入口にも入らない。表示（メイン）は `fit_box` を分けたぶん 40 バイト増えた（133.8KB のまま）。
+- **20.2a の結果**（地球表示の配線、ラスタと背景と大気）：
+  - スタイルの `projection`（`mercator`・`globe`・`vertical-perspective`。式は未対応として警告し、メルカトル）と `sky` の `atmosphere-blend`（`sky` がなければ 0、あれば既定 0.8、MapLibre の `Sky.setSky` と同じ）を読む。ファサードに `setProjection` / `getProjection`。
+  - `map` は `Globe` を持ち、同じ状態のメルカトルの `@core.Transform::exact` を並べる（地図のほかの部分はこれを読む）。カメラの呼び出し（`jumpTo`、`easeTo`、`flyTo`、`setLimits`、`cameraForBounds`、`getBounds`、`project` / `unproject`）、アニメーション、ドラッグ・ピンチ・ホイール・回転・ダブルクリック・慣性は地球を通る。遷移はフレームごとにズームから取る。
+  - `Globe::covering_tiles`（並行のエージェントの移植）：MapLibre の `coveringTiles` と地球の境界の立体（z0・z1 は箱、z2 からは 6 面と極）、可変ズーム、地平の面での切り落とし。`globe:golden` に 7 視点と 125 の比較を足し、タイルの並びまですべて同じ。最初は 256px のタイルの高ズームで 9 タイル違った：MapLibre は逆行列を `mat4.clone`（Float32Array）で写してから視錐台を作るので、同じく Float32 に丸めたら一致した。
+  - 描画：シェーダーに `project()` の前置き（MapLibre の `projectTile`：地球の行列、タイルのメルカトルの角と大きさ、地平の面で裏側を切る z、遷移の途中は平面との混合、極の頂点）を入れ、ラスタ・hillshade・color relief・画像・背景の模様をタイルのメッシュ（`@globe.tile_mesh`、z0 で 128、z2 から 32 の分割、北と南の行は極まで）で地球に描く。背景は地球のタイルごと、外の宇宙は透明のまま（コンテキストを `alpha: true` に）。大気は MapLibre の atmosphere シェーダーの写し。ラスタは傾き 20° を超えると異方性フィルタ（MapLibre の `anisotropicFilterPitch`、メルカトルでも同じ）。
+  - 地球の間は、面・線・円・記号・heatmap・押し出しのレイヤーと地形・ラベル・クエリ・書き出しはまだ描かない（20.2b・c）。
+  - フィクスチャ：国土地理院の標準地図の z0〜z3 の全タイル `gsi-std-world`（85 タイル、3.2MB、マニフェストで照合）。
+  - `npm run raster:golden` に地球の場面：`globe` で 6 視点（z0.3、z1、z2.3 の傾き 40°、北米の z5 の傾き 60°、z11.5 の遷移の途中、z12.5）、`sky` あり（大気）と `vertical-perspective` を各 2 視点。10 場面すべて MapLibre と画素で同じ（平均 0、99% 点 0）。地球で要求するタイルの URL も 4 視点で同じ。
+  - pack test に `globe`（`bench/npm/pages/globe/`）：地球の外が透明、`project` / `unproject` / `getBounds`、ドラッグで回り、ホイールで寄り、z13 への飛行がメルカトルで終わり、`setProjection(null)` で平らに戻る。
+  - example の 3 通りへの地球表示の切り替えは、ベクトルのレイヤーも地球に載る 20.2c で足す。
+  - 大きさ：表示（メイン）133.9 → 149.3KB（予算 155KB）。`globe` の関数が多く薄く広い（覆い方 約 5KB、カメラ 約 8KB、シェーダー・大気・配線 約 2KB）。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 

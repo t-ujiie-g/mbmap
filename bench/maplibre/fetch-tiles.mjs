@@ -8,7 +8,8 @@ import { PMTiles } from "pmtiles";
 import { ROOT } from "../lib/root.mjs";
 
 export const TILES = { z: 14, x: [14549, 14555], y: [6449, 6453] };
-// The vector tiles, standard map images and DEM of TILES, and a DEM of Mt Fuji for relief that shows.
+// The vector tiles, standard map images and DEM of TILES, a DEM of Mt Fuji for relief that shows and
+// the standard map of the whole world at zooms 0 to 3 for the globe.
 const SETS = [
   {
     name: "gsi-bvmap", ext: "pbf", ...TILES,
@@ -29,6 +30,12 @@ const SETS = [
     name: "gsi-dem-fuji", ext: "png", z: 12, x: [3625, 3628], y: [1616, 1619],
     url: "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
     attribution: "国土地理院 標高タイル (GSI Japan)",
+  },
+  {
+    name: "gsi-std-world", ext: "png",
+    levels: [0, 1, 2, 3].map((z) => ({ z, x: [0, (1 << z) - 1], y: [0, (1 << z) - 1] })),
+    url: "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+    attribution: "国土地理院 標準地図 (GSI Japan)",
   },
   {
     name: "ofm-planet", ext: "pbf", ...TILES,
@@ -83,12 +90,13 @@ for (const set of SETS) {
   if (set.files) {
     for (const [key, url] of Object.entries(set.files)) jobs.push({ key, file: path.join(dir, key), url });
   } else {
-    for (let x = set.x[0]; x <= set.x[1]; x++)
-      for (let y = set.y[0]; y <= set.y[1]; y++) {
-        const key = `${set.z}/${x}/${y}`;
-        const url = set.url?.replace("{z}", set.z).replace("{x}", x).replace("{y}", y);
-        jobs.push({ key, file: path.join(dir, `${key}.${set.ext}`), url, z: set.z, x, y });
-      }
+    for (const { z, x: xs, y: ys } of set.levels ?? [set])
+      for (let x = xs[0]; x <= xs[1]; x++)
+        for (let y = ys[0]; y <= ys[1]; y++) {
+          const key = `${z}/${x}/${y}`;
+          const url = set.url?.replace("{z}", z).replace("{x}", x).replace("{y}", y);
+          jobs.push({ key, file: path.join(dir, `${key}.${set.ext}`), url, z, x, y });
+        }
   }
   const entries = {};
   let mismatches = 0;

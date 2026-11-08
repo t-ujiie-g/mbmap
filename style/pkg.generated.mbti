@@ -379,6 +379,12 @@ pub fn Op::equal(Self, Self) -> Bool
 pub fn Op::not_equal(Self, Self) -> Bool
 pub fn Op::to_repr(Self) -> @debug.Repr
 
+pub(all) enum ProjectionType {
+  Mercator
+  Globe
+  VerticalPerspective
+}
+
 #derive(Eq, @debug.Debug)
 pub(all) enum PromoteId {
   FeatureId
@@ -470,6 +476,8 @@ pub struct Style {
   terrain : Terrain?
   sky : Sky?
   light : Light
+  projection : ProjectionType
+  atmosphere_blend : Expr
   warnings : Array[StyleError]
 }
 pub fn Style::from_compiled(BytesView) -> Self raise StyleError

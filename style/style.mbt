@@ -98,6 +98,8 @@ pub struct Style {
   terrain : Terrain?
   sky : Sky?
   light : Light
+  projection : ProjectionType
+  atmosphere_blend : Expr
   warnings : Array[StyleError]
 }
 
@@ -217,6 +219,14 @@ fn style_of(json : Json, strict : Bool) -> Style raise StyleError {
       }
       e => raise e
     },
+    projection: parse_projection(root.get("projection")) catch {
+      Unsupported(_) as e => {
+        issues.report(e)
+        Mercator
+      }
+      e => raise e
+    },
+    atmosphere_blend: parse_atmosphere(root.get("sky")),
     warnings: issues.warnings,
   }
 }

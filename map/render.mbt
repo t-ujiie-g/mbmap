@@ -15,7 +15,15 @@ fn Map::render(self : Map) -> Unit {
   }
   set_canvas_size(self.canvas, pw, ph)
   self.renderer.set_viewport(pw, ph)
-  let resized = self.transform.resize(w, h)
+  let resized = match self.globe {
+    Some(g) => {
+      if w != self.transform.width || h != self.transform.height {
+        g.resize(w, h)
+      }
+      g.mercator()
+    }
+    None => self.transform.resize(w, h)
+  }
   if resized.camera != self.transform.camera {
     // The limits moved the camera to fit the new size.
     self.transform = resized
@@ -24,14 +32,18 @@ fn Map::render(self : Map) -> Unit {
     self.transform = resized
   }
   self.step_animation()
+  if self.globe is Some(g) {
+    // MapLibre takes the projection's transition from the zoom of each frame.
+    g.update_transition()
+  }
   // The center stands on the terrain, at 0 m where no DEM tile has loaded.
   let elevation = match self.terrain_source() {
-    Some(src) =>
+    Some(src) if !self.on_globe() =>
       elevation_at(src, self.transform.camera.center.to_mercator()).unwrap_or(
         0.0,
       ) *
       self.exaggeration()
-    None => 0.0
+    _ => 0.0
   }
   self.transform = self.transform.with_elevation(elevation)
   self.send_images()
@@ -483,12 +495,20 @@ fn Map::draw_frame(
   dpr : Double,
 ) -> Unit {
   let t = self.transform
-  let terrain = self.terrain_source()
+  let globe = self.on_globe()
+  self.renderer.set_pitch(t.camera.pitch)
+  // Terrain is not drawn on the globe yet.
+  let terrain = if globe { None } else { self.terrain_source() }
   self.prerender_custom()
   self.prepare_relief(draws_of)
-  let (r, g, b) = self.background()
-  self.renderer.clear(r, g, b)
-  self.draw_sky(dpr)
+  if globe {
+    // Space around the globe stays clear, as MapLibre leaves it.
+    self.renderer.clear(0.0, 0.0, 0.0, alpha=0.0)
+  } else {
+    let (r, g, b) = self.background()
+    self.renderer.clear(r, g, b)
+    self.draw_sky(dpr)
+  }
   let zoom = t.camera.zoom
   if terrain is Some(src) {
     self.render_terrain(src, draws_of, dpr)
@@ -498,6 +518,24 @@ fn Map::draw_frame(
   let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
   let light = self.extrusion_light()
   for index, layer in self.style.layers {
+    if globe {
+      if zoom < layer.min_zoom || zoom >= layer.max_zoom {
+        continue
+      }
+      // Vector layers come onto the globe once their geometry is subdivided.
+      match layer.kind {
+        Background if layer.pattern is Some(_) => {
+          self.draw_background_pattern(layer)
+          continue
+        }
+        Background => {
+          self.draw_globe_background(layer)
+          continue
+        }
+        Fill | Line | Circle | Symbol | Heatmap | FillExtrusion => continue
+        _ => ()
+      }
+    }
     if layer.kind is Background &&
       layer.pattern is Some(_) &&
       terrain is None &&
@@ -568,6 +606,7 @@ fn Map::draw_frame(
       )
     }
   }
+  self.draw_globe_atmosphere()
 }
 
 ///|

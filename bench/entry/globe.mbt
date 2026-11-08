@@ -87,7 +87,7 @@ pub fn globe_bounds(a : FixedArray[Double]) -> String {
 #export_name("globe_matrices")
 pub fn globe_matrices(a : FixedArray[Double]) -> String {
   let g = globe_of(a)
-  let (p, near, far) = g.projection()
+  let (p, near, far) = g.projection_matrix()
   let c = g.camera_position()
   let (pa, pb, pc, pd) = g.clipping_plane_of()
   joined(
@@ -226,4 +226,26 @@ pub fn globe_inertia(
 ) -> String {
   let (c, (ox, oy)) = globe_of(a).pan_inertia((pan[0], pan[1]))
   joined([c.lng, c.lat, ox, oy])
+}
+
+///|
+/// The tiles covering the view of `globe_of(a)` as z, x, y triples, for the
+/// options in `o`: tile size, min zoom, max zoom (NaN for the camera's) and
+/// 1 to round the zoom.
+#export_name("globe_covering")
+pub fn globe_covering(a : FixedArray[Double], o : FixedArray[Double]) -> String {
+  let g = globe_of(a)
+  let tiles = g.covering_tiles(
+    tile_size=o[0].to_int(),
+    min_zoom=o[1].to_int(),
+    max_zoom?=if o[2].is_nan() { None } else { Some(o[2].to_int()) },
+    round_zoom=o[3] == 1.0,
+  )
+  let out = []
+  for t in tiles {
+    out.push(t.z.to_double())
+    out.push(t.x.to_double())
+    out.push(t.y.to_double())
+  }
+  joined(out)
 }

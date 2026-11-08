@@ -1,7 +1,5 @@
-// MapLibre GL JS 6.16.0's camera helpers for the globe (src/geo/projection/globe_camera_helper.ts,
-// vertical_perspective_camera_helper.ts, mercator_camera_helper.ts), the parts of
-// src/ui/camera.ts and src/ui/handler_manager.ts that drive them, and the pan of globe_utils.ts,
-// BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
+// MapLibre GL JS 6.16.0's globe and mercator camera helpers (src/geo/projection/) and the parts of
+// src/ui/camera.ts that drive them, BSD-3-Clause, Copyright (c) 2020 MapLibre contributors; see NOTICE.
 
 ///|
 /// Moves the camera at once (MapLibre's `jumpTo`); left out stays as it is.

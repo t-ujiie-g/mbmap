@@ -233,7 +233,12 @@ fn Map::draw_background_pattern(self : Map, layer : @style.StyleLayer) -> Unit {
     return
   }
   let z = t.tile_zoom(0, @core.MAX_TILE_ZOOM)
-  for id in t.covering_tiles(0, z) {
+  let tiles = match self.globe {
+    Some(g) if g.is_globe() =>
+      self.globe_cover(g, 512, 0, @core.MAX_TILE_ZOOM, false)
+    _ => t.covering_tiles(0, z)
+  }
+  for id in tiles {
     let matrix = t.tile_matrix(id, @core.TILE_EXTENT)
     let matrix = match self.window {
       None => matrix
@@ -241,6 +246,7 @@ fn Map::draw_background_pattern(self : Map, layer : @style.StyleLayer) -> Unit {
     }
     self.renderer.draw_background_pattern(
       matrix,
+      globe?=self.globe_tile(id),
       pos,
       pattern_tile(t, id),
       p.opacity,

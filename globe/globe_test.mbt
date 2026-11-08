@@ -71,7 +71,7 @@ test "globe camera state, matrices and transition" {
   let m = g.globe_matrix().m
   assert_true(near(m[0], -853.7230429436682, tol=0.000001))
   assert_true(near(m[14], 1514.4005303486674, tol=0.000001))
-  let (_, near_z, far_z) = g.projection()
+  let (_, near_z, far_z) = g.projection_matrix()
   assert_true(near_z == 0.5 && near(far_z, 2505.118173916742, tol=0.000001))
   assert_true(near(g.camera_altitude(), 6332198.9927503215, tol=0.01))
   let r = g.ray_direction(100.0, 200.0)
@@ -293,4 +293,52 @@ test "gestures: zoom about a point, drag and turn" {
   )
   let (_, offset) = m.pan_inertia((40.0, 0.0))
   assert_eq(offset, (40.0, 0.0))
+}
+
+///|
+test "tile meshes: granularity by zoom, grid, borders and poles" {
+  assert_eq([0, 1, 2, 5].map(@globe.tile_granularity), [128, 64, 32, 32])
+  let (v, i) = @globe.tile_mesh(2)
+  assert_eq(v.length(), 9 * 2)
+  assert_eq(i.length(), 4 * 6)
+  assert_eq((v[2], v[3], v[16], v[17]), (4096, 0, 8192, 8192))
+  assert_eq((i[0], i[1], i[2], i[3], i[4], i[5]), (0, 3, 1, 1, 3, 4))
+  let (p, _) = @globe.tile_mesh(1, north=true, south=true)
+  assert_eq(
+    (p[1], p[p.length() - 1]),
+    (@globe.NORTH_POLE_Y, @globe.SOUTH_POLE_Y),
+  )
+  let (b, bi) = @globe.tile_mesh(1, borders=true)
+  assert_eq((b[0], b[1], bi.length()), (-64, -64, 9 * 6))
+}
+
+///|
+test "set_camera takes a camera as it is" {
+  let g = tokyo_globe()
+  g.set_camera({
+    center: { lng: 0.0, lat: 89.9, },
+    zoom: -5.0,
+    bearing: 10.0,
+    pitch: 0.0,
+  })
+  assert_true(near(g.camera().center.lat, 89.9) && g.camera().zoom == -5.0)
+}
+
+///|
+test "atmosphere inputs: the globe in front of the camera" {
+  let (_, center, r, blend) = tokyo_globe().atmosphere()
+  assert_true(near(r, @globe.globe_radius(4096.0, 35.6812)))
+  assert_true(
+    center.z < 0.0 &&
+    (center.x * center.x + center.y * center.y + center.z * center.z).sqrt() > r,
+  )
+  assert_true(blend > 0.0 && blend <= 1.0)
+}
+
+///|
+test "the sun turns with the globe only when the light is on the map" {
+  let g = tokyo_globe()
+  let v : @globe.Vec3 = { x: 0.0, y: 0.0, z: 1.0, }
+  assert_eq(g.sun(v, map=false), { x: -0.0, y: -0.0, z: -1.0, })
+  assert_true(g.sun(v, map=true) != g.sun(v, map=false))
 }

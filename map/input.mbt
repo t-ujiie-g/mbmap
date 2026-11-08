@@ -169,7 +169,11 @@ fn Map::on_pointer_move(self : Map, e : JsValue) -> Unit {
     let bearing = -(after[0].0 - before[0].0) * ROTATE_RATE
     let pitch = -(after[0].1 - before[0].1) * PITCH_RATE
     self.move_camera(
-      { ..c, bearing: c.bearing + bearing, pitch: c.pitch + pitch, },
+      match self.globe {
+        Some(g) =>
+          self.globe_gesture(g, t.width / 2.0, t.height / 2.0, bearing~, pitch~)
+        None => { ..c, bearing: c.bearing + bearing, pitch: c.pitch + pitch, }
+      },
       event,
     )
     self.record({
@@ -189,7 +193,13 @@ fn Map::on_pointer_move(self : Map, e : JsValue) -> Unit {
     self.handler_enabled(TouchPitch) &&
     vertical_together(before, after) {
     let pitch = -(y1 - y0) * PITCH_RATE
-    self.move_camera({ ..c, pitch: c.pitch + pitch, }, event)
+    self.move_camera(
+      match self.globe {
+        Some(g) => self.globe_gesture(g, x1, y1, pitch~)
+        None => { ..c, pitch: c.pitch + pitch, }
+      },
+      event,
+    )
     self.record({
       time: now(),
       dx: 0.0,
@@ -202,6 +212,32 @@ fn Map::on_pointer_move(self : Map, e : JsValue) -> Unit {
     return
   }
   let pan = self.handler_enabled(DragPan)
+  if self.globe is Some(g) {
+    let touch = after.length() >= 2 &&
+      s0 > 0.0 &&
+      s1 > 0.0 &&
+      self.handler_enabled(TouchZoomRotate)
+    let d = if pan { (x1 - x0, y1 - y0) } else { (0.0, 0.0) }
+    let zoom = if touch { @math.log2(s1 / s0) } else { 0.0 }
+    let bearing = if touch { -(angle(after) - angle(before)) } else { 0.0 }
+    if !pan && !touch {
+      return
+    }
+    self.move_camera(
+      self.globe_gesture(g, x1, y1, pan=d, zoom~, bearing~),
+      event,
+    )
+    self.record({
+      time: now(),
+      dx: d.0,
+      dy: d.1,
+      zoom,
+      bearing,
+      pitch: 0.0,
+      around: (x1, y1),
+    })
+    return
+  }
   let panned = if pan { t.with_camera(t.panned(x0, y0, x1, y1)) } else { t }
   if after.length() < 2 ||
     s0 <= 0.0 ||
@@ -304,12 +340,22 @@ fn Map::inertia_move(self : Map) -> (@core.CameraTarget, Double)? {
   let mut center = None
   if pan > 0.0 {
     let (amount, d) = coast(pan, 2500.0, 1400.0)
-    // Never past the horizon: beyond it the pan would run backwards.
-    let k = amount /
-      pan *
-      @cmp.minimum(t.horizon().abs() * 0.75 / amount.abs(), 1.0)
-    offset = (dx * k, dy * k)
-    center = Some(c.center)
+    match self.globe {
+      // The globe turns under the pan instead (`handlePanInertia`).
+      Some(g) => {
+        let (to, by) = g.pan_inertia((dx * amount / pan, dy * amount / pan))
+        offset = by
+        center = Some(to)
+      }
+      None => {
+        // Never past the horizon: beyond it the pan would run backwards.
+        let k = amount /
+          pan *
+          @cmp.minimum(t.horizon().abs() * 0.75 / amount.abs(), 1.0)
+        offset = (dx * k, dy * k)
+        center = Some(c.center)
+      }
+    }
     ms = @cmp.maximum(ms, d)
   }
   let mut target_zoom = None
@@ -333,7 +379,7 @@ fn Map::inertia_move(self : Map) -> (@core.CameraTarget, Double)? {
     ms = @cmp.maximum(ms, d)
   }
   let around = if target_zoom is Some(_) || target_bearing is Some(_) {
-    Some(t.unproject(around.0, around.1))
+    Some(self.point_location(around.0, around.1))
   } else {
     None
   }
@@ -494,13 +540,19 @@ fn Map::attach_input(self : Map) -> Unit {
       guard self.handler_enabled(ScrollZoom) else { return }
       prevent_default(e)
       self.stop()
-      let zoom = self.transform.camera.zoom - wheel_pixels(e) * WHEEL_ZOOM_RATE
+      let delta = -wheel_pixels(e) * WHEEL_ZOOM_RATE
+      let x = get_double(e, "offsetX")
+      let y = get_double(e, "offsetY")
       self.move_camera(
-        self.transform.zoomed_around(
-          get_double(e, "offsetX"),
-          get_double(e, "offsetY"),
-          zoom,
-        ),
+        match self.globe {
+          Some(g) => self.globe_gesture(g, x, y, zoom=delta)
+          None =>
+            self.transform.zoomed_around(
+              x,
+              y,
+              self.transform.camera.zoom + delta,
+            )
+        },
         as_event(e),
       )
       if self.wheel_timer >= 0 {
@@ -522,12 +574,25 @@ fn Map::attach_input(self : Map) -> Unit {
       let t = self.transform
       let x = get_double(e, "offsetX")
       let y = get_double(e, "offsetY")
-      let on_ground = y > t.height / 2.0 - t.horizon()
+      let around = match self.globe {
+        Some(g) =>
+          if g.on_surface(x, y) {
+            Some(g.unproject(x, y))
+          } else {
+            None
+          }
+        None =>
+          if y > t.height / 2.0 - t.horizon() {
+            Some(t.unproject(x, y))
+          } else {
+            None
+          }
+      }
       self.ease_to(
         @core.CameraTarget::new(
           zoom=t.camera.zoom +
             (if event_bool(e, "shiftKey") { -1.0 } else { 1.0 }),
-          around?=if on_ground { Some(t.unproject(x, y)) } else { None },
+          around?,
         ),
         duration=300.0,
         event=as_event(e),

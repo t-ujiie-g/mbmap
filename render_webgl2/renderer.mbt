@@ -34,14 +34,15 @@ pub fn Renderer::set_viewport(
 }
 
 ///|
-/// Clears the frame to an opaque color.
+/// Clears the frame to a color, opaque unless `alpha` (premultiplied).
 pub fn Renderer::clear(
   self : Renderer,
   r : Double,
   g : Double,
   b : Double,
+  alpha~ : Double = 1.0,
 ) -> Unit {
-  gl_clear(self.gl, r, g, b)
+  gl_clear(self.gl, r, g, b, alpha)
 }
 
 ///|
@@ -65,9 +66,9 @@ pub fn Renderer::release(self : Renderer, mesh : Mesh) -> Unit {
 }
 
 ///|
-/// Where a mesh is drawn: `matrix` (and `raster_matrix`, on the pixel grid at
-/// rest) maps tile units to clip space; `units_per_pixel` at `center_depth`; only
-/// `clip` (tile units) shows; `latitudes` are the tile's north and south edges.
+/// Where a mesh is drawn: `matrix` (`raster_matrix` on the pixel grid at rest)
+/// to clip space, `units_per_pixel` at `center_depth`, only `clip` shows, the
+/// tile's edge `latitudes`; `globe` puts raster-like draws onto the globe.
 pub(all) struct Placement {
   matrix : @core.Mat4
   raster_matrix : @core.Mat4
@@ -76,6 +77,7 @@ pub(all) struct Placement {
   clip : FixedArray[Double]
   latitudes : (Double, Double)
   pattern : PatternTile
+  globe : GlobeTile?
 }
 
 ///|
@@ -241,6 +243,7 @@ pub fn Renderer::draw_hillshade(
   accent~ : FixedArray[Double],
   nearest~ : Bool,
 ) -> Unit {
+  self.use_globe(at.globe)
   gl_draw_hillshade(
     self.gl,
     mesh,
@@ -325,6 +328,7 @@ pub fn Renderer::draw_relief(
   opacity~ : Double,
   nearest~ : Bool,
 ) -> Unit {
+  self.use_globe(at.globe)
   gl_draw_relief(self.gl, mesh, at.raster_matrix.m, at.clip, ramp, unpack, [
     opacity,
     if nearest {
@@ -520,6 +524,16 @@ pub fn Renderer::index_count(
 }
 
 ///|
+/// The camera's pitch in degrees this frame (raster tiles are filtered by it).
+pub fn Renderer::set_pitch(self : Renderer, pitch : Double) -> Unit {
+  gl_set_pitch(self.gl, pitch)
+}
+
+///|
+extern "js" fn gl_set_pitch(gl : Gl, pitch : Double) -> Unit =
+  #|(c, pitch) => { c.pitch = pitch; }
+
+///|
 /// Uploads a raster tile's image (an ImageBitmap, closed after).
 pub fn Renderer::upload_raster(self : Renderer, image : JsBuffer) -> Mesh {
   gl_upload_raster(self.gl, image)
@@ -544,6 +558,7 @@ pub fn Renderer::draw_raster(
   let s = @math.sin(angle)
   let c = @math.cos(angle)
   let root3 = 3.0.sqrt()
+  self.use_globe(at.globe)
   gl_draw_raster(
     self.gl,
     mesh,

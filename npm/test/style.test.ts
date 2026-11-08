@@ -74,6 +74,12 @@ test("keepGeoJSONData keeps the old data object where the new style writes it al
   assert.equal(edit.keepGeoJSONData(null, s), s);
 });
 
+test("setRoot sets and removes the projection", () => {
+  const s = edit.setRoot(style(), "projection", { type: "globe" });
+  assert.deepEqual((s as { projection?: unknown }).projection, { type: "globe" });
+  assert.equal("projection" in edit.setRoot(s, "projection", null), false);
+});
+
 test("setRoot sets and removes terrain, sky and light", () => {
   const s = edit.setRoot(style(), "sky", { "sky-color": "#88c6fc" });
   assert.deepEqual(s.sky, { "sky-color": "#88c6fc" });
