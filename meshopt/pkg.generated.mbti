@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "t-ujiie-g/mbmap/meshopt"
+
+// Values
+pub fn decode_gltf_buffer(FixedArray[Byte], Int32, Int32, FixedArray[Byte], Int32, Int32, Mode, Filter) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) enum Filter {
+  NoFilter
+  Octahedral
+  Quaternion
+  Exponential
+  Color
+}
+pub fn Filter::from_string(String) -> Self?
+
+pub(all) enum Mode {
+  Attributes
+  Triangles
+  Indices
+}
+pub fn Mode::from_string(String) -> Self?
+
+// Type aliases
+
+// Traits

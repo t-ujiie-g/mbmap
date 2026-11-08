@@ -7,6 +7,7 @@ import {
   "t-ujiie-g/mbmap/formats",
   "t-ujiie-g/mbmap/geom",
   "t-ujiie-g/mbmap/globe",
+  "t-ujiie-g/mbmap/meshopt",
   "t-ujiie-g/mbmap/mvt",
   "t-ujiie-g/mbmap/proj",
   "t-ujiie-g/mbmap/route",
@@ -26,6 +27,7 @@ options(
     "js_input.mbt": [ "js" ],
     "linear_memory.mbt": [ "wasm", "wasm-gc" ],
     "host_math.mbt": [ "wasm", "wasm-gc" ],
+    "meshopt_mem.mbt": [ "wasm", "wasm-gc" ],
   },
   link: {
     "wasm": { "export-memory-name": "memory" },
