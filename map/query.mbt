@@ -243,7 +243,7 @@ pub fn Map::query_rendered(
   })
   let t = self.transform
   let extent = @core.TILE_EXTENT.to_double()
-  let mercator = points.map(p => t.screen_to_mercator(p.0, p.1))
+  let mercator = points.map(p => self.screen_mercator(p.0, p.1))
   // MapLibre's camera query geometry: the query's box grown to the point
   // under the camera, so that buildings standing between are found.
   let camera_point = (
@@ -281,7 +281,7 @@ pub fn Map::query_rendered(
       }
     }
     let camera = if extruded { camera_screen } else { points }
-    let camera_mercator = camera.map(p => t.screen_to_mercator(p.0, p.1))
+    let camera_mercator = camera.map(p => self.screen_mercator(p.0, p.1))
     let symbols = self.symbols_under(src, points, wanted)
     for e in self.drawn_tiles(src) {
       let labels = symbols.get(e.id.key()).unwrap_or([])
@@ -307,6 +307,18 @@ pub fn Map::query_rendered(
       w.f64(@core.radians(t.camera.bearing))
       for v in t.tile_matrix(id, @core.TILE_EXTENT).m {
         w.f64(v)
+      }
+      match self.globe_tile(id) {
+        Some(g) => {
+          w.u8(1)
+          for v in g.matrix {
+            w.f64(v)
+          }
+          for v in g.tile {
+            w.f64(v)
+          }
+        }
+        None => w.u8(0)
       }
       w.u32(mercator.length())
       for m in mercator {

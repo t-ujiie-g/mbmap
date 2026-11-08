@@ -727,6 +727,24 @@ const GLOBE_SCENES = {
     ]), sources: { world: WORLD, metric: { ...WORLD, lineMetrics: true, data: { type: "FeatureCollection", features: WORLD.data.features.filter((f) => f.properties.k === "route") } } } },
     camera: { center: [60, 30], zoom: 1.4, bearing: -20, pitch: 20 }, limits: { mean: 0.05, p99: 1 },
   },
+  "globe-extrusions": {
+    style: { ...globe([{ id: "towers", type: "fill-extrusion", source: "blocks",
+      paint: { "fill-extrusion-color": ["match", ["%", ["get", "i"], 3], 0, "#d9b38c", 1, "#8fbf8f", "#9fb4d9"],
+        "fill-extrusion-height": ["*", 1500, ["+", 1, ["%", ["get", "i"], 4]]], "fill-extrusion-base": 0 } }]),
+      sources: { blocks: { type: "geojson", data: { type: "FeatureCollection", features: Array.from({ length: 25 }, (_, i) => {
+        const [x, y] = [138.5 + (i % 5) * 0.6, 34.5 + Math.floor(i / 5) * 0.5];
+        return { type: "Feature", properties: { i }, geometry: { type: "Polygon", coordinates: [[[x, y], [x + 0.35, y], [x + 0.35, y + 0.3], [x, y + 0.3], [x, y]]] } };
+      }) } } } },
+    camera: { center: [139.7, 35.6], zoom: 6.5, bearing: -30, pitch: 60 }, limits: { mean: 0.05, p99: 1 },
+  },
+  "globe-translate": {
+    style: globe([
+      { ...GLOBE_LAYERS[0], paint: { ...GLOBE_LAYERS[0].paint, "fill-translate": [30, -20] } },
+      { ...GLOBE_LAYERS[1], paint: { ...GLOBE_LAYERS[1].paint, "line-translate": [-15, 25], "line-translate-anchor": "viewport" } },
+      { ...GLOBE_LAYERS[2], paint: { ...GLOBE_LAYERS[2].paint, "circle-translate": [10, 10] } },
+    ]),
+    camera: { center: [120, 30], zoom: 1.6, bearing: 25, pitch: 30 }, limits: { mean: 0.05, p99: 1 },
+  },
   "globe-map-circles": {
     style: globe([{ ...GLOBE_LAYERS[2], paint: { ...GLOBE_LAYERS[2].paint, "circle-radius": 10, "circle-pitch-alignment": "map" } }]),
     camera: { center: [0, 10], zoom: 2, bearing: 0, pitch: 30 }, limits: { mean: 0.05, p99: 1 },

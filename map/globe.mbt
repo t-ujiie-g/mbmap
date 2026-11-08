@@ -80,6 +80,7 @@ fn Map::globe_tile(self : Map, id : @core.TileId) -> @render_webgl2.GlobeTile? {
     // MapLibre's `getPixelScale`, between mercator's and the globe's.
     pixel_scale: 1.0 +
     (1.0 / @globe.planet_scale(g.camera().center.lat) - 1.0) * g.transition(),
+    translate: (0.0, 0.0),
     granularity: @globe.tile_granularity(id.z),
     north: id.y == 0,
     south: id.y == (1 << id.z) - 1,
@@ -138,4 +139,27 @@ fn Map::draw_globe_atmosphere(self : Map) -> Unit {
     radius,
     blend,
   )
+}
+
+///|
+/// The globe's surface into the depth buffer, once a frame before extrusions.
+fn Map::draw_globe_depth(self : Map) -> Unit {
+  guard self.globe is Some(g) && g.is_globe() else { return }
+  for id in self.globe_cover(g, 512, 0, @core.MAX_TILE_ZOOM, false) {
+    self.renderer.draw_globe_depth(self.placement(id, None, 1.0))
+  }
+}
+
+///|
+/// The place under screen point (x, y) in mercator units, on the globe when
+/// it is drawn as one.
+fn Map::screen_mercator(
+  self : Map,
+  x : Double,
+  y : Double,
+) -> @core.MercatorCoord {
+  match self.globe {
+    Some(g) if g.is_globe() => g.unproject(x, y).to_mercator()
+    _ => self.transform.screen_to_mercator(x, y)
+  }
 }

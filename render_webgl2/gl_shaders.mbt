@@ -50,7 +50,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // u_tile is the tile's mercator corner and size per unit, u_globe the unit
   #|  // sphere to clip space, u_plane the horizon plane hiding the far side.
   #|  const proj = "uniform mat4 u_matrix; uniform mat4 u_globe; uniform vec4 u_tile; uniform vec4 u_plane;" +
-  #|    "uniform float u_transition; const float PI = 3.141592653589793;" +
+  #|    "uniform float u_transition; uniform vec2 u_translate; const float PI = 3.141592653589793;" +
   #|    "vec3 sphere(vec2 p) { vec2 m = u_tile.xy + u_tile.zw * p; float sx = m.x * PI * 2.0 + PI;" +
   #|    "  float t = exp(PI - m.y * PI * 2.0); float d = t * t + 1.0; float cy = 2.0 * t / d;" +
   #|    "  vec3 s = vec3(sin(sx) * cy, (t * t - 1.0) / d, cos(sx) * cy);" +
@@ -69,8 +69,15 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  r.xyw = mix(flat_.xyw, g.xyw, u_transition);" +
   #|    "  if (p.y < -32767.5 || p.y > 32766.5) { r = g; r.z = mix(g.z, 100.0, pow(max((1.0 - u_transition) / 0.02, 0.0), 8.0)); }" +
   #|    "  return r; }" +
-  #|    "vec4 project(vec2 p) { return u_transition <= 0.0 ? u_matrix * vec4(p, 0.0, 1.0) : globeAt(p, sphere(p)); }";
-  #|  const projUniforms = ["u_matrix", "u_globe", "u_tile", "u_plane", "u_transition"];
+  #|    // A layer's translation is in u_matrix already, on the globe in u_translate.
+  #|    "vec4 project(vec2 p) { return u_transition <= 0.0 ? u_matrix * vec4(p, 0.0, 1.0) : globeAt(p, sphere(p + u_translate)); }" +
+  #|    // MapLibre's projectTileFor3D: `z` (world pixels) flat, `meters` above the globe, depth kept.
+  #|    "vec4 project3d(vec2 p, float meters, float z) { vec4 f = u_matrix * vec4(p, z, 1.0); if (u_transition <= 0.0) return f;" +
+  #|    "  vec4 g = u_globe * vec4(sphere(p + u_translate) * (1.0 + meters / 6371008.8), 1.0); return u_transition > 0.999 ? g : mix(f, g, u_transition); }" +
+  #|    // A normal of the tile's plane turned to the sphere at `p` (`globeGetRotationMatrix`).
+  #|    "vec3 globeNormal(vec2 p, vec3 n) { vec3 s = sphere(p); vec3 right = vec3(s.z, 0.0, -s.x);" +
+  #|    "  return mat3(normalize(right), normalize(cross(right, s)), s) * n; }";
+  #|  const projUniforms = ["u_matrix", "u_globe", "u_tile", "u_plane", "u_transition", "u_translate"];
   #|  // Paint values: each slot holds a value and the next along its zoom curve,
   #|  // mixed by u_t (one per slot); colors are straight RGBA, premultiplied here.
   #|  const paint = "uniform float u_t[6]; in vec4 a_color_lo; in vec4 a_color_hi; in vec2 a_opacity; in vec2 a_extent;" +
@@ -196,6 +203,9 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    patternColor + "uniform float u_opacity; uniform vec4 u_color; in vec2 v_pat; out vec4 o;" +
   #|    "void main() { o = patternColor(v_pat, u_color, u_opacity); }",
   #|    [...projUniforms, "u_opacity", "u_color", ...patternUniforms]);
+  #|  // The globe's surface into depth only, before extrusions (MapLibre's depth shader).
+  #|  const globeDepth = program(proj + "in vec2 a_pos; void main() { gl_Position = project3d(a_pos, 0.0, 0.0); }",
+  #|    "out vec4 o; void main() { o = vec4(0.0); }", projUniforms);
   #|  // The background on the globe, one tile mesh at a time (MapLibre's background shader).
   #|  const background = program(proj + "in vec2 a_pos; void main() { gl_Position = project(a_pos); }",
   #|    "uniform vec4 u_color; out vec4 o; void main() { o = u_color; }", [...projUniforms, "u_color"]);
@@ -218,7 +228,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  v_stroke = w > 0.0 ? premul(mix(a_stroke_lo, a_stroke_hi, u_t[3]), at(a_stroke_opacity, 4)) : v_color;" +
   #|    "  v_pos = a_pos; v_extrude = a_data.xy / 63.0; vec4 c = project(a_pos);" +
   #|    "  if (u_pitch) { float k = u_scale ? 1.0 : c.w / u_depth; vec2 corner = a_pos + v_extrude * v_size * u_units * k;" +
-  #|    "    c = u_transition <= 0.0 ? project(corner) : globeAt(corner, turnOnGlobe(sphere(a_pos), v_extrude * v_size * u_units * k * u_angle)); }" +
+  #|    "    c = u_transition <= 0.0 ? project(corner) : globeAt(corner, turnOnGlobe(sphere(a_pos + u_translate), v_extrude * v_size * u_units * k * u_angle)); }" +
   #|    "  else { if (u_transition > 0.0 && c.z / c.w > 1.0) c.xy = vec2(10000.0);" +
   #|    "    c += vec4(v_extrude * v_size * u_px * (u_scale ? u_depth : c.w), 0.0, 0.0); }" +
   #|    "  gl_Position = v_size > 0.0 ? c : vec4(2.0, 2.0, 2.0, 1.0); }",
@@ -320,8 +330,8 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // ground (m) under the centroid times u_ground (0 without terrain, which also
   #|  // skips the 10 m basement), u_scale world pixels per meter.
   #|  const extrusion = program(
-  #|    "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele; uniform mat4 u_matrix;" +
-  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos;" +
+  #|    proj + "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele;" +
+  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
   #|    "uniform float u_opacity; uniform vec3 u_color; out vec4 v_color; out vec2 v_pos;" +
   #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
@@ -330,24 +340,26 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float top = a_ele * u_ground, bottom = u_ground > 0.0 ? top - (base > 0.0 ? 0.0 : 10.0) : 0.0;" +
   #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
   #|    "  float t = float(a_normal.x & 1); v_pos = a_pos;" +
-  #|    "  gl_Position = u_matrix * vec4(a_pos, (t > 0.0 ? height : base) * u_scale, 1.0);" +
+  #|    "  float elevation = t > 0.0 ? height : base; gl_Position = project3d(a_pos, elevation, elevation * u_scale);" +
   #|    "  vec3 color = u_color; float colorvalue = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;" +
   #|    "  v_color = vec4(0.0, 0.0, 0.0, 1.0); color += vec3(0.03);" +
   #|    "  float directional = clamp(dot(normal / 16384.0, u_lightpos), 0.0, 1.0);" +
+  #|    "  if (u_transition > 0.0) directional = mix(directional," +
+  #|    "    clamp(dot(globeNormal(a_pos, normal / 16384.0), u_lightpos_globe), 0.0, 1.0), u_transition);" +
   #|    "  directional = mix(1.0 - u_lightintensity, max(1.0 - colorvalue + u_lightintensity, 1.0), directional);" +
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
   #|    "  v_color.rgb += clamp(color * directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));" +
   #|    "  v_color *= u_opacity; }",
   #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
-  #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
-  #|     "u_vertical_gradient", "u_opacity", "u_color"]);
+  #|    [...projUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|     "u_vertical_gradient", "u_opacity", "u_color", "u_lightpos_globe"]);
   #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
   #|  // walls along their distance (a_normal.w, in tile units) and height (u_height_factor); its
   #|  // light differs from the plain one's.
   #|  const extrusionPattern = program(
-  #|    patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele; uniform mat4 u_matrix;" +
-  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos;" +
+  #|    proj + patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele;" +
+  #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
   #|    "uniform float u_opacity; uniform float u_height_factor; out vec4 v_light; out vec2 v_pos; out vec2 v_pat;" +
   #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
@@ -356,18 +368,20 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float top = a_ele * u_ground, bottom = u_ground > 0.0 ? top - (base > 0.0 ? 0.0 : 10.0) : 0.0;" +
   #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
   #|    "  float t = float(a_normal.x & 1); float elevation = t > 0.0 ? height : base; v_pos = a_pos;" +
-  #|    "  gl_Position = u_matrix * vec4(a_pos, elevation * u_scale, 1.0);" +
+  #|    "  gl_Position = project3d(a_pos, elevation, elevation * u_scale);" +
   #|    "  bool roof = a_normal.x == 1 && a_normal.y == 0 && a_normal.z == 16384;" +
   #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w), elevation * u_height_factor));" +
   #|    "  float directional = clamp(dot(normal / 16383.0, u_lightpos), 0.0, 1.0);" +
+  #|    "  if (u_transition > 0.0) directional = mix(directional," +
+  #|    "    clamp(dot(globeNormal(a_pos, normal / 16383.0), u_lightpos_globe), 0.0, 1.0), u_transition);" +
   #|    "  directional = mix(1.0 - u_lightintensity, max(0.5 + u_lightintensity, 1.0), directional);" +
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
   #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity; }",
   #|    clip + patternColor + "in vec4 v_light; in vec2 v_pat; out vec4 o;" +
   #|    "void main() { if (outside()) discard; o = patternColor(v_pat, vec4(0.0), 1.0) * v_light; }",
-  #|    ["u_matrix", "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
-  #|     "u_vertical_gradient", "u_opacity", "u_height_factor", ...patternUniforms]);
+  #|    [...projUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|     "u_vertical_gradient", "u_opacity", "u_height_factor", "u_lightpos_globe", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl over the tile's quad: v_tex runs 0-1 across the
   #|  // slopes inside their border, u_lat is the tile's north and south latitude; u_method numbers
   #|  // standard 0, combined 1, igor 2, multidirectional 3, basic 4; u_count lights.
@@ -640,6 +654,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    gl.uniformMatrix4fv(p.u_globe, false, mat);
   #|    gl.uniform4f(p.u_tile, g.tile[0], g.tile[1], g.tile[2], g.tile[3]);
   #|    gl.uniform4f(p.u_plane, g.plane[0], g.plane[1], g.plane[2], g.plane[3]);
+  #|    gl.uniform2f(p.u_translate, g.translate[0], g.translate[1]);
   #|    if (p.u_angle) gl.uniform1f(p.u_angle, g.angle);
   #|    if (p.u_half) gl.uniform2f(p.u_half, c.size[0] / 2, -c.size[1] / 2);
   #|  };
@@ -658,7 +673,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  const draw = (m) => gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|  const hasTileMesh = (key) => tileMeshes.has(key);
   #|  const addTileMesh = (key, vertices, indices) => tileMesh({ key, vertices, indices });
-  #|  const c = { gl, extent: E, place, draw, drawTile, globe: null, hasTileMesh, addTileMesh, background, atmosphere, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
+  #|  const c = { gl, extent: E, place, draw, drawTile, globe: null, hasTileMesh, addTileMesh, background, globeDepth, atmosphere, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
   #|    atlas: null, px: [0, 0], size: [1, 1] };
   #|  return c;
   #|}

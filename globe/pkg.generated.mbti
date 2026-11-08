@@ -46,6 +46,7 @@ pub fn Globe::fly_to(Self, @core.CameraTarget, curve? : Double, speed? : Double,
 pub fn Globe::globe_matrix(Self) -> @core.Mat4
 pub fn Globe::is_globe(Self) -> Bool
 pub fn Globe::jump_to(Self, center? : @core.LngLat, zoom? : Double, bearing? : Double, pitch? : Double) -> Unit
+pub fn Globe::light_direction(Self, Vec3) -> Vec3
 pub fn Globe::limits(Self) -> @core.Limits
 pub fn Globe::mercator(Self) -> @core.Transform
 pub fn Globe::new(@core.Camera, Double, Double, limits? : @core.Limits, projection? : Projection) -> Self

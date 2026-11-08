@@ -151,11 +151,13 @@ pub fn Renderer::set_ground(
 
 ///|
 /// How extrusions are lit: `direction` toward the light (x, y, z, in tile
-/// axes), `intensity`, and `color` (straight RGB).
+/// axes), `intensity`, `color` (straight RGB) and, on the globe, the direction
+/// in its axes (`globe_direction`).
 pub(all) struct ExtrusionLight {
   direction : (Double, Double, Double)
   intensity : Double
   color : (Double, Double, Double)
+  globe_direction : (Double, Double, Double)
 }
 
 ///|
@@ -176,6 +178,7 @@ pub fn Renderer::draw_extrusion(
   pattern~ : PatternPosition? = None,
   pass~ : Int32 = 0,
 ) -> Unit {
+  self.use_globe(at.globe)
   let (lx, ly, lz) = light.direction
   let (lr, lg, lb) = light.color
   let program = match pattern {
@@ -192,7 +195,18 @@ pub fn Renderer::draw_extrusion(
     at.clip,
     [color.0, color.1, color.2],
     opacity,
-    [lx, ly, lz, light.intensity, lr, lg, lb],
+    [
+      lx,
+      ly,
+      lz,
+      light.intensity,
+      lr,
+      lg,
+      lb,
+      light.globe_direction.0,
+      light.globe_direction.1,
+      light.globe_direction.2,
+    ],
     gradient,
     [t, scale, ground, at.pattern.height_factor],
     program,

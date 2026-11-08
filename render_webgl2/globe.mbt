@@ -1,7 +1,8 @@
 ///|
 /// A tile on the globe: `matrix`, its mercator corner and unit size `tile`, the
 /// horizon `plane`, `transition`, the radians a unit spans (`angle`), MapLibre's
-/// `pixel_scale` and its mesh's `granularity`, reaching the `north`/`south` pole.
+/// `pixel_scale`, a layer's `translate` (tile units) and its mesh's `granularity`,
+/// reaching the `north`/`south` pole.
 pub(all) struct GlobeTile {
   matrix : FixedArray[Double]
   tile : FixedArray[Double]
@@ -9,6 +10,7 @@ pub(all) struct GlobeTile {
   transition : Double
   angle : Double
   pixel_scale : Double
+  translate : (Double, Double)
   granularity : Int32
   north : Bool
   south : Bool
@@ -26,9 +28,10 @@ extern "js" fn js_globe(
   transition : Double,
   angle : Double,
   pixel_scale : Double,
+  translate : FixedArray[Double],
   key : String,
 ) -> JsGlobe =
-  #|(matrix, tile, plane, transition, angle, pixelScale, key) => ({ matrix, tile, plane, transition, angle, pixelScale, key })
+  #|(matrix, tile, plane, transition, angle, pixelScale, translate, key) => ({ matrix, tile, plane, transition, angle, pixelScale, translate, key })
 
 ///|
 extern "js" fn gl_set_globe(gl : Gl, g : JsGlobe) -> Unit =
@@ -75,6 +78,7 @@ fn Renderer::use_globe(self : Renderer, g : GlobeTile?) -> Unit {
           g.transition,
           g.angle,
           g.pixel_scale,
+          [g.translate.0, g.translate.1],
           key,
         ),
       )
@@ -154,5 +158,34 @@ extern "js" fn gl_draw_atmosphere(
   #|  gl.uniform1f(p.u_atmosphere_blend, k[7]);
   #|  gl.bindVertexArray(c.empty);
   #|  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  #|  gl.bindVertexArray(null);
+  #|}
+
+///|
+/// Writes the globe's surface under a tile into the depth buffer only, so
+/// extrusions behind the globe are hidden (MapLibre's `_renderTilesDepthBuffer`).
+pub fn Renderer::draw_globe_depth(self : Renderer, at : Placement) -> Unit {
+  self.use_globe(at.globe)
+  gl_draw_globe_depth(self.gl, at.matrix.m)
+}
+
+///|
+extern "js" fn gl_draw_globe_depth(
+  gl : Gl,
+  matrix : FixedArray[Double],
+) -> Unit =
+  #|(c, matrix) => {
+  #|  const gl = c.gl, p = c.globeDepth;
+  #|  gl.useProgram(p.program);
+  #|  c.place(p, matrix);
+  #|  gl.colorMask(false, false, false, false);
+  #|  gl.enable(gl.DEPTH_TEST);
+  #|  gl.depthFunc(gl.LEQUAL);
+  #|  gl.enable(gl.CULL_FACE);
+  #|  gl.cullFace(gl.BACK);
+  #|  c.drawTile();
+  #|  gl.disable(gl.CULL_FACE);
+  #|  gl.disable(gl.DEPTH_TEST);
+  #|  gl.colorMask(true, true, true, true);
   #|  gl.bindVertexArray(null);
   #|}

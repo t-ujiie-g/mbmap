@@ -132,6 +132,7 @@ fn TileProcessor::extrusion_layer(
       heights[1] = number_at(e.base, zoom + 1.0, feature)
       heights[2] = number_at(e.height, zoom, feature)
       heights[3] = number_at(e.height, zoom + 1.0, feature)
+      self.on_globe(layer)
       let g = self.geometry
       let group = groups.of(feature)
       let out = self.extrusion_buffers(group)
@@ -145,7 +146,8 @@ fn TileProcessor::extrusion_layer(
         g.ring_ends[:],
         heights,
         out,
-        extent=layer.extent(),
+        extent=self.extent_of(layer),
+        subdivide?=self.subdivision(@tess.fill_granularity(self.place.z)),
       )
       if !self.spend(
           out.num_vertices() - v0,
@@ -161,7 +163,7 @@ fn TileProcessor::extrusion_layer(
     let b = self.extrusion_buffers(g)
     if b.num_vertices() > 0 {
       let entry = self.out.layer_count()
-      if !self.out.add_extrusion(index, b, extent=layer.extent()) {
+      if !self.out.add_extrusion(index, b, extent=self.extent_of(layer)) {
         return false
       }
       self.flush_ranges(index, entry, g, layer)

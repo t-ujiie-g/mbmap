@@ -153,6 +153,7 @@ fn Map::translate_by(
     ..at,
     matrix: at.matrix.translate(x * k, y * k, 0.0),
     raster_matrix: at.raster_matrix.translate(x * k, y * k, 0.0),
+    globe: at.globe.map(g => { ..g, translate: (x * k, y * k), }),
   }
 }
 
@@ -517,12 +518,13 @@ fn Map::draw_frame(
   }
   let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
   let light = self.extrusion_light()
+  let mut globe_depth = false
   for index, layer in self.style.layers {
     if globe {
       if zoom < layer.min_zoom || zoom >= layer.max_zoom {
         continue
       }
-      // Labels and extrusions are not on the globe yet.
+      // Labels are not on the globe yet.
       match layer.kind {
         Background if layer.pattern is Some(_) => {
           self.draw_background_pattern(layer)
@@ -532,7 +534,7 @@ fn Map::draw_frame(
           self.draw_globe_background(layer)
           continue
         }
-        Symbol | FillExtrusion => continue
+        Symbol => continue
         _ => ()
       }
     }
@@ -563,6 +565,10 @@ fn Map::draw_frame(
       continue
     }
     if layer.extrusion is Some(e) {
+      if globe && !globe_depth {
+        globe_depth = true
+        self.draw_globe_depth()
+      }
       let draws = draws_of.get(layer.source).unwrap_or([])
       if terrain is Some(src) {
         for d in draws {

@@ -268,6 +268,7 @@ extern "js" fn gl_draw_extrusion(
   #|  gl.uniform3f(p.u_lightpos, light[0], light[1], light[2]);
   #|  gl.uniform1f(p.u_lightintensity, light[3]);
   #|  gl.uniform3f(p.u_lightcolor, light[4], light[5], light[6]);
+  #|  gl.uniform3f(p.u_lightpos_globe, light[7], light[8], light[9]);
   #|  gl.uniform1f(p.u_vertical_gradient, gradient ? 1 : 0);
   #|  gl.uniform1f(p.u_t, heights[0]);
   #|  gl.uniform1f(p.u_scale, heights[1]);

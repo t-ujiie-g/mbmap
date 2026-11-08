@@ -5,9 +5,9 @@
     "viewport": "800x600"
   },
   "summary": {
-    "asks": 447,
-    "identical": 447,
-    "features": 45031
+    "asks": 628,
+    "identical": 628,
+    "features": 45176
   },
   "results": [
     {
@@ -5286,6 +5286,2070 @@
       "same": true,
       "mbmap": 72,
       "maplibre": 72
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": false,
+      "known": "antimeridian world copy",
+      "mbmap": 9,
+      "maplibre": 9,
+      "firstDifference": 5,
+      "mbmapAt": "{\"layer\":\"route\",\"source\":\"world\",\"state\":{},\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[45,36.4566360115962],[-122.40966796875,37.8054439493427],[-74.00390625,40.69729900863675],[2.35107421875,48.85025819972151],[45,45.058001435398296]]},\"properties\":{\"k\":\"route\"}}",
+      "maplibreAt": "{\"layer\":\"route\",\"source\":\"world\",\"state\":{},\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[-225,19.993998469485504],[-180,19.993998469485504]]},\"properties\":{\"k\":\"parallel\"}}"
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "globe",
+      "kind": "rendered",
+      "geometry": null,
+      "same": true,
+      "mbmap": 9,
+      "maplibre": 9
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 3,
+      "maplibre": 3
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-tilted",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 0,
+      "maplibre": 0
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        60
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        140
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        140
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        220
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        300
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        380
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        460
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        50,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        150,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        250,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        350,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        450,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        550,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        650,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        750,
+        540
+      ],
+      "same": true,
+      "mbmap": 1,
+      "maplibre": 1
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          300,
+          200
+        ],
+        [
+          500,
+          400
+        ]
+      ],
+      "same": true,
+      "mbmap": 6,
+      "maplibre": 6
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          0,
+          0
+        ],
+        [
+          160,
+          120
+        ]
+      ],
+      "same": true,
+      "mbmap": 3,
+      "maplibre": 3
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          620,
+          450
+        ],
+        [
+          800,
+          600
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
+    },
+    {
+      "view": "globe-extrusion",
+      "kind": "rendered",
+      "geometry": [
+        [
+          390,
+          290
+        ],
+        [
+          410,
+          310
+        ]
+      ],
+      "same": true,
+      "mbmap": 2,
+      "maplibre": 2
     }
   ]
 }
