@@ -1,5 +1,5 @@
 // mbmap/3d on bench/npm/pages/model: the model (meshopt-compressed, so through 3d.wasm) loads, stands at its points
-// turned as `rotation` says, and goes onto the globe.
+// turned as `rotation` says, is lit by the style's `lights` as an extrusion is, and goes onto the globe.
 import { near, pixel } from "./pixels.mjs";
 
 const white = [255, 255, 255];
@@ -14,6 +14,29 @@ export async function modelChecks(page) {
   const look = (p, offsets) => Promise.all(offsets.map(([dx, dy]) => pixel(page, p.x + dx, p.y + dy)));
   const square = await look(at[0], [[0, 0], [-45, -45], [0, 60]]);
   const turned = await look(at[1], [[0, 0], [-45, -45]]);
+  // The style's lights: ambient alone gives the colors as they are; a quarter ambient and half a sun 60° off
+  // the zenith (cos 60° = 0.5) halve them, on the model's top and the extrusion's roof alike.
+  const block = await page.evaluate(() => window.__map.project([139.7676, 35.68075]));
+  const lit = async (lights) => {
+    await page.evaluate(async (l) => {
+      window.__map.setLights(l);
+      await window.__settled();
+    }, lights);
+    return [await pixel(page, at[0].x, at[0].y), await pixel(page, block.x, block.y)];
+  };
+  const light = (type, intensity, direction) => ({ id: type, type, properties: { color: "#ffffff", intensity, ...(direction ? { direction } : {}) } });
+  const ambient = await lit([light("ambient", 1)]);
+  const halved = await lit([light("ambient", 0.25), light("directional", 0.5, [0, 60])]);
+  // Noon in Tokyo by timeOfDayLights: lit, not black or white.
+  const noon = await page.evaluate(async () => {
+    const { timeOfDayLights } = await import("mbmap");
+    window.__map.setLights(timeOfDayLights(Date.UTC(2026, 5, 21, 3), 139.7671, 35.6812));
+    await window.__settled();
+    return window.__map.getLights();
+  });
+  const noonPixel = await pixel(page, at[0].x, at[0].y);
+  await page.evaluate(() => window.__map.setLights(null));
+  const half = (a, b) => a.every((v, i) => Math.abs(v * 0.5 - b[i]) <= 2);
   const loaded = await page.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name.split("/").pop()).filter((n) => /^3d|box/.test(n)));
   await page.evaluate(async () => {
     const map = window.__map;
@@ -29,6 +52,8 @@ export async function modelChecks(page) {
     square.slice(0, 2).every(red) && near(square[2], white) &&
     red(turned[0]) && near(turned[1], white) &&
     ["3d.js", "3d-worker.js"].every((f) => loaded.includes(f)) &&
-    red(globe) && near(space, white);
-  return [ok, { square, turned, loaded, globe, space }];
+    red(globe) && near(space, white) &&
+    near(ambient[1], [32, 128, 192]) && red(ambient[0]) && half(ambient[0], halved[0]) && half(ambient[1], halved[1]) &&
+    noon.length === 2 && red(noonPixel);
+  return [ok, { square, turned, loaded, globe, space, ambient, halved, noon, noonPixel }];
 }

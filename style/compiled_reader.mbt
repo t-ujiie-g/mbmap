@@ -658,6 +658,7 @@ pub fn Style::from_compiled(bytes : BytesView) -> Style raise StyleError {
       intensity: Lit(Null),
       position: (0.0, 0.0, 0.0),
     },
+    lights: None,
     projection: Mercator,
     atmosphere_blend: Lit(Num(0.0)),
     warnings: [],

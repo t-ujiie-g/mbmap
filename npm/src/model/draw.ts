@@ -61,6 +61,9 @@ uniform int u_shading;
 uniform float u_cutoff;
 uniform float u_opacity;
 uniform vec3 u_light;
+uniform bool u_lights;
+uniform vec3 u_ambient;
+uniform vec3 u_sun;
 uniform vec2 u_pick;
 uniform bool u_picking;
 uniform float u_point;
@@ -76,14 +79,14 @@ void main() {
   // An I3S atlas: the texture's part for this vertex is its uvRegion, which the uvs repeat in.
   if (u_textured) c *= texture(u_image, u_atlas ? v_region.xy + fract(v_uv) * (v_region.zw - v_region.xy) : v_uv);
   if (u_cutoff >= 0.0) { if (c.a < u_cutoff) discard; c.a = 1.0; }
-  float lit = 1.0;
-  if (u_shading == 1) lit = 0.55 + 0.45 * max(dot(normalize(v_normal), u_light), 0.0);
-  else if (u_shading == 2) lit = 0.55 + 0.45 * abs(dot(normalize(cross(dFdx(v_enu), dFdy(v_enu))), u_light));
+  float d = u_shading == 1 ? max(dot(normalize(v_normal), u_light), 0.0) : abs(dot(normalize(cross(dFdx(v_enu), dFdy(v_enu))), u_light));
+  // The style's lights (ambient plus a directional one), else a fixed light from Mapbox's default direction.
+  vec3 lit = u_shading == 0 ? vec3(1.0) : u_lights ? u_ambient + u_sun * d : vec3(0.55 + 0.45 * d);
   float a = c.a * u_opacity;
   o = vec4(c.rgb * lit * a, a);
 }`;
 
-const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas"] as const;
+const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas", "u_lights", "u_ambient", "u_sun"] as const;
 type Uniforms = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
 /** A primitive on the GPU: its vertex array, how to draw it, and what it is drawn with. */
@@ -209,12 +212,17 @@ export class ModelProgram {
   }
 
   /** Starts drawing with the globe's `transition` (0: Web Mercator only), colors or, `picking`, ids. */
-  begin(gl: WebGL2RenderingContext, transition: number, picking = false): void {
+  begin(gl: WebGL2RenderingContext, transition: number, picking = false, lights?: { ambient: ArrayLike<number>; directional: ArrayLike<number>; direction: ArrayLike<number> }): void {
     const u = this.#u;
     gl.useProgram(this.#program);
     gl.uniform1f(u.u_t, transition);
     gl.uniform1i(u.u_picking, picking ? 1 : 0);
-    gl.uniform3fv(u.u_light, LIGHT);
+    gl.uniform3fv(u.u_light, lights ? Array.from(lights.direction) : LIGHT);
+    gl.uniform1i(u.u_lights, lights ? 1 : 0);
+    if (lights) {
+      gl.uniform3fv(u.u_ambient, Array.from(lights.ambient));
+      gl.uniform3fv(u.u_sun, Array.from(lights.directional));
+    }
     gl.uniform1i(u.u_image, 0);
     gl.activeTexture(gl.TEXTURE0);
   }

@@ -59,6 +59,7 @@ import type { ImageInput, StyleImageOptions } from "./images";
 import { StyleImages } from "./style-images";
 
 export { LngLatBounds } from "./camera";
+export { sunDirection, sunPosition, timeOfDayLights, type SunPosition } from "./sun";
 export type {
   AnimationOptions,
   CameraOptions,
@@ -707,6 +708,19 @@ export class Map {
 
   getLight(): unknown {
     return edit.copy(this.#style?.light ?? null);
+  }
+
+  /**
+   * Sets the style's `lights` (mbmap's, with Mapbox's names): an `ambient` and a `directional` light,
+   * `{id, type, properties: {color, intensity, direction?: [azimuthal, polar]}}`, which light extrusions
+   * and mbmap/3d's layers in place of `light`; null removes them. `timeOfDayLights` gives them for a moment and place.
+   */
+  setLights(lights: unknown[] | null): this {
+    return this.#edit((s) => edit.setRoot(s, "lights", lights));
+  }
+
+  getLights(): unknown {
+    return edit.copy((this.#style as { lights?: unknown } | null)?.lights ?? null);
   }
 
   /**

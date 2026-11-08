@@ -38,10 +38,9 @@ pub fn Map::trigger_repaint(self : Map) -> Unit {
 }
 
 ///|
-/// What a custom layer is drawn with: MapLibre's `modelViewProjectionMatrix` and `projectionMatrix`
-/// (16 numbers each, through the export window if any), the field of view in radians, the near and
-/// far planes, the world size in pixels and the pixels per meter; on the globe then the transition,
-/// the globe's matrix and projection, its near and far planes and its clipping plane.
+/// What a custom layer is drawn with: MapLibre's MVP and projection matrices (through the export window),
+/// fov, near, far, world size, pixels per meter; on the globe the transition, its matrices, planes and
+/// clipping plane; with `lights` the ambient and sun colors and the direction (`renderInput` reads them).
 fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
   let t = self.transform
   let windowed = (m : @core.Mat4) => {
@@ -66,6 +65,10 @@ fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
     out.push(near)
     out.push(far)
     out.push_iter([a, b, c, d].iter())
+  }
+  if self.lights() is Some((ambient, sun, direction)) {
+    out.push_iter([ambient.0, ambient.1, ambient.2, sun.0, sun.1, sun.2].iter())
+    out.push_iter([direction.0, direction.1, direction.2].iter())
   }
   FixedArray::from_array(out)
 }

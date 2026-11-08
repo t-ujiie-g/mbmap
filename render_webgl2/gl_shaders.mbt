@@ -338,7 +338,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    proj + "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele;" +
   #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
-  #|    "uniform float u_opacity; uniform vec3 u_color; out vec4 v_color; out vec2 v_pos;" +
+  #|    "uniform float u_opacity; uniform vec3 u_color; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_color; out vec2 v_pos;" +
   #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
   #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal);" +
   #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
@@ -351,14 +351,16 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float directional = clamp(dot(normal / 16384.0, u_lightpos), 0.0, 1.0);" +
   #|    "  if (u_transition > 0.0) directional = mix(directional," +
   #|    "    clamp(dot(globeNormal(a_pos, normal / 16384.0), u_lightpos_globe), 0.0, 1.0), u_transition);" +
+  #|    "  float lambert = directional;" +
   #|    "  directional = mix(1.0 - u_lightintensity, max(1.0 - colorvalue + u_lightintensity, 1.0), directional);" +
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
   #|    "  v_color.rgb += clamp(color * directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));" +
+  #|    "  if (u_ambient.a > 0.5) v_color.rgb = u_color * (u_ambient.rgb + u_sun * lambert);" +
   #|    "  v_color *= u_opacity; }",
   #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
   #|    [...projUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
-  #|     "u_vertical_gradient", "u_opacity", "u_color", "u_lightpos_globe"]);
+  #|     "u_vertical_gradient", "u_opacity", "u_color", "u_lightpos_globe", "u_ambient", "u_sun"]);
   #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
   #|  // walls along their distance (a_normal.w, in tile units) and height (u_height_factor); its
   #|  // light differs from the plain one's.
@@ -366,7 +368,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    proj + patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele;" +
   #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
-  #|    "uniform float u_opacity; uniform float u_height_factor; out vec4 v_light; out vec2 v_pos; out vec2 v_pat;" +
+  #|    "uniform float u_opacity; uniform float u_height_factor; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_light; out vec2 v_pos; out vec2 v_pat;" +
   #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
   #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal.xyz);" +
   #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
@@ -379,14 +381,16 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  float directional = clamp(dot(normal / 16383.0, u_lightpos), 0.0, 1.0);" +
   #|    "  if (u_transition > 0.0) directional = mix(directional," +
   #|    "    clamp(dot(globeNormal(a_pos, normal / 16383.0), u_lightpos_globe), 0.0, 1.0), u_transition);" +
+  #|    "  float lambert = directional;" +
   #|    "  directional = mix(1.0 - u_lightintensity, max(0.5 + u_lightintensity, 1.0), directional);" +
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
-  #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity; }",
+  #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity;" +
+  #|    "  if (u_ambient.a > 0.5) v_light = vec4(u_ambient.rgb + u_sun * lambert, 1.0) * u_opacity; }",
   #|    clip + patternColor + "in vec4 v_light; in vec2 v_pat; out vec4 o;" +
   #|    "void main() { if (outside()) discard; o = patternColor(v_pat, vec4(0.0), 1.0) * v_light; }",
   #|    [...projUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
-  #|     "u_vertical_gradient", "u_opacity", "u_height_factor", "u_lightpos_globe", ...patternUniforms]);
+  #|     "u_vertical_gradient", "u_opacity", "u_height_factor", "u_lightpos_globe", "u_ambient", "u_sun", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl over the tile's quad: v_tex runs 0-1 across the
   #|  // slopes inside their border, u_lat is the tile's north and south latitude; u_method numbers
   #|  // standard 0, combined 1, igor 2, multidirectional 3, basic 4; u_count lights.

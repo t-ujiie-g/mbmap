@@ -49,3 +49,14 @@ test("on the globe renderInput gives the globe's matrices, MapLibre's globe prel
   assert.equal(t.fallbackMatrix[12], 256);
   assert.deepEqual(t.tileMercatorCoords, [0.5, 0, 1 / 2 / 8192, 1 / 2 / 8192]);
 });
+
+test("renderInput gives the style's lights after the numbers, on Mercator and on the globe", () => {
+  const lights = [0.2, 0.2, 0.3, 0.5, 0.5, 0.4, 0, 0.6, 0.8];
+  const flat = renderInput([...numbers, ...lights]);
+  assert.equal(flat.shaderData.variantName, "mercator");
+  assert.deepEqual(flat.lights, { ambient: new Float64Array([0.2, 0.2, 0.3]), directional: new Float64Array([0.5, 0.5, 0.4]), direction: new Float64Array([0, 0.6, 0.8]) });
+  const globe = renderInput([...numbers, 0.5, ...identity, ...identity, 3, 40, 0, 0, 0, 0, ...lights]);
+  assert.equal(globe.defaultProjectionData.projectionTransition, 0.5);
+  assert.deepEqual(globe.lights?.direction, new Float64Array([0, 0.6, 0.8]));
+  assert.equal(renderInput(numbers).lights, undefined);
+});

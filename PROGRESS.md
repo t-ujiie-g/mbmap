@@ -3,7 +3,7 @@
 ## 現在の状況（2026-11-08）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20（3D 第2弾、下の節）の 20.8（太陽の位置と光と影）。20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20（3D 第2弾、下の節）の 20.8b（影：シャドウマップ）。20.8a（太陽の位置と光）、20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
@@ -17,7 +17,7 @@
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 151.7KB（地球表示を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
+  | 表示（メイン） | 153.9KB（地球表示と太陽の位置 1.2KB を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 155KB（2026-11-08、ユーザー判断。地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
   | 表示ワーカー | 85.2KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
@@ -41,7 +41,7 @@
   - 20.5：PLATEAU の建物を表示する example（専用のページ 1 つ。2026-11-08 のユーザー判断）と CesiumJS との描画・速度の比較。
   - 20.6：点群（3D Tiles の pnts と glTF の点、圧縮なしの LAS）。
   - 20.7：I3S。2026-11-08 のユーザー判断で 2 つに分けた：20.7a（3DObject と IntegratedMesh：node pages、Draco と非圧縮のジオメトリ、JPEG・PNG のテクスチャ、属性とクリック）、20.7b（点群 PCSL：LEPCC の移植、SLPK）。圧縮テクスチャ（KTX2 / Basis、DDS）は読まない。比べるデータは合成と ArcGIS の公開サンプル（`tiles.arcgis.com` を環境に足した）。I3S のコードは遅延読み込みの `3d-i3s.js`（10KB）。
-  - 20.8：太陽の位置と光と影（mbmap の拡張として）。
+  - 20.8：太陽の位置と光と影（mbmap の拡張として）。2026-11-08 のユーザー判断で 2 つに分けた：20.8a（suncalc の移植とゴールデン、環境光と平行光、時刻の光）、20.8b（影、シャドウマップ）。どちらも 3D の層と押し出しに。
   - 20.9：3D の計測・見通し・断面（クリッピング）。
 - **決めたこと**：
   - 地球表示は表示（メイン）の入口に入れる（2026-11-08 ユーザー判断：遅延ロードの `globe.js` にすると地図のカメラの処理を差し替え口越しにする大きな改造と core の写しが要るので、メインに入れて予算を 147KB に。20.2a で 149.3KB になったので、20.2b・c の分も含めて 155KB に）。
@@ -156,6 +156,14 @@
   - pack test の `i3s`：合成の点群レイヤー（LEPCC、根 5000 点と子 4 つ各 1 万点）が近くで子 4 つ、遠くで根になり、合成の建物を SLPK に詰めたものが同じノードと属性を返す。
   - 大きさ：3D ワーカー 41.0 → 43.8KB（50KB）、`3d-i3s.js` 7.9KB（10KB）、`3d-slpk.js` 4.5KB（新しい行、6KB）、`3d.js` 6.4KB。
   - まだないもの：PCSL のクリック（点の属性）、統計（`statistics`）、WGS 84 以外の点群、RGB の Huffman、DDS・KTX2、SLPK の CRC の検査。
+- **20.8a：太陽の位置と光**（2026-11-08 のユーザー判断：20.8 を 2 つに分け、20.8a は太陽の位置と光、20.8b は影。光と影は 3D の層と押し出しの両方に。suncalc は 2.1.1 に固定。表示（メイン）は要れば 160KB まで）：
+  - 太陽（並行のエージェント、`npm/src/sun.ts`、import なし）：suncalc 2.1.1 の `getPosition` の移植 `sunPosition`（度、方位は北から時計回り）、東・北・上の向き `sunDirection`、時刻の光 `timeOfDayLights`（夜・薄明・昼の 3 つの点の間を smoothstep で。高度が負のあいだ方向は 90° に留める）。`npm run sun:golden`（新設）：1900〜2100 年の日時と場所（極、日付変更線を含む）28944 件で suncalc と全部同じ（`Object.is`）、CesiumJS 1.146.0 の `Simon1994PlanetaryPositions`（ICRF から地球固定へ、東・北・上へ）とは 1975〜2050 年で最大 0.017°（許容 0.05°）。
+  - 光（本線）：スタイルの `lights`（mbmap の拡張、Mapbox の公開文書の名前：`ambient` と `directional`、`color`・`intensity`、`direction` [方位, 天頂からの角]）を style が読み（ほかの種類は Unsupported として報告して外す）、`setLights` / `getLights` で変える。押し出しは `lights` があれば MapLibre の光の代わりに `色 × (環境光 + 太陽 × ランバート)`（模様の押し出しも）。カスタムレイヤーの数の末尾に環境光・太陽の色と向きを足し（`renderInput` の `lights`）、`modelLayer`・`tilesLayer`・`i3sLayer`・点群はモデルのプログラムで同じ式で描く（`lights` がなければ今までの固定の光）。
+  - pack test の `model`：GeoJSON の押し出しを足し、環境光 1 で屋根が色そのまま（32,128,192）とモデルの赤、環境光 0.25 ＋ 太陽 0.5 を真上近くから当てると両方ほぼ半分（16,64,96 と 115）、東京の正午の `timeOfDayLights` でモデルが赤いまま。
+  - 依存：suncalc 2.1.1（bench の devDependency、BSD-2-Clause、install スクリプトなし、NOTICE に追記）。CesiumJS は 20.5 からの devDependency。
+  - 大きさ：表示（メイン）151.7 → 153.9KB（155KB。`sun.ts` 1.2KB を含む）、`custom.js` 2.9 → 3.0KB（3KB）、`3d.js` 6.4 → 6.5KB、`3d-tiles.js` 10.1KB のまま。
+  - `style:golden` の `extrusion-patterns` は main でも同じ 0.215（限度 0.2）で、この変更によらない（Web の SwiftShader。記録済みの結果も false）。
+  - まだないもの：影（20.8b）、点光源、`lights` の式（ズームで変わる色など）、地形とラスタへの光。
 
 ## Phase 19 の後の点検（2026-11-08、Mac）
 
