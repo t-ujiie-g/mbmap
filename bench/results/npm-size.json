@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 160944,
+      "bytes": 160914,
       "budget": 163000
     },
     {
@@ -146,7 +146,7 @@
     },
     {
       "name": "shapes (simplify, hulls, Delaunay, Voronoi, line slices; loaded by the analysis worker on first use)",
-      "bytes": 27909,
+      "bytes": 27865,
       "budget": 30000
     },
     {
@@ -201,7 +201,7 @@
     },
     {
       "name": "3d worker",
-      "bytes": 43803,
+      "bytes": 43964,
       "budget": 50000
     },
     {
