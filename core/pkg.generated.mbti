@@ -71,6 +71,8 @@ pub fn fit_box(LngLatBounds, Double, Double, Double, bearing~ : Double, padding~
 
 pub fn haversine(Trig, Double, Double, Double, Double) -> Double
 
+pub fn js_hypot(Double, Double) -> Double
+
 pub fn js_max(Double, Double) -> Double
 
 pub fn js_min(Double, Double) -> Double

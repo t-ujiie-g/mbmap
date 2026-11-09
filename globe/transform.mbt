@@ -50,7 +50,7 @@ pub fn Globe::new(
     center: { lng: 0.0, lat: 0.0, },
     zoom: limits.min_zoom,
     bearing: 0.0,
-    pitch: radians(limits.min_pitch),
+    pitch: @core.radians(limits.min_pitch),
     width: 0.0,
     height: 0.0,
     limits,
@@ -177,7 +177,7 @@ fn Globe::constrain(
 /// How close to a pole the center may go at `zoom`: past the mercator limit
 /// by as much as half the viewport shows (`_getMaxLatitude`).
 fn Globe::max_latitude(self : Globe, zoom : Double) -> Double {
-  let area = radians(90.0 - @core.MAX_VALID_LATITUDE)
+  let area = @core.radians(90.0 - @core.MAX_VALID_LATITUDE)
   let area_pixels = globe_radius(
       @core.TILE_SIZE * zoom_scale(zoom),
       @core.MAX_VALID_LATITUDE,
@@ -232,7 +232,7 @@ pub fn Globe::set_zoom(self : Globe, zoom : Double) -> Unit {
 
 ///|
 /// Sets the center, then constrains the camera.
-pub fn Globe::set_center(self : Globe, center : @core.LngLat) -> Unit {
+fn Globe::set_center(self : Globe, center : @core.LngLat) -> Unit {
   if center.lat == self.center.lat && center.lng == self.center.lng {
     return
   }
@@ -254,7 +254,7 @@ fn Globe::set_center_and_zoom(
 
 ///|
 /// Sets the bearing in degrees, wrapped to (-180, 180].
-pub fn Globe::set_bearing(self : Globe, bearing : Double) -> Unit {
+fn Globe::set_bearing(self : Globe, bearing : Double) -> Unit {
   let b = wrap(bearing, -180.0, 180.0) * @math.PI / 180.0
   if self.bearing == b {
     return
@@ -400,12 +400,8 @@ pub fn Globe::camera_altitude(self : Globe) -> Double {
       self.center_distance() /
       self.mercator().pixels_per_meter()
   }
-  (self.vp().camera.length() - 1.0) * EARTH_RADIUS
+  (self.vp().camera.length() - 1.0) * @core.EARTH_RADIUS
 }
-
-///|
-/// MapLibre's `earthRadius`.
-const EARTH_RADIUS : Double = 6371008.8
 
 ///|
 /// Screen point (CSS pixels) of `p`, also when it is behind the globe.
@@ -434,7 +430,7 @@ pub fn Globe::occluded(self : Globe, p : @core.LngLat) -> Bool {
 ///|
 /// The unit direction of the ray from the camera through screen point (x, y)
 /// (`getRayDirectionFromPixel`, always the globe's).
-pub fn Globe::ray_direction(self : Globe, x : Double, y : Double) -> Vec3 {
+fn Globe::ray_direction(self : Globe, x : Double, y : Double) -> Vec3 {
   let vp = self.vp()
   let (px, py, pz, pw) = vp.inverse.apply(
     x / self.width * 2.0 - 1.0,

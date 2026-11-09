@@ -373,15 +373,17 @@ test "decode_gltf_buffer refuses counts and slices out of range" {
 }
 
 ///|
-test "Mode::from_string and Filter::from_string read the extension's strings" {
-  assert_true(@meshopt.Mode::from_string("ATTRIBUTES") is Some(Attributes))
-  assert_true(@meshopt.Mode::from_string("TRIANGLES") is Some(Triangles))
-  assert_true(@meshopt.Mode::from_string("INDICES") is Some(Indices))
-  assert_true(@meshopt.Mode::from_string("attributes") is None)
-  assert_true(@meshopt.Filter::from_string("NONE") is Some(NoFilter))
-  assert_true(@meshopt.Filter::from_string("OCTAHEDRAL") is Some(Octahedral))
-  assert_true(@meshopt.Filter::from_string("QUATERNION") is Some(Quaternion))
-  assert_true(@meshopt.Filter::from_string("EXPONENTIAL") is Some(Exponential))
-  assert_true(@meshopt.Filter::from_string("COLOR") is Some(Color))
-  assert_true(@meshopt.Filter::from_string("") is None)
+test "source_fits refuses a huge count from a tiny source before any output is made" {
+  let tiny = v0_source.length()
+  assert_false(@meshopt.source_fits(0x7ffffff0, 4, tiny, Attributes, NoFilter))
+  assert_false(@meshopt.source_fits(0x7ffffff0, 2, tiny, Indices, NoFilter))
+  assert_false(@meshopt.source_fits(0x7ffffff0, 4, tiny, Triangles, NoFilter))
+  assert_true(@meshopt.source_fits(4, 8, tiny, Attributes, NoFilter))
+  assert_false(@meshopt.source_fits(4, 8, 0, Attributes, NoFilter))
+  assert_false(@meshopt.source_fits(-1, 8, tiny, Attributes, NoFilter))
+  assert_false(@meshopt.source_fits(4, 6, tiny, Attributes, NoFilter))
+  assert_true(@meshopt.source_fits(3, 2, 18, Triangles, NoFilter))
+  assert_false(@meshopt.source_fits(3, 2, 17, Triangles, NoFilter))
+  assert_true(@meshopt.source_fits(3, 2, 8, Indices, NoFilter))
+  assert_false(@meshopt.source_fits(3, 2, 7, Indices, NoFilter))
 }

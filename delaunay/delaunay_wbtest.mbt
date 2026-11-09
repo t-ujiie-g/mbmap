@@ -147,13 +147,3 @@ test "hostile inputs match: collinear, overflowing, underflowing, duplicates" {
     24, -1684482390, 107521960, 8, 1550962650, 8, 186988485, 291, -1522515905,
   ])
 }
-
-///|
-test "hypot computes as V8's Math.hypot" {
-  assert_eq(hypot(3.0, 4.0), 5.0)
-  assert_eq(hypot(1.0e308, 1.0e308), 1.4142135623730951e308)
-  assert_eq(hypot(0.1, -0.2), 0.223606797749979)
-  assert_eq(hypot(0.0, -0.0), 0.0)
-  assert_eq(hypot(@double.not_a_number, @double.infinity), @double.infinity)
-  assert_true(hypot(@double.not_a_number, 1.0).is_nan())
-}

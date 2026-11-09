@@ -26,11 +26,11 @@ let pc_legacy_float : String = "445241434f0202000100000c000000010100090300000000
 ///|
 fn points(s : String) -> @draco.DracoMesh {
   let src = hex(s)
-  @draco.decode_point_cloud(src, 0, src.length()).unwrap()
+  @draco.decode(src, 0, src.length()).unwrap()
 }
 
 ///|
-test "decode_point_cloud: sequential, quantized positions, normalized colors and int16 values" {
+test "decode of a point cloud: sequential, quantized positions, normalized colors and int16 values" {
   let pc = points(pc_sequential)
   assert_eq(pc.num_points, 12)
   assert_eq(pc.indices.length(), 0)
@@ -42,14 +42,14 @@ test "decode_point_cloud: sequential, quantized positions, normalized colors and
 }
 
 ///|
-test "decode_point_cloud: sequential, floats as they are" {
+test "decode of a point cloud: sequential, floats as they are" {
   let pc = points(pc_raw)
   assert_eq(pc.num_points, 3)
   assert_eq(summary(pc), [(0, 0, 9, 3, false, 36, -1553373210)])
 }
 
 ///|
-test "decode_point_cloud: kd-tree at level 6 (axes chosen, folded rANS numbers), signed values" {
+test "decode of a point cloud: kd-tree at level 6 (axes chosen, folded rANS numbers), signed values" {
   let pc = points(pc_kd6)
   assert_eq(pc.num_points, 12)
   assert_eq(summary(pc), [
@@ -60,7 +60,7 @@ test "decode_point_cloud: kd-tree at level 6 (axes chosen, folded rANS numbers),
 }
 
 ///|
-test "decode_point_cloud: kd-tree at level 0 (direct bits), dequantized positions" {
+test "decode of a point cloud: kd-tree at level 0 (direct bits), dequantized positions" {
   let pc = points(pc_kd0)
   assert_eq(summary(pc), [
     (0, 0, 9, 3, false, 144, 1910681098),
@@ -69,7 +69,7 @@ test "decode_point_cloud: kd-tree at level 0 (direct bits), dequantized position
 }
 
 ///|
-test "decode_point_cloud: kd-trees at levels 3 and 0 give the same uint32 points" {
+test "decode of a point cloud: kd-trees at levels 3 and 0 give the same uint32 points" {
   let a = points(pc_kd3_u32)
   let b = points(pc_kd0_u32)
   assert_eq(summary(a), [(0, 0, 6, 3, false, 144, 1602985254)])
@@ -77,7 +77,7 @@ test "decode_point_cloud: kd-trees at levels 3 and 0 give the same uint32 points
 }
 
 ///|
-test "decode_point_cloud: the float kd-tree of bitstream 2.2" {
+test "decode of a point cloud: the float kd-tree of bitstream 2.2" {
   assert_eq(summary(points(pc_legacy_float)), [
     (0, 0, 9, 3, false, 144, 1677443379),
   ])
@@ -95,12 +95,10 @@ test "decode: a mesh or a point cloud, as the header says" {
     summary(@draco.decode(pc, 0, pc.length()).unwrap()),
     summary(points(pc_kd6)),
   )
-  assert_true(@draco.decode_mesh(pc, 0, pc.length()) is None)
-  assert_true(@draco.decode_point_cloud(mesh, 0, mesh.length()) is None)
 }
 
 ///|
-test "decode_point_cloud: bitstream 2.3 is a point cloud's alone, 2.4 and 1.x nobody's" {
+test "decode of a point cloud: bitstream 2.3 is a point cloud's alone, 2.4 and 1.x nobody's" {
   let pc = hex(pc_sequential)
   pc[6] = b'\x04'
   assert_true(@draco.decode(pc, 0, pc.length()) is None)
@@ -113,17 +111,17 @@ test "decode_point_cloud: bitstream 2.3 is a point cloud's alone, 2.4 and 1.x no
 }
 
 ///|
-test "decode_point_cloud: refuses every truncated copy" {
+test "decode of a point cloud: refuses every truncated copy" {
   for s in [pc_sequential, pc_kd6, pc_kd0, pc_legacy_float] {
     let src = hex(s)
     for n in 0..<src.length() {
-      assert_true(@draco.decode_point_cloud(src, 0, n) is None)
+      assert_true(@draco.decode(src, 0, n) is None)
     }
   }
 }
 
 ///|
-test "decode_point_cloud: corrupted copies never trap" {
+test "decode of a point cloud: corrupted copies never trap" {
   let mut seed = 7
   for s in [pc_sequential, pc_kd6, pc_kd0, pc_kd3_u32, pc_legacy_float] {
     let src = hex(s)
@@ -171,22 +169,22 @@ let empty_direct : Array[Int32] = [
 ]
 
 ///|
-test "decode_point_cloud: a legacy kd-tree of 2^32 - 1 points at its last level stays quick" {
+test "decode of a point cloud: a legacy kd-tree of 2^32 - 1 points at its last level stays quick" {
   let body = [1, 0] + le32(4) + le32(0) + le32(-1) + empty_direct
   let src = legacy_cloud(4, [1, 0, 6, 1, 0, 0], body)
-  let pc = @draco.decode_point_cloud(src, 0, src.length()).unwrap()
+  let pc = @draco.decode(src, 0, src.length()).unwrap()
   assert_eq(pc.num_points, 4)
   assert_eq(pc.attributes[0].data, FixedArray::make(16, b'\x00'))
 }
 
 ///|
-test "decode_point_cloud: refuses kd-trees past 32 bits, past MAX_KD_DIMENSIONS and of other types" {
+test "decode of a point cloud: refuses kd-trees past 32 bits, past MAX_KD_DIMENSIONS and of other types" {
   let deep = legacy_cloud(
     1,
     [1, 0, 6, 1, 0, 0],
     [1, 0] + le32(1) + le32(33) + le32(1) + empty_direct,
   )
-  assert_true(@draco.decode_point_cloud(deep, 0, deep.length()) is None)
+  assert_true(@draco.decode(deep, 0, deep.length()) is None)
   let descriptor = [5]
   for i in 0..<5 {
     descriptor.append([4, 2, 255, 0, i])
@@ -197,31 +195,31 @@ test "decode_point_cloud: refuses kd-trees past 32 bits, past MAX_KD_DIMENSIONS 
     [1, 0] + le32(1) + le32(0) + le32(1) + empty_direct,
   )
   assert_true(5 * 255 > @draco.MAX_KD_DIMENSIONS)
-  assert_true(@draco.decode_point_cloud(wide, 0, wide.length()) is None)
+  assert_true(@draco.decode(wide, 0, wide.length()) is None)
   let doubles = legacy_cloud(
     1,
     [1, 4, 10, 1, 0, 0],
     [1, 0] + le32(1) + le32(0) + le32(1) + empty_direct,
   )
-  assert_true(@draco.decode_point_cloud(doubles, 0, doubles.length()) is None)
+  assert_true(@draco.decode(doubles, 0, doubles.length()) is None)
 }
 
 ///|
-test "decode_point_cloud: refuses legacy attributes sized past MAX_POINTS and negative counts" {
+test "decode of a point cloud: refuses legacy attributes sized past MAX_POINTS and negative counts" {
   let big = legacy_cloud(
     1,
     [1, 0, 6, 1, 0, 0],
     [1, 0] + le32(@draco.MAX_POINTS + 1) + le32(0) + le32(1) + empty_direct,
   )
-  assert_true(@draco.decode_point_cloud(big, 0, big.length()) is None)
+  assert_true(@draco.decode(big, 0, big.length()) is None)
   let src = hex(pc_raw)
   src[14] = b'\xff'
-  assert_true(@draco.decode_point_cloud(src, 0, src.length()) is None)
+  assert_true(@draco.decode(src, 0, src.length()) is None)
 }
 
 ///|
 test "DracoMesh::to_bytes: a point cloud has no indices" {
-  let out = points(pc_raw).to_bytes()
+  let out = points(pc_raw).to_bytes().unwrap()
   assert_eq(out.length(), 12 + 12 + 36)
   assert_eq([out[0], out[1], out[2], out[3], out[4]], [
     b'\x00', b'\x00', b'\x00', b'\x00', b'\x03',

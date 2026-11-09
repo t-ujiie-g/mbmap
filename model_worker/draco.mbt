@@ -8,5 +8,6 @@ pub fn draco_decode() -> Int32 {
   guard @draco.decode(source, 0, source.length()) is Some(mesh) else {
     return -1
   }
-  @wasmio.write_bytes(mesh.to_bytes().unsafe_reinterpret_as_bytes()[:])
+  guard mesh.to_bytes() is Some(out) else { return -2 }
+  @wasmio.write_bytes(out.unsafe_reinterpret_as_bytes()[:])
 }

@@ -1,13 +1,23 @@
 ///|
+/// The most bytes `DracoMesh::to_bytes` writes by default (the model worker's output cap).
+pub const MAX_OUTPUT_BYTES : Int32 = 0x40000000
+
+///|
 /// The mesh as docs/FORMATS.md "Draco output" lays it out: a header of u32s, the indices, then
-/// each attribute's data padded to four bytes.
-pub fn DracoMesh::to_bytes(self : DracoMesh) -> FixedArray[Byte] {
+/// each attribute's data padded to four bytes; None past `max_bytes`.
+pub fn DracoMesh::to_bytes(
+  self : DracoMesh,
+  max_bytes~ : Int32 = MAX_OUTPUT_BYTES,
+) -> FixedArray[Byte]? {
   let n = self.attributes.length()
-  let mut size = 12 + 12 * n + 4 * self.indices.length()
+  let mut size = 12L +
+    12L * n.to_int64() +
+    4L * self.indices.length().to_int64()
   for a in self.attributes {
-    size += (a.data.length() + 3) / 4 * 4
+    size += (a.data.length().to_int64() + 3L) / 4L * 4L
   }
-  let out = FixedArray::make(size, b'\x00')
+  guard size <= max_bytes.to_int64() else { return None }
+  let out = FixedArray::make(size.to_int(), b'\x00')
   store_u32(out, 0, self.indices.length() / 3)
   store_u32(out, 4, self.num_points)
   store_u32(out, 8, n)
@@ -31,5 +41,5 @@ pub fn DracoMesh::to_bytes(self : DracoMesh) -> FixedArray[Byte] {
     }
     at += (a.data.length() + 3) / 4 * 4
   }
-  out
+  Some(out)
 }

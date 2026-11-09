@@ -1,21 +1,4 @@
 ///|
-fn wb_hex(s : String) -> FixedArray[Byte] {
-  let out = FixedArray::make(s.length() / 2, b'\x00')
-  for i in 0..<out.length() {
-    let d = fn(c : Int32) {
-      if c <= '9'.to_int() {
-        c - '0'.to_int()
-      } else {
-        c - 'a'.to_int() + 10
-      }
-    }
-    out[i] = (d(s.code_unit_at(2 * i).to_int()) * 16 +
-    d(s.code_unit_at(2 * i + 1).to_int())).to_byte()
-  }
-  out
-}
-
-///|
 fn put32(b : FixedArray[Byte], at : Int32, v : Int32) -> Unit {
   for k in 0..<4 {
     b[at + k] = ((v >> (8 * k)) & 0xff).to_byte()
@@ -60,7 +43,7 @@ let wb_xyz : String = "4c455043432020202020010049f565788200000000000000666666666
 
 ///|
 test "fletcher32 matches Fletcher's checksum over bytes, odd lengths and long runs" {
-  let b = wb_hex(wb_xyz)
+  let b = hex(wb_xyz)
   assert_eq(fletcher32(b, 16, b.length() - 16), 0x7865f549U)
   assert_eq(fletcher32(b, 0, 0), 0xffffffffU)
   assert_eq(fletcher32([b'\x01'], 0, 1), 0x01000100U)
@@ -91,11 +74,11 @@ test "the bit stuffer unpacks values across word boundaries" {
       .to_byte()
   }
   let c = { data, pos: 0, end: data.length(), }
-  guard c.decode() is Some(out) else { fail("refused") }
+  guard c.decode(MAX_POINTS) is Some(out) else { fail("refused") }
   assert_eq(Array::makei(10, fn(i) { out[i] }), values)
   assert_eq(c.pos, 11)
   let short = { data, pos: 0, end: 10, }
-  assert_true(short.decode() is None)
+  assert_true(short.decode(MAX_POINTS) is None)
 }
 
 ///|
@@ -113,30 +96,34 @@ test "the bit stuffer's table mode maps indexes through the table and its 0" {
   ]
   let fixed = FixedArray::from_array(data)
   let c = { data: fixed, pos: 0, end: fixed.length(), }
-  guard c.decode() is Some(out) else { fail("refused") }
+  guard c.decode(MAX_POINTS) is Some(out) else { fail("refused") }
   assert_eq(out, [9U, 0, 300, 300, 9])
   // An index past the table is refused.
   fixed[6] = (3 | (0 << 2)).to_byte()
-  assert_true({ data: fixed, pos: 0, end: fixed.length(), }.decode() is None)
+  assert_true(
+    { data: fixed, pos: 0, end: fixed.length(), }.decode(MAX_POINTS) is None,
+  )
   // A table size byte of 0 or 1 holds no values.
   fixed[2] = b'\x01'
-  assert_true({ data: fixed, pos: 0, end: fixed.length(), }.decode() is None)
+  assert_true(
+    { data: fixed, pos: 0, end: fixed.length(), }.decode(MAX_POINTS) is None,
+  )
 }
 
 ///|
 test "the bit stuffer refuses counts past MAX_POINTS and a count size of 0" {
   let big = [b'\x00', b'\x01', b'\x00', b'\x40', b'\x00']
   let c = { data: FixedArray::from_array(big), pos: 0, end: 5, }
-  assert_true(c.decode() is None)
+  assert_true(c.decode(MAX_POINTS) is None)
   let empty = FixedArray::from_array([(3 << 6).to_byte(), b'\x00'])
-  assert_true({ data: empty, pos: 0, end: 2, }.decode() is None)
+  assert_true({ data: empty, pos: 0, end: 2, }.decode(MAX_POINTS) is None)
   let zeros = FixedArray::from_array([(2 << 6).to_byte(), b'\x04'])
-  guard { data: zeros, pos: 0, end: 2, }.decode() is Some(out) else {
+  guard { data: zeros, pos: 0, end: 2, }.decode(MAX_POINTS) is Some(out) else {
     fail("refused")
   }
   assert_eq(out, [0U, 0, 0, 0])
   let none = FixedArray::from_array([(1 | (2 << 6)).to_byte(), b'\x00'])
-  assert_true({ data: none, pos: 0, end: 2, }.decode() is None)
+  assert_true({ data: none, pos: 0, end: 2, }.decode(MAX_POINTS) is None)
 }
 
 ///|
@@ -170,7 +157,7 @@ test "decode_intensity decodes a table-mode array and refuses bad headers" {
 
 ///|
 test "decode_xyz refuses resealed blobs with inconsistent counts or sizes" {
-  let b = wb_hex(wb_xyz)
+  let b = hex(wb_xyz)
   let n = b.length()
   // More points in the header than the rows hold.
   let more = b.copy()
@@ -204,7 +191,7 @@ test "decode_xyz refuses resealed blobs with inconsistent counts or sizes" {
 
 ///|
 test "decode_rgb refuses resealed blobs with indexes past the colormap" {
-  let b = wb_hex(
+  let b = hex(
     "436c757374657252474201001d35963730000000000000000a00000002000100faf0e60a141e00010100010100010100",
   )
   b[40] = b'\x02'
@@ -216,4 +203,48 @@ test "decode_rgb refuses resealed blobs with indexes past the colormap" {
   assert_true(decode_rgb(reseal(b), 0, b.length()) is Some(_))
   put32(b, 24, 11)
   assert_true(decode_rgb(reseal(b), 0, b.length()) is None)
+}
+
+///|
+test "a short blob claiming millions of values is refused before they are made" {
+  let claim = [b'\x00', b'\x00', b'\x00', b'\x40', b'\x00']
+  let c = { data: FixedArray::from_array(claim), pos: 0, end: 5, }
+  assert_true(c.decode(2) is None)
+  let b = hex(wb_xyz)
+  let blob = FixedArray::make(XYZ_HEADER_SIZE + 5, b'\x00')
+  for i in 0..<XYZ_HEADER_SIZE {
+    blob[i] = b[i]
+  }
+  for i in 0..<5 {
+    blob[XYZ_HEADER_SIZE + i] = claim[i]
+  }
+  put32(blob, 16, blob.length())
+  put32(blob, 20, 0)
+  assert_true(decode_xyz(reseal(blob), 0, blob.length()) is None)
+}
+
+///|
+test "corrupted and resealed copies never trap" {
+  let blobs = [
+    (Xyz, hex(wb_xyz)),
+    (
+      Rgb,
+      hex(
+        "436c757374657252474201001d35963730000000000000000a00000002000100faf0e60a141e00010100010100010100",
+      ),
+    ),
+    (Intensity, intensity_blob(3, 3, 3, [3 | 32 | (2 << 6), 3, 2, 5, 5])),
+  ]
+  for blob in blobs {
+    let (kind, src) = blob
+    for i in 0..<src.length() {
+      for bit in [0, 3, 7] {
+        let copy = src.copy()
+        copy[i] = (copy[i].to_int() ^ (1 << bit)).to_byte()
+        // The blob size (bytes 16 to 23) must stay in the buffer for the checksum.
+        let resealed = if i < 16 || i >= 24 { reseal(copy) } else { copy }
+        let _ = decode(kind, resealed, 0, resealed.length())
+      }
+    }
+  }
 }

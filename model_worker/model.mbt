@@ -28,10 +28,9 @@ let filters : FixedArray[@meshopt.Filter] = [
 ]
 
 ///|
-/// Decodes the input, a meshopt-compressed glTF buffer view of `count`
-/// elements of `size` bytes, into the output (`mode` and `filter` numbered as
-/// `modes` and `filters`); returns its length, -1 for malformed input, -2
-/// without memory.
+/// Decodes the input, a meshopt-compressed glTF buffer view of `count` elements of `size` bytes
+/// (`mode` and `filter` numbered as `modes` and `filters`), into the output; returns its length,
+/// -1 for malformed input, -2 without memory.
 #export_name("meshopt_decode")
 pub fn meshopt_decode(
   count : Int32,
@@ -48,8 +47,17 @@ pub fn meshopt_decode(
     @wasmio.output_fits(count.to_int64(), size) else {
     return -1
   }
-  let target = FixedArray::make(count * size, b'\x00')
   let source = @wasmio.input_byte_array()
+  guard @meshopt.source_fits(
+    count,
+    size,
+    source.length(),
+    modes[mode],
+    filters[filter],
+  ) else {
+    return -1
+  }
+  let target = FixedArray::make(count * size, b'\x00')
   guard @meshopt.decode_gltf_buffer(
     target,
     count,

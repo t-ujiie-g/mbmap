@@ -102,8 +102,8 @@ fn Cursor::unstuff(
 ///|
 /// `BitStuffer2::Decode` with `lerc2Version` 3: a byte of bit count, table mode and count size, the
 /// count, then the values stuffed (in table mode, the table without its 0, then the indexes). None
-/// where the C++ fails, or would read past the end or out of its table.
-fn Cursor::decode(self : Cursor) -> FixedArray[UInt32]? {
+/// where the C++ fails, would read past the end or out of its table, or for more than `max` values.
+fn Cursor::decode(self : Cursor, max : Int32) -> FixedArray[UInt32]? {
   guard self.has(1L) else { return None }
   let head = u8_at(self.data, self.pos)
   self.pos += 1
@@ -112,7 +112,11 @@ fn Cursor::decode(self : Cursor) -> FixedArray[UInt32]? {
   let lut = (head & 32) != 0
   let bits = head & 31
   guard self.uint(size) is Some(n) else { return None }
-  guard n <= MAX_POINTS.reinterpret_as_uint() else { return None }
+  guard max >= 0 &&
+    n <= max.reinterpret_as_uint() &&
+    n <= MAX_POINTS.reinterpret_as_uint() else {
+    return None
+  }
   let count = n.reinterpret_as_int()
   if !lut {
     if bits > 0 {

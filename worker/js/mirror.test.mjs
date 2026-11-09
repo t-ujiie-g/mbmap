@@ -108,3 +108,35 @@ test("custom.ts and the 3D model program mirror the custom layers' numbers and t
   assert.equal(custom.CUSTOM_NUMBERS, custom.CUSTOM_SHADOWS + 4 + 32);
   assert.equal(jsConsts("../../npm/src/model/draw.ts").SHADOW_SIZE, moonConsts("../../core/shadow.mbt").SHADOW_MAP_SIZE);
 });
+
+// The constructors listed by `let name : FixedArray[...] = [A, B, ...]` in a MoonBit file, in order.
+function moonList(path, name) {
+  const list = source(path).match(new RegExp(`^let ${name} : FixedArray\\[[^\\]]+\\] = \\[([^\\]]*)\\]`, "m"));
+  assert.ok(list, `${name} not found in ${path}`);
+  return list[1].split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// The `{ KEY: number, ... }` or `{ key: [number, ...], ... }` object literal of `const NAME` in a JS file.
+function jsTable(path, name) {
+  const table = source(path).match(new RegExp(`^const ${name} = \\{([^}]*)\\};`, "m"));
+  assert.ok(table, `${name} not found in ${path}`);
+  return Object.fromEntries([...table[1].matchAll(/(\w+): \[?(\d+)/g)].map(([, key, n]) => [key, Number(n)]));
+}
+
+test("model_worker's decode.mjs numbers meshopt's modes and filters and LEPCC's kinds as the wasm does", () => {
+  const upper = (name) => (name === "NoFilter" ? "NONE" : name.toUpperCase());
+  const index = (list, key) => Object.fromEntries(list.map((name, i) => [key(name), i]));
+  const decode = "../../model_worker/js/decode.mjs";
+  assert.deepEqual(jsTable(decode, "MODES"), index(moonList("../../model_worker/model.mbt", "modes"), upper));
+  assert.deepEqual(jsTable(decode, "FILTERS"), index(moonList("../../model_worker/model.mbt", "filters"), upper));
+  assert.deepEqual(jsTable(decode, "LEPCC_KINDS"), index(moonList("../../model_worker/lepcc.mbt", "lepcc_kinds"), (name) => name.toLowerCase()));
+});
+
+test("model_worker's decode.mjs reads Draco's data types by draco/decode.mbt's DT_* numbers", () => {
+  const types = moonConsts("../../draco/decode.mbt");
+  const js = source("../../model_worker/js/decode.mjs").match(/^const DRACO_TYPES = \{([^\n]*)\};/m);
+  assert.ok(js, "DRACO_TYPES not found");
+  const pairs = [...js[1].matchAll(/(\d+): \[(\w+)Array/g)];
+  assert.ok(pairs.length > 0);
+  for (const [, n, typed] of pairs) assert.equal(Number(n), types[`DT_${typed.toUpperCase()}`], typed);
+});
