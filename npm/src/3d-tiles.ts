@@ -193,7 +193,7 @@ export class TilesEngine {
       if (this.#loading >= MAX_LOADS) break;
       this.#load(tile);
     }
-    program.begin(gl, t, false, options.lights);
+    program.begin(gl, options);
     program.setPointSize(this.#pointPixels(gl));
     for (const pass of [0, 1]) {
       gl.depthMask(pass === 0);
@@ -204,11 +204,16 @@ export class TilesEngine {
     this.#evict(gl);
   }
 
+  /** Draws the selected tiles' opaque meshes into the shadow map (`options`' matrices the light's). */
+  renderShadow(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, program: ModelProgram): void {
+    program.begin(gl, options, false, true);
+    this.#drawTiles(gl, program, options, 0);
+  }
+
   /** Draws the selected tiles' meshes of `pass`, each told its place in the list first when picking. */
   #drawTiles(gl: WebGL2RenderingContext, program: ModelProgram, options: CustomRenderMethodInput, pass: number, picking = false): Picked[] {
     const d = options.defaultProjectionData;
     const t = d.projectionTransition;
-    const flat = t > 0 ? d.fallbackMatrix : d.mainMatrix;
     const plane = d.clippingPlane;
     const offset = this.#options.height ?? 0;
     const drawn: Picked[] = [];
@@ -217,12 +222,11 @@ export class TilesEngine {
       if (!m) continue;
       const sphere = sphereFrame(m.lng, m.lat, m.height + offset);
       if (t > 0 && sphere[12] * plane[0] + sphere[13] * plane[1] + sphere[14] * plane[2] + plane[3] < 0) continue;
-      const flatMatrix = mul(flat, mercatorFrame(m.lng, m.lat, m.height + offset));
-      const globe = t > 0 ? mul(options.modelViewProjectionMatrix, sphere) : null;
+      const mercator = mercatorFrame(m.lng, m.lat, m.height + offset);
       for (const part of m.parts) {
         drawn.push({ tile, part });
         if (picking) program.setPickId(gl, drawn.length);
-        part.places.forEach((place, i) => program.draw(gl, part.gpu, place, flatMatrix, globe, 1, false, pass, part.batchIds?.[i]));
+        part.places.forEach((place, i) => program.draw(gl, part.gpu, place, mercator, sphere, 1, false, pass, part.batchIds?.[i]));
       }
     }
     return drawn;
@@ -262,7 +266,7 @@ export class TilesEngine {
     gl.clearColor(0, 0, 0, 0);
     gl.clearDepth(1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    program.begin(gl, options.defaultProjectionData.projectionTransition, true);
+    program.begin(gl, options, true);
     program.setPointSize(this.#pointPixels(gl));
     let drawn: Picked[] = [];
     for (const pass of [0, 1]) drawn = this.#drawTiles(gl, program, options, pass, true);

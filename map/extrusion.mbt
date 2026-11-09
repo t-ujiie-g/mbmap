@@ -84,12 +84,12 @@ pub fn Map::lights(
     false,
     0.0,
   )
-  // Tile axes run south; east, north, up turns y.
+  // MapLibre's light axes (which its extrusions' normals are in) run west and north.
   Some(
     (
       scaled(l.ambient_color, l.ambient_intensity),
       scaled(l.sun_color, l.sun_intensity),
-      (x, -y, z),
+      (-x, y, z),
     ),
   )
 }

@@ -6,8 +6,8 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 153869,
-      "budget": 155000
+      "bytes": 157208,
+      "budget": 160000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
@@ -41,7 +41,7 @@
     },
     {
       "name": "custom layers (loaded by mbmap with the first one)",
-      "bytes": 2988,
+      "bytes": 2971,
       "budget": 3000
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       "name": "display worker",
-      "bytes": 85247,
+      "bytes": 85187,
       "budget": 100000
     },
     {
@@ -116,7 +116,7 @@
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 56498,
+      "bytes": 56480,
       "budget": 57000
     },
     {
@@ -181,12 +181,12 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 6544,
+      "bytes": 6929,
       "budget": 10000
     },
     {
       "name": "3D Tiles (loaded by mbmap/3d with the first tilesLayer)",
-      "bytes": 10067,
+      "bytes": 10012,
       "budget": 12000
     },
     {

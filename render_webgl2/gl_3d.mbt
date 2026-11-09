@@ -259,8 +259,9 @@ extern "js" fn gl_draw_extrusion(
   heights : FixedArray[Double],
   program : String,
   pass : Int32,
+  shadow : FixedArray[Double],
 ) -> Unit =
-  #|(c, m, matrix, clip, color, opacity, light, gradient, heights, name, pass) => {
+  #|(c, m, matrix, clip, color, opacity, light, gradient, heights, name, pass, shadow) => {
   #|  const gl = c.gl, p = c[name];
   #|  gl.useProgram(p.program);
   #|  if (p.u_height_factor) gl.uniform1f(p.u_height_factor, heights[3]);
@@ -277,6 +278,7 @@ extern "js" fn gl_draw_extrusion(
   #|  gl.uniform1f(p.u_t, heights[0]);
   #|  gl.uniform1f(p.u_scale, heights[1]);
   #|  gl.uniform1f(p.u_ground, heights[2]);
+  #|  c.shadowUniforms(p, shadow, pass === 3);
   #|  gl.bindVertexArray(m.vao);
   #|  gl.enable(gl.DEPTH_TEST);
   #|  gl.depthFunc(gl.LEQUAL);

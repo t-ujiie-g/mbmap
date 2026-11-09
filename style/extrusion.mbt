@@ -86,15 +86,16 @@ fn parse_light(json : Json?) -> Light raise StyleError {
 }
 
 ///|
-/// The style's `lights` (an mbmap extension, Mapbox's names): `ambient` and `directional`
-/// colors and intensities, `direction` [azimuthal from north, polar from up] in degrees
-/// on the map. A missing light is black.
+/// The style's `lights` (an mbmap extension, Mapbox's names): `ambient` and `directional` colors and
+/// intensities, `direction` [azimuthal from north, polar from up] in degrees, `shadows` the directional
+/// light's `shadow-intensity` when it has `cast-shadows`. A missing light is black.
 pub struct Lights {
   ambient_color : Expr
   ambient_intensity : Expr
   sun_color : Expr
   sun_intensity : Expr
   direction : (Double, Double)
+  shadows : Double?
 }
 
 ///|
@@ -111,6 +112,7 @@ fn parse_lights(json : Json?) -> Lights? raise StyleError {
     sun_color: black,
     sun_intensity: Lit(Num(0.0)),
     direction: (210.0, 30.0),
+    shadows: None,
   }
   for i, light in list {
     let path = "lights[\{i}]"
@@ -145,8 +147,21 @@ fn parse_lights(json : Json?) -> Lights? raise StyleError {
               "only [azimuthal, polar] numbers",
             )
         }
+        let shadows = match (p.get("cast-shadows"), p.get("shadow-intensity")) {
+          (None | Some(False), _) => None
+          (Some(True), None) => Some(1.0)
+          (Some(True), Some(Number(k, ..))) if k >= 0.0 && k <= 1.0 => Some(k)
+          (Some(True), Some(_)) =>
+            raise Unsupported(
+              path="\{at}.shadow-intensity",
+              "only a number from 0 to 1",
+            )
+          (Some(_), _) =>
+            raise Invalid(path="\{at}.cast-shadows", "not a boolean")
+        }
         lights = {
           ..lights,
+          shadows,
           sun_color: color,
           sun_intensity: paint_expr(
             p,

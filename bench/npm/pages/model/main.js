@@ -12,10 +12,14 @@ const map = new Map({
     version: 8,
     sources: {
       block: { type: "geojson", data: { type: "Polygon", coordinates: [[[139.7674, 35.6806], [139.7678, 35.6806], [139.7678, 35.6809], [139.7674, 35.6809], [139.7674, 35.6806]]] } },
+      low: { type: "geojson", data: { type: "Polygon", coordinates: [[[139.7676, 35.68046], [139.768, 35.68046], [139.768, 35.6806], [139.7676, 35.6806], [139.7676, 35.68046]]] } },
+      tall: { type: "geojson", data: { type: "Polygon", coordinates: [[[139.70, 35.70], [139.72, 35.70], [139.72, 35.71], [139.70, 35.71], [139.70, 35.70]]] } },
     },
     layers: [
       { id: "background", type: "background", paint: { "background-color": "#ffffff" } },
       { id: "block", type: "fill-extrusion", source: "block", paint: { "fill-extrusion-color": "#2080c0", "fill-extrusion-height": 20 } },
+      { id: "low", type: "fill-extrusion", source: "low", paint: { "fill-extrusion-color": "#2080c0", "fill-extrusion-height": 5 } },
+      { id: "tall", type: "fill-extrusion", source: "tall", paint: { "fill-extrusion-color": "#2080c0", "fill-extrusion-height": 500 } },
     ],
   },
 });

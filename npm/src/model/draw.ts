@@ -1,5 +1,6 @@
 // Drawing glTF models for mbmap/3d's layers in WebGL2: a model's primitives uploaded once, then drawn
 // with its meters taken to clip space by a Web Mercator matrix and, on the globe, a unit-sphere one.
+import type { CustomRenderMethodInput } from "../custom";
 import type { Material, Primitive } from "./gltf";
 import { LIGHT, mul, normalMatrix } from "./place";
 
@@ -9,6 +10,9 @@ export interface DrawableModel {
   materials: Material[];
   images: ImageBitmap[];
 }
+
+/** Texels per edge of the shadow map (`@core.SHADOW_MAP_SIZE`). */
+const SHADOW_SIZE = 2048;
 
 const VERTEX = `#version 300 es
 layout(location = 0) in vec3 a_pos;
@@ -26,6 +30,8 @@ uniform mat3 u_normal;
 uniform mat3 u_uv;
 uniform int u_uv_set;
 uniform float u_point;
+uniform mat4 u_shadow;
+out vec4 v_shadow;
 out vec3 v_enu;
 out vec3 v_normal;
 out vec2 v_uv;
@@ -41,6 +47,7 @@ void main() {
   v_uv = (u_uv * vec3(u_uv_set == 1 ? a_uv1 : a_uv0, 1.0)).xy;
   v_color = a_color;
   vec4 f = u_flat * p;
+  v_shadow = u_shadow * p;
   gl_PointSize = u_point;
   gl_Position = u_t > 0.999 ? u_globe * p : u_t > 0.0 ? mix(f, u_globe * p, u_t) : f;
 }`;
@@ -67,7 +74,19 @@ uniform vec3 u_sun;
 uniform vec2 u_pick;
 uniform bool u_picking;
 uniform float u_point;
+uniform highp sampler2DShadow u_shadow_map;
+uniform vec3 u_shadow_k;
+in vec4 v_shadow;
 out vec4 o;
+// 1 where the light reaches, 1 - intensity in shadow (u_shadow_k: intensity, depth per texel, whether on).
+float sunlit() {
+  vec3 p = v_shadow.xyz * 0.5 + 0.5;
+  if (u_shadow_k.z < 0.5 || any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return 1.0;
+  float t = 0.5 / ${SHADOW_SIZE}.0, d = p.z - 2.0 * u_shadow_k.y;
+  float s = texture(u_shadow_map, vec3(p.xy + vec2(-t, -t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, -t), d)) +
+    texture(u_shadow_map, vec3(p.xy + vec2(-t, t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, t), d));
+  return 1.0 - u_shadow_k.x * (1.0 - s / 4.0);
+}
 void main() {
   if (u_point > 0.0 && length(gl_PointCoord - 0.5) > 0.5) discard;
   if (u_picking) {
@@ -81,12 +100,12 @@ void main() {
   if (u_cutoff >= 0.0) { if (c.a < u_cutoff) discard; c.a = 1.0; }
   float d = u_shading == 1 ? max(dot(normalize(v_normal), u_light), 0.0) : abs(dot(normalize(cross(dFdx(v_enu), dFdy(v_enu))), u_light));
   // The style's lights (ambient plus a directional one), else a fixed light from Mapbox's default direction.
-  vec3 lit = u_shading == 0 ? vec3(1.0) : u_lights ? u_ambient + u_sun * d : vec3(0.55 + 0.45 * d);
+  vec3 lit = u_shading == 0 ? vec3(1.0) : u_lights ? u_ambient + u_sun * d * sunlit() : vec3(0.55 + 0.45 * d);
   float a = c.a * u_opacity;
   o = vec4(c.rgb * lit * a, a);
 }`;
 
-const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas", "u_lights", "u_ambient", "u_sun"] as const;
+const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas", "u_lights", "u_ambient", "u_sun", "u_shadow", "u_shadow_map", "u_shadow_k"] as const;
 type Uniforms = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
 /** A primitive on the GPU: its vertex array, how to draw it, and what it is drawn with. */
@@ -179,6 +198,8 @@ export class ModelProgram {
   #program: WebGLProgram;
   #u: Uniforms;
   #pointSize = 2;
+  #input: CustomRenderMethodInput | null = null;
+  #casting = false;
 
   constructor(gl: WebGL2RenderingContext) {
     const shader = (type: number, source: string) => {
@@ -195,6 +216,8 @@ export class ModelProgram {
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(`mbmap: 3d: ${gl.getProgramInfoLog(p)}`);
     this.#program = p;
     this.#u = Object.fromEntries(UNIFORMS.map((u) => [u, gl.getUniformLocation(p, u)])) as Uniforms;
+    gl.useProgram(p);
+    gl.uniform1i(this.#u.u_shadow_map, 7);
   }
 
   /** While picking, what the next draws write besides their feature id: `id` (0 to 65535) in two bytes. */
@@ -211,12 +234,20 @@ export class ModelProgram {
     gl.deleteProgram(this.#program);
   }
 
-  /** Starts drawing with the globe's `transition` (0: Web Mercator only), colors or, `picking`, ids. */
-  begin(gl: WebGL2RenderingContext, transition: number, picking = false, lights?: { ambient: ArrayLike<number>; directional: ArrayLike<number>; direction: ArrayLike<number> }): void {
+  /**
+   * Starts drawing with `input`'s matrices and lights: colors, or `picking` ids, or `casting` into the shadow
+   * map (the matrices then the light's; no blended meshes, no points).
+   */
+  begin(gl: WebGL2RenderingContext, input: CustomRenderMethodInput, picking = false, casting = false): void {
     const u = this.#u;
+    const lights = input.lights;
+    const shadow = !picking && !casting ? input.shadow : undefined;
+    this.#input = input;
+    this.#casting = casting;
     gl.useProgram(this.#program);
-    gl.uniform1f(u.u_t, transition);
+    gl.uniform1f(u.u_t, input.defaultProjectionData.projectionTransition);
     gl.uniform1i(u.u_picking, picking ? 1 : 0);
+    gl.uniform3f(u.u_shadow_k, shadow?.intensity ?? 0, shadow?.texel ?? 0, shadow ? 1 : 0);
     gl.uniform3fv(u.u_light, lights ? Array.from(lights.direction) : LIGHT);
     gl.uniform1i(u.u_lights, lights ? 1 : 0);
     if (lights) {
@@ -228,20 +259,25 @@ export class ModelProgram {
   }
 
   /**
-   * Draws `model`'s meshes of `pass` (0: opaque, 1: blended, or all of them with `translucent`): `place`
-   * (meters to meters) goes before each mesh's matrix, then `flat` and `globe` take meters to clip space;
-   * `feature` is the id meshes without an id attribute are picked with.
+   * Draws `model`'s meshes of `pass` (0: opaque, 1: blended, or all with `translucent`): `place` (meters to meters)
+   * before each mesh's matrix, then `mercator` and `sphere` (`mercatorFrame`, `sphereFrame`) to Mercator and the
+   * unit sphere; `feature` is the id meshes without an id attribute are picked with.
    */
-  draw(gl: WebGL2RenderingContext, model: GpuModel, place: ArrayLike<number>, flat: ArrayLike<number>, globe: ArrayLike<number> | null, opacity: number, translucent: boolean, pass: number, feature?: number): void {
+  draw(gl: WebGL2RenderingContext, model: GpuModel, place: ArrayLike<number>, mercator: Float64Array, sphere: Float64Array, opacity: number, translucent: boolean, pass: number, feature?: number): void {
     const u = this.#u;
+    const input = this.#input!;
+    const d = input.defaultProjectionData;
+    const t = d.projectionTransition;
+    const s = input.shadow;
     // An instance's feature id, for meshes with no id attribute of their own.
     gl.vertexAttrib4f(5, feature ?? 0, 0, 0, 0);
-    gl.uniformMatrix4fv(u.u_flat, false, new Float32Array(flat));
-    if (globe) gl.uniformMatrix4fv(u.u_globe, false, new Float32Array(globe));
+    gl.uniformMatrix4fv(u.u_flat, false, new Float32Array(mul(t > 0 ? d.fallbackMatrix : d.mainMatrix, mercator)));
+    if (t > 0) gl.uniformMatrix4fv(u.u_globe, false, new Float32Array(mul(input.modelViewProjectionMatrix, sphere)));
+    if (s) gl.uniformMatrix4fv(u.u_shadow, false, new Float32Array(s.globe ? mul(s.sphere, sphere) : mul(s.mercator, mercator)));
     gl.uniform1f(u.u_opacity, opacity);
     for (const m of model.meshes) {
       const blend = translucent || m.material?.alphaMode === "BLEND";
-      if (blend !== (pass === 1)) continue;
+      if (blend !== (pass === 1) || (this.#casting && m.mode === POINTS)) continue;
       this.#mesh(gl, model, m, mul(place, m.matrix));
     }
   }

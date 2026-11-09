@@ -3,7 +3,7 @@
 import type { CustomLayerInterface, CustomRenderMethodInput } from "./custom";
 import type { Material, Primitive } from "./model/gltf";
 import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/draw";
-import { Y_UP, triple, mercatorFrame, mul, placement, points, sphereFrame, value, type Value } from "./model/place";
+import { Y_UP, triple, mercatorFrame, placement, points, sphereFrame, value, type Value } from "./model/place";
 import type { Tile } from "./tiles/tileset";
 import type { TilesEngine } from "./3d-tiles";
 import type { I3sParts } from "./3d-i3s";
@@ -146,23 +146,28 @@ export class ModelLayer implements CustomLayerInterface {
   }
 
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
+    this.#draw(gl, options, false);
+  }
+
+  renderShadow(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
+    this.#draw(gl, options, true);
+  }
+
+  /** Draws the instances, or only the opaque ones' depth when `casting` shadows. */
+  #draw(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, casting: boolean): void {
     const program = this.#program;
     const gpu = this.#gpu;
     if (!program || !gpu || !this.#instances.length) return;
     const d = options.defaultProjectionData;
     const t = d.projectionTransition;
-    // On the globe `mainMatrix` is Float32 and the full-precision globe matrix is the model-view-projection.
-    const flat = t > 0 ? d.fallbackMatrix : d.mainMatrix;
     const plane = d.clippingPlane;
-    program.begin(gl, t, false, options.lights);
-    for (const pass of [0, 1]) {
+    program.begin(gl, options, false, casting);
+    for (const pass of casting ? [0] : [0, 1]) {
       gl.depthMask(pass === 0);
       for (const inst of this.#instances) {
         const frame = sphereFrame(inst.lng, inst.lat, inst.height);
         if (t > 0 && frame[12] * plane[0] + frame[13] * plane[1] + frame[14] * plane[2] + plane[3] < 0) continue;
-        const flatMatrix = mul(flat, mercatorFrame(inst.lng, inst.lat, inst.height));
-        const globe = t > 0 ? mul(options.modelViewProjectionMatrix, frame) : null;
-        program.draw(gl, gpu, inst.transform, flatMatrix, globe, inst.opacity, inst.opacity < 1, pass);
+        program.draw(gl, gpu, inst.transform, mercatorFrame(inst.lng, inst.lat, inst.height), frame, inst.opacity, inst.opacity < 1, pass);
       }
     }
     gl.depthMask(true);
@@ -279,15 +284,11 @@ export class PointCloudLayer implements CustomLayerInterface {
     const gpu = this.#gpu;
     const c = this.#cloud;
     if (!program || !gpu || !c) return;
-    const d = options.defaultProjectionData;
-    const t = d.projectionTransition;
     const [lng, lat, h] = c.center;
     const css = (gl.canvas as HTMLCanvasElement).clientWidth || gl.drawingBufferWidth;
-    program.begin(gl, t, false, options.lights);
+    program.begin(gl, options);
     program.setPointSize((this.#options.pointSize ?? 2) * (gl.drawingBufferWidth / css));
-    const flat = mul(t > 0 ? d.fallbackMatrix : d.mainMatrix, mercatorFrame(lng, lat, h));
-    const globe = t > 0 ? mul(options.modelViewProjectionMatrix, sphereFrame(lng, lat, h)) : null;
-    program.draw(gl, gpu, IDENTITY, flat, globe, 1, false, 0);
+    program.draw(gl, gpu, IDENTITY, mercatorFrame(lng, lat, h), sphereFrame(lng, lat, h), 1, false, 0);
   }
 }
 
@@ -391,6 +392,10 @@ export class TilesLayer implements CustomLayerInterface {
 
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
     if (this.#program && this.#engine) this.#engine.render(gl, options, this.#program);
+  }
+
+  renderShadow(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
+    if (this.#program && this.#engine) this.#engine.renderShadow(gl, options, this.#program);
   }
 }
 
