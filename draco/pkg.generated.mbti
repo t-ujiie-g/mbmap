@@ -16,10 +16,6 @@ pub const MAX_POINTS : Int32 = 0x400000
 
 pub fn decode(FixedArray[Byte], Int32, Int32) -> DracoMesh?
 
-pub fn decode_mesh(FixedArray[Byte], Int32, Int32) -> DracoMesh?
-
-pub fn decode_point_cloud(FixedArray[Byte], Int32, Int32) -> DracoMesh?
-
 // Errors
 
 // Types and methods

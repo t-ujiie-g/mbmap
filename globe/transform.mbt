@@ -232,7 +232,7 @@ pub fn Globe::set_zoom(self : Globe, zoom : Double) -> Unit {
 
 ///|
 /// Sets the center, then constrains the camera.
-pub fn Globe::set_center(self : Globe, center : @core.LngLat) -> Unit {
+fn Globe::set_center(self : Globe, center : @core.LngLat) -> Unit {
   if center.lat == self.center.lat && center.lng == self.center.lng {
     return
   }
@@ -254,7 +254,7 @@ fn Globe::set_center_and_zoom(
 
 ///|
 /// Sets the bearing in degrees, wrapped to (-180, 180].
-pub fn Globe::set_bearing(self : Globe, bearing : Double) -> Unit {
+fn Globe::set_bearing(self : Globe, bearing : Double) -> Unit {
   let b = wrap(bearing, -180.0, 180.0) * @math.PI / 180.0
   if self.bearing == b {
     return
@@ -430,7 +430,7 @@ pub fn Globe::occluded(self : Globe, p : @core.LngLat) -> Bool {
 ///|
 /// The unit direction of the ray from the camera through screen point (x, y)
 /// (`getRayDirectionFromPixel`, always the globe's).
-pub fn Globe::ray_direction(self : Globe, x : Double, y : Double) -> Vec3 {
+fn Globe::ray_direction(self : Globe, x : Double, y : Double) -> Vec3 {
   let vp = self.vp()
   let (px, py, pz, pw) = vp.inverse.apply(
     x / self.width * 2.0 - 1.0,

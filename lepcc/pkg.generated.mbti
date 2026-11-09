@@ -4,15 +4,7 @@ package "t-ujiie-g/mbmap/lepcc"
 // Values
 pub const MAX_POINTS : Int32 = 0x400000
 
-pub fn blob_info(FixedArray[Byte], Int32, Int32) -> (BlobType, UInt32)?
-
 pub fn decode(BlobType, FixedArray[Byte], Int32, Int32) -> FixedArray[Byte]?
-
-pub fn decode_intensity(FixedArray[Byte], Int32, Int32) -> FixedArray[Int32]?
-
-pub fn decode_rgb(FixedArray[Byte], Int32, Int32) -> FixedArray[Byte]?
-
-pub fn decode_xyz(FixedArray[Byte], Int32, Int32) -> FixedArray[Double]?
 
 // Errors
 

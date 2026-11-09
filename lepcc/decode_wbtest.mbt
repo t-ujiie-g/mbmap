@@ -1,21 +1,4 @@
 ///|
-fn wb_hex(s : String) -> FixedArray[Byte] {
-  let out = FixedArray::make(s.length() / 2, b'\x00')
-  for i in 0..<out.length() {
-    let d = fn(c : Int32) {
-      if c <= '9'.to_int() {
-        c - '0'.to_int()
-      } else {
-        c - 'a'.to_int() + 10
-      }
-    }
-    out[i] = (d(s.code_unit_at(2 * i).to_int()) * 16 +
-    d(s.code_unit_at(2 * i + 1).to_int())).to_byte()
-  }
-  out
-}
-
-///|
 fn put32(b : FixedArray[Byte], at : Int32, v : Int32) -> Unit {
   for k in 0..<4 {
     b[at + k] = ((v >> (8 * k)) & 0xff).to_byte()
@@ -60,7 +43,7 @@ let wb_xyz : String = "4c455043432020202020010049f565788200000000000000666666666
 
 ///|
 test "fletcher32 matches Fletcher's checksum over bytes, odd lengths and long runs" {
-  let b = wb_hex(wb_xyz)
+  let b = hex(wb_xyz)
   assert_eq(fletcher32(b, 16, b.length() - 16), 0x7865f549U)
   assert_eq(fletcher32(b, 0, 0), 0xffffffffU)
   assert_eq(fletcher32([b'\x01'], 0, 1), 0x01000100U)
@@ -174,7 +157,7 @@ test "decode_intensity decodes a table-mode array and refuses bad headers" {
 
 ///|
 test "decode_xyz refuses resealed blobs with inconsistent counts or sizes" {
-  let b = wb_hex(wb_xyz)
+  let b = hex(wb_xyz)
   let n = b.length()
   // More points in the header than the rows hold.
   let more = b.copy()
@@ -208,7 +191,7 @@ test "decode_xyz refuses resealed blobs with inconsistent counts or sizes" {
 
 ///|
 test "decode_rgb refuses resealed blobs with indexes past the colormap" {
-  let b = wb_hex(
+  let b = hex(
     "436c757374657252474201001d35963730000000000000000a00000002000100faf0e60a141e00010100010100010100",
   )
   b[40] = b'\x02'
@@ -227,7 +210,7 @@ test "a short blob claiming millions of values is refused before they are made" 
   let claim = [b'\x00', b'\x00', b'\x00', b'\x40', b'\x00']
   let c = { data: FixedArray::from_array(claim), pos: 0, end: 5, }
   assert_true(c.decode(2) is None)
-  let b = wb_hex(wb_xyz)
+  let b = hex(wb_xyz)
   let blob = FixedArray::make(XYZ_HEADER_SIZE + 5, b'\x00')
   for i in 0..<XYZ_HEADER_SIZE {
     blob[i] = b[i]
@@ -243,10 +226,10 @@ test "a short blob claiming millions of values is refused before they are made" 
 ///|
 test "corrupted and resealed copies never trap" {
   let blobs = [
-    (Xyz, wb_hex(wb_xyz)),
+    (Xyz, hex(wb_xyz)),
     (
       Rgb,
-      wb_hex(
+      hex(
         "436c757374657252474201001d35963730000000000000000a00000002000100faf0e60a141e00010100010100010100",
       ),
     ),

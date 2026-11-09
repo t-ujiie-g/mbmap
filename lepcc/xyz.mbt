@@ -31,7 +31,7 @@ fn Cursor::segments(self : Cursor) -> Array[UInt32]? {
 /// `lepcc_decodeXYZ` of the blob in `data[start, start + len)`: x, y, z per point, or None where the
 /// C++ fails. Also refused: no points, more than `MAX_POINTS`, and rows that do not hold exactly the
 /// header's points (the C++ reads past its arrays or leaves points unwritten).
-pub fn decode_xyz(
+fn decode_xyz(
   data : FixedArray[Byte],
   start : Int32,
   len : Int32,

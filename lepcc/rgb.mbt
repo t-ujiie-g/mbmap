@@ -10,7 +10,7 @@ const RGB_HEADER_SIZE : Int32 = 32
 /// `lepcc_decodeRGB` of the blob in `data[start, start + len)`: r, g, b per point, or None where the
 /// default build's C++ fails (it has no Huffman-coded indexes). Also refused: no points, more than
 /// `MAX_POINTS`, and indexes past the colormap.
-pub fn decode_rgb(
+fn decode_rgb(
   data : FixedArray[Byte],
   start : Int32,
   len : Int32,

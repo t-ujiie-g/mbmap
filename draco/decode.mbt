@@ -61,10 +61,7 @@ const ATTRIBUTE_POSITION : Int32 = 0
 const NAMED_ATTRIBUTES_COUNT : Int32 = 5
 
 ///|
-/// `EncodedGeometryType`'s `POINT_CLOUD` and `TRIANGULAR_MESH`.
-const POINT_CLOUD : Int32 = 0
-
-///|
+/// `EncodedGeometryType`'s `TRIANGULAR_MESH` (0 is `POINT_CLOUD`).
 const TRIANGULAR_MESH : Int32 = 1
 
 ///|
@@ -434,13 +431,13 @@ fn Decoder::output(self : Decoder, a : Attribute) -> DracoAttribute? {
 }
 
 ///|
-/// `DecodeHeader` and `Decode`: a mesh when `want` is `TRIANGULAR_MESH`, a point cloud when `POINT_CLOUD`, either (as its
-/// header says) when -1.
-fn decode_geometry(
+/// Decodes the Draco mesh or point cloud (no faces) in `src[offset, offset + length)` as its header
+/// says, as draco3d 1.5.7's `DecodeArrayToMesh` / `DecodeArrayToPointCloud` do; None where draco3d
+/// fails, before bitstream 2.0 and past the `MAX_*` caps (docs/FORMATS.md "Draco output").
+pub fn decode(
   src : FixedArray[Byte],
   offset : Int32,
   length : Int32,
-  want : Int32,
 ) -> DracoMesh? {
   guard offset >= 0 && length >= 0 && length <= src.length() - offset else {
     return None
@@ -456,9 +453,7 @@ fn decode_geometry(
   let encoding = b.u8()
   let flags = b.u16()
   guard !b.failed else { return None }
-  guard encoder_type <= TRIANGULAR_MESH &&
-    (want < 0 || encoder_type == want) &&
-    encoding <= EDGEBREAKER_ENCODING else {
+  guard encoder_type <= TRIANGULAR_MESH && encoding <= EDGEBREAKER_ENCODING else {
     return None
   }
   let mesh = encoder_type == TRIANGULAR_MESH
@@ -500,40 +495,4 @@ fn decode_geometry(
     attributes.push(out)
   }
   Some({ indices: d.faces, num_points: d.num_points, attributes, })
-}
-
-///|
-/// Decodes the Draco mesh in `src[offset, offset + length)` (a KHR_draco_mesh_compression buffer
-/// view) as draco3d 1.5.7's `DecodeArrayToMesh` does: bitstreams 2.0 to 2.2, edgebreaker
-/// (standard, predictive and valence) and sequential connectivity. None where draco3d fails, for
-/// bitstreams before 2.0, and for meshes past `MAX_FACES`, `MAX_POINTS`, `MAX_ATTRIBUTES` or
-/// `MAX_ATTRIBUTE_BYTES`.
-pub fn decode_mesh(
-  src : FixedArray[Byte],
-  offset : Int32,
-  length : Int32,
-) -> DracoMesh? {
-  decode_geometry(src, offset, length, TRIANGULAR_MESH)
-}
-
-///|
-/// `decode_mesh` for point clouds (a mesh without faces), as `DecodeArrayToPointCloud` does:
-/// bitstreams 2.0 to 2.3, sequential and kd-tree encodings (with the float kd-tree before 2.3),
-/// also refused past `MAX_KD_DIMENSIONS`.
-pub fn decode_point_cloud(
-  src : FixedArray[Byte],
-  offset : Int32,
-  length : Int32,
-) -> DracoMesh? {
-  decode_geometry(src, offset, length, POINT_CLOUD)
-}
-
-///|
-/// `decode_mesh` or `decode_point_cloud`, as the data's header says.
-pub fn decode(
-  src : FixedArray[Byte],
-  offset : Int32,
-  length : Int32,
-) -> DracoMesh? {
-  decode_geometry(src, offset, length, -1)
 }

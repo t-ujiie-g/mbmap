@@ -10,7 +10,7 @@ const INTENSITY_HEADER_SIZE : Int32 = 32
 /// `lepcc_decodeIntensity` of the blob in `data[start, start + len)`: each value 0 to 65535, or None
 /// where the C++ fails. Also refused: no values, more than `MAX_POINTS`, and a bit-stuffed array of
 /// another length than the header's (the C++ reads past it or refuses).
-pub fn decode_intensity(
+fn decode_intensity(
   data : FixedArray[Byte],
   start : Int32,
   len : Int32,
