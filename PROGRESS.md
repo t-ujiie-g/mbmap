@@ -7,10 +7,18 @@
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
-- **Mac で回すもの**（残り。Phase 19 の分は下の節）：
-  - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
-  - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
-  - 主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。
+- **Mac で回すもの**（2026-11-09 に整理。Web の環境は SwiftShader で GPU の数字が取れない。結果の JSON はコミットして戻し、ここと各節の表に書き写す）：
+  - 準備：`git pull` のあと `scripts/setup.sh`（または `npm ci` を `npm/`・`bench/`・`examples/react/` で）、`cd bench && npm run fixtures`（PLATEAU の `plateau-chiyoda` も。それだけなら `node maplibre/fetch-tiles.mjs --only=plateau-chiyoda`）。
+  - Phase 20 の速さ：
+    1. `cd bench && npm run cesium -- --gpu`：CesiumJS とのフレームの CPU と落ち着くまでの時間（`bench/results/cesium.json`。20.5 の表は SwiftShader の値）。
+    2. `npm run render`（メインと `--uncapped`）：表示（メイン）が Phase 20 で 147 → 161.4KB になったので、2D の初回描画とフレームの CPU が変わっていないか（`bench/results/render-chromium*.json`）。
+    3. `node render/run.mjs --extrusion` と `node render/run.mjs --shadows`（新設：押し出しに影を落とす太陽を足す。MapLibre は影なし）：同じ押し出しで影の深度テクスチャを毎フレーム描く分のコスト（`render-chromium-extrusion.json` と `render-chromium-extrusion-shadows.json` の mbmap の行を比べる）。
+  - Phase 20 の目での確かめ（実際の GPU で。pack test は SwiftShader で数字を見ている）：`npm run examples` で `http://127.0.0.1:8080/examples/plateau/?local=1` を開き、
+    - 影：開発者ツールで `__map.setLights([{ id: "a", type: "ambient", properties: { intensity: 0.5 } }, { id: "s", type: "directional", properties: { intensity: 0.6, direction: [210, 40], "cast-shadows": true } }])`。建物の影が地面と建物に落ち、地図を回し・傾け・寄っても影が泳がない・縞（アクネ）が出ないか。`setLights(null)` で戻る。
+    - 計測・見通し・可視域・断面：パネルの道具で建物の上をクリック。可視域は緑と赤の境が建物の縁に沿うか、断面は切り口の橙の縁が出るか。
+    - 地球表示：`__map.setProjection({ type: "globe" })` でズーム 11 前後に引いても影と断面が崩れないか。
+    - 気になる所があればスクリーンショットと `navigator.userAgent` を残す。
+  - 前からの残り：`style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し、主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。Phase 17 の読み込みのベンチ（`data:node` を足すところから）と 17.6c の投影し直しのコスト、点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのあと。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：

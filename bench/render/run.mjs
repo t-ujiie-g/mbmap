@@ -1,5 +1,5 @@
 // mbmap vs MapLibre, same style, tiles and camera script, in Chromium with the Metal GPU.
-// Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--line-labels] [--terrain] [--extrusion] [--pitch=N]
+// Usage: node render/run.mjs [--runs=11] [--uncapped] [--labels] [--line-labels] [--terrain] [--extrusion] [--shadows] [--pitch=N]
 // Writes bench/results/render-chromium[-labels][-line-labels][-terrain][-extrusion][-pitchN][-uncapped].json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
@@ -22,12 +22,16 @@ const lineLabels = process.argv.includes("--line-labels");
 const terrain = process.argv.includes("--terrain");
 // --extrusion draws the buildings as fill-extrusion (GSI tiles have no heights:
 // 30 m for sturdy buildings, 8 m for others), pitched 45 degrees by default.
-const extrusion = process.argv.includes("--extrusion");
+// --shadows (with the extrusions) gives mbmap's style a sun casting shadows (`lights`, mbmap's extension);
+// MapLibre, which has no shadows, draws the extrusions alone.
+const shadows = process.argv.includes("--shadows");
+const extrusion = shadows || process.argv.includes("--extrusion");
 const pitchArg = arg("pitch", null);
 const pitch = Number(pitchArg ?? (terrain || extrusion ? 45 : 0));
 const styleVariant = `${labels ? "-labels" : ""}${lineLabels ? "-line-labels" : ""}${terrain ? "-terrain" : ""}${extrusion ? "-extrusion" : ""}`;
-const variant = `${styleVariant}${pitchArg !== null ? `-pitch${pitch}` : ""}`;
+const variant = `${styleVariant}${shadows ? "-shadows" : ""}${pitchArg !== null ? `-pitch${pitch}` : ""}`;
 const style = styleVariant ? `bench/dist/style${styleVariant}.json` : "bench/maplibre/style.json";
+const shadowStyle = `bench/dist/style${styleVariant}-shadows.json`;
 if (styleVariant) {
   const base = JSON.parse(await readFile(path.join(ROOT, "bench/maplibre/style.json"), "utf8"));
   if (labels) {
@@ -91,7 +95,13 @@ if (styleVariant) {
   }
   await mkdir(path.join(ROOT, "bench/dist"), { recursive: true });
   await writeFile(path.join(ROOT, style), JSON.stringify(base));
+  if (shadows) {
+    const sun = { color: "#ffffff", intensity: 0.6, direction: [210, 40], "cast-shadows": true, "shadow-intensity": 0.6 };
+    base.lights = [{ id: "ambient", type: "ambient", properties: { color: "#ffffff", intensity: 0.5 } }, { id: "sun", type: "directional", properties: sun }];
+    await writeFile(path.join(ROOT, shadowStyle), JSON.stringify(base));
+  }
 }
+
 const dpr = 2;
 
 // Shipped sizes: mbmap's js bundle minified as a bundler would, its worker
@@ -112,7 +122,7 @@ for (let i = 0; i < runs; i++) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: dpr });
     const page = await context.newPage();
     page.on("pageerror", (e) => console.log(engine, "pageerror", e.message));
-    await page.goto(`${origin}/bench/render/index.html?engine=${engine}&dpr=${dpr}&pitch=${pitch}&style=/${style}`);
+    await page.goto(`${origin}/bench/render/index.html?engine=${engine}&dpr=${dpr}&pitch=${pitch}&style=/${engine === "mbmap" && shadows ? shadowStyle : style}`);
     const t0 = Date.now();
     await page.waitForFunction(() => window.__result, null, { timeout: 120000, polling: 500 }).catch((e) => {
       throw new Error(`${engine}, run ${i}: no result after ${Date.now() - t0} ms (${e.message})`);
@@ -139,7 +149,7 @@ for (const [engine, rs] of Object.entries(results)) {
   };
 }
 const out = {
-  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + bench/pages/basic labels" : "bench/maplibre/style.json", ...(lineLabels ? ["contour labels along lines"] : []), ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : []), ...(extrusion ? ["buildings extruded 30 m (ftCode 3103) or 8 m"] : [])].join(", ") },
+  env: { browser: `chromium ${browser.version()}`, uncapped, viewport: "1280x800", dpr, pitch, style: [labels ? "bench/maplibre/style.json + bench/pages/basic labels" : "bench/maplibre/style.json", ...(lineLabels ? ["contour labels along lines"] : []), ...(terrain ? ["terrain on bench/fixtures/gsi-dem as Terrarium, z12-13 halved from it, sky"] : []), ...(extrusion ? ["buildings extruded 30 m (ftCode 3103) or 8 m"] : []), ...(shadows ? ["mbmap: a sun at azimuth 210°, 40° from the zenith, casting shadows (MapLibre: none)"] : [])].join(", ") },
   params: { runs, statistic: "median of runs" }, sizes, summary, runs: results,
 };
 await writeFile(path.join(ROOT, `bench/results/render-chromium${variant}${uncapped ? "-uncapped" : ""}.json`), JSON.stringify(out, null, 2) + "\n");
