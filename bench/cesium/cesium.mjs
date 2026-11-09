@@ -71,6 +71,36 @@ window.__run = async () => {
   };
 };
 
+// Clips (null: does not) as mbmap's Map.setClipping does: planes in east, north, up meters at `origin` (the tileset lowered onto
+// the ellipsoid there, so 0 m is the same ground), polygons of longitudes and latitudes; then settles.
+window.__clip = async (c) => {
+  // mbmap draws both faces, so a cut building shows its inside walls in both; black around, so pale faces count.
+  tileset.backFaceCulling = false;
+  scene.backgroundColor = Cesium.Color.BLACK;
+  scene.globe.baseColor = Cesium.Color.BLACK;
+  if (c) {
+    scene.render();
+    const at = Cesium.Transforms.eastNorthUpToFixedFrame(Cesium.Cartesian3.fromDegrees(c.origin[0], c.origin[1], c.origin[2] ?? 0));
+    const frame = Cesium.Matrix4.multiply(Cesium.Matrix4.inverse(tileset.clippingPlanesOriginMatrix, new Cesium.Matrix4()), at, new Cesium.Matrix4());
+    if (c.planes?.length) {
+      tileset.clippingPlanes = new Cesium.ClippingPlaneCollection({
+        planes: c.planes.map(([x, y, z, d]) => new Cesium.ClippingPlane(new Cesium.Cartesian3(x, y, z), d)),
+        modelMatrix: frame,
+        unionClippingRegions: c.unionClippingRegions ?? false,
+        edgeWidth: c.edgeWidth ?? 0,
+        edgeColor: c.edgeColor ? new Cesium.Color(...c.edgeColor, 1) : Cesium.Color.WHITE,
+      });
+    }
+    if (c.polygons?.length) {
+      tileset.clippingPolygons = new Cesium.ClippingPolygonCollection({
+        polygons: c.polygons.map((ring) => new Cesium.ClippingPolygon({ positions: Cesium.Cartesian3.fromDegreesArray(ring.flat()) })),
+        inverse: c.inverse ?? false,
+      });
+    }
+  }
+  await settle(drawn);
+};
+
 window.__orbit = async () => {
   frames.clear();
   await new Promise((done) => {

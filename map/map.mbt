@@ -165,6 +165,8 @@ pub struct Map {
   priv mut custom : CustomRenderer
   priv mut shadows : Shadows?
   priv mut viewshed : FixedArray[Double]?
+  priv mut clipping : FixedArray[Double]
+  priv mut cut_frame : @core.Mat4?
 }
 
 ///|
@@ -292,6 +294,8 @@ pub fn Map::new(
     custom: no_custom(),
     shadows: None,
     viewshed: None,
+    clipping: [],
+    cut_frame: None,
   }
   map.follow_projection(camera~)
   let wasm = absolute_url(wasm_url)

@@ -1,5 +1,6 @@
 // Drawing glTF models for mbmap/3d's layers in WebGL2: a model's primitives uploaded once, then drawn
 // with its meters taken to clip space by a Web Mercator matrix and, on the globe, a unit-sphere one.
+import { mercatorMeters, packClipping, type Clipping } from "../clipping";
 import type { CustomRenderMethodInput } from "../custom";
 import type { Material, Primitive } from "./gltf";
 import { LIGHT, mul, normalMatrix } from "./place";
@@ -31,7 +32,9 @@ uniform mat3 u_uv;
 uniform int u_uv_set;
 uniform float u_point;
 uniform mat4 u_shadow;
+uniform mat4 u_cut_frame;
 out vec4 v_shadow;
+out vec4 v_cut;
 out vec3 v_enu;
 out vec3 v_normal;
 out vec2 v_uv;
@@ -50,6 +53,7 @@ void main() {
   v_shadow = u_shadow * p;
   gl_PointSize = u_point;
   gl_Position = u_t > 0.999 ? u_globe * p : u_t > 0.0 ? mix(f, u_globe * p, u_t) : f;
+  v_cut = vec4((u_cut_frame * p).xyz, gl_Position.w);
 }`;
 
 const FRAGMENT = `#version 300 es
@@ -77,7 +81,48 @@ uniform float u_point;
 uniform highp sampler2DShadow u_shadow_map;
 uniform vec3 u_shadow_k;
 in vec4 v_shadow;
+in vec4 v_cut;
 out vec4 o;
+// The map's clipping, as its extrusions are cut (render_webgl2's cutFs): v_cut is east, north, up meters at its origin.
+uniform int u_cut_count;
+uniform bool u_cut_union;
+uniform vec4 u_cut_planes[16];
+uniform vec4 u_cut_edge;
+uniform float u_cut_mpp;
+uniform int u_cut_rings[8];
+uniform int u_cut_ring_count;
+uniform vec4 u_cut_poly[32];
+uniform bool u_cut_inverse;
+vec2 cutVertex(int i) { vec4 v = u_cut_poly[i / 2]; return i % 2 == 0 ? v.xy : v.zw; }
+bool inRings(vec2 p) {
+  int start = 0;
+  for (int r = 0; r < 8; r++) {
+    if (r >= u_cut_ring_count) break;
+    int n = u_cut_rings[r];
+    bool inside = false;
+    for (int i = 0; i < 64; i++) {
+      if (i >= n) break;
+      vec2 a = cutVertex(start + i), b = cutVertex(start + (i + 1) % n);
+      if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    if (inside) return true;
+    start += n;
+  }
+  return false;
+}
+// Discards what is cut; the edge's color where the planes' band is, else alpha 0.
+vec4 cut() {
+  if (u_cut_ring_count > 0 && inRings(v_cut.xy) != u_cut_inverse) discard;
+  if (u_cut_count == 0) return vec4(0.0);
+  float amount = u_cut_union ? 1e30 : -1e30;
+  for (int i = 0; i < 16; i++) {
+    if (i >= u_cut_count) break;
+    float d = (dot(u_cut_planes[i].xyz, v_cut.xyz) + u_cut_planes[i].w) / (v_cut.w * u_cut_mpp);
+    amount = u_cut_union ? min(amount, d) : max(amount, d);
+  }
+  if (amount <= 0.0) discard;
+  return amount < u_cut_edge.w ? vec4(u_cut_edge.rgb, 1.0) : vec4(0.0);
+}
 // As the map's extrusions (u_shadow_k: intensity or tint, depth per texel, mode): the share the light reaches.
 float seen() {
   vec3 p = v_shadow.xyz / v_shadow.w * 0.5 + 0.5;
@@ -89,6 +134,7 @@ float seen() {
 float sunlit() { float s = seen(); return u_shadow_k.z > 2.5 || s < 0.0 ? 1.0 : 1.0 - u_shadow_k.x * (1.0 - s); }
 void main() {
   if (u_point > 0.0 && length(gl_PointCoord - 0.5) > 0.5) discard;
+  vec4 edge = cut();
   if (u_picking) {
     float f = clamp(floor(v_feature + 0.5), 0.0, 65535.0);
     o = vec4(u_pick, floor(f / 256.0) / 255.0, mod(f, 256.0) / 255.0);
@@ -105,9 +151,10 @@ void main() {
   o = vec4(c.rgb * lit * a, a);
   float s = u_shadow_k.z > 2.5 ? seen() : -1.0;
   if (s >= 0.0) o.rgb = mix(o.rgb, (s > 0.5 ? vec3(0.2, 0.8, 0.3) : vec3(0.9, 0.2, 0.15)) * a, u_shadow_k.x);
+  if (edge.a > 0.0) o = edge;
 }`;
 
-const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas", "u_lights", "u_ambient", "u_sun", "u_shadow", "u_shadow_map", "u_shadow_k"] as const;
+const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas", "u_lights", "u_ambient", "u_sun", "u_shadow", "u_shadow_map", "u_shadow_k", "u_cut_frame", "u_cut_count", "u_cut_union", "u_cut_planes", "u_cut_edge", "u_cut_mpp", "u_cut_rings", "u_cut_ring_count", "u_cut_poly", "u_cut_inverse"] as const;
 type Uniforms = Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
 
 /** A primitive on the GPU: its vertex array, how to draw it, and what it is drawn with. */
@@ -202,6 +249,7 @@ export class ModelProgram {
   #pointSize = 2;
   #input: CustomRenderMethodInput | null = null;
   #casting = false;
+  #cutFrame: Float64Array | null = null;
 
   constructor(gl: WebGL2RenderingContext) {
     const shader = (type: number, source: string) => {
@@ -238,9 +286,10 @@ export class ModelProgram {
 
   /**
    * Starts drawing with `input`'s matrices and lights: colors, or `picking` ids, or `casting` into the shadow
-   * map (the matrices then the light's; no blended meshes, no points).
+   * map (the matrices then the light's; no blended meshes, no points), cut by `clip` (the map's clipping and the
+   * meters a pixel spans per unit of clip w).
    */
-  begin(gl: WebGL2RenderingContext, input: CustomRenderMethodInput, picking = false, casting = false): void {
+  begin(gl: WebGL2RenderingContext, input: CustomRenderMethodInput, picking = false, casting = false, clip?: { cut: Clipping; mpp: number }): void {
     const u = this.#u;
     const lights = input.lights;
     const shadow = !picking && !casting ? input.shadow : undefined;
@@ -250,6 +299,7 @@ export class ModelProgram {
     gl.uniform1f(u.u_t, input.defaultProjectionData.projectionTransition);
     gl.uniform1i(u.u_picking, picking ? 1 : 0);
     gl.uniform3f(u.u_shadow_k, shadow?.intensity ?? 0, shadow?.texel ?? 0, shadow?.mode ?? 0);
+    this.#clip(gl, clip);
     gl.uniform3fv(u.u_light, lights ? Array.from(lights.direction) : LIGHT);
     gl.uniform1i(u.u_lights, lights ? 1 : 0);
     if (lights) {
@@ -258,6 +308,30 @@ export class ModelProgram {
     }
     gl.uniform1i(u.u_image, 0);
     gl.activeTexture(gl.TEXTURE0);
+  }
+
+  /** Sets the clipping's uniforms from `packClipping`'s numbers, and the frame from Mercator to the origin's meters. */
+  #clip(gl: WebGL2RenderingContext, clip?: { cut: Clipping; mpp: number }): void {
+    const u = this.#u;
+    const n = clip ? packClipping(clip.cut) : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const planes = n[9];
+    const rings = n[10 + 4 * planes];
+    gl.uniform1i(u.u_cut_count, planes);
+    gl.uniform1i(u.u_cut_ring_count, rings);
+    this.#cutFrame = null;
+    if (!clip || (!planes && !rings)) return;
+    const [lng, lat, h] = n;
+    const m = mercatorMeters(lat);
+    const [x, y] = [(lng + 180) / 360, 0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI)];
+    this.#cutFrame = new Float64Array([m, 0, 0, 0, 0, -m, 0, 0, 0, 0, m, 0, -x * m, y * m, -h, 1]);
+    const pad = (a: number[], k: number) => new Float32Array(k).fill(0).map((_, i) => a[i] ?? 0);
+    gl.uniform1i(u.u_cut_union, n[3]);
+    gl.uniform1i(u.u_cut_inverse, n[4]);
+    gl.uniform4f(u.u_cut_edge, n[6], n[7], n[8], n[5]);
+    gl.uniform1f(u.u_cut_mpp, clip.mpp);
+    gl.uniform4fv(u.u_cut_planes, pad(n.slice(10, 10 + 4 * planes), 64));
+    gl.uniform1iv(u.u_cut_rings, new Int32Array(pad(n.slice(11 + 4 * planes, 11 + 4 * planes + rings), 8)));
+    gl.uniform4fv(u.u_cut_poly, pad(n.slice(11 + 4 * planes + rings), 128));
   }
 
   /**
@@ -276,6 +350,7 @@ export class ModelProgram {
     gl.uniformMatrix4fv(u.u_flat, false, new Float32Array(mul(t > 0 ? d.fallbackMatrix : d.mainMatrix, mercator)));
     if (t > 0) gl.uniformMatrix4fv(u.u_globe, false, new Float32Array(mul(input.modelViewProjectionMatrix, sphere)));
     if (s) gl.uniformMatrix4fv(u.u_shadow, false, new Float32Array(s.mode === 2 ? mul(s.sphere, sphere) : mul(s.mercator, mercator)));
+    if (this.#cutFrame) gl.uniformMatrix4fv(u.u_cut_frame, false, new Float32Array(mul(this.#cutFrame, mercator)));
     gl.uniform1f(u.u_opacity, opacity);
     for (const m of model.meshes) {
       const blend = translucent || m.material?.alphaMode === "BLEND";

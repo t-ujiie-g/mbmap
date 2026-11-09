@@ -178,3 +178,39 @@ extern "js" fn gl_shadow_depth_at(gl : Gl, x : Int32, y : Int32) -> Double =
   #|  gl.viewport(v[0], v[1], v[2], v[3]);
   #|  return (px[0] * 65536 + px[1] * 256 + px[2]) / 16777215;
   #|}
+
+///|
+/// Clipping from now on (`Map.setClipping` packs `cut`: union, inverse, edge width and color, the planes'
+/// count and planes, then the rings' count, sizes and vertices, east and north meters at the origin); `mpp`
+/// the meters a pixel spans per unit of clip w. Empty `cut` clips nothing.
+pub fn Renderer::set_cut(
+  self : Renderer,
+  cut : FixedArray[Double],
+  mpp : Double,
+) -> Unit {
+  gl_set_cut(self.gl, cut, mpp)
+}
+
+///|
+extern "js" fn gl_set_cut(
+  gl : Gl,
+  cut : FixedArray[Double],
+  mpp : Double,
+) -> Unit =
+  #|(c, n, mpp) => {
+  #|  const k = c.cut;
+  #|  k.count = 0;
+  #|  k.ringCount = 0;
+  #|  if (!n.length) return;
+  #|  k.union = n[0] > 0; k.inverse = n[1] > 0; k.edge = [n[3], n[4], n[5], n[2]]; k.mpp = mpp;
+  #|  // The facade keeps to 16 planes, 8 rings and 64 vertices.
+  #|  const planes = n[6], rings = n[7 + 4 * planes];
+  #|  k.count = planes;
+  #|  k.planes.fill(0);
+  #|  k.planes.set(n.slice(7, 7 + 4 * planes));
+  #|  k.ringCount = rings;
+  #|  k.rings.fill(0);
+  #|  k.rings.set(n.slice(8 + 4 * planes, 8 + 4 * planes + rings));
+  #|  k.poly.fill(0);
+  #|  k.poly.set(n.slice(8 + 4 * planes + rings));
+  #|}

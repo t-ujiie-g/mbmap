@@ -1,5 +1,6 @@
 // `mbmap/3d`: glTF models read in a worker of their own (meshopt decoding in its wasm), placed on the
 // map at GeoJSON points or streamed as 3D Tiles by custom layers, on Web Mercator and on the globe.
+import { mercatorMeters, type Clipping } from "./clipping";
 import type { CustomLayerInterface, CustomRenderMethodInput } from "./custom";
 import type { Material, Primitive } from "./model/gltf";
 import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/draw";
@@ -13,6 +14,23 @@ import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
 /** Where the 3D worker (`workerUrl`) and its wasm (`wasmUrl`) are served; by default next to this module. */
+/** What the layers ask of the map they are on. */
+interface MapLike {
+  triggerRepaint?(): void;
+  getClipping?(): Clipping | null;
+  getZoom?(): number;
+  getCenter?(): { lat: number };
+}
+
+/** `map`'s clipping, with the meters a CSS pixel spans per unit of clip w (1 over the center's depth in meters). */
+function clipOf(map: MapLike | null, gl: WebGL2RenderingContext, input: CustomRenderMethodInput): { cut: Clipping; mpp: number } | undefined {
+  const cut = map?.getClipping?.();
+  if (!cut || !map?.getZoom || !map.getCenter) return undefined;
+  const height = (gl.canvas as HTMLCanvasElement).clientHeight || gl.drawingBufferHeight;
+  const ppm = (512 * 2 ** map.getZoom()) / mercatorMeters(map.getCenter().lat);
+  return { cut, mpp: (2 * Math.tan(input.fov / 2)) / height / ppm };
+}
+
 export interface ModelOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
@@ -88,7 +106,7 @@ export class ModelLayer implements CustomLayerInterface {
   #options: ModelLayerOptions;
   #model: LoadedModel | null = null;
   #instances: Instance[] = [];
-  #map: { triggerRepaint?: () => void } | null = null;
+  #map: MapLike | null = null;
   #gl: WebGL2RenderingContext | null = null;
   #program: ModelProgram | null = null;
   #gpu: GpuModel | null = null;
@@ -125,7 +143,7 @@ export class ModelLayer implements CustomLayerInterface {
   }
 
   onAdd(map: unknown, gl: WebGL2RenderingContext): void {
-    this.#map = map as { triggerRepaint?: () => void };
+    this.#map = map as MapLike;
     this.#gl = gl;
     this.#program = new ModelProgram(gl);
     if (this.#model) this.#upload(gl);
@@ -161,7 +179,7 @@ export class ModelLayer implements CustomLayerInterface {
     const d = options.defaultProjectionData;
     const t = d.projectionTransition;
     const plane = d.clippingPlane;
-    program.begin(gl, options, false, casting);
+    program.begin(gl, options, false, casting, clipOf(this.#map, gl, options));
     for (const pass of casting ? [0] : [0, 1]) {
       gl.depthMask(pass === 0);
       for (const inst of this.#instances) {
@@ -217,7 +235,7 @@ export class PointCloudLayer implements CustomLayerInterface {
   readonly ready: Promise<void>;
   #options: PointCloudLayerOptions;
   #cloud: LoadedCloud | null = null;
-  #map: { triggerRepaint?: () => void } | null = null;
+  #map: MapLike | null = null;
   #gl: WebGL2RenderingContext | null = null;
   #program: ModelProgram | null = null;
   #gpu: GpuModel | null = null;
@@ -254,7 +272,7 @@ export class PointCloudLayer implements CustomLayerInterface {
   }
 
   onAdd(map: unknown, gl: WebGL2RenderingContext): void {
-    this.#map = map as { triggerRepaint?: () => void };
+    this.#map = map as MapLike;
     this.#gl = gl;
     this.#program = new ModelProgram(gl);
     if (this.#cloud) this.#upload(gl);
@@ -286,7 +304,7 @@ export class PointCloudLayer implements CustomLayerInterface {
     if (!program || !gpu || !c) return;
     const [lng, lat, h] = c.center;
     const css = (gl.canvas as HTMLCanvasElement).clientWidth || gl.drawingBufferWidth;
-    program.begin(gl, options);
+    program.begin(gl, options, false, false, clipOf(this.#map, gl, options));
     program.setPointSize((this.#options.pointSize ?? 2) * (gl.drawingBufferWidth / css));
     program.draw(gl, gpu, IDENTITY, mercatorFrame(lng, lat, h), sphereFrame(lng, lat, h), 1, false, 0);
   }
@@ -328,7 +346,7 @@ export class TilesLayer implements CustomLayerInterface {
   /** Settles once the tileset's JSON is read (or rejects with why it was not). */
   readonly ready: Promise<void>;
   #engine: TilesEngine | null = null;
-  #map: { triggerRepaint?: () => void } | null = null;
+  #map: MapLike | null = null;
   #gl: WebGL2RenderingContext | null = null;
   #program: ModelProgram | null = null;
 
@@ -377,7 +395,7 @@ export class TilesLayer implements CustomLayerInterface {
   }
 
   onAdd(map: unknown, gl: WebGL2RenderingContext): void {
-    this.#map = map as { triggerRepaint?: () => void };
+    this.#map = map as MapLike;
     this.#gl = gl;
     this.#program = new ModelProgram(gl);
   }
@@ -391,11 +409,11 @@ export class TilesLayer implements CustomLayerInterface {
   }
 
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
-    if (this.#program && this.#engine) this.#engine.render(gl, options, this.#program);
+    if (this.#program && this.#engine) this.#engine.render(gl, options, this.#program, clipOf(this.#map, gl, options));
   }
 
   renderShadow(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
-    if (this.#program && this.#engine) this.#engine.renderShadow(gl, options, this.#program);
+    if (this.#program && this.#engine) this.#engine.renderShadow(gl, options, this.#program, clipOf(this.#map, gl, options));
   }
 }
 

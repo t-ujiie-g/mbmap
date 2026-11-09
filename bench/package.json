@@ -56,6 +56,7 @@
     "classify:golden": "node --experimental-strip-types classify/golden.mjs",
     "sun:golden": "node --experimental-strip-types sun/golden.mjs",
     "sight:golden": "npm --prefix ../npm run build && node sight/golden.mjs",
+    "clip:cesium": "npm --prefix ../npm run build && node cesium/clip.mjs",
     "shapes:golden": "npm run build:moon && node shapes/golden.mjs",
     "surface:golden": "npm run build:moon && node surface/golden.mjs",
     "viewshed:golden": "npm run build:moon && node viewshed/golden.mjs",

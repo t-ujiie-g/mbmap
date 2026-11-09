@@ -14,7 +14,7 @@ const DIST = path.join(PKG, "dist");
 // `files` are what a user of the entry loads on top of the entries it builds
 // on; `references` the dist files its JS may import or load by URL.
 const ENTRIES = [
-  { name: "mbmap", files: ["index.js"], budget: 160_000, references: ["./geojson.js", "./pmtiles.js", "./legacy.js", "./sprite.js", "./media.js", "./custom.js", "./export.js", "./tilejson-merge.js", "./geotiff-source.js", "./worker.js", "./mbmap.wasm"] },
+  { name: "mbmap", files: ["index.js"], budget: 163_000, references: ["./geojson.js", "./pmtiles.js", "./legacy.js", "./sprite.js", "./media.js", "./custom.js", "./export.js", "./tilejson-merge.js", "./geotiff-source.js", "./worker.js", "./mbmap.wasm"] },
   { name: "GeoJSON sources (loaded by mbmap when a style has one)", files: ["geojson.js"], budget: 5_000, references: ["./geojson-worker.js", "./geojson.wasm", "./geojson-properties.wasm"] },
   { name: "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)", files: ["pmtiles.js"], budget: 2_000, references: [] },
   { name: "GeoTIFF sources (loaded by mbmap with the first one; tiles by mbmap/data)", files: ["geotiff-source.js"], budget: 1_000, references: ["./data.js"] },

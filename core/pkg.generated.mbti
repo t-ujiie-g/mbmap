@@ -328,6 +328,7 @@ pub fn Transform::camera_for_bounds(Self, LngLatBounds, bearing? : Double, paddi
 pub fn Transform::center_depth(Self) -> Double
 pub fn Transform::covering_tiles(Self, Int32, Int32) -> Array[TileId]
 pub fn Transform::ease_to(Self, CameraTarget) -> Ease
+pub fn Transform::enu_matrix(Self, (Double, Double, Double)) -> Mat4
 pub fn Transform::exact(Camera, Double, Double, limits? : Limits) -> Self
 pub fn Transform::eye_ray(Self, Double, Double) -> ((Double, Double, Double), (Double, Double, Double), Double)
 pub fn Transform::fly_to(Self, CameraTarget, curve? : Double, speed? : Double, screen_speed? : Double, min_zoom? : Double) -> Flight?

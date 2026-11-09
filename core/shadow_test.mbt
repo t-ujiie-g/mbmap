@@ -166,3 +166,21 @@ test "a spot view looks along its direction, nearer surfaces at smaller depths" 
   assert_true((ndc(10.0, 0.0, 11.0).1 - 0.1 / @math.tan(0.5)).abs() < 1.0e-9)
   assert_true(v.texel > 0.0)
 }
+
+///|
+test "the east, north, up matrix puts the origin at zero and meters at its scale" {
+  let t = shadow_camera(30.0)
+  let origin = (139.768, 35.682, 5.0)
+  let m = t.enu_matrix(origin)
+  let ws = t.world_size()
+  let c = ({ lng: 139.767, lat: 35.681, } : @core.LngLat).to_mercator()
+  let o = ({ lng: 139.768, lat: 35.682, } : @core.LngLat).to_mercator()
+  let (x, y) = ((o.x - c.x) * ws, (o.y - c.y) * ws)
+  let ppm = t.pixels_per_meter()
+  let at = m.apply(x, y, 5.0 * ppm, 1.0)
+  assert_true(at.0.abs() < 1.0e-9 && at.1.abs() < 1.0e-9 && at.2.abs() < 1.0e-9)
+  // One world pixel north (y down) of it is north, 10 m up is 10.
+  let north = m.apply(x, y - 1.0, 15.0 * ppm, 1.0)
+  assert_true(north.1 > 0.0 && north.0.abs() < 1.0e-9)
+  assert_true((north.2 - 10.0).abs() < 1.0e-9)
+}

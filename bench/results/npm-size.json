@@ -6,8 +6,8 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 159400,
-      "budget": 160000
+      "bytes": 160944,
+      "budget": 163000
     },
     {
       "name": "GeoJSON sources (loaded by mbmap when a style has one)",
@@ -181,12 +181,12 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 7629,
+      "bytes": 8996,
       "budget": 10000
     },
     {
       "name": "3D Tiles (loaded by mbmap/3d with the first tilesLayer)",
-      "bytes": 10012,
+      "bytes": 10039,
       "budget": 12000
     },
     {

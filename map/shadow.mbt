@@ -323,3 +323,26 @@ fn Map::shadow_numbers(self : Map, s : Shadows) -> FixedArray[Double] {
   }
   out
 }
+
+///|
+/// Clips extrusions from now on (`Map.setClipping`): `c` is the origin (longitude, latitude, meters up)
+/// and then what `Renderer::set_cut` takes; empty clips nothing.
+pub fn Map::set_clipping(self : Map, c : FixedArray[Double]) -> Unit {
+  self.clipping = c
+  self.request_render()
+}
+
+///|
+/// Takes this frame's clipping: its frame at the origin and what the renderer cuts with.
+fn Map::use_clipping(self : Map) -> Unit {
+  let c = self.clipping
+  guard c.length() > 3 else {
+    self.cut_frame = None
+    self.renderer.set_cut([], 1.0)
+    return
+  }
+  let t = self.transform
+  self.cut_frame = Some(t.enu_matrix((c[0], c[1], c[2])))
+  let cut = FixedArray::makei(c.length() - 3, i => c[i + 3])
+  self.renderer.set_cut(cut, 1.0 / (t.center_depth() * t.pixels_per_meter()))
+}

@@ -248,6 +248,9 @@ fn Map::draw_extrusions(
   let mix = @cmp.maximum(0.0, @cmp.minimum(1.0, zoom - d.id.z.to_double()))
   let exaggeration = if on_terrain { self.exaggeration() } else { 0.0 }
   let shadow = self.tile_shadow(d.id)
+  let cut = self.cut_frame.map(f => {
+    self.transform.tile_light_matrix(f, d.id, @core.TILE_EXTENT)
+  })
   for m in d.meshes {
     if m.layer != index || m.ground is None {
       continue
@@ -281,6 +284,7 @@ fn Map::draw_extrusions(
         pattern~,
         pass~,
         shadow~,
+        cut~,
       )
     })
   }
@@ -501,6 +505,7 @@ fn Map::draw_frame(
   let globe = self.on_globe()
   self.renderer.set_pitch(t.camera.pitch)
   let terrain = self.terrain_source()
+  self.use_clipping()
   self.draw_shadow_map(draws_of)
   self.prerender_custom()
   self.prepare_relief(draws_of)

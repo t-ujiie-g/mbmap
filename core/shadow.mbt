@@ -246,3 +246,25 @@ pub fn spot_view(
   let size = 2.0 * z * @math.tan(fov / 2.0) / SHADOW_MAP_SIZE.to_double()
   { matrix, texel: size * near * far / ((far - near) * z * z), }
 }
+
+///|
+/// World pixels relative to the center (z up, as `view` takes them) to east, north, up meters at `origin`
+/// (longitude, latitude, meters up), at the map's scale there; with `tile_light_matrix`, from a tile's units.
+pub fn Transform::enu_matrix(
+  self : Transform,
+  origin : (Double, Double, Double),
+) -> Mat4 {
+  let ws = self.world_size()
+  let c = self.camera.center.to_mercator()
+  let o = ({ lng: origin.0, lat: origin.1, } : LngLat).to_mercator()
+  let across = pixels_per_meter(self.camera.zoom, origin.1)
+  let m = FixedArray::make(16, 0.0)
+  m[0] = 1.0 / across
+  m[5] = -1.0 / across
+  m[10] = 1.0 / self.pixels_per_meter()
+  m[12] = -(o.x - c.x) * ws / across
+  m[13] = (o.y - c.y) * ws / across
+  m[14] = -origin.2
+  m[15] = 1.0
+  { m, }
+}

@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-09T10:47:05.150Z",
+  "slack": 0.02,
+  "results": [
+    {
+      "view": "station-z17-p50",
+      "clip": "north",
+      "unclipped": 0.009354153667347764,
+      "between": 0.00519526427559538,
+      "cut": {
+        "mbmap": 0.5318986548550281,
+        "cesium": 0.536143239327615
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z17-p50",
+      "clip": "box",
+      "unclipped": 0.009354153667347764,
+      "between": 0.003433159175934679,
+      "cut": {
+        "mbmap": 0.5038870753072302,
+        "cesium": 0.5114094966217393
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z17-p50",
+      "clip": "either",
+      "unclipped": 0.009354153667347764,
+      "between": 0.01614816679476296,
+      "cut": {
+        "mbmap": 0.10226904506222266,
+        "cesium": 0.09811551161302244
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z17-p50",
+      "clip": "hole",
+      "unclipped": 0.009354153667347764,
+      "between": 0.010280731728871477,
+      "cut": {
+        "mbmap": 0.6083949043562559,
+        "cesium": 0.6079824967797396
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z17-p50",
+      "clip": "island",
+      "unclipped": 0.009354153667347764,
+      "between": 0.0008810525498303505,
+      "cut": {
+        "mbmap": 0.8669958786022061,
+        "cesium": 0.8757474887324359
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z18-p60",
+      "clip": "north",
+      "unclipped": 0.016174928166741143,
+      "between": 0.014357390432573981,
+      "cut": {
+        "mbmap": 0.5372340548688016,
+        "cesium": 0.5391303139825377
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z18-p60",
+      "clip": "box",
+      "unclipped": 0.016174928166741143,
+      "between": 0.0037855722233927527,
+      "cut": {
+        "mbmap": 0.1229766868949741,
+        "cesium": 0.135685559025985
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z18-p60",
+      "clip": "either",
+      "unclipped": 0.016174928166741143,
+      "between": 0.023127878250440492,
+      "cut": {
+        "mbmap": 0.1066744153201066,
+        "cesium": 0.10085134856669206
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z18-p60",
+      "clip": "hole",
+      "unclipped": 0.016174928166741143,
+      "between": 0.015596094493439499,
+      "cut": {
+        "mbmap": 0.8512744759818756,
+        "cesium": 0.8522793312387272
+      },
+      "ok": true
+    },
+    {
+      "view": "station-z18-p60",
+      "clip": "island",
+      "unclipped": 0.016174928166741143,
+      "between": 0.0030678184684987137,
+      "cut": {
+        "mbmap": 0.636196090325837,
+        "cesium": 0.6514379386112159
+      },
+      "ok": true
+    }
+  ]
+}

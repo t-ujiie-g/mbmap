@@ -168,7 +168,7 @@ pub(all) struct ExtrusionLight {
 ///|
 /// Draws an extrusion mesh, `color` (or `pattern`) lit by `light`; `t` mixes its heights from the tile's zoom
 /// to one deeper, `scale` is world px per meter, `ground` the terrain exaggeration; `pass` 0 at once, else depth
-/// (1) then color (2), or 3 into the shadow map; `shadow` is the tile's light matrix while there are shadows.
+/// (1) then color (2), or 3 into the shadow map; `shadow` and `cut` are the tile's light and clipping frames.
 pub fn Renderer::draw_extrusion(
   self : Renderer,
   mesh : Mesh,
@@ -183,6 +183,7 @@ pub fn Renderer::draw_extrusion(
   pattern~ : PatternPosition? = None,
   pass~ : Int32 = 0,
   shadow~ : @core.Mat4? = None,
+  cut~ : @core.Mat4? = None,
 ) -> Unit {
   self.use_globe(at.globe)
   let (lx, ly, lz) = light.direction
@@ -229,6 +230,10 @@ pub fn Renderer::draw_extrusion(
     program,
     pass,
     match shadow {
+      Some(m) => m.m
+      None => []
+    },
+    match cut {
       Some(m) => m.m
       None => []
     },
