@@ -55,6 +55,8 @@ pub const PROP_STRING : Int32 = 4
 
 pub const PROP_TRUE : Int32 = 2
 
+pub const SHADOW_MAP_SIZE : Int32 = 2048
+
 pub const SOUTH_POLE_Y : Int32 = 32767
 
 pub const TILE_EXTENT : Int32 = 8192
@@ -279,6 +281,11 @@ pub fn Padding::not_equal(Self, Self) -> Bool
 pub fn Padding::to_repr(Self) -> @debug.Repr
 pub fn Padding::uniform(Double) -> Self
 
+pub(all) struct ShadowView {
+  matrix : Mat4
+  texel : Double
+}
+
 pub(all) struct Terrain {
   height : (Double, Double) -> Double?
   lowest : Double
@@ -332,6 +339,9 @@ pub fn Transform::projection(Self) -> (Mat4, Double, Double)
 pub fn Transform::ray_ground(Self, Double, Double) -> MercatorCoord
 pub fn Transform::resize(Self, Double, Double) -> Self
 pub fn Transform::screen_to_mercator(Self, Double, Double) -> MercatorCoord
+pub fn Transform::shadow_sphere_view(Self, (Double, Double, Double)) -> ShadowView
+pub fn Transform::shadow_view(Self, (Double, Double, Double)) -> ShadowView
+pub fn Transform::tile_light_matrix(Self, Mat4, TileId, Int32) -> Mat4
 pub fn Transform::tile_matrix(Self, TileId, Int32, aligned? : Bool) -> Mat4
 pub fn Transform::tile_scale(Self, TileId, Int32) -> Double
 pub fn Transform::tile_zoom(Self, Int32, Int32, tile_size? : Int32) -> Int32

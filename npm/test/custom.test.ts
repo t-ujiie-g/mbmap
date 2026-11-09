@@ -4,7 +4,11 @@ import { renderInput } from "../src/custom.ts";
 
 // The engine's numbers for an identity model-view-projection, a world 512 px wide and 2 px per meter.
 const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-const numbers = [...identity, ...identity, 0.6435011087932844, 12, 900, 512, 2];
+const base = [...identity, ...identity, 0.6435011087932844, 12, 900, 512, 2];
+const zeros = (n: number) => new Array<number>(n).fill(0);
+/** As `Map::custom_numbers` lays them out: the globe's 39 numbers, the lights' 10, the shadows' 36. */
+const layout = (globe = zeros(39), lights = zeros(10), shadows = zeros(36)) => [...base, ...globe, ...lights, ...shadows];
+const numbers = layout();
 
 test("renderInput gives MapLibre's matrices: world pixels and meters, and Mercator in mainMatrix", () => {
   const o = renderInput(numbers);
@@ -29,7 +33,7 @@ test("getProjectionData takes a tile's 8192 units to world pixels", () => {
 test("on the globe renderInput gives the globe's matrices, MapLibre's globe prelude and Mercator as fallback", () => {
   const globe = identity.map((v, i) => (i === 12 ? 0.5 : v));
   const projection = identity.map((v) => v * 2);
-  const o = renderInput([...numbers, 0.75, ...globe, ...projection, 3, 40, 0.1, 0.2, 0.3, 0.4]);
+  const o = renderInput(layout([0.75, ...globe, ...projection, 3, 40, 0.1, 0.2, 0.3, 0.4]));
   assert.deepEqual([...o.modelViewProjectionMatrix], globe);
   assert.deepEqual([...o.projectionMatrix], projection);
   assert.deepEqual([o.nearZ, o.farZ], [3, 40]);
@@ -50,13 +54,24 @@ test("on the globe renderInput gives the globe's matrices, MapLibre's globe prel
   assert.deepEqual(t.tileMercatorCoords, [0.5, 0, 1 / 2 / 8192, 1 / 2 / 8192]);
 });
 
-test("renderInput gives the style's lights after the numbers, on Mercator and on the globe", () => {
-  const lights = [0.2, 0.2, 0.3, 0.5, 0.5, 0.4, 0, 0.6, 0.8];
-  const flat = renderInput([...numbers, ...lights]);
+test("renderInput gives the style's lights, on Mercator and on the globe", () => {
+  const lights = [1, 0.2, 0.2, 0.3, 0.5, 0.5, 0.4, 0, 0.6, 0.8];
+  const flat = renderInput(layout(undefined, lights));
   assert.equal(flat.shaderData.variantName, "mercator");
   assert.deepEqual(flat.lights, { ambient: new Float64Array([0.2, 0.2, 0.3]), directional: new Float64Array([0.5, 0.5, 0.4]), direction: new Float64Array([0, 0.6, 0.8]) });
-  const globe = renderInput([...numbers, 0.5, ...identity, ...identity, 3, 40, 0, 0, 0, 0, ...lights]);
+  const globe = renderInput(layout([0.5, ...identity, ...identity, 3, 40, 0, 0, 0, 0], lights));
   assert.equal(globe.defaultProjectionData.projectionTransition, 0.5);
   assert.deepEqual(globe.lights?.direction, new Float64Array([0, 0.6, 0.8]));
   assert.equal(renderInput(numbers).lights, undefined);
+});
+
+test("renderInput gives the shadows: the light's views over Mercator 0 to 1 and over the sphere", () => {
+  const light = identity.map((v, i) => (i === 12 ? 0.25 : v));
+  const sphere = identity.map((v) => v * 3);
+  const o = renderInput(layout(undefined, undefined, [2, 0.6, 0.4, 0.001, ...light, ...sphere]));
+  assert.deepEqual(
+    { ...o.shadow, mercator: [...o.shadow!.mercator], sphere: [...o.shadow!.sphere] },
+    { globe: true, intensity: 0.6, texel: 0.001, mercator: light, sphere },
+  );
+  assert.equal(renderInput(numbers).shadow, undefined);
 });

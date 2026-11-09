@@ -1,8 +1,12 @@
 ///|
 /// The WebGL2 context with its programs; JS null if WebGL2 is unavailable.
 /// `extent` is `@core.TILE_EXTENT`.
-extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
-  #|(canvas, E) => {
+extern "js" fn create_gl(
+  canvas : Canvas,
+  extent : Int32,
+  shadow_size : Int32,
+) -> Gl =
+  #|(canvas, E, SHADOW_SIZE) => {
   #|  const EF = E.toFixed(1);
   #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, depth: true, stencil: true, premultipliedAlpha: true });
   #|  if (!gl) return null;
@@ -78,6 +82,18 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "vec3 globeNormal(vec2 p, vec3 n) { vec3 s = sphere(p); vec3 right = vec3(s.z, 0.0, -s.x);" +
   #|    "  return mat3(normalize(right), normalize(cross(right, s)), s) * n; }";
   #|  const projUniforms = ["u_matrix", "u_globe", "u_tile", "u_plane", "u_transition", "u_translate"];
+  #|  // The shadow map's coordinates (@core.ShadowView): u_shadow from tile units (mode 1), u_shadow_globe
+  #|  // from the unit sphere (mode 2); u_shadow_pass draws there. sunlit() is 1 where the light reaches,
+  #|  // 1 - intensity in shadow (u_shadow_k: intensity, depth per texel), four taps of the compared depth.
+  #|  const shadowVs = "uniform highp int u_shadow_mode; uniform mat4 u_shadow; uniform mat4 u_shadow_globe; uniform bool u_shadow_pass; out vec4 v_shadow;" +
+  #|    "vec4 shadowAt(vec2 p, float meters, float z) { return u_shadow_mode == 2 ?" +
+  #|    "  u_shadow_globe * vec4(sphere(p + u_translate) * (1.0 + meters / 6371008.8), 1.0) : u_shadow * vec4(p, z, 1.0); }";
+  #|  const shadowFs = "uniform highp int u_shadow_mode; uniform highp sampler2DShadow u_shadow_map; uniform vec2 u_shadow_k; in vec4 v_shadow;" +
+  #|    "float sunlit() { vec3 p = v_shadow.xyz * 0.5 + 0.5; if (u_shadow_mode == 0 || any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return 1.0;" +
+  #|    "  float t = 0.5 / " + SHADOW_SIZE + ".0, d = p.z - 2.0 * u_shadow_k.y; float s = texture(u_shadow_map, vec3(p.xy + vec2(-t, -t), d)) +" +
+  #|    "  texture(u_shadow_map, vec3(p.xy + vec2(t, -t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(-t, t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, t), d));" +
+  #|    "  return 1.0 - u_shadow_k.x * (1.0 - s / 4.0); }";
+  #|  const shadowUniforms = ["u_shadow_mode", "u_shadow", "u_shadow_globe", "u_shadow_pass", "u_shadow_map", "u_shadow_k"];
   #|  // Paint values: each slot holds a value and the next along its zoom curve,
   #|  // mixed by u_t (one per slot); colors are straight RGBA, premultiplied here.
   #|  const paint = "uniform float u_t[6]; in vec4 a_color_lo; in vec4 a_color_hi; in vec2 a_opacity; in vec2 a_extent;" +
@@ -206,6 +222,11 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // The globe's surface into depth only, before extrusions (MapLibre's depth shader).
   #|  const globeDepth = program(proj + "in vec2 a_pos; void main() { gl_Position = project3d(a_pos, 0.0, 0.0); }",
   #|    "out vec4 o; void main() { o = vec4(0.0); }", projUniforms);
+  #|  // The ground darkened where the shadow map is in shadow, by u_ground (the sun's share of its light).
+  #|  const groundShadow = program(proj + shadowVs + "in vec2 a_pos; out vec2 v_pos;" +
+  #|    "void main() { v_pos = a_pos; gl_Position = project(a_pos); v_shadow = shadowAt(a_pos, 0.0, 0.0); }",
+  #|    clip + shadowFs + "uniform float u_ground; out vec4 o; void main() { if (outside()) discard; o = vec4(0.0, 0.0, 0.0, u_ground * (1.0 - sunlit())); }",
+  #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_ground"]);
   #|  // The background on the globe, one tile mesh at a time (MapLibre's background shader).
   #|  const background = program(proj + "in vec2 a_pos; void main() { gl_Position = project(a_pos); }",
   #|    "uniform vec4 u_color; out vec4 o; void main() { o = u_color; }", [...projUniforms, "u_color"]);
@@ -335,10 +356,10 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  // ground (m) under the centroid times u_ground (0 without terrain, which also
   #|  // skips the 10 m basement), u_scale world pixels per meter.
   #|  const extrusion = program(
-  #|    proj + "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele;" +
+  #|    proj + shadowVs + "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele;" +
   #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
-  #|    "uniform float u_opacity; uniform vec3 u_color; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_color; out vec2 v_pos;" +
+  #|    "uniform float u_opacity; uniform vec3 u_color; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_color; out vec3 v_sun; out vec2 v_pos;" +
   #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
   #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal);" +
   #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
@@ -346,6 +367,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
   #|    "  float t = float(a_normal.x & 1); v_pos = a_pos;" +
   #|    "  float elevation = t > 0.0 ? height : base; gl_Position = project3d(a_pos, elevation, elevation * u_scale);" +
+  #|    "  v_shadow = shadowAt(a_pos, elevation, elevation * u_scale); if (u_shadow_pass) gl_Position = v_shadow;" +
   #|    "  vec3 color = u_color; float colorvalue = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;" +
   #|    "  v_color = vec4(0.0, 0.0, 0.0, 1.0); color += vec3(0.03);" +
   #|    "  float directional = clamp(dot(normal / 16384.0, u_lightpos), 0.0, 1.0);" +
@@ -356,19 +378,19 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
   #|    "  v_color.rgb += clamp(color * directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));" +
-  #|    "  if (u_ambient.a > 0.5) v_color.rgb = u_color * (u_ambient.rgb + u_sun * lambert);" +
+  #|    "  v_sun = vec3(0.0); if (u_ambient.a > 0.5) { v_color.rgb = u_color * u_ambient.rgb; v_sun = u_color * u_sun * lambert * u_opacity; }" +
   #|    "  v_color *= u_opacity; }",
-  #|    clip + "in vec4 v_color; out vec4 o; void main() { if (outside()) discard; o = v_color; }",
-  #|    [...projUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|    clip + shadowFs + "in vec4 v_color; in vec3 v_sun; out vec4 o; void main() { if (outside()) discard; o = v_color + vec4(v_sun * sunlit(), 0.0); }",
+  #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_color", "u_lightpos_globe", "u_ambient", "u_sun"]);
   #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
   #|  // walls along their distance (a_normal.w, in tile units) and height (u_height_factor); its
   #|  // light differs from the plain one's.
   #|  const extrusionPattern = program(
-  #|    proj + patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele;" +
+  #|    proj + shadowVs + patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele;" +
   #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
-  #|    "uniform float u_opacity; uniform float u_height_factor; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_light; out vec2 v_pos; out vec2 v_pat;" +
+  #|    "uniform float u_opacity; uniform float u_height_factor; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_light; out vec3 v_sun; out vec2 v_pos; out vec2 v_pat;" +
   #|    "void main() { float base = mix(a_heights.x, a_heights.y, u_t) * 0.1;" +
   #|    "  float height = mix(a_heights.z, a_heights.w, u_t) * 0.1; vec3 normal = vec3(a_normal.xyz);" +
   #|    "  float gradient_base = max(0.0, base), gradient_height = max(0.0, height);" +
@@ -376,6 +398,7 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
   #|    "  float t = float(a_normal.x & 1); float elevation = t > 0.0 ? height : base; v_pos = a_pos;" +
   #|    "  gl_Position = project3d(a_pos, elevation, elevation * u_scale);" +
+  #|    "  v_shadow = shadowAt(a_pos, elevation, elevation * u_scale); if (u_shadow_pass) gl_Position = v_shadow;" +
   #|    "  bool roof = a_normal.x == 1 && a_normal.y == 0 && a_normal.z == 16384;" +
   #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w), elevation * u_height_factor));" +
   #|    "  float directional = clamp(dot(normal / 16383.0, u_lightpos), 0.0, 1.0);" +
@@ -386,10 +409,10 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|    "  if (normal.z == 0.0) directional *= (1.0 - u_vertical_gradient) + u_vertical_gradient *" +
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
   #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity;" +
-  #|    "  if (u_ambient.a > 0.5) v_light = vec4(u_ambient.rgb + u_sun * lambert, 1.0) * u_opacity; }",
-  #|    clip + patternColor + "in vec4 v_light; in vec2 v_pat; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; o = patternColor(v_pat, vec4(0.0), 1.0) * v_light; }",
-  #|    [...projUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|    "  v_sun = vec3(0.0); if (u_ambient.a > 0.5) { v_light = vec4(u_ambient.rgb, 1.0) * u_opacity; v_sun = u_sun * lambert * u_opacity; } }",
+  #|    clip + shadowFs + patternColor + "in vec4 v_light; in vec3 v_sun; in vec2 v_pat; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; vec4 c = patternColor(v_pat, vec4(0.0), 1.0); o = c * v_light + vec4(c.rgb * v_sun * sunlit(), 0.0); }",
+  #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_height_factor", "u_lightpos_globe", "u_ambient", "u_sun", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl over the tile's quad: v_tex runs 0-1 across the
   #|  // slopes inside their border, u_lat is the tile's north and south latitude; u_method numbers
@@ -682,7 +705,22 @@ extern "js" fn create_gl(canvas : Canvas, extent : Int32) -> Gl =
   #|  const draw = (m) => gl.drawElements(gl.TRIANGLES, m.rangeCount ?? m.count, m.type, m.rangeOffset ?? 0);
   #|  const hasTileMesh = (key) => tileMeshes.has(key);
   #|  const addTileMesh = (key, vertices, indices) => tileMesh({ key, vertices, indices });
-  #|  const c = { gl, extent: E, place, draw, drawTile, globe: null, hasTileMesh, addTileMesh, background, globeDepth, atmosphere, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
+  #|  const c = { gl, extent: E, place, draw, drawTile, globe: null, hasTileMesh, addTileMesh, background, globeDepth, groundShadow, atmosphere, fill, fillOutline, fillPattern, fillOutlinePattern, backgroundPattern, line, lineDash, lineDashFeature, lineGradient, linePattern, circle, heatmap, heatmapTexture, symbol, icon, hillshade, colorRelief, raster, terrain, sky, empty, extrusion, extrusionPattern, quad, imageGrid, packDem, grid: { vao: grid, count: idx.length },
   #|    atlas: null, px: [0, 0], size: [1, 1] };
+  #|  // The shadow map is sampled from texture unit 7 (made with the first shadows); `shadow` holds the frame's view.
+  #|  for (const p of [extrusion, extrusionPattern, groundShadow]) { gl.useProgram(p.program); gl.uniform1i(p.u_shadow_map, 7); }
+  #|  const tileShadow = new Float32Array(16);
+  #|  c.shadowSize = SHADOW_SIZE;
+  #|  c.shadow = { mode: 0, globe: new Float32Array(16), k: [0, 0] };
+  #|  c.shadowUniforms = (p, tile, pass) => {
+  #|    const s = c.shadow;
+  #|    gl.uniform1i(p.u_shadow_mode, s.mode);
+  #|    gl.uniform1i(p.u_shadow_pass, pass ? 1 : 0);
+  #|    if (!s.mode) return;
+  #|    tileShadow.set(tile);
+  #|    gl.uniformMatrix4fv(p.u_shadow, false, tileShadow);
+  #|    gl.uniformMatrix4fv(p.u_shadow_globe, false, s.globe);
+  #|    gl.uniform2f(p.u_shadow_k, s.k[0], s.k[1]);
+  #|  };
   #|  return c;
   #|}

@@ -1,5 +1,6 @@
 // mbmap/3d on bench/npm/pages/model: the model (meshopt-compressed, so through 3d.wasm) loads, stands at its points
-// turned as `rotation` says, is lit by the style's `lights` as an extrusion is, and goes onto the globe.
+// turned as `rotation` says, is lit by the style's `lights` as an extrusion is, casts shadows with them, and goes
+// onto the globe (shadows too).
 import { near, pixel } from "./pixels.mjs";
 
 const white = [255, 255, 255];
@@ -35,7 +36,20 @@ export async function modelChecks(page) {
     return window.__map.getLights();
   });
   const noonPixel = await pixel(page, at[0].x, at[0].y);
+  // Shadows of a sun from the north 45° up (half ambient, half sun): the ground south of the 20 m block and of the
+  // box (moved west) darkens by the sun's share of its light, 0.354 / 0.854, and is white farther off; the 5 m
+  // roof south of the block has ambient light alone in its shadow, and the sun's too (cos 45°) beside it.
+  const shadowLights = [light("ambient", 0.5), { ...light("directional", 0.5, [0, 45]), properties: { color: "#ffffff", intensity: 0.5, direction: [0, 45], "cast-shadows": true } }];
+  const shadows = await page.evaluate(async (lights) => {
+    const map = window.__map;
+    map.setLights(lights);
+    window.__layer.setData({ type: "Feature", properties: { turn: 0, size: [1, 1, 1] }, geometry: { type: "Point", coordinates: [139.766, 35.6812] } });
+    await window.__settled();
+    return [[139.7675, 35.68055], [139.7676, 35.6802], [139.766, 35.6809], [139.766, 35.6797], [139.7677, 35.68052], [139.7679, 35.68052]].map((p) => map.project(p));
+  }, shadowLights);
+  const shaded = await Promise.all(shadows.map((p) => pixel(page, p.x, p.y)));
   await page.evaluate(() => window.__map.setLights(null));
+  const ground = Math.round(255 * (1 - 0.3536 / 0.8536));
   const half = (a, b) => a.every((v, i) => Math.abs(v * 0.5 - b[i]) <= 2);
   const loaded = await page.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name.split("/").pop()).filter((n) => /^3d|box/.test(n)));
   await page.evaluate(async () => {
@@ -48,12 +62,25 @@ export async function modelChecks(page) {
   const centre = await page.evaluate(() => window.__map.project([139.7671, 35.6812]));
   const globe = await pixel(page, centre.x, centre.y);
   const space = await pixel(page, 3, 3);
+  // On the globe (zoom 11, drawn as one), the 500 m block's shadow lies south of it, through the sphere's shadow map.
+  const globeShadows = await page.evaluate(async (lights) => {
+    const map = window.__map;
+    map.setLights(lights);
+    map.jumpTo({ center: [139.71, 35.69], zoom: 11 });
+    window.__layer.setData({ type: "FeatureCollection", features: [] });
+    await window.__settled();
+    return [[139.71, 35.6978], [139.71, 35.685]].map((p) => map.project(p));
+  }, shadowLights);
+  const globeShaded = await Promise.all(globeShadows.map((p) => pixel(page, p.x, p.y)));
   const ok =
     square.slice(0, 2).every(red) && near(square[2], white) &&
     red(turned[0]) && near(turned[1], white) &&
     ["3d.js", "3d-worker.js"].every((f) => loaded.includes(f)) &&
     red(globe) && near(space, white) &&
     near(ambient[1], [32, 128, 192]) && red(ambient[0]) && half(ambient[0], halved[0]) && half(ambient[1], halved[1]) &&
-    noon.length === 2 && red(noonPixel);
-  return [ok, { square, turned, loaded, globe, space, ambient, halved, noon, noonPixel }];
+    noon.length === 2 && red(noonPixel) &&
+    near(shaded[0], [ground, ground, ground]) && near(shaded[1], white) && near(shaded[2], [ground, ground, ground]) && near(shaded[3], white) &&
+    near(shaded[4], [16, 64, 96]) && near(shaded[5], [27, 109, 164]) &&
+    near(globeShaded[0], [ground, ground, ground]) && near(globeShaded[1], white);
+  return [ok, { square, turned, loaded, globe, space, ambient, halved, noon, noonPixel, shaded, globeShaded }];
 }

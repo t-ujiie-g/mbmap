@@ -130,3 +130,33 @@ test "lights give an ambient and a directional light, and unknown lights are rep
   }
   assert_true(bad)
 }
+
+///|
+test "a directional light casts shadows of its shadow-intensity, and bad ones are reported" {
+  let parse = (props : String) => {
+    @style.Style::parse(
+      "{\"version\": 8, \"sources\": {}, \"layers\": [], \"lights\": [{\"id\": \"s\", \"type\": \"directional\", \"properties\": {\{props}}}]}",
+      strict=false,
+    )
+  }
+  assert_eq(parse("").lights.unwrap().shadows, None)
+  assert_eq(parse("\"cast-shadows\": true").lights.unwrap().shadows, Some(1.0))
+  assert_eq(
+    parse("\"cast-shadows\": true, \"shadow-intensity\": 0.4").lights.unwrap().shadows,
+    Some(0.4),
+  )
+  let strong = parse("\"cast-shadows\": true, \"shadow-intensity\": 2")
+  assert_true(strong.lights is None)
+  assert_eq(paths(strong), ["lights[0].properties.shadow-intensity"])
+  let bad = try {
+    @style.Style::parse(
+      "{\"version\": 8, \"sources\": {}, \"layers\": [], \"lights\": [{\"id\": \"s\", \"type\": \"directional\", \"properties\": {\"cast-shadows\": 1}}]}",
+    )
+    |> ignore
+    false
+  } catch {
+    Invalid(path~, _) => path == "lights[0].properties.cast-shadows"
+    _ => false
+  }
+  assert_true(bad)
+}

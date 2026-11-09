@@ -320,6 +320,7 @@ pub struct Lights {
   sun_color : Expr
   sun_intensity : Expr
   direction : (Double, Double)
+  shadows : Double?
 }
 
 pub(all) struct NoFeature {

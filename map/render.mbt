@@ -247,6 +247,7 @@ fn Map::draw_extrusions(
   // Heights were taken at the tile's zoom and one deeper.
   let mix = @cmp.maximum(0.0, @cmp.minimum(1.0, zoom - d.id.z.to_double()))
   let exaggeration = if on_terrain { self.exaggeration() } else { 0.0 }
+  let shadow = self.tile_shadow(d.id)
   for m in d.meshes {
     if m.layer != index || m.ground is None {
       continue
@@ -279,6 +280,7 @@ fn Map::draw_extrusions(
         exaggeration,
         pattern~,
         pass~,
+        shadow~,
       )
     })
   }
@@ -499,6 +501,7 @@ fn Map::draw_frame(
   let globe = self.on_globe()
   self.renderer.set_pitch(t.camera.pitch)
   let terrain = self.terrain_source()
+  self.draw_shadow_map(draws_of)
   self.prerender_custom()
   self.prepare_relief(draws_of)
   if globe {
@@ -518,7 +521,15 @@ fn Map::draw_frame(
   let height_scale = if terrain is Some(_) { self.terrain_scale() } else { 0.0 }
   let light = self.extrusion_light()
   let mut globe_depth = false
+  let mut ground_shadows = terrain is Some(_)
   for index, layer in self.style.layers {
+    // The ground's shadows go under the first layer that may cast them.
+    if !ground_shadows &&
+      layer.kind is (FillExtrusion | Custom) &&
+      self.shadows is Some(s) {
+      ground_shadows = true
+      self.draw_ground_shadows(s, dpr)
+    }
     // On terrain backgrounds are in its textures.
     if globe &&
       terrain is None &&
