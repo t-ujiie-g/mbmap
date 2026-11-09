@@ -419,3 +419,21 @@ export function i3sLayer(options: I3sLayerOptions): TilesLayer {
   return new TilesLayer(options, true);
 }
 
+
+export { measure3d, type Measure3d, type Position3d } from "./measure3d";
+
+/** What `lineOfSight` finds: whether `to` is seen from `from`, and else the first point in the way. */
+export interface Sight {
+  visible: boolean;
+  obstruction: [number, number, number] | null;
+}
+
+/**
+ * Whether `to` is seen from `from` ([longitude, latitude, meters]) over what `map` draws (extrusions, 3D layers,
+ * terrain), through `Map.castRay` (`margin` meters short of `to`, default 0.1, so the surface `to` was picked on
+ * does not hide it).
+ */
+export function lineOfSight(map: { castRay(from: [number, number, number], to: [number, number, number], margin?: number): [number, number, number] | null }, from: [number, number, number], to: [number, number, number], margin?: number): Sight {
+  const obstruction = map.castRay(from, to, margin);
+  return { visible: !obstruction, obstruction };
+}

@@ -631,3 +631,44 @@ pub fn map_on_missing_image(map : @map.Map, f : (String) -> Unit) -> Unit {
 pub fn map_hold_images(map : @map.Map, loading : Bool) -> Unit {
   map.hold_images(loading)
 }
+
+///|
+/// Longitude, latitude and meters up of what is drawn under screen point (x, y), or empty.
+#export_name("map_pick_position")
+pub fn map_pick_position(
+  map : @map.Map,
+  x : Double,
+  y : Double,
+) -> FixedArray[Double] {
+  match map.pick_position(x, y) {
+    Some((lng, lat, h)) => [lng, lat, h]
+    None => []
+  }
+}
+
+///|
+/// Where the segment between two points (longitude, latitude, meters up) first meets what is drawn,
+/// short of the second by `margin` meters, or empty.
+#export_name("map_cast_ray")
+pub fn map_cast_ray(
+  map : @map.Map,
+  points : FixedArray[Double],
+  margin : Double,
+) -> FixedArray[Double] {
+  match
+    map.cast_ray(
+      (points[0], points[1], points[2]),
+      (points[3], points[4], points[5]),
+      margin,
+    ) {
+    Some((lng, lat, h)) => [lng, lat, h]
+    None => []
+  }
+}
+
+///|
+/// Shows what is seen from the viewshed `v` (`Map::set_viewshed`'s eight numbers), or none when empty.
+#export_name("map_set_viewshed")
+pub fn map_set_viewshed(map : @map.Map, v : FixedArray[Double]) -> Unit {
+  map.set_viewshed(if v.length() == 8 { Some(v) } else { None })
+}

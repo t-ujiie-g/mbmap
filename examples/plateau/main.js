@@ -1,7 +1,8 @@
 // PLATEAU's LOD2 buildings of Chiyoda as 3D Tiles (mbmap/3d's tilesLayer) over GSI's vector map; a click
 // shows the building's attributes. `?local=1` reads the bench fixture (the tiles around Tokyo Station).
 import { Map } from "mbmap";
-import { tilesLayer } from "mbmap/3d";
+import { lineOfSight, measure3d, tilesLayer } from "mbmap/3d";
+import { createMeasurement } from "mbmap/ui";
 import { GSI_LAYERS } from "../shared/layers.js";
 import { BUILDINGS_3D, gsiSource } from "../shared/style.js";
 
@@ -101,12 +102,70 @@ function showFeature(hit) {
   feature.append(table, all);
 }
 
+// The tools: a building's attributes, measuring in 3D, a line of sight, a viewshed. Eyes stand 1.6 m up.
+const EYE = 1.6;
+const result = document.getElementById("tool-result");
+const meters = (m) => `${m.toLocaleString("ja-JP", { maximumFractionDigits: 1 })} m`;
+let tool = "feature";
+let measurement = null;
+let sightFrom = null;
+
+function showMeasurement(s) {
+  if (!s.mode || s.positions.length < 2) return (result.textContent = "建物や地面を順にクリックし、ダブルクリックで終えます。");
+  result.textContent = `直線 ${meters(s.length)}・水平 ${meters(s.horizontal ?? 0)}・高さの差 ${meters(s.vertical ?? 0)}`;
+}
+
+function drawSight(features) {
+  map.getSource("sight")?.setData({ type: "FeatureCollection", features });
+}
+
+function chooseTool(name) {
+  tool = name;
+  measurement?.destroy();
+  measurement = null;
+  sightFrom = null;
+  drawSight([]);
+  map.setViewshed(null);
+  feature.replaceChildren();
+  result.textContent = { feature: "", measure: "", sight: "見る位置、見たい位置の順にクリックします。", viewshed: "見る位置をクリックします（向きは地図の向き）。" }[name];
+  if (name === "measure") {
+    measurement = createMeasurement(map, { measure3d });
+    measurement.subscribe(showMeasurement);
+    window.__measurement = measurement;
+    measurement.start("distance");
+  }
+}
+
+async function click(e) {
+  if (tool === "feature") return showFeature(map.getLayer("plateau") ? await layer.queryFeature(e.point) : null);
+  const at = map.pickPosition(e.point);
+  if (!at) return;
+  const eye = [at[0], at[1], at[2] + EYE];
+  if (tool === "viewshed") {
+    map.setViewshed({ position: eye, heading: map.getBearing(), pitch: -10, horizontalFov: 90, verticalFov: 60, distance: 400 });
+    result.textContent = "緑：見える所、赤：遮られる所";
+  } else if (tool === "sight" && !sightFrom) {
+    sightFrom = eye;
+    drawSight([]);
+    result.textContent = "見たい位置をクリックします。";
+  } else if (tool === "sight") {
+    const s = lineOfSight(map, sightFrom, at);
+    const line = (a, b, seen) => ({ type: "Feature", properties: { seen }, geometry: { type: "LineString", coordinates: [a.slice(0, 2), b.slice(0, 2)] } });
+    drawSight(s.visible ? [line(sightFrom, at, true)] : [line(sightFrom, s.obstruction, true), line(s.obstruction, at, false)]);
+    result.textContent = s.visible ? "見えます" : `遮られます（${meters(measure3d([sightFrom, s.obstruction]).length)} 先、高さ ${meters(s.obstruction[2])}）`;
+    sightFrom = null;
+  }
+}
+
 map.once("load").then(() => {
   showPlateau(true);
+  map.addSource("sight", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({ id: "sight", type: "line", source: "sight", paint: { "line-width": 3, "line-color": ["case", ["get", "seen"], "#2a9d4b", "#d6342c"] } });
   map.on("render", showStatus);
-  map.on("click", async (e) => showFeature(map.getLayer("plateau") ? await layer.queryFeature(e.point) : null));
+  map.on("click", click);
   window.__loaded = performance.now();
 });
+for (const input of document.querySelectorAll("#tools input")) input.addEventListener("change", (e) => chooseTool(e.target.value));
 
 document.getElementById("plateau").addEventListener("change", (e) => showPlateau(e.target.checked));
 const places = document.getElementById("places");

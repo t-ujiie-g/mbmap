@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 157208,
+      "bytes": 159400,
       "budget": 160000
     },
     {
@@ -41,7 +41,7 @@
     },
     {
       "name": "custom layers (loaded by mbmap with the first one)",
-      "bytes": 2971,
+      "bytes": 2969,
       "budget": 3000
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "name": "mbmap/ui (every controller)",
-      "bytes": 9254,
+      "bytes": 9344,
       "budget": 10000
     },
     {
@@ -181,7 +181,7 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 6929,
+      "bytes": 7629,
       "budget": 10000
     },
     {
@@ -276,7 +276,7 @@
     },
     {
       "name": "mbmap/ui createBasemaps alone",
-      "bytes": 711,
+      "bytes": 712,
       "budget": 2000
     },
     {
@@ -301,7 +301,7 @@
     },
     {
       "name": "mbmap/ui createMeasurement alone",
-      "bytes": 1476,
+      "bytes": 1582,
       "budget": 2000
     },
     {

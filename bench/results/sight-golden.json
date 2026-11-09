@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-09T07:28:53.190Z",
+  "rays": {
+    "count": 400,
+    "hits": 155,
+    "differ": 0,
+    "worst": 0.04658741338042299,
+    "examples": []
+  },
+  "picks": {
+    "count": 24,
+    "differ": 0,
+    "worst": 0.009242501959030494,
+    "examples": []
+  },
+  "viewshed": {
+    "count": 130,
+    "differ": 0,
+    "examples": []
+  },
+  "errors": []
+}

@@ -95,7 +95,11 @@ pub fn polygon_hits_polygons(Array[(Double, Double)], Array[Array[(Double, Doubl
 
 pub fn radians(Double) -> Double
 
+pub fn ray_view((Double, Double, Double), (Double, Double, Double), Double, Double) -> ShadowView
+
 pub fn read_json_number(BytesView, Int32, (Int32, Int32) -> Double) -> (Double, Int32)
+
+pub fn spot_view((Double, Double, Double), (Double, Double, Double), Double, Double, Double, Double) -> ShadowView
 
 pub fn stable_order(ArrayView[Double]) -> FixedArray[Int32]
 
@@ -325,8 +329,10 @@ pub fn Transform::center_depth(Self) -> Double
 pub fn Transform::covering_tiles(Self, Int32, Int32) -> Array[TileId]
 pub fn Transform::ease_to(Self, CameraTarget) -> Ease
 pub fn Transform::exact(Camera, Double, Double, limits? : Limits) -> Self
+pub fn Transform::eye_ray(Self, Double, Double) -> ((Double, Double, Double), (Double, Double, Double), Double)
 pub fn Transform::fly_to(Self, CameraTarget, curve? : Double, speed? : Double, screen_speed? : Double, min_zoom? : Double) -> Flight?
 pub fn Transform::fog_range(Self) -> (Double, Double)
+pub fn Transform::ground_hit(Self, (Double, Double, Double), (Double, Double, Double), Double, Terrain?) -> Double?
 pub fn Transform::horizon(Self) -> Double
 pub fn Transform::keeping(Self, Double, Double, Camera) -> Camera
 pub fn Transform::max_pitch_scale_factor(Self) -> Double

@@ -82,17 +82,21 @@ extern "js" fn create_gl(
   #|    "vec3 globeNormal(vec2 p, vec3 n) { vec3 s = sphere(p); vec3 right = vec3(s.z, 0.0, -s.x);" +
   #|    "  return mat3(normalize(right), normalize(cross(right, s)), s) * n; }";
   #|  const projUniforms = ["u_matrix", "u_globe", "u_tile", "u_plane", "u_transition", "u_translate"];
-  #|  // The shadow map's coordinates (@core.ShadowView): u_shadow from tile units (mode 1), u_shadow_globe
-  #|  // from the unit sphere (mode 2); u_shadow_pass draws there. sunlit() is 1 where the light reaches,
-  #|  // 1 - intensity in shadow (u_shadow_k: intensity, depth per texel), four taps of the compared depth.
+  #|  // The shadow map's coordinates (@core.ShadowView): u_shadow from tile units (modes 1 and 3), u_shadow_globe
+  #|  // from the unit sphere (mode 2); u_shadow_pass draws there. seen() is the share of four compared taps the light
+  #|  // reaches (-1 off the map), sunlit() 1 - intensity in shadow (u_shadow_k: intensity, depth per texel); a
+  #|  // viewshed (mode 3) tints what it covers, seen or hidden, by u_shadow_k.x.
   #|  const shadowVs = "uniform highp int u_shadow_mode; uniform mat4 u_shadow; uniform mat4 u_shadow_globe; uniform bool u_shadow_pass; out vec4 v_shadow;" +
   #|    "vec4 shadowAt(vec2 p, float meters, float z) { return u_shadow_mode == 2 ?" +
   #|    "  u_shadow_globe * vec4(sphere(p + u_translate) * (1.0 + meters / 6371008.8), 1.0) : u_shadow * vec4(p, z, 1.0); }";
   #|  const shadowFs = "uniform highp int u_shadow_mode; uniform highp sampler2DShadow u_shadow_map; uniform vec2 u_shadow_k; in vec4 v_shadow;" +
-  #|    "float sunlit() { vec3 p = v_shadow.xyz * 0.5 + 0.5; if (u_shadow_mode == 0 || any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return 1.0;" +
-  #|    "  float t = 0.5 / " + SHADOW_SIZE + ".0, d = p.z - 2.0 * u_shadow_k.y; float s = texture(u_shadow_map, vec3(p.xy + vec2(-t, -t), d)) +" +
-  #|    "  texture(u_shadow_map, vec3(p.xy + vec2(t, -t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(-t, t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, t), d));" +
-  #|    "  return 1.0 - u_shadow_k.x * (1.0 - s / 4.0); }";
+  #|    "float seen() { vec3 p = v_shadow.xyz / v_shadow.w * 0.5 + 0.5;" +
+  #|    "  if (u_shadow_mode == 0 || v_shadow.w <= 0.0 || any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return -1.0;" +
+  #|    "  float t = 0.5 / " + SHADOW_SIZE + ".0, d = p.z - 2.0 * u_shadow_k.y; return (texture(u_shadow_map, vec3(p.xy + vec2(-t, -t), d)) +" +
+  #|    "  texture(u_shadow_map, vec3(p.xy + vec2(t, -t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(-t, t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, t), d))) / 4.0; }" +
+  #|    "float sunlit() { float s = seen(); return u_shadow_mode == 3 || s < 0.0 ? 1.0 : 1.0 - u_shadow_k.x * (1.0 - s); }" +
+  #|    "vec3 seenTint(float s) { return s > 0.5 ? vec3(0.2, 0.8, 0.3) : vec3(0.9, 0.2, 0.15); }" +
+  #|    "vec4 tint(vec4 c) { float s = u_shadow_mode == 3 ? seen() : -1.0; return s < 0.0 ? c : vec4(mix(c.rgb, seenTint(s) * c.a, u_shadow_k.x), c.a); }";
   #|  const shadowUniforms = ["u_shadow_mode", "u_shadow", "u_shadow_globe", "u_shadow_pass", "u_shadow_map", "u_shadow_k"];
   #|  // Paint values: each slot holds a value and the next along its zoom curve,
   #|  // mixed by u_t (one per slot); colors are straight RGBA, premultiplied here.
@@ -222,10 +226,12 @@ extern "js" fn create_gl(
   #|  // The globe's surface into depth only, before extrusions (MapLibre's depth shader).
   #|  const globeDepth = program(proj + "in vec2 a_pos; void main() { gl_Position = project3d(a_pos, 0.0, 0.0); }",
   #|    "out vec4 o; void main() { o = vec4(0.0); }", projUniforms);
-  #|  // The ground darkened where the shadow map is in shadow, by u_ground (the sun's share of its light).
+  #|  // The ground darkened where the shadow map is in shadow, by u_ground (the sun's share of its light), or
+  #|  // a viewshed's tint.
   #|  const groundShadow = program(proj + shadowVs + "in vec2 a_pos; out vec2 v_pos;" +
   #|    "void main() { v_pos = a_pos; gl_Position = project(a_pos); v_shadow = shadowAt(a_pos, 0.0, 0.0); }",
-  #|    clip + shadowFs + "uniform float u_ground; out vec4 o; void main() { if (outside()) discard; o = vec4(0.0, 0.0, 0.0, u_ground * (1.0 - sunlit())); }",
+  #|    clip + shadowFs + "uniform float u_ground; out vec4 o; void main() { if (outside()) discard; float s = seen();" +
+  #|    "  o = u_shadow_mode != 3 ? vec4(0.0, 0.0, 0.0, u_ground * (1.0 - sunlit())) : s < 0.0 ? vec4(0.0) : vec4(seenTint(s), 1.0) * u_ground; }",
   #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_ground"]);
   #|  // The background on the globe, one tile mesh at a time (MapLibre's background shader).
   #|  const background = program(proj + "in vec2 a_pos; void main() { gl_Position = project(a_pos); }",
@@ -380,7 +386,7 @@ extern "js" fn create_gl(
   #|    "  v_color.rgb += clamp(color * directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));" +
   #|    "  v_sun = vec3(0.0); if (u_ambient.a > 0.5) { v_color.rgb = u_color * u_ambient.rgb; v_sun = u_color * u_sun * lambert * u_opacity; }" +
   #|    "  v_color *= u_opacity; }",
-  #|    clip + shadowFs + "in vec4 v_color; in vec3 v_sun; out vec4 o; void main() { if (outside()) discard; o = v_color + vec4(v_sun * sunlit(), 0.0); }",
+  #|    clip + shadowFs + "in vec4 v_color; in vec3 v_sun; out vec4 o; void main() { if (outside()) discard; o = tint(v_color + vec4(v_sun * sunlit(), 0.0)); }",
   #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_color", "u_lightpos_globe", "u_ambient", "u_sun"]);
   #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
@@ -411,7 +417,7 @@ extern "js" fn create_gl(
   #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity;" +
   #|    "  v_sun = vec3(0.0); if (u_ambient.a > 0.5) { v_light = vec4(u_ambient.rgb, 1.0) * u_opacity; v_sun = u_sun * lambert * u_opacity; } }",
   #|    clip + shadowFs + patternColor + "in vec4 v_light; in vec3 v_sun; in vec2 v_pat; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; vec4 c = patternColor(v_pat, vec4(0.0), 1.0); o = c * v_light + vec4(c.rgb * v_sun * sunlit(), 0.0); }",
+  #|    "void main() { if (outside()) discard; vec4 c = patternColor(v_pat, vec4(0.0), 1.0); o = tint(c * v_light + vec4(c.rgb * v_sun * sunlit(), 0.0)); }",
   #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_height_factor", "u_lightpos_globe", "u_ambient", "u_sun", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl over the tile's quad: v_tex runs 0-1 across the

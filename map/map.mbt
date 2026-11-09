@@ -164,6 +164,7 @@ pub struct Map {
   priv media : Array[Media]
   priv mut custom : CustomRenderer
   priv mut shadows : Shadows?
+  priv mut viewshed : FixedArray[Double]?
 }
 
 ///|
@@ -290,6 +291,7 @@ pub fn Map::new(
     media: [],
     custom: no_custom(),
     shadows: None,
+    viewshed: None,
   }
   map.follow_projection(camera~)
   let wasm = absolute_url(wasm_url)

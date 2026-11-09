@@ -1375,6 +1375,36 @@ export class Map {
     return { lng, lat };
   }
 
+  /**
+   * mbmap's: the longitude, latitude and height (meters) of what is drawn under `point`: extrusions, 3D
+   * layers, terrain, else sea level (on the globe, its ground); null if nothing. From the last frame's tiles.
+   */
+  pickPosition(point: PointLike): [number, number, number] | null {
+    const p = toPoint(point);
+    const r = this.#engine ? engine.map_pick_position(this.#engine, p.x, p.y) : [];
+    return r.length ? [r[0], r[1], r[2]] : null;
+  }
+
+  /**
+   * mbmap's: where the segment from `from` to `to` ([longitude, latitude, meters]) first meets what is drawn
+   * (as `pickPosition` sees it), stopping `margin` meters (default 0.1) short of `to`; null if nothing is in the way.
+   */
+  castRay(from: [number, number, number], to: [number, number, number], margin = 0.1): [number, number, number] | null {
+    const r = this.#engine ? engine.map_cast_ray(this.#engine, [...from, ...to], margin) : [];
+    return r.length ? [r[0], r[1], r[2]] : null;
+  }
+
+  /**
+   * mbmap's, once loaded: tints what is seen (green) and hidden (red) from `position` ([lng, lat, m]) toward `heading`
+   * and `pitch`, `horizontalFov` by `verticalFov` (degrees; 0, 0, 90, 60) and `distance` m (500), instead of shadows.
+   */
+  setViewshed(v: { position: [number, number, number]; heading?: number; pitch?: number; horizontalFov?: number; verticalFov?: number; distance?: number } | null): this {
+    const n = v ? [...v.position, v.heading ?? 0, v.pitch ?? 0, v.horizontalFov ?? 90, v.verticalFov ?? 60, v.distance ?? 500] : [];
+    if (n.some((x) => !Number.isFinite(x))) throw new Error("mbmap: setViewshed: not finite numbers");
+    if (this.#engine) engine.map_set_viewshed(this.#engine, n);
+    return this;
+  }
+
   /** The box around what the map shows (up to the horizon when tilted). */
   getBounds(): LngLatBounds {
     if (!this.#engine) return new LngLatBounds(NaN, NaN, NaN, NaN);

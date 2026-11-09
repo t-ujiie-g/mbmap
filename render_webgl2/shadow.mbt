@@ -28,14 +28,14 @@ extern "js" fn gl_set_shadow(
 
 ///|
 /// Starts drawing casters' depth into the shadow map (made the first time),
-/// until `end_shadow_map`.
-pub fn Renderer::begin_shadow_map(self : Renderer) -> Unit {
-  gl_begin_shadow_map(self.gl)
+/// until `end_shadow_map`; into its corner `size` texels across if given.
+pub fn Renderer::begin_shadow_map(self : Renderer, size? : Int32) -> Unit {
+  gl_begin_shadow_map(self.gl, size.unwrap_or(@core.SHADOW_MAP_SIZE))
 }
 
 ///|
-extern "js" fn gl_begin_shadow_map(gl : Gl) -> Unit =
-  #|(c) => {
+extern "js" fn gl_begin_shadow_map(gl : Gl, size : Int32) -> Unit =
+  #|(c, size) => {
   #|  const gl = c.gl, S = c.shadowSize;
   #|  c.shadowSaved = { fbo: gl.getParameter(gl.FRAMEBUFFER_BINDING), viewport: gl.getParameter(gl.VIEWPORT) };
   #|  if (!c.shadowMap) {
@@ -57,12 +57,16 @@ extern "js" fn gl_begin_shadow_map(gl : Gl) -> Unit =
   #|  gl.activeTexture(gl.TEXTURE0);
   #|  gl.bindFramebuffer(gl.FRAMEBUFFER, c.shadowMap.fbo);
   #|  gl.drawBuffers([gl.NONE]);
-  #|  gl.viewport(0, 0, S, S);
+  #|  gl.viewport(0, 0, size, size);
   #|  gl.depthMask(true);
   #|  gl.clearDepth(1);
+  #|  gl.enable(gl.SCISSOR_TEST);
+  #|  gl.scissor(0, 0, size, size);
   #|  gl.clear(gl.DEPTH_BUFFER_BIT);
+  #|  gl.disable(gl.SCISSOR_TEST);
   #|  gl.disable(gl.BLEND);
-  #|  gl.enable(gl.POLYGON_OFFSET_FILL);
+  #|  // Receivers compare against a little more depth; a ray reads it as it is.
+  #|  if (size === S) gl.enable(gl.POLYGON_OFFSET_FILL);
   #|  gl.polygonOffset(1, 2);
   #|}
 
@@ -115,4 +119,62 @@ extern "js" fn gl_draw_ground_shadow(
   #|  gl.uniform1f(p.u_ground, sun);
   #|  c.drawTile();
   #|  gl.bindVertexArray(null);
+  #|}
+
+///|
+/// The depth (0 to 1) at texel (x, y) of the shadow map, read back.
+pub fn Renderer::shadow_depth_at(
+  self : Renderer,
+  x : Int32,
+  y : Int32,
+) -> Double {
+  gl_shadow_depth_at(self.gl, x, y)
+}
+
+///|
+extern "js" fn gl_shadow_depth_at(gl : Gl, x : Int32, y : Int32) -> Double =
+  #|(c, x, y) => {
+  #|  const gl = c.gl;
+  #|  if (!c.depthRead) {
+  #|    // One point writing the texel's 24 bits of depth into RGB.
+  #|    const shader = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, "#version 300 es\n" + src); gl.compileShader(s); return s; };
+  #|    const p = gl.createProgram();
+  #|    gl.attachShader(p, shader(gl.VERTEX_SHADER, "void main() { gl_Position = vec4(0.0, 0.0, 0.0, 1.0); gl_PointSize = 1.0; }"));
+  #|    gl.attachShader(p, shader(gl.FRAGMENT_SHADER, "precision highp float; uniform highp sampler2D u_depth; uniform ivec2 u_at; out vec4 o;" +
+  #|      "void main() { float v = min(floor(texelFetch(u_depth, u_at, 0).r * 16777215.0 + 0.5), 16777215.0);" +
+  #|      "  o = vec4(floor(v / 65536.0), mod(floor(v / 256.0), 256.0), mod(v, 256.0), 255.0) / 255.0; }"));
+  #|    gl.linkProgram(p);
+  #|    const fbo = gl.createFramebuffer(), rb = gl.createRenderbuffer();
+  #|    gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+  #|    gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, 1, 1);
+  #|    const saved = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+  #|    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  #|    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rb);
+  #|    gl.bindFramebuffer(gl.FRAMEBUFFER, saved);
+  #|    c.depthRead = { p, fbo, depth: gl.getUniformLocation(p, "u_depth"), at: gl.getUniformLocation(p, "u_at") };
+  #|  }
+  #|  const r = c.depthRead, tex = c.shadowMap.tex, px = new Uint8Array(4);
+  #|  const fbo = gl.getParameter(gl.FRAMEBUFFER_BINDING), v = gl.getParameter(gl.VIEWPORT);
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
+  #|  gl.viewport(0, 0, 1, 1);
+  #|  gl.useProgram(r.p);
+  #|  gl.activeTexture(gl.TEXTURE7);
+  #|  gl.bindTexture(gl.TEXTURE_2D, tex);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  #|  gl.uniform1i(r.depth, 7);
+  #|  gl.uniform2i(r.at, x, y);
+  #|  gl.disable(gl.BLEND);
+  #|  gl.bindVertexArray(null);
+  #|  gl.drawArrays(gl.POINTS, 0, 1);
+  #|  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  #|  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  #|  gl.activeTexture(gl.TEXTURE0);
+  #|  gl.enable(gl.BLEND);
+  #|  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  #|  gl.viewport(v[0], v[1], v[2], v[3]);
+  #|  return (px[0] * 65536 + px[1] * 256 + px[2]) / 16777215;
   #|}

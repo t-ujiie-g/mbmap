@@ -71,7 +71,7 @@ test("renderInput gives the shadows: the light's views over Mercator 0 to 1 and 
   const o = renderInput(layout(undefined, undefined, [2, 0.6, 0.4, 0.001, ...light, ...sphere]));
   assert.deepEqual(
     { ...o.shadow, mercator: [...o.shadow!.mercator], sphere: [...o.shadow!.sphere] },
-    { globe: true, intensity: 0.6, texel: 0.001, mercator: light, sphere },
+    { mode: 2, intensity: 0.6, texel: 0.001, mercator: light, sphere },
   );
   assert.equal(renderInput(numbers).shadow, undefined);
 });
