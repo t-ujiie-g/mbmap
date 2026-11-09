@@ -28,10 +28,9 @@ let filters : FixedArray[@meshopt.Filter] = [
 ]
 
 ///|
-/// Decodes the input, a meshopt-compressed glTF buffer view of `count`
-/// elements of `size` bytes, into the output (`mode` and `filter` numbered as
-/// `modes` and `filters`); returns its length, -1 for malformed input, -2
-/// without memory.
+/// Decodes the input, a meshopt-compressed glTF buffer view of `count` elements of `size` bytes
+/// (`mode` and `filter` numbered as `modes` and `filters`), into the output; returns its length,
+/// -1 for malformed input, -2 without memory.
 #export_name("meshopt_decode")
 pub fn meshopt_decode(
   count : Int32,

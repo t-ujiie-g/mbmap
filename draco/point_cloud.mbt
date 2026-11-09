@@ -1,7 +1,6 @@
-// Ported from Draco 1.5.7 (compression/attributes/kd_tree_attributes_decoder.cc,
-// compression/point_cloud/point_cloud_kd_tree_decoder.cc, point_cloud_sequential_decoder.cc,
-// algorithms/float_points_tree_decoder.cc, quantize_points_3.h): Apache License 2.0, Copyright
-// 2016 The Draco Authors. See NOTICE.
+// Ported from Draco 1.5.7 (compression/: the kd-tree attributes decoder, the point cloud kd-tree
+// and sequential decoders, the float points tree decoder, quantize_points_3.h): Apache License
+// 2.0, Copyright 2016 The Draco Authors. See NOTICE.
 
 ///|
 /// `KdTreeAttributesEncodingMethod`: `kKdTreeQuantizationEncoding` (the float tree of older

@@ -1,5 +1,6 @@
 // Ported from Draco 1.5.7 (compression/attributes/prediction_schemes/: the geometric normal
-// decoder and its area predictor): Apache License 2.0, Copyright 2016 The Draco Authors. See NOTICE.
+// decoder and its area predictor): Apache License 2.0, Copyright 2016 The Draco Authors. See
+// NOTICE.
 
 ///|
 fn Scheme::position_of_corner(

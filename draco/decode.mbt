@@ -1,7 +1,6 @@
-// Ported from Draco 1.5.7 (compression/decode.cc, point_cloud/point_cloud_decoder.cc,
-// mesh/mesh_sequential_decoder.cc, metadata/metadata_decoder.cc and the emscripten decoder's
-// GetTrianglesUInt32Array / GetAttributeDataArrayForAllPoints): Apache License 2.0, Copyright 2016
-// The Draco Authors. See NOTICE.
+// Ported from Draco 1.5.7 (compression/decode.cc, the point cloud, sequential mesh and metadata
+// decoders, and the emscripten decoder's output arrays): Apache License 2.0, Copyright 2016 The
+// Draco Authors. See NOTICE.
 
 ///|
 /// The most faces a mesh may have (Draco takes up to 2^32 / 3).
@@ -73,13 +72,9 @@ const EDGEBREAKER_ENCODING : Int32 = 1
 const KD_TREE_ENCODING : Int32 = 1
 
 ///|
-/// One attribute of a decoded mesh: `unique_id` (uint32 bits) is what KHR_draco_mesh_compression's
-/// `attributes` name, `attribute_type` Draco's `GeometryAttribute::Type` (0 POSITION, 1 NORMAL,
-/// 2 COLOR, 3 TEX_COORD, 4 GENERIC), `data_type` its `DataType` (1 INT8, 2 UINT8, 3 INT16,
-/// 4 UINT16, 5 INT32, 6 UINT32, 7 INT64, 8 UINT64, 9 FLOAT32, 10 FLOAT64, 11 BOOL). `data` holds
-/// `num_components` little-endian values of that type per point, as draco3d's
-/// `GetAttributeDataArrayForAllPoints` gives them for the attribute's own type (quantized and
-/// octahedral attributes are FLOAT32, dequantized).
+/// One attribute of a decoded mesh, its fields as docs/FORMATS.md "Draco output" numbers them:
+/// `unique_id` (uint32 bits) what KHR_draco_mesh_compression's `attributes` name, Draco's
+/// `attribute_type` and `data_type`, and `data` (draco3d's `GetAttributeDataArrayForAllPoints`).
 pub struct DracoAttribute {
   unique_id : Int32
   attribute_type : Int32

@@ -47,10 +47,9 @@ fn valid_layout(
 }
 
 ///|
-/// The fewest source bytes that can hold `count` elements of `size` bytes in
-/// `mode` (as Int64, so a huge `count` cannot overflow): triangles a header, a
-/// code byte each and the 16-byte table; sequences a header, a byte each and a
-/// 4-byte tail; attributes a header, each block's control bytes and the tail.
+/// The fewest source bytes for `count` elements of `size` bytes in `mode`: a header, then a byte
+/// per triangle and the 16-byte table, a byte per index and the 4-byte tail, or each vertex
+/// block's control bytes and the tail.
 fn min_source_length(count : Int32, size : Int32, mode : Mode) -> Int64 {
   match mode {
     Triangles => (count / 3).to_int64() + 17L
@@ -81,10 +80,9 @@ pub fn source_fits(
 }
 
 ///|
-/// Decodes `count` elements of `size` bytes from `source[source_offset:source_offset +
-/// source_length]` into the start of `target`, then applies `filter`, as meshoptimizer's
-/// `MeshoptDecoder.decodeGltfBuffer` does. Returns false when the input is malformed or
-/// does not fit (where meshoptimizer throws or asserts); `target` is then left partly written.
+/// `MeshoptDecoder.decodeGltfBuffer`: `count` elements of `size` bytes from `source[source_offset:
+/// source_offset + source_length]` into the start of `target`, then `filter`. False where
+/// meshoptimizer throws or asserts (malformed or too short); `target` is then partly written.
 pub fn decode_gltf_buffer(
   target : FixedArray[Byte],
   count : Int32,

@@ -1,6 +1,5 @@
-// Ported from Draco 1.5.7 (compression/attributes/attributes_decoder.cc,
-// sequential_attribute_decoders_controller.cc, sequential_*_attribute_decoder.cc,
-// attributes/attribute_quantization_transform.cc, attribute_octahedron_transform.cc): Apache License
+// Ported from Draco 1.5.7 (compression/attributes/: the attributes decoder, the sequential decoders
+// and their controller; attributes/: the quantization and octahedron transforms): Apache License
 // 2.0, Copyright 2016 The Draco Authors. See NOTICE.
 
 ///|
