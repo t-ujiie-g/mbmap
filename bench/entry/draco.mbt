@@ -4,7 +4,7 @@
 #export_name("draco_decode")
 pub fn draco_decode(src : FixedArray[Byte]) -> FixedArray[Byte] {
   match @draco.decode(src, 0, src.length()) {
-    Some(mesh) => mesh.to_bytes()
+    Some(mesh) => mesh.to_bytes().unwrap_or([])
     None => []
   }
 }

@@ -11,11 +11,13 @@ const XYZ_HEADER_SIZE : Int32 = 104
 /// `LEPCC::Decode_CutInSegments`: the section minimums bit-stuffed, then each section's values
 /// above its minimum. None past `MAX_POINTS` values in all.
 fn Cursor::segments(self : Cursor) -> Array[UInt32]? {
-  guard self.decode() is Some(mins) else { return None }
+  // Each section's values take at least two bytes.
+  guard self.decode((self.end - self.pos) / 2) is Some(mins) else {
+    return None
+  }
   let out = []
   for min in mins {
-    guard self.decode() is Some(values) &&
-      out.length() + values.length() <= MAX_POINTS else {
+    guard self.decode(MAX_POINTS - out.length()) is Some(values) else {
       return None
     }
     for v in values {

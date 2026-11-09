@@ -10,17 +10,6 @@ pub(all) enum Mode {
 }
 
 ///|
-/// The mode named by the extension's string ("ATTRIBUTES", "TRIANGLES", "INDICES").
-pub fn Mode::from_string(s : String) -> Mode? {
-  match s {
-    "ATTRIBUTES" => Some(Attributes)
-    "TRIANGLES" => Some(Triangles)
-    "INDICES" => Some(Indices)
-    _ => None
-  }
-}
-
-///|
 /// A compressed buffer view's `filter`, applied to decoded attributes: `NoFilter`
 /// ("NONE"), `Octahedral`, `Quaternion`, `Exponential` and `Color`.
 pub(all) enum Filter {
@@ -29,20 +18,6 @@ pub(all) enum Filter {
   Quaternion
   Exponential
   Color
-}
-
-///|
-/// The filter named by the extension's string ("NONE", "OCTAHEDRAL", "QUATERNION",
-/// "EXPONENTIAL", "COLOR").
-pub fn Filter::from_string(s : String) -> Filter? {
-  match s {
-    "NONE" => Some(NoFilter)
-    "OCTAHEDRAL" => Some(Octahedral)
-    "QUATERNION" => Some(Quaternion)
-    "EXPONENTIAL" => Some(Exponential)
-    "COLOR" => Some(Color)
-    _ => None
-  }
 }
 
 ///|
@@ -72,6 +47,40 @@ fn valid_layout(
 }
 
 ///|
+/// The fewest source bytes that can hold `count` elements of `size` bytes in
+/// `mode` (as Int64, so a huge `count` cannot overflow): triangles a header, a
+/// code byte each and the 16-byte table; sequences a header, a byte each and a
+/// 4-byte tail; attributes a header, each block's control bytes and the tail.
+fn min_source_length(count : Int32, size : Int32, mode : Mode) -> Int64 {
+  match mode {
+    Triangles => (count / 3).to_int64() + 17L
+    Indices => count.to_int64() + 5L
+    Attributes => {
+      let block = vertex_block_size(size).to_int64()
+      let blocks = (count.to_int64() + block - 1L) / block
+      let tail = if size < 24 { 24 } else { size }
+      1L + blocks * (size / 4).to_int64() + tail.to_int64()
+    }
+  }
+}
+
+///|
+/// Whether `source_length` bytes could hold `count` elements of `size` bytes in
+/// `mode` and `filter`: callers check it before making room for the output.
+pub fn source_fits(
+  count : Int32,
+  size : Int32,
+  source_length : Int32,
+  mode : Mode,
+  filter : Filter,
+) -> Bool {
+  count >= 0 &&
+  source_length >= 0 &&
+  valid_layout(count, size, mode, filter) &&
+  source_length.to_int64() >= min_source_length(count, size, mode)
+}
+
+///|
 /// Decodes `count` elements of `size` bytes from `source[source_offset:source_offset +
 /// source_length]` into the start of `target`, then applies `filter`, as meshoptimizer's
 /// `MeshoptDecoder.decodeGltfBuffer` does. Returns false when the input is malformed or
@@ -90,7 +99,7 @@ pub fn decode_gltf_buffer(
     source_offset < 0 ||
     source_length < 0 ||
     source_offset > source.length() - source_length ||
-    !valid_layout(count, size, mode, filter) ||
+    !source_fits(count, size, source_length, mode, filter) ||
     count.to_int64() * size.to_int64() > target.length().to_int64() {
     return false
   }

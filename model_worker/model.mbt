@@ -48,8 +48,17 @@ pub fn meshopt_decode(
     @wasmio.output_fits(count.to_int64(), size) else {
     return -1
   }
-  let target = FixedArray::make(count * size, b'\x00')
   let source = @wasmio.input_byte_array()
+  guard @meshopt.source_fits(
+    count,
+    size,
+    source.length(),
+    modes[mode],
+    filters[filter],
+  ) else {
+    return -1
+  }
+  let target = FixedArray::make(count * size, b'\x00')
   guard @meshopt.decode_gltf_buffer(
     target,
     count,

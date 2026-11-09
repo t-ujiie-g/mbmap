@@ -10,6 +10,8 @@ pub const MAX_FACES : Int32 = 0x400000
 
 pub const MAX_KD_DIMENSIONS : Int32 = 1024
 
+pub const MAX_OUTPUT_BYTES : Int32 = 0x40000000
+
 pub const MAX_POINTS : Int32 = 0x400000
 
 pub fn decode(FixedArray[Byte], Int32, Int32) -> DracoMesh?
@@ -36,7 +38,7 @@ pub struct DracoMesh {
   attributes : Array[DracoAttribute]
 }
 pub fn DracoMesh::attribute(Self, Int32) -> DracoAttribute?
-pub fn DracoMesh::to_bytes(Self) -> FixedArray[Byte]
+pub fn DracoMesh::to_bytes(Self, max_bytes? : Int32) -> FixedArray[Byte]?
 
 // Type aliases
 

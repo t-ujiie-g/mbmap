@@ -4,6 +4,8 @@ package "t-ujiie-g/mbmap/meshopt"
 // Values
 pub fn decode_gltf_buffer(FixedArray[Byte], Int32, Int32, FixedArray[Byte], Int32, Int32, Mode, Filter) -> Bool
 
+pub fn source_fits(Int32, Int32, Int32, Mode, Filter) -> Bool
+
 // Errors
 
 // Types and methods
@@ -14,14 +16,12 @@ pub(all) enum Filter {
   Exponential
   Color
 }
-pub fn Filter::from_string(String) -> Self?
 
 pub(all) enum Mode {
   Attributes
   Triangles
   Indices
 }
-pub fn Mode::from_string(String) -> Self?
 
 // Type aliases
 

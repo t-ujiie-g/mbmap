@@ -208,7 +208,7 @@ test "DracoMesh::attribute: the first attribute of a unique id" {
 ///|
 test "DracoMesh::to_bytes: header, attribute rows, indices, then padded data" {
   let mesh = decoded(sequential)
-  let out = mesh.to_bytes()
+  let out = mesh.to_bytes().unwrap()
   let u32 = fn(at : Int32) {
     out[at].to_int() |
     (out[at + 1].to_int() << 8) |
@@ -233,4 +233,15 @@ test "DracoMesh::to_bytes: header, attribute rows, indices, then padded data" {
   for i in 0..<24 {
     assert_eq(out[48 + 48 + 72 + i], mesh.attributes[1].data[i])
   }
+}
+
+///|
+test "DracoMesh::to_bytes refuses output past max_bytes" {
+  let mesh = decoded(sequential)
+  assert_eq(
+    mesh.to_bytes(max_bytes=48 + 48 + 72 + 24 + 24).map(o => o.length()),
+    Some(216),
+  )
+  assert_true(mesh.to_bytes(max_bytes=48 + 48 + 72 + 24 + 23) is None)
+  assert_true(mesh.to_bytes(max_bytes=0) is None)
 }

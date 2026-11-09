@@ -221,7 +221,7 @@ test "decode_point_cloud: refuses legacy attributes sized past MAX_POINTS and ne
 
 ///|
 test "DracoMesh::to_bytes: a point cloud has no indices" {
-  let out = points(pc_raw).to_bytes()
+  let out = points(pc_raw).to_bytes().unwrap()
   assert_eq(out.length(), 12 + 12 + 36)
   assert_eq([out[0], out[1], out[2], out[3], out[4]], [
     b'\x00', b'\x00', b'\x00', b'\x00', b'\x03',
