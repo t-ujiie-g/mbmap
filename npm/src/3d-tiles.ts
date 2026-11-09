@@ -1,6 +1,10 @@
 // The work of mbmap/3d's tiles layer, loaded with the first `tilesLayer`: the tileset read and
 // selected each frame, contents asked of the 3D worker and drawn with the model program.
+import type { Clipping } from "./clipping";
 import type { CustomRenderMethodInput } from "./custom";
+
+/** The map's clipping as a layer hands it on (`clipOf` in 3d.ts). */
+type Clip = { cut: Clipping; mpp: number };
 import type { LoadedModel, TilesLayerOptions } from "./3d";
 import type { GpuModel, ModelProgram } from "./model/draw";
 import type { StructuralMetadata } from "./model/gltf";
@@ -143,6 +147,7 @@ export class TilesEngine {
   #loading = 0;
   #loaded = new Set<Tile>();
   #gl: WebGL2RenderingContext | null = null;
+  #clip: Clip | undefined;
   #generation = 0;
   #picks: { x: number; y: number; resolve: (hit: Hit | null) => void }[] = [];
   #target: { fb: WebGLFramebuffer; color: WebGLRenderbuffer; depth: WebGLRenderbuffer; w: number; h: number } | null = null;
@@ -177,7 +182,8 @@ export class TilesEngine {
     this.#generation++;
   }
 
-  render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, program: ModelProgram): void {
+  render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, program: ModelProgram, clip?: Clip): void {
+    this.#clip = clip;
     this.#gl = gl;
     const d = options.defaultProjectionData;
     const t = d.projectionTransition;
@@ -193,7 +199,7 @@ export class TilesEngine {
       if (this.#loading >= MAX_LOADS) break;
       this.#load(tile);
     }
-    program.begin(gl, options);
+    program.begin(gl, options, false, false, clip);
     program.setPointSize(this.#pointPixels(gl));
     for (const pass of [0, 1]) {
       gl.depthMask(pass === 0);
@@ -205,8 +211,8 @@ export class TilesEngine {
   }
 
   /** Draws the selected tiles' opaque meshes into the shadow map (`options`' matrices the light's). */
-  renderShadow(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, program: ModelProgram): void {
-    program.begin(gl, options, false, true);
+  renderShadow(gl: WebGL2RenderingContext, options: CustomRenderMethodInput, program: ModelProgram, clip?: Clip): void {
+    program.begin(gl, options, false, true, clip);
     this.#drawTiles(gl, program, options, 0);
   }
 
@@ -266,7 +272,7 @@ export class TilesEngine {
     gl.clearColor(0, 0, 0, 0);
     gl.clearDepth(1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    program.begin(gl, options, true);
+    program.begin(gl, options, true, false, this.#clip);
     program.setPointSize(this.#pointPixels(gl));
     let drawn: Picked[] = [];
     for (const pass of [0, 1]) drawn = this.#drawTiles(gl, program, options, pass, true);

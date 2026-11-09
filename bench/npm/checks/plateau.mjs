@@ -1,5 +1,5 @@
 // examples/plateau with ?local=1: PLATEAU's buildings around Tokyo Station are drawn, a click lists a building's
-// attributes, the checkbox swaps them for the map's extrusions, the 3D tools measure, sight and tint a viewshed.
+// attributes, the checkbox swaps them for the map's extrusions, the 3D tools measure, sight, tint a viewshed and cut.
 // Without the fixture (bench/fixtures/plateau-chiyoda; CI) the page says it could not read the tileset.
 import { commonestShare } from "./pixels.mjs";
 
@@ -51,11 +51,13 @@ export async function plateauChecks(page) {
   const sight = await tool("sight", [[420, 450], [700, 250]]);
   const viewshed = await tool("viewshed", [[600, 450]]);
   const tinted = await page.evaluate(() => window.__map.pickPosition({ x: 600, y: 450 }) !== null);
+  const section = await tool("section", [[560, 300]]);
+  const clipped = await page.evaluate(() => window.__map.getClipping()?.planes?.length === 1);
   await page.click("#tools input[value=feature]");
   const ok =
     drawn.tiles >= 10 && drawn.ready && blank < 0.6 &&
     /^13101-bldg-/.test(rows["建物 ID"] ?? "") && typeof rows["用途"] === "string" &&
     !off.layer && off.extruded === "visible" && again >= 10 &&
-    /^直線 [\d,.]+ m・水平 [\d,.]+ m・高さの差 -?[\d,.]+ m$/.test(measured) && /^(見えます|遮られます（)/.test(sight) && viewshed.startsWith("緑") && tinted;
-  return [ok, { drawn, blank, rows, off, again, measured, sight, viewshed }];
+    /^直線 [\d,.]+ m・水平 [\d,.]+ m・高さの差 -?[\d,.]+ m$/.test(measured) && /^(見えます|遮られます（)/.test(sight) && viewshed.startsWith("緑") && tinted && section.startsWith("手前を切りました") && clipped;
+  return [ok, { drawn, blank, rows, off, again, measured, sight, viewshed, section }];
 }

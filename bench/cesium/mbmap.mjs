@@ -44,6 +44,13 @@ window.__run = async () => {
   };
 };
 
+// Clips as bench/cesium/clip.mjs asks (Map.setClipping's options, or null) over a black background, then settles.
+window.__clip = async (c) => {
+  map.setPaintProperty("background", "background-color", "#000000");
+  map.setClipping(c);
+  await settle(drawn);
+};
+
 window.__orbit = async () => {
   frames.clear();
   await new Promise((done) => {

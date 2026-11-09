@@ -60,6 +60,8 @@ import { StyleImages } from "./style-images";
 
 export { LngLatBounds } from "./camera";
 export { sunDirection, sunPosition, timeOfDayLights, type SunPosition } from "./sun";
+export type { Clipping } from "./clipping";
+import { packClipping, type Clipping } from "./clipping";
 export type {
   AnimationOptions,
   CameraOptions,
@@ -170,6 +172,7 @@ export function evaluateExpression(expression: unknown, features: readonly Expre
   return out.map((v) => (typeof v === "number" && Number.isNaN(v) ? null : v));
 }
 
+
 export class Map {
   #container: HTMLElement;
   #canvas: HTMLCanvasElement;
@@ -179,6 +182,7 @@ export class Map {
   #drawn: StyleSpecification | null = null;
   #warned = "";
   #engine: engine.EngineMap | null = null;
+  #clipping: Clipping | null = null;
   #geojson: GeoJSONTiles | null = null;
   #geojsonLoading: Promise<GeoJSONTiles | null> | null = null;
   #geojsonSources: GeoJSONSource[] = [];
@@ -1403,6 +1407,22 @@ export class Map {
     if (n.some((x) => !Number.isFinite(x))) throw new Error("mbmap: setViewshed: not finite numbers");
     if (this.#engine) engine.map_set_viewshed(this.#engine, n);
     return this;
+  }
+
+  /**
+   * mbmap's, as CesiumJS's clipping planes and polygons, on extrusions and mbmap/3d's layers (`Clipping` in clipping.ts
+   * says what it keeps); null clears it.
+   */
+  setClipping(c: Clipping | null): this {
+    const n = c ? packClipping(c) : [];
+    this.#clipping = c && structuredClone(c);
+    if (this.#engine) engine.map_set_clipping(this.#engine, n);
+    return this;
+  }
+
+  /** The clipping `setClipping` set, or null. */
+  getClipping(): Clipping | null {
+    return this.#clipping && structuredClone(this.#clipping);
   }
 
   /** The box around what the map shows (up to the horizon when tilted). */

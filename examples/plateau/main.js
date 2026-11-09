@@ -126,8 +126,9 @@ function chooseTool(name) {
   sightFrom = null;
   drawSight([]);
   map.setViewshed(null);
+  map.setClipping(null);
   feature.replaceChildren();
-  result.textContent = { feature: "", measure: "", sight: "見る位置、見たい位置の順にクリックします。", viewshed: "見る位置をクリックします（向きは地図の向き）。" }[name];
+  result.textContent = { feature: "", measure: "", sight: "見る位置、見たい位置の順にクリックします。", viewshed: "見る位置をクリックします（向きは地図の向き）。", section: "切る位置をクリックします（地図の向きに直交する縦の面）。" }[name];
   if (name === "measure") {
     measurement = createMeasurement(map, { measure3d });
     measurement.subscribe(showMeasurement);
@@ -141,7 +142,12 @@ async function click(e) {
   const at = map.pickPosition(e.point);
   if (!at) return;
   const eye = [at[0], at[1], at[2] + EYE];
-  if (tool === "viewshed") {
+  if (tool === "section") {
+    // A vertical plane through the point, across the view: what lies before it (toward the camera) is cut.
+    const b = (map.getBearing() * Math.PI) / 180;
+    map.setClipping({ origin: [at[0], at[1], 0], planes: [[Math.sin(b), Math.cos(b), 0, 0]], edgeWidth: 2, edgeColor: [1, 0.55, 0.1] });
+    result.textContent = "手前を切りました（橙は切り口）";
+  } else if (tool === "viewshed") {
     map.setViewshed({ position: eye, heading: map.getBearing(), pitch: -10, horizontalFov: 90, verticalFov: 60, distance: 400 });
     result.textContent = "緑：見える所、赤：遮られる所";
   } else if (tool === "sight" && !sightFrom) {

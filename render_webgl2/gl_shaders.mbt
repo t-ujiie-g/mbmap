@@ -97,6 +97,24 @@ extern "js" fn create_gl(
   #|    "float sunlit() { float s = seen(); return u_shadow_mode == 3 || s < 0.0 ? 1.0 : 1.0 - u_shadow_k.x * (1.0 - s); }" +
   #|    "vec3 seenTint(float s) { return s > 0.5 ? vec3(0.2, 0.8, 0.3) : vec3(0.9, 0.2, 0.15); }" +
   #|    "vec4 tint(vec4 c) { float s = u_shadow_mode == 3 ? seen() : -1.0; return s < 0.0 ? c : vec4(mix(c.rgb, seenTint(s) * c.a, u_shadow_k.x), c.a); }";
+  #|  // Clipping (Cesium's ClippingPlaneCollection and ClippingPolygonCollection): v_cut is east, north, up meters
+  #|  // at the origin (u_cut_frame) and the clip w; the side of a plane where n·p + d > 0 is kept, by every plane
+  #|  // (u_cut_union) or any; polygon rings (pairs in u_cut_poly) cut inside, or with u_cut_inverse outside; a band
+  #|  // u_cut_edge.w pixels wide by the planes (u_cut_mpp meters per pixel per unit w) takes u_cut_edge's color.
+  #|  const cutVs = "uniform mat4 u_cut_frame; out vec4 v_cut;";
+  #|  const cutFs = "uniform int u_cut_count; uniform bool u_cut_union; uniform vec4 u_cut_planes[16]; uniform vec4 u_cut_edge;" +
+  #|    "uniform float u_cut_mpp; uniform int u_cut_rings[8]; uniform int u_cut_ring_count; uniform vec4 u_cut_poly[32]; uniform bool u_cut_inverse; in vec4 v_cut;" +
+  #|    "vec2 cutVertex(int i) { vec4 v = u_cut_poly[i / 2]; return i % 2 == 0 ? v.xy : v.zw; }" +
+  #|    "bool inRings(vec2 p) { int start = 0; for (int r = 0; r < 8; r++) { if (r >= u_cut_ring_count) break; int n = u_cut_rings[r]; bool inside = false;" +
+  #|    "  for (int i = 0; i < 64; i++) { if (i >= n) break; vec2 a = cutVertex(start + i), b = cutVertex(start + (i + 1) % n);" +
+  #|    "    if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside; }" +
+  #|    "  if (inside) return true; start += n; } return false; }" +
+  #|    "vec4 cut(vec4 c) { if (u_cut_ring_count > 0 && inRings(v_cut.xy) != u_cut_inverse) discard; if (u_cut_count == 0) return c;" +
+  #|    "  float amount = u_cut_union ? 1e30 : -1e30;" +
+  #|    "  for (int i = 0; i < 16; i++) { if (i >= u_cut_count) break;" +
+  #|    "    float d = (dot(u_cut_planes[i].xyz, v_cut.xyz) + u_cut_planes[i].w) / (v_cut.w * u_cut_mpp); amount = u_cut_union ? min(amount, d) : max(amount, d); }" +
+  #|    "  if (amount <= 0.0) discard; return amount < u_cut_edge.w ? vec4(u_cut_edge.rgb, 1.0) : c; }";
+  #|  const cutUniforms = ["u_cut_frame", "u_cut_count", "u_cut_union", "u_cut_planes", "u_cut_edge", "u_cut_mpp", "u_cut_rings", "u_cut_ring_count", "u_cut_poly", "u_cut_inverse"];
   #|  const shadowUniforms = ["u_shadow_mode", "u_shadow", "u_shadow_globe", "u_shadow_pass", "u_shadow_map", "u_shadow_k"];
   #|  // Paint values: each slot holds a value and the next along its zoom curve,
   #|  // mixed by u_t (one per slot); colors are straight RGBA, premultiplied here.
@@ -362,7 +380,7 @@ extern "js" fn create_gl(
   #|  // ground (m) under the centroid times u_ground (0 without terrain, which also
   #|  // skips the 10 m basement), u_scale world pixels per meter.
   #|  const extrusion = program(
-  #|    proj + shadowVs + "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele;" +
+  #|    proj + shadowVs + cutVs + "in vec2 a_pos; in ivec3 a_normal; in vec4 a_heights; in float a_ele;" +
   #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
   #|    "uniform float u_opacity; uniform vec3 u_color; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_color; out vec3 v_sun; out vec2 v_pos;" +
@@ -373,6 +391,7 @@ extern "js" fn create_gl(
   #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
   #|    "  float t = float(a_normal.x & 1); v_pos = a_pos;" +
   #|    "  float elevation = t > 0.0 ? height : base; gl_Position = project3d(a_pos, elevation, elevation * u_scale);" +
+  #|    "  v_cut = vec4((u_cut_frame * vec4(a_pos, elevation * u_scale, 1.0)).xyz, gl_Position.w);" +
   #|    "  v_shadow = shadowAt(a_pos, elevation, elevation * u_scale); if (u_shadow_pass) gl_Position = v_shadow;" +
   #|    "  vec3 color = u_color; float colorvalue = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;" +
   #|    "  v_color = vec4(0.0, 0.0, 0.0, 1.0); color += vec3(0.03);" +
@@ -386,14 +405,14 @@ extern "js" fn create_gl(
   #|    "  v_color.rgb += clamp(color * directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0));" +
   #|    "  v_sun = vec3(0.0); if (u_ambient.a > 0.5) { v_color.rgb = u_color * u_ambient.rgb; v_sun = u_color * u_sun * lambert * u_opacity; }" +
   #|    "  v_color *= u_opacity; }",
-  #|    clip + shadowFs + "in vec4 v_color; in vec3 v_sun; out vec4 o; void main() { if (outside()) discard; o = tint(v_color + vec4(v_sun * sunlit(), 0.0)); }",
-  #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|    clip + shadowFs + cutFs + "in vec4 v_color; in vec3 v_sun; out vec4 o; void main() { if (outside()) discard; o = cut(tint(v_color + vec4(v_sun * sunlit(), 0.0))); }",
+  #|    [...projUniforms, ...shadowUniforms, ...cutUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_color", "u_lightpos_globe", "u_ambient", "u_sun"]);
   #|  // MapLibre's fill_extrusion_pattern: roofs take the pattern in tile units,
   #|  // walls along their distance (a_normal.w, in tile units) and height (u_height_factor); its
   #|  // light differs from the plain one's.
   #|  const extrusionPattern = program(
-  #|    proj + shadowVs + patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele;" +
+  #|    proj + shadowVs + cutVs + patternPos + "in vec2 a_pos; in ivec4 a_normal; in vec4 a_heights; in float a_ele;" +
   #|    "uniform float u_t; uniform float u_scale; uniform float u_ground; uniform vec3 u_lightpos; uniform vec3 u_lightpos_globe;" +
   #|    "uniform float u_lightintensity; uniform vec3 u_lightcolor; uniform float u_vertical_gradient;" +
   #|    "uniform float u_opacity; uniform float u_height_factor; uniform vec4 u_ambient; uniform vec3 u_sun; out vec4 v_light; out vec3 v_sun; out vec2 v_pos; out vec2 v_pat;" +
@@ -404,6 +423,7 @@ extern "js" fn create_gl(
   #|    "  base = max(0.0, base) + bottom; height = max(0.0, height) + top;" +
   #|    "  float t = float(a_normal.x & 1); float elevation = t > 0.0 ? height : base; v_pos = a_pos;" +
   #|    "  gl_Position = project3d(a_pos, elevation, elevation * u_scale);" +
+  #|    "  v_cut = vec4((u_cut_frame * vec4(a_pos, elevation * u_scale, 1.0)).xyz, gl_Position.w);" +
   #|    "  v_shadow = shadowAt(a_pos, elevation, elevation * u_scale); if (u_shadow_pass) gl_Position = v_shadow;" +
   #|    "  bool roof = a_normal.x == 1 && a_normal.y == 0 && a_normal.z == 16384;" +
   #|    "  v_pat = patternPos(roof ? a_pos : vec2(float(a_normal.w), elevation * u_height_factor));" +
@@ -416,9 +436,9 @@ extern "js" fn create_gl(
   #|    "    clamp((t + gradient_base) * pow(gradient_height / 150.0, 0.5), mix(0.7, 0.98, 1.0 - u_lightintensity), 1.0);" +
   #|    "  v_light = vec4(clamp(directional * u_lightcolor, mix(vec3(0.0), vec3(0.3), 1.0 - u_lightcolor), vec3(1.0)), 1.0) * u_opacity;" +
   #|    "  v_sun = vec3(0.0); if (u_ambient.a > 0.5) { v_light = vec4(u_ambient.rgb, 1.0) * u_opacity; v_sun = u_sun * lambert * u_opacity; } }",
-  #|    clip + shadowFs + patternColor + "in vec4 v_light; in vec3 v_sun; in vec2 v_pat; out vec4 o;" +
-  #|    "void main() { if (outside()) discard; vec4 c = patternColor(v_pat, vec4(0.0), 1.0); o = tint(c * v_light + vec4(c.rgb * v_sun * sunlit(), 0.0)); }",
-  #|    [...projUniforms, ...shadowUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
+  #|    clip + shadowFs + cutFs + patternColor + "in vec4 v_light; in vec3 v_sun; in vec2 v_pat; out vec4 o;" +
+  #|    "void main() { if (outside()) discard; vec4 c = patternColor(v_pat, vec4(0.0), 1.0); o = cut(tint(c * v_light + vec4(c.rgb * v_sun * sunlit(), 0.0))); }",
+  #|    [...projUniforms, ...shadowUniforms, ...cutUniforms, "u_clip", "u_t", "u_scale", "u_ground", "u_lightpos", "u_lightintensity", "u_lightcolor",
   #|     "u_vertical_gradient", "u_opacity", "u_height_factor", "u_lightpos_globe", "u_ambient", "u_sun", ...patternUniforms]);
   #|  // MapLibre's hillshade.fragment.glsl over the tile's quad: v_tex runs 0-1 across the
   #|  // slopes inside their border, u_lat is the tile's north and south latitude; u_method numbers
@@ -718,6 +738,24 @@ extern "js" fn create_gl(
   #|  const tileShadow = new Float32Array(16);
   #|  c.shadowSize = SHADOW_SIZE;
   #|  c.shadow = { mode: 0, globe: new Float32Array(16), k: [0, 0] };
+  #|  // The frame's clipping (`set_cut`): its count, union, planes, edge, meters per pixel, rings and polygon.
+  #|  const tileCut = new Float32Array(16);
+  #|  c.cut = { count: 0, union: false, planes: new Float32Array(64), edge: [0, 0, 0, 0], mpp: 1, rings: new Int32Array(8), ringCount: 0, poly: new Float32Array(128), inverse: false };
+  #|  c.cutUniforms = (p, frame) => {
+  #|    const k = c.cut;
+  #|    gl.uniform1i(p.u_cut_count, k.count);
+  #|    gl.uniform1i(p.u_cut_ring_count, k.ringCount);
+  #|    if (!k.count && !k.ringCount) return;
+  #|    tileCut.set(frame);
+  #|    gl.uniformMatrix4fv(p.u_cut_frame, false, tileCut);
+  #|    gl.uniform1i(p.u_cut_union, k.union ? 1 : 0);
+  #|    gl.uniform4fv(p.u_cut_planes, k.planes);
+  #|    gl.uniform4f(p.u_cut_edge, k.edge[0], k.edge[1], k.edge[2], k.edge[3]);
+  #|    gl.uniform1f(p.u_cut_mpp, k.mpp);
+  #|    gl.uniform1iv(p.u_cut_rings, k.rings);
+  #|    gl.uniform4fv(p.u_cut_poly, k.poly);
+  #|    gl.uniform1i(p.u_cut_inverse, k.inverse ? 1 : 0);
+  #|  };
   #|  c.shadowUniforms = (p, tile, pass) => {
   #|    const s = c.shadow;
   #|    gl.uniform1i(p.u_shadow_mode, s.mode);

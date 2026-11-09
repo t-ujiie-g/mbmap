@@ -43,6 +43,7 @@ declare module "mbmap-engine" {
   export function map_pick_position(map: EngineMap, x: number, y: number): number[];
   export function map_cast_ray(map: EngineMap, points: number[], margin: number): number[];
   export function map_set_viewshed(map: EngineMap, v: number[]): void;
+  export function map_set_clipping(map: EngineMap, c: number[]): void;
   export function map_is_idle(map: EngineMap): boolean;
   export function map_constrained_zoom(map: EngineMap, zoom: number): number;
   export function map_paint_at(map: EngineMap, id: string, props: Record<string, unknown>): PaintValues | null;

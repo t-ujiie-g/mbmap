@@ -67,6 +67,20 @@ export async function modelChecks(page) {
   });
   const [before, behind] = await Promise.all(sight.points.map((p) => pixel(page, p.x, p.y)));
   await page.evaluate(() => window.__map.setViewshed(null));
+  // Clipping: a plane through the block keeps its north half (its south roof is gone), with an orange edge along
+  // the cut; a polygon cuts the west box away. bench/sight/golden.mjs and bench/cesium/clip.mjs check the shapes.
+  const clipped = await page.evaluate(async () => {
+    const map = window.__map;
+    map.setClipping({ origin: [139.7676, 35.68075, 0], planes: [[0, 1, 0, 0]], edgeWidth: 3, edgeColor: [1, 0.5, 0], polygons: [[[139.7667, 35.68095], [139.7675, 35.68095], [139.7675, 35.6815], [139.7667, 35.6815]]] });
+    await window.__settled();
+    return [[139.7676, 35.68085], [139.7676, 35.68064], [139.7671, 35.6812]].map((p) => map.project(p));
+  });
+  const [kept, cutAway, boxGone] = await Promise.all(clipped.map((p) => pixel(page, p.x, p.y)));
+  const { decodePng } = await import("../../lib/png.mjs");
+  const { rgba } = decodePng(await page.screenshot());
+  let edges = 0;
+  for (let i = 0; i < rgba.length; i += 4) if (rgba[i] > 240 && Math.abs(rgba[i + 1] - 128) < 8 && rgba[i + 2] < 10) edges++;
+  await page.evaluate(() => window.__map.setClipping(null));
   const half = (a, b) => a.every((v, i) => Math.abs(v * 0.5 - b[i]) <= 2);
   const loaded = await page.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name.split("/").pop()).filter((n) => /^3d|box/.test(n)));
   await page.evaluate(async () => {
@@ -100,6 +114,7 @@ export async function modelChecks(page) {
     near(shaded[4], [16, 64, 96]) && near(shaded[5], [27, 109, 164]) &&
     near(globeShaded[0], [ground, ground, ground]) && near(globeShaded[1], white) &&
     Math.abs(sight.roof[2] - 20) < 0.05 && !sight.blocked.visible && Math.abs(sight.blocked.obstruction[0] - 139.7674) < 1e-6 &&
-    sight.clear.visible && Math.abs(sight.height - 20) < 0.05 && before[1] > before[0] + 30 && behind[0] > behind[1] + 30;
-  return [ok, { square, turned, loaded, globe, space, ambient, halved, noon, noonPixel, shaded, globeShaded, sight, before, behind }];
+    sight.clear.visible && Math.abs(sight.height - 20) < 0.05 && before[1] > before[0] + 30 && behind[0] > behind[1] + 30 &&
+    kept[2] > 150 && kept[0] < 60 && near(cutAway, white) && near(boxGone, white) && edges > 20;
+  return [ok, { square, turned, loaded, globe, space, ambient, halved, noon, noonPixel, shaded, globeShaded, sight, before, behind, kept, cutAway, boxGone, edges }];
 }

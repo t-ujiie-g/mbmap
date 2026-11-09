@@ -177,15 +177,83 @@ ground.forEach((p, i) => {
     if (viewshed.examples.length < 5) viewshed.examples.push({ point: p, want, shown, color: c });
   }
 });
+// Clipping (Map.setClipping): the same segments meet only what is kept, the inside of a cut box included.
+const CLIPS = [
+  { origin: [...CENTER, 0], planes: [[0, 1, 0, -5], [0, 0, -1, 20]] },
+  { origin: [...CENTER, 0], unionClippingRegions: true, planes: [[1, 0, 0, 80], [-1, 0, 0, 80], [0, 1, 0, 80], [0, -1, 0, 80]], polygons: [[[139.7667, 35.6805], [139.7672, 35.6805], [139.7672, 35.681], [139.7667, 35.681]]] },
+  { origin: [...CENTER, 10], polygons: [[[139.7659, 35.6799], [139.7666, 35.6799], [139.7666, 35.6805]]], inverse: true },
+];
+/** Whether local point `p` is kept by clipping `c`, as its shaders decide (east, north, up meters at its origin). */
+function kept(p, c) {
+  const o = toLocal(c.origin);
+  const m = 2 * Math.PI * 6371008.8 * Math.cos((c.origin[1] * Math.PI) / 180);
+  const [e, n, u] = [(p[0] - o[0]) * m, -(p[1] - o[1]) * m, p[2] - o[2]];
+  const rings = (c.polygons ?? []).map((r) => r.map((q) => toLocal([...q, 0])).map(([x, y]) => [(x - o[0]) * m, -(y - o[1]) * m]));
+  const inside = rings.some((r) => r.reduce((k, a, i) => {
+    const b = r[(i + 1) % r.length];
+    return (a[1] > n) !== (b[1] > n) && e < ((b[0] - a[0]) * (n - a[1])) / (b[1] - a[1]) + a[0] ? !k : k;
+  }, false));
+  if (rings.length && inside !== Boolean(c.inverse)) return false;
+  if (!c.planes?.length) return true;
+  const sides = c.planes.map(([x, y, z, d]) => (x * e + y * n + z * u + d) / Math.hypot(x, y, z) > 0);
+  return c.unionClippingRegions ? sides.every(Boolean) : sides.some(Boolean);
+}
+/** The first t where segment a→b meets a box's kept wall or roof (no floor) or the ground, and that face's axis. */
+function firstClippedHit(a, b, c) {
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  let best = d[2] < 0 && a[2] >= 0 ? -a[2] / d[2] : Infinity;
+  let axis = 2;
+  const at = (t) => [a[0] + d[0] * t, a[1] + d[1] * t, a[2] + d[2] * t];
+  for (const box of boxes) {
+    const faces = [[0, box.x0, [1, box.y0, box.y1], [2, 0, box.h]], [0, box.x1, [1, box.y0, box.y1], [2, 0, box.h]], [1, box.y0, [0, box.x0, box.x1], [2, 0, box.h]], [1, box.y1, [0, box.x0, box.x1], [2, 0, box.h]], [2, box.h, [0, box.x0, box.x1], [1, box.y0, box.y1]]];
+    for (const [k, v, [i, i0, i1], [j, j0, j1]] of faces) {
+      if (d[k] === 0) continue;
+      const t = (v - a[k]) / d[k];
+      if (t < 0 || t > 1 || t >= best) continue;
+      const p = at(t);
+      if (p[i] >= i0 && p[i] <= i1 && p[j] >= j0 && p[j] <= j1 && kept(p, c)) [best, axis] = [t, k];
+    }
+  }
+  return best <= 1 ? { t: best, axis } : null;
+}
+const clipped = { count: 0, hits: 0, differ: 0, worst: 0, examples: [] };
+for (const c of CLIPS) {
+  await page.evaluate(async (c) => {
+    window.__map.setViewshed(null);
+    window.__map.setClipping(c);
+    await window.__settled();
+  }, c);
+  const got = await page.evaluate((s) => s.map(([a, b]) => window.__map.castRay(a, b, 0)), segments);
+  segments.forEach(([a, b], i) => {
+    const hit = firstClippedHit(toLocal(a), toLocal(b), c);
+    const want = hit && toPlace(toLocal(a).map((v, k) => v + (toLocal(b)[k] - v) * hit.t));
+    // A ray grazing a face (within 15°) meets it up to the ray's 2 cm width over the sine earlier.
+    const dm = [0, 1, 2].map((k) => (toLocal(b)[k] - toLocal(a)[k]) * (k < 2 ? METERS : 1));
+    if (hit && Math.abs(dm[hit.axis]) / Math.hypot(...dm) < Math.sin(Math.PI / 12)) return;
+    // A hit by an end, or by a cut (within the tolerance of where it is kept), is ambiguous.
+    if (want && (apart(want, b) < TOLERANCE || apart(want, a) < TOLERANCE)) return;
+    const near = (p) => [[TOLERANCE, 0, 0], [-TOLERANCE, 0, 0], [0, TOLERANCE, 0], [0, -TOLERANCE, 0], [0, 0, TOLERANCE], [0, 0, -TOLERANCE]].map(([x, y, z]) => kept([p[0] + x / METERS, p[1] - y / METERS, p[2] + z], c));
+    if (want && near(toLocal(want)).some((k) => !k)) return;
+    clipped.count++;
+    if (want) clipped.hits++;
+    const error = want && got[i] ? apart(want, got[i]) : want || got[i] ? Infinity : 0;
+    clipped.worst = Math.max(clipped.worst, error === Infinity ? 0 : error);
+    if (error > TOLERANCE) {
+      clipped.differ++;
+      if (clipped.examples.length < 5) clipped.examples.push({ clip: CLIPS.indexOf(c), a, b, want, got: got[i] });
+    }
+  });
+}
 await browser.close();
 server.close();
 
-const results = { rays, picks, viewshed, errors };
+const results = { rays, picks, viewshed, clipped, errors };
 await mkdir(path.join(ROOT, "bench/results"), { recursive: true });
 await writeFile(path.join(ROOT, "bench/results/sight-golden.json"), JSON.stringify({ date: new Date().toISOString(), ...results }, null, 2) + "\n");
 console.log(`rays: ${rays.count} segments, ${rays.hits} hitting, ${rays.differ} differ (worst ${rays.worst.toFixed(4)} m)`);
 console.log(`picks: ${picks.count} points, ${picks.differ} off a surface (worst ${picks.worst.toFixed(4)} m)`);
 console.log(`viewshed: ${viewshed.count} ground points, ${viewshed.differ} differ`);
-for (const e of [...rays.examples, ...picks.examples, ...viewshed.examples]) console.log(JSON.stringify(e));
+console.log(`clipped: ${clipped.count} segments over ${CLIPS.length} clippings, ${clipped.hits} hitting, ${clipped.differ} differ (worst ${clipped.worst.toFixed(4)} m)`);
+for (const e of [...rays.examples, ...picks.examples, ...viewshed.examples, ...clipped.examples]) console.log(JSON.stringify(e));
 if (errors.length) console.log(errors);
-if (rays.differ || picks.differ || viewshed.differ || errors.length || !viewshed.count || !rays.hits) process.exitCode = 1;
+if (rays.differ || picks.differ || viewshed.differ || clipped.differ || errors.length || !viewshed.count || !rays.hits || !clipped.hits) process.exitCode = 1;

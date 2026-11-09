@@ -672,3 +672,10 @@ pub fn map_cast_ray(
 pub fn map_set_viewshed(map : @map.Map, v : FixedArray[Double]) -> Unit {
   map.set_viewshed(if v.length() == 8 { Some(v) } else { None })
 }
+
+///|
+/// Clips extrusions by `c` (`Map::set_clipping`), or nothing when empty.
+#export_name("map_set_clipping")
+pub fn map_set_clipping(map : @map.Map, c : FixedArray[Double]) -> Unit {
+  map.set_clipping(c)
+}

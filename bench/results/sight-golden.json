@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-09T07:28:53.190Z",
+  "date": "2026-11-09T10:39:32.556Z",
   "rays": {
     "count": 400,
     "hits": 155,
@@ -16,6 +16,13 @@
   "viewshed": {
     "count": 130,
     "differ": 0,
+    "examples": []
+  },
+  "clipped": {
+    "count": 1140,
+    "hits": 215,
+    "differ": 0,
+    "worst": 0.04658741338042299,
     "examples": []
   },
   "errors": []
