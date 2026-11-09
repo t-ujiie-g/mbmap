@@ -260,9 +260,10 @@ export class ModelProgram {
       return s;
     };
     const p = gl.createProgram()!;
-    gl.attachShader(p, shader(gl.VERTEX_SHADER, VERTEX));
-    gl.attachShader(p, shader(gl.FRAGMENT_SHADER, FRAGMENT));
+    const shaders = [shader(gl.VERTEX_SHADER, VERTEX), shader(gl.FRAGMENT_SHADER, FRAGMENT)];
+    for (const s of shaders) gl.attachShader(p, s);
     gl.linkProgram(p);
+    for (const s of shaders) gl.deleteShader(s);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(`mbmap: 3d: ${gl.getProgramInfoLog(p)}`);
     this.#program = p;
     this.#u = Object.fromEntries(UNIFORMS.map((u) => [u, gl.getUniformLocation(p, u)])) as Uniforms;

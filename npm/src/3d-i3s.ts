@@ -7,8 +7,10 @@ import type { Material, Primitive } from "./model/gltf";
 import { TilesEngine, type GpuPart, type TileModel, type TileSource, type TilesParts } from "./3d-tiles.js";
 import { nodeResources, readI3sAttribute, type I3sValues } from "./i3s/content";
 import { lodStatus, nodeById, nodeTile, readLayer, resourceUrl, type I3sNode, type I3sScene } from "./i3s/scene";
-import { Traversal, type Tile } from "./tiles/tileset";
+import { lineageHas, Traversal, type Tile } from "./tiles/tileset";
+import { IDENTITY } from "./tiles/geo";
 import { cloudColors, type CloudColor, type CloudPoints } from "./model/cloud";
+import { fetchCapped, fetchJsonCapped } from "./model/fetch";
 
 /** A node's content as the 3D worker's `i3s` op gives it: meters east, north, up of `center`. */
 export interface NodeContent {
@@ -40,19 +42,6 @@ function pointAttributes(scene: I3sScene, resource: number, mode: CloudColor | u
   };
 }
 
-const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-
-async function fetchJson(url: string): Promise<any> {
-  const res = await fetch(url, { credentials: "omit" });
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return res.json();
-}
-
-async function fetchBytes(url: string): Promise<Uint8Array> {
-  const res = await fetch(url, { credentials: "omit" });
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return new Uint8Array(await res.arrayBuffer());
-}
 
 /** Where a layer's resources come from: over HTTP, or out of an SLPK (`json` and `bytes` take the URLs `resourceUrl` makes). */
 interface Resources {
@@ -62,7 +51,7 @@ interface Resources {
   packed: boolean;
 }
 
-const HTTP: Resources = { json: fetchJson, bytes: fetchBytes, packed: false };
+const HTTP: Resources = { json: fetchJsonCapped, bytes: (url) => fetchCapped(url), packed: false };
 
 /** A value of an attribute buffer as a property: bigints as numbers when exact, else as text. */
 const valueOf = (v: unknown) => (typeof v === "bigint" ? (BigInt(Number(v)) === v ? Number(v) : String(v)) : v);
@@ -100,9 +89,10 @@ export async function openI3s(url: string, options: TilesLayerOptions, parts: I3
     scene = readLayer(await r.json("layer"), r.url);
   } else {
     const docUrl = /\.json([?#]|$)/i.test(url) || /[?&]f=/.test(url) ? url : url + (url.includes("?") ? "&" : "?") + "f=json";
-    scene = readLayer(await fetchJson(docUrl), url);
+    scene = readLayer(await fetchJsonCapped(docUrl), url);
   }
   const pending = new Set<Tile>();
+  const failures = new Map<Tile, number>();
   const layer = { spatialReference: scene.json.spatialReference, store: scene.json.store, geometryDefinitions: scene.json.geometryDefinitions, materialDefinitions: scene.json.materialDefinitions, textureSetDefinitions: scene.json.textureSetDefinitions };
   const source: TileSource = {
     root: nodeTile(scene, await nodeById(scene, 0, res.json), null, 0),
@@ -114,10 +104,15 @@ export async function openI3s(url: string, options: TilesLayerOptions, parts: I3
         Promise.all((tile.header.children as number[]).map((id) => nodeById(scene, id, res.json)))
           .then((nodes) => {
             const ids: number[] = tile.header.children;
-            if (tile.children.length === 0) nodes.forEach((node, i) => nodeTile(scene, node, tile, ids[i]));
+            // A node listing one of its ancestors as a child would nest forever.
+            if (tile.children.length === 0) nodes.forEach((node, i) => lineageHas(tile, (t) => t.path === String(ids[i])) || nodeTile(scene, node, tile, ids[i]));
           })
-          .catch(() => {})
-          .finally(repaint);
+          .then(repaint, () => {
+            // Children whose pages failed are asked for again a second later, three times at most.
+            const n = (failures.get(tile) ?? 0) + 1;
+            failures.set(tile, n);
+            if (n < 3) setTimeout(() => (pending.delete(tile), repaint()), 1000);
+          });
       }
     },
     async load(tile, gl): Promise<TileModel> {

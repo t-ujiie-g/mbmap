@@ -75,7 +75,14 @@ export async function nodeById(layer: I3sScene, id: number, fetchJson: (url: str
   const page = Math.floor(id / layer.nodesPerPage);
   let nodes = layer.pages.get(page);
   if (!nodes) {
-    nodes = fetchJson(resourceUrl(layer, `nodepages/${page}`)).then((p) => (Array.isArray(p?.nodes) ? p.nodes : []));
+    // A page that failed is asked for again next time.
+    nodes = fetchJson(resourceUrl(layer, `nodepages/${page}`)).then(
+      (p) => (Array.isArray(p?.nodes) ? p.nodes : []),
+      (e) => {
+        layer.pages.delete(page);
+        throw e;
+      },
+    );
     layer.pages.set(page, nodes);
   }
   const node = (await nodes)[id % layer.nodesPerPage];

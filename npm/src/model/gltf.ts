@@ -1,7 +1,7 @@
-// glTF 2.0 for mbmap/3d: a .glb or .gltf read into flat primitives (each attribute as its own compact
-// typed array, sparse accessors applied, the node's world matrix), materials and image bytes. Buffer
-// views compressed with EXT_meshopt_compression or KHR_meshopt_compression go through `meshopt`;
-// quantized attributes (KHR_mesh_quantization) stay quantized for the GPU. Import-free.
+// glTF 2.0 for mbmap/3d: a .glb or .gltf read into flat primitives (each attribute its own typed array,
+// sparse accessors applied, quantized ones kept), world matrices, materials and image bytes; meshopt
+// buffer views go through `meshopt`.
+import { IDENTITY, multiply } from "../tiles/geo.ts";
 
 /** Components per element of an accessor type. */
 const COMPONENTS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
@@ -166,17 +166,6 @@ const list = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 const int = (v: unknown, fallback = 0): number => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : fallback);
 const num = (v: unknown, fallback: number): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 
-/** Column-major `a` times `b` (4x4). */
-export function multiply(a: ArrayLike<number>, b: ArrayLike<number>): Float64Array {
-  const out = new Float64Array(16);
-  for (let c = 0; c < 4; c++) {
-    for (let r = 0; r < 4; r++) {
-      out[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
-    }
-  }
-  return out;
-}
-
 /** A node's local matrix: its `matrix`, else translation, rotation (a quaternion) and scale. */
 function localMatrix(node: Record<string, any>): Float64Array {
   const m = list(node.matrix);
@@ -314,7 +303,9 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
     const children = new Set(nodes.flatMap((n) => list(n.children)));
     roots = nodes.map((_, i) => i).filter((i) => !children.has(i));
   }
-  const visit = (index: number, parent: Float64Array, depth: number, seen: Set<number>) => {
+  // glTF's nodes form strict trees: a node met twice (a DAG or a cycle) is refused, so the walk stays linear.
+  const seen = new Set<number>();
+  const visit = (index: number, parent: Float64Array, depth: number) => {
     const node = nodes[index];
     if (!node || seen.has(index) || depth > MAX_NODE_DEPTH) throw new Error("the node tree is malformed");
     seen.add(index);
@@ -360,11 +351,9 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
         primitives.push(primitive);
       }
     }
-    for (const child of list(node.children)) visit(int(child, -1), matrix, depth + 1, seen);
-    seen.delete(index);
+    for (const child of list(node.children)) visit(int(child, -1), matrix, depth + 1);
   };
-  const identity = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-  for (const root of roots) visit(root, identity, 0, new Set());
+  for (const root of roots) visit(root, IDENTITY, 0);
   const center = list(obj(obj(gltf.extensions).CESIUM_RTC).center);
   const rtc = center.length === 3 && center.every((v) => typeof v === "number" && Number.isFinite(v)) ? (center as [number, number, number]) : undefined;
   const model: Model = { primitives, materials, images, rtc };

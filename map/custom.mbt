@@ -29,9 +29,8 @@ const CUSTOM_PRERENDER : Int32 = 1
 const CUSTOM_SHADOW : Int32 = 2
 
 ///|
-/// Where `custom_numbers` puts the globe's transition (0 off the globe), its
-/// clipping plane, the lights (a flag, then nine) and, from 86, the shadows; `renderInput`
-/// in `npm/src/custom.ts` reads the same places.
+/// Where `custom_numbers` puts the globe's transition (0 off the globe), its clipping plane, the lights (a
+/// flag, then nine), the shadows, and how many numbers there are; `renderInput` in `npm/src/custom.ts` mirrors them.
 const CUSTOM_TRANSITION : Int32 = 37
 
 ///|
@@ -39,6 +38,12 @@ const CUSTOM_PLANE : Int32 = 72
 
 ///|
 const CUSTOM_LIGHTS : Int32 = 76
+
+///|
+const CUSTOM_SHADOWS : Int32 = 86
+
+///|
+const CUSTOM_NUMBERS : Int32 = 122
 
 ///|
 /// Draws the style's custom layers (`type: "custom"`) through `f` from now on.
@@ -101,7 +106,10 @@ fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
       )
       out.push_iter([direction.0, direction.1, direction.2].iter())
     }
-    None => out.push_iter(FixedArray::make(10, 0.0).iter())
+    None =>
+      out.push_iter(
+        FixedArray::make(CUSTOM_SHADOWS - CUSTOM_LIGHTS, 0.0).iter(),
+      )
   }
   match self.shadows {
     Some(s) => {
@@ -119,7 +127,10 @@ fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
         s.sphere.map(v => v.matrix).unwrap_or(@core.Mat4::identity()).m.iter(),
       )
     }
-    None => out.push_iter(FixedArray::make(36, 0.0).iter())
+    None =>
+      out.push_iter(
+        FixedArray::make(CUSTOM_NUMBERS - CUSTOM_SHADOWS, 0.0).iter(),
+      )
   }
   FixedArray::from_array(out)
 }

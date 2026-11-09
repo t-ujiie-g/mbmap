@@ -6,6 +6,7 @@ import type { Material, Primitive } from "./model/gltf";
 import { ModelProgram, releaseModel, uploadModel, type GpuModel } from "./model/draw";
 import { Y_UP, triple, mercatorFrame, placement, points, sphereFrame, value, type Value } from "./model/place";
 import type { Tile } from "./tiles/tileset";
+import { IDENTITY } from "./tiles/geo";
 import type { TilesEngine } from "./3d-tiles";
 import type { I3sParts } from "./3d-i3s";
 import { crsArg, type Crs } from "./crs";
@@ -13,7 +14,6 @@ import { cloudColors, type CloudColor } from "./model/cloud";
 import { wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
 
-/** Where the 3D worker (`workerUrl`) and its wasm (`wasmUrl`) are served; by default next to this module. */
 /** What the layers ask of the map they are on. */
 interface MapLike {
   triggerRepaint?(): void;
@@ -31,6 +31,7 @@ function clipOf(map: MapLike | null, gl: WebGL2RenderingContext, input: CustomRe
   return { cut, mpp: (2 * Math.tan(input.fov / 2)) / height / ppm };
 }
 
+/** Where the 3D worker (`workerUrl`) and its wasm (`wasmUrl`) are served; by default next to this module. */
 export interface ModelOptions {
   workerUrl?: string | URL;
   wasmUrl?: string | URL;
@@ -224,7 +225,6 @@ interface LoadedCloud {
   bounds: [number, number, number, number, number, number];
 }
 
-const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
 /** A custom layer drawing a LAS point cloud (`pointCloudLayer`). */
 export class PointCloudLayer implements CustomLayerInterface {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { boundingVolume, distanceSquaredTo, eastNorthUp, intersectPlane, INSIDE, INTERSECTING, MASK_INSIDE, MASK_OUTSIDE, OUTSIDE, planeFromPointNormal, toCartesian, toCartographic, visibilityWithPlaneMask } from "../src/tiles/geo.ts";
-import { buildTree, Traversal, type FrameState } from "../src/tiles/tileset.ts";
+import { buildTree, lineageHas, Traversal, type FrameState } from "../src/tiles/tileset.ts";
 import { expandImplicit, readSubtree } from "../src/tiles/implicit.ts";
 import { frameState, invert } from "../src/tiles/frame.ts";
 import { readTileContent, splitB3dm } from "../src/tiles/content.ts";
@@ -137,6 +137,10 @@ test("readSubtree reads bitstreams and constants; expandImplicit splits regions 
   assert.deepEqual(child.boundingVolume.region, [0.5, 0.5, 1, 1, 0, 10]);
   assert.equal(child.geometricError, 32);
   assert.equal(child.content.uri, "http://x/t/c/1/1/1.glb");
+  for (const bad of [{ subtreeLevels: 0 }, { subtreeLevels: 11 }, { availableLevels: 32 }, { subtreeLevels: 1.5 }]) {
+    const h = { ...header, implicitTiling: { ...header.implicitTiling, ...bad } };
+    await assert.rejects(expandImplicit(h, "http://x/t/tileset.json", "REPLACE", async () => file), /subtreeLevels from 1 to 10/);
+  }
   await assert.rejects(readSubtree(subtreeFile({}, new Uint8Array()).subarray(0, 30).map((v, i) => (i === 4 ? 2 : v)), async () => new Uint8Array()), /version 1/);
 });
 
@@ -373,4 +377,12 @@ test("readTileContent of a cmpt gives its inner tiles as parts, nested ones flat
   const unknown = cmpt([b3dm]);
   words(unknown.subarray(16), 0x12345678);
   await assert.rejects(readTileContent(unknown, loadAny), /neither b3dm/);
+});
+
+test("lineageHas finds a tile among its ancestors", () => {
+  const root = buildTree({ asset: { version: "1.0" }, root: { geometricError: 1, boundingVolume: { sphere: [0, 0, 0, 1] }, content: { uri: "a.json" }, children: [{ geometricError: 0, boundingVolume: { sphere: [0, 0, 0, 1] } }] } }, "http://x/t.json");
+  const child = root.children[0];
+  assert.ok(lineageHas(child, (t) => t.contentUrl === "http://x/a.json"));
+  assert.ok(!lineageHas(child, (t) => t.contentUrl === "http://x/b.json"));
+  assert.ok(!lineageHas(null, () => true));
 });

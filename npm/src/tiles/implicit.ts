@@ -99,6 +99,10 @@ export async function expandImplicit(header: Record<string, any>, base: string, 
   const bits = octree ? 3 : 2;
   const maximumLevel = Number.isFinite(imp.availableLevels) ? imp.availableLevels - 1 : imp.maximumLevel;
   const subtreeLevels = imp.subtreeLevels;
+  // Morton indices and tile coordinates stay within 32-bit integers.
+  if (!Number.isInteger(subtreeLevels) || subtreeLevels < 1 || subtreeLevels > 10 || !Number.isInteger(maximumLevel) || maximumLevel < 0 || maximumLevel > 30) {
+    throw new Error("implicit tiling needs subtreeLevels from 1 to 10 and levels up to 30");
+  }
   // Templates are resolved once filled in: `new URL` would percent-encode their braces.
   const subtreeTemplate = String(imp.subtrees?.uri ?? "");
   const contentTemplate = typeof header.content?.uri === "string" ? header.content.uri : "";
@@ -114,7 +118,7 @@ export async function expandImplicit(header: Record<string, any>, base: string, 
   const visit = async (subtree: Subtree, at: Place, parent: Parent, child: number): Promise<Record<string, any> | null> => {
     const local = parent.local + 1;
     const level = at.level + local;
-    if (!Number.isFinite(maximumLevel) || level > maximumLevel) return null;
+    if (level > maximumLevel) return null;
     const lx = (parent.lx << 1) + (child & 1);
     const ly = (parent.ly << 1) + ((child >> 1) & 1);
     const lz = (parent.lz << 1) + ((child >> 2) & 1);

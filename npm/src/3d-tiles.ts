@@ -2,18 +2,16 @@
 // selected each frame, contents asked of the 3D worker and drawn with the model program.
 import type { Clipping } from "./clipping";
 import type { CustomRenderMethodInput } from "./custom";
-
-/** The map's clipping as a layer hands it on (`clipOf` in 3d.ts). */
-type Clip = { cut: Clipping; mpp: number };
 import type { LoadedModel, TilesLayerOptions } from "./3d";
 import type { GpuModel, ModelProgram } from "./model/draw";
 import type { StructuralMetadata } from "./model/gltf";
 import { batchTableProperties, propertyTableProperties } from "./tiles/properties";
-import { Y_UP, mercatorFrame, mul, sphereFrame } from "./model/place";
-import { eastNorthUp, multiply, toCartographic } from "./tiles/geo";
+import { Y_UP, mercatorFrame, sphereFrame } from "./model/place";
+import { eastNorthUp, IDENTITY, multiply, toCartographic } from "./tiles/geo";
 import { frameState } from "./tiles/frame";
 import { expandTileset } from "./tiles/implicit";
-import { buildTree, Traversal, type Tile } from "./tiles/tileset";
+import { buildTree, lineageHas, MAX_TILESET_DEPTH, Traversal, type Tile } from "./tiles/tileset";
+import { fetchCapped } from "./model/fetch";
 
 /** What the layer lends the engine: the 3D worker's `tile` call, the model upload, a repaint. */
 export interface TilesParts {
@@ -23,12 +21,13 @@ export interface TilesParts {
   repaint(): void;
 }
 
+/** The map's clipping as a layer hands it on (`clipOf` in 3d.ts). */
+type Clip = { cut: Clipping; mpp: number };
+
 /** Contents loading at once. */
 const MAX_LOADS = 6;
 
-const IDENTITY = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
-/** A loaded tile's model on the GPU and where its meters (east, north, up) stand. */
 /** A part of a tile's content as the 3D worker gives it: a b3dm, i3dm, pnts or glTF (a cmpt's are several). */
 export interface ContentPart extends LoadedModel {
   kind: "b3dm" | "i3dm" | "pnts" | "glTF";
@@ -58,6 +57,7 @@ export interface Hit extends Picked {
   feature: number;
 }
 
+/** A loaded tile's model on the GPU and where its meters (east, north, up) stand. */
 export interface TileModel {
   parts: GpuPart[];
   lng: number;
@@ -65,13 +65,7 @@ export interface TileModel {
   height: number;
 }
 
-const fetchBytes = async (url: string): Promise<Uint8Array> => {
-  const u = new URL(url);
-  if (!/^(https?|blob|data):$/.test(u.protocol)) throw new Error(`cannot load ${u.protocol} URLs`);
-  const res = await fetch(u, { credentials: "omit" });
-  if (!res.ok) throw new Error(`${u.href}: HTTP ${res.status}`);
-  return new Uint8Array(await res.arrayBuffer());
-};
+const fetchBytes = (url: string): Promise<Uint8Array> => fetchCapped(url);
 
 /** The rigid transform's inverse (rotation transposed), column-major. */
 function rigidInverse(m: ArrayLike<number>): Float64Array {
@@ -107,6 +101,8 @@ export interface TileSource {
 async function loadTile3D(tile: Tile, gl: WebGL2RenderingContext, parts: TilesParts): Promise<TileModel | null> {
   const url = tile.contentUrl!;
   if (/\.json([?#]|$)/i.test(url)) {
+    let depth = 0;
+    if (lineageHas(tile.parent, (t) => t.contentUrl === url || (t.isTileset && ++depth >= MAX_TILESET_DEPTH))) throw new Error(`${url}: external tilesets nest in a cycle or too deep`);
     buildTree(await expandTileset(JSON.parse(new TextDecoder().decode(await fetchBytes(url))), url, fetchBytes), url, tile);
     tile.isTileset = true;
     return null;
@@ -117,7 +113,18 @@ async function loadTile3D(tile: Tile, gl: WebGL2RenderingContext, parts: TilesPa
   const center = tile.volume.center;
   const carto = toCartographic(center) ?? [0, 0, 0];
   const base = multiply(rigidInverse(eastNorthUp(center)), tile.transform);
-  const gpuParts = content.parts.map((part): GpuPart => {
+  const gpuParts: GpuPart[] = [];
+  try {
+    for (const part of content.parts) gpuParts.push(placePart(part));
+  } catch (e) {
+    for (const p of gpuParts) parts.release(gl, p.gpu);
+    throw e;
+  } finally {
+    for (const part of content.parts) for (const image of part.images) image.close();
+  }
+  return { parts: gpuParts, lng: carto[0], lat: carto[1], height: carto[2] };
+
+  function placePart(part: (typeof content.parts)[number]): GpuPart {
     let places: Float64Array[];
     if (part.instances) {
       const m = part.instances.matrices;
@@ -127,8 +134,7 @@ async function loadTile3D(tile: Tile, gl: WebGL2RenderingContext, parts: TilesPa
       places = [part.kind === "pnts" ? placed : multiply(placed, Y_UP)];
     }
     return { gpu: parts.upload(gl, part, IDENTITY), places, batchIds: part.instances?.batchIds ?? null, properties: propertiesOf(part) };
-  });
-  return { parts: gpuParts, lng: carto[0], lat: carto[1], height: carto[2] };
+  }
 }
 
 /** Reads the tileset at `url` (implicit tiling expanded) and returns its engine. */
@@ -191,7 +197,10 @@ export class TilesEngine {
     const canvas = gl.canvas as HTMLCanvasElement;
     const globe = t > 0.5;
     const frame = frameState(globe ? options.modelViewProjectionMatrix : flat, canvas.clientHeight || gl.drawingBufferHeight, globe, canvas.clientWidth || gl.drawingBufferWidth);
-    if (!frame) return;
+    if (!frame) {
+      for (const p of this.#picks.splice(0)) p.resolve(null);
+      return;
+    }
     this.#traversal.traverse(this.#source.root, frame);
     this.#source.expand?.(this.#traversal.expand, this.#parts.repaint);
     const wanted = [...this.#traversal.requested.values()].sort((a, b) => a.distance - b.distance);

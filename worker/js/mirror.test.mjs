@@ -99,3 +99,12 @@ test("values.mjs reads core's value tags", () => {
   assert.equal(js.length, 5);
   for (const [name, tag] of js) assert.equal(tag, core[name], name);
 });
+
+test("custom.ts and the 3D model program mirror the custom layers' numbers and the shadow map's size", () => {
+  const custom = moonConsts("../../map/custom.mbt");
+  const ts = jsConsts("../../npm/src/custom.ts");
+  for (const name of ["CUSTOM_TRANSITION", "CUSTOM_PLANE", "CUSTOM_LIGHTS", "CUSTOM_SHADOWS"]) assert.equal(ts[name], custom[name], name);
+  // The shadows: mode, intensity, ground, texel, then two matrices.
+  assert.equal(custom.CUSTOM_NUMBERS, custom.CUSTOM_SHADOWS + 4 + 32);
+  assert.equal(jsConsts("../../npm/src/model/draw.ts").SHADOW_SIZE, moonConsts("../../core/shadow.mbt").SHADOW_MAP_SIZE);
+});

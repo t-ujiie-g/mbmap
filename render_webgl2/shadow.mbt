@@ -201,10 +201,13 @@ extern "js" fn gl_set_cut(
   #|  const k = c.cut;
   #|  k.count = 0;
   #|  k.ringCount = 0;
-  #|  if (!n.length) return;
+  #|  if (n.length < 8) return;
   #|  k.union = n[0] > 0; k.inverse = n[1] > 0; k.edge = [n[3], n[4], n[5], n[2]]; k.mpp = mpp;
-  #|  // The facade keeps to 16 planes, 8 rings and 64 vertices.
+  #|  // At most 16 planes, 8 rings and 64 vertices (the shaders' arrays); anything else clips nothing.
   #|  const planes = n[6], rings = n[7 + 4 * planes];
+  #|  if (!(planes >= 0 && planes <= 16 && rings >= 0 && rings <= 8 && n.length - 8 - 4 * planes - rings <= 128)) return;
+  #|  const sizes = n.slice(8 + 4 * planes, 8 + 4 * planes + rings);
+  #|  if (sizes.some((r) => !(r >= 0)) || sizes.reduce((a, r) => a + r, 0) > 64) return;
   #|  k.count = planes;
   #|  k.planes.fill(0);
   #|  k.planes.set(n.slice(7, 7 + 4 * planes));
