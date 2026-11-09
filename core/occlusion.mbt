@@ -239,3 +239,50 @@ pub fn Transform::unproject_on(
   }
   m.to_lnglat()
 }
+
+///|
+/// The ray under screen point (x, y): its start on the near plane (world pixels relative to the
+/// center, z up), its direction (unit) and its length to the far plane.
+pub fn Transform::eye_ray(
+  self : Transform,
+  x : Double,
+  y : Double,
+) -> ((Double, Double, Double), (Double, Double, Double), Double) {
+  let (ax, ay, az, bx, by, bz) = self.screen_ray(x, y)
+  let (dx, dy, dz) = (bx - ax, by - ay, bz - az)
+  let length = (dx * dx + dy * dy + dz * dz).sqrt()
+  ((ax, ay, az), (dx / length, dy / length, dz / length), length)
+}
+
+///|
+/// How far along the ray from `from` (world pixels relative to the center, z
+/// up) toward `dir` (unit) it first meets `terrain`, or without terrain the
+/// sea-level plane, within `length`; None if it does not.
+pub fn Transform::ground_hit(
+  self : Transform,
+  from : (Double, Double, Double),
+  dir : (Double, Double, Double),
+  length : Double,
+  terrain : Terrain?,
+) -> Double? {
+  match terrain {
+    Some(t) => {
+      let ray = {
+        near: from,
+        delta: (dir.0 * length, dir.1 * length, dir.2 * length),
+      }
+      self.raycast(t, ray).map(f => f * length)
+    }
+    None => {
+      if dir.2 >= 0.0 || from.2 < 0.0 {
+        return None
+      }
+      let d = -from.2 / dir.2
+      if d <= length {
+        Some(d)
+      } else {
+        None
+      }
+    }
+  }
+}

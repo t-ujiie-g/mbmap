@@ -1,18 +1,59 @@
 ///|
-/// The frame's shadows: the shadow map's view over world pixels (`flat`) and,
-/// on the globe past half its transition, over the unit sphere (`sphere`, which
-/// is then used); how dark they are, and the sun's share of the ground's light.
+/// The frame's shadows: the shadow map's view over world pixels (`flat`) and, on the globe past half its
+/// transition, over the unit sphere (`sphere`, which is then used); how dark they are, the sun's share of the
+/// ground's light; or with `spot` a viewshed's view, `ground` the strength of its tint.
 priv struct Shadows {
   flat : @core.ShadowView
   sphere : @core.ShadowView?
   intensity : Double
   ground : Double
+  spot : Bool
+}
+
+///|
+/// How strongly a viewshed tints what it covers.
+const VIEWSHED_TINT : Double = 0.4
+
+///|
+/// Shows from now on what is seen from `v` (longitude, latitude, meters up, heading clockwise from north
+/// and pitch up from level, horizontal and vertical field of view, all degrees, and the distance in meters)
+/// instead of the lights' shadows, or none with None.
+pub fn Map::set_viewshed(self : Map, v : FixedArray[Double]?) -> Unit {
+  self.viewshed = v
+  self.request_render()
+}
+
+///|
+/// The viewshed's view for this frame (`set_viewshed`).
+fn Map::viewshed_view(self : Map, v : FixedArray[Double]) -> Shadows {
+  let t = self.transform
+  let ppm = t.pixels_per_meter()
+  let from = self.world_point((v[0], v[1], v[2]))
+  let (heading, pitch) = (@core.radians(v[3]), @core.radians(v[4]))
+  let dir = (
+    @math.sin(heading) * @math.cos(pitch),
+    -@math.cos(heading) * @math.cos(pitch),
+    @math.sin(pitch),
+  )
+  let fov = @core.radians(v[6])
+  let aspect = @math.tan(@core.radians(v[5]) / 2.0) / @math.tan(fov / 2.0)
+  let view = @core.spot_view(from, dir, fov, aspect, ppm, v[7] * ppm)
+  {
+    flat: view,
+    sphere: None,
+    intensity: 1.0,
+    ground: VIEWSHED_TINT,
+    spot: true,
+  }
 }
 
 ///|
 /// The shadows of the style's `lights` for this frame: None without
 /// `cast-shadows`, or with the sun at or below the horizon.
 fn Map::frame_shadows(self : Map) -> Shadows? {
+  if self.viewshed is Some(v) && v.length() == 8 {
+    return Some(self.viewshed_view(v))
+  }
   guard self.style.lights is Some({ shadows: Some(k), .. }) && k > 0.0 else {
     None
   }
@@ -33,6 +74,7 @@ fn Map::frame_shadows(self : Map) -> Shadows? {
     sphere,
     intensity: k,
     ground: direct / (lum(ambient) + direct),
+    spot: false,
   })
 }
 
@@ -57,31 +99,53 @@ fn Map::world_light(self : Map, s : Shadows) -> @core.Mat4 {
 }
 
 ///|
-/// Takes this frame's shadows and, if any, draws the casters (extrusions, and
-/// custom layers through their shadow pass) into the shadow map.
+/// Takes this frame's shadows and, if any, draws the casters into the shadow map.
 fn Map::draw_shadow_map(
   self : Map,
   draws_of : @hashmap.HashMap[String, Array[Draw]],
 ) -> Unit {
   self.shadows = self.frame_shadows()
-  guard self.shadows is Some(s) else {
-    self.renderer.set_shadow(0, @core.Mat4::identity(), 0.0, 0.0)
-    return
+  self.use_shadows()
+  if self.shadows is Some(s) {
+    self.draw_casters(draws_of, s, None)
   }
-  match s.sphere {
-    Some(v) => self.renderer.set_shadow(2, v.matrix, s.intensity, v.texel)
-    None =>
+}
+
+///|
+/// Tells the renderer how draws receive `self.shadows`.
+fn Map::use_shadows(self : Map) -> Unit {
+  let identity = @core.Mat4::identity()
+  match self.shadows {
+    None => self.renderer.set_shadow(0, identity, 0.0, 0.0)
+    Some({ sphere: Some(v), intensity, .. }) =>
+      self.renderer.set_shadow(2, v.matrix, intensity, v.texel)
+    Some({ flat, intensity, spot, .. }) =>
       self.renderer.set_shadow(
-        1,
-        @core.Mat4::identity(),
-        s.intensity,
-        s.flat.texel,
+        if spot {
+          3
+        } else {
+          1
+        },
+        identity,
+        intensity,
+        flat.texel,
       )
   }
+}
+
+///|
+/// Draws the casters (extrusions, and custom layers through their shadow pass)
+/// of `s`'s view into the shadow map, or into its corner `size` texels across.
+fn Map::draw_casters(
+  self : Map,
+  draws_of : @hashmap.HashMap[String, Array[Draw]],
+  s : Shadows,
+  size : Int32?,
+) -> Unit {
   let zoom = self.transform.camera.zoom
   let light = self.extrusion_light()
   let on_terrain = self.terrain_source() is Some(_)
-  self.renderer.begin_shadow_map()
+  self.renderer.begin_shadow_map(size?)
   for index, layer in self.style.layers {
     if zoom < layer.min_zoom || zoom >= layer.max_zoom {
       continue
@@ -96,6 +160,125 @@ fn Map::draw_shadow_map(
     }
   }
   self.renderer.end_shadow_map()
+}
+
+///|
+/// Texels across the corner of the shadow map a ray is drawn into, and its
+/// width either side (meters).
+const RAY_TEXELS : Int32 = 8
+
+///|
+const RAY_PAD : Double = 0.02
+
+///|
+/// Where the segment from `from` to `to` (longitude, latitude, meters up) first meets an extrusion,
+/// a custom layer's casters, the terrain or else sea level, short of `to` by `margin` meters; None if
+/// nothing is in the way. Drawn as the last frame's tiles stand, through the shadow map.
+pub fn Map::cast_ray(
+  self : Map,
+  from : (Double, Double, Double),
+  to : (Double, Double, Double),
+  margin : Double,
+) -> (Double, Double, Double)? {
+  let a = self.world_point(from)
+  let b = self.world_point(to)
+  let (dx, dy, dz) = (b.0 - a.0, b.1 - a.1, b.2 - a.2)
+  let length = (dx * dx + dy * dy + dz * dz).sqrt()
+  guard length > 0.0 else { return None }
+  let dir = (dx / length, dy / length, dz / length)
+  let short = length - margin * self.transform.pixels_per_meter()
+  guard short > 0.0 && self.raycast_px(a, dir, short) is Some(d) else {
+    return None
+  }
+  Some(self.world_place((a.0 + dir.0 * d, a.1 + dir.1 * d, a.2 + dir.2 * d)))
+}
+
+///|
+/// `p` (longitude, latitude, meters up) in world pixels relative to the center, z up.
+fn Map::world_point(
+  self : Map,
+  p : (Double, Double, Double),
+) -> (Double, Double, Double) {
+  let t = self.transform
+  let ws = t.world_size()
+  let c = t.camera.center.to_mercator()
+  let m = ({ lng: p.0, lat: p.1, } : @core.LngLat).to_mercator()
+  ((m.x - c.x) * ws, (m.y - c.y) * ws, p.2 * t.pixels_per_meter())
+}
+
+///|
+/// The longitude, latitude and meters up of world point `p` (as `world_point` gives).
+fn Map::world_place(
+  self : Map,
+  p : (Double, Double, Double),
+) -> (Double, Double, Double) {
+  let t = self.transform
+  let ws = t.world_size()
+  let c = t.camera.center.to_mercator()
+  let m : @core.MercatorCoord = { x: c.x + p.0 / ws, y: c.y + p.1 / ws, }
+  let q = m.to_lnglat()
+  (q.lng, q.lat, p.2 / t.pixels_per_meter())
+}
+
+///|
+/// `raycast` in world pixels relative to the center (z up).
+fn Map::raycast_px(
+  self : Map,
+  from : (Double, Double, Double),
+  dir : (Double, Double, Double),
+  length : Double,
+) -> Double? {
+  let t = self.transform
+  let ground = t.ground_hit(from, dir, length, self.terrain_pick())
+  guard length > 0.0 else { return ground }
+  let view = @core.ray_view(from, dir, length, RAY_PAD * t.pixels_per_meter())
+  let saved = self.shadows
+  let s = {
+    flat: view,
+    sphere: None,
+    intensity: 0.0,
+    ground: 0.0,
+    spot: false,
+  }
+  self.shadows = Some(s)
+  self.use_shadows()
+  self.draw_casters(self.drawn, s, Some(RAY_TEXELS))
+  let depth = self.renderer.shadow_depth_at(RAY_TEXELS / 2, RAY_TEXELS / 2)
+  self.shadows = saved
+  self.use_shadows()
+  // The shadow map now holds the ray: the next frame draws it again.
+  if saved is Some(_) {
+    self.request_render()
+  }
+  let surface = if depth < 1.0 { Some(depth * length) } else { None }
+  match (surface, ground) {
+    (Some(a), Some(b)) => Some(@cmp.minimum(a, b))
+    (Some(a), None) | (None, Some(a)) => Some(a)
+    (None, None) => None
+  }
+}
+
+///|
+/// The point (longitude, latitude, meters up) under screen point (x, y): where
+/// its ray first meets what is drawn (extrusions, custom layers' casters,
+/// terrain, sea level); None if nothing, or on the globe off its ground.
+pub fn Map::pick_position(
+  self : Map,
+  x : Double,
+  y : Double,
+) -> (Double, Double, Double)? {
+  if self.globe is Some(g) && g.is_globe() {
+    let p = g.unproject(x, y)
+    return Some((p.lng, p.lat, 0.0))
+  }
+  let t = self.transform
+  let (from, dir, length) = t.eye_ray(x, y)
+  guard self.raycast_px(from, dir, length) is Some(d) else { return None }
+  Some(
+    self.world_place(
+      (from.0 + dir.0 * d, from.1 + dir.1 * d, from.2 + dir.2 * d),
+    ),
+  )
 }
 
 ///|

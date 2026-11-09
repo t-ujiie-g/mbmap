@@ -42,16 +42,16 @@ fn unit3(a : (Double, Double, Double)) -> (Double, Double, Double) {
 }
 
 ///|
-/// The view along `toward` (unit, to the light) holding `corners` (the
-/// receivers' box), its depth reaching `reach` farther toward the light for
-/// casters; `up` is the local vertical, `east` the axis taken when the light
-/// is straight above.
+/// The view along `toward` (unit, to the light) holding `corners` (the receivers' box) and `pad` more
+/// across, its depth reaching `reach` farther toward the light for casters; `up` is the local vertical,
+/// `east` the axis taken when the light is straight above.
 fn light_view(
   toward : (Double, Double, Double),
   up : (Double, Double, Double),
   east : (Double, Double, Double),
   corners : Array[(Double, Double, Double)],
   reach : Double,
+  pad~ : Double = 0.0,
 ) -> ShadowView {
   let across = cross3(up, toward)
   let right = if dot3(across, across) < 1.0e-12 { east } else { unit3(across) }
@@ -73,6 +73,10 @@ fn light_view(
     z1 = @cmp.maximum(z1, z)
   }
   z1 += reach
+  x0 -= pad
+  x1 += pad
+  y0 -= pad
+  y1 += pad
   let (sx, sy, sz) = (2.0 / (x1 - x0), 2.0 / (y1 - y0), -2.0 / (z1 - z0))
   let m = FixedArray::make(16, 0.0)
   for c, v in [right, side, toward] {
@@ -187,4 +191,58 @@ pub fn Transform::tile_light_matrix(
     0.0,
   )
   .scale(units, units, 1.0)
+}
+
+///|
+/// The view down a ray from `from` (world pixels relative to the center, as `shadow_view`'s) `length`
+/// along `dir` (unit), `pad` across: depth 0 at `from` to 1 at its end, so the first surface on the
+/// ray lies at depth times `length`.
+pub fn ray_view(
+  from : (Double, Double, Double),
+  dir : (Double, Double, Double),
+  length : Double,
+  pad : Double,
+) -> ShadowView {
+  let back = (-dir.0, -dir.1, -dir.2)
+  let to = (
+    from.0 + dir.0 * length,
+    from.1 + dir.1 * length,
+    from.2 + dir.2 * length,
+  )
+  light_view(back, (0.0, 0.0, 1.0), (1.0, 0.0, 0.0), [from, to], 0.0, pad~)
+}
+
+///|
+/// The view from `from` (world pixels relative to the center, z up) looking along `dir` (unit), `fov`
+/// radians across vertically and `aspect` times that horizontally, from `near` to `far` (a perspective,
+/// as a spot light's shadow map; `texel` taken halfway).
+pub fn spot_view(
+  from : (Double, Double, Double),
+  dir : (Double, Double, Double),
+  fov : Double,
+  aspect : Double,
+  near : Double,
+  far : Double,
+) -> ShadowView {
+  let across = cross3(dir, (0.0, 0.0, 1.0))
+  let right = if dot3(across, across) < 1.0e-12 {
+    (1.0, 0.0, 0.0)
+  } else {
+    unit3(across)
+  }
+  let up = cross3(right, dir)
+  // The view's rows: right, up and backward, about `from`.
+  let view = FixedArray::make(16, 0.0)
+  for c, v in [right, up, (-dir.0, -dir.1, -dir.2)] {
+    view[0 * 4 + c] = v.0
+    view[1 * 4 + c] = v.1
+    view[2 * 4 + c] = v.2
+    view[12 + c] = -dot3(v, from)
+  }
+  view[15] = 1.0
+  let matrix = Mat4::perspective(fov, aspect, near, far).mul({ m: view, })
+  // Depth (0 to 1) grows by 2·near·far / ((far - near)·z²) per unit at depth z.
+  let z = (near + far) / 2.0
+  let size = 2.0 * z * @math.tan(fov / 2.0) / SHADOW_MAP_SIZE.to_double()
+  { matrix, texel: size * near * far / ((far - near) * z * z), }
 }

@@ -1,6 +1,6 @@
-// examples/plateau with ?local=1: PLATEAU's buildings around Tokyo Station (bench/fixtures/plateau-chiyoda)
-// are refined and drawn, a click lists the building's attributes, and the checkbox swaps them for the
-// map's extruded buildings and back. Without the fixture (CI) the page says it could not read the tileset.
+// examples/plateau with ?local=1: PLATEAU's buildings around Tokyo Station are drawn, a click lists a building's
+// attributes, the checkbox swaps them for the map's extrusions, the 3D tools measure, sight and tint a viewshed.
+// Without the fixture (bench/fixtures/plateau-chiyoda; CI) the page says it could not read the tileset.
 import { commonestShare } from "./pixels.mjs";
 
 const settled = () =>
@@ -40,9 +40,22 @@ export async function plateauChecks(page) {
   await page.click("#plateau");
   await page.evaluate(settled);
   const again = await page.evaluate(() => window.__layer.selected.length);
+  // Clicks stay right of the panel (x > 330), whose buttons fly the map elsewhere.
+  const tool = async (name, clicks) => {
+    await page.click(`#tools input[value=${name}]`);
+    for (const [x, y] of clicks) await page.mouse.click(x, y);
+    await page.evaluate(() => window.__map.once("idle"));
+    return page.$eval("#tool-result", (e) => e.textContent);
+  };
+  const measured = await tool("measure", [[450, 250], [650, 380]]);
+  const sight = await tool("sight", [[420, 450], [700, 250]]);
+  const viewshed = await tool("viewshed", [[600, 450]]);
+  const tinted = await page.evaluate(() => window.__map.pickPosition({ x: 600, y: 450 }) !== null);
+  await page.click("#tools input[value=feature]");
   const ok =
     drawn.tiles >= 10 && drawn.ready && blank < 0.6 &&
     /^13101-bldg-/.test(rows["建物 ID"] ?? "") && typeof rows["用途"] === "string" &&
-    !off.layer && off.extruded === "visible" && again >= 10;
-  return [ok, { drawn, blank, rows, off, again }];
+    !off.layer && off.extruded === "visible" && again >= 10 &&
+    /^直線 [\d,.]+ m・水平 [\d,.]+ m・高さの差 -?[\d,.]+ m$/.test(measured) && /^(見えます|遮られます（)/.test(sight) && viewshed.startsWith("緑") && tinted;
+  return [ok, { drawn, blank, rows, off, again, measured, sight, viewshed }];
 }

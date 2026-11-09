@@ -5,8 +5,8 @@ import type { Map } from "../index";
 import { Store, type Controller } from "./controller";
 import { addOverlay } from "./overlays";
 
-/** `[longitude, latitude]` in degrees. */
-export type Position = [number, number];
+/** `[longitude, latitude]` in degrees, and meters up when measured in 3D. */
+export type Position = [number, number] | [number, number, number];
 
 /** What `mbmap/geodesic`'s `measure` is. */
 export type Measure = (
@@ -15,9 +15,9 @@ export type Measure = (
 ) => Promise<{ length: number; area: number; distances: ArrayLike<number>; path?: Position[] }>;
 
 /**
- * `mode` while measuring (null when not); `positions` placed; `pointer` the vertex that follows the
- * pointer until `finish`; `length` in meters (an area's perimeter) and `area` in square meters (null
- * for a line), both counting the pointer; `segments` each edge's length; `finished` once done.
+ * `mode` while measuring (null when not); `positions` placed; `pointer` the vertex that follows the pointer until
+ * `finish`; `length` in meters (an area's perimeter) and `area` in square meters (null for a line), both counting
+ * the pointer; `segments` each edge's length; `finished` once done. In 3D, also `horizontal` and `vertical`.
  */
 export interface MeasurementState {
   mode: "distance" | "area" | null;
@@ -27,15 +27,19 @@ export interface MeasurementState {
   area: number | null;
   segments: number[];
   finished: boolean;
+  horizontal?: number;
+  vertical?: number;
 }
 
 /**
- * `measure`: mbmap/geodesic's; `step`: meters between the points that draw each geodesic (default
- * 1000); `id`: of the GeoJSON source and the prefix of the layers drawn (default `"mbmap-measure"`);
- * `color`: of the line, the vertices and the area's fill (default `"#e4572e"`).
+ * `measure`: mbmap/geodesic's, or `measure3d`: mbmap/3d's, which measures in 3D between the points drawn under
+ * the clicks (`Map.pickPosition`); `step`: meters between the points that draw each geodesic (default 1000);
+ * `id`: of the GeoJSON source and the layers' prefix (default `"mbmap-measure"`); `color`: of the line, the
+ * vertices and the area's fill (default `"#e4572e"`).
  */
 export interface MeasurementOptions {
-  measure: Measure;
+  measure?: Measure;
+  measure3d?: (positions: [number, number, number][], options: { closed: boolean }) => { length: number; horizontal: number; vertical: number; area: number; distances: number[] };
   step?: number;
   id?: string;
   color?: string;
@@ -69,16 +73,21 @@ class MeasurementStore extends Store<MeasurementState> implements Measurement {
       // The clicks of a double click land on the vertex already placed.
       const last = this.state.positions.at(-1);
       const p = last && map.project({ lng: last[0], lat: last[1] });
-      if (!p || Math.hypot(p.x - e.point.x, p.y - e.point.y) > 3) this.add([e.lngLat.lng, e.lngLat.lat]);
+      if (!p || Math.hypot(p.x - e.point.x, p.y - e.point.y) > 3) this.add(this.#at(e));
     });
     this.listen(map, "mousemove", (e) => {
-      if (this.#active()) this.#update({ pointer: [e.lngLat.lng, e.lngLat.lat] });
+      if (this.#active()) this.#update({ pointer: this.#at(e) });
     });
     this.listen(map, "mouseout", () => {
       if (this.#active()) this.#update({ pointer: null });
     });
     this.listen(map, "dblclick", () => this.#active() && this.finish());
     this.onDestroy(() => this.#remove());
+  }
+
+  /** The position under a pointer event: in 3D what is drawn there. */
+  #at(e: { point: { x: number; y: number }; lngLat: { lng: number; lat: number } }): Position {
+    return (this.#options.measure3d && this.#map.pickPosition(e.point)) || [e.lngLat.lng, e.lngLat.lat];
   }
 
   #active(): boolean {
@@ -138,9 +147,11 @@ class MeasurementStore extends Store<MeasurementState> implements Measurement {
       const { mode, positions, pointer } = this.state;
       const all = pointer ? [...positions, pointer] : positions;
       const closed = mode === "area";
-      let m: Awaited<ReturnType<Measure>> = { length: 0, area: 0, distances: [], path: all };
+      const { measure, measure3d } = this.#options;
+      let m: Awaited<ReturnType<Measure>> & { horizontal?: number; vertical?: number } = { length: 0, area: 0, distances: [], path: all };
       try {
-        if (all.length > 1) m = await this.#options.measure(all, { closed, step: this.#options.step ?? 1000 });
+        if (all.length > 1 && measure3d) m = measure3d(all.map(([x, y, z]) => [x, y, z ?? 0]), { closed });
+        else if (all.length > 1 && measure) m = await measure(all, { closed, step: this.#options.step ?? 1000 });
       } catch {
         continue;
       }
@@ -148,13 +159,14 @@ class MeasurementStore extends Store<MeasurementState> implements Measurement {
       const d = Array.from(m.distances);
       const segments = d.slice(1).map((x, i) => x - d[i]);
       if (closed && all.length > 2) segments.push(m.length - d[d.length - 1]);
-      this.set({ length: m.length, area: closed ? Math.abs(m.area) : null, segments });
+      this.set({ length: m.length, area: closed ? Math.abs(m.area) : null, segments, horizontal: m.horizontal, vertical: m.vertical });
       this.#draw(all, m.path ?? all, closed);
     }
     this.#running = false;
   }
 
   #draw(vertices: Position[], path: Position[], closed: boolean): void {
+    path = path.map((p) => [p[0], p[1]]);
     const features: object[] = vertices.map((coordinates) => ({ type: "Feature", properties: {}, geometry: { type: "Point", coordinates } }));
     if (path.length > 1) {
       const geometry = closed && vertices.length > 2 ? { type: "Polygon", coordinates: [path] } : { type: "LineString", coordinates: path };

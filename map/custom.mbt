@@ -107,7 +107,7 @@ fn Map::custom_numbers(self : Map) -> FixedArray[Double] {
     Some(s) => {
       let (mode, texel) = match s.sphere {
         Some(v) => (2.0, v.texel)
-        None => (1.0, s.flat.texel)
+        None => (if s.spot { 3.0 } else { 1.0 }, s.flat.texel)
       }
       let t = self.transform
       let ws = t.world_size()

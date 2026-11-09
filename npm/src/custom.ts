@@ -21,11 +21,11 @@ export interface CustomRenderMethodInput {
   /** mbmap's: the style's `lights`, colors times intensities and the direction toward the directional light (east, north, up). */
   lights?: { ambient: Float64Array; directional: Float64Array; direction: Float64Array };
   /**
-   * mbmap's: the lights' shadows, as `shadowMatrix` gives them: the shadow map (texture unit 7, a depth texture to
-   * compare with) is the light's clip space from Mercator 0 to 1 (`mercator`, z as `mainMatrix`'s) or, `globe`, from the
-   * unit sphere (`sphere`); `intensity` how dark, `texel` one texel's depth.
+   * mbmap's: the lights' shadows or a viewshed: the shadow map (texture unit 7, a depth texture to compare with) is
+   * the light's clip space from Mercator 0 to 1 (`mercator`, z as `mainMatrix`'s; `mode` 1, or 3 for a viewshed's
+   * perspective) or from the unit sphere (`sphere`, mode 2); `intensity` how dark (a viewshed's tint), `texel` one texel's depth.
    */
-  shadow?: { globe: boolean; mercator: Float64Array; sphere: Float64Array; intensity: number; texel: number };
+  shadow?: { mode: number; mercator: Float64Array; sphere: Float64Array; intensity: number; texel: number };
   getProjectionData(params: {
     tileID: { canonical: { x: number; y: number; z: number }; wrap?: number } | null;
     applyGlobeMatrix?: boolean;
@@ -100,7 +100,7 @@ export function renderInput(n: ArrayLike<number>): CustomRenderMethodInput {
   });
   return {
     lights: n[76] ? { ambient: at(77, 3), directional: at(80, 3), direction: at(83, 3) } : undefined,
-    shadow: n[86] ? { globe: n[86] > 1, intensity: n[87], texel: n[89], mercator: at(90), sphere: at(106) } : undefined,
+    shadow: n[86] ? { mode: n[86], intensity: n[87], texel: n[89], mercator: at(90), sphere: at(106) } : undefined,
     farZ: n[globe ? 71 : 34],
     nearZ: n[globe ? 70 : 33],
     fov,

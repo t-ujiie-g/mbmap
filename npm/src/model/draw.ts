@@ -78,15 +78,15 @@ uniform highp sampler2DShadow u_shadow_map;
 uniform vec3 u_shadow_k;
 in vec4 v_shadow;
 out vec4 o;
-// 1 where the light reaches, 1 - intensity in shadow (u_shadow_k: intensity, depth per texel, whether on).
-float sunlit() {
-  vec3 p = v_shadow.xyz * 0.5 + 0.5;
-  if (u_shadow_k.z < 0.5 || any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return 1.0;
+// As the map's extrusions (u_shadow_k: intensity or tint, depth per texel, mode): the share the light reaches.
+float seen() {
+  vec3 p = v_shadow.xyz / v_shadow.w * 0.5 + 0.5;
+  if (u_shadow_k.z < 0.5 || v_shadow.w <= 0.0 || any(lessThan(p, vec3(0.0))) || any(greaterThan(p, vec3(1.0)))) return -1.0;
   float t = 0.5 / ${SHADOW_SIZE}.0, d = p.z - 2.0 * u_shadow_k.y;
-  float s = texture(u_shadow_map, vec3(p.xy + vec2(-t, -t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, -t), d)) +
-    texture(u_shadow_map, vec3(p.xy + vec2(-t, t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, t), d));
-  return 1.0 - u_shadow_k.x * (1.0 - s / 4.0);
+  return (texture(u_shadow_map, vec3(p.xy + vec2(-t, -t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, -t), d)) +
+    texture(u_shadow_map, vec3(p.xy + vec2(-t, t), d)) + texture(u_shadow_map, vec3(p.xy + vec2(t, t), d))) / 4.0;
 }
+float sunlit() { float s = seen(); return u_shadow_k.z > 2.5 || s < 0.0 ? 1.0 : 1.0 - u_shadow_k.x * (1.0 - s); }
 void main() {
   if (u_point > 0.0 && length(gl_PointCoord - 0.5) > 0.5) discard;
   if (u_picking) {
@@ -103,6 +103,8 @@ void main() {
   vec3 lit = u_shading == 0 ? vec3(1.0) : u_lights ? u_ambient + u_sun * d * sunlit() : vec3(0.55 + 0.45 * d);
   float a = c.a * u_opacity;
   o = vec4(c.rgb * lit * a, a);
+  float s = u_shadow_k.z > 2.5 ? seen() : -1.0;
+  if (s >= 0.0) o.rgb = mix(o.rgb, (s > 0.5 ? vec3(0.2, 0.8, 0.3) : vec3(0.9, 0.2, 0.15)) * a, u_shadow_k.x);
 }`;
 
 const UNIFORMS = ["u_model", "u_flat", "u_globe", "u_t", "u_normal", "u_uv", "u_uv_set", "u_color", "u_image", "u_textured", "u_shading", "u_cutoff", "u_opacity", "u_light", "u_pick", "u_picking", "u_point", "u_atlas", "u_lights", "u_ambient", "u_sun", "u_shadow", "u_shadow_map", "u_shadow_k"] as const;
@@ -247,7 +249,7 @@ export class ModelProgram {
     gl.useProgram(this.#program);
     gl.uniform1f(u.u_t, input.defaultProjectionData.projectionTransition);
     gl.uniform1i(u.u_picking, picking ? 1 : 0);
-    gl.uniform3f(u.u_shadow_k, shadow?.intensity ?? 0, shadow?.texel ?? 0, shadow ? 1 : 0);
+    gl.uniform3f(u.u_shadow_k, shadow?.intensity ?? 0, shadow?.texel ?? 0, shadow?.mode ?? 0);
     gl.uniform3fv(u.u_light, lights ? Array.from(lights.direction) : LIGHT);
     gl.uniform1i(u.u_lights, lights ? 1 : 0);
     if (lights) {
@@ -273,7 +275,7 @@ export class ModelProgram {
     gl.vertexAttrib4f(5, feature ?? 0, 0, 0, 0);
     gl.uniformMatrix4fv(u.u_flat, false, new Float32Array(mul(t > 0 ? d.fallbackMatrix : d.mainMatrix, mercator)));
     if (t > 0) gl.uniformMatrix4fv(u.u_globe, false, new Float32Array(mul(input.modelViewProjectionMatrix, sphere)));
-    if (s) gl.uniformMatrix4fv(u.u_shadow, false, new Float32Array(s.globe ? mul(s.sphere, sphere) : mul(s.mercator, mercator)));
+    if (s) gl.uniformMatrix4fv(u.u_shadow, false, new Float32Array(s.mode === 2 ? mul(s.sphere, sphere) : mul(s.mercator, mercator)));
     gl.uniform1f(u.u_opacity, opacity);
     for (const m of model.meshes) {
       const blend = translucent || m.material?.alphaMode === "BLEND";
