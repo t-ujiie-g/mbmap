@@ -10,7 +10,7 @@ const INTENSITY_HEADER_SIZE : Int32 = 32
 /// `lepcc_decodeIntensity` of the blob in `data[start, start + len)`: each value 0 to 65535, or None
 /// where the C++ fails. Also refused: no values, more than `MAX_POINTS`, and a bit-stuffed array of
 /// another length than the header's (the C++ reads past it or refuses).
-pub fn decode_intensity(
+fn decode_intensity(
   data : FixedArray[Byte],
   start : Int32,
   len : Int32,
@@ -27,28 +27,32 @@ pub fn decode_intensity(
   guard scale >= 1 && bpp <= 16 else { return None }
   let end = start + size
   let at = start + INTENSITY_HEADER_SIZE
-  let out = FixedArray::make(n, 0)
   if bpp == 16 {
     guard at + n * 2 == end else { return None }
+    let out = FixedArray::make(n, 0)
     for i in 0..<n {
       out[i] = u16_at(data, at + i * 2)
     }
+    Some(out)
   } else if bpp == 8 {
     guard at + n == end else { return None }
+    let out = FixedArray::make(n, 0)
     for i in 0..<n {
       out[i] = (data[at + i].to_int() * scale) & 0xffff
     }
+    Some(out)
   } else {
     let cursor = { data, pos: at, end, }
-    guard cursor.decode() is Some(values) &&
+    guard cursor.decode(n) is Some(values) &&
       values.length() == n &&
       cursor.pos == end else {
       return None
     }
     let s = scale.reinterpret_as_uint()
+    let out = FixedArray::make(n, 0)
     for i in 0..<n {
       out[i] = ((values[i] * s) & 0xffffU).reinterpret_as_int()
     }
+    Some(out)
   }
-  Some(out)
 }

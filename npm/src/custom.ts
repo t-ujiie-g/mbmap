@@ -51,7 +51,10 @@ export interface CustomLayerInterface {
   onRemove?(map: unknown, gl: WebGL2RenderingContext): void;
   prerender?(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void;
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void;
-  /** mbmap's: draws the layer's shadow casters into the bound shadow map (depth only), `options`' matrices being the light's. */
+  /**
+   * mbmap's: draws the layer's shadow casters into the bound shadow map (depth only), `options`' matrices being the
+   * light's; on the globe use those matrices, not `shaderData`'s prelude, which projects for the camera.
+   */
   renderShadow?(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void;
 }
 
@@ -82,25 +85,31 @@ function scaled(m: Float64Array, x: number, y: number, z: number, tx = 0, ty = 0
   return out;
 }
 
+/** Where `Map::custom_numbers` (map/custom.mbt) puts the globe's transition, its clipping plane, the lights and the shadows. */
+const CUSTOM_TRANSITION = 37;
+const CUSTOM_PLANE = 72;
+const CUSTOM_LIGHTS = 76;
+const CUSTOM_SHADOWS = 86;
+
 /** The options of one draw from the engine's numbers, laid out as `Map::custom_numbers` says. */
 export function renderInput(n: ArrayLike<number>): CustomRenderMethodInput {
   const at = (i: number, length = 16) => Float64Array.from({ length }, (_, j) => n[i + j]);
   const mvp = at(0);
   const [fov, world, ppm] = [n[32], n[35], n[36]];
-  const transition = n[37];
+  const transition = n[CUSTOM_TRANSITION];
   const globe = transition > 0;
-  const main = globe ? Float32Array.from(at(38)) : undefined;
+  const main = globe ? Float32Array.from(at(CUSTOM_TRANSITION + 1)) : undefined;
   const data = (fallback: Float64Array, coords: [number, number, number, number], t: number, z: number): ProjectionData => ({
     mainMatrix: main ?? fallback,
     fallbackMatrix: fallback,
     tileMercatorCoords: coords,
-    clippingPlane: globe ? [n[72], n[73], n[74], n[75]] : [0, 0, 0, 0],
+    clippingPlane: globe ? (Array.from(at(CUSTOM_PLANE, 4)) as [number, number, number, number]) : [0, 0, 0, 0],
     projectionTransition: t,
     clipAntimeridian: globe && z === 0,
   });
   return {
-    lights: n[76] ? { ambient: at(77, 3), directional: at(80, 3), direction: at(83, 3) } : undefined,
-    shadow: n[86] ? { mode: n[86], intensity: n[87], texel: n[89], mercator: at(90), sphere: at(106) } : undefined,
+    lights: n[CUSTOM_LIGHTS] ? { ambient: at(CUSTOM_LIGHTS + 1, 3), directional: at(CUSTOM_LIGHTS + 4, 3), direction: at(CUSTOM_LIGHTS + 7, 3) } : undefined,
+    shadow: n[CUSTOM_SHADOWS] ? { mode: n[CUSTOM_SHADOWS], intensity: n[CUSTOM_SHADOWS + 1], texel: n[CUSTOM_SHADOWS + 3], mercator: at(CUSTOM_SHADOWS + 4), sphere: at(CUSTOM_SHADOWS + 20) } : undefined,
     farZ: n[globe ? 71 : 34],
     nearZ: n[globe ? 70 : 33],
     fov,

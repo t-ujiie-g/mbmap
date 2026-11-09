@@ -44,11 +44,6 @@ fn remap_saturate(
 }
 
 ///|
-fn radians(degrees : Double) -> Double {
-  degrees * @math.PI / 180.0
-}
-
-///|
 fn degrees(radians : Double) -> Double {
   radians * 180.0 / @math.PI
 }
@@ -128,7 +123,7 @@ pub fn surface_vector(p : @core.LngLat) -> Vec3 {
 
 ///|
 /// The longitude and latitude of a point of the unit sphere.
-pub fn surface_point(v : Vec3) -> @core.LngLat {
+fn surface_point(v : Vec3) -> @core.LngLat {
   let lat = @math.asin(v.y) / @math.PI * 180.0
   let xz = (v.x * v.x + v.z * v.z).sqrt()
   if xz > 0.000001 {
@@ -143,7 +138,7 @@ pub fn surface_point(v : Vec3) -> @core.LngLat {
 ///|
 /// The point of the unit sphere at `(x, y)` tile units (`extent` per edge) of
 /// tile `z/tx/ty` (MapLibre's `projectTileCoordinatesToSphere`).
-pub fn tile_vector(
+fn tile_vector(
   x : Double,
   y : Double,
   z : Int32,
@@ -172,14 +167,14 @@ pub fn planet_scale(lat : Double) -> Double {
 ///|
 /// The globe's radius in CSS pixels for a `world_size` mercator world centered
 /// at `lat`: the globe is as large as the mercator map at the center.
-pub fn globe_radius(world_size : Double, lat : Double) -> Double {
+fn globe_radius(world_size : Double, lat : Double) -> Double {
   world_size / (2.0 * @math.PI) / planet_scale(lat)
 }
 
 ///|
 /// The zoom change that keeps the globe the same size when the center moves
 /// from `old_lat` to `new_lat` (MapLibre's `getZoomAdjustment`).
-pub fn zoom_adjustment(old_lat : Double, new_lat : Double) -> Double {
+fn zoom_adjustment(old_lat : Double, new_lat : Double) -> Double {
   scale_zoom(planet_scale(new_lat) / planet_scale(old_lat))
 }
 

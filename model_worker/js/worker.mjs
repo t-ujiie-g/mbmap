@@ -5,7 +5,7 @@
 import { transformPairs } from "../../data_worker/js/crs.mjs";
 import { draco, lepcc, meshopt } from "./decode.mjs";
 import { readCapped } from "../../worker/js/body.mjs";
-import { readGltf } from "../../npm/src/model/gltf.ts";
+import { MAX_MODEL_BYTES, readGltf } from "../../npm/src/model/gltf.ts";
 import { horizontalWkt, MAX_LAS_BYTES, MAX_LAS_POINTS, readLas } from "../../npm/src/model/las.ts";
 import { cartesian, MAX_I3S_BYTES, MAX_I3S_TEXTURE_BYTES, materialOf, readI3sGeometry } from "../../npm/src/i3s/content.ts";
 import { readTileContent } from "../../npm/src/tiles/content.ts";
@@ -33,11 +33,11 @@ async function instance() {
 
 const isHttp = (url) => url.protocol === "http:" || url.protocol === "https:" || url.protocol === "blob:" || url.protocol === "data:";
 
-async function fetchBytes(url, max) {
+async function fetchBytes(url, max = MAX_MODEL_BYTES) {
   if (!isHttp(url)) throw new Error(`cannot load ${url.protocol} URLs`);
   const res = await fetch(url, { credentials: "omit" });
   if (!res.ok) throw new Error(`${url.href}: HTTP ${res.status}`);
-  return max === undefined ? new Uint8Array(await res.arrayBuffer()) : readCapped(res, max);
+  return readCapped(res, max);
 }
 
 /** Decodes an image's bytes into an ImageBitmap as uploaded (no premultiplying or color conversion). */
@@ -110,7 +110,7 @@ async function pcsl({ url, center, rgb, intensity, classification, classType }) 
   }
   const colors = rgbBytes ? codec.rgb(rgbBytes) : null;
   const intensities = intensityBytes ? codec.intensity(intensityBytes) : null;
-  const Typed = PCSL_TYPES[classType] ?? Uint8Array;
+  const Typed = Object.hasOwn(PCSL_TYPES, classType) ? PCSL_TYPES[classType] : Uint8Array;
   const classes = classBytes ? Uint8Array.from(new Typed(classBytes.buffer, classBytes.byteOffset, Math.floor(classBytes.byteLength / Typed.BYTES_PER_ELEMENT))) : null;
   for (const [name, a, size] of [["rgb", colors, 3], ["intensity", intensities, 1], ["classification", classes, 1]]) {
     if (a && a.length !== count * size) throw new Error(`I3S: the node's ${name} has ${a.length / size} values for ${count} points`);

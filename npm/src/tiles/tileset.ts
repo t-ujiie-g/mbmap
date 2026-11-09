@@ -82,6 +82,15 @@ export class Tile {
 export const MAX_TILES = 200_000;
 
 /** Adds the tiles of `json` (a tileset) under `parent` (an external tileset's tile), or as a new root. */
+/** How deep external tilesets may nest. */
+export const MAX_TILESET_DEPTH = 32;
+
+/** Whether `tile` or one of its ancestors meets `test` (a cycle check before hanging content under it). */
+export function lineageHas(tile: Tile | null, test: (t: Tile) => boolean): boolean {
+  for (let t = tile; t; t = t.parent) if (test(t)) return true;
+  return false;
+}
+
 export function buildTree(json: Record<string, any>, base: string, parent: Tile | null = null): Tile {
   if (!json?.asset || !["0.0", "1.0", "1.1"].includes(json.asset.version)) throw new Error("the tileset must be 3D Tiles 0.0, 1.0 or 1.1");
   if (!json.root || typeof json.root !== "object") throw new Error("the tileset has no root");

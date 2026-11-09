@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 160944,
+      "bytes": 161390,
       "budget": 163000
     },
     {
@@ -41,7 +41,7 @@
     },
     {
       "name": "custom layers (loaded by mbmap with the first one)",
-      "bytes": 2969,
+      "bytes": 2983,
       "budget": 3000
     },
     {
@@ -146,7 +146,7 @@
     },
     {
       "name": "shapes (simplify, hulls, Delaunay, Voronoi, line slices; loaded by the analysis worker on first use)",
-      "bytes": 27909,
+      "bytes": 27865,
       "budget": 30000
     },
     {
@@ -181,17 +181,17 @@
     },
     {
       "name": "mbmap/3d",
-      "bytes": 8996,
+      "bytes": 9075,
       "budget": 10000
     },
     {
       "name": "3D Tiles (loaded by mbmap/3d with the first tilesLayer)",
-      "bytes": 10039,
+      "bytes": 10414,
       "budget": 12000
     },
     {
       "name": "I3S (loaded by mbmap/3d with the first i3sLayer)",
-      "bytes": 7923,
+      "bytes": 8246,
       "budget": 10000
     },
     {
@@ -201,7 +201,7 @@
     },
     {
       "name": "3d worker",
-      "bytes": 43803,
+      "bytes": 43941,
       "budget": 50000
     },
     {

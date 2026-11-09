@@ -10,10 +10,6 @@ const SHADOW_CASTERS : Double = 1000.0
 const SHADOW_RECEIVERS : Double = 500.0
 
 ///|
-/// MapLibre's globe radius in meters (`GLOBE_RADIUS`).
-const GLOBE_RADIUS : Double = 6371008.8
-
-///|
 /// A shadow map's view: `matrix` takes points to the light's clip space (an
 /// orthographic view along the light, depth growing away from it) and `texel`
 /// is the depth (0 to 1) one texel across spans.
@@ -153,8 +149,8 @@ pub fn Transform::shadow_sphere_view(
     )
   }
   let toward = unit3(at(sun.0, sun.1, sun.2))
-  let r = self.shadow_radius() / self.pixels_per_meter() / GLOBE_RADIUS
-  let top = @cmp.minimum(r, SHADOW_RECEIVERS / GLOBE_RADIUS)
+  let r = self.shadow_radius() / self.pixels_per_meter() / EARTH_RADIUS
+  let top = @cmp.minimum(r, SHADOW_RECEIVERS / EARTH_RADIUS)
   let corners = []
   for x in [-r, r] {
     for y in [-r, r] {
@@ -166,7 +162,7 @@ pub fn Transform::shadow_sphere_view(
     }
   }
   let reach = SHADOW_CASTERS /
-    GLOBE_RADIUS /
+    EARTH_RADIUS /
     @cmp.maximum(dot3(toward, up), 0.17)
   light_view(toward, up, east, corners, reach)
 }

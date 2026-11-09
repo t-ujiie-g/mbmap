@@ -183,6 +183,7 @@ export class Map {
   #warned = "";
   #engine: engine.EngineMap | null = null;
   #clipping: Clipping | null = null;
+  #viewshed: number[] = [];
   #geojson: GeoJSONTiles | null = null;
   #geojsonLoading: Promise<GeoJSONTiles | null> | null = null;
   #geojsonSources: GeoJSONSource[] = [];
@@ -805,6 +806,8 @@ export class Map {
     this.#warn(resolved);
     this.#style = style;
     if (this.#transform) engine.map_set_transform_request(map, this.#transform);
+    if (this.#clipping) engine.map_set_clipping(map, packClipping(this.#clipping));
+    if (this.#viewshed.length) engine.map_set_viewshed(map, this.#viewshed);
     const canvas = this.#canvas;
     for (const type of ["mousedown", "mouseup", "mouseover", "mouseout", "mousemove", "click", "dblclick", "contextmenu"] as const) {
       canvas.addEventListener(
@@ -1394,17 +1397,21 @@ export class Map {
    * (as `pickPosition` sees it), stopping `margin` meters (default 0.1) short of `to`; null if nothing is in the way.
    */
   castRay(from: [number, number, number], to: [number, number, number], margin = 0.1): [number, number, number] | null {
+    if (from.length !== 3 || to.length !== 3 || ![...from, ...to, margin].every(Number.isFinite)) throw new Error("mbmap: castRay: points must be 3 finite numbers");
     const r = this.#engine ? engine.map_cast_ray(this.#engine, [...from, ...to], margin) : [];
     return r.length ? [r[0], r[1], r[2]] : null;
   }
 
   /**
-   * mbmap's, once loaded: tints what is seen (green) and hidden (red) from `position` ([lng, lat, m]) toward `heading`
+   * mbmap's: tints what is seen (green) and hidden (red) from `position` ([lng, lat, m]) toward `heading`
    * and `pitch`, `horizontalFov` by `verticalFov` (degrees; 0, 0, 90, 60) and `distance` m (500), instead of shadows.
    */
   setViewshed(v: { position: [number, number, number]; heading?: number; pitch?: number; horizontalFov?: number; verticalFov?: number; distance?: number } | null): this {
     const n = v ? [...v.position, v.heading ?? 0, v.pitch ?? 0, v.horizontalFov ?? 90, v.verticalFov ?? 60, v.distance ?? 500] : [];
+    if (v && v.position.length !== 3) throw new Error("mbmap: setViewshed: position must be [lng, lat, m]");
     if (n.some((x) => !Number.isFinite(x))) throw new Error("mbmap: setViewshed: not finite numbers");
+    if (v && !(n[5] > 0 && n[5] < 180 && n[6] > 0 && n[6] < 180 && n[7] > 1)) throw new Error("mbmap: setViewshed: fields of view must lie between 0 and 180 degrees and distance exceed 1 m");
+    this.#viewshed = n;
     if (this.#engine) engine.map_set_viewshed(this.#engine, n);
     return this;
   }

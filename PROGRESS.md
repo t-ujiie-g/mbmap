@@ -1,23 +1,31 @@
 # PROGRESS
 
-## 現在の状況（2026-11-08）
+## 現在の状況（2026-11-09）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20 の後の点検（リファクタリングとセキュリティ。AGENTS §7・§8）と、その後の進め方（改名など）の相談。20.9a・b（3D の拾い方・計測・見通し・可視域、断面）、20.8a・b（太陽の位置と光、影）、20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20 は点検まで済んだ（下の節）。Mac で GPU の数字と目での確かめ（「Mac で回すもの」）、その後の進め方（改名など）の相談。20.9a・b（3D の拾い方・計測・見通し・可視域、断面）、20.8a・b（太陽の位置と光、影）、20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
-- **Mac で回すもの**（残り。Phase 19 の分は下の節）：
-  - `style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し。
-  - 速さ：Phase 17 の読み込みにはベンチがない（`data:node` を足すところから）。17.6c の投影し直しのコストも未計測。点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのベンチのあと。
-  - 主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。
+- **Mac で回すもの**（2026-11-09 に整理。Web の環境は SwiftShader で GPU の数字が取れない。結果の JSON はコミットして戻し、ここと各節の表に書き写す）：
+  - 準備：`git pull` のあと `scripts/setup.sh`（または `npm ci` を `npm/`・`bench/`・`examples/react/` で）、`cd bench && npm run fixtures`（PLATEAU の `plateau-chiyoda` も。それだけなら `node maplibre/fetch-tiles.mjs --only=plateau-chiyoda`）。
+  - Phase 20 の速さ：
+    1. `cd bench && npm run cesium -- --gpu`：CesiumJS とのフレームの CPU と落ち着くまでの時間（`bench/results/cesium.json`。20.5 の表は SwiftShader の値）。
+    2. `npm run render`（メインと `--uncapped`）：表示（メイン）が Phase 20 で 147 → 161.4KB になったので、2D の初回描画とフレームの CPU が変わっていないか（`bench/results/render-chromium*.json`）。
+    3. `node render/run.mjs --extrusion` と `node render/run.mjs --shadows`（新設：押し出しに影を落とす太陽を足す。MapLibre は影なし）：同じ押し出しで影の深度テクスチャを毎フレーム描く分のコスト（`render-chromium-extrusion.json` と `render-chromium-extrusion-shadows.json` の mbmap の行を比べる）。
+  - Phase 20 の目での確かめ（実際の GPU で。pack test は SwiftShader で数字を見ている）：`npm run examples` で `http://127.0.0.1:8080/examples/plateau/?local=1` を開き、
+    - 影：開発者ツールで `__map.setLights([{ id: "a", type: "ambient", properties: { intensity: 0.5 } }, { id: "s", type: "directional", properties: { intensity: 0.6, direction: [210, 40], "cast-shadows": true } }])`。建物の影が地面と建物に落ち、地図を回し・傾け・寄っても影が泳がない・縞（アクネ）が出ないか。`setLights(null)` で戻る。
+    - 計測・見通し・可視域・断面：パネルの道具で建物の上をクリック。可視域は緑と赤の境が建物の縁に沿うか、断面は切り口の橙の縁が出るか。
+    - 地球表示：`__map.setProjection({ type: "globe" })` でズーム 11 前後に引いても影と断面が崩れないか。
+    - 気になる所があればスクリーンショットと `navigator.userAgent` を残す。
+  - 前からの残り：`style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し、主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。Phase 17 の読み込みのベンチ（`data:node` を足すところから）と 17.6c の投影し直しのコスト、点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのあと。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 160.9KB（地球表示と太陽の位置 1.2KB と影、3D の拾い方と可視域、断面を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 163KB（2026-11-09、ユーザー判断。断面のため 160KB から、その前に影のため 155KB から。2026-11-08 に地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
+  | 表示（メイン） | 161.4KB（地球表示と太陽の位置 1.2KB と影、3D の拾い方と可視域、断面を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 163KB（2026-11-09、ユーザー判断。断面のため 160KB から、その前に影のため 155KB から。2026-11-08 に地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
   | 表示ワーカー | 85.2KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
@@ -25,11 +33,33 @@
   | `mbmap/services` | 11.2KB ＋ GML 2.0KB ＋ ワーカー 20.2KB（ArcGIS の `f=json` と `f=pbf`、`services.wasm`） | 12KB ＋ 21KB（2026-11-08 に 20KB から、2026-11-06・11-07、ユーザー判断。18.5 で 10KB から引き上げ） |
   | `mbmap/draw` | 4.9KB（4867 バイト） | 10KB（2026-11-03、ユーザー判断。8KB 以内に収まればなおよい） |
   | `mbmap/geodesic` | 1.1KB ＋ ワーカー 12.0KB | 2KB ＋ 15KB |
-  | `mbmap/3d` | 4.9KB ＋ 3D Tiles 9.9KB（`3d-tiles.js`、最初の `tilesLayer` で読み込む。属性の読み出しを含む） ＋ ワーカー 29.9KB（glTF と b3dm・i3dm・cmpt の読み込み、3d.wasm の meshopt と Draco） | 10KB ＋ 10KB ＋ 45KB（2026-11-08 ユーザー判断） |
+  | `mbmap/3d` | 9.1KB ＋ 3D Tiles 10.4KB（`3d-tiles.js`、最初の `tilesLayer` で読み込む） ＋ I3S 8.2KB（`3d-i3s.js`） ＋ SLPK 4.5KB（`3d-slpk.js`） ＋ ワーカー 43.9KB（glTF、3D Tiles・I3S の中身、LAS、3d.wasm の meshopt・Draco・LEPCC） | 10KB ＋ 12KB ＋ 10KB ＋ 6KB ＋ 50KB（2026-11-08 ユーザー判断） |
   | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 16.1KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、17KB（2026-11-08 に 15KB から）。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 40.6KB（`reprojected` のタイル 1.8KB、`xml.wasm` 26.7KB、GeoTIFF 19.8KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 41KB（ワーカーは 2026-11-08 に 40KB から。2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
 
-## Phase 20：3D 第2弾（2026-11-08〜）
+## Phase 20 の後の点検（2026-11-09、Web）
+
+Phase 20 で足したもの（3D、地球表示、デコーダー、影・計測・断面）を AGENTS §7・§8 で見直した。3 つのレビューのエージェントの指摘をまとめ、TS とエンジン側は本線、デコーダーと globe はワークツリーのエージェントで直した（1 PR）。
+
+- **セキュリティ（高）**：glTF のノードが 2 つの親を持つと（DAG）走査が段ごとに倍になり、小さなファイルでタブが止まった。シーン全体で一度見たノードは断る（glTF の仕様どおりノードは木）。
+- **セキュリティ（中）**：
+  - 3D ワーカーの glTF・タイルの取得と、主スレッドのタイルセット・I3S の JSON に大きさの上限がなかった。ワーカーは `MAX_MODEL_BYTES`、主スレッドは `npm/src/model/fetch.ts` の `fetchCapped`（64MB、http(s)・blob・data だけ）。
+  - 自分を指す外部タイルセット、祖先を子に挙げる I3S のノードが果てなく入れ子になった。祖先をたどって断り、外部タイルセットの入れ子は 32 段まで（`lineageHas`、`MAX_TILESET_DEPTH`）。暗黙タイルの `subtreeLevels` は 1〜10、段数は 30 まで（32 ビットの添字があふれない）。
+  - meshopt は `count × size` を確保してから入力の短さに気づいた。`@meshopt.source_fits` で、モードごとの最小の入力の長さを確かめてから確保する。Draco の `to_bytes` は大きさを Int64 で足して `MAX_OUTPUT_BYTES`（1GB）を超えると None。LEPCC は数を残りの予算と入力の長さで確かめてから確保し、壊して封をし直した blob を全バイトで試すテストを足した。
+  - `setClipping` の数はファサードだけが確かめていた。エンジン（`clipping_ok`、`gl_set_cut`）も平面 16・環 8・頂点 64 を超えるもの、数の合わないものを断る。
+- **セキュリティ（低）**：`PCSL_TYPES`・meshopt の `MODES`・`FILTERS` の引きを `Object.hasOwn` で（`__proto__` などを通さない）。`setViewshed` の画角（0〜180°）・距離（1 m 超）・位置の長さ、`castRay` の点の長さと有限性を確かめる。NOTICE に loaders.gl・math.gl・deck.gl（選択）と CesiumJS（pnts の RGB565 と oct の法線）の移植を足した。
+- **正しさ**：エンジンが起動する前の `setClipping`・`setViewshed` が捨てられていた（起動時に当て直す）。I3S のノードページの失敗がキャッシュに残り、その子を二度と求めなかった（取り直す、3 回まで）。フレームがないとき `queryFeature` の約束が残った。シェーダーをリンクのあと消す、タイルの ImageBitmap をアップロードのあと閉じる、途中で失敗したタイルのアップロードを解放する。MultiPoint の `null` の要素で落ちた。`renderShadow` は地球表示で `shaderData` の前置きでなく行列を使う、と型の説明に書いた。
+- **整理**：
+  - カスタムレイヤーの数の並びに `CUSTOM_SHADOWS`・`CUSTOM_NUMBERS`、`custom.ts` も同じ名前で読み、`worker/js/mirror.test.mjs` が MoonBit と比べる（影のテクスチャの大きさ、3D ワーカーの meshopt のモード・フィルター・LEPCC の種類・Draco の型の番号も）。
+  - 4×4 の掛け算と単位行列は `tiles/geo.ts` の 1 つに。`core` に `js_hypot`、globe と delaunay の写し（地球半径、`radians`、メルカトルの y、hypot）を消した。`core/shadow.mbt` は `@core.EARTH_RADIUS`。
+  - Draco の型・属性・符号化・走査の番号に名前を。外から呼ばれない pub（lepcc の `decode_*`、globe の 7 つ、使われない `blob_info`・`decode_mesh`・`decode_point_cloud`）を private にするか消した。`draco/edgebreaker_traversal.mbt`・`prediction_tex_coords.mbt`・`prediction_normal.mbt`、`globe/volume.mbt` に分けた（中身はそのまま）。長いコメントを詰めた（52 → 45 件、MoonBit は 3D とデコーダーに残りなし）。
+- **見送ったもの**：draco と lepcc の `store_u32`（4 行。core への依存を足すほどでない）。`gl_shaders.mbt` の影と断面の断片を `shadow.mbt` に移すこと（1 つの JS の初期化の中にあり、分けると受け渡しが増える）。断面の詰め直しを変わったときだけにすること（毎フレーム数十の数で、測って効けば）。
+- **依存**：`npm audit` は `npm/`・`bench/`・`examples/react/` とも 0 件。依存はすべて版を固定、install スクリプトは esbuild だけ。
+- **大きさ**：表示（メイン）160.9 → 161.4KB（起動時の当て直しと確かめ）、`mbmap/3d` 9.0 → 9.1KB、`3d-tiles.js` 10.4KB、`3d-i3s.js` 8.2KB、3D ワーカー 43.8 → 43.9KB。
+- **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 438、`npm --prefix bench test`、ゴールデン（meshopt・draco・lepcc・globe・shapes・model・tiles・tiles:contents・i3s・i3s:contents・i3s:slpk・sight・clip:cesium）すべて同じ、`npm:pack` 通過。
+- **Mac への引き継ぎ**：「現在の状況」の「Mac で回すもの」。`render --shadows`（新設）で影のコストを測る。
+
+## Phase 20：3D 第2弾（2026-11-08〜11-09）
 
 範囲・段階・予算の扱いは 2026-11-08 にユーザーが決めた（`AskUserQuestion`）。
 

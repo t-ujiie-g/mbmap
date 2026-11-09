@@ -7,8 +7,8 @@ const FILTERS = { NONE: 0, OCTAHEDRAL: 1, QUATERNION: 2, EXPONENTIAL: 3, COLOR: 
 
 export function meshopt(exports) {
   return (target, count, size, source, mode, filter) => {
-    const m = MODES[mode];
-    const f = FILTERS[filter];
+    const m = Object.hasOwn(MODES, mode) ? MODES[mode] : undefined;
+    const f = Object.hasOwn(FILTERS, filter) ? FILTERS[filter] : undefined;
     if (m === undefined || f === undefined) throw new Error(`unknown meshopt mode or filter ${mode} ${filter}`);
     writeInput(exports, [source], "meshopt data");
     const n = exports.meshopt_decode(count, size, m, f);

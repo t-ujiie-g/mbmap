@@ -82,10 +82,9 @@ extern "js" fn create_gl(
   #|    "vec3 globeNormal(vec2 p, vec3 n) { vec3 s = sphere(p); vec3 right = vec3(s.z, 0.0, -s.x);" +
   #|    "  return mat3(normalize(right), normalize(cross(right, s)), s) * n; }";
   #|  const projUniforms = ["u_matrix", "u_globe", "u_tile", "u_plane", "u_transition", "u_translate"];
-  #|  // The shadow map's coordinates (@core.ShadowView): u_shadow from tile units (modes 1 and 3), u_shadow_globe
-  #|  // from the unit sphere (mode 2); u_shadow_pass draws there. seen() is the share of four compared taps the light
-  #|  // reaches (-1 off the map), sunlit() 1 - intensity in shadow (u_shadow_k: intensity, depth per texel); a
-  #|  // viewshed (mode 3) tints what it covers, seen or hidden, by u_shadow_k.x.
+  #|  // Shadow map coordinates from tile units (u_shadow, modes 1 and 3) or the unit sphere (u_shadow_globe, mode 2);
+  #|  // seen() is the share of four compared taps lit (-1 off the map), sunlit() 1 - intensity in shadow, and a
+  #|  // viewshed (mode 3) tints what it covers by u_shadow_k.x (u_shadow_k: intensity, depth per texel).
   #|  const shadowVs = "uniform highp int u_shadow_mode; uniform mat4 u_shadow; uniform mat4 u_shadow_globe; uniform bool u_shadow_pass; out vec4 v_shadow;" +
   #|    "vec4 shadowAt(vec2 p, float meters, float z) { return u_shadow_mode == 2 ?" +
   #|    "  u_shadow_globe * vec4(sphere(p + u_translate) * (1.0 + meters / 6371008.8), 1.0) : u_shadow * vec4(p, z, 1.0); }";
@@ -97,10 +96,9 @@ extern "js" fn create_gl(
   #|    "float sunlit() { float s = seen(); return u_shadow_mode == 3 || s < 0.0 ? 1.0 : 1.0 - u_shadow_k.x * (1.0 - s); }" +
   #|    "vec3 seenTint(float s) { return s > 0.5 ? vec3(0.2, 0.8, 0.3) : vec3(0.9, 0.2, 0.15); }" +
   #|    "vec4 tint(vec4 c) { float s = u_shadow_mode == 3 ? seen() : -1.0; return s < 0.0 ? c : vec4(mix(c.rgb, seenTint(s) * c.a, u_shadow_k.x), c.a); }";
-  #|  // Clipping (Cesium's ClippingPlaneCollection and ClippingPolygonCollection): v_cut is east, north, up meters
-  #|  // at the origin (u_cut_frame) and the clip w; the side of a plane where n·p + d > 0 is kept, by every plane
-  #|  // (u_cut_union) or any; polygon rings (pairs in u_cut_poly) cut inside, or with u_cut_inverse outside; a band
-  #|  // u_cut_edge.w pixels wide by the planes (u_cut_mpp meters per pixel per unit w) takes u_cut_edge's color.
+  #|  // Cesium's clipping: v_cut is east, north, up meters at the origin and clip w; n·p + d > 0 is kept by every plane
+  #|  // (u_cut_union) or any, rings (u_cut_poly) cut inside (outside with u_cut_inverse), and a band u_cut_edge.w px
+  #|  // wide by the planes (u_cut_mpp meters per px per unit w) takes u_cut_edge's color.
   #|  const cutVs = "uniform mat4 u_cut_frame; out vec4 v_cut;";
   #|  const cutFs = "uniform int u_cut_count; uniform bool u_cut_union; uniform vec4 u_cut_planes[16]; uniform vec4 u_cut_edge;" +
   #|    "uniform float u_cut_mpp; uniform int u_cut_rings[8]; uniform int u_cut_ring_count; uniform vec4 u_cut_poly[32]; uniform bool u_cut_inverse; in vec4 v_cut;" +

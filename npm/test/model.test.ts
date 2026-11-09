@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readGltf, splitGlb, textureTransform } from "../src/model/gltf.ts";
-import { mercatorFrame, placement, points, sphereFrame, triple, value } from "../src/model/place.ts";
+import { mercatorFrame, normalMatrix, placement, points, sphereFrame, triple, value } from "../src/model/place.ts";
 
 const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
 const uri = (...arrays: ArrayBufferView[]) =>
@@ -55,6 +55,8 @@ test("readGltf refuses what it cannot read safely", async () => {
   await refuse({ asset: { version: "1.0" } }, /only glTF 2\.0/);
   await refuse({ extensionsRequired: ["EXT_mesh_gpu_instancing"] }, /unsupported glTF extensions: EXT_mesh_gpu_instancing/);
   await refuse({ scenes: [{ nodes: [0] }], nodes: [{ children: [0] }] }, /node tree is malformed/);
+  // A node with two parents: a DAG that doubles at each level.
+  await refuse({ scenes: [{ nodes: [0] }], nodes: [{ children: [1, 2] }, { children: [3] }, { children: [3] }, {}] }, /node tree is malformed/);
   await refuse({ ...triangle, accessors: [{ ...triangle.accessors[0], count: 4 }, triangle.accessors[1], triangle.accessors[2]] }, /runs past its buffer view/);
   await refuse({ ...triangle, bufferViews: [{ buffer: 0, byteOffset: 60, byteLength: 48 }] }, /runs past its buffer/);
   const compressed = { ...triangle, bufferViews: [{ buffer: 0, byteLength: 48, extensions: { EXT_meshopt_compression: { buffer: 0, byteLength: 48, byteStride: 12, count: 3, mode: "ATTRIBUTES" } } }, ...triangle.bufferViews.slice(1)] };
@@ -150,4 +152,11 @@ test("triple reads three numbers, as a whole or each by ['get', key], else its f
   assert.deepEqual(triple([0, ["get", "bad"], 0], props, [1, 1, 1]), [1, 1, 1]);
   assert.deepEqual(triple([1, 2], props, [1, 1, 1]), [1, 1, 1]);
   assert.deepEqual(triple(undefined, props, [1, 1, 1]), [1, 1, 1]);
+});
+
+test("normalMatrix is the inverse transpose of the upper 3x3; points skips MultiPoint members that are not positions", () => {
+  // Scale 2, 4, 8: normals scale by 1/2, 1/4, 1/8.
+  assert.deepEqual(Array.from(normalMatrix([2, 0, 0, 0, 0, 4, 0, 0, 0, 0, 8, 0, 5, 6, 7, 1])), [0.5, 0, 0, 0, 0.25, 0, 0, 0, 0.125]);
+  const p = points({ type: "MultiPoint", coordinates: [null, [1, 2], 3, [4, 5, 6]] });
+  assert.deepEqual(p.map((x) => x.coords), [[1, 2], [4, 5, 6]]);
 });

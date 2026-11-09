@@ -1,7 +1,7 @@
 ///|
 /// The style's `projection` type: `Globe` is MapLibre's `"globe"`, vertical
 /// perspective up to zoom 11 and mercator from 12 with a blend between.
-#derive(Debug, Eq)
+#derive(Eq)
 pub(all) enum Projection {
   Mercator
   Globe

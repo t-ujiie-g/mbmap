@@ -107,3 +107,24 @@ pub fn js_max(a : Double, b : Double) -> Double {
     a
   }
 }
+
+///|
+/// JavaScript's `Math.hypot` of two numbers as V8 computes it: squares scaled by
+/// the larger, Kahan-summed (whose compensation is 0 after the first of two terms).
+pub fn js_hypot(a : Double, b : Double) -> Double {
+  let a = a.abs()
+  let b = b.abs()
+  if a == @double.infinity || b == @double.infinity {
+    return @double.infinity
+  }
+  if a.is_nan() || b.is_nan() {
+    return @double.not_a_number
+  }
+  let max = if b > a { b } else { a }
+  if max == 0.0 {
+    return 0.0
+  }
+  let na = a / max
+  let nb = b / max
+  (na * na + nb * nb).sqrt() * max
+}

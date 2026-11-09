@@ -153,10 +153,8 @@ pub fn Renderer::set_ground(
 }
 
 ///|
-/// How extrusions are lit: `direction` toward the light (x, y, z, in tile
-/// axes), `intensity`, `color` (straight RGB) and, on the globe, the direction
-/// in its axes (`globe_direction`); with the style's `lights`, their ambient and
-/// directional colors times intensities instead of `intensity` and `color`.
+/// How extrusions are lit: `direction` toward the light (tile axes; `globe_direction` the globe's), `intensity`
+/// and `color` (straight RGB); with the style's `lights`, their colors times intensities instead.
 pub(all) struct ExtrusionLight {
   direction : (Double, Double, Double)
   intensity : Double

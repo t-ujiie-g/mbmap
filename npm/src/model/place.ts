@@ -1,6 +1,6 @@
 // Where mbmap/3d's models go: the transforms from a model's meters to Web Mercator and to the globe's
 // unit sphere, and the points of GeoJSON data with their values.
-export { multiply as mul } from "./gltf.ts";
+export { multiply as mul } from "../tiles/geo.ts";
 
 /** A constant, or `["get", key]` for a feature's property. */
 export type Value<T> = T | ["get", string];
@@ -85,7 +85,7 @@ export function points(data: unknown): { coords: number[]; props: Record<string,
     if (g.type === "FeatureCollection") for (const f of Array.isArray(g.features) ? g.features : []) visit(f, {});
     else if (g.type === "Feature") visit(g.geometry, g.properties && typeof g.properties === "object" ? g.properties : {});
     else if (g.type === "Point" && Array.isArray(g.coordinates)) out.push({ coords: g.coordinates, props });
-    else if (g.type === "MultiPoint" && Array.isArray(g.coordinates)) for (const c of g.coordinates) out.push({ coords: c, props });
+    else if (g.type === "MultiPoint" && Array.isArray(g.coordinates)) for (const c of g.coordinates) if (Array.isArray(c)) out.push({ coords: c, props });
   };
   visit(data, {});
   return out.filter((p) => Number.isFinite(p.coords[0]) && Number.isFinite(p.coords[1]));

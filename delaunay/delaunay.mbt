@@ -33,34 +33,6 @@ fn collinear(d : Delaunator) -> Bool {
 }
 
 ///|
-/// V8's `Math.hypot` of two numbers (Kahan summation of squares scaled by the
-/// larger), which d3-delaunay's jitter radius goes through.
-fn hypot(a : Double, b : Double) -> Double {
-  let a = a.abs()
-  let b = b.abs()
-  if a == @double.infinity || b == @double.infinity {
-    return @double.infinity
-  }
-  if a.is_nan() || b.is_nan() {
-    return @double.not_a_number
-  }
-  let max = if b > a { b } else { a }
-  if max == 0.0 {
-    return 0.0
-  }
-  let mut sum = 0.0
-  let mut compensation = 0.0
-  for v in [a, b] {
-    let n = v / max
-    let summand = n * n - compensation
-    let preliminary = sum + summand
-    compensation = preliminary - sum - summand
-    sum = preliminary
-  }
-  sum.sqrt() * max
-}
-
-///|
 /// Triangulates `points` (x, y pairs, all finite; jittered in place when
 /// collinear, as d3-delaunay does).
 fn Delaunay::new(points : FixedArray[Double], trig : @core.Trig) -> Delaunay {
@@ -79,7 +51,7 @@ fn Delaunay::new(points : FixedArray[Double], trig : @core.Trig) -> Delaunay {
       }
     }
     let r = 1.0e-8 *
-      hypot(
+      @core.js_hypot(
         points[2 * f + 1] - points[2 * e + 1],
         points[2 * f] - points[2 * e],
       )

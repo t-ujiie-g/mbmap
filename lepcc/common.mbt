@@ -138,27 +138,3 @@ fn check_blob(
   }
   size
 }
-
-///|
-/// `lepcc_getBlobInfo` of `data[start, start + len)`: the type whose key the blob starts with and
-/// the size its header gives, or None where it fails (shorter than 24 bytes, no key, or a size
-/// below `len` or past 2^32 - 1).
-pub fn blob_info(
-  data : FixedArray[Byte],
-  start : Int32,
-  len : Int32,
-) -> (BlobType, UInt32)? {
-  guard start >= 0 &&
-    len >= TOP_HEADER_SIZE + 8 &&
-    start.to_int64() + len.to_int64() <= data.length().to_int64() else {
-    return None
-  }
-  for kind in [Xyz, Rgb, Intensity, FlagBytes] {
-    guard has_key(data, start, kind) else { continue }
-    let size = i64_at(data, start + TOP_HEADER_SIZE)
-    if size >= len.to_int64() && size <= 0xffffffffL {
-      return Some((kind, size.reinterpret_as_uint64().to_uint()))
-    }
-  }
-  None
-}

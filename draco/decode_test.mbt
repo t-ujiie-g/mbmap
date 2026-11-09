@@ -62,11 +62,11 @@ let metadata : String = "445241434f0202010100800002036c6f640402000000046e616d650
 ///|
 fn decoded(s : String) -> @draco.DracoMesh {
   let src = hex(s)
-  @draco.decode_mesh(src, 0, src.length()).unwrap()
+  @draco.decode(src, 0, src.length()).unwrap()
 }
 
 ///|
-test "decode_mesh: standard edgebreaker, quantized positions, normals and tex coords" {
+test "decode of a mesh: standard edgebreaker, quantized positions, normals and tex coords" {
   let mesh = decoded(standard)
   assert_eq(mesh.num_points, 9)
   assert_eq(mesh.indices, [
@@ -80,7 +80,7 @@ test "decode_mesh: standard edgebreaker, quantized positions, normals and tex co
 }
 
 ///|
-test "decode_mesh: valence edgebreaker with constrained, geometric normal and tex coords predictions" {
+test "decode of a mesh: valence edgebreaker with constrained, geometric normal and tex coords predictions" {
   let mesh = decoded(valence)
   assert_eq(mesh.num_points, 20)
   assert_eq(mesh.indices.length(), 72)
@@ -95,7 +95,7 @@ test "decode_mesh: valence edgebreaker with constrained, geometric normal and te
 }
 
 ///|
-test "decode_mesh: sequential mesh with integer attributes" {
+test "decode of a mesh: sequential mesh with integer attributes" {
   let mesh = decoded(sequential)
   assert_eq(mesh.num_points, 6)
   assert_eq(mesh.indices, [0, 1, 3, 1, 4, 3, 1, 2, 4, 2, 5, 4])
@@ -107,7 +107,7 @@ test "decode_mesh: sequential mesh with integer attributes" {
 }
 
 ///|
-test "decode_mesh: sequential mesh with raw indices and unquantized floats" {
+test "decode of a mesh: sequential mesh with raw indices and unquantized floats" {
   let mesh = decoded(raw_floats)
   assert_eq(mesh.indices, [0, 1, 2, 1, 3, 2])
   let floats = fn(a : @draco.DracoAttribute) {
@@ -127,7 +127,7 @@ test "decode_mesh: sequential mesh with raw indices and unquantized floats" {
 }
 
 ///|
-test "decode_mesh: skips the geometry metadata" {
+test "decode of a mesh: skips the geometry metadata" {
   let mesh = decoded(metadata)
   assert_eq(mesh.num_points, 6)
   assert_eq(mesh.indices, [0, 1, 2, 1, 3, 2, 2, 3, 4, 3, 5, 4])
@@ -138,32 +138,32 @@ test "decode_mesh: skips the geometry metadata" {
 }
 
 ///|
-test "decode_mesh: reads the bytes at offset" {
+test "decode of a mesh: reads the bytes at offset" {
   let src = hex(standard)
   let padded = FixedArray::make(src.length() + 7, b'\xff')
   for i, b in src {
     padded[3 + i] = b
   }
-  let mesh = @draco.decode_mesh(padded, 3, src.length()).unwrap()
+  let mesh = @draco.decode(padded, 3, src.length()).unwrap()
   assert_eq(summary(mesh), summary(decoded(standard)))
-  assert_true(@draco.decode_mesh(padded, 3, src.length() + 4) is Some(_))
-  assert_true(@draco.decode_mesh(padded, -1, 4) is None)
-  assert_true(@draco.decode_mesh(padded, 3, src.length() + 5) is None)
-  assert_true(@draco.decode_mesh(padded, 0, -1) is None)
+  assert_true(@draco.decode(padded, 3, src.length() + 4) is Some(_))
+  assert_true(@draco.decode(padded, -1, 4) is None)
+  assert_true(@draco.decode(padded, 3, src.length() + 5) is None)
+  assert_true(@draco.decode(padded, 0, -1) is None)
 }
 
 ///|
-test "decode_mesh: refuses every truncated copy" {
+test "decode of a mesh: refuses every truncated copy" {
   for s in [standard, valence, sequential, raw_floats, metadata] {
     let src = hex(s)
     for n in 0..<src.length() {
-      assert_true(@draco.decode_mesh(src, 0, n) is None)
+      assert_true(@draco.decode(src, 0, n) is None)
     }
   }
 }
 
 ///|
-test "decode_mesh: refuses other magic, versions, geometry types and methods" {
+test "decode of a mesh: refuses other magic, versions, geometry types and methods" {
   let cases = [
     (0, b'E'),
     (5, b'\x01'),
@@ -176,19 +176,19 @@ test "decode_mesh: refuses other magic, versions, geometry types and methods" {
   for c in cases {
     let src = hex(standard)
     src[c.0] = c.1
-    assert_true(@draco.decode_mesh(src, 0, src.length()) is None)
+    assert_true(@draco.decode(src, 0, src.length()) is None)
   }
 }
 
 ///|
-test "decode_mesh: corrupted copies never trap" {
+test "decode of a mesh: corrupted copies never trap" {
   for s in [standard, valence, sequential, metadata] {
     let src = hex(s)
     for i in 0..<src.length() {
       for bit in [0, 3, 7] {
         let copy = src.copy()
         copy[i] = (copy[i].to_int() ^ (1 << bit)).to_byte()
-        match @draco.decode_mesh(copy, 0, copy.length()) {
+        match @draco.decode(copy, 0, copy.length()) {
           Some(mesh) => assert_true(mesh.indices.length() % 3 == 0)
           None => ()
         }
@@ -208,7 +208,7 @@ test "DracoMesh::attribute: the first attribute of a unique id" {
 ///|
 test "DracoMesh::to_bytes: header, attribute rows, indices, then padded data" {
   let mesh = decoded(sequential)
-  let out = mesh.to_bytes()
+  let out = mesh.to_bytes().unwrap()
   let u32 = fn(at : Int32) {
     out[at].to_int() |
     (out[at + 1].to_int() << 8) |
@@ -233,4 +233,15 @@ test "DracoMesh::to_bytes: header, attribute rows, indices, then padded data" {
   for i in 0..<24 {
     assert_eq(out[48 + 48 + 72 + i], mesh.attributes[1].data[i])
   }
+}
+
+///|
+test "DracoMesh::to_bytes refuses output past max_bytes" {
+  let mesh = decoded(sequential)
+  assert_eq(
+    mesh.to_bytes(max_bytes=48 + 48 + 72 + 24 + 24).map(o => o.length()),
+    Some(216),
+  )
+  assert_true(mesh.to_bytes(max_bytes=48 + 48 + 72 + 24 + 23) is None)
+  assert_true(mesh.to_bytes(max_bytes=0) is None)
 }

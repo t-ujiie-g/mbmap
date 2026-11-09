@@ -9,21 +9,13 @@ import {
 // Values
 pub fn atmosphere_blend(Double, Double) -> Double
 
-pub fn globe_radius(Double, Double) -> Double
-
 pub fn planet_scale(Double) -> Double
-
-pub fn surface_point(Vec3) -> @core.LngLat
 
 pub fn surface_vector(@core.LngLat) -> Vec3
 
 pub fn tile_granularity(Int32) -> Int32
 
 pub fn tile_mesh(Int32, borders? : Bool, north? : Bool, south? : Bool) -> (FixedArray[Int32], FixedArray[Int32])
-
-pub fn tile_vector(Double, Double, Int32, Int32, Int32, extent? : Double) -> Vec3
-
-pub fn zoom_adjustment(Double, Double) -> Double
 
 // Errors
 
@@ -59,11 +51,8 @@ pub fn Globe::project_tile(Self, Double, Double, @core.TileId) -> (Double, Doubl
 pub fn Globe::projection(Self) -> Projection
 pub fn Globe::projection_matrix(Self) -> (@core.Mat4, Double, Double)
 pub fn Globe::radius_correction(Self) -> Double
-pub fn Globe::ray_direction(Self, Double, Double) -> Vec3
 pub fn Globe::resize(Self, Double, Double) -> Unit
-pub fn Globe::set_bearing(Self, Double) -> Unit
 pub fn Globe::set_camera(Self, @core.Camera) -> Unit
-pub fn Globe::set_center(Self, @core.LngLat) -> Unit
 pub fn Globe::set_location_at_point(Self, @core.LngLat, Double, Double) -> Unit
 pub fn Globe::set_pitch(Self, Double) -> Unit
 pub fn Globe::set_zoom(Self, Double) -> Unit
@@ -87,7 +76,7 @@ pub struct GlobeFlight {
 pub fn GlobeFlight::at(Self, Double) -> @core.Camera
 pub fn GlobeFlight::transform(Self) -> Globe
 
-#derive(Eq, @debug.Debug)
+#derive(Eq)
 pub(all) enum Projection {
   Mercator
   Globe
@@ -95,7 +84,6 @@ pub(all) enum Projection {
 }
 pub fn Projection::equal(Self, Self) -> Bool
 pub fn Projection::not_equal(Self, Self) -> Bool
-pub fn Projection::to_repr(Self) -> @debug.Repr
 pub fn Projection::transition(Self, Double) -> Double
 
 #derive(Eq, @debug.Debug)
