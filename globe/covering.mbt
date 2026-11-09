@@ -415,36 +415,6 @@ fn tile_distance(
 }
 
 ///|
-/// V8's `Math.hypot` of two numbers (scaled by the larger, Kahan-summed).
-fn hypot(a : Double, b : Double) -> Double {
-  let (a, b) = (a.abs(), b.abs())
-  if a.is_nan() || b.is_nan() {
-    return if a == @double.infinity || b == @double.infinity {
-      @double.infinity
-    } else {
-      @double.not_a_number
-    }
-  }
-  let max = @cmp.maximum(a, b)
-  if max == @double.infinity {
-    return max
-  }
-  if max == 0.0 {
-    return 0.0
-  }
-  let mut sum = 0.0
-  let mut compensation = 0.0
-  for v in [a, b] {
-    let n = v / max
-    let summand = n * n - compensation
-    let preliminary = sum + summand
-    compensation = preliminary - sum - summand
-    sum = preliminary
-  }
-  sum.sqrt() * max
-}
-
-///|
 /// MapLibre's `maxMercatorHorizonAngle`, in degrees.
 const MAX_HORIZON_ANGLE : Double = 89.25
 
@@ -475,39 +445,29 @@ fn tile_zoom(
     (
       (9.314 - 1.0) /
       scale_zoom(
-        @math.cos(radians(MAX_HORIZON_ANGLE - fov)) /
-        @math.cos(radians(MAX_HORIZON_ANGLE)),
+        @math.cos(@core.radians(MAX_HORIZON_ANGLE - fov)) /
+        @math.cos(@core.radians(MAX_HORIZON_ANGLE)),
       ) -
       1.0
     )
   let center_pitch = @math.acos(dz / center_d3)
-  let pitch0 = 2.0 * integral_cos_pow(behavior - 1.0, 0.0, radians(fov / 2.0))
+  let pitch0 = 2.0 *
+    integral_cos_pow(behavior - 1.0, 0.0, @core.radians(fov / 2.0))
   let highest = @cmp.minimum(
-    radians(MAX_HORIZON_ANGLE),
-    center_pitch + radians(fov / 2.0),
+    @core.radians(MAX_HORIZON_ANGLE),
+    center_pitch + @core.radians(fov / 2.0),
   )
-  let lowest = @cmp.minimum(highest, center_pitch - radians(fov / 2.0))
+  let lowest = @cmp.minimum(highest, center_pitch - @core.radians(fov / 2.0))
   let count = integral_cos_pow(behavior - 1.0, lowest, highest)
   let tile_pitch = @math.atan(d2 / dz)
-  let d3 = hypot(d2, dz)
+  let d3 = @core.js_hypot(d2, dz)
   let mut z = center_zoom +
     scale_zoom(
-      center_d3 / d3 / @cmp.maximum(0.5, @math.cos(radians(fov / 2.0))),
+      center_d3 / d3 / @cmp.maximum(0.5, @math.cos(@core.radians(fov / 2.0))),
     )
   z += behavior * scale_zoom(@math.cos(tile_pitch)) / 2.0
   z -= scale_zoom(@cmp.maximum(1.0, count / pitch0 / 3.0)) / 2.0
   z
-}
-
-///|
-fn mercator_y(lat : Double) -> Double {
-  (
-    180.0 -
-    180.0 /
-    @math.PI *
-    @math.ln(@math.tan(@math.PI / 4.0 + lat * @math.PI / 360.0))
-  ) /
-  360.0
 }
 
 ///|
@@ -531,19 +491,19 @@ pub fn Globe::covering_tiles(
   let bearing = self.bearing / @math.PI * 180.0
   let fov = @core.FIELD_OF_VIEW / @math.PI * 180.0
   let units_per_meter = 1.0 /
-    (2.0 * @math.PI * EARTH_RADIUS * @math.cos(lat * @math.PI / 180.0))
+    (2.0 * @math.PI * @core.EARTH_RADIUS * @math.cos(lat * @math.PI / 180.0))
   let distance = self.center_distance() / (units_per_meter * self.world_size())
   let d_merc = distance * units_per_meter
-  let (pr, br) = (radians(pitch), radians(bearing))
+  let (pr, br) = (@core.radians(pitch), @core.radians(bearing))
   let h = @math.sin(pr)
   let center_x = (180.0 + lng) / 360.0
-  let center_y = mercator_y(lat)
+  let center_y = @core.LngLat::{ lng: 0.0, lat, }.to_mercator().y
   let cam_x = center_x + d_merc * -(h * @math.sin(br))
   let cam_y = center_y + d_merc * -(-h * @math.cos(br))
   let cam_z = 0.0 + d_merc * @math.cos(-pr)
   let horizon_gap = MAX_HORIZON_ANGLE - pitch - fov / 2.0
   let near_horizon = clamp((15.0 - horizon_gap) / 15.0, 0.0, 1.0)
-  let top = near_horizon * 500.0 / EARTH_RADIUS + 1.0
+  let top = near_horizon * 500.0 / @core.EARTH_RADIUS + 1.0
   let level = self.zoom + scale_zoom(512.0 / tile_size.to_double())
   let pick = if round_zoom { @core.js_round } else { Double::floor }
   let desired = @cmp.maximum(0.0, pick(level))
@@ -558,7 +518,10 @@ pub fn Globe::covering_tiles(
   let center_px = tiles * center_x
   let center_py = tiles * center_y
   let dz = (0.0 - cam_z).abs()
-  let center_d3 = hypot(hypot(center_x - cam_x, center_y - cam_y), dz)
+  let center_d3 = @core.js_hypot(
+    @core.js_hypot(center_x - cam_x, center_y - cam_y),
+    dz,
+  )
   let stack : Array[(Int32, Int32, Int32, Bool)] = [(0, 0, 0, false)]
   let found : Array[@core.TileId] = []
   let keys : Array[Double] = []

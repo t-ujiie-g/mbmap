@@ -50,7 +50,7 @@ pub fn Globe::new(
     center: { lng: 0.0, lat: 0.0, },
     zoom: limits.min_zoom,
     bearing: 0.0,
-    pitch: radians(limits.min_pitch),
+    pitch: @core.radians(limits.min_pitch),
     width: 0.0,
     height: 0.0,
     limits,
@@ -177,7 +177,7 @@ fn Globe::constrain(
 /// How close to a pole the center may go at `zoom`: past the mercator limit
 /// by as much as half the viewport shows (`_getMaxLatitude`).
 fn Globe::max_latitude(self : Globe, zoom : Double) -> Double {
-  let area = radians(90.0 - @core.MAX_VALID_LATITUDE)
+  let area = @core.radians(90.0 - @core.MAX_VALID_LATITUDE)
   let area_pixels = globe_radius(
       @core.TILE_SIZE * zoom_scale(zoom),
       @core.MAX_VALID_LATITUDE,
@@ -400,12 +400,8 @@ pub fn Globe::camera_altitude(self : Globe) -> Double {
       self.center_distance() /
       self.mercator().pixels_per_meter()
   }
-  (self.vp().camera.length() - 1.0) * EARTH_RADIUS
+  (self.vp().camera.length() - 1.0) * @core.EARTH_RADIUS
 }
-
-///|
-/// MapLibre's `earthRadius`.
-const EARTH_RADIUS : Double = 6371008.8
 
 ///|
 /// Screen point (CSS pixels) of `p`, also when it is behind the globe.

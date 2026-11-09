@@ -44,11 +44,6 @@ fn remap_saturate(
 }
 
 ///|
-fn radians(degrees : Double) -> Double {
-  degrees * @math.PI / 180.0
-}
-
-///|
 fn degrees(radians : Double) -> Double {
   radians * 180.0 / @math.PI
 }

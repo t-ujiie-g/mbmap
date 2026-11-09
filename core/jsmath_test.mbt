@@ -55,3 +55,16 @@ test "turf_ring_area of a closed ring, reversed with its sign" {
   assert_eq(@core.turf_ring_area(trig, back, 0, 5), -a)
   assert_eq(@core.turf_ring_area(trig, ring, 1, 4), 0.0)
 }
+
+///|
+test "js_hypot computes as V8's Math.hypot" {
+  assert_eq(@core.js_hypot(3.0, 4.0), 5.0)
+  assert_eq(@core.js_hypot(1.0e308, 1.0e308), 1.4142135623730951e308)
+  assert_eq(@core.js_hypot(0.1, -0.2), 0.223606797749979)
+  assert_eq(@core.js_hypot(0.0, -0.0), 0.0)
+  assert_eq(
+    @core.js_hypot(@double.not_a_number, @double.infinity),
+    @double.infinity,
+  )
+  assert_true(@core.js_hypot(@double.not_a_number, 1.0).is_nan())
+}
