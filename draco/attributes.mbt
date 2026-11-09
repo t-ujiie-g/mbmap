@@ -20,10 +20,10 @@ const SEQUENTIAL_NORMALS = 3
 /// `DataTypeLength` of Draco's `DataType` (1 `DT_INT8` to 11 `DT_BOOL`; 0 and 12 on are invalid).
 fn data_type_length(dt : Int32) -> Int32 {
   match dt {
-    1 | 2 | 11 => 1
-    3 | 4 => 2
-    5 | 6 | 9 => 4
-    7 | 8 | 10 => 8
+    DT_INT8 | DT_UINT8 | DT_BOOL => 1
+    DT_INT16 | DT_UINT16 => 2
+    DT_INT32 | DT_UINT32 | DT_FLOAT32 => 4
+    DT_INT64 | DT_UINT64 | DT_FLOAT64 => 8
     _ => -1
   }
 }
@@ -133,8 +133,8 @@ fn Decoder::decode_descriptors(self : Decoder, d : AttributesDecoder) -> Bool {
     guard !b.failed else { return false }
     let normalized = b.u8()
     guard !b.failed else { return false }
-    guard att_type < 5 else { return false }
-    guard data_type != 0 && data_type < 12 else { return false }
+    guard att_type < NAMED_ATTRIBUTES_COUNT else { return false }
+    guard data_type >= DT_INT8 && data_type <= DT_BOOL else { return false }
     guard num_components != 0 else { return false }
     let unique_id = b.varint()
     guard !b.failed else { return false }
@@ -186,7 +186,7 @@ fn Decoder::decode_decoder_types(self : Decoder, d : AttributesDecoder) -> Bool 
 fn Decoder::position_parent(self : Decoder) -> Parent? {
   let mut pos = -1
   for i, a in self.attributes {
-    if a.att_type == 0 {
+    if a.att_type == ATTRIBUTE_POSITION {
       pos = i
       break
     }
@@ -408,7 +408,9 @@ fn Decoder::store_values(self : Decoder, sd : SequentialDecoder) -> Bool {
   match sd.kind {
     SEQUENTIAL_INTEGER => {
       let len = data_type_length(a.data_type)
-      guard a.data_type <= 6 && count <= src.length() else { return false }
+      guard a.data_type <= DT_UINT32 && count <= src.length() else {
+        return false
+      }
       for i in 0..<count {
         let v = src[i]
         for k in 0..<len {

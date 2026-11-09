@@ -20,8 +20,60 @@ pub const MAX_ATTRIBUTES : Int32 = 256
 pub const MAX_ATTRIBUTE_BYTES : Int32 = 0x10000000
 
 ///|
-/// Draco's `DT_FLOAT32`.
+/// Draco's `DataType` numbers, `DT_INT8` (1) to `DT_BOOL` (11); 0 is `DT_INVALID`.
+const DT_INT8 : Int32 = 1
+
+///|
+const DT_UINT8 : Int32 = 2
+
+///|
+const DT_INT16 : Int32 = 3
+
+///|
+const DT_UINT16 : Int32 = 4
+
+///|
+const DT_INT32 : Int32 = 5
+
+///|
+const DT_UINT32 : Int32 = 6
+
+///|
+const DT_INT64 : Int32 = 7
+
+///|
+const DT_UINT64 : Int32 = 8
+
+///|
 const DT_FLOAT32 : Int32 = 9
+
+///|
+const DT_FLOAT64 : Int32 = 10
+
+///|
+const DT_BOOL : Int32 = 11
+
+///|
+/// `GeometryAttribute::POSITION`, the first of its `NAMED_ATTRIBUTES_COUNT` types.
+const ATTRIBUTE_POSITION : Int32 = 0
+
+///|
+const NAMED_ATTRIBUTES_COUNT : Int32 = 5
+
+///|
+/// `EncodedGeometryType`'s `POINT_CLOUD` and `TRIANGULAR_MESH`.
+const POINT_CLOUD : Int32 = 0
+
+///|
+const TRIANGULAR_MESH : Int32 = 1
+
+///|
+/// The header's encoding method past 0 (sequential): `MESH_EDGEBREAKER_ENCODING` of a mesh,
+/// `POINT_CLOUD_KD_TREE_ENCODING` of a point cloud.
+const EDGEBREAKER_ENCODING : Int32 = 1
+
+///|
+const KD_TREE_ENCODING : Int32 = 1
 
 ///|
 /// One attribute of a decoded mesh: `unique_id` (uint32 bits) is what KHR_draco_mesh_compression's
@@ -382,7 +434,7 @@ fn Decoder::output(self : Decoder, a : Attribute) -> DracoAttribute? {
 }
 
 ///|
-/// `DecodeHeader` and `Decode`: a mesh when `want` is 1, a point cloud when 0, either (as its
+/// `DecodeHeader` and `Decode`: a mesh when `want` is `TRIANGULAR_MESH`, a point cloud when `POINT_CLOUD`, either (as its
 /// header says) when -1.
 fn decode_geometry(
   src : FixedArray[Byte],
@@ -404,10 +456,12 @@ fn decode_geometry(
   let encoding = b.u8()
   let flags = b.u16()
   guard !b.failed else { return None }
-  guard encoder_type <= 1 && (want < 0 || encoder_type == want) && encoding <= 1 else {
+  guard encoder_type <= TRIANGULAR_MESH &&
+    (want < 0 || encoder_type == want) &&
+    encoding <= EDGEBREAKER_ENCODING else {
     return None
   }
-  let mesh = encoder_type == 1
+  let mesh = encoder_type == TRIANGULAR_MESH
   guard major == 2 && minor <= (if mesh { 2 } else { 3 }) else { return None }
   b.version = bitstream(major, minor)
   if (flags & 0x8000) != 0 {
@@ -425,9 +479,9 @@ fn decode_geometry(
   }
   if !mesh {
     guard d.decode_point_cloud(encoding) else { return None }
-  } else if encoding == 1 {
+  } else if encoding == EDGEBREAKER_ENCODING {
     let kind = b.u8()
-    guard !b.failed && kind <= 2 else { return None }
+    guard !b.failed && kind <= TRAVERSAL_VALENCE else { return None }
     guard decode_edgebreaker(b, kind) is Some((eb, faces, num_points)) else {
       return None
     }
@@ -459,7 +513,7 @@ pub fn decode_mesh(
   offset : Int32,
   length : Int32,
 ) -> DracoMesh? {
-  decode_geometry(src, offset, length, 1)
+  decode_geometry(src, offset, length, TRIANGULAR_MESH)
 }
 
 ///|
@@ -471,7 +525,7 @@ pub fn decode_point_cloud(
   offset : Int32,
   length : Int32,
 ) -> DracoMesh? {
-  decode_geometry(src, offset, length, 0)
+  decode_geometry(src, offset, length, POINT_CLOUD)
 }
 
 ///|

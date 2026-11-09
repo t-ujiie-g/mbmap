@@ -42,7 +42,17 @@ priv struct AttributeData {
 }
 
 ///|
-/// A traversal decoder: `kind` 0 standard, 1 predictive, 2 valence.
+/// `MeshEdgebreakerConnectivityEncodingMethod`: the standard, predictive and valence traversals.
+const TRAVERSAL_STANDARD : Int32 = 0
+
+///|
+const TRAVERSAL_PREDICTIVE : Int32 = 1
+
+///|
+const TRAVERSAL_VALENCE : Int32 = 2
+
+///|
+/// A traversal decoder of `kind` (`TRAVERSAL_*`).
 priv struct Traversal {
   kind : Int32
   buffer : Buffer
@@ -139,7 +149,7 @@ fn Traversal::decode_attribute_seams(self : Traversal) -> Bool {
 /// `Start`: the traversal's streams; `out` gets the buffer where the attributes begin.
 fn Traversal::start(self : Traversal, out : Buffer, num_faces : Int32) -> Bool {
   let version = self.buffer.version
-  if self.kind == 2 {
+  if self.kind == TRAVERSAL_VALENCE {
     if version < bitstream(2, 2) {
       guard self.decode_traversal_symbols() else { return false }
     }
@@ -176,7 +186,7 @@ fn Traversal::start(self : Traversal, out : Buffer, num_faces : Int32) -> Bool {
     return false
   }
   out.assign(self.buffer)
-  if self.kind == 1 {
+  if self.kind == TRAVERSAL_PREDICTIVE {
     let num_split = out.u32()
     guard !out.failed && num_split >= 0 else { return false }
     guard num_split < self.num_vertices else { return false }
@@ -198,7 +208,7 @@ fn Traversal::standard_symbol(self : Traversal) -> Int32 {
 ///|
 fn Traversal::decode_symbol(self : Traversal) -> Int32 {
   match self.kind {
-    2 => {
+    TRAVERSAL_VALENCE => {
       if self.active_context != -1 {
         let counter = self.context_counters[self.active_context] - 1
         self.context_counters[self.active_context] = counter
@@ -244,7 +254,7 @@ fn Traversal::new_active_corner(
   ct : CornerTable,
   corner : Int32,
 ) -> Unit {
-  guard self.kind != 0 else { return }
+  guard self.kind != TRAVERSAL_STANDARD else { return }
   let nv = ct.vertex(next(corner))
   let pv = ct.vertex(previous(corner))
   let cv = ct.vertex(corner)
@@ -271,7 +281,7 @@ fn Traversal::new_active_corner(
     }
     _ => ()
   }
-  if self.kind == 1 {
+  if self.kind == TRAVERSAL_PREDICTIVE {
     if self.last_symbol == TOPOLOGY_C || self.last_symbol == TOPOLOGY_R {
       self.predicted_symbol = if v[nv] < 6 { TOPOLOGY_R } else { TOPOLOGY_C }
     } else {
@@ -290,7 +300,7 @@ fn Traversal::merge_vertices(
   dest : Int32,
   source : Int32,
 ) -> Unit {
-  if self.kind != 0 {
+  if self.kind != TRAVERSAL_STANDARD {
     self.valences[dest] += self.valences[source]
   }
 }

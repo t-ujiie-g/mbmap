@@ -4,14 +4,21 @@
 // 2016 The Draco Authors. See NOTICE.
 
 ///|
-/// Draco's `DT_INT8` to `DT_UINT32` numbers: 1 INT8, 2 UINT8, 3 INT16, 4 UINT16, 5 INT32, 6 UINT32.
+/// `KdTreeAttributesEncodingMethod`: `kKdTreeQuantizationEncoding` (the float tree of older
+/// bitstreams) and `kKdTreeIntegerEncoding`.
+const KD_TREE_QUANTIZATION : Int32 = 0
+
+///|
+const KD_TREE_INTEGER : Int32 = 1
+
+///|
 fn is_signed_type(dt : Int32) -> Bool {
-  dt == 1 || dt == 3 || dt == 5
+  dt == DT_INT8 || dt == DT_INT16 || dt == DT_INT32
 }
 
 ///|
 fn is_unsigned_type(dt : Int32) -> Bool {
-  dt == 2 || dt == 4 || dt == 6
+  dt == DT_UINT8 || dt == DT_UINT16 || dt == DT_UINT32
 }
 
 ///|
@@ -186,7 +193,7 @@ fn Decoder::decode_legacy_kd(self : Decoder, d : AttributesDecoder) -> Bool {
   first.map = None
   let encoding = b.u8()
   guard !b.failed else { return false }
-  if encoding == 0 {
+  if encoding == KD_TREE_QUANTIZATION {
     guard d.ids.length() == 1 && first.num_components == 3 else { return false }
     let _ = b.u8()
     guard !b.failed else { return false }
@@ -196,7 +203,7 @@ fn Decoder::decode_legacy_kd(self : Decoder, d : AttributesDecoder) -> Bool {
       return false
     }
     decode_float_tree(b, first, num_points)
-  } else if encoding == 1 {
+  } else if encoding == KD_TREE_INTEGER {
     let level = b.u8()
     guard !b.failed && level <= 6 else { return false }
     let num_points = b.u32().reinterpret_as_uint()
@@ -298,6 +305,6 @@ fn Decoder::decode_point_cloud(self : Decoder, encoding : Int32) -> Bool {
     return false
   }
   self.num_points = num_points
-  self.kd = encoding == 1
+  self.kd = encoding == KD_TREE_ENCODING
   self.decode_point_attributes()
 }
