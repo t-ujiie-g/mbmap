@@ -1,12 +1,8 @@
-// The frame state 3D Tiles are selected with, taken from the map's camera: the inverse of the matrix a
-// custom layer is drawn with, either Web Mercator's (0 to 1, height in the same units) or the globe's
-// unit sphere, gives the eye, the view's center and the frustum's corners, which go to ECEF meters.
-// Import-free.
-import { cross, dot, normalize, planeFromPointNormal, scale, sub, toCartesian, type Plane, type Vec3 } from "./geo.ts";
+// The frame state 3D Tiles are selected with, from the map's camera: the inverse of a custom layer's
+// matrix, Web Mercator's (0 to 1, height in the same units) or the globe's unit sphere, gives the eye,
+// the view's center and the frustum's corners, which go to ECEF meters.
+import { cross, dot, GLOBE_RADIUS, MERCATOR_RADIUS, normalize, planeFromPointNormal, scale, sub, toCartesian, type Plane, type Vec3 } from "./geo.ts";
 import type { FrameState } from "./tileset.ts";
-
-/** MapLibre's globe radius in meters. */
-const GLOBE_RADIUS = 6371008.8;
 
 /** Column-major 4x4 inverse of `m`, or null when singular. */
 export function invert(m: ArrayLike<number>): Float64Array | null {
@@ -37,14 +33,14 @@ export function invert(m: ArrayLike<number>): Float64Array | null {
 const apply = (m: ArrayLike<number>, v: number[]): number[] => [0, 1, 2, 3].map((r) => m[r] * v[0] + m[4 + r] * v[1] + m[8 + r] * v[2] + m[12 + r] * v[3]);
 
 /** Web Mercator (0 to 1, height in units of the world at latitude `lat0`) to ECEF meters. */
-export function mercatorToEcef(p: ArrayLike<number>, lat0: number): Vec3 {
+function mercatorToEcef(p: ArrayLike<number>, lat0: number): Vec3 {
   const lng = p[0] * 360 - 180;
   const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * p[1]))) * 180) / Math.PI;
-  return toCartesian(lng, lat, p[2] * 2 * Math.PI * 6378137 * Math.cos((lat0 * Math.PI) / 180));
+  return toCartesian(lng, lat, p[2] * 2 * Math.PI * MERCATOR_RADIUS * Math.cos((lat0 * Math.PI) / 180));
 }
 
 /** MapLibre's unit sphere (x east at longitude 90°, y north, z at longitude 0) to ECEF meters. */
-export function sphereToEcef(p: ArrayLike<number>): Vec3 {
+function sphereToEcef(p: ArrayLike<number>): Vec3 {
   const r = Math.hypot(p[0], p[1], p[2]);
   const lng = (Math.atan2(p[0], p[2]) * 180) / Math.PI;
   const lat = (Math.asin(Math.max(-1, Math.min(1, p[1] / r))) * 180) / Math.PI;

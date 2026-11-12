@@ -287,12 +287,14 @@ pub struct Flight {
 }
 
 ///|
-fn sinh(x : Double) -> Double {
+/// Hyperbolic sine from `exp`, as the camera ports compute it (van Wijk and Nuij's flight).
+pub fn sinh(x : Double) -> Double {
   (@math.exp(x) - @math.exp(-x)) / 2.0
 }
 
 ///|
-fn cosh(x : Double) -> Double {
+/// Hyperbolic cosine from `exp`, as `sinh`.
+pub fn cosh(x : Double) -> Double {
   (@math.exp(x) + @math.exp(-x)) / 2.0
 }
 

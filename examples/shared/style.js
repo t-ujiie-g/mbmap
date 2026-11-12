@@ -138,7 +138,10 @@ export function gsiSource() {
 
 /**
  * "2d", "3d" or "globe" over `basemap` ("map" or "photo") as a MapLibre style object, without the layer groups
- * named in `hidden`; the places are overlays, kept when the basemap changes.
+ * named in `hidden`; the places are overlays, kept when the basemap changes. `walk` is a walk around Tokyo Station
+ * (line metrics give its gradient), `sketch` a self-made sketch of the station yard placed by its corners along the
+ * tracks, `photo` GSI's seamless aerial photos (the standard map with ?local=1), and `places-label` sits beside
+ * the dot: below it, or else above, right or left, whichever is free.
  */
 export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, basemap = "map") {
   const sources = {
@@ -149,14 +152,11 @@ export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, bas
     places: { type: "geojson", data: places, promoteId: "name" },
     stations: STATIONS_SOURCE,
     "stations-heat": STATIONS_HEAT_SOURCE,
-    // A walk around Tokyo Station; line metrics give its gradient from start to finish.
     walk: { type: "geojson", lineMetrics: true, data: WALK },
-    // A self-made sketch of the station yard, an image placed by its corners along the tracks.
     sketch: {
       type: "image", url: new URL("../shared/station-sketch.png", location.href).href,
       coordinates: [[139.76263, 35.67878], [139.76536, 35.6849], [139.77097, 35.68322], [139.76824, 35.6771]],
     },
-    // GSI's seamless aerial photos (the standard map's images with ?local=1: the bench fixtures).
     photo: local
       ? { type: "raster", tiles: [`${fixtures}gsi-std/{z}/{x}/{y}.png`], tileSize: 256, minzoom: 14, maxzoom: 14 }
       : { type: "raster", tiles: [`${GSI}/seamlessphoto/{z}/{x}/{y}.jpg`], tileSize: 256, minzoom: 2, maxzoom: 18 },
@@ -208,7 +208,6 @@ export function createStyle(mode, hidden = HIDDEN_AT_START, places = PLACES, bas
     },
     {
       id: "places-label", type: "symbol", source: "places", metadata: overlay,
-      // Beside the dot: below it, or else above, right or left, whichever is free.
       layout: {
         "text-field": "{name}", "text-size": 14, "symbol-sort-key": 0,
         "text-variable-anchor": ["top", "bottom", "left", "right"], "text-radial-offset": 0.8, "text-justify": "auto",

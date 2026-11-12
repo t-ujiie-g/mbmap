@@ -1,7 +1,7 @@
 // Strict parsing of <mb-map> attributes: invalid values give null (AGENTS.md
 // §8.3). Import-free so tests run it as is.
 
-/** Highest zoom; mirrors the default `max_zoom` of `Transform` in core/transform.mbt. */
+/** Highest zoom; mirrors `MAX_ZOOM` in core/transform.mbt. */
 export const MAX_ZOOM = 22;
 
 /** Highest pitch in degrees; mirrors `MAX_PITCH` in core/transform.mbt. */

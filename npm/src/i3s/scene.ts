@@ -1,13 +1,11 @@
 // I3S scene layers (OGC I3S 1.7 and later, with node pages) for mbmap/3d: the layer's resources, its
 // nodes as tiles of the shared traversal, and the level of detail @loaders.gl/tiles 4.5.4 selects I3S
-// nodes with (`getLodStatus`, `getProjectedRadius`). Import-free.
-import { add, cross, eastNorthUp, length, normalize, scale, sub, toCartesian, toCartographic, type Vec3 } from "../tiles/geo.ts";
+// nodes with (`getLodStatus`, `getProjectedRadius`).
+import { add, cross, eastNorthUp, GLOBE_RADIUS, length, MERCATOR_RADIUS, normalize, scale, sub, toCartesian, toCartographic, type Vec3 } from "../tiles/geo.ts";
 import { invert } from "../tiles/frame.ts";
 import { checkSpatialReference, nodeResources, type I3sLayer } from "./content.ts";
 import { Tile, type FrameState } from "../tiles/tileset.ts";
 
-/** MapLibre's globe radius in meters (as frame.ts). */
-const GLOBE_RADIUS = 6371008.8;
 /** The most nodes a layer may name. */
 export const MAX_NODES = 1_000_000;
 
@@ -44,7 +42,7 @@ export interface I3sScene {
  * Where a layer's resources are: beside a layer document `url` ending in `.json` (a layer written out as
  * files), else under `url` itself (a SceneServer layer); a query (a token) goes with every request.
  */
-export function layerBase(url: string): { base: string; query: string } {
+function layerBase(url: string): { base: string; query: string } {
   const u = new URL(url);
   const query = u.search;
   u.search = "";
@@ -152,14 +150,14 @@ export function projector(frame: FrameState): (p: ArrayLike<number>) => Vec3 {
     const r = 1 + h / GLOBE_RADIUS;
     const v = globe
       ? [Math.cos(f) * Math.sin(l) * r, Math.sin(f) * r, Math.cos(f) * Math.cos(l) * r]
-      : [(p[0] + 180) / 360, (1 - Math.log(Math.tan(Math.PI / 4 + f / 2)) / Math.PI) / 2, h / (2 * Math.PI * 6378137 * Math.cos((lat0 * Math.PI) / 180))];
+      : [(p[0] + 180) / 360, (1 - Math.log(Math.tan(Math.PI / 4 + f / 2)) / Math.PI) / 2, h / (2 * Math.PI * MERCATOR_RADIUS * Math.cos((lat0 * Math.PI) / 180))];
     const c = [0, 1, 2, 3].map((k) => matrix[k] * v[0] + matrix[4 + k] * v[1] + matrix[8 + k] * v[2] + matrix[12 + k]);
     return [((c[0] / c[3] + 1) / 2) * width, ((1 - c[1] / c[3]) / 2) * frame.height, c[2] / c[3]];
   };
 }
 
 /** loaders.gl's `getProjectedRadius`: the radius on screen of `tile`'s bounding sphere, taken across the view. */
-export function projectedRadius(tile: Tile, frame: FrameState, project = projector(frame)): number {
+function projectedRadius(tile: Tile, frame: FrameState, project = projector(frame)): number {
   const mbs: number[] = tile.header.mbs;
   const center = tile.volume.center;
   const cameraCarto = toCartographic(frame.position) ?? [0, 0, 0];

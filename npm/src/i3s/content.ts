@@ -120,7 +120,7 @@ export function materialOf(layer: I3sLayer, definition: number | undefined, text
 }
 
 /** Byte sizes of I3S value types. */
-const SIZES: Record<string, number> = { Int8: 1, UInt8: 1, Int16: 2, UInt16: 2, Int32: 4, UInt32: 4, Oid32: 4, Float32: 4, Int64: 8, UInt64: 8, Oid64: 8, Float64: 8 };
+const SIZES: Record<string, number> = Object.assign(Object.create(null), { Int8: 1, UInt8: 1, Int16: 2, UInt16: 2, Int32: 4, UInt32: 4, Oid32: 4, Float32: 4, Int64: 8, UInt64: 8, Oid64: 8, Float64: 8 });
 
 /** The uncompressed buffer's vertex and feature attributes in the order they are stored, with the types read. */
 const VERTEX_LAYOUT: [string, string, number[]][] = [
@@ -399,10 +399,10 @@ export interface I3sAttributeInfo {
 
 export type I3sValues = string[] | Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array | BigInt64Array | BigUint64Array;
 
-const TYPED: Record<string, any> = {
+const TYPED: Record<string, any> = Object.assign(Object.create(null), {
   Int8: Int8Array, UInt8: Uint8Array, Int16: Int16Array, UInt16: Uint16Array, Int32: Int32Array, UInt32: Uint32Array, Oid32: Uint32Array,
   Float32: Float32Array, Float64: Float64Array, Int64: BigInt64Array, UInt64: BigUint64Array, Oid64: BigUint64Array,
-};
+});
 
 /**
  * An attribute buffer's values, one per feature of the node: the header's fields (`count` first), then
@@ -413,7 +413,7 @@ export function readI3sAttribute(bytes: Uint8Array, info: I3sAttributeInfo): I3s
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const header = info.header ?? [{ property: "count", valueType: "UInt32" }];
   let at = 0;
-  const fields: Record<string, number> = {};
+  const fields: Record<string, number> = Object.create(null);
   for (const h of header) {
     const size = SIZES[h.valueType];
     if (size !== 4 || at + 4 > bytes.length) throw new Error(`I3S attribute ${info.name}: bad header`);

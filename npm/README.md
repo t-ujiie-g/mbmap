@@ -110,7 +110,7 @@ Content Security Policy を使うページでは、wasm のコンパイルに `s
   - `querySourceFeatures(sourceId, { sourceLayer, filter })`：描画中のタイルにあるソースの地物を返す。
   - ジオメトリはワーカーが持つので、どちらも Promise を返す（MapLibre は同期）。
   - MapLibre 6 は既定で source の maxzoom より深いズームのタイルを切り分けるため（`zoomLevelsToOverscale`）、そこでは同じ地物の切り口と重複が MapLibre と違う。mbmap は source のタイルのまま描き、問い合わせる。
-- `transformRequest`（オプションと `setTransformRequest`）：スタイル、TileJSON、GeoJSON の `data`、タイル、スプライト、image ソースの画像の要求の URL、ヘッダー、`credentials` を変えられる（MapLibre と同じ `(url, resourceType)`）。既定では資格情報を送らない。PMTiles の範囲リクエスト（ヘッダーもタイルも）は対象外。ソースと描けるレイヤーは「対応するスタイル」に。
+- `transformRequest`（オプションと `setTransformRequest`）：スタイル、TileJSON、GeoJSON の `data`、タイル、スプライト、image ソースの画像の要求の URL、ヘッダー、`credentials` を変えられる（MapLibre と同じ `(url, resourceType)`）。既定では資格情報を送らない。PMTiles の範囲リクエスト（ヘッダーもタイルも）は対象外。スタイル、TileJSON、スプライト（JSON と画像）は 64MB まで、`getData()` で取り直す GeoJSON は 256MB まで読み（GeoJSON ソースのワーカーと同じ）、超えると読むのをやめて `error`（`getData()` は失敗）になる。ソースと描けるレイヤーは「対応するスタイル」に。
 - 地物の状態（feature-state）：`setFeatureState({ source, sourceLayer, id }, state)`、`getFeatureState`、`removeFeatureState(target, key?)`。
   - paint で `["feature-state", key]`（`boolean`・`number`・`string` で型をそろえる）を読むと、その地物だけその状態で描く。fill、line、circle、heatmap、fill-extrusion の色と不透明度、線の太さ、円の大きさに効く。
   - 地物の id は、タイルの id、GeoJSON の `id`、または source の `promoteId` が指すプロパティ。同じ id の地物はまとめて同じ状態になる。
@@ -298,7 +298,7 @@ draw.subscribe((s) => render(s.mode, s.features, s.canUndo, s.canRedo));
   - Shift+クリックで選ぶ形を増やし、`merge()` で 1 つにする。多角形は union、線は端点でつなぎ、点は MultiPoint にする。属性は最初の形のもの。
   - 計算はジオメトリのモジュール（Clipper2 の移植）が 1e-7°（約 1cm）の格子で行う。1 回の分割・結合が 1 段の取り消しになる。結合でできた Multi の形は、選べるが頂点は編集できない。
 - 属性：`setProperties(id, { name: "区画A" })` で足す・変える（null でそのキーを消す。`mode` は変えない）。取り消せる。
-- 状態は `mode`、`selection`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`。
+- 状態は `mode`、`selection`、`selected`、`features`（描いた地物。`id` と `properties.mode` を持つ GeoJSON）、`drawing`（描いている途中の形）、`vertices`、`canUndo`、`canRedo`、`error`（直前の分割や円が mbmap/analysis・mbmap/geodesic に断られた理由。地物が変わると null）。
 - 操作は `setMode(mode)`、`select(id, add)`、`setProperties(id, properties)`、`deleteSelected()`、`merge()`、`finish()`、`cancel()`、`undo()`（描いている途中なら最後の頂点を消す）、`redo()`、`add(features)`、`remove(id)`、`clear()`。キー（Enter で確定、Escape で取り消しなど）は作り手が割り当てる。日本語入力の変換中のキーは渡さないこと。
 - 座標は小数 9 桁（約 0.1mm）に丸め、多角形の外周は反時計回り、穴は時計回りにする（RFC 7946）。
 - 描くのは自前の GeoJSON ソース（`id` で名前の頭を変えられる。既定は `mbmap-draw`）とレイヤーで、`setData` で更新する。色は `color`（既定 `#3b6ed6`）、円の点の数は `steps`（既定 64）、座標の桁は `precision`（既定 9）。描いている間はダブルクリックのズームを止める。

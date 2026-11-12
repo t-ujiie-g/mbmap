@@ -13,6 +13,6 @@ test "a layer's budget refuses features past MAX_PACKED_BYTES before and after t
   p.error = ""
   assert_true(p.spend(1000, LINE_VERTEX_BYTES, 3000))
   assert_eq(p.budget, MAX_PACKED_BYTES.to_double() - 14000.0)
-  assert_false(p.spend(0x7fffffff, EXTRUSION_VERTEX_BYTES, 0))
+  assert_false(p.spend(0x7fffffff, @core.EXTRUSION_VERTEX_BYTES, 0))
   assert_true(p.error.contains("exceeds"))
 }

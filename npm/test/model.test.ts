@@ -59,6 +59,11 @@ test("readGltf refuses what it cannot read safely", async () => {
   await refuse({ scenes: [{ nodes: [0] }], nodes: [{ children: [1, 2] }, { children: [3] }, { children: [3] }, {}] }, /node tree is malformed/);
   await refuse({ ...triangle, accessors: [{ ...triangle.accessors[0], count: 4 }, triangle.accessors[1], triangle.accessors[2]] }, /runs past its buffer view/);
   await refuse({ ...triangle, bufferViews: [{ buffer: 0, byteOffset: 60, byteLength: 48 }] }, /runs past its buffer/);
+  // Names from Object.prototype are no types: "constructor" once made every size NaN and every check pass.
+  await refuse({ ...triangle, accessors: [{ ...triangle.accessors[0], type: "constructor", count: 1e15 }, triangle.accessors[1], triangle.accessors[2]] }, /is not an attribute/);
+  await refuse({ ...triangle, accessors: [{ ...triangle.accessors[0], componentType: "toString" }, triangle.accessors[1], triangle.accessors[2]] }, /is not an attribute/);
+  const proto = await readGltf(gltf({ ...triangle, meshes: [{ primitives: [{ attributes: JSON.parse('{"POSITION": 0, "__proto__": 0}') }] }] }), noLoad);
+  assert.equal(Object.getPrototypeOf(proto.primitives[0].attributes), null);
   const compressed = { ...triangle, bufferViews: [{ buffer: 0, byteLength: 48, extensions: { EXT_meshopt_compression: { buffer: 0, byteLength: 48, byteStride: 12, count: 3, mode: "ATTRIBUTES" } } }, ...triangle.bufferViews.slice(1)] };
   await refuse(compressed, /meshopt compression is not available/);
   await assert.rejects(readGltf(new TextEncoder().encode("{"), noLoad), SyntaxError);

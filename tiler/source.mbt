@@ -464,10 +464,9 @@ fn Source::may_compact(self : Source) -> Bool {
 }
 
 ///|
-/// Drops the table rows no longer referenced when they outnumber the rest:
-/// `live` marks those referenced besides the features' and unlocated ones.
-/// The rows kept lose their geometry. Renumbers the features' (`renumber` does the rest); returns the old-to-new
-/// row map if it compacted.
+/// Drops the rows no longer referenced when they outnumber the rest (`live` marks those referenced besides
+/// the features' and unlocated ones); the rows kept lose their geometry. Renumbers the features' (`renumber`
+/// does the rest); returns the old-to-new row map if it compacted.
 fn Source::compact(self : Source, live : Array[Bool]) -> Array[Int32]? {
   let t = self.table
   let n = t.length()

@@ -68,3 +68,11 @@ test "js_hypot computes as V8's Math.hypot" {
   )
   assert_true(@core.js_hypot(@double.not_a_number, 1.0).is_nan())
 }
+
+///|
+test "sinh and cosh are exp's halves" {
+  assert_eq(@core.sinh(0.0), 0.0)
+  assert_eq(@core.cosh(0.0), 1.0)
+  assert_true((@core.sinh(1.0) - 1.1752011936438014).abs() < 1.0e-15)
+  assert_true((@core.cosh(-1.0) - 1.5430806348152437).abs() < 1.0e-15)
+}

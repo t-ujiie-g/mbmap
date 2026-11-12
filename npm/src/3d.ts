@@ -347,7 +347,6 @@ export class TilesLayer implements CustomLayerInterface {
   readonly ready: Promise<void>;
   #engine: TilesEngine | null = null;
   #map: MapLike | null = null;
-  #gl: WebGL2RenderingContext | null = null;
   #program: ModelProgram | null = null;
 
   /** `i3s` reads `url` as an I3S scene layer (`i3sLayer`) instead of a 3D Tiles tileset. */
@@ -396,7 +395,6 @@ export class TilesLayer implements CustomLayerInterface {
 
   onAdd(map: unknown, gl: WebGL2RenderingContext): void {
     this.#map = map as MapLike;
-    this.#gl = gl;
     this.#program = new ModelProgram(gl);
   }
 
@@ -405,7 +403,6 @@ export class TilesLayer implements CustomLayerInterface {
     this.#program?.delete(gl);
     this.#program = null;
     this.#map = null;
-    this.#gl = null;
   }
 
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {

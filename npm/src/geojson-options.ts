@@ -8,7 +8,10 @@ export type ClusterQuery =
 
 const INT32_MAX = 2 ** 31 - 1;
 
-/** The options the worker loads a source with, derived as MapLibre's GeoJSONSource does (`clusterMaxZoom` 0 or unset means `maxzoom` - 1). */
+/**
+ * The options the worker loads a source with, derived as MapLibre's GeoJSONSource does (`clusterMaxZoom` 0 or unset
+ * means `maxzoom` - 1; `promoteId` only when a string, by which the worker finds diffs' features).
+ */
 export function loadOptions(spec: Record<string, unknown>) {
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const within = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -29,7 +32,6 @@ export function loadOptions(spec: Record<string, unknown>) {
     tolerance: Math.max(0, num(spec.tolerance, 0.375)),
     lineMetrics: spec.lineMetrics === true,
     cluster,
-    // MapLibre gives geojson-vt a `promoteId` only when it is a string; the worker finds diffs' features by it.
     promoteId: typeof spec.promoteId === "string" ? spec.promoteId : undefined,
   };
 }

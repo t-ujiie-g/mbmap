@@ -55,6 +55,7 @@ import type {
   Handler,
 } from "./types";
 import { httpUrl, pmtilesArchive, resolveTemplate, wasmUrl, workerScriptUrl } from "./urls";
+import { MAX_DATA_BYTES, MAX_DOCUMENT_BYTES, readJsonCapped } from "../../worker/js/body.mjs";
 import type { ImageInput, StyleImageOptions } from "./images";
 import { StyleImages } from "./style-images";
 
@@ -320,7 +321,7 @@ export class Map {
       this.#fetch(url.href, "Style")
         .then((res) => {
           if (!res.ok) throw new Error(`mbmap: style: HTTP ${res.status}`);
-          return res.json() as Promise<StyleSpecification>;
+          return readJsonCapped(res, MAX_DOCUMENT_BYTES, () => new Error(`mbmap: style: larger than ${MAX_DOCUMENT_BYTES} bytes`)) as Promise<StyleSpecification>;
         })
         .then((s) => ready(s, url))
         .catch((err: unknown) => this.#fail(err));
@@ -412,7 +413,7 @@ export class Map {
       }
       const res = await this.#fetch(url, "Source");
       if (!res.ok) throw new Error(`mbmap: TileJSON ${url}: HTTP ${res.status}`);
-      this.#tilejson.set(url, await res.json());
+      this.#tilejson.set(url, await readJsonCapped(res, MAX_DOCUMENT_BYTES, () => new Error(`mbmap: TileJSON ${url}: larger than ${MAX_DOCUMENT_BYTES} bytes`)));
     }));
   }
 
@@ -644,7 +645,7 @@ export class Map {
           if (typeof data !== "string") return Promise.resolve(edit.copy(data));
           return this.#fetch(httpUrl(data, this.#base, `GeoJSON source ${id}: data`), "Source").then((res) => {
             if (!res.ok) throw new Error(`mbmap: GeoJSON source ${id}: HTTP ${res.status}`);
-            return res.json();
+            return readJsonCapped(res, MAX_DATA_BYTES, () => new Error(`mbmap: GeoJSON source ${id}: larger than ${MAX_DATA_BYTES} bytes`));
           });
         },
         getClusterExpansionZoom: ask("expansion"),
@@ -853,7 +854,7 @@ export class Map {
   #move(e: Event | null): void {
     const c = this.#current();
     const last = this.#last ?? c;
-    const changed = (["zoom", "rotate", "pitch"] as const).filter((k, i) => [c.zoom !== last.zoom, c.bearing !== last.bearing, c.pitch !== last.pitch][i]);
+    const changed = (["zoom", "rotate", "pitch"] as const).filter((_, i) => [c.zoom !== last.zoom, c.bearing !== last.bearing, c.pitch !== last.pitch][i]);
     // As MapLibre: starts, then `move`, then what changed.
     for (const kind of changed) {
       if (!this.#changing[kind]) {

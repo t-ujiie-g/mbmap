@@ -138,5 +138,7 @@ onmessage = (e) => {
     // Reprojected tiles use proj.wasm and the browser, not data.wasm's output, so they need not wait their turn.
     if (msg.op === "reprojectTile") void run(msg);
     else queue = queue.then(() => run(msg));
+  } else if (msg?.type === "call" && Number.isInteger(msg.id)) {
+    postMessage({ type: "result", id: msg.id, error: "unknown call" });
   }
 };

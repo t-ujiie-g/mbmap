@@ -5,8 +5,9 @@ extern "js" fn create_gl(
   canvas : Canvas,
   extent : Int32,
   shadow_size : Int32,
+  clip_limits : FixedArray[Int32],
 ) -> Gl =
-  #|(canvas, E, SHADOW_SIZE) => {
+  #|(canvas, E, SHADOW_SIZE, [CUT_PLANES, CUT_RINGS, CUT_POINTS]) => {
   #|  const EF = E.toFixed(1);
   #|  const gl = canvas.getContext("webgl2", { antialias: false, alpha: true, depth: true, stencil: true, premultipliedAlpha: true });
   #|  if (!gl) return null;
@@ -100,16 +101,16 @@ extern "js" fn create_gl(
   #|  // (u_cut_union) or any, rings (u_cut_poly) cut inside (outside with u_cut_inverse), and a band u_cut_edge.w px
   #|  // wide by the planes (u_cut_mpp meters per px per unit w) takes u_cut_edge's color.
   #|  const cutVs = "uniform mat4 u_cut_frame; out vec4 v_cut;";
-  #|  const cutFs = "uniform int u_cut_count; uniform bool u_cut_union; uniform vec4 u_cut_planes[16]; uniform vec4 u_cut_edge;" +
-  #|    "uniform float u_cut_mpp; uniform int u_cut_rings[8]; uniform int u_cut_ring_count; uniform vec4 u_cut_poly[32]; uniform bool u_cut_inverse; in vec4 v_cut;" +
+  #|  const cutFs = `uniform int u_cut_count; uniform bool u_cut_union; uniform vec4 u_cut_planes[${CUT_PLANES}]; uniform vec4 u_cut_edge;` +
+  #|    `uniform float u_cut_mpp; uniform int u_cut_rings[${CUT_RINGS}]; uniform int u_cut_ring_count; uniform vec4 u_cut_poly[${CUT_POINTS / 2}]; uniform bool u_cut_inverse; in vec4 v_cut;` +
   #|    "vec2 cutVertex(int i) { vec4 v = u_cut_poly[i / 2]; return i % 2 == 0 ? v.xy : v.zw; }" +
-  #|    "bool inRings(vec2 p) { int start = 0; for (int r = 0; r < 8; r++) { if (r >= u_cut_ring_count) break; int n = u_cut_rings[r]; bool inside = false;" +
-  #|    "  for (int i = 0; i < 64; i++) { if (i >= n) break; vec2 a = cutVertex(start + i), b = cutVertex(start + (i + 1) % n);" +
+  #|    `bool inRings(vec2 p) { int start = 0; for (int r = 0; r < ${CUT_RINGS}; r++) { if (r >= u_cut_ring_count) break; int n = u_cut_rings[r]; bool inside = false;` +
+  #|    `  for (int i = 0; i < ${CUT_POINTS}; i++) { if (i >= n) break; vec2 a = cutVertex(start + i), b = cutVertex(start + (i + 1) % n);` +
   #|    "    if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside; }" +
   #|    "  if (inside) return true; start += n; } return false; }" +
   #|    "vec4 cut(vec4 c) { if (u_cut_ring_count > 0 && inRings(v_cut.xy) != u_cut_inverse) discard; if (u_cut_count == 0) return c;" +
   #|    "  float amount = u_cut_union ? 1e30 : -1e30;" +
-  #|    "  for (int i = 0; i < 16; i++) { if (i >= u_cut_count) break;" +
+  #|    `  for (int i = 0; i < ${CUT_PLANES}; i++) { if (i >= u_cut_count) break;` +
   #|    "    float d = (dot(u_cut_planes[i].xyz, v_cut.xyz) + u_cut_planes[i].w) / (v_cut.w * u_cut_mpp); amount = u_cut_union ? min(amount, d) : max(amount, d); }" +
   #|    "  if (amount <= 0.0) discard; return amount < u_cut_edge.w ? vec4(u_cut_edge.rgb, 1.0) : c; }";
   #|  const cutUniforms = ["u_cut_frame", "u_cut_count", "u_cut_union", "u_cut_planes", "u_cut_edge", "u_cut_mpp", "u_cut_rings", "u_cut_ring_count", "u_cut_poly", "u_cut_inverse"];
@@ -746,7 +747,7 @@ extern "js" fn create_gl(
   #|  c.shadow = { mode: 0, globe: new Float32Array(16), k: [0, 0] };
   #|  // The frame's clipping (`set_cut`): its count, union, planes, edge, meters per pixel, rings and polygon.
   #|  const tileCut = new Float32Array(16);
-  #|  c.cut = { count: 0, union: false, planes: new Float32Array(64), edge: [0, 0, 0, 0], mpp: 1, rings: new Int32Array(8), ringCount: 0, poly: new Float32Array(128), inverse: false };
+  #|  c.cut = { count: 0, union: false, planes: new Float32Array(4 * CUT_PLANES), edge: [0, 0, 0, 0], mpp: 1, rings: new Int32Array(CUT_RINGS), ringCount: 0, poly: new Float32Array(2 * CUT_POINTS), inverse: false };
   #|  c.cutUniforms = (p, frame) => {
   #|    const k = c.cut;
   #|    gl.uniform1i(p.u_cut_count, k.count);

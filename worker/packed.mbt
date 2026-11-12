@@ -8,12 +8,6 @@ pub const FILL_VERTEX_BYTES : Int32 = 4
 pub const LINE_VERTEX_BYTES : Int32 = 8
 
 ///|
-/// Bytes per packed extrusion vertex: x, y, normal x, y, z, wall distance,
-/// centroid x, y as Int16 (see `@tess.EXTRUSION_VERTEX_STRIDE`), then base and
-/// height at the tile's zoom and one deeper as Uint16 decimeters (0 to 6553.5 m).
-pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
-
-///|
 /// u32s per layer entry (docs/FORMATS.md, "Packed tile").
 pub const LAYER_ENTRY_WORDS : Int32 = 23
 
@@ -310,7 +304,7 @@ fn PackedTile::add_extrusion(
   guard self.entry(
       style_layer,
       @core.KIND_EXTRUSION,
-      n * EXTRUSION_VERTEX_BYTES,
+      n * @core.EXTRUSION_VERTEX_BYTES,
       n,
       b.indices.length(),
     )
@@ -321,7 +315,7 @@ fn PackedTile::add_extrusion(
   let s = @tess.EXTRUSION_VERTEX_STRIDE
   let h = @tess.EXTRUSION_HEIGHTS
   for i in 0..<n {
-    let at = vstart + i * EXTRUSION_VERTEX_BYTES
+    let at = vstart + i * @core.EXTRUSION_VERTEX_BYTES
     self.put_i16(at, rescale(v[i * s], extent))
     self.put_i16(at + 2, rescale(v[i * s + 1], extent))
     self.put_i16(at + 4, v[i * s + 2])

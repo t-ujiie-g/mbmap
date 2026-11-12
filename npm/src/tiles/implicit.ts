@@ -1,7 +1,6 @@
-// Implicit tiling (3D Tiles 1.1, and the 3DTILES_implicit_tiling extension): subtree files read and a
-// tile's quadtree or octree expanded into explicit tile headers, as @loaders.gl/3d-tiles 4.5.4's
-// `parseImplicitTiles` does it eagerly (regions split per level; boxes and spheres are split by the
-// specification, which loaders.gl leaves whole). Import-free.
+// Implicit tiling (3D Tiles 1.1, 3DTILES_implicit_tiling): a tile's quadtree or octree expanded from
+// its subtrees into tile headers, eagerly as @loaders.gl/3d-tiles 4.5.4's `parseImplicitTiles` (regions
+// split per level; boxes and spheres split by the specification, which loaders.gl leaves whole).
 
 /** A subtree's availability bitstreams: tiles, content (the first content only) and child subtrees. */
 export interface Subtree {

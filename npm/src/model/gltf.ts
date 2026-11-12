@@ -4,10 +4,10 @@
 import { IDENTITY, multiply } from "../tiles/geo.ts";
 
 /** Components per element of an accessor type. */
-const COMPONENTS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+const COMPONENTS: Record<string, number> = Object.assign(Object.create(null), { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 });
 
 /** Bytes per component of each glTF component type (WebGL's enums). */
-const COMPONENT_BYTES: Record<number, number> = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
+const COMPONENT_BYTES: Record<number, number> = Object.assign(Object.create(null), { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 });
 
 /** Caps on what a model may hold: its JSON, output bytes, elements and node depth. */
 export const MAX_GLTF_JSON_BYTES = 64 << 20;
@@ -207,6 +207,7 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
   if (required.length) throw new Error(`unsupported glTF extensions: ${required.join(", ")}`);
   let budget = MAX_MODEL_BYTES;
   const spend = (n: number) => {
+    if (!Number.isFinite(n) || n < 0) throw new Error("the model is malformed");
     budget -= n;
     if (budget < 0) throw new Error("the model is too large");
   };
@@ -314,7 +315,7 @@ export async function readGltf(bytes: Uint8Array, load: (uri: string) => Promise
       const mesh = meshes[int(node.mesh, -1)];
       if (!mesh) throw new Error(`no mesh ${node.mesh}`);
       for (const p of list(mesh.primitives).map(obj)) {
-        const attributes: Record<string, Attribute> = {};
+        const attributes: Record<string, Attribute> = Object.create(null);
         const compressed = obj(obj(p.extensions).KHR_draco_mesh_compression);
         const ids = obj(compressed.attributes);
         let decoded: DracoMesh | undefined;

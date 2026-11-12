@@ -131,14 +131,21 @@ pub fn Renderer::upload_extrusion(
   count : Int32,
   index_bytes : Int32,
 ) -> Mesh {
-  gl_upload_extrusion(self.gl, vertices, indices, count, index_bytes)
+  gl_upload_extrusion(
+    self.gl,
+    vertices,
+    indices,
+    count,
+    index_bytes,
+    @core.EXTRUSION_VERTEX_BYTES,
+  )
 }
 
 ///|
 /// The features of an extrusion entry's `vertices`: for each run of vertices
 /// sharing a centroid, its first vertex and the centroid's x and y (tile units).
 pub fn extrusion_runs(vertices : JsBuffer) -> FixedArray[Int32] {
-  extrusion_runs_of(vertices)
+  extrusion_runs_of(vertices, @core.EXTRUSION_VERTEX_BYTES)
 }
 
 ///|

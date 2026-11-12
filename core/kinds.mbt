@@ -21,8 +21,14 @@ pub const KIND_SYMBOL : Int32 = 4
 pub const KIND_HILLSHADE : Int32 = 5
 
 ///|
-/// Extruded polygons (`@tess.ExtrusionBuffers`), `@worker.EXTRUSION_VERTEX_BYTES` per vertex.
+/// Extruded polygons (`@tess.ExtrusionBuffers`), `EXTRUSION_VERTEX_BYTES` per vertex.
 pub const KIND_EXTRUSION : Int32 = 6
+
+///|
+/// Bytes per packed extrusion vertex: x, y, normal x, y, z, wall distance,
+/// centroid x, y as Int16 (see `@tess.EXTRUSION_VERTEX_STRIDE`), then base and
+/// height at the tile's zoom and one deeper as Uint16 decimeters (0 to 6553.5 m).
+pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
 
 ///|
 /// A raster tile's image: like a DEM tile's entry, layer -1 serves every

@@ -592,7 +592,7 @@ test "fill-extrusion layers pack walls, roofs and per-feature heights" {
     (1, @core.KIND_EXTRUSION),
   )
   // A triangle: 3 walls and a 1-triangle roof of 3 vertices.
-  let n = entry(1, @worker.ENTRY_VERTEX_BYTES) / @worker.EXTRUSION_VERTEX_BYTES
+  let n = entry(1, @worker.ENTRY_VERTEX_BYTES) / @core.EXTRUSION_VERTEX_BYTES
   assert_eq((n, entry(1, @worker.ENTRY_INDEX_COUNT)), (3 * 4 + 4, 3 * 6 + 3))
   let v = entry(1, @worker.ENTRY_VERTEX_OFFSET)
   let u16 = (at : Int32) => b[at].to_int() | (b[at + 1].to_int() << 8)

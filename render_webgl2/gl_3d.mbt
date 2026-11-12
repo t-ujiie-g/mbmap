@@ -176,28 +176,29 @@ extern "js" fn gl_depth_reset(gl : Gl) -> Unit =
   #|(c) => { if (c.depth) c.depth.ready = false; }
 
 ///|
-/// Uploads a fill-extrusion entry (`@worker.EXTRUSION_VERTEX_BYTES` per
-/// vertex), with a ground height of 0 m under every vertex.
+/// Uploads a fill-extrusion entry (`stride` = `@core.EXTRUSION_VERTEX_BYTES`
+/// per vertex), with a ground height of 0 m under every vertex.
 extern "js" fn gl_upload_extrusion(
   gl : Gl,
   vertices : JsBuffer,
   indices : JsBuffer,
   count : Int32,
   index_bytes : Int32,
+  stride : Int32,
 ) -> Mesh =
-  #|(c, vertices, indices, count, indexBytes) => {
-  #|  const gl = c.gl, n = vertices.byteLength / 24;
+  #|(c, vertices, indices, count, indexBytes, stride) => {
+  #|  const gl = c.gl, n = vertices.byteLength / stride;
   #|  const vao = gl.createVertexArray();
   #|  gl.bindVertexArray(vao);
   #|  const vbo = gl.createBuffer();
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
   #|  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   #|  gl.enableVertexAttribArray(0);
-  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, 24, 0);
+  #|  gl.vertexAttribPointer(0, 2, gl.SHORT, false, stride, 0);
   #|  gl.enableVertexAttribArray(1);
-  #|  gl.vertexAttribIPointer(1, 4, gl.SHORT, 24, 4);
+  #|  gl.vertexAttribIPointer(1, 4, gl.SHORT, stride, 4);
   #|  gl.enableVertexAttribArray(3);
-  #|  gl.vertexAttribPointer(3, 4, gl.UNSIGNED_SHORT, false, 24, 16);
+  #|  gl.vertexAttribPointer(3, 4, gl.UNSIGNED_SHORT, false, stride, 16);
   #|  const ele = gl.createBuffer();
   #|  gl.bindBuffer(gl.ARRAY_BUFFER, ele);
   #|  gl.bufferData(gl.ARRAY_BUFFER, n * 4, gl.DYNAMIC_DRAW);
@@ -214,12 +215,15 @@ extern "js" fn gl_upload_extrusion(
 ///|
 /// Where an extrusion entry's features start and their centroids: vertex index,
 /// centroid x, y for each run of vertices sharing a centroid.
-extern "js" fn extrusion_runs_of(vertices : JsBuffer) -> FixedArray[Int32] =
-  #|(vertices) => {
-  #|  const v = new Int16Array(vertices), out = [];
-  #|  for (let i = 0, n = v.length / 12; i < n; i++) {
-  #|    const x = v[i * 12 + 6], y = v[i * 12 + 7];
-  #|    if (i === 0 || x !== v[i * 12 - 6] || y !== v[i * 12 - 5]) out.push(i, x, y);
+extern "js" fn extrusion_runs_of(
+  vertices : JsBuffer,
+  stride : Int32,
+) -> FixedArray[Int32] =
+  #|(vertices, stride) => {
+  #|  const v = new Int16Array(vertices), s = stride / 2, out = [];
+  #|  for (let i = 0, n = v.length / s; i < n; i++) {
+  #|    const x = v[i * s + 6], y = v[i * s + 7];
+  #|    if (i === 0 || x !== v[(i - 1) * s + 6] || y !== v[(i - 1) * s + 7]) out.push(i, x, y);
   #|  }
   #|  return out;
   #|}

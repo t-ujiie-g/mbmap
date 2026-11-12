@@ -108,26 +108,8 @@ export function findEntry(entries, id) {
 async function decompress(bytes, compression) {
   if (compression === 0 || compression === 1) return bytes;
   if (compression !== 2) throw new Error(`PMTiles: compression ${compression} is not supported (only none and gzip)`);
-  const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")).getReader();
-  const parts = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.length;
-    if (total > MAX_PART_BYTES) {
-      reader.cancel();
-      throw new Error("PMTiles: part too large once decompressed");
-    }
-    parts.push(value);
-  }
-  const out = new Uint8Array(total);
-  let at = 0;
-  for (const part of parts) {
-    out.set(part, at);
-    at += part.length;
-  }
-  return out;
+  const inflated = new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")));
+  return readCapped(inflated, MAX_PART_BYTES, () => new Error("PMTiles: part too large once decompressed"));
 }
 
 /**
