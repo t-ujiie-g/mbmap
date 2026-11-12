@@ -634,6 +634,14 @@ extern "js" fn create_gl(
   #|      color.rgb = 1.0 - exp(-1.0 * color.rgb); color = pow(color, vec4(1.0 / 2.2));
   #|      o = vec4(color.rgb, 1.0 - color.a) * u_atmosphere_blend; }`,
   #|    ["u_inv_proj", "u_sun_pos", "u_globe_position", "u_globe_radius", "u_atmosphere_blend"]);
+  #|  for (const [u, uniforms] of pending) {
+  #|    const p = u.program;
+  #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+  #|      const logs = gl.getAttachedShaders(p).map((s) => gl.getShaderInfoLog(s)).filter((l) => l);
+  #|      throw new Error([gl.getProgramInfoLog(p), ...logs].join("\n"));
+  #|    }
+  #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
+  #|  }
   #|  // Globe tile meshes by key (granularity and poles), uploaded once (`addTileMesh`).
   #|  const tileMeshes = new Map();
   #|  const tileMesh = (g) => {
@@ -764,13 +772,5 @@ extern "js" fn create_gl(
   #|    gl.uniformMatrix4fv(p.u_shadow_globe, false, s.globe);
   #|    gl.uniform2f(p.u_shadow_k, s.k[0], s.k[1]);
   #|  };
-  #|  for (const [u, uniforms] of pending) {
-  #|    const p = u.program;
-  #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-  #|      const logs = gl.getAttachedShaders(p).map((s) => gl.getShaderInfoLog(s)).filter((l) => l);
-  #|      throw new Error([gl.getProgramInfoLog(p), ...logs].join("\n"));
-  #|    }
-  #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
-  #|  }
   #|  return c;
   #|}

@@ -35,10 +35,10 @@
 M2 の GPU（`--use-angle=metal`、Chromium 156）で、Web から引き継いだ Phase 20 の数字と見た目を確かめた。初回描画の遅れが見つかったので直した（1 PR）。
 
 - **初回描画の遅れと修正**：2D の `idle`（`npm run render`、11 回の中央値）が 11-06 の 149.2 ms から 181.5 ms に延びていた（MapLibre 227.6 ms）。印で分けると `created`（`create_map` まで）が 40.3 → 63.0 ms。WebGL の呼び出しを計ると、起動時の 22 のプログラムで `getShaderParameter` が 44.5 ms 待っていた（コンパイルを 1 つずつ確かめるので、ドライバーが前のコンパイルを終えるまで止まる）。Phase 20 で地球表示・影・断面の前置きがシェーダに入り、コンパイルが重くなった。
-  - 修正：`create_gl` はすべてのシェーダをコンパイル・リンクしてから、最後にまとめてリンクの結果と uniform の場所を読む（失敗の文はプログラムとシェーダのログを合わせる）。待ちは 48 → 1.5 ms。
-  - 結果：2D の `idle` 181.5 → **131.5 ms**（Phase 20 の前の 149 ms より速い、MapLibre 216.7 ms）、`created` 63.0 → 22.5 ms。フレームの CPU（`rafCpuP50`）は変わらない（pan 0.77、zoom-in 0.56 ms。MapLibre 1.24、1.09 ms）。`--uncapped` の `idle` 178.0 → 138.5 ms。表示（メイン）161.4 → 161.5KB。
-- **押し出し**（`--extrusion`）：`idle` 288.0 → 264.0 ms（修正の分）、MapLibre 399.0 ms。ただし作成から idle までが 11-01 の 120 ms から 180〜190 ms に延びている（Phase 15〜20 の間、押し出しのワーカー側の変更が多い）。切り分けは別に。
-- **影のコスト**（`--shadows`、新設、同じ押し出しに `cast-shadows` の太陽）：`rafCpuP50` は pan 0.78 → 1.12、pan-back 1.05 → 1.24、zoom-in 0.63 → 0.82、zoom-out 0.58 → 0.83 ms（+0.2〜0.35 ms、影の深度テクスチャを毎フレーム描く分）。p95 は 1.63 → 1.89 ms。`idle` は 248.2 ms（ばらつきの内）。
+  - 修正：`create_gl` はすべてのシェーダをコンパイル・リンクしてから、まとめてリンクの結果と uniform の場所を読む（最後のプログラムの直後。その後の `u_shadow_map` の設定が場所を使うため。失敗の文はプログラムとシェーダのログを合わせる）。待ちは 48 → 9.5 ms。初めは `create_gl` の最後で読んだが、`u_shadow_map` が設定されず影が別のテクスチャを読み、pack test の `model` が見つけた。
+  - 結果：2D の `idle` 181.5 → **131.4 ms**（Phase 20 の前の 149 ms より速い、MapLibre 215.9 ms）、`created` 63.0 → 22.9 ms。フレームの CPU（`rafCpuP50`）は変わらない（pan 0.85、zoom-in 0.57 ms。MapLibre 1.44、1.25 ms）。`--uncapped` の `idle` 178.0 → 138.5 ms。表示（メイン）161.4 → 161.5KB。
+- **押し出し**（`--extrusion`）：`idle` 288.0 → 240.8 ms（修正の分）、MapLibre 398.9 ms。ただし作成から idle までが 11-01 の 120 ms から 170〜190 ms に延びている（Phase 15〜20 の間、押し出しのワーカー側の変更が多い）。切り分けは別に。
+- **影のコスト**（`--shadows`、新設、同じ押し出しに `cast-shadows` の太陽）：`rafCpuP50` は pan 0.99 → 1.19、pan-back 1.12 → 1.36、zoom-in 0.61 → 0.97、zoom-out 0.60 → 0.87 ms（+0.2〜0.36 ms、影の深度テクスチャを毎フレーム描く分）。p95 は 1.63 → 1.96 ms。`idle` は 242.1 ms（ばらつきの内）。
 - **CesiumJS との比較**（`npm run cesium -- --gpu`、修正の後、3 回の中央値。20.5 の表は SwiftShader の値）：
 
   | 視点 | 落ち着くまで ms mbmap / Cesium | 回転 120 フレームの CPU p50 / p95 ms mbmap ・ Cesium |
@@ -54,7 +54,8 @@ M2 の GPU（`--use-angle=metal`、Chromium 156）で、Web から引き継い�
   - 地球表示：z16（メルカトルと同じ）、z13、z11 で影と断面が崩れない（GSI のフィクスチャはズーム 14 だけなので、z13・z11 は実際のタイルで見た）。
   - コンソールのエラーなし。z17.5・傾き 75° の東京駅の視点は、カメラが建物の中に入って灰色一色になる（影なしでも同じ。カメラが建物を避けないのは MapLibre と同じ）。
 - **フィクスチャ**：`scripts/setup.sh` で `ofm-planet` と PLATEAU・I3S が取れた。`protomaps` は 404（`build.protomaps.com` の日付の版が消えた）。
-- **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 438、`npm --prefix bench test`、`npm run size`、`style:golden`・`raster:golden`・`labels:golden`、`npm:pack`。
+- **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 438、`npm --prefix bench test`、`npm run size`、`style:golden`・`raster:golden`・`labels:golden`、`npm:pack`。`npm:pack` の `showcase-element` はこの Mac で「表の行のクリック」の後に地図が止まらず 180 s で落ちることがある（main でも 3 回中 2 回。CI では通る）。
+- **計測の注意**：夜の間に Mac が眠ると `render` のページが止まる（`no result after 917038 ms`）。長い計測は `caffeinate -dis` の下で回す。
 
 ## Phase 20 の後の点検（2026-11-09、Web）
 
