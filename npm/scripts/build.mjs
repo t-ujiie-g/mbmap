@@ -55,9 +55,9 @@ const DATA_PARTS = { "../../npm/src/zip.ts": "./data-zip.js", "./crs.mjs": "./da
 // Loaded on the first PROJ string.
 const PROJSTRING = separate(same(["projstring"]));
 
-// Output file, source and what stays out of it. GeoTIFF sources ask mbmap/data's worker for their
-// tiles, so data.js is imported; the element likewise imports the main entry rather than a second
-// copy; the controllers only take a `Map`, so no part of the main entry is bundled into them.
+// Output file, source and what stays out of it: data.js for GeoTIFF sources (mbmap/data's worker draws
+// their tiles), the main entry for the element and the controllers (they take a `Map`), 3d-tiles.js's
+// engine for I3S.
 const ENTRIES = [
   ["index.js", "npm/src/index.ts", { alias: { "mbmap-engine": path.join(ROOT, "_build/js/release/build/bundle/main/main.js") }, plugins: [separate(MAP_PARTS)] }],
   ...Object.keys(MAP_PARTS).filter((file) => file !== "./geotiff-source.js").map((file) => [file.slice(2), `npm/src/${file.slice(2, -3)}.ts`]),
@@ -79,7 +79,6 @@ const ENTRIES = [
   ["geodesic-worker.js", "geodesic_worker/js/worker.mjs"],
   ["3d.js", "npm/src/3d.ts", { plugins: [separate(same(["3d-tiles", "3d-i3s"])), PROJSTRING] }],
   ["3d-tiles.js", "npm/src/3d-tiles.ts"],
-  // I3S's work shares 3d-tiles.js's engine.
   ["3d-i3s.js", "npm/src/3d-i3s.ts", { plugins: [separate({ ...same(["3d-tiles"]), "./i3s/slpk.js": "./3d-slpk.js" })] }],
   ["3d-slpk.js", "npm/src/i3s/slpk.ts"],
   ["3d-worker.js", "model_worker/js/worker.mjs"],

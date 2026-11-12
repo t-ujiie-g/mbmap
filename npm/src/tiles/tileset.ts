@@ -1,8 +1,7 @@
-// 3D Tiles 1.0 and 1.1 tilesets for mbmap/3d: the tile tree from tileset JSON (external tilesets
-// hung under the tile that names them, implicit tiling expanded from its subtrees) and the tiles to
-// draw and to load for a frame, as @loaders.gl/tiles 4.5.4's `Tileset3DTraverser` selects them
-// (without skipping levels of detail). Import-free.
-import { boundingVolume, distanceSquaredTo, IDENTITY, MASK_INDETERMINATE, MASK_OUTSIDE, multiply, sub, visibilityWithPlaneMask, dot, type Plane, type Vec3, type Volume } from "./geo.ts";
+// 3D Tiles 1.0 and 1.1 tilesets for mbmap/3d: the tile tree (external tilesets under the tile naming
+// them, implicit tiling expanded) and the tiles to draw and load for a frame, as @loaders.gl/tiles
+// 4.5.4's `Tileset3DTraverser` selects them (without skipping levels of detail).
+import { boundingVolume, distanceSquaredTo, IDENTITY, MASK_INDETERMINATE, MASK_OUTSIDE, multiply, visibilityWithPlaneMask, type Plane, type Vec3, type Volume } from "./geo.ts";
 
 /** What a frame is selected for, in ECEF meters: the camera, the culling planes and the screen height in pixels. */
 export interface FrameState {
@@ -255,9 +254,4 @@ export class Traversal {
     const distance = Math.max(tile.distance, 1e-7);
     return (value * frame.height) / (distance * frame.sseDenominator);
   }
-}
-
-/** Depth along the camera's direction to `tile`'s center (for drawing translucent tiles back to front). */
-export function centerDepth(tile: Tile, frame: FrameState): number {
-  return dot(frame.direction, sub(tile.volume.center, frame.position));
 }

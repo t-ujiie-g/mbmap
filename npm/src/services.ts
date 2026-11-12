@@ -11,6 +11,7 @@ import { parseXml } from "./services/xml";
 import type { StyleSpecification } from "./style";
 import { httpUrl, type TransformedRequest, wasmUrl } from "./urls";
 import { WorkerClient } from "./worker-client";
+import { readCapped } from "../../worker/js/body.mjs";
 
 export { arcgisBounds, arcgisIdentifyUrl, arcgisImage, arcgisSource, arcgisVectorStyle, arcgisZooms, type ArcGISIdentifyOptions, type ArcGISService, type ArcGISSourceOptions } from "./services/arcgis";
 export { isWebMercator, resolved, withQuery, type Bounds, type ImageRequest, type TileSource } from "./services/common";
@@ -43,25 +44,7 @@ async function loadBytes(url: string, options: ServiceOptions, accept?: string):
   });
   if (!res.ok) throw new Error(`mbmap: services: HTTP ${res.status} for ${href}`);
   const tooLarge = () => new Error(`mbmap: services: ${href} is larger than ${MAX_DOCUMENT_BYTES} bytes`);
-  if (!res.body) return counted(new Uint8Array(await res.arrayBuffer()), options);
-  if (Number(res.headers.get("content-length")) > MAX_DOCUMENT_BYTES) {
-    await res.body.cancel();
-    throw tooLarge();
-  }
-  const reader = res.body.getReader();
-  const parts: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > MAX_DOCUMENT_BYTES) {
-      await reader.cancel();
-      throw tooLarge();
-    }
-    parts.push(value);
-  }
-  return counted(new Uint8Array(await new Blob(parts as BlobPart[]).arrayBuffer()), options);
+  return counted(await readCapped(res, MAX_DOCUMENT_BYTES, tooLarge), options);
 }
 
 /** The most bytes the pages of one `ogcFeatures`, `wfsFeatures` or `arcgisFeatures` call may weigh in all. */

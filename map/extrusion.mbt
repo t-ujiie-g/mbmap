@@ -115,3 +115,64 @@ fn Map::ground_extrusions(self : Map, src : SourceTiles, d : Draw) -> Unit {
     self.renderer.set_ground(m.mesh, runs, heights)
   }
 }
+
+///|
+/// Draws `index`'s extrusion meshes of one tile, raised onto terrain if any.
+fn Map::draw_extrusions(
+  self : Map,
+  index : Int32,
+  layer : @style.StyleLayer,
+  e : @style.ExtrusionPaint,
+  shared : Paint,
+  d : Draw,
+  light : @render_webgl2.ExtrusionLight,
+  on_terrain : Bool,
+  pass : Int32,
+) -> Unit {
+  let t = self.transform
+  let zoom = t.camera.zoom
+  // Heights were taken at the tile's zoom and one deeper.
+  let mix = @cmp.maximum(0.0, @cmp.minimum(1.0, zoom - d.id.z.to_double()))
+  let exaggeration = if on_terrain { self.exaggeration() } else { 0.0 }
+  let shadow = self.tile_shadow(d.id)
+  let cut = self.cut_frame.map(f => {
+    self.transform.tile_light_matrix(f, d.id, @core.TILE_EXTENT)
+  })
+  for m in d.meshes {
+    if m.layer != index || m.ground is None {
+      continue
+    }
+    let p = mesh_paint(m, layer, shared, zoom)
+    // A pattern draws nothing while its image is missing, as in MapLibre.
+    let pattern = match p.pattern {
+      Some(name) =>
+        match self.pattern(name) {
+          Some(pos) => Some(pos)
+          None => continue
+        }
+      None => None
+    }
+    let at = self.translated(d.at, layer, d.id)
+    self.draw_by_state(m, layer, p, zoom, p => {
+      self.renderer.draw_extrusion(
+        m.mesh,
+        at,
+        (p.r, p.g, p.b),
+        if pattern is Some(_) {
+          p.opacity
+        } else {
+          p.a
+        },
+        light,
+        e.vertical_gradient,
+        mix,
+        t.pixels_per_meter(),
+        exaggeration,
+        pattern~,
+        pass~,
+        shadow~,
+        cut~,
+      )
+    })
+  }
+}

@@ -138,7 +138,7 @@ fn TileProcessor::extrusion_layer(
       let out = self.extrusion_buffers(group)
       let first = out.indices.length()
       let v0 = out.num_vertices()
-      if !self.may_fit(g.num_points(), EXTRUSION_VERTEX_BYTES) {
+      if !self.may_fit(g.num_points(), @core.EXTRUSION_VERTEX_BYTES) {
         return false
       }
       self.extrusion.add_polygons(
@@ -151,7 +151,7 @@ fn TileProcessor::extrusion_layer(
       )
       if !self.spend(
           out.num_vertices() - v0,
-          EXTRUSION_VERTEX_BYTES,
+          @core.EXTRUSION_VERTEX_BYTES,
           out.indices.length() - first,
         ) {
         return false

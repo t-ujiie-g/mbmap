@@ -140,3 +140,29 @@ test("model_worker's decode.mjs reads Draco's data types by draco/decode.mbt's D
   assert.ok(pairs.length > 0);
   for (const [, n, typed] of pairs) assert.equal(Number(n), types[`DT_${typed.toUpperCase()}`], typed);
 });
+
+// `pub const NAME : Double = 85.0` in a MoonBit file.
+function moonDouble(path, name) {
+  const m = source(path).match(new RegExp(`^(?:pub )?const ${name} : Double = (-?[\\d.]+)$`, "m"));
+  assert.ok(m, `${name} not found in ${path}`);
+  return Number(m[1]);
+}
+
+test("the facade and <mb-map> mirror core's zoom and pitch limits, map's worker count and the handlers' order", () => {
+  const transform = "../../core/transform.mbt";
+  for (const path of ["../../npm/src/camera.ts", "../../element/parse.ts"]) {
+    const ts = jsConsts(path);
+    assert.equal(ts.MAX_ZOOM, moonDouble(transform, "MAX_ZOOM"), path);
+    assert.equal(ts.MAX_PITCH, moonDouble(transform, "MAX_PITCH"), path);
+  }
+  assert.equal(jsConsts("../../element/parse.ts").MAX_WORKERS, moonConsts("../../map/map.mbt").MAX_WORKERS);
+  const handlers = source("../../npm/src/camera.ts").match(/^export const HANDLERS = \[([^\]]*)\]/m)[1].split(",").map((s) => JSON.parse(s.trim()));
+  const pascal = (name) => name[0].toUpperCase() + name.slice(1);
+  assert.deepEqual(handlers.map(pascal), moonList("../../bundle/main/main.mbt", "handlers"));
+});
+
+test("clipping.ts mirrors core's clipping limits", () => {
+  const ts = jsConsts("../../npm/src/clipping.ts");
+  const core = moonConsts("../../core/clipping.mbt");
+  for (const name of ["MAX_CLIP_PLANES", "MAX_CLIP_RINGS", "MAX_CLIP_POINTS"]) assert.equal(ts[name], core[name], name);
+});

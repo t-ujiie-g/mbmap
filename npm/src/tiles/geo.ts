@@ -4,8 +4,12 @@
 
 export type Vec3 = [number, number, number];
 
+/** The map's globe radius (MapLibre's, meters) and Web Mercator's sphere: WGS 84's semi-major axis. */
+export const GLOBE_RADIUS = 6371008.8;
+export const MERCATOR_RADIUS = 6378137.0;
+
 /** WGS 84's radii and the derived constants math.gl keeps. */
-const RX = 6378137.0;
+const RX = MERCATOR_RADIUS;
 const RZ = 6356752.3142451793;
 const RADII_SQUARED: Vec3 = [RX * RX, RX * RX, RZ * RZ];
 const ONE_OVER_RADII: Vec3 = [1 / RX, 1 / RX, 1 / RZ];
@@ -103,12 +107,12 @@ export function eastNorthUp(origin: ArrayLike<number>): Float64Array {
 }
 
 /** Column-major 4x4 `m` applied to point `p`, and to vector `v`. */
-export const transformPoint = (m: ArrayLike<number>, p: ArrayLike<number>): Vec3 => [
+const transformPoint = (m: ArrayLike<number>, p: ArrayLike<number>): Vec3 => [
   m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12],
   m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13],
   m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14],
 ];
-export const transformVector = (m: ArrayLike<number>, v: ArrayLike<number>): Vec3 => [
+const transformVector = (m: ArrayLike<number>, v: ArrayLike<number>): Vec3 => [
   m[0] * v[0] + m[4] * v[1] + m[8] * v[2],
   m[1] * v[0] + m[5] * v[1] + m[9] * v[2],
   m[2] * v[0] + m[6] * v[1] + m[10] * v[2],

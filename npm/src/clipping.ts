@@ -1,5 +1,10 @@
 // Clipping as CesiumJS's planes and polygons, packed for the engine's and mbmap/3d's shaders. Import-free.
 
+/** The shaders' limits, core/clipping.mbt's: planes, rings, and vertices of all rings together. */
+export const MAX_CLIP_PLANES = 16;
+export const MAX_CLIP_RINGS = 8;
+export const MAX_CLIP_POINTS = 64;
+
 /**
  * What `Map.setClipping` takes: `planes` ([nx, ny, nz, d] in east, north, up meters at `origin` [lng, lat, m], at most 16)
  * keep where n·p + d > 0, by any plane or, `unionClippingRegions`, by all; `edgeWidth` pixels by them take `edgeColor`
@@ -30,7 +35,9 @@ export function packClipping(c: Clipping): number[] {
   const my = (y: number) => Math.log(Math.tan(Math.PI / 4 + (y * Math.PI) / 360)) / (2 * Math.PI);
   const verts = rings.flat().flatMap(([x, y]) => [((x - lng) / 360) * meters, (my(y) - my(lat)) * meters]);
   const n = [lng, lat, h, c.unionClippingRegions ? 1 : 0, c.inverse ? 1 : 0, c.edgeWidth ?? 0, ...(c.edgeColor ?? [1, 1, 1]), planes.length, ...planes.flat(), rings.length, ...rings.map((r) => r.length), ...verts];
-  if (planes.length > 16 || rings.length > 8 || verts.length > 128 || !n.every(Number.isFinite)) throw new Error("mbmap: setClipping: at most 16 planes, 8 rings and 64 points, all finite");
+  if (planes.length > MAX_CLIP_PLANES || rings.length > MAX_CLIP_RINGS || verts.length > 2 * MAX_CLIP_POINTS || !n.every(Number.isFinite)) {
+    throw new Error(`mbmap: setClipping: at most ${MAX_CLIP_PLANES} planes, ${MAX_CLIP_RINGS} rings and ${MAX_CLIP_POINTS} points, all finite`);
+  }
   return n;
 }
 

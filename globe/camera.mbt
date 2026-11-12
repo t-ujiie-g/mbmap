@@ -302,16 +302,6 @@ priv struct FlyPlan {
 }
 
 ///|
-fn cosh(x : Double) -> Double {
-  (@math.exp(x) + @math.exp(-x)) / 2.0
-}
-
-///|
-fn sinh(x : Double) -> Double {
-  (@math.exp(x) - @math.exp(-x)) / 2.0
-}
-
-///|
 /// A flight to `target` zooming out and back in on van Wijk and Nuij's path
 /// (MapLibre's `flyTo`), on a copy of this camera. None when too short to fly:
 /// ease instead.
@@ -357,10 +347,18 @@ pub fn Globe::fly_to(
   }
   let r0 = zoom_out(false)
   let mut length = (zoom_out(true) - r0) / rho
-  let mut w : (Double) -> Double = s => cosh(r0) / cosh(r0 + rho * s)
+  let mut w : (Double) -> Double = s => {
+    @core.cosh(r0) / @core.cosh(r0 + rho * s)
+  }
   let mut u : (Double) -> Double = s => {
     w0 *
-    ((cosh(r0) * (sinh(r0 + rho * s) / cosh(r0 + rho * s)) - sinh(r0)) / rho2) /
+    (
+      (
+        @core.cosh(r0) * (@core.sinh(r0 + rho * s) / @core.cosh(r0 + rho * s)) -
+        @core.sinh(r0)
+      ) /
+      rho2
+    ) /
     u1
   }
   if u1.abs() < 0.000002 || length.is_nan() || length.is_inf() {

@@ -1,6 +1,7 @@
 // Scene layer packages (I3S SLPK: a zip of a layer's resources, entries stored and mostly gzipped) read
 // by HTTP range requests, from a Blob's slices or from memory. Esri's `@specialIndexFileHASH128@`
 // (i3s-spec slpk_hashtable) finds entries without the central directory. Imports only zip.ts.
+import { readCapped } from "../../../worker/js/body.mjs";
 import { inflate } from "../zip.ts";
 
 /** Most entries an archive or its hash table may list. */
@@ -60,26 +61,7 @@ const view = (b: Uint8Array) => new DataView(b.buffer, b.byteOffset, b.byteLengt
 const utf8 = new TextDecoder();
 
 /** A Response's body, refused past `max` bytes. */
-async function body(res: Response, max: number): Promise<Uint8Array> {
-  if (Number(res.headers.get("content-length")) > max) fail(`more than ${max} bytes`);
-  const parts: Uint8Array[] = [];
-  let got = 0;
-  const reader = res.body?.getReader();
-  if (!reader) return new Uint8Array(await res.arrayBuffer());
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    got += value.length;
-    if (got > max) {
-      await reader.cancel().catch(() => {});
-      fail(`more than ${max} bytes`);
-    }
-    parts.push(value);
-  }
-  const out = new Uint8Array(got);
-  parts.reduce((at, p) => (out.set(p, at), at + p.length), 0);
-  return out;
-}
+const body = (res: Response, max: number): Promise<Uint8Array> => readCapped(res, max, () => new Error(`SLPK: more than ${max} bytes`));
 
 const memory = (bytes: Uint8Array): Source => ({ size: bytes.length, mode: "whole", read: async (s, e) => bytes.subarray(s, e) });
 

@@ -1,6 +1,6 @@
 // Drawing glTF models for mbmap/3d's layers in WebGL2: a model's primitives uploaded once, then drawn
 // with its meters taken to clip space by a Web Mercator matrix and, on the globe, a unit-sphere one.
-import { mercatorMeters, packClipping, type Clipping } from "../clipping";
+import { MAX_CLIP_PLANES, MAX_CLIP_POINTS, MAX_CLIP_RINGS, mercatorMeters, packClipping, type Clipping } from "../clipping";
 import type { CustomRenderMethodInput } from "../custom";
 import type { Material, Primitive } from "./gltf";
 import { LIGHT, mul, normalMatrix } from "./place";
@@ -86,21 +86,21 @@ out vec4 o;
 // The map's clipping, as its extrusions are cut (render_webgl2's cutFs): v_cut is east, north, up meters at its origin.
 uniform int u_cut_count;
 uniform bool u_cut_union;
-uniform vec4 u_cut_planes[16];
+uniform vec4 u_cut_planes[${MAX_CLIP_PLANES}];
 uniform vec4 u_cut_edge;
 uniform float u_cut_mpp;
-uniform int u_cut_rings[8];
+uniform int u_cut_rings[${MAX_CLIP_RINGS}];
 uniform int u_cut_ring_count;
-uniform vec4 u_cut_poly[32];
+uniform vec4 u_cut_poly[${MAX_CLIP_POINTS / 2}];
 uniform bool u_cut_inverse;
 vec2 cutVertex(int i) { vec4 v = u_cut_poly[i / 2]; return i % 2 == 0 ? v.xy : v.zw; }
 bool inRings(vec2 p) {
   int start = 0;
-  for (int r = 0; r < 8; r++) {
+  for (int r = 0; r < ${MAX_CLIP_RINGS}; r++) {
     if (r >= u_cut_ring_count) break;
     int n = u_cut_rings[r];
     bool inside = false;
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < ${MAX_CLIP_POINTS}; i++) {
       if (i >= n) break;
       vec2 a = cutVertex(start + i), b = cutVertex(start + (i + 1) % n);
       if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
@@ -115,7 +115,7 @@ vec4 cut() {
   if (u_cut_ring_count > 0 && inRings(v_cut.xy) != u_cut_inverse) discard;
   if (u_cut_count == 0) return vec4(0.0);
   float amount = u_cut_union ? 1e30 : -1e30;
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < ${MAX_CLIP_PLANES}; i++) {
     if (i >= u_cut_count) break;
     float d = (dot(u_cut_planes[i].xyz, v_cut.xyz) + u_cut_planes[i].w) / (v_cut.w * u_cut_mpp);
     amount = u_cut_union ? min(amount, d) : max(amount, d);
@@ -330,9 +330,9 @@ export class ModelProgram {
     gl.uniform1i(u.u_cut_inverse, n[4]);
     gl.uniform4f(u.u_cut_edge, n[6], n[7], n[8], n[5]);
     gl.uniform1f(u.u_cut_mpp, clip.mpp);
-    gl.uniform4fv(u.u_cut_planes, pad(n.slice(10, 10 + 4 * planes), 64));
-    gl.uniform1iv(u.u_cut_rings, new Int32Array(pad(n.slice(11 + 4 * planes, 11 + 4 * planes + rings), 8)));
-    gl.uniform4fv(u.u_cut_poly, pad(n.slice(11 + 4 * planes + rings), 128));
+    gl.uniform4fv(u.u_cut_planes, pad(n.slice(10, 10 + 4 * planes), 4 * MAX_CLIP_PLANES));
+    gl.uniform1iv(u.u_cut_rings, new Int32Array(pad(n.slice(11 + 4 * planes, 11 + 4 * planes + rings), MAX_CLIP_RINGS)));
+    gl.uniform4fv(u.u_cut_poly, pad(n.slice(11 + 4 * planes + rings), 2 * MAX_CLIP_POINTS));
   }
 
   /**

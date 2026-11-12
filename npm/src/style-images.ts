@@ -1,5 +1,6 @@
 // The style's images: the sprite's (sprite.js, loaded with the first sprite) and those `addImage` adds.
 import * as engine from "mbmap-engine";
+import { MAX_DOCUMENT_BYTES, readCapped } from "../../worker/js/body.mjs";
 import { decodeImage } from "../../worker/js/imagesize.mjs";
 import { type ImageInput, type StyleImageOptions, canvasPixels, imageOptions, imagePixels } from "./images";
 import type { ResourceType } from "./types";
@@ -38,7 +39,8 @@ export class StyleImages {
     host.withEngine((m) => engine.map_hold_images(m, sprite != null));
     if (sprite == null) return;
     const loading = import("./sprite.js")
-      .then((m) => m.loadSprites(sprite, globalThis.devicePixelRatio ?? 1, base, host.fetch))
+      .then((m) => m.loadSprites(sprite, globalThis.devicePixelRatio ?? 1, base, host.fetch, (res, what) =>
+        readCapped(res, MAX_DOCUMENT_BYTES, () => new Error(`${what}: larger than ${MAX_DOCUMENT_BYTES} bytes`))))
       .then((images) => {
         if (key !== this.#spriteKey || this.#closed) return;
         for (const { name, pixels, pixelRatio, sdf } of images) {

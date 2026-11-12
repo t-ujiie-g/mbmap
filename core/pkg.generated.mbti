@@ -9,6 +9,8 @@ import {
 // Values
 pub const EARTH_RADIUS : Double = 6371008.8
 
+pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
+
 pub const FIELD_OF_VIEW : Double = 0.6435011087932844
 
 pub const GEOMETRY_TYPE_KEY : String = "$type"
@@ -33,11 +35,19 @@ pub const KIND_RASTER : Int32 = 7
 
 pub const KIND_SYMBOL : Int32 = 4
 
+pub const MAX_CLIP_PLANES : Int32 = 16
+
+pub const MAX_CLIP_POINTS : Int32 = 64
+
+pub const MAX_CLIP_RINGS : Int32 = 8
+
 pub const MAX_PITCH : Double = 85.0
 
 pub const MAX_TILE_ZOOM : Int32 = 28
 
 pub const MAX_VALID_LATITUDE : Double = 85.051129
+
+pub const MAX_ZOOM : Double = 22.0
 
 pub const NORTH_POLE_Y : Int32 = -32768
 
@@ -64,6 +74,8 @@ pub const TILE_EXTENT : Int32 = 8192
 pub const TILE_SIZE : Double = 512.0
 
 pub fn clamp_i16(Int32) -> Int32
+
+pub fn cosh(Double) -> Double
 
 pub let exact_powers : FixedArray[Double]
 
@@ -100,6 +112,8 @@ pub fn radians(Double) -> Double
 pub fn ray_view((Double, Double, Double), (Double, Double, Double), Double, Double) -> ShadowView
 
 pub fn read_json_number(BytesView, Int32, (Int32, Int32) -> Double) -> (Double, Int32)
+
+pub fn sinh(Double) -> Double
 
 pub fn spot_view((Double, Double, Double), (Double, Double, Double), Double, Double, Double, Double) -> ShadowView
 

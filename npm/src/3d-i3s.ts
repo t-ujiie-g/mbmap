@@ -66,7 +66,7 @@ function nodeProperties(scene: I3sScene, node: I3sNode, featureIds: Float64Array
     if (i < 0 || i >= featureIds.length || !paths.length) return out;
     columns ??= Promise.all(paths.map(async (p, k): Promise<[string, I3sValues]> => [infos[k].name, readI3sAttribute(await res.bytes(resourceUrl(scene, p)), infos[k])]));
     const read = await columns.catch(() => [] as [string, I3sValues][]);
-    const ids = read.find(([, v], k) => infos[k]?.attributeValues?.valueType?.startsWith("Oid"))?.[1];
+    const ids = read.find((_, k) => infos[k]?.attributeValues?.valueType?.startsWith("Oid"))?.[1];
     const id = featureIds[i];
     const row = ids ? Array.prototype.findIndex.call(ids, (v: unknown) => String(valueOf(v)) === String(id)) : i;
     if (row < 0) return out;

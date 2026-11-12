@@ -14,6 +14,10 @@ pub const TILE_EXTENT : Int32 = 8192
 pub const MAX_PITCH : Double = 85.0
 
 ///|
+/// Highest zoom a camera takes by default, as in MapLibre.
+pub const MAX_ZOOM : Double = 22.0
+
+///|
 /// The ground is drawn up to this share of the way to the true horizon, and
 /// never past this many degrees from straight down (MapLibre's
 /// `getMercatorHorizon`), so the far plane stays finite.
@@ -55,7 +59,7 @@ pub(all) struct Limits {
 pub fn Limits::default() -> Limits {
   {
     min_zoom: 0.0,
-    max_zoom: 22.0,
+    max_zoom: MAX_ZOOM,
     min_pitch: 0.0,
     max_pitch: MAX_PITCH,
     bounds: None,

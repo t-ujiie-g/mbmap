@@ -1,5 +1,5 @@
 // TileJSON documents merged into their sources, loaded with the first style that has one.
-// Import-free but for tilejson.ts, so that `npm test` can load it.
+// Its imports name their files, so that `npm test` can load it.
 import { setOwn, type StyleSpecification } from "./style.ts";
 import { withoutSources } from "./tilejson.ts";
 

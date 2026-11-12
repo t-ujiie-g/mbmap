@@ -333,19 +333,23 @@ pub fn Map::set_clipping(self : Map, c : FixedArray[Double]) -> Unit {
 }
 
 ///|
-/// Whether `c` is laid out as `Map::set_clipping` takes it, with at most 16 planes, 8 rings and 64
-/// vertices (the shaders' arrays), every number finite.
+/// Whether `c` is laid out as `Map::set_clipping` takes it, with at most `@core.MAX_CLIP_PLANES`,
+/// `MAX_CLIP_RINGS` and `MAX_CLIP_POINTS` (the shaders' arrays), every number finite.
 fn clipping_ok(c : FixedArray[Double]) -> Bool {
   let n = c.length()
   guard n >= 11 && c.iter().all(x => x.is_finite()) else { return n == 0 }
   let planes = c[9]
-  guard planes >= 0.0 && planes <= 16.0 && planes == planes.floor() else {
+  guard planes >= 0.0 &&
+    planes <= @core.MAX_CLIP_PLANES.to_double() &&
+    planes == planes.floor() else {
     return false
   }
   let at = 10 + 4 * planes.to_int()
   guard at < n else { return false }
   let rings = c[at]
-  guard rings >= 0.0 && rings <= 8.0 && rings == rings.floor() else {
+  guard rings >= 0.0 &&
+    rings <= @core.MAX_CLIP_RINGS.to_double() &&
+    rings == rings.floor() else {
     return false
   }
   let first = at + 1 + rings.to_int()
@@ -355,7 +359,8 @@ fn clipping_ok(c : FixedArray[Double]) -> Bool {
     guard c[i] >= 0.0 && c[i] == c[i].floor() else { return false }
     points += c[i]
   }
-  points <= 64.0 && (n - first).to_double() == 2.0 * points
+  points <= @core.MAX_CLIP_POINTS.to_double() &&
+  (n - first).to_double() == 2.0 * points
 }
 
 ///|

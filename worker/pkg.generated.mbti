@@ -53,8 +53,6 @@ pub const ENTRY_VERTEX_BYTES : Int32 = 3
 
 pub const ENTRY_VERTEX_OFFSET : Int32 = 2
 
-pub const EXTRUSION_VERTEX_BYTES : Int32 = 24
-
 pub const FILL_VERTEX_BYTES : Int32 = 4
 
 pub const LAYER_ENTRY_WORDS : Int32 = 23

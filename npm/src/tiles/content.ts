@@ -1,5 +1,5 @@
 // A 3D tile's content for mbmap/3d: Batched 3D Model (b3dm), Instanced 3D Model (i3dm), Point Cloud
-// (pnts), Composite (cmpt) of those, or a glTF itself (3D Tiles 1.1). Import-free.
+// (pnts), Composite (cmpt) of those, or a glTF itself (3D Tiles 1.1).
 import { readGltf, type Attribute, type DracoDecode, type Material, type MeshoptDecode, type Model } from "../model/gltf.ts";
 import { cross, eastNorthUp, normalize, type Vec3 } from "./geo.ts";
 
@@ -355,7 +355,8 @@ function readPnts(bytes: Uint8Array, draco?: DracoDecode): TileContent {
   const batchLength = ids ? (Number.isInteger(ft.BATCH_LENGTH) ? ft.BATCH_LENGTH : 0) : batchTable ? n : 0;
   if (batchTable && compressed) {
     for (const [name, a] of compressed.batch) {
-      batchTable[name] = Array.from({ length: batchLength }, (_, i) => (a.size === 1 ? a.data[i] : Array.prototype.slice.call(a.data, i * a.size, (i + 1) * a.size)));
+      const value = Array.from({ length: batchLength }, (_, i) => (a.size === 1 ? a.data[i] : Array.prototype.slice.call(a.data, i * a.size, (i + 1) * a.size)));
+      Object.defineProperty(batchTable, name, { value, enumerable: true, writable: true, configurable: true });
     }
     delete batchTable.extensions;
   }

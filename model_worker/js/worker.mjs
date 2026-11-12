@@ -241,5 +241,7 @@ onmessage = async (e) => {
     } catch (err) {
       postMessage({ type: "result", id: msg.id, error: String(err?.message ?? err) });
     }
+  } else if (msg?.type === "call" && Number.isInteger(msg.id)) {
+    postMessage({ type: "result", id: msg.id, error: "unknown call" });
   }
 };

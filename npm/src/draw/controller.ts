@@ -35,7 +35,8 @@ export interface Geodesic {
 /**
  * `mode` (null for none); `features` drawn; `drawing` the shape under way (with the pointer) or null;
  * `vertices` placed for it; `selection` the ids picked in `"select"` mode (Shift adds), `selected` the
- * last of them; `canUndo` and `canRedo`.
+ * last of them; `canUndo` and `canRedo`; `error` why the last split or circle failed (mbmap/analysis or
+ * mbmap/geodesic refused it), null once the features change.
  */
 export interface DrawState {
   mode: EditMode | null;
@@ -46,6 +47,7 @@ export interface DrawState {
   vertices: Position[];
   canUndo: boolean;
   canRedo: boolean;
+  error: string | null;
 }
 
 /**
@@ -101,7 +103,7 @@ class DrawStore extends Store<DrawState> implements Draw {
   #unlayer: (() => void) | null = null;
 
   constructor(map: Map, options: DrawOptions) {
-    super({ mode: null, selected: null, selection: [], features: [], drawing: null, vertices: [], canUndo: false, canRedo: false });
+    super({ mode: null, selected: null, selection: [], features: [], drawing: null, vertices: [], canUndo: false, canRedo: false, error: null });
     this.#map = map;
     this.#options = options;
     this.#id = options.id ?? "mbmap-draw";
@@ -195,7 +197,7 @@ class DrawStore extends Store<DrawState> implements Draw {
     if (mode === "split" && enoughVertices("linestring", vertices)) {
       const line = geometryOf("linestring", vertices)!;
       this.#reset();
-      void this.#split(line);
+      this.#split(line).catch((e: unknown) => this.#failed(e));
     } else if (mode === "linestring" || mode === "polygon" || mode === "freehand") {
       if (enoughVertices(mode, vertices)) this.#commit(mode, geometryOf(mode, vertices)!);
       else this.#reset();
@@ -252,7 +254,11 @@ class DrawStore extends Store<DrawState> implements Draw {
   #change(features: DrawnFeature[], before = this.state.features): void {
     this.#done.push(before);
     this.#undone = [];
-    this.#show({ features, ...kept(features, this.state.selection) });
+    this.#show({ features, ...kept(features, this.state.selection), error: null });
+  }
+
+  #failed(e: unknown): void {
+    this.set({ error: e instanceof Error ? e.message : String(e) });
   }
 
   #commit(mode: DrawMode, geometry: DrawnFeature["geometry"]): void {
@@ -289,7 +295,7 @@ class DrawStore extends Store<DrawState> implements Draw {
     if (mode === "freehand") return vertices.length === 0 ? this.#show({ vertices: [at] }) : this.finish();
     if (vertices.length === 0) return this.#show({ vertices: [at] });
     if (mode === "rectangle") return this.#commit(mode, { type: "Polygon", coordinates: [rectangleRing(vertices[0], at)] });
-    void this.#circle(vertices[0], at, true);
+    this.#circle(vertices[0], at, true).catch((e: unknown) => this.#failed(e));
   }
 
   #move(at: Position, point: { x: number; y: number }): void {
@@ -299,7 +305,7 @@ class DrawStore extends Store<DrawState> implements Draw {
     if (mode !== "freehand") at = this.#snap(at, point, null);
     this.#pointer = at;
     if (mode === "freehand" && !this.#near(vertices.at(-1), point, FREEHAND_PIXELS)) return this.#show({ vertices: [...vertices, at] });
-    if (mode === "circle") return void this.#circle(vertices[0], at, false);
+    if (mode === "circle") return void this.#circle(vertices[0], at, false).catch((e: unknown) => this.#failed(e));
     this.#show({});
   }
 

@@ -542,9 +542,9 @@
     },
     {
       "scene": "extrusion-patterns",
-      "ok": false,
-      "mean": 60.612,
-      "p99": 205,
+      "ok": true,
+      "mean": 0.183,
+      "p99": 0,
       "limits": {
         "mean": 0.2,
         "p99": 1

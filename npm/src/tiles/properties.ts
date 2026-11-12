@@ -38,9 +38,9 @@ function checkCount(count: unknown): number {
   return count as number;
 }
 
-const BATCH_COMPONENTS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
-const GL_NAMES: Record<number, string> = { 5120: "BYTE", 5121: "UNSIGNED_BYTE", 5122: "SHORT", 5123: "UNSIGNED_SHORT", 5124: "INT", 5125: "UNSIGNED_INT", 5126: "FLOAT", 5130: "DOUBLE" };
-const BATCH_TYPES: Record<string, string> = {
+const BATCH_COMPONENTS: Record<string, number> = Object.assign(Object.create(null), { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 });
+const GL_NAMES: Record<number, string> = Object.assign(Object.create(null), { 5120: "BYTE", 5121: "UNSIGNED_BYTE", 5122: "SHORT", 5123: "UNSIGNED_SHORT", 5124: "INT", 5125: "UNSIGNED_INT", 5126: "FLOAT", 5130: "DOUBLE" });
+const BATCH_TYPES: Record<string, string> = Object.assign(Object.create(null), {
   BYTE: "INT8",
   UNSIGNED_BYTE: "UINT8",
   SHORT: "INT16",
@@ -49,7 +49,7 @@ const BATCH_TYPES: Record<string, string> = {
   UNSIGNED_INT: "UINT32",
   FLOAT: "FLOAT32",
   DOUBLE: "FLOAT64",
-};
+});
 
 /**
  * A b3dm's batch table (3D Tiles 1.0) as loaders.gl's Tile3DBatchTable reads it: JSON arrays indexed by
@@ -80,7 +80,7 @@ function slice(bytes: Uint8Array | undefined, offset: unknown, length: number, n
   return bytes.subarray(offset as number, (offset as number) + length);
 }
 
-const BYTES: Record<string, number> = { INT8: 1, UINT8: 1, INT16: 2, UINT16: 2, INT32: 4, UINT32: 4, INT64: 8, UINT64: 8, FLOAT32: 4, FLOAT64: 8 };
+const BYTES: Record<string, number> = Object.assign(Object.create(null), { INT8: 1, UINT8: 1, INT16: 2, UINT16: 2, INT32: 4, UINT32: 4, INT64: 8, UINT64: 8, FLOAT32: 4, FLOAT64: 8 });
 const INT_MAX: Record<string, number> = { INT8: 127, UINT8: 255, INT16: 32767, UINT16: 65535, INT32: 2147483647, UINT32: 4294967295, INT64: 2 ** 63 - 1, UINT64: 2 ** 64 - 1 };
 
 /** Element `i` of `bytes` as `type` (little-endian): a number, or a bigint for 64-bit integers. */
@@ -115,7 +115,7 @@ function offsets(bytes: Uint8Array, type: unknown, count: number, limit: number,
   return out;
 }
 
-const COMPONENTS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
+const COMPONENTS: Record<string, number> = Object.assign(Object.create(null), { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 });
 
 /**
  * The features of `metadata.propertyTables[index]` by the 3D Metadata binary table format (64-bit integers

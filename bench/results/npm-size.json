@@ -6,7 +6,7 @@
   "rows": [
     {
       "name": "mbmap",
-      "bytes": 161468,
+      "bytes": 161797,
       "budget": 163000
     },
     {
@@ -16,7 +16,7 @@
     },
     {
       "name": "PMTiles headers (loaded by mbmap when a style has a pmtiles:// source)",
-      "bytes": 769,
+      "bytes": 790,
       "budget": 2000
     },
     {
@@ -31,7 +31,7 @@
     },
     {
       "name": "sprite sheets (loaded by mbmap when a style has a sprite)",
-      "bytes": 1762,
+      "bytes": 1829,
       "budget": 2000
     },
     {
@@ -71,7 +71,7 @@
     },
     {
       "name": "mbmap/services",
-      "bytes": 11254,
+      "bytes": 11335,
       "budget": 12000
     },
     {
@@ -81,17 +81,17 @@
     },
     {
       "name": "services worker (ArcGIS f=json and f=pbf; loaded by mbmap/services on the first such read)",
-      "bytes": 20261,
+      "bytes": 20280,
       "budget": 21000
     },
     {
       "name": "mbmap/draw",
-      "bytes": 4867,
+      "bytes": 4930,
       "budget": 10000
     },
     {
       "name": "display worker",
-      "bytes": 85187,
+      "bytes": 85197,
       "budget": 100000
     },
     {
@@ -101,7 +101,7 @@
     },
     {
       "name": "PMTiles tiles (loaded by the display worker with the first pmtiles:// tile)",
-      "bytes": 2111,
+      "bytes": 2136,
       "budget": 3000
     },
     {
@@ -111,12 +111,12 @@
     },
     {
       "name": "GeoJSON worker",
-      "bytes": 36975,
+      "bytes": 36987,
       "budget": 37000
     },
     {
       "name": "GeoJSON worker with expressions (loaded instead for sources with clusterProperties)",
-      "bytes": 56480,
+      "bytes": 56492,
       "budget": 57000
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "name": "analysis worker",
-      "bytes": 30283,
+      "bytes": 30304,
       "budget": 31000
     },
     {
@@ -176,32 +176,32 @@
     },
     {
       "name": "geodesic worker",
-      "bytes": 12026,
+      "bytes": 12045,
       "budget": 15000
     },
     {
       "name": "mbmap/3d",
-      "bytes": 9075,
+      "bytes": 9091,
       "budget": 10000
     },
     {
       "name": "3D Tiles (loaded by mbmap/3d with the first tilesLayer)",
-      "bytes": 10414,
+      "bytes": 10480,
       "budget": 12000
     },
     {
       "name": "I3S (loaded by mbmap/3d with the first i3sLayer)",
-      "bytes": 8246,
+      "bytes": 8314,
       "budget": 10000
     },
     {
       "name": "SLPK (loaded with the first i3sLayer of an .slpk)",
-      "bytes": 4531,
+      "bytes": 4570,
       "budget": 6000
     },
     {
       "name": "3d worker",
-      "bytes": 43941,
+      "bytes": 44102,
       "budget": 50000
     },
     {
@@ -211,7 +211,7 @@
     },
     {
       "name": "data worker",
-      "bytes": 40610,
+      "bytes": 40650,
       "budget": 41000
     },
     {

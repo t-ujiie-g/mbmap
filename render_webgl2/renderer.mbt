@@ -11,7 +11,11 @@ pub struct Renderer {
 ///|
 /// None if the canvas cannot provide a WebGL2 context.
 pub fn Renderer::new(canvas : Canvas) -> Renderer? {
-  let gl = create_gl(canvas, @core.TILE_EXTENT, @core.SHADOW_MAP_SIZE)
+  let gl = create_gl(canvas, @core.TILE_EXTENT, @core.SHADOW_MAP_SIZE, [
+    @core.MAX_CLIP_PLANES,
+    @core.MAX_CLIP_RINGS,
+    @core.MAX_CLIP_POINTS,
+  ])
   if is_null(gl) {
     None
   } else {

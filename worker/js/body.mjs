@@ -5,9 +5,18 @@
 /** Largest tile body read: the wasm input limit (worker/packed.mbt `MAX_PACKED_BYTES`). */
 export const MAX_BODY_BYTES = 64 * 1024 * 1024;
 
-/** `res`'s body as bytes, or an error once it passes `max` bytes. */
-export async function readCapped(res, max = MAX_BODY_BYTES) {
-  if (Number(res.headers.get("content-length")) > max) throw new Error(`response larger than ${max} bytes`);
+/** Largest JSON document (a style, TileJSON, sprite index, tileset, service document) read. */
+export const MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
+
+/** Largest data file (GeoJSON, CSV, …) read: wasmio's `MAX_INPUT_BYTES`. */
+export const MAX_DATA_BYTES = 256 * 1024 * 1024;
+
+/** `res`'s body as bytes, or `tooLarge()` thrown once it says, or turns out, to pass `max` bytes. */
+export async function readCapped(res, max = MAX_BODY_BYTES, tooLarge = () => new Error(`response larger than ${max} bytes`)) {
+  if (Number(res.headers.get("content-length")) > max) {
+    res.body?.cancel().catch(() => {});
+    throw tooLarge();
+  }
   if (!res.body) return new Uint8Array(await res.arrayBuffer());
   const reader = res.body.getReader();
   const parts = [];
@@ -17,8 +26,8 @@ export async function readCapped(res, max = MAX_BODY_BYTES) {
     if (done) break;
     total += value.length;
     if (total > max) {
-      reader.cancel();
-      throw new Error(`response larger than ${max} bytes`);
+      reader.cancel().catch(() => {});
+      throw tooLarge();
     }
     parts.push(value);
   }
@@ -30,6 +39,9 @@ export async function readCapped(res, max = MAX_BODY_BYTES) {
   }
   return out;
 }
+
+/** `res`'s body parsed as JSON, capped as `readCapped`. */
+export const readJsonCapped = async (res, max = MAX_DOCUMENT_BYTES, tooLarge) => JSON.parse(new TextDecoder().decode(await readCapped(res, max, tooLarge)));
 
 /** How long a fetch of data (files up to 256 MB, not map tiles) may take, its body included. */
 export const DATA_TIMEOUT_MS = 5 * 60 * 1000;
