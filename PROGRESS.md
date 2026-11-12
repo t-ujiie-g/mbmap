@@ -1,31 +1,24 @@
 # PROGRESS
 
-## 現在の状況（2026-11-09）
+## 現在の状況（2026-11-12）
 
 - **終わったもの**：Phase 0〜15 と、Phase 15 の後のリファクタリング・セキュリティチェック・計測（#73〜#78）。Phase 16 は 16.1（未対応の扱い、#79）、CSS の色（#80）、16.7（地形の表現、#81）、大きさの対策（スタイルのコンパイルを主スレッドだけに #83、表示ワーカーの JS を分ける #84）、16.2・16.4（線と平行移動、円、#85）、16.6（式、#86 と「Phase 16.6 の残り」）、16.3（並び順、#87）、16.5（文字、#88）と点のラベルの字の位置（#89）、16.8 の OpenMapTiles 系（#90）と Protomaps（#92）。Phase 16 は完了（`style:compat` の残りの警告 28 件は段階案の外として残す、2026-11-04 ユーザー判断）。全体のレビューの R1（セキュリティ、#93）、R2（正しさ、#94）、R3（整理、#95）、R4（文書、#96）。Phase 17（データ形式）は 17.1〜17.7 が終わった（#97〜#105、下の節）。Phase 17 の後の点検（#107〜#113、下の節）。Phase 19 の後：点検（可視域を GDAL と完全一致に #135、上限と整理 #136）、CI の並列化（#137）、速さの比較と改善（#138〜#140、#143）、道路網のつなぎ（`tile` #141、`snap` #144）、GeoJSON の `updateData`（#142、#145、フィールド演算 #146）。
-- **次**：Phase 20 は点検まで済んだ（下の節）。Mac で GPU の数字と目での確かめ（「Mac で回すもの」）、その後の進め方（改名など）の相談。20.9a・b（3D の拾い方・計測・見通し・可視域、断面）、20.8a・b（太陽の位置と光、影）、20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
+- **次**：Phase 20 は点検と Mac での計測・目での確かめまで済んだ（下の節「Mac での計測と確かめ（Phase 20 の後）」。初回描画の遅れはシェーダのコンパイルを待たないことで直した）。その後の進め方（改名と新しいリポジトリ、押し出しの初回描画の切り分けなど）の相談。20.9a・b（3D の拾い方・計測・見通し・可視域、断面）、20.8a・b（太陽の位置と光、影）、20.7a・b（I3S：建物とメッシュ、点群と LEPCC、SLPK）は済んだ。20.1（地球表示のカメラ）、20.2a〜c（地球表示の描画）、20.3（`mbmap/3d` と glTF、meshopt）、20.4a・b（3D Tiles、Draco、i3dm・cmpt、属性とクエリ）、20.5（PLATEAU の example、CesiumJS との比較。GPU の数字は Mac で `npm run cesium -- --gpu`）、20.6（点群：pnts、glTF の点、Draco の点群、LAS）は済んだ。Claude Code on the web で進める（2026-11-08 ユーザー判断）。
   - Web の環境で足りないもの：PLATEAU の 3D Tiles を取りに行く `assets.cms.plateau.reearth.io` と `api.plateauview.mlit.go.jp`（20.4・20.5 で使う。ユーザーが環境の Network access に足す）。このセッションの環境からは公開スタイルのフィクスチャ（`tiles.openfreemap.org`、`build.protomaps.com`、スプライト）が取れず、`style:public` は回らない（GSI のフィクスチャは取れる）。CesiumJS との描画の速さの比較は M2 の GPU で回すので、その段階の報告で「Mac で回すもの」に足す（AGENTS §9）。
 - **改名**（2026-11-08 ユーザー判断）：「mb」が Mapbox を思わせるので改名する。3D（Phase 20）が終わったら、新しいリポジトリで文書と CI/CD の整理と一緒にまとめて行う（それまでこのリポジトリでは名前を変えない）。候補は moonmap、moon-rabbit / gyokuto、tsukimi-map（`mbt-map` は MBTiles と紛れる）。rabbita などの MoonBit のフロントエンド向けの入口（mooncakes の MoonBit の API）も考える。
 - **Phase 19（解析 第2弾）は完了**：19.1（DE-9IM、#126）、19.2（形の操作、#127）、19.3（分類と統計、#128）、19.4（面と点の集まり、#129）、19.5（可視域と見通し、#130）、19.6（経路探索、#131）、19.7（フィールド演算、#132）、19.8（example の仕上げ、#133）。Phase 18（GIS の Web サービス）は 18.1〜18.7b（#115〜#124）と点検（#125）で完了。
 - **Mac で回すもの**（2026-11-09 に整理。Web の環境は SwiftShader で GPU の数字が取れない。結果の JSON はコミットして戻し、ここと各節の表に書き写す）：
   - 準備：`git pull` のあと `scripts/setup.sh`（または `npm ci` を `npm/`・`bench/`・`examples/react/` で）、`cd bench && npm run fixtures`（PLATEAU の `plateau-chiyoda` も。それだけなら `node maplibre/fetch-tiles.mjs --only=plateau-chiyoda`）。
-  - Phase 20 の速さ：
-    1. `cd bench && npm run cesium -- --gpu`：CesiumJS とのフレームの CPU と落ち着くまでの時間（`bench/results/cesium.json`。20.5 の表は SwiftShader の値）。
-    2. `npm run render`（メインと `--uncapped`）：表示（メイン）が Phase 20 で 147 → 161.4KB になったので、2D の初回描画とフレームの CPU が変わっていないか（`bench/results/render-chromium*.json`）。
-    3. `node render/run.mjs --extrusion` と `node render/run.mjs --shadows`（新設：押し出しに影を落とす太陽を足す。MapLibre は影なし）：同じ押し出しで影の深度テクスチャを毎フレーム描く分のコスト（`render-chromium-extrusion.json` と `render-chromium-extrusion-shadows.json` の mbmap の行を比べる）。
-  - Phase 20 の目での確かめ（実際の GPU で。pack test は SwiftShader で数字を見ている）：`npm run examples` で `http://127.0.0.1:8080/examples/plateau/?local=1` を開き、
-    - 影：開発者ツールで `__map.setLights([{ id: "a", type: "ambient", properties: { intensity: 0.5 } }, { id: "s", type: "directional", properties: { intensity: 0.6, direction: [210, 40], "cast-shadows": true } }])`。建物の影が地面と建物に落ち、地図を回し・傾け・寄っても影が泳がない・縞（アクネ）が出ないか。`setLights(null)` で戻る。
-    - 計測・見通し・可視域・断面：パネルの道具で建物の上をクリック。可視域は緑と赤の境が建物の縁に沿うか、断面は切り口の橙の縁が出るか。
-    - 地球表示：`__map.setProjection({ type: "globe" })` でズーム 11 前後に引いても影と断面が崩れないか。
-    - 気になる所があればスクリーンショットと `navigator.userAgent` を残す。
-  - 前からの残り：`style:public` と `style:compat`（`ofm-planet` と `protomaps` のフィクスチャがまだ Mac にない）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し、主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。Phase 17 の読み込みのベンチ（`data:node` を足すところから）と 17.6c の投影し直しのコスト、点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのあと。
+  - Phase 20 の速さと目での確かめは 2026-11-12 に済んだ（下の節「Mac での計測と確かめ（Phase 20 の後）」）。手順は `npm run cesium -- --gpu`、`npm run render`、`node render/run.mjs --extrusion`・`--shadows`。
+  - 押し出しの初回描画：作成から idle まで 11-01 の 120 ms から 180〜190 ms に延びた（Phase 15〜20 のどこか。下の節）。切り分けて直す。
+  - 前からの残り：`style:public` と `style:compat`（`ofm-planet` は Mac に取れた。`protomaps` のフィクスチャは `build.protomaps.com` の版が消えて 404、`bench/fixtures` の版を新しくする必要がある）、`--labels` などの `render` の変種、`maplibre` の基準の取り直し、主スレッドの `rafCpuP50` が 11-03 の記録より増えた分（下の節）の切り分け。Phase 17 の読み込みのベンチ（`data:node` を足すところから）と 17.6c の投影し直しのコスト、点検の性能の候補（`geotiff` の `open` の二度の解析、`Window::copy`、`lzw`、`input_text` など）はそのあと。
 - **公開スタイル**（`npm run style:compat`）：Protomaps を足した 9 本すべてが拒まれずに描ける。警告は 16.5 で 321 → 30、16.8 で 27（ズームで変わる `*-translate` に対応）と Protomaps の 1。残りは段階案になかったもの（`symbol-placement` / `text-anchor` / `fill-antialias` の式、線に沿った `text-pitch-alignment` / `text-rotation-alignment`）。
 - **開発の場所**：ローカルの Mac（性能ベンチはここだけ）と Claude Code on the web（AGENTS.md「Claude Code on the web」）。
 - **入口の大きさ**（予算は VISION §2）：
 
   | 入口 | 大きさ | 予算 |
   |---|---|---|
-  | 表示（メイン） | 161.4KB（地球表示と太陽の位置 1.2KB と影、3D の拾い方と可視域、断面を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 163KB（2026-11-09、ユーザー判断。断面のため 160KB から、その前に影のため 155KB から。2026-11-08 に地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
+  | 表示（メイン） | 161.5KB（地球表示と太陽の位置 1.2KB と影、3D の拾い方と可視域、断面を含む。式の評価 `evaluateExpression` を含む。GeoTIFF のソースは `geotiff-source.js` 0.2KB、画像・動画・canvas のソースは別に `media.js` 2.6KB、カスタムレイヤーは `custom.js` 2.9KB、`toBlob` は `export.js` 0.4KB、TileJSON の取り込みは `tilejson-merge.js` 0.5KB） | 163KB（2026-11-09、ユーザー判断。断面のため 160KB から、その前に影のため 155KB から。2026-11-08 に地球表示のため 135KB から。その前は 2026-11-04 に 120KB から） |
   | 表示ワーカー | 85.2KB（地球の細分化を含む。ラベルは別に `worker-labels.js` 9.6KB、PMTiles のタイルは `worker-pmtiles.js` 2.0KB、クエリは `worker-query.js` 0.9KB） | 100KB |
   | GeoJSON ソース | 4.5KB ＋ ワーカー 37.0KB（`clusterProperties` のあるソースは式を持つワーカー 56.5KB） | 5KB ＋ 37KB（57KB。`updateData` の増分のため 2026-11-08 ユーザー判断で 30KB・50KB から） |
   | `mbmap/ui` | 9.0KB（全部入り。属性テーブル単独 2.0KB、フィールド演算 1.1KB） | 10KB（1 つ 2KB、属性テーブルは 2.2KB：2026-11-07 ユーザー判断） |
@@ -36,6 +29,33 @@
   | `mbmap/3d` | 9.1KB ＋ 3D Tiles 10.4KB（`3d-tiles.js`、最初の `tilesLayer` で読み込む） ＋ I3S 8.2KB（`3d-i3s.js`） ＋ SLPK 4.5KB（`3d-slpk.js`） ＋ ワーカー 43.9KB（glTF、3D Tiles・I3S の中身、LAS、3d.wasm の meshopt・Draco・LEPCC） | 10KB ＋ 12KB ＋ 10KB ＋ 6KB ＋ 50KB（2026-11-08 ユーザー判断） |
   | `mbmap/analysis` | 8.3KB（分類と統計 2.3KB を含む） ＋ ワーカー 30.3KB（geometry.wasm 41.7KB、relate.wasm 26.8KB、shapes.wasm 27.9KB、surface.wasm 29.2KB、viewshed.wasm と `analysis-viewshed.js` 10.7KB、route.wasm 16.1KB） | 9KB ＋ 31KB（ワーカーは 2026-11-08 に 30KB から。50KB、30KB、30KB、30KB、12KB、17KB（2026-11-08 に 15KB から）。route.wasm、viewshed.wasm と入口の 9KB（5KB から 7KB を経て）と relate・shapes・surface の wasm は 2026-11-07 ユーザー判断） |
   | `mbmap/data` | 4.7KB ＋ ワーカー 40.6KB（`reprojected` のタイル 1.8KB、`xml.wasm` 26.7KB、GeoTIFF 19.8KB、FlatGeobuf 2.3KB、zip 1.2KB、`.prj` 3.7KB、座標変換 1.1KB ＋ proj.wasm 21.7KB） | 6KB ＋ 41KB（ワーカーは 2026-11-08 に 40KB から。2KB、27KB、20KB、2.5KB、2KB、4KB、1.5KB） |
+
+## Mac での計測と確かめ（Phase 20 の後、2026-11-12、Mac）
+
+M2 の GPU（`--use-angle=metal`、Chromium 156）で、Web から引き継いだ Phase 20 の数字と見た目を確かめた。初回描画の遅れが見つかったので直した（1 PR）。
+
+- **初回描画の遅れと修正**：2D の `idle`（`npm run render`、11 回の中央値）が 11-06 の 149.2 ms から 181.5 ms に延びていた（MapLibre 227.6 ms）。印で分けると `created`（`create_map` まで）が 40.3 → 63.0 ms。WebGL の呼び出しを計ると、起動時の 22 のプログラムで `getShaderParameter` が 44.5 ms 待っていた（コンパイルを 1 つずつ確かめるので、ドライバーが前のコンパイルを終えるまで止まる）。Phase 20 で地球表示・影・断面の前置きがシェーダに入り、コンパイルが重くなった。
+  - 修正：`create_gl` はすべてのシェーダをコンパイル・リンクしてから、まとめてリンクの結果と uniform の場所を読む（最後のプログラムの直後。その後の `u_shadow_map` の設定が場所を使うため。失敗の文はプログラムとシェーダのログを合わせる）。待ちは 48 → 9.5 ms。初めは `create_gl` の最後で読んだが、`u_shadow_map` が設定されず影が別のテクスチャを読み、pack test の `model` が見つけた。
+  - 結果：2D の `idle` 181.5 → **131.4 ms**（Phase 20 の前の 149 ms より速い、MapLibre 215.9 ms）、`created` 63.0 → 22.9 ms。フレームの CPU（`rafCpuP50`）は変わらない（pan 0.85、zoom-in 0.57 ms。MapLibre 1.44、1.25 ms）。`--uncapped` の `idle` 178.0 → 138.5 ms。表示（メイン）161.4 → 161.5KB。
+- **押し出し**（`--extrusion`）：`idle` 288.0 → 240.8 ms（修正の分）、MapLibre 398.9 ms。ただし作成から idle までが 11-01 の 120 ms から 170〜190 ms に延びている（Phase 15〜20 の間、押し出しのワーカー側の変更が多い）。切り分けは別に。
+- **影のコスト**（`--shadows`、新設、同じ押し出しに `cast-shadows` の太陽）：`rafCpuP50` は pan 0.99 → 1.19、pan-back 1.12 → 1.36、zoom-in 0.61 → 0.97、zoom-out 0.60 → 0.87 ms（+0.2〜0.36 ms、影の深度テクスチャを毎フレーム描く分）。p95 は 1.63 → 1.96 ms。`idle` は 242.1 ms（ばらつきの内）。
+- **CesiumJS との比較**（`npm run cesium -- --gpu`、修正の後、3 回の中央値。20.5 の表は SwiftShader の値）：
+
+  | 視点 | 落ち着くまで ms mbmap / Cesium | 回転 120 フレームの CPU p50 / p95 ms mbmap ・ Cesium |
+  | --- | --- | --- |
+  | z17、傾き 50°、方位 -20° | 390 / 392 | 1.88 / 2.90 ・ 1.67 / 3.44 |
+  | z16、真上 | 349 / 381 | 1.75 / 2.78 ・ 2.16 / 3.17 |
+  | z18、傾き 60°、方位 30° | 320 / 349 | 1.65 / 2.50 ・ 1.74 / 3.64 |
+
+  GPU では落ち着くまでの時間もフレームの CPU も Cesium と同じくらい（SwiftShader の 4 倍の差は描画の速さの差だった）。p95 と最大は mbmap が小さい。修正の前は落ち着くまで 436 / 347 / 328 ms。配る大きさは mbmap 313.1KB、Cesium 1870.7KB ＋ 資産 136.3KB。
+- **目での確かめ**（`examples/plateau/?local=1` を Playwright で M2 の GPU に描き、スクリーンショットで見た）：
+  - 影：建物の影が地面と建物に落ちる。回転・寄り（z18）・傾き 70° で泳ぎや縞（アクネ）は見えない。z16.5・方位 70° で、東京駅の丸の内側の広場に落ちる影の外形が丸みを帯びて見える所が 1 つあった（ぼかしの幅か影の範囲の端か、未確認。実際のブラウザで目で見るとよい）。
+  - 可視域：緑と赤の境が建物の縁に沿う。断面：切り口の橙の縁が出る。見通し（74 m 先、高さ 100.7 m で遮られる）と計測（直線 639.5 m）も答えが出る。
+  - 地球表示：z16（メルカトルと同じ）、z13、z11 で影と断面が崩れない（GSI のフィクスチャはズーム 14 だけなので、z13・z11 は実際のタイルで見た）。
+  - コンソールのエラーなし。z17.5・傾き 75° の東京駅の視点は、カメラが建物の中に入って灰色一色になる（影なしでも同じ。カメラが建物を避けないのは MapLibre と同じ）。
+- **フィクスチャ**：`scripts/setup.sh` で `ofm-planet` と PLATEAU・I3S が取れた。`protomaps` は 404（`build.protomaps.com` の日付の版が消えた）。
+- **確認**：`moon check --target all --deny-warn`、`moon test --target all`、`npm test` 438、`npm --prefix bench test`、`npm run size`、`style:golden`・`raster:golden`・`labels:golden`、`npm:pack`。`npm:pack` の `showcase-element` はこの Mac で「表の行のクリック」の後に地図が止まらず 180 s で落ちることがある（main でも 3 回中 2 回。CI では通る）。
+- **計測の注意**：夜の間に Mac が眠ると `render` のページが止まる（`no result after 917038 ms`）。長い計測は `caffeinate -dis` の下で回す。
 
 ## Phase 20 の後の点検（2026-11-09、Web）
 

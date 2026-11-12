@@ -1,10 +1,10 @@
 {
   "env": {
     "browser": "chromium 156.0.8078.4",
-    "gpu": false,
+    "gpu": true,
     "renderers": {
-      "mbmap": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
-      "cesium": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+      "mbmap": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "cesium": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)"
     },
     "viewport": "800x600",
     "dpr": 1,
@@ -21,17 +21,17 @@
   },
   "sizes": {
     "mbmap": {
-      "gzip": 284477,
+      "gzip": 313064,
       "assetsGzip": 0,
       "files": {
-        "3d.js": 4891,
-        "index.js": 151688,
+        "3d.js": 9075,
+        "index.js": 161464,
         "worker.js": 4896,
-        "mbmap.wasm": 80338,
-        "custom.js": 2935,
-        "3d-tiles.js": 9868,
-        "3d-worker.js": 8370,
-        "3d.wasm": 21491
+        "mbmap.wasm": 80291,
+        "custom.js": 2983,
+        "3d-tiles.js": 10414,
+        "3d-worker.js": 16379,
+        "3d.wasm": 27562
       }
     },
     "cesium": {
@@ -59,19 +59,19 @@
       "bearing": -20,
       "cameraDistanceMeters": 436.5554327829685,
       "mbmap": {
-        "settleMs": 917.4150000000373,
+        "settleMs": 389.6399999856949,
         "selected": 24,
         "selectedWithContent": 24,
         "settleMsRuns": [
-          1001,
-          917,
-          836
+          390,
+          397,
+          368
         ],
         "requests": {
           "tiles": 54,
           "b3dm": 53,
           "json": 1,
-          "bytes": 21676192,
+          "bytes": 21645668,
           "missing": [
             "data/data58.b3dm"
           ]
@@ -79,9 +79,9 @@
         "sameEveryRun": true,
         "orbitCpuMs": {
           "frames": 120,
-          "p50": 2.2749999999068677,
-          "p95": 3.8499999998603016,
-          "max": 6.370000000111759
+          "p50": 1.8750000596046448,
+          "p95": 2.900000035762787,
+          "max": 3.274999976158142
         },
         "contents": [
           "/bench/fixtures/plateau-chiyoda/data/data240.b3dm",
@@ -112,13 +112,13 @@
         "errors": []
       },
       "cesium": {
-        "settleMs": 4042.844999999972,
+        "settleMs": 391.914999961853,
         "selected": 23,
         "statisticsSelected": 23,
         "settleMsRuns": [
-          4043,
-          3913,
-          4182
+          392,
+          354,
+          399
         ],
         "requests": {
           "tiles": 51,
@@ -130,9 +130,9 @@
         "sameEveryRun": true,
         "orbitCpuMs": {
           "frames": 120,
-          "p50": 2.7649999998975545,
-          "p95": 5.504999999888241,
-          "max": 9.754999999888241
+          "p50": 1.6650000214576721,
+          "p95": 3.439999997615814,
+          "max": 4.240000009536743
         },
         "contents": [
           "/bench/fixtures/plateau-chiyoda/data/data421.b3dm",
@@ -174,27 +174,27 @@
       "bearing": 0,
       "cameraDistanceMeters": 873.110865565937,
       "mbmap": {
-        "settleMs": 892.2800000000279,
+        "settleMs": 349.14999997615814,
         "selected": 27,
         "selectedWithContent": 27,
         "settleMsRuns": [
-          947,
-          869,
-          892
+          349,
+          351,
+          334
         ],
         "requests": {
           "tiles": 50,
           "b3dm": 49,
           "json": 1,
-          "bytes": 20497876,
+          "bytes": 20006080,
           "missing": []
         },
         "sameEveryRun": true,
         "orbitCpuMs": {
           "frames": 120,
-          "p50": 2.3399999998509884,
-          "p95": 4.339999999850988,
-          "max": 6.114999999990687
+          "p50": 1.75,
+          "p95": 2.784999966621399,
+          "max": 3.3199999928474426
         },
         "contents": [
           "/bench/fixtures/plateau-chiyoda/data/data418.b3dm",
@@ -228,13 +228,13 @@
         "errors": []
       },
       "cesium": {
-        "settleMs": 4119.135000000009,
+        "settleMs": 380.55000001192093,
         "selected": 27,
         "statisticsSelected": 27,
         "settleMsRuns": [
-          4027,
-          4162,
-          4119
+          380,
+          382,
+          381
         ],
         "requests": {
           "tiles": 50,
@@ -246,9 +246,9 @@
         "sameEveryRun": true,
         "orbitCpuMs": {
           "frames": 120,
-          "p50": 2.015000000130385,
-          "p95": 2.9399999999441206,
-          "max": 12.265000000130385
+          "p50": 2.159999966621399,
+          "p95": 3.1700000166893005,
+          "max": 3.7450000643730164
         },
         "contents": [
           "/bench/fixtures/plateau-chiyoda/data/data418.b3dm",
@@ -294,19 +294,19 @@
       "bearing": 30,
       "cameraDistanceMeters": 218.27771639148426,
       "mbmap": {
-        "settleMs": 799.6049999999814,
+        "settleMs": 319.55500000715256,
         "selected": 14,
         "selectedWithContent": 14,
         "settleMsRuns": [
-          716,
-          837,
-          800
+          320,
+          302,
+          336
         ],
         "requests": {
           "tiles": 48,
           "b3dm": 47,
           "json": 1,
-          "bytes": 19053716,
+          "bytes": 16510940,
           "missing": [
             "data/data58.b3dm"
           ]
@@ -314,9 +314,9 @@
         "sameEveryRun": true,
         "orbitCpuMs": {
           "frames": 120,
-          "p50": 2.3549999999813735,
-          "p95": 4.284999999916181,
-          "max": 6.375
+          "p50": 1.649999976158142,
+          "p95": 2.5,
+          "max": 2.7199999690055847
         },
         "contents": [
           "/bench/fixtures/plateau-chiyoda/data/data240.b3dm",
@@ -337,13 +337,13 @@
         "errors": []
       },
       "cesium": {
-        "settleMs": 3713.4150000000373,
+        "settleMs": 348.5199999809265,
         "selected": 17,
         "statisticsSelected": 17,
         "settleMsRuns": [
-          3713,
-          3645,
-          3784
+          352,
+          349,
+          334
         ],
         "requests": {
           "tiles": 47,
@@ -355,18 +355,18 @@
             "data/data114.b3dm",
             "data/data167.b3dm",
             "data/data239.b3dm",
-            "data/data188.b3dm",
+            "data/data209.b3dm",
             "data/data238.b3dm",
             "data/data230.b3dm",
-            "data/data209.b3dm"
+            "data/data188.b3dm"
           ]
         },
         "sameEveryRun": true,
         "orbitCpuMs": {
           "frames": 120,
-          "p50": 2.6500000001396984,
-          "p95": 5.195000000298023,
-          "max": 9.870000000111759
+          "p50": 1.7350000143051147,
+          "p95": 3.6399999260902405,
+          "max": 4.579999923706055
         },
         "contents": [
           "/bench/fixtures/plateau-chiyoda/data/data240.b3dm",

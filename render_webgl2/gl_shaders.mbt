@@ -14,9 +14,10 @@ extern "js" fn create_gl(
   #|    const s = gl.createShader(type);
   #|    gl.shaderSource(s, src);
   #|    gl.compileShader(s);
-  #|    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
   #|    return s;
   #|  };
+  #|  // Statuses and uniforms are read once every program is linked, so the driver compiles them together.
+  #|  const pending = [];
   #|  const program = (vs, fs, uniforms) => {
   #|    const p = gl.createProgram();
   #|    gl.attachShader(p, compile(gl.VERTEX_SHADER, "#version 300 es\n" + vs));
@@ -40,9 +41,8 @@ extern "js" fn create_gl(
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
   #|    gl.linkProgram(p);
-  #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   #|    const u = { program: p };
-  #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
+  #|    pending.push([u, uniforms]);
   #|    return u;
   #|  };
   #|  // u_clip is a rectangle in tile units outside which nothing is drawn: a
@@ -634,6 +634,14 @@ extern "js" fn create_gl(
   #|      color.rgb = 1.0 - exp(-1.0 * color.rgb); color = pow(color, vec4(1.0 / 2.2));
   #|      o = vec4(color.rgb, 1.0 - color.a) * u_atmosphere_blend; }`,
   #|    ["u_inv_proj", "u_sun_pos", "u_globe_position", "u_globe_radius", "u_atmosphere_blend"]);
+  #|  for (const [u, uniforms] of pending) {
+  #|    const p = u.program;
+  #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+  #|      const logs = gl.getAttachedShaders(p).map((s) => gl.getShaderInfoLog(s)).filter((l) => l);
+  #|      throw new Error([gl.getProgramInfoLog(p), ...logs].join("\n"));
+  #|    }
+  #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
+  #|  }
   #|  // Globe tile meshes by key (granularity and poles), uploaded once (`addTileMesh`).
   #|  const tileMeshes = new Map();
   #|  const tileMesh = (g) => {
