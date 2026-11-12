@@ -14,9 +14,10 @@ extern "js" fn create_gl(
   #|    const s = gl.createShader(type);
   #|    gl.shaderSource(s, src);
   #|    gl.compileShader(s);
-  #|    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
   #|    return s;
   #|  };
+  #|  // Statuses and uniforms are read once every program is linked, so the driver compiles them together.
+  #|  const pending = [];
   #|  const program = (vs, fs, uniforms) => {
   #|    const p = gl.createProgram();
   #|    gl.attachShader(p, compile(gl.VERTEX_SHADER, "#version 300 es\n" + vs));
@@ -40,9 +41,8 @@ extern "js" fn create_gl(
   #|    ["a_color_lo", "a_color_hi", "a_opacity", "a_extent", "a_stroke_lo", "a_stroke_hi", "a_stroke_opacity", "a_stroke_width"]
   #|      .forEach((name, i) => gl.bindAttribLocation(p, 5 + i, name));
   #|    gl.linkProgram(p);
-  #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
   #|    const u = { program: p };
-  #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
+  #|    pending.push([u, uniforms]);
   #|    return u;
   #|  };
   #|  // u_clip is a rectangle in tile units outside which nothing is drawn: a
@@ -764,5 +764,13 @@ extern "js" fn create_gl(
   #|    gl.uniformMatrix4fv(p.u_shadow_globe, false, s.globe);
   #|    gl.uniform2f(p.u_shadow_k, s.k[0], s.k[1]);
   #|  };
+  #|  for (const [u, uniforms] of pending) {
+  #|    const p = u.program;
+  #|    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+  #|      const logs = gl.getAttachedShaders(p).map((s) => gl.getShaderInfoLog(s)).filter((l) => l);
+  #|      throw new Error([gl.getProgramInfoLog(p), ...logs].join("\n"));
+  #|    }
+  #|    for (const name of uniforms) u[name] = gl.getUniformLocation(p, name);
+  #|  }
   #|  return c;
   #|}

@@ -8,7 +8,7 @@
     {
       "scene": "globe-vectors",
       "ok": true,
-      "mean": 0.009,
+      "mean": 0.008,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -56,9 +56,29 @@
       }
     },
     {
+      "scene": "globe-extrusions",
+      "ok": true,
+      "mean": 0.003,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
+      "scene": "globe-translate",
+      "ok": true,
+      "mean": 0.003,
+      "p99": 0,
+      "limits": {
+        "mean": 0.05,
+        "p99": 1
+      }
+    },
+    {
       "scene": "globe-labels",
       "ok": true,
-      "mean": 0.032,
+      "mean": 0.031,
       "p99": 0,
       "limits": {
         "mean": 0.2,
@@ -68,7 +88,7 @@
     {
       "scene": "globe-labels-pitched",
       "ok": true,
-      "mean": 0.032,
+      "mean": 0.031,
       "p99": 0,
       "limits": {
         "mean": 0.2,
@@ -78,7 +98,7 @@
     {
       "scene": "globe-labels-transition",
       "ok": true,
-      "mean": 0,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.2,
@@ -118,7 +138,7 @@
     {
       "scene": "expressions-strings",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -148,7 +168,7 @@
     {
       "scene": "lines",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.1,
@@ -188,7 +208,7 @@
     {
       "scene": "data-lines",
       "ok": true,
-      "mean": 0.002,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -198,7 +218,7 @@
     {
       "scene": "line-offset",
       "ok": true,
-      "mean": 0.026,
+      "mean": 0.02,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -208,7 +228,7 @@
     {
       "scene": "line-gap",
       "ok": true,
-      "mean": 0.018,
+      "mean": 0.016,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -268,7 +288,7 @@
     {
       "scene": "dashes",
       "ok": true,
-      "mean": 0.035,
+      "mean": 0.034,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -308,7 +328,7 @@
     {
       "scene": "legacy",
       "ok": true,
-      "mean": 0.003,
+      "mean": 0.002,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -328,7 +348,7 @@
     {
       "scene": "icons",
       "ok": true,
-      "mean": 0.012,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -338,7 +358,7 @@
     {
       "scene": "icons-turned",
       "ok": true,
-      "mean": 0.003,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -348,7 +368,7 @@
     {
       "scene": "icons-lines",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -358,7 +378,7 @@
     {
       "scene": "icons-lines-tilted",
       "ok": true,
-      "mean": 0.005,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -368,7 +388,7 @@
     {
       "scene": "icons-2x",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -378,8 +398,8 @@
     {
       "scene": "text",
       "ok": true,
-      "mean": 0.174,
-      "p99": 6,
+      "mean": 0.164,
+      "p99": 4,
       "limits": {
         "mean": 0.2,
         "p99": 7
@@ -388,8 +408,8 @@
     {
       "scene": "text-thin-halo",
       "ok": true,
-      "mean": 0.073,
-      "p99": 3,
+      "mean": 0.042,
+      "p99": 1,
       "limits": {
         "mean": 0.09,
         "p99": 4
@@ -398,8 +418,8 @@
     {
       "scene": "text-format",
       "ok": true,
-      "mean": 0.163,
-      "p99": 6,
+      "mean": 0.088,
+      "p99": 3,
       "limits": {
         "mean": 0.19,
         "p99": 7
@@ -408,7 +428,7 @@
     {
       "scene": "text-lines",
       "ok": true,
-      "mean": 0.002,
+      "mean": 0.001,
       "p99": 0,
       "limits": {
         "mean": 0.05,
@@ -418,8 +438,8 @@
     {
       "scene": "text-2x",
       "ok": true,
-      "mean": 0.175,
-      "p99": 6,
+      "mean": 0.14,
+      "p99": 5,
       "limits": {
         "mean": 0.2,
         "p99": 7
@@ -428,7 +448,7 @@
     {
       "scene": "patterns",
       "ok": true,
-      "mean": 0.075,
+      "mean": 0.074,
       "p99": 2,
       "limits": {
         "mean": 0.08,
@@ -439,7 +459,7 @@
     {
       "scene": "patterns-2x",
       "ok": true,
-      "mean": 0.078,
+      "mean": 0.077,
       "p99": 2,
       "limits": {
         "mean": 0.08,
@@ -450,7 +470,7 @@
     {
       "scene": "heatmap",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0.003,
       "p99": 0,
       "limits": {
         "mean": 0.5,
@@ -512,7 +532,7 @@
     {
       "scene": "line-patterns",
       "ok": true,
-      "mean": 0.142,
+      "mean": 0.143,
       "p99": 1,
       "limits": {
         "mean": 0.2,
@@ -523,8 +543,8 @@
     {
       "scene": "extrusion-patterns",
       "ok": false,
-      "mean": 0.215,
-      "p99": 1,
+      "mean": 60.612,
+      "p99": 205,
       "limits": {
         "mean": 0.2,
         "p99": 1
@@ -533,7 +553,7 @@
     {
       "scene": "extrusions-translucent",
       "ok": true,
-      "mean": 0.101,
+      "mean": 0.098,
       "p99": 0,
       "limits": {
         "mean": 0.12,
@@ -613,7 +633,7 @@
     {
       "scene": "color-relief-nearest",
       "ok": true,
-      "mean": 0.001,
+      "mean": 0,
       "p99": 0,
       "limits": {
         "mean": 0.05,
